@@ -1,0 +1,96 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omnilss"
+version = "0.2.0"
+description = "Differentiable Distributional Modeling in JAX - A high-performance Python implementation of GAMLSS"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "GPL-3.0-or-later"}
+authors = [
+  {name = "OmniLSS Team", email = "axu0606@gmail.com"}
+]
+maintainers = [
+  {name = "OmniLSS Team", email = "axu0606@gmail.com"}
+]
+keywords = [
+  "gamlss",
+  "statistics",
+  "jax",
+  "machine-learning",
+  "distributional-regression",
+  "generalized-additive-models",
+  "statistical-modeling"
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Mathematics",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "jax>=0.4.20",
+  "jaxlib>=0.4.20",
+  "numpy>=1.24.0",
+  "scipy>=1.11.0",
+  "pandas>=2.0.0",
+  "optax>=0.1.7",
+  "flax>=0.7.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/dongfangzhizhu/OmniLSS"
+Documentation = "https://omnilss.readthedocs.io"
+Repository = "https://github.com/dongfangzhizhu/OmniLSS"
+Issues = "https://github.com/dongfangzhizhu/OmniLSS/issues"
+Changelog = "https://github.com/dongfangzhizhu/OmniLSS/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+sklearn = [
+  "scikit-learn>=1.3.0",
+]
+scoring = [
+  "scoringrules>=0.6.0",
+]
+dev = [
+  "pytest>=7.0.0",
+  "pytest-cov>=4.0.0",
+  "pytest-xdist>=3.0.0",
+  "black>=23.0.0",
+  "ruff>=0.1.0",
+  "mypy>=1.0.0",
+  "pre-commit>=3.0.0",
+]
+docs = [
+  "sphinx>=6.0.0",
+  "sphinx-rtd-theme>=1.0.0",
+  "myst-parser>=1.0.0",
+]
+benchmarks = [
+  "matplotlib>=3.5.0",
+]
+all = [
+  "omnilss[sklearn,scoring,dev,docs,benchmarks]",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+norecursedirs = [".git", ".venv", ".pytest_cache", "__pycache__", "tests/debug", "scratch", "temp_tests", "legacy", "results"]
+cache_dir = "tmp/.pytest_cache"
+addopts = "-q -p no:cacheprovider"

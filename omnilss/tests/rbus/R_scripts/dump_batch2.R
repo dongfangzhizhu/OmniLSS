@@ -1,0 +1,7 @@
+library(gamlss.dist)
+cat("=== dNO2 ===\n"); print(dNO2)
+cat("=== dLOGNO2 ===\n"); print(dLOGNO2)
+cat("=== dPE ===\n"); print(dPE)
+cat("=== dPIG ===\n"); print(dPIG)
+cat("=== dSIMPLEX ===\n"); print(dSIMPLEX)
+cat("=== dEXGAUS ===\n"); print(dexGAUS)

@@ -1,0 +1,1564 @@
+"""Initial fitting helpers for staged migration of `gamlssML` and `gamlss`.
+
+R source references:
+- file: `gamlss/R/gamlssML.R`
+- function: `gamlssML`
+- file: `gamlss/R/gamlss-5.R`
+- function: `gamlss`
+- file: `gamlss/R/add.r`
+- function: `additive.fit`
+"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from dataclasses import asdict
+import math
+from statistics import NormalDist
+from typing import Any
+
+import jax.numpy as jnp
+import numpy as np
+
+from .controls import GAMLSSControl, GLIMControl, gamlss_control, glim_control
+from .distributions import resolve_family
+from .families import FamilyDefinition
+from .model import GAMLSSModel
+
+_STANDARD_NORMAL = NormalDist()
+
+
+def _has_smooth_terms(formula: str) -> bool:
+    """Check if formula contains smooth terms.
+    
+    Parameters
+    ----------
+    formula : str
+        Formula string
+    
+    Returns
+    -------
+    has_smooths : bool
+        True if formula contains smooth terms like pb(), ps(), cs(), etc.
+    
+    Examples
+    --------
+    >>> _has_smooth_terms("y ~ x1 + x2")
+    False
+    >>> _has_smooth_terms("y ~ pb(x1) + x2")
+    True
+    >>> _has_smooth_terms("y ~ x1 + ps(x2, df=5)")
+    True
+    """
+    import re
+    # Pattern to match smooth terms: pb(...), ps(...), cs(...), random(...), re(...), lo(...)
+    smooth_pattern = r'\b(pb|ps|cs|random|re|lo)\s*\('
+    return bool(re.search(smooth_pattern, formula))
+
+
+def _parse_formula(formula: str) -> tuple[str, list[str]]:
+    if "~" not in formula:
+        raise ValueError("formula must contain '~'")
+    left, right = formula.split("~", 1)
+    response = left.strip()
+    rhs = [term.strip() for term in right.split("+") if term.strip()]
+    if rhs == ["1"] or not rhs:
+        return response, []
+    return response, rhs
+
+
+def _build_design_matrix(
+    formula: str,
+    data: Mapping[str, Any],
+) -> tuple[str, np.ndarray, list[str]]:
+    response, predictors = _parse_formula(formula)
+    n = len(np.asarray(data[response]))
+    columns = [np.ones(n, dtype=np.float64)]
+    labels = []
+    for predictor in predictors:
+        columns.append(np.asarray(data[predictor], dtype=np.float64))
+        labels.append(predictor)
+    design = np.column_stack(columns)
+    return response, design, labels
+
+
+def _build_design_matrix_with_smooths(
+    formula: str,
+    data: Mapping[str, Any],
+    weights: np.ndarray | None = None,
+) -> tuple[str, np.ndarray, list[str], Any]:
+    """Build design matrix, detecting and handling smooth terms.
+    
+    This function checks if the formula contains smooth terms and uses
+    the appropriate method to build the design matrix.
+    
+    Parameters
+    ----------
+    formula : str
+        Formula string
+    data : dict
+        Data dictionary
+    weights : np.ndarray, optional
+        Observation weights
+    
+    Returns
+    -------
+    response : str
+        Response variable name
+    design : np.ndarray
+        Design matrix
+    labels : list[str]
+        Predictor labels
+    smooth_info : SmoothDesignInfo or None
+        Smooth term information if present, None otherwise
+    
+    Examples
+    --------
+    >>> response, X, labels, smooth_info = _build_design_matrix_with_smooths(
+    ...     "y ~ x1 + pb(x2, df=5)", data
+    ... )
+    """
+    if _has_smooth_terms(formula):
+        # Use smooth design builder
+        from .smooth_fitting import build_smooth_design
+        smooth_info = build_smooth_design(formula, data, weights)
+        response = formula.split("~")[0].strip()
+        return response, smooth_info.X, [], smooth_info
+    else:
+        # Use simple design builder
+        response, design, labels = _build_design_matrix(formula, data)
+        return response, design, labels, None
+    design = np.column_stack(columns)
+    return response, design, labels
+
+
+def _normalize_parameter_formula(response: str, formula: str) -> str:
+    text = str(formula).strip()
+    if text.startswith("~"):
+        return f"{response} {text}"
+    if "~" in text:
+        return text
+    return f"{response} {text}".strip()
+
+
+def _resolve_parameter_formulas(
+    response: str,
+    family: FamilyDefinition,
+    mu_formula: str,
+    sigma_formula: str,
+    parameter_formulas: Mapping[str, str] | None = None,
+) -> dict[str, str]:
+    """Resolve staged per-parameter formulas with early validation.
+
+    R reference:
+    - `gamlss/R/gamlss-5.R::gamlss`
+
+    Current staged behavior:
+    - Accepts explicit formulas for `mu` and `sigma`.
+    - Accepts a staged `parameter_formulas` mapping for future `nu/tau` work.
+    - Rejects parameters that are unknown or unsupported by the current family.
+    """
+
+    fixed_parameters = set(family.fixed_parameters or ())
+    resolved = {"mu": _normalize_parameter_formula(response, mu_formula)}
+    for parameter in family.parameters:
+        if parameter == "mu":
+            continue
+        if parameter in fixed_parameters:
+            continue
+        if parameter == "sigma":
+            resolved["sigma"] = _normalize_parameter_formula(response, sigma_formula)
+            continue
+        resolved[parameter] = _normalize_parameter_formula(response, "~1")
+
+    if parameter_formulas is None:
+        return resolved
+
+    for parameter, formula_text in parameter_formulas.items():
+        key = str(parameter).strip().lower()
+        if key in fixed_parameters:
+            raise ValueError(f"family {family.name!r} uses fixed parameter {key!r}; provide it in data instead")
+        if key not in {"mu", "sigma", "nu", "tau"}:
+            raise ValueError(f"unknown parameter formula {parameter!r}")
+        if key not in family.parameters:
+            raise ValueError(f"family {family.name!r} does not support parameter {key!r}")
+        resolved[key] = _normalize_parameter_formula(response, str(formula_text))
+    return resolved
+
+
+def _prepare_fixed_parameter_array(
+    value: Any,
+    *,
+    name: str,
+    n_obs: int,
+) -> np.ndarray:
+    array = np.asarray(value, dtype=np.float64)
+    if array.ndim == 0:
+        return np.full(n_obs, float(array), dtype=np.float64)
+
+    flat = np.ravel(array).astype(np.float64, copy=False)
+    if flat.size != n_obs:
+        raise ValueError(
+            f"fixed parameter {name!r} must have length {n_obs} or be scalar; got length {flat.size}"
+        )
+    return flat
+
+
+def _resolve_fixed_parameter_values(
+    family: FamilyDefinition,
+    data: Mapping[str, Any],
+    n_obs: int,
+) -> dict[str, np.ndarray]:
+    resolved: dict[str, np.ndarray] = {}
+    for parameter in family.fixed_parameters or ():
+        if parameter not in data:
+            # Special case: BI family's bd parameter defaults to 1 (Bernoulli)
+            if family.name == "BI" and parameter == "bd":
+                resolved[parameter] = np.ones(n_obs, dtype=np.float64)
+                continue
+            
+            raise ValueError(
+                f"family {family.name!r} requires fixed parameter {parameter!r} in data"
+            )
+        resolved[parameter] = _prepare_fixed_parameter_array(
+            data[parameter],
+            name=parameter,
+            n_obs=n_obs,
+        )
+    return resolved
+
+
+def _fixed_parameter_formula(parameter: str) -> str:
+    return f"<fixed:{parameter}>"
+
+
+def _fixed_parameter_term(response: str, parameter: str) -> dict[str, Any]:
+    return {
+        "term_labels": [parameter],
+        "response": response,
+        "intercept": False,
+        "formula": _fixed_parameter_formula(parameter),
+        "fixed": True,
+    }
+
+
+def _initial_parameter_value(
+    family: FamilyDefinition,
+    parameter: str,
+    y: np.ndarray,
+    mu: np.ndarray,
+    w: np.ndarray,
+) -> float:
+    """Construct staged starting values for non-mu parameters."""
+
+    if parameter == "sigma":
+        return _initial_sigma(family, y, mu, w)
+    if parameter == "nu":
+        if family.name == "PE":
+            return 1.8
+        if family.name == "TF":
+            return 10.0
+        if family.name == "JSU":
+            return 0.0
+        if family.name == "BCCG":
+            return 1.0
+        if family.name == "BCT":
+            return 1.0
+        if family.name == "BCPE":
+            return 1.0
+        if family.name == "GG":
+            return 2.0  # Shape parameter, 2.0 is reasonable for gamma-like data
+        if family.name == "GB2":
+            return 1.0  # Shape parameter 1, start from symmetric case for stability
+        if family.name == "DEL":
+            return 0.5  # Poisson component, small starting value
+        if family.name == "NET":
+            return 1.0  # Threshold k1, 1.0 is reasonable starting value
+        if family.name == "GT":
+            return 5.0  # Degrees of freedom, reasonable starting value
+        if family.name == "SHASH":
+            return 1.0  # Skewness parameter
+        if family.name == "SHASHo":
+            return 0.0  # Skewness parameter (original parameterization)
+        if family.name == "SN1":
+            return 0.0  # Skewness parameter
+        if family.name == "SN2":
+            return 1.0  # Scale ratio parameter
+        # Zero-inflated/altered distributions: nu is zero-inflation probability
+        # Use logit link, so initial value should be small but positive
+        if family.name in ("ZAGA", "ZAIG", "ZAP", "ZINBI", "ZIP2", "BEZI", "BEOI"):
+            return 0.2  # 20% zero-inflation, reasonable starting point
+        if family.name in ("BEINF", "BEINF0", "BEINF1"):
+            return 0.1  # 10% inflation at boundary, conservative estimate
+        return 1.0
+    if parameter == "tau":
+        if family.name == "JSU":
+            return 1.0
+        if family.name == "BCT":
+            return 10.0  # Degrees of freedom, higher starting value for stability
+        if family.name == "GB2":
+            return 1.0  # Shape parameter 2, start from symmetric case for stability
+        if family.name == "BCPE":
+            return 2.0
+        if family.name == "NET":
+            return 2.0  # Threshold k2, must be >= nu, 2.0 > 1.0
+        if family.name == "GT":
+            return 2.0  # Shape exponent, 2.0 is close to normal
+        if family.name == "SHASH":
+            return 1.0  # Kurtosis parameter
+        if family.name == "SHASHo":
+            return 1.0  # Kurtosis parameter
+        if family.name == "BEINF":
+            return 0.1  # Inflation at 1, conservative estimate
+        return 1.0
+    return 1.0
+
+
+def _is_intercept_only_formula(formula: str) -> bool:
+    response, predictors = _parse_formula(formula)
+    return bool(response) and len(predictors) == 0
+
+
+def _weighted_least_squares(
+    x: np.ndarray,
+    z: np.ndarray,
+    w: np.ndarray,
+    smooth_info: Any = None,
+) -> np.ndarray:
+    """Weighted least squares with optional penalty for smooth terms.
+    
+    Parameters
+    ----------
+    x : np.ndarray
+        Design matrix
+    z : np.ndarray
+        Working response
+    w : np.ndarray
+        Weights
+    smooth_info : SmoothDesignInfo, optional
+        Smooth term information for penalized fitting
+    
+    Returns
+    -------
+    coef : np.ndarray
+        Fitted coefficients
+    """
+    x_array = np.asarray(x, dtype=np.float64)
+    z_array = np.asarray(z, dtype=np.float64)
+    w_array = np.asarray(w, dtype=np.float64)
+    safe_w = np.nan_to_num(w_array, nan=1.0, posinf=1e10, neginf=1e-10)
+    safe_w = np.clip(safe_w, 1e-10, 1e10)
+    safe_x = np.nan_to_num(x_array, nan=0.0, posinf=1e10, neginf=-1e10)
+    safe_z = np.nan_to_num(z_array, nan=0.0, posinf=1e10, neginf=-1e10)
+    
+    # If we have smooth terms, use penalized WLS
+    if smooth_info is not None and len(smooth_info.smooth_fits) > 0:
+        from .smooth_fitting import fit_penalized_wls
+        return fit_penalized_wls(safe_x, safe_z, safe_w, smooth_info.smooth_fits)
+    
+    # Otherwise use standard WLS
+    sqrt_w = np.sqrt(safe_w)
+    wx = safe_x * sqrt_w[:, None]
+    wz = safe_z * sqrt_w
+    try:
+        coef, _, _, _ = np.linalg.lstsq(wx, wz, rcond=None)
+    except np.linalg.LinAlgError:
+        coef = np.linalg.pinv(wx, rcond=1e-10) @ wz
+    return coef.astype(np.float64, copy=False)
+
+
+def _apply_method_step(
+    previous_beta: np.ndarray,
+    proposed_beta: np.ndarray,
+    method_name: str,
+) -> np.ndarray:
+    """Apply staged method-specific coefficient updates.
+
+    R reference:
+    - `gamlss/R/gamlss-5.R`
+    - `method` supports `RS`, `CG`, `mixed`
+
+    Current staged behavior:
+    - `RS`: full weighted least squares step
+    - `CG`: damped correction step
+    - `MIXED`: midpoint step between `RS` and `CG`
+    """
+
+    if method_name == "CG":
+        return previous_beta + 0.5 * (proposed_beta - previous_beta)
+    if method_name == "MIXED":
+        return previous_beta + 0.75 * (proposed_beta - previous_beta)
+    return proposed_beta
+
+
+def _compute_residuals(
+    family: FamilyDefinition,
+    y: np.ndarray,
+    mu: np.ndarray,
+    sigma: np.ndarray | None,
+) -> jnp.ndarray:
+    if family.name == "LOGNO" and sigma is not None:
+        log_y = np.log(np.maximum(y, np.finfo(np.float64).eps))
+        return jnp.asarray((log_y - mu) / sigma, dtype=jnp.float64)
+    if sigma is not None:
+        return jnp.asarray((y - mu) / sigma, dtype=jnp.float64)
+    return jnp.asarray((y - mu) / np.sqrt(np.maximum(mu, 1e-12)), dtype=jnp.float64)
+
+
+def _normal_quantile(probabilities: np.ndarray) -> np.ndarray:
+    eps = np.finfo(np.float64).eps
+    probs = np.clip(np.asarray(probabilities, dtype=np.float64), eps, 1.0 - eps)
+    flattened = probs.ravel()
+    quantiles = np.array(
+        [_STANDARD_NORMAL.inv_cdf(float(value)) for value in flattened],
+        dtype=np.float64,
+    )
+    return quantiles.reshape(probs.shape)
+
+
+def _poisson_cdf_scalar(k: int, mu: float) -> float:
+    if k < 0:
+        return 0.0
+    mu = max(float(mu), np.finfo(np.float64).eps)
+    pmf = math.exp(-mu)
+    total = pmf
+    for index in range(1, k + 1):
+        pmf *= mu / index
+        total += pmf
+    return float(min(max(total, 0.0), 1.0))
+
+
+def _negative_binomial_cdf_scalar(k: int, mu: float, sigma: float) -> float:
+    if k < 0:
+        return 0.0
+    eps = np.finfo(np.float64).eps
+    mu = max(float(mu), eps)
+    sigma = max(float(sigma), eps)
+    size = 1.0 / sigma
+    pmf = math.exp(size * math.log(size / (size + mu)))
+    total = pmf
+    for index in range(1, k + 1):
+        pmf *= ((index - 1 + size) / index) * (mu / (size + mu))
+        total += pmf
+    return float(min(max(total, 0.0), 1.0))
+
+
+def _geometric_cdf_scalar(k: int, mu: float) -> float:
+    if k < 0:
+        return 0.0
+    mu = max(float(mu), np.finfo(np.float64).eps)
+    ratio = mu / (1.0 + mu)
+    return float(min(max(1.0 - ratio ** (k + 1), 0.0), 1.0))
+
+
+def _zip_cdf_scalar(k: int, mu: float, sigma: float) -> float:
+    if k < 0:
+        return 0.0
+    eps = np.finfo(np.float64).eps
+    sigma = min(max(float(sigma), eps), 1.0 - eps)
+    poisson_cdf = _poisson_cdf_scalar(k, mu)
+    return float(min(max(sigma + (1.0 - sigma) * poisson_cdf, 0.0), 1.0))
+
+
+def _discrete_midpoint_rqres(
+    family: FamilyDefinition,
+    y: np.ndarray,
+    mu: np.ndarray,
+    sigma: np.ndarray | None = None,
+) -> np.ndarray:
+    y_arr = np.asarray(y, dtype=np.float64)
+    mu_arr = np.asarray(mu, dtype=np.float64)
+    sigma_arr = None if sigma is None else np.asarray(sigma, dtype=np.float64)
+    midpoint = np.zeros_like(y_arr, dtype=np.float64)
+
+    for index, value in enumerate(y_arr):
+        observed = int(np.floor(value))
+        mu_value = float(mu_arr[index])
+        sigma_value = None if sigma_arr is None else float(sigma_arr[index])
+
+        if family.name == "PO":
+            lower = _poisson_cdf_scalar(observed - 1, mu_value)
+            upper = _poisson_cdf_scalar(observed, mu_value)
+        elif family.name == "BI":
+            prob = min(max(mu_value, np.finfo(np.float64).eps), 1.0 - np.finfo(np.float64).eps)
+            lower = 0.0 if observed <= 0 else 1.0 - prob
+            upper = 1.0 - prob if observed <= 0 else 1.0
+        elif family.name == "GEOM":
+            lower = _geometric_cdf_scalar(observed - 1, mu_value)
+            upper = _geometric_cdf_scalar(observed, mu_value)
+        elif family.name == "NBI":
+            lower = _negative_binomial_cdf_scalar(observed - 1, mu_value, float(sigma_value))
+            upper = _negative_binomial_cdf_scalar(observed, mu_value, float(sigma_value))
+        elif family.name == "ZIP":
+            lower = _zip_cdf_scalar(observed - 1, mu_value, float(sigma_value))
+            upper = _zip_cdf_scalar(observed, mu_value, float(sigma_value))
+        else:
+            raise NotImplementedError(f"rqres is not implemented for family {family.name!r}")
+
+        midpoint[index] = 0.5 * (lower + upper)
+
+    return _normal_quantile(midpoint)
+
+
+def _build_rqres_callable(family: FamilyDefinition) -> Any | None:
+    if family.name not in {"PO", "BI", "GEOM", "NBI", "ZIP"}:
+        return None
+
+    def rqres(**kwargs: Any) -> jnp.ndarray:
+        y = np.asarray(kwargs["y"], dtype=np.float64)
+        mu = np.asarray(kwargs["mu"], dtype=np.float64)
+        sigma_value = kwargs.get("sigma")
+        sigma = None if sigma_value is None else np.asarray(sigma_value, dtype=np.float64)
+        values = _discrete_midpoint_rqres(family, y=y, mu=mu, sigma=sigma)
+        return jnp.asarray(values, dtype=jnp.float64)
+
+    return rqres
+
+
+def _initial_mu_beta(
+    family: FamilyDefinition,
+    x: np.ndarray,
+    y: np.ndarray,
+    w: np.ndarray,
+    fixed_parameter_values: Mapping[str, np.ndarray] | None = None,
+) -> np.ndarray:
+    """Construct a family-aware starting point for the mu predictor."""
+
+    sqrt_w = np.sqrt(w)
+    if family.name == "NO":
+        target = y
+    elif family.name == "PO":
+        target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
+    elif family.name == "GEOM":
+        target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
+    elif family.name == "ZIP":
+        target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
+    elif family.name in ("YULE", "WARING"):
+        target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
+    elif family.name in ("ZAGA", "ZAIG", "ZAP", "ZINBI", "ZIP2"):
+        # Zero-altered/inflated: use log link, exclude zeros from initialization
+        # For zeros, use small positive value
+        target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
+    elif family.name == "BI":
+        clipped = np.clip(y, 1e-6, 1.0 - 1e-6)
+        target = np.log(clipped / (1.0 - clipped))
+    elif family.name == "BB":
+        if fixed_parameter_values is None or "bd" not in fixed_parameter_values:
+            raise ValueError("BB initialization requires fixed parameter 'bd'")
+        bd = np.maximum(np.asarray(fixed_parameter_values["bd"], dtype=np.float64), 1.0)
+        clipped = np.clip(y / bd, 1e-6, 1.0 - 1e-6)
+        target = np.log(clipped / (1.0 - clipped))
+    elif family.name == "BE":
+        clipped = np.clip(y, 1e-6, 1.0 - 1e-6)
+        target = np.log(clipped / (1.0 - clipped))
+    elif family.name == "WEI":
+        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
+    elif family.name == "BCCG":
+        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
+    elif family.name == "BCT":
+        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
+    elif family.name == "BCPE":
+        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
+    elif family.name == "GA":
+        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
+    elif family.name == "GG":
+        # Generalized Gamma: similar to GA
+        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
+    elif family.name == "GB2":
+        # Generalized Beta Type 2: similar to GA
+        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
+    elif family.name == "EXP":
+        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
+    elif family.name == "LOGNO":
+        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
+    elif family.name == "LNO":
+        # LNO is alias for LOGNO (identity link for mu)
+        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
+    elif family.name == "NBI":
+        target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
+    elif family.name == "IG":
+        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
+    elif family.name == "IGAMMA":
+        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
+    elif family.name == "LO":
+        target = y
+    elif family.name == "NET":
+        # NET: mu uses identity link
+        target = y
+    else:
+        target = y
+    wx = x * sqrt_w[:, None]
+    wy = target * sqrt_w
+    beta_mu, _, _, _ = np.linalg.lstsq(wx, wy, rcond=None)
+    return beta_mu
+
+
+def _initial_sigma(
+    family: FamilyDefinition,
+    y: np.ndarray,
+    mu: np.ndarray,
+    w: np.ndarray,
+    fixed_parameter_values: Mapping[str, np.ndarray] | None = None,
+) -> float:
+    """Construct a family-aware starting point for the sigma parameter."""
+
+    eps = np.finfo(np.float64).eps
+    if family.name == "LOGNO":
+        log_y = np.log(np.maximum(y, eps))
+        sigma = np.sqrt(np.sum(w * np.square(log_y - mu)) / np.sum(w))
+    elif family.name == "LNO":
+        # LNO is alias for LOGNO
+        log_y = np.log(np.maximum(y, eps))
+        sigma = np.sqrt(np.sum(w * np.square(log_y - mu)) / np.sum(w))
+    elif family.name == "GA":
+        centered = (y - mu) / np.maximum(mu, eps)
+        sigma = np.sqrt(np.sum(w * np.square(centered)) / np.sum(w))
+    elif family.name == "NBI":
+        mean_component = np.maximum(mu, eps)
+        variance_component = np.sum(w * np.square(y - mu)) / np.sum(w)
+        mean_level = np.sum(w * mean_component) / np.sum(w)
+        sigma = np.maximum((variance_component - mean_level) / np.maximum(mean_level**2, eps), eps)
+    elif family.name == "IG":
+        centered = (y - mu) / np.maximum(np.power(mu, 1.5), eps)
+        sigma = np.sqrt(np.sum(w * np.square(centered)) / np.sum(w))
+    elif family.name == "BE":
+        clipped_y = np.clip(y, eps, 1.0 - eps)
+        clipped_mu = np.clip(mu, eps, 1.0 - eps)
+        variance_component = np.sum(w * np.square(clipped_y - clipped_mu)) / np.sum(w)
+        mean_level = np.sum(w * clipped_mu) / np.sum(w)
+        denom = np.maximum(mean_level * (1.0 - mean_level), eps)
+        sigma = np.maximum(variance_component / denom, eps)
+    elif family.name == "BB":
+        sigma = 1.0
+    elif family.name == "WEI":
+        log_y = np.log(np.maximum(y, eps))
+        log_mu = np.log(np.maximum(mu, eps))
+        sigma = np.sqrt(np.sum(w * np.square(log_y - log_mu)) / np.sum(w))
+    elif family.name == "ZIP":
+        # R uses: sigma <- rep(0.1, length(y))
+        # Simple constant starting value
+        sigma = 0.1
+    elif family.name in ("ZAGA", "ZAIG"):
+        # Zero-altered gamma/IG: sigma is scale parameter of underlying distribution
+        # Use only non-zero observations for initialization
+        y_nonzero = y[y > 0]
+        mu_nonzero = mu[y > 0]
+        w_nonzero = w[y > 0]
+        if len(y_nonzero) > 0:
+            if family.name == "ZAGA":
+                # For gamma: sigma = sqrt(Var(Y)/mu^2)
+                centered = (y_nonzero - mu_nonzero) / np.maximum(mu_nonzero, eps)
+                sigma = np.sqrt(np.sum(w_nonzero * np.square(centered)) / np.sum(w_nonzero))
+            else:  # ZAIG
+                # For IG: similar to gamma
+                centered = (y_nonzero - mu_nonzero) / np.maximum(np.power(mu_nonzero, 1.5), eps)
+                sigma = np.sqrt(np.sum(w_nonzero * np.square(centered)) / np.sum(w_nonzero))
+        else:
+            sigma = 0.5  # Fallback if all zeros
+    elif family.name in ("ZIP2", "ZINBI", "ZAP"):
+        # Zero-inflated/altered discrete: use simple starting value
+        sigma = 0.1
+    elif family.name == "NBII":
+        # NBII: size = mu/sigma, Var(Y) = mu(1 + sigma)
+        # Therefore: sigma = Var(Y)/mu - 1
+        mean_component = np.maximum(mu, eps)
+        variance_component = np.sum(w * np.square(y - mu)) / np.sum(w)
+        mean_level = np.sum(w * mean_component) / np.sum(w)
+        # sigma = (variance - mean) / mean
+        sigma = np.maximum((variance_component - mean_level) / np.maximum(mean_level, eps), eps)
+    elif family.name == "PARETO2":
+        # PARETO2: shape = 1/sigma, need sigma < 1 for finite mean
+        # Use coefficient of variation as a guide
+        mean_component = np.maximum(mu, eps)
+        variance_component = np.sum(w * np.square(y - mu)) / np.sum(w)
+        mean_level = np.sum(w * mean_component) / np.sum(w)
+        # CV = sqrt(variance) / mean, for Pareto2: CV = sqrt(sigma/(1-sigma))
+        # Start with a conservative value
+        cv = np.sqrt(variance_component) / np.maximum(mean_level, eps)
+        # sigma = CV^2 / (1 + CV^2), ensure sigma < 1
+        sigma = np.clip(cv**2 / (1.0 + cv**2), eps, 0.9)
+    elif family.name == "IGAMMA":
+        # IGAMMA: Use a simple fixed starting value
+        # R's formula gives values that are too large and unstable
+        # Start with a conservative small value
+        sigma = 0.5
+    elif family.name == "GG":
+        # Generalized Gamma: Use conservative starting value
+        # Similar to Gamma but more stable
+        sigma = 0.5
+    elif family.name == "NET":
+        # NET: Use conservative starting value
+        sigma = 1.0
+    elif family.name == "PE":
+        mean_y = np.sum(w * y) / np.sum(w)
+        sigma = (np.sum(w * np.abs(y - mean_y)) / np.sum(w) + np.sqrt(np.sum(w * np.square(y - mean_y)) / np.sum(w))) / 2.0
+    elif family.name in ("YULE", "WARING"):
+        # R initializes WARING at sigma = 1; using a much smaller value sends
+        # the fit too close to the boundary before the first update.
+        if family.name == "WARING":
+            sigma = 1.0
+        else:
+            sigma = 2.0  # YULE
+    else:
+        sigma = np.sqrt(np.sum(w * np.square(y - mu)) / np.sum(w))
+    return max(float(sigma), eps)
+
+
+def gamlss_ml(
+    formula: str,
+    family: Any | None = None,
+    data: Mapping[str, Any] | None = None,
+    weights: Any | None = None,
+    sigma_formula: str = "~1",
+    parameter_formulas: Mapping[str, str] | None = None,
+    control: GAMLSSControl | None = None,
+    i_control: GLIMControl | None = None,
+) -> GAMLSSModel:
+    """Staged Python port of `gamlssML` for currently supported families."""
+
+    if data is None:
+        raise ValueError("data is required")
+    family = resolve_family(family)
+    rqres_callable = _build_rqres_callable(family)
+
+    control = gamlss_control() if control is None else control
+    i_control = glim_control() if i_control is None else i_control
+
+    response_name, _ = _parse_formula(formula)
+    resolved_formulas = _resolve_parameter_formulas(
+        response=response_name,
+        family=family,
+        mu_formula=formula,
+        sigma_formula=sigma_formula,
+        parameter_formulas=parameter_formulas,
+    )
+    
+    # Build design matrix with smooth support
+    _, mu_x, predictor_labels, mu_smooth_info = _build_design_matrix_with_smooths(
+        resolved_formulas["mu"], data, weights=weights
+    )
+    
+    y = np.asarray(data[response_name], dtype=np.float64)
+    fixed_parameter_values = _resolve_fixed_parameter_values(family, data, len(y))
+    if weights is None:
+        w = np.ones_like(y, dtype=np.float64)
+    else:
+        w = np.asarray(weights, dtype=np.float64)
+    
+    # Use penalized WLS if there are smooth terms
+    if mu_smooth_info is not None:
+        beta_mu = _weighted_least_squares(mu_x, y, w, smooth_info=mu_smooth_info)
+    else:
+        beta_mu = _initial_mu_beta(
+            family,
+            mu_x,
+            y,
+            w,
+            fixed_parameter_values=fixed_parameter_values,
+        )
+
+    par = tuple(family.parameters)
+    mu_linear = mu_x @ beta_mu
+    mu = np.asarray(family.link_inverses["mu"](mu_linear), dtype=np.float64)
+
+    fitted_values = {"mu": jnp.asarray(mu, dtype=jnp.float64)}
+    coefficients = {"mu": jnp.asarray(beta_mu, dtype=jnp.float64)}
+    linear_predictors = {
+        "mu": jnp.asarray(family.link_functions["mu"](jnp.asarray(mu, dtype=jnp.float64)), dtype=jnp.float64)
+    }
+    formulas = {"mu": resolved_formulas["mu"]}
+    terms = {
+        "mu": {
+            "term_labels": predictor_labels,
+            "response": response_name,
+            "intercept": True,
+            "formula": resolved_formulas["mu"],
+        }
+    }
+    design_matrices = {"mu": jnp.asarray(mu_x, dtype=jnp.float64)}
+    parameter_values: dict[str, np.ndarray] = {"mu": mu, **fixed_parameter_values}
+    
+    # Store smooth information for all parameters
+    smooth_infos = {"mu": mu_smooth_info}
+
+    for parameter in family.estimable_parameters:
+        if parameter == "mu":
+            continue
+        parameter_formula = resolved_formulas[parameter]
+        
+        # Build design matrix with smooth support
+        _, parameter_design, parameter_labels, param_smooth_info = _build_design_matrix_with_smooths(
+            parameter_formula, data, weights=weights
+        )
+        smooth_infos[parameter] = param_smooth_info
+        
+        initial_value = _initial_parameter_value(family, parameter, y, mu, w)
+        if parameter == "sigma":
+            initial_value = _initial_sigma(
+                family,
+                y,
+                mu,
+                w,
+                fixed_parameter_values=fixed_parameter_values,
+            )
+        eta_init = np.full(
+            y.shape[0],
+            float(
+                np.asarray(
+                    family.link_functions[parameter](jnp.asarray([initial_value], dtype=jnp.float64)),
+                    dtype=np.float64,
+                )[0]
+            ),
+            dtype=np.float64,
+        )
+        
+        # Use penalized WLS if there are smooth terms
+        if param_smooth_info is not None:
+            beta_parameter = _weighted_least_squares(parameter_design, eta_init, w, smooth_info=param_smooth_info)
+            _, _, _, _ = None, None, None, None  # Dummy for compatibility
+        else:
+            beta_parameter, _, _, _ = np.linalg.lstsq(parameter_design, eta_init, rcond=None)
+        
+        eta_parameter = parameter_design @ beta_parameter
+        parameter_vector = np.asarray(
+            family.link_inverses[parameter](jnp.asarray(eta_parameter, dtype=jnp.float64)),
+            dtype=np.float64,
+        )
+        parameter_values[parameter] = parameter_vector
+        fitted_values[parameter] = jnp.asarray(parameter_vector, dtype=jnp.float64)
+        if parameter == "sigma" and _is_intercept_only_formula(parameter_formula):
+            coefficients[parameter] = jnp.asarray([initial_value], dtype=jnp.float64)
+        else:
+            coefficients[parameter] = jnp.asarray(beta_parameter, dtype=jnp.float64)
+        linear_predictors[parameter] = jnp.asarray(eta_parameter, dtype=jnp.float64)
+        formulas[parameter] = parameter_formula
+        terms[parameter] = {
+            "term_labels": parameter_labels,
+            "response": response_name,
+            "intercept": True,
+            "formula": parameter_formula,
+        }
+        design_matrices[parameter] = jnp.asarray(parameter_design, dtype=jnp.float64)
+
+    for parameter, value in fixed_parameter_values.items():
+        fitted_values[parameter] = jnp.asarray(value, dtype=jnp.float64)
+        # Fixed parameters don't have link functions - they are used as-is
+        linear_predictors[parameter] = jnp.asarray(value, dtype=jnp.float64)
+        formulas[parameter] = _fixed_parameter_formula(parameter)
+        terms[parameter] = _fixed_parameter_term(response_name, parameter)
+
+    dev_kwargs = {"y": y, **parameter_values, **fixed_parameter_values}
+    g_dev = float(np.sum(np.asarray(family.g_dev_inc(**dev_kwargs)) * w))
+    deviance_history = (g_dev,)
+
+    residual_values = (
+        rqres_callable(y=y, mu=mu, sigma=parameter_values.get("sigma"))
+        if rqres_callable is not None
+        else _compute_residuals(family, y, mu, parameter_values.get("sigma"))
+    )
+
+    # Compute df_fit including smooth terms
+    df_fit = 0.0
+    smooth_edf = {}
+    
+    for parameter in family.estimable_parameters:
+        # Add linear parameters
+        df_fit += float(np.asarray(coefficients[parameter], dtype=np.float64).size)
+        
+        # Adjust for smooth terms
+        if smooth_infos.get(parameter) is not None and len(smooth_infos[parameter].smooth_fits) > 0:
+            from .smooth_fitting import compute_smooth_edf
+            # Subtract nominal basis columns
+            for smooth in smooth_infos[parameter].smooth_fits:
+                start, end = smooth.basis_columns
+                df_fit -= float(end - start)
+            # Add effective df
+            param_edf = compute_smooth_edf(
+                design_matrices[parameter], 
+                w, 
+                smooth_infos[parameter].smooth_fits
+            )
+            df_fit += param_edf
+            smooth_edf[parameter] = param_edf
+        else:
+            smooth_edf[parameter] = 0.0
+    for parameter in family.fixed_parameters or ():
+        smooth_edf[parameter] = 0.0
+
+    return GAMLSSModel(
+        par=par,
+        family=family,
+        df_fit=df_fit,
+        g_dev=g_dev,
+        n=len(y),
+        y=jnp.asarray(y, dtype=jnp.float64),
+        fitted_values=fitted_values,
+        coefficients=coefficients,
+        linear_predictors=linear_predictors,
+        formulas=formulas,
+        terms=terms,
+        design_matrices=design_matrices,
+        additional_slots={
+            "G.deviance": g_dev,
+            "P.deviance": g_dev,
+            "noObs": int(len(y)),
+            "df.residual": float(len(y) - df_fit),
+            "aic": float(g_dev + df_fit * 2.0),
+            "sbc": float(g_dev + df_fit * np.log(max(len(y), 1))),
+            "method": "ML",
+            "converged": True,
+            "cycles": int(control.iter),
+            "deviance_history": deviance_history,
+            "smooth_fits": {p: smooth_infos[p].smooth_fits if smooth_infos.get(p) else [] for p in par},
+            "smooth_edf": smooth_edf,
+        },
+        call={"data": data, "formula": resolved_formulas["mu"], "parameter_formulas": dict(resolved_formulas)},
+        control={"n.cyc": control.n_cyc, **asdict(control)},
+        iter=control.iter,
+        weights=jnp.asarray(w, dtype=jnp.float64),
+        residuals=residual_values,
+        type=family.type,
+        parameters=par,
+        rqres=rqres_callable,
+    )
+
+
+def gamlss(
+    formula: str,
+    sigma_formula: str = "~1",
+    family: FamilyDefinition | None = None,
+    data: Mapping[str, Any] | None = None,
+    weights: Any | None = None,
+    parameter_formulas: Mapping[str, str] | None = None,
+    method: str = "RS",
+    control: GAMLSSControl | None = None,
+    i_control: GLIMControl | None = None,
+    verbose: bool = False,
+    # New optimizer parameters
+    optimizer: str = "adam",
+    learning_rate: float = 0.01,
+    max_iter: int | None = None,
+    history_size: int = 10,
+    **optimizer_kwargs
+) -> GAMLSSModel:
+    """Staged Python port of `gamlss()` for currently supported families.
+    
+    Parameters
+    ----------
+    formula : str
+        Formula for the mu parameter
+    sigma_formula : str, default "~1"
+        Formula for the sigma parameter
+    family : FamilyDefinition or None
+        Distribution family
+    data : Mapping[str, Any] or None
+        Data dictionary
+    weights : Any or None
+        Observation weights
+    parameter_formulas : Mapping[str, str] or None
+        Formulas for additional parameters
+    method : str, default "RS"
+        Fitting method: "RS", "CG", "MIXED", "joint", or "lbfgs"
+        - "RS": Rigby-Stasinopoulos algorithm (traditional)
+        - "CG": Cole-Green algorithm (not yet implemented)
+        - "MIXED": Mixed RS/CG (not yet implemented)
+        - "joint": Joint optimization with Optax (Adam/SGD/RMSprop/Adagrad)
+        - "lbfgs": L-BFGS quasi-Newton method
+    control : GAMLSSControl or None
+        Control parameters for outer loop
+    i_control : GLIMControl or None
+        Control parameters for inner loop
+    verbose : bool, default False
+        If True, print detailed fitting progress including iteration times,
+        deviance values, and convergence status.
+    optimizer : str, default "adam"
+        Optimizer type for method="joint": "adam", "sgd", "rmsprop", "adagrad"
+    learning_rate : float, default 0.01
+        Learning rate for gradient-based optimizers
+    max_iter : int or None
+        Maximum iterations (overrides control.n_cyc if provided)
+    history_size : int, default 10
+        L-BFGS history size (for method="lbfgs")
+    **optimizer_kwargs
+        Additional optimizer arguments
+    
+    Returns
+    -------
+    GAMLSSModel
+        Fitted GAMLSS model
+    
+    Examples
+    --------
+    Traditional RS algorithm:
+    
+    >>> model = gamlss("y ~ x1 + x2", family="NO", data=data)
+    
+    Joint optimization with Adam:
+    
+    >>> model = gamlss(
+    ...     "y ~ x1 + x2",
+    ...     family="NO",
+    ...     data=data,
+    ...     method="joint",
+    ...     optimizer="adam",
+    ...     learning_rate=0.01,
+    ...     verbose=True
+    ... )
+    
+    L-BFGS optimization:
+    
+    >>> model = gamlss(
+    ...     "y ~ x1 + x2",
+    ...     family="NO",
+    ...     data=data,
+    ...     method="lbfgs",
+    ...     max_iter=100,
+    ...     verbose=True
+    ... )
+    """
+
+    if data is None:
+        raise ValueError("data is required")
+    family = resolve_family(family)
+    method_name = str(method).upper()
+    
+    # Handle new optimizer methods
+    if method_name in {"JOINT", "LBFGS"}:
+        # Import integration functions
+        from .core.gamlss_integration import fit_with_joint_optimizer, fit_with_lbfgs
+        
+        # Get initial model using RS/ML
+        if verbose:
+            print(f"\n{'='*70}")
+            print(f"Step 1: Getting initial estimates with RS/ML")
+            print(f"{'='*70}")
+        
+        initial_model = gamlss_ml(
+            formula=formula,
+            sigma_formula=sigma_formula,
+            parameter_formulas=parameter_formulas,
+            family=family,
+            data=data,
+            weights=weights,
+            control=control,
+            i_control=i_control,
+        )
+        
+        if verbose:
+            print(f"Initial deviance: {initial_model.g_dev:.6f}")
+            print(f"\n{'='*70}")
+            print(f"Step 2: Refining with {method_name} optimizer")
+            print(f"{'='*70}")
+        
+        # Prepare design matrices
+        response_name, _ = _parse_formula(formula)
+        resolved_formulas = _resolve_parameter_formulas(
+            response=response_name,
+            family=family,
+            mu_formula=formula,
+            sigma_formula=sigma_formula,
+            parameter_formulas=parameter_formulas,
+        )
+        
+        design_matrices = {}
+        for param in family.estimable_parameters:
+            if param in initial_model.design_matrices:
+                design_matrices[param] = np.asarray(
+                    initial_model.design_matrices[param],
+                    dtype=np.float64
+                )
+        
+        y = np.asarray(data[response_name], dtype=np.float64)
+        n = len(y)
+        fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n)
+        
+        if weights is None:
+            w = np.ones(n, dtype=np.float64)
+        else:
+            w = np.asarray(weights, dtype=np.float64)
+        
+        # Determine max_iter
+        if max_iter is None:
+            max_iter = control.n_cyc if control is not None else 1000
+        
+        # Fit with appropriate optimizer
+        if method_name == "JOINT":
+            return fit_with_joint_optimizer(
+                initial_model=initial_model,
+                family=family,
+                design_matrices=design_matrices,
+                y=y,
+                weights=w,
+                fixed_parameters=fixed_parameter_values,
+                optimizer=optimizer,
+                learning_rate=learning_rate,
+                max_iter=max_iter,
+                verbose=verbose,
+                **optimizer_kwargs
+            )
+        else:  # LBFGS
+            return fit_with_lbfgs(
+                initial_model=initial_model,
+                family=family,
+                design_matrices=design_matrices,
+                y=y,
+                weights=w,
+                fixed_parameters=fixed_parameter_values,
+                max_iter=max_iter,
+                history_size=history_size,
+                learning_rate=learning_rate,
+                verbose=verbose,
+                **optimizer_kwargs
+            )
+    
+    # Traditional RS/CG/MIXED methods
+    if method_name not in {"RS", "CG", "MIXED"}:
+        raise ValueError(
+            f"method must be one of 'RS', 'CG', 'MIXED', 'joint', or 'lbfgs', got {method!r}"
+        )
+    
+    # For RS method, use the dedicated rs_fit function which implements the correct algorithm
+    if method_name == "RS":
+        from .algorithms.rs_algorithm import rs_fit
+        return rs_fit(
+            formula=formula,
+            family=family,
+            data=data,
+            sigma_formula=sigma_formula,
+            parameter_formulas=parameter_formulas,
+            weights=weights,
+            max_iter=control.n_cyc if control is not None else 20,
+            tol=control.c_crit if control is not None else 1e-4,
+            verbose=verbose
+        )
+    
+    # CG and MIXED methods use the inline implementation below
+    rqres_callable = _build_rqres_callable(family)
+
+    control = gamlss_control() if control is None else control
+    i_control = glim_control() if i_control is None else i_control
+    
+    # Initialize performance monitoring if verbose
+    if verbose:
+        from .performance import PerformanceMonitor
+        import time
+        monitor = PerformanceMonitor(
+            use_jit=False,
+            n_observations=len(data[list(data.keys())[0]]),
+            family_name=family.name if hasattr(family, 'name') else str(family)
+        )
+        monitor.start()
+        print(f"\n{'='*70}")
+        print(f"Fitting {monitor.family_name} model")
+        print(f"{'='*70}")
+        print(f"Observations: {monitor.n_observations:,}")
+        print(f"Method: {method_name}")
+        print(f"Max iterations: {control.n_cyc}")
+        print(f"Convergence criterion: {control.c_crit}")
+    else:
+        monitor = None
+
+    response_name, _ = _parse_formula(formula)
+    resolved_formulas = _resolve_parameter_formulas(
+        response=response_name,
+        family=family,
+        mu_formula=formula,
+        sigma_formula=sigma_formula,
+        parameter_formulas=parameter_formulas,
+    )
+    
+    # Build design matrix with smooth support
+    _, mu_x, predictor_labels, mu_smooth_info = _build_design_matrix_with_smooths(
+        resolved_formulas["mu"], data, weights=weights
+    )
+    
+    y = np.asarray(data[response_name], dtype=np.float64)
+    n = len(y)
+    fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n)
+    parameter_designs: dict[str, np.ndarray] = {}
+    parameter_labels: dict[str, list[str]] = {}
+    smooth_infos: dict[str, Any] = {"mu": mu_smooth_info}
+    
+    for parameter in family.estimable_parameters:
+        if parameter == "mu":
+            continue
+        # Build design matrix with smooth support
+        _, parameter_designs[parameter], parameter_labels[parameter], param_smooth_info = _build_design_matrix_with_smooths(
+            resolved_formulas[parameter],
+            data,
+            weights=weights,
+        )
+        smooth_infos[parameter] = param_smooth_info
+    if weights is None:
+        w = np.ones(n, dtype=np.float64)
+    else:
+        w = np.asarray(weights, dtype=np.float64)
+
+    initial = gamlss_ml(
+        formula=formula,
+        sigma_formula=sigma_formula,
+        parameter_formulas=parameter_formulas,
+        family=family,
+        data=data,
+        weights=weights,
+        control=control,
+        i_control=i_control,
+    )
+    mu = np.asarray(initial.fitted_values["mu"], dtype=np.float64)
+    eta_mu = np.asarray(initial.linear_predictors["mu"], dtype=np.float64)
+    beta_mu = np.asarray(initial.coefficients["mu"], dtype=np.float64)
+    parameter_values = {
+        parameter: np.asarray(initial.fitted_values[parameter], dtype=np.float64)
+        for parameter in family.parameters
+        if parameter != "mu"
+    }
+    parameter_eta = {
+        parameter: np.asarray(initial.linear_predictors[parameter], dtype=np.float64)
+        for parameter in family.estimable_parameters
+        if parameter != "mu"
+    }
+    parameter_beta = {
+        parameter: np.asarray(initial.coefficients[parameter], dtype=np.float64)
+        for parameter in family.estimable_parameters
+        if parameter != "mu"
+    }
+    extra_parameter_values = {
+        parameter: np.asarray(initial.fitted_values[parameter], dtype=np.float64)
+        for parameter in family.parameters
+        if parameter not in {"mu", "sigma"}
+    }
+    g_dev = float(initial.g_dev)
+    old_g_dev = g_dev + 1.0
+    iteration = 0  # Start from 0, not control.iter
+    deviance_history = [g_dev]
+    working_vectors_extra: dict[str, np.ndarray] = {}
+    iterative_weights_extra: dict[str, np.ndarray] = {}
+    
+    # Initialize z_mu and w_mu in case loop doesn't execute
+    z_mu = eta_mu.copy()
+    w_mu = np.ones_like(eta_mu, dtype=np.float64)
+    
+    # Print initial status if verbose
+    if verbose:
+        print(f"\n{'='*70}")
+        print(f"Starting iterative fitting")
+        print(f"{'='*70}")
+        print(f"Initial deviance: {g_dev:.4f}")
+        print(f"\nIteration progress:")
+
+    while abs(old_g_dev - g_dev) > control.c_crit and iteration < control.n_cyc:
+        if verbose:
+            monitor.start_iteration()
+        old_g_dev = g_dev
+
+        mu_kwargs: dict[str, Any] = {"y": y, "mu": mu, **extra_parameter_values}
+        if "sigma" in parameter_values:
+            mu_kwargs["sigma"] = parameter_values["sigma"]
+        dldm = np.asarray(family.score_functions["mu"](**mu_kwargs), dtype=np.float64)
+        d2ldm2 = np.asarray(family.hessian_functions["mu"](**mu_kwargs), dtype=np.float64)
+        
+        # Enhanced numerical stability for mixed distributions (zero-inflated/altered)
+        # These distributions can have zero or near-zero hessians at y=0
+        eps = np.finfo(np.float64).eps
+        
+        # Replace non-finite values
+        dldm = np.where(np.isfinite(dldm), dldm, 0.0)
+        d2ldm2 = np.where(np.isfinite(d2ldm2), d2ldm2, -1e-10)
+        
+        # Add floor to prevent division by zero in IWLS
+        # For mixed distributions, use a more conservative floor
+        is_mixed = getattr(family, 'type_', None) == "Mixed"
+        if is_mixed:
+            d2ldm2 = np.where(np.abs(d2ldm2) < 1e-8, -1e-8, d2ldm2)
+        else:
+            d2ldm2 = np.where(np.abs(d2ldm2) < 1e-10, -1e-10, d2ldm2)
+        
+        # Compute link derivative with safety checks
+        dr_mu = np.asarray(family.link_derivatives["mu"](eta_mu), dtype=np.float64)
+        dr_mu = np.where(np.isfinite(dr_mu), dr_mu, eps)
+        dr_mu = np.where(np.abs(dr_mu) < eps, eps, dr_mu)
+        
+        # Compute deta/dmu with safety
+        deta_dmu = 1.0 / dr_mu
+        deta_dmu = np.where(np.isfinite(deta_dmu), deta_dmu, 1.0)
+        
+        # Compute weights with enhanced safety for mixed distributions
+        deta_dmu_sq = np.square(deta_dmu)
+        deta_dmu_sq = np.where(deta_dmu_sq < eps, eps, deta_dmu_sq)
+        
+        w_mu = -(d2ldm2 / deta_dmu_sq)
+        w_mu = np.where(np.isfinite(w_mu), w_mu, 1e-10)
+        
+        # More conservative clipping for mixed distributions
+        if is_mixed:
+            w_mu = np.clip(w_mu, 1e-8, 1e8)
+        else:
+            w_mu = np.clip(w_mu, 1e-10, 1e10)
+            w_mu = np.clip(w_mu, 1e-10, 1e10)
+        
+        # Compute working response with safety
+        denominator = deta_dmu * w_mu
+        denominator = np.where(np.abs(denominator) < eps, eps, denominator)
+        z_mu = eta_mu + dldm / denominator
+        z_mu = np.where(np.isfinite(z_mu), z_mu, eta_mu)
+        
+        beta_mu_proposed = _weighted_least_squares(mu_x, z_mu, w_mu * w, smooth_info=mu_smooth_info)
+        beta_mu = _apply_method_step(beta_mu, beta_mu_proposed, method_name)
+        eta_mu = mu_x @ beta_mu
+        mu = np.asarray(family.link_inverses["mu"](eta_mu), dtype=np.float64)
+
+        if "sigma" in family.parameters and "sigma" in parameter_values:
+            sigma = parameter_values["sigma"]
+            sigma_x = parameter_designs.get("sigma")
+            eta_sigma = parameter_eta.get("sigma")
+            beta_sigma = parameter_beta.get("sigma")
+            if sigma is not None and sigma_x is not None and eta_sigma is not None and beta_sigma is not None and family.name == "NBI":
+                eps = np.finfo(np.float64).eps
+                mean_component = np.maximum(mu, eps)
+                sigma_moment = np.maximum((np.square(y - mu) - mean_component) / np.maximum(np.square(mean_component), eps), eps)
+                sigma_value = np.maximum(np.sum(w * sigma_moment) / np.sum(w), eps)
+                beta_sigma_proposed = np.array([np.log(sigma_value)], dtype=np.float64)
+                beta_sigma = _apply_method_step(beta_sigma, beta_sigma_proposed, method_name)
+                eta_sigma = sigma_x @ beta_sigma
+                parameter_values["sigma"] = np.asarray(family.link_inverses["sigma"](eta_sigma), dtype=np.float64)
+                parameter_eta["sigma"] = eta_sigma
+                parameter_beta["sigma"] = beta_sigma
+                working_vectors_extra["sigma"] = eta_sigma.copy()
+                iterative_weights_extra["sigma"] = np.ones_like(eta_sigma, dtype=np.float64)
+            elif sigma is not None and sigma_x is not None and eta_sigma is not None and beta_sigma is not None:
+                sigma_kwargs: dict[str, Any] = {"y": y, "mu": mu, "sigma": sigma, **extra_parameter_values}
+                dldsigma = np.asarray(family.score_functions["sigma"](**sigma_kwargs), dtype=np.float64)
+                d2ldsigma2 = np.asarray(
+                    family.hessian_functions["sigma"](**sigma_kwargs), dtype=np.float64
+                )
+                # For mixed distributions, hessian can be zero at y=0
+                d2ldsigma2 = np.where(np.abs(d2ldsigma2) < 1e-10, -1e-10, d2ldsigma2)
+                dr_sigma = np.asarray(family.link_derivatives["sigma"](eta_sigma), dtype=np.float64)
+                dr_sigma = np.where(np.isfinite(dr_sigma), dr_sigma, np.finfo(np.float64).eps)
+                dr_sigma = np.where(np.abs(dr_sigma) < np.finfo(np.float64).eps, np.finfo(np.float64).eps, dr_sigma)
+                deta_dsigma = 1.0 / dr_sigma
+                w_sigma = -(d2ldsigma2 / np.square(deta_dsigma))
+                w_sigma = np.clip(w_sigma, 1e-10, 1e10)
+                z_sigma = eta_sigma + dldsigma / (deta_dsigma * w_sigma)
+                z_sigma = np.where(np.isfinite(z_sigma), z_sigma, eta_sigma)
+                beta_sigma_proposed = _weighted_least_squares(sigma_x, z_sigma, w_sigma * w, smooth_info=smooth_infos.get("sigma"))
+                beta_sigma = _apply_method_step(beta_sigma, beta_sigma_proposed, method_name)
+                eta_sigma = sigma_x @ beta_sigma
+                sigma = np.asarray(family.link_inverses["sigma"](eta_sigma), dtype=np.float64)
+                sigma = np.where(np.isfinite(sigma), sigma, np.finfo(np.float64).eps)
+                sigma = np.maximum(sigma, np.finfo(np.float64).eps)
+                parameter_values["sigma"] = sigma
+                parameter_eta["sigma"] = eta_sigma
+                parameter_beta["sigma"] = beta_sigma
+                working_vectors_extra["sigma"] = z_sigma
+                iterative_weights_extra["sigma"] = w_sigma
+
+        for parameter in family.estimable_parameters:
+            if parameter in {"mu", "sigma"}:
+                continue
+            x_param = parameter_designs.get(parameter)
+            eta_param = parameter_eta.get(parameter)
+            beta_param = parameter_beta.get(parameter)
+            value_param = parameter_values.get(parameter)
+            if x_param is None or eta_param is None or beta_param is None or value_param is None:
+                continue
+            parameter_kwargs: dict[str, Any] = {"y": y, "mu": mu, **extra_parameter_values}
+            if "sigma" in parameter_values:
+                parameter_kwargs["sigma"] = parameter_values["sigma"]
+            parameter_kwargs[parameter] = value_param
+            score = np.asarray(family.score_functions[parameter](**parameter_kwargs), dtype=np.float64)
+            hessian = np.asarray(family.hessian_functions[parameter](**parameter_kwargs), dtype=np.float64)
+            # For mixed distributions, hessian can be zero at y=0
+            hessian = np.where(np.abs(hessian) < 1e-10, -1e-10, hessian)
+            dr_param = np.asarray(family.link_derivatives[parameter](eta_param), dtype=np.float64)
+            dr_param = np.where(np.isfinite(dr_param), dr_param, np.finfo(np.float64).eps)
+            dr_param = np.where(np.abs(dr_param) < np.finfo(np.float64).eps, np.finfo(np.float64).eps, dr_param)
+            deta_dparam = 1.0 / dr_param
+            w_param = -(hessian / np.square(deta_dparam))
+            w_param = np.clip(w_param, 1e-10, 1e10)
+            z_param = eta_param + score / (deta_dparam * w_param)
+            z_param = np.where(np.isfinite(z_param), z_param, eta_param)
+            beta_proposed = _weighted_least_squares(x_param, z_param, w_param * w, smooth_info=smooth_infos.get(parameter))
+            beta_param = _apply_method_step(beta_param, beta_proposed, method_name)
+            eta_param = x_param @ beta_param
+            value_param = np.asarray(
+                family.link_inverses[parameter](jnp.asarray(eta_param, dtype=jnp.float64)),
+                dtype=np.float64,
+            )
+            parameter_values[parameter] = value_param
+            parameter_eta[parameter] = eta_param
+            parameter_beta[parameter] = beta_param
+            extra_parameter_values[parameter] = value_param
+            working_vectors_extra[parameter] = z_param
+            iterative_weights_extra[parameter] = w_param
+
+        dev_kwargs: dict[str, Any] = {"y": y, "mu": mu, **extra_parameter_values, **fixed_parameter_values}
+        if "sigma" in parameter_values:
+            dev_kwargs["sigma"] = parameter_values["sigma"]
+        g_dev = float(np.sum(np.asarray(family.g_dev_inc(**dev_kwargs)) * w))
+        iteration += 1
+        deviance_history.append(g_dev)
+        
+        # Print iteration progress if verbose
+        if verbose:
+            monitor.finish_iteration()
+            monitor.print_iteration(iteration, g_dev, converged=False)
+
+    converged = abs(old_g_dev - g_dev) <= control.c_crit
+    
+    # Print final status if verbose
+    if verbose:
+        monitor.finish()
+        print(f"\n{'='*70}")
+        if converged:
+            print(f"✓ Converged after {iteration} iterations")
+        else:
+            print(f"⚠ Did not converge after {iteration} iterations")
+        print(f"Final deviance: {g_dev:.4f}")
+        print(f"{'='*70}")
+        monitor.print_summary(verbose=True)
+
+    fitted_values = {"mu": jnp.asarray(mu, dtype=jnp.float64)}
+    coefficients = {"mu": jnp.asarray(beta_mu, dtype=jnp.float64)}
+    linear_predictors = {"mu": jnp.asarray(eta_mu, dtype=jnp.float64)}
+    working_vectors = {"mu": jnp.asarray(z_mu, dtype=jnp.float64)}
+    iterative_weights = {"mu": jnp.asarray(w_mu, dtype=jnp.float64)}
+    offsets = {"mu": jnp.zeros(n, dtype=jnp.float64)}
+    formulas = {"mu": resolved_formulas["mu"]}
+    term_map = {
+        "mu": {
+            "term_labels": predictor_labels,
+            "response": response_name,
+            "intercept": True,
+            "formula": resolved_formulas["mu"],
+        }
+    }
+    design_matrices = {"mu": jnp.asarray(mu_x, dtype=jnp.float64)}
+
+    if "sigma" in family.parameters and "sigma" in parameter_values:
+        sigma = parameter_values["sigma"]
+        beta_sigma = parameter_beta["sigma"]
+        eta_sigma = parameter_eta["sigma"]
+        fitted_values["sigma"] = jnp.asarray(sigma, dtype=jnp.float64)
+        coefficients["sigma"] = jnp.asarray(beta_sigma, dtype=jnp.float64)
+        linear_predictors["sigma"] = jnp.asarray(eta_sigma, dtype=jnp.float64)
+        if "sigma" in working_vectors_extra and "sigma" in iterative_weights_extra:
+            working_vectors["sigma"] = jnp.asarray(working_vectors_extra["sigma"], dtype=jnp.float64)
+            iterative_weights["sigma"] = jnp.asarray(iterative_weights_extra["sigma"], dtype=jnp.float64)
+        offsets["sigma"] = jnp.zeros(n, dtype=jnp.float64)
+        formulas["sigma"] = resolved_formulas["sigma"]
+        term_map["sigma"] = {
+            "term_labels": parameter_labels.get("sigma", []),
+            "response": response_name,
+            "intercept": True,
+            "formula": resolved_formulas["sigma"],
+        }
+        design_matrices["sigma"] = jnp.asarray(parameter_designs["sigma"], dtype=jnp.float64)
+
+    for parameter in family.estimable_parameters:
+        if parameter in {"mu", "sigma"}:
+            continue
+        fitted_values[parameter] = jnp.asarray(parameter_values[parameter], dtype=jnp.float64)
+        coefficients[parameter] = jnp.asarray(parameter_beta[parameter], dtype=jnp.float64)
+        linear_predictors[parameter] = jnp.asarray(parameter_eta[parameter], dtype=jnp.float64)
+        if parameter in working_vectors_extra and parameter in iterative_weights_extra:
+            working_vectors[parameter] = jnp.asarray(working_vectors_extra[parameter], dtype=jnp.float64)
+            iterative_weights[parameter] = jnp.asarray(iterative_weights_extra[parameter], dtype=jnp.float64)
+        offsets[parameter] = jnp.zeros(n, dtype=jnp.float64)
+        formulas[parameter] = resolved_formulas[parameter]
+        term_labels = parameter_labels.get(parameter, list(initial.terms.get(parameter, {}).get("term_labels", [])))
+        term_map[parameter] = {
+            "term_labels": term_labels,
+            "response": response_name,
+            "intercept": True,
+            "formula": resolved_formulas[parameter],
+        }
+        if parameter in parameter_designs:
+            design_matrices[parameter] = jnp.asarray(parameter_designs[parameter], dtype=jnp.float64)
+
+    for parameter, value in fixed_parameter_values.items():
+        fitted_values[parameter] = jnp.asarray(value, dtype=jnp.float64)
+        # Fixed parameters don't have link functions - they are used as-is
+        linear_predictors[parameter] = jnp.asarray(value, dtype=jnp.float64)
+        offsets[parameter] = jnp.zeros(n, dtype=jnp.float64)
+        formulas[parameter] = _fixed_parameter_formula(parameter)
+        term_map[parameter] = _fixed_parameter_term(response_name, parameter)
+
+    residual_values = (
+        rqres_callable(y=y, mu=mu, sigma=parameter_values.get("sigma"))
+        if rqres_callable is not None
+        else _compute_residuals(family, y, mu, parameter_values.get("sigma"))
+    )
+
+    # Compute df_fit including smooth terms
+    df_fit = 0.0
+    smooth_edf = {}
+    
+    for parameter in family.estimable_parameters:
+        # Add linear parameters
+        df_fit += float(np.asarray(coefficients[parameter], dtype=np.float64).size)
+        
+        # Adjust for smooth terms
+        if smooth_infos.get(parameter) is not None and len(smooth_infos[parameter].smooth_fits) > 0:
+            from .smooth_fitting import compute_smooth_edf
+            # Subtract nominal basis columns
+            for smooth in smooth_infos[parameter].smooth_fits:
+                start, end = smooth.basis_columns
+                df_fit -= float(end - start)
+            # Add effective df
+            param_edf = compute_smooth_edf(
+                design_matrices[parameter], 
+                w, 
+                smooth_infos[parameter].smooth_fits
+            )
+            df_fit += param_edf
+            smooth_edf[parameter] = param_edf
+        else:
+            smooth_edf[parameter] = 0.0
+    for parameter in family.fixed_parameters or ():
+        smooth_edf[parameter] = 0.0
+
+    return GAMLSSModel(
+        par=tuple(family.parameters),
+        family=family,
+        df_fit=df_fit,
+        g_dev=g_dev,
+        n=n,
+        y=jnp.asarray(y, dtype=jnp.float64),
+        fitted_values=fitted_values,
+        coefficients=coefficients,
+        linear_predictors=linear_predictors,
+        working_vectors=working_vectors,
+        iterative_weights=iterative_weights,
+        offsets=offsets,
+        formulas=formulas,
+        terms=term_map,
+        design_matrices=design_matrices,
+        additional_slots={
+            "G.deviance": g_dev,
+            "P.deviance": g_dev,
+            "noObs": int(n),
+            "df.residual": float(n - df_fit),
+            "aic": float(g_dev + df_fit * 2.0),
+            "sbc": float(g_dev + df_fit * np.log(max(n, 1))),
+            "method": method_name,
+            "converged": bool(converged),
+            "cycles": int(iteration),
+            "deviance_history": tuple(float(value) for value in deviance_history),
+            "smooth_fits": {p: smooth_infos[p].smooth_fits if smooth_infos.get(p) else [] for p in family.parameters},
+            "smooth_edf": smooth_edf,
+        },
+        call={
+            "data": data,
+            "formula": resolved_formulas["mu"],
+            "parameter_formulas": dict(resolved_formulas),
+            "method": method_name,
+        },
+        control={"n.cyc": control.n_cyc, **asdict(control), **{"glim.cyc": i_control.cyc}},
+        iter=iteration,
+        weights=jnp.asarray(w, dtype=jnp.float64),
+        residuals=residual_values,
+        type=family.type,
+        parameters=tuple(family.parameters),
+        rqres=rqres_callable,
+    )

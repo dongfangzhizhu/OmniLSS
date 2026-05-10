@@ -1,0 +1,6 @@
+library(gamlss.dist)
+cat("=== dBEINF ===\n"); print(dBEINF)
+cat("=== dBEINF0 ===\n"); print(dBEINF0)
+cat("=== dBEINF1 ===\n"); print(dBEINF1)
+cat("=== dBEZI ===\n"); print(dBEZI)
+cat("=== dBEOI ===\n"); print(dBEOI)

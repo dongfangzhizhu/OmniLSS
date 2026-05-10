@@ -1,0 +1,99 @@
+site_name: OmniLSS Documentation
+site_description: High-Performance GAMLSS in Python using JAX
+site_author: OmniLSS Team
+site_url: https://omnilss.github.io/omnilss/
+
+repo_name: omnilss/omnilss
+repo_url: https://github.com/omnilss/omnilss
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_category_heading: true
+            members_order: source
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true
+  - tables
+  - footnotes
+  - attr_list
+  - md_in_html
+
+extra_javascript:
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting_started/installation.md
+      - Quick Start: getting_started/quickstart.md
+  - User Guide:
+      - Distributions: user_guide/distributions.md
+      - Diagnostics: user_guide/diagnostics.md
+      - Algorithms: algorithm_guide.md
+      - Smoothing Parameters: smoothing_parameter_guide.md
+      - Optimization: optimizer_guide.md
+      - Prediction: prediction_guide.md
+      - Device Management: device_management_guide.md
+  - API Reference:
+      - Models: api/models.md
+      - Distributions: api/distributions.md
+      - Algorithms: api/algorithms.md
+      - Smoothers: api/smoothers.md
+      - Diagnostics: api/diagnostics.md
+  - Technical Reports:
+      - RS Algorithm Fix: reports/RS_ALGORITHM_FIX_2026_05_06.md
+      - NBI & ZAGA Verification: reports/NBI_ZAGA_VERIFICATION_2026_05_06.md
+  - Development:
+      - Contributing: ../CONTRIBUTING.md
+      - Code of Conduct: ../CODE_OF_CONDUCT.md
+      - Changelog: ../CHANGELOG.md

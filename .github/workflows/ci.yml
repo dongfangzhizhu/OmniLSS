@@ -1,0 +1,170 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install UV
+        run: |
+          pip install uv
+
+      - name: Install dependencies
+        run: |
+          cd omnilss
+          uv pip install --system -e ".[dev]"
+
+      - name: Run tests
+        env:
+          MPLBACKEND: Agg
+        run: |
+          cd omnilss
+          python -m pytest tests/ -v --cov=omnilss --cov-report=xml --cov-report=term
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.10'
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./omnilss/coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install UV
+        run: |
+          pip install uv
+
+      - name: Install dependencies
+        run: |
+          cd omnilss
+          uv pip install --system -e ".[dev]"
+          uv pip install --system ruff black mypy
+
+      - name: Check code formatting with Black
+        continue-on-error: true
+        run: |
+          cd omnilss
+          black --check src/omnilss/
+
+      - name: Lint with Ruff
+        continue-on-error: true
+        run: |
+          cd omnilss
+          ruff check src/omnilss/
+
+      - name: Type check with mypy (optional)
+        continue-on-error: true
+        run: |
+          cd omnilss
+          mypy src/omnilss/ --ignore-missing-imports
+
+  benchmarks:
+    name: Benchmarks
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install UV
+        run: |
+          pip install uv
+
+      - name: Install dependencies
+        run: |
+          cd omnilss
+          uv pip install --system -e ".[dev,benchmarks]"
+
+      - name: Run quick benchmarks
+        env:
+          MPLBACKEND: Agg
+        run: |
+          cd benchmarks
+          python comprehensive_performance_test.py
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmarks/results/
+
+  examples:
+    name: Run Examples
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install UV
+        run: |
+          pip install uv
+
+      - name: Install dependencies
+        run: |
+          cd omnilss
+          uv pip install --system -e ".[dev,benchmarks]"
+
+      - name: Run example scripts
+        env:
+          MPLBACKEND: Agg
+        run: |
+          cd examples
+          python prediction_demo.py
+          python model_selection_demo.py
+          python algorithm_comparison.py
+
+      - name: Upload example outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-outputs
+          path: examples/*.png

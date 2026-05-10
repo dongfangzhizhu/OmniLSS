@@ -1,0 +1,214 @@
+# OmniLSS Project .gitignore
+
+# ============================================================================
+# Third-party subprojects (reference only, not part of this repo)
+# ============================================================================
+ondil/
+R/
+
+# ============================================================================
+# Virtual environments
+# ============================================================================
+.venv/
+linuxenv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+__pypackages__/
+
+# ============================================================================
+# IDE and editor directories
+# ============================================================================
+.kiro/
+.cursor/
+.windsurf/
+.vscode/
+*.code-workspace
+.idea/
+*.iml
+*.iws
+*.ipr
+.spyderproject
+.spyproject
+.ropeproject
+
+# ============================================================================
+# Python build artifacts
+# ============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ============================================================================
+# Testing and coverage
+# ============================================================================
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+tmp/
+test_output/
+test_results/
+
+# ============================================================================
+# Benchmark results (raw data, not source)
+# ============================================================================
+benchmarks/results/raw/*.json
+benchmarks/results/processed/
+benchmarks/results/reports/
+benchmark_results/
+performance_results/
+
+# ============================================================================
+# JAX / ML artifacts
+# ============================================================================
+.jax_cache/
+checkpoints/
+*.ckpt
+*.pth
+*.pt
+*.h5
+*.hdf5
+runs/
+logs/
+tensorboard/
+wandb/
+
+# ============================================================================
+# Data files
+# ============================================================================
+*.csv
+*.tsv
+*.parquet
+*.feather
+*.pkl
+*.pickle
+
+# ============================================================================
+# Documentation build output
+# ============================================================================
+docs/_build/
+docs/_static/
+docs/_templates/
+site/
+
+# ============================================================================
+# Package management lock files (not needed for libraries)
+# ============================================================================
+uv.lock
+Pipfile.lock
+pip-wheel-metadata/
+
+# ============================================================================
+# OS-generated files
+# ============================================================================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ============================================================================
+# Temporary and backup files
+# ============================================================================
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+*.orig
+*.rej
+*.log
+*.stackdump
+
+# ============================================================================
+# R temporary files
+# ============================================================================
+.Rhistory
+.RData
+.Rproj.user
+
+# ============================================================================
+# Archives
+# ============================================================================
+*.zip
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.rar
+*.7z
+
+# ============================================================================
+# Compiled files
+# ============================================================================
+*.pyc
+*.pyo
+*.pyd
+cython_debug/
+
+# ============================================================================
+# Jupyter
+# ============================================================================
+.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# ============================================================================
+# Miscellaneous tool caches
+# ============================================================================
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.pybuilder/
+target/
+jaxgamlss_backup_*/
+scratch/
+debug/
+legacy/
+
+# ============================================================================
+# AI-assistant session notes (process docs, not project docs)
+# These are generated during development sessions and archived in docs/archive/
+# ============================================================================
+SESSION_SUMMARY_*.md
+NEXT_SESSION_GUIDE_*.md
+CURRENT_STATUS.md
+CURRENT_SESSION_SUMMARY.md

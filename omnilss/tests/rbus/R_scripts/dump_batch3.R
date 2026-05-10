@@ -1,0 +1,7 @@
+library(gamlss.dist)
+cat("=== dSHASH ===\n"); print(dSHASH)
+cat("=== dSHASHo ===\n"); print(dSHASHo)
+cat("=== dSN1 ===\n"); print(dSN1)
+cat("=== dSN2 ===\n"); print(dSN2)
+cat("=== dGT ===\n"); print(dGT)
+cat("=== dSST ===\n"); print(dSST)

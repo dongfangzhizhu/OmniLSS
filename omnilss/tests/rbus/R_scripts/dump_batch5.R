@@ -1,0 +1,7 @@
+library(gamlss.dist)
+cat("=== dZAGA ===\n"); print(dZAGA)
+cat("=== dZAIG ===\n"); print(dZAIG)
+cat("=== dZIP2 ===\n"); print(dZIP2)
+cat("=== dZINBI ===\n"); print(dZINBI)
+cat("=== dZAP ===\n"); print(dZAP)
+cat("=== dZAPIG ===\n"); print(dZAPIG)
