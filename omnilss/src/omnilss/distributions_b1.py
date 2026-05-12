@@ -432,6 +432,7 @@ def NBII() -> NegativeBinomial2Family:
     - file: `gamlss.dist/R/NBII.R`
     - function: `NBII()`
     """
+    from .dpqr_functions import pNBII, qNBII, rNBII
     
     def _log_density(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp.ndarray:
         return _nb2_log_pdf(y, mu, sigma)
@@ -527,7 +528,7 @@ def NBII() -> NegativeBinomial2Family:
         score_functions={"mu": dldm, "sigma": dldd},
         hessian_functions={"mu": d2ldm2, "sigma": d2ldd2},
         d=lambda x, mu, sigma, log=False: _log_density(x, mu, sigma) if log else jnp.exp(_log_density(x, mu, sigma)),
-        p=lambda q, mu, sigma, lower_tail=True, log_p=False: jnp.full_like(jnp.asarray(q, dtype=jnp.float64), jnp.nan),
-        q=lambda p, mu, sigma, lower_tail=True, log_p=False: jnp.full_like(jnp.asarray(p, dtype=jnp.float64), jnp.nan),
-        r=lambda key, n, mu, sigma: jnp.full((n,), jnp.nan, dtype=jnp.float64),
+        p=pNBII,
+        q=qNBII,
+        r=rNBII,
     )

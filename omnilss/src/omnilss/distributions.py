@@ -55,6 +55,7 @@ from .dpqr_functions import (
     dBCPE, pBCPE, qBCPE, rBCPE,
     dJSU, pJSU, qJSU, rJSU,
     dBCCG, pBCCG, qBCCG, rBCCG,
+    pZIP, qZIP, rZIP,
 )
 
 
@@ -1350,9 +1351,9 @@ def ZIP() -> ZeroInflatedPoissonFamily:
         score_functions={"mu": dldm, "sigma": dlds},
         hessian_functions={"mu": d2ldm2, "sigma": d2lds2},
         d=lambda x, mu, sigma, log=False: -0.5 * g_dev_inc(x, mu, sigma) if log else jnp.exp(-0.5 * g_dev_inc(x, mu, sigma)),
-        p=lambda q, mu, sigma, lower_tail=True, log_p=False: jnp.full_like(jnp.asarray(q, dtype=jnp.float64), jnp.nan),
-        q=lambda p, mu, sigma, lower_tail=True, log_p=False: jnp.full_like(jnp.asarray(p, dtype=jnp.float64), jnp.nan),
-        r=lambda key, n, mu, sigma: jnp.full((n,), jnp.nan, dtype=jnp.float64),
+        p=pZIP,
+        q=qZIP,
+        r=rZIP,
     )
 
 

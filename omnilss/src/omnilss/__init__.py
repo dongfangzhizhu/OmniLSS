@@ -667,23 +667,23 @@ __all__ = [
     "vuong_clarke_test",
     "worm_plot_data",
     "WormPlotResult",
-    # ── 模型选择（之前未导出）──
+    # ── Model selection ──
     "compare_distributions",
     "select_best_distribution",
     "stepwise_distribution_selection",
     "quick_distribution_search",
-    # ── 预测 API（之前未导出）──
+    # ── Prediction API ──
     "predict_params",
     "predict_quantiles",
     "centiles",
     "predict_response",
-    # ── 诊断 API（之前只部分导出）──
+    # ── Diagnostics API ──
     "quantile_residuals",
     "comprehensive_diagnostics",
     "calibration_check",
     "cooks_distance",
     "ComprehensiveDiagnostics",
-    # ── Links 注册表（新增）──
+    # ── Links registry ──
     "LINK_REGISTRY",
     "get_link",
     "get_link_fn",
@@ -714,7 +714,7 @@ from .regularization import (
     soft_threshold,
 )
 
-# ── 模型选择（之前未导出）──
+# Model selection
 try:
     from .model_selection import (
         compare_distributions,
@@ -725,7 +725,7 @@ try:
 except ImportError:
     pass
 
-# ── 预测 API（之前未导出）──
+# Prediction API
 try:
     from .prediction import (
         centiles,
@@ -736,7 +736,7 @@ try:
 except ImportError:
     pass
 
-# ── 诊断 API（之前只部分导出）──
+# Diagnostics API
 try:
     from .diagnostics import (
         ComprehensiveDiagnostics,

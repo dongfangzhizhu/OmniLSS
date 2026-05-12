@@ -1,13 +1,24 @@
 """OmniLSS vs R GAMLSS comprehensive performance benchmark.
 
-Runs the canonical 81-test matrix (9 distributions × 3 data sizes × 3 formulas)
+Runs the canonical test matrix (9 distributions × data sizes × 3 formulas)
 against a live R process, then auto-generates a Markdown report.
+
+Timing methodology
+------------------
+- Python: JAX JIT warm-up (1 call) before timing; `jax.block_until_ready()`
+  ensures async computation completes before stopping the clock.
+  Both cold-start (first call including JIT compilation) and warm times
+  (steady-state after compilation) are reported.
+- R: each call is a fresh Rscript subprocess (no within-process caching);
+  one untimed warm-up call inside the R script before the timed runs.
 
 Usage
 -----
     python benchmarks/comprehensive_performance_test.py
-    python benchmarks/comprehensive_performance_test.py --quick   # 3 dists only
-    python benchmarks/comprehensive_performance_test.py --no-r    # skip R, Python only
+    python benchmarks/comprehensive_performance_test.py --quick      # 3 dists
+    python benchmarks/comprehensive_performance_test.py --no-r       # Python only
+    python benchmarks/comprehensive_performance_test.py --large      # add n=50000,500000
+    python benchmarks/comprehensive_performance_test.py --n-repeats 5
 """
 
 from __future__ import annotations
@@ -18,11 +29,11 @@ import subprocess
 import sys
 import tempfile
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
+import jax
 import numpy as np
 
 # ── path setup ────────────────────────────────────────────────────────────────
@@ -36,13 +47,12 @@ from omnilss.distributions import resolve_family
 DISTRIBUTIONS = ["NO", "GA", "LOGNO", "PO", "BI", "NBI", "BE", "ZIP", "ZAGA"]
 QUICK_DISTRIBUTIONS = ["NO", "GA", "PO"]
 DATA_SIZES = [100, 500, 5000]
+LARGE_DATA_SIZES = [100, 500, 5000, 50_000, 500_000]
 FORMULAS = ["y ~ 1", "y ~ x1", "y ~ x1 + x2"]
 N_REPEATS = 3
 WARMUP = 1
 
-# R script template — runs gamlss() and prints timing + deviance as JSON.
-# Uses proc.time() for wall-clock measurement. Each call is a fresh Rscript
-# process so there is no cross-test caching.
+# R script — one warm-up call (untimed) then n_repeats timed calls
 _R_SCRIPT = r"""
 suppressMessages(library(gamlss))
 suppressMessages(library(jsonlite))
@@ -56,10 +66,7 @@ df <- read.csv(data_file)
 mu_formula <- as.formula(formula)
 
 # One warm-up call (not timed)
-tryCatch(
-  gamlss(mu_formula, family=dist, data=df, trace=FALSE),
-  error=function(e) NULL
-)
+tryCatch(gamlss(mu_formula, family=dist, data=df, trace=FALSE), error=function(e) NULL)
 
 times <- numeric(n_repeats)
 deviance_val <- NA_real_
@@ -67,23 +74,13 @@ converged <- FALSE
 
 for (i in seq_len(n_repeats)) {
   t0 <- proc.time()["elapsed"]
-  fit <- tryCatch(
-    gamlss(mu_formula, family=dist, data=df, trace=FALSE),
-    error=function(e) NULL
-  )
+  fit <- tryCatch(gamlss(mu_formula, family=dist, data=df, trace=FALSE), error=function(e) NULL)
   times[i] <- proc.time()["elapsed"] - t0
-  if (!is.null(fit)) {
-    deviance_val <- fit$G.deviance
-    converged    <- TRUE
-  }
+  if (!is.null(fit)) { deviance_val <- fit$G.deviance; converged <- TRUE }
 }
 
-cat(toJSON(list(
-  mean_time  = mean(times),
-  min_time   = min(times),
-  deviance   = deviance_val,
-  converged  = converged
-), auto_unbox=TRUE), "\n")
+cat(toJSON(list(mean_time=mean(times), min_time=min(times),
+               deviance=deviance_val, converged=converged), auto_unbox=TRUE), "\n")
 """
 
 
@@ -98,38 +95,26 @@ def _generate_data(dist: str, n: int, seed: int = 42) -> dict[str, np.ndarray]:
     if dist == "NO":
         y = 10.0 + 2.0 * x1 + rng.normal(0, 2.5, n)
     elif dist == "LOGNO":
-        log_mu = 2.0 + 0.3 * x1
-        y = np.exp(rng.normal(log_mu, 0.6, n))
+        y = np.exp(rng.normal(2.0 + 0.3 * x1, 0.6, n))
     elif dist == "GA":
         mu = np.exp(2.0 + 0.5 * x1)
-        shape = 4.0
-        y = rng.gamma(shape, mu / shape)
+        y = rng.gamma(4.0, mu / 4.0)
     elif dist == "PO":
-        mu = np.exp(1.0 + 0.3 * x1)
-        y = rng.poisson(mu).astype(float)
+        y = rng.poisson(np.exp(1.0 + 0.3 * x1)).astype(float)
     elif dist == "BI":
-        p = 1 / (1 + np.exp(-(0.5 * x1)))
-        y = rng.binomial(1, p).astype(float)
+        y = rng.binomial(1, 1 / (1 + np.exp(-0.5 * x1))).astype(float)
     elif dist == "NBI":
         mu = np.exp(1.5 + 0.3 * x1)
-        size = 2.0
-        prob = size / (size + mu)
-        y = rng.negative_binomial(size, prob).astype(float)
+        y = rng.negative_binomial(2.0, 2.0 / (2.0 + mu)).astype(float)
     elif dist == "BE":
-        mu = 1 / (1 + np.exp(-(0.5 * x1)))
-        phi = 4.0
-        alpha = mu * phi
-        beta = (1 - mu) * phi
-        y = np.clip(rng.beta(alpha, beta), 1e-4, 1 - 1e-4)
+        mu = 1 / (1 + np.exp(-0.5 * x1))
+        y = np.clip(rng.beta(mu * 4, (1 - mu) * 4), 1e-4, 1 - 1e-4)
     elif dist == "ZIP":
         mu = np.exp(1.0 + 0.3 * x1)
-        is_zero = rng.binomial(1, 0.2, n)
-        y = np.where(is_zero, 0, rng.poisson(mu)).astype(float)
+        y = np.where(rng.binomial(1, 0.2, n), 0, rng.poisson(mu)).astype(float)
     elif dist == "ZAGA":
         mu = np.exp(1.5 + 0.2 * x1)
-        is_zero = rng.binomial(1, 0.25, n)
-        shape = 2.78
-        y = np.where(is_zero, 0.0, rng.gamma(shape, mu / shape))
+        y = np.where(rng.binomial(1, 0.25, n), 0.0, rng.gamma(2.78, mu / 2.78))
     else:
         y = rng.normal(0, 1, n)
 
@@ -138,22 +123,49 @@ def _generate_data(dist: str, n: int, seed: int = 42) -> dict[str, np.ndarray]:
 
 # ── Python timing ─────────────────────────────────────────────────────────────
 
-def _time_python(dist: str, formula: str, data: dict, n_repeats: int, warmup: int) -> dict:
-    """Time a single Python gamlss() call."""
+def _time_python(
+    dist: str,
+    formula: str,
+    data: dict,
+    n_repeats: int,
+    warmup: int,
+) -> dict:
+    """Time gamlss() with proper JAX synchronization.
+
+    Uses jax.block_until_ready() to ensure async JAX computation completes
+    before stopping the clock. Reports both cold-start (first call including
+    JIT compilation) and warm (steady-state) times.
+    """
     family = resolve_family(dist)
 
     def _fit():
-        return gamlss(formula, family=family, data=data)
+        model = gamlss(formula, family=family, data=data)
+        # Block until all JAX async computation is complete
+        try:
+            for fv in model.fitted_values.values():
+                jax.block_until_ready(fv)
+        except Exception:
+            pass
+        return model
 
-    # warm-up
-    for _ in range(warmup):
+    # Cold-start: first call includes JIT compilation
+    t_cold_start = time.perf_counter()
+    try:
+        model = _fit()
+        cold_time = time.perf_counter() - t_cold_start
+        deviance = float(model.g_dev)
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+    # Additional warm-up calls (if warmup > 1)
+    for _ in range(warmup - 1):
         try:
             _fit()
         except Exception:
             pass
 
+    # Timed warm runs (steady-state performance)
     times = []
-    deviance = None
     for _ in range(n_repeats):
         t0 = time.perf_counter()
         try:
@@ -166,6 +178,7 @@ def _time_python(dist: str, formula: str, data: dict, n_repeats: int, warmup: in
 
     return {
         "success": True,
+        "cold_time": cold_time,
         "mean_time": float(np.mean(times)),
         "min_time": float(np.min(times)),
         "deviance": deviance,
@@ -175,7 +188,6 @@ def _time_python(dist: str, formula: str, data: dict, n_repeats: int, warmup: in
 # ── R timing ──────────────────────────────────────────────────────────────────
 
 def _check_r_available() -> bool:
-    """Return True if Rscript is on PATH and gamlss + jsonlite are installed."""
     try:
         result = subprocess.run(
             ["Rscript", "-e",
@@ -188,19 +200,10 @@ def _check_r_available() -> bool:
 
 
 def _time_r(dist: str, formula: str, data: dict, n_repeats: int) -> dict:
-    """Time a single R gamlss() call via Rscript subprocess.
-    
-    Measures wall-clock time from Python's side (subprocess total), which
-    matches what the original benchmark did and gives an honest comparison.
-    The R script includes one warm-up call so JIT compilation is excluded
-    from the timed runs.
-    """
+    """Time R gamlss() via Rscript subprocess (wall-clock from Python side)."""
     import csv
 
-    # Write data to a temp CSV
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".csv", delete=False, newline=""
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, newline="") as f:
         csv_path = f.name
         writer = csv.writer(f)
         keys = list(data.keys())
@@ -208,19 +211,12 @@ def _time_r(dist: str, formula: str, data: dict, n_repeats: int) -> dict:
         for row in zip(*[data[k] for k in keys]):
             writer.writerow(row)
 
-    # Write R script to a temp file
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".R", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".R", delete=False) as f:
         r_path = f.name
         f.write(_R_SCRIPT)
 
-    # Run n_repeats separate Rscript processes (each includes 1 warm-up).
-    # This matches the original benchmark methodology and avoids R's
-    # within-process caching inflating speedup numbers.
     times = []
     deviance = None
-    converged = False
 
     try:
         for _ in range(n_repeats):
@@ -247,7 +243,6 @@ def _time_r(dist: str, formula: str, data: dict, n_repeats: int) -> dict:
 
             times.append(elapsed)
             deviance = float(parsed["deviance"])
-            converged = True
 
         return {
             "success": True,
@@ -273,7 +268,8 @@ class ComparisonResult:
     model_config: str
     python_success: bool = False
     r_success: bool = False
-    python_time: float | None = None
+    python_cold_time: float | None = None  # includes JIT compilation
+    python_time: float | None = None       # steady-state (warm)
     r_time: float | None = None
     speedup: float | None = None
     python_deviance: float | None = None
@@ -284,27 +280,16 @@ class ComparisonResult:
     r_error: str | None = None
 
     def to_dict(self) -> dict:
-        return {
-            "distribution": self.distribution,
-            "data_size": self.data_size,
-            "model_config": self.model_config,
-            "python_success": self.python_success,
-            "r_success": self.r_success,
-            "python_time": self.python_time,
-            "r_time": self.r_time,
-            "speedup": self.speedup,
-            "python_deviance": self.python_deviance,
-            "r_deviance": self.r_deviance,
-            "deviance_diff": self.deviance_diff,
-            "deviance_rel_diff": self.deviance_rel_diff,
-            "python_error": self.python_error,
-            "r_error": self.r_error,
-        }
+        return {k: v for k, v in self.__dict__.items()}
 
 
 # ── report generation ─────────────────────────────────────────────────────────
 
-def _generate_report(results: list[ComparisonResult], output_path: Path, r_available: bool) -> None:
+def _generate_report(
+    results: list[ComparisonResult],
+    output_path: Path,
+    r_available: bool,
+) -> None:
     """Write a Markdown performance report."""
     successful = [r for r in results if r.python_success and r.r_success]
     python_only = [r for r in results if r.python_success and not r.r_success]
@@ -317,7 +302,15 @@ def _generate_report(results: list[ComparisonResult], output_path: Path, r_avail
     a("# OmniLSS vs R GAMLSS Performance Report")
     a("")
     a(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    a(f"**R comparison**: {'live Rscript' if r_available else 'skipped (Rscript not available)'}")
+    a(f"**R comparison**: {'live Rscript' if r_available else 'skipped'}")
+    a("")
+    a("## Timing Methodology")
+    a("")
+    a("- **Python warm time**: steady-state after JAX JIT compilation; "
+      "`jax.block_until_ready()` ensures async computation completes.")
+    a("- **Python cold time**: first call including JIT compilation overhead.")
+    a("- **R time**: wall-clock from Python side; each call is a fresh Rscript "
+      "process with one untimed warm-up call inside.")
     a("")
     a("---")
     a("")
@@ -334,10 +327,10 @@ def _generate_report(results: list[ComparisonResult], output_path: Path, r_avail
         speedups = [r.speedup for r in successful if r.speedup is not None]
         if speedups:
             faster = sum(1 for s in speedups if s > 1.0)
-            a("### Speedup (Python vs R)")
+            a("### Speedup (Python warm vs R)")
             a("")
-            a(f"| Metric | Value |")
-            a(f"|--------|-------|")
+            a("| Metric | Value |")
+            a("|--------|-------|")
             a(f"| Mean   | **{np.mean(speedups):.1f}×** |")
             a(f"| Median | {np.median(speedups):.1f}× |")
             a(f"| Min    | {np.min(speedups):.1f}× |")
@@ -366,22 +359,24 @@ def _generate_report(results: list[ComparisonResult], output_path: Path, r_avail
                 a(f"- Mean speedup: **{np.mean(speedups):.1f}×** "
                   f"(range {np.min(speedups):.1f}–{np.max(speedups):.1f}×)")
             a("")
-            a("| n | Formula | Python (s) | R (s) | Speedup | Dev diff |")
-            a("|---|---------|-----------|-------|---------|----------|")
+            a("| n | Formula | Python warm (s) | Python cold (s) | R (s) | Speedup | Dev diff |")
+            a("|---|---------|----------------|----------------|-------|---------|----------|")
             for r in sorted(ok, key=lambda x: (x.data_size, x.model_config)):
                 dev = f"{r.deviance_diff:.2e}" if r.deviance_diff is not None else "—"
                 sp = f"{r.speedup:.1f}×" if r.speedup else "—"
+                cold = f"{r.python_cold_time:.4f}" if r.python_cold_time else "—"
                 a(f"| {r.data_size} | `{r.model_config}` | "
-                  f"{r.python_time:.4f} | {r.r_time:.4f} | {sp} | {dev} |")
+                  f"{r.python_time:.4f} | {cold} | {r.r_time:.4f} | {sp} | {dev} |")
         else:
             a(f"- Passed: {sum(1 for r in dist_results if r.python_success)}/{len(dist_results)}")
             a("")
-            a("| n | Formula | Python (s) | Status |")
-            a("|---|---------|-----------|--------|")
+            a("| n | Formula | Python warm (s) | Python cold (s) | Status |")
+            a("|---|---------|----------------|----------------|--------|")
             for r in sorted(dist_results, key=lambda x: (x.data_size, x.model_config)):
                 status = "✅" if r.python_success else f"❌ {r.python_error or ''}"
                 pt = f"{r.python_time:.4f}" if r.python_time else "—"
-                a(f"| {r.data_size} | `{r.model_config}` | {pt} | {status} |")
+                cold = f"{r.python_cold_time:.4f}" if r.python_cold_time else "—"
+                a(f"| {r.data_size} | `{r.model_config}` | {pt} | {cold} | {status} |")
         a("")
 
     if r_only or both_failed:
@@ -398,12 +393,6 @@ def _generate_report(results: list[ComparisonResult], output_path: Path, r_avail
                 err = (r.python_error or "")[:80]
                 a(f"| {r.distribution} | {r.data_size} | `{r.model_config}` | {err} |")
             a("")
-        if both_failed:
-            a("### Both failed")
-            a("")
-            for r in both_failed:
-                a(f"- {r.distribution} n={r.data_size} `{r.model_config}`")
-            a("")
 
     a("---")
     a("")
@@ -413,17 +402,19 @@ def _generate_report(results: list[ComparisonResult], output_path: Path, r_avail
         by_size: dict[int, list] = {}
         for r in successful:
             by_size.setdefault(r.data_size, []).append(r)
-        a("| n | Tests | Mean speedup | Mean Python (s) | Mean R (s) |")
-        a("|---|-------|-------------|----------------|-----------|")
+        a("| n | Tests | Mean speedup | Mean Python warm (s) | Mean Python cold (s) | Mean R (s) |")
+        a("|---|-------|-------------|---------------------|---------------------|-----------|")
         for size in sorted(by_size):
             rs = by_size[size]
             speedups = [r.speedup for r in rs if r.speedup]
             py_times = [r.python_time for r in rs if r.python_time]
+            cold_times = [r.python_cold_time for r in rs if r.python_cold_time]
             r_times = [r.r_time for r in rs if r.r_time]
             sp = f"{np.mean(speedups):.1f}×" if speedups else "—"
             pt = f"{np.mean(py_times):.4f}" if py_times else "—"
+            ct = f"{np.mean(cold_times):.4f}" if cold_times else "—"
             rt = f"{np.mean(r_times):.4f}" if r_times else "—"
-            a(f"| {size} | {len(rs)} | {sp} | {pt} | {rt} |")
+            a(f"| {size:,} | {len(rs)} | {sp} | {pt} | {ct} | {rt} |")
     else:
         a("*(R comparison not available)*")
     a("")
@@ -443,29 +434,36 @@ def main() -> int:
                         help="Run only 3 distributions (NO, GA, PO)")
     parser.add_argument("--no-r", action="store_true",
                         help="Skip R comparison (Python timing only)")
+    parser.add_argument("--large", action="store_true",
+                        help="Include large data sizes (50k, 500k) — Python only")
     parser.add_argument("--n-repeats", type=int, default=N_REPEATS,
                         help=f"Timing repetitions (default {N_REPEATS})")
     args = parser.parse_args()
 
     distributions = QUICK_DISTRIBUTIONS if args.quick else DISTRIBUTIONS
+    data_sizes = LARGE_DATA_SIZES if args.large else DATA_SIZES
     n_repeats = args.n_repeats
 
-    # Check R availability
+    # Large datasets: Python only (R would be too slow)
+    if args.large:
+        args.no_r = True
+
     r_available = False
     if not args.no_r:
         print("Checking R availability...", end=" ", flush=True)
         r_available = _check_r_available()
-        print("✓ found" if r_available else "✗ not found (running Python-only)")
+        print("✓ found" if r_available else "✗ not found (Python-only mode)")
     print()
 
-    total = len(distributions) * len(DATA_SIZES) * len(FORMULAS)
+    total = len(distributions) * len(data_sizes) * len(FORMULAS)
     print(f"{'='*70}")
     print(f"OmniLSS Performance Benchmark")
     print(f"  Distributions : {', '.join(distributions)}")
-    print(f"  Data sizes    : {DATA_SIZES}")
+    print(f"  Data sizes    : {data_sizes}")
     print(f"  Formulas      : {FORMULAS}")
     print(f"  Total tests   : {total}")
     print(f"  R comparison  : {'yes' if r_available else 'no'}")
+    print(f"  Timing        : warm (steady-state) + cold (first call / JIT)")
     print(f"{'='*70}")
     print()
 
@@ -474,11 +472,11 @@ def main() -> int:
 
     for dist in distributions:
         print(f"[{dist}]")
-        for n in DATA_SIZES:
+        for n in data_sizes:
             data = _generate_data(dist, n)
             for formula in FORMULAS:
                 done += 1
-                label = f"  n={n:5d}  {formula:<20s}"
+                label = f"  n={n:7,}  {formula:<20s}"
                 print(f"  ({done:2d}/{total}) {label}", end="", flush=True)
 
                 cr = ComparisonResult(
@@ -487,16 +485,17 @@ def main() -> int:
                     model_config=formula,
                 )
 
-                # Python
+                # Python timing
                 py = _time_python(dist, formula, data, n_repeats, WARMUP)
                 if py["success"]:
                     cr.python_success = True
                     cr.python_time = py["mean_time"]
+                    cr.python_cold_time = py.get("cold_time")
                     cr.python_deviance = py.get("deviance")
                 else:
                     cr.python_error = py.get("error", "")
 
-                # R
+                # R timing
                 if r_available:
                     r = _time_r(dist, formula, data, n_repeats)
                     if r["success"]:
@@ -514,24 +513,24 @@ def main() -> int:
 
                 results.append(cr)
 
-                # Print one-line summary
+                # One-line summary
                 if cr.python_success:
+                    cold_str = f" cold={cr.python_cold_time:.3f}s" if cr.python_cold_time else ""
                     if r_available and cr.r_success and cr.r_time is not None:
                         sp = f"{cr.speedup:.1f}×" if cr.speedup else "—"
-                        print(f"  Python {cr.python_time:.4f}s  R {cr.r_time:.4f}s  → {sp}")
+                        print(f"  warm={cr.python_time:.4f}s{cold_str}  R={cr.r_time:.4f}s  → {sp}")
                     elif r_available and not cr.r_success:
-                        print(f"  Python {cr.python_time:.4f}s  R FAIL: {cr.r_error or '?'}")
+                        print(f"  warm={cr.python_time:.4f}s{cold_str}  R FAIL")
                     else:
-                        print(f"  Python {cr.python_time:.4f}s")
+                        print(f"  warm={cr.python_time:.4f}s{cold_str}")
                 else:
                     print(f"  FAIL: {cr.python_error or '?'}")
 
         print()
 
-    # ── summary ───────────────────────────────────────────────────────────────
-    successful = [r for r in results if r.python_success and (r.r_success or not r_available)]
+    # Summary
     py_ok = sum(1 for r in results if r.python_success)
-    r_only = sum(1 for r in results if not r.python_success and r.r_success)
+    r_only_count = sum(1 for r in results if not r.python_success and r.r_success)
 
     print(f"{'='*70}")
     print("Summary")
@@ -540,16 +539,21 @@ def main() -> int:
     if r_available:
         both_ok = sum(1 for r in results if r.python_success and r.r_success)
         print(f"  Both passed   : {both_ok}/{total}")
-        if r_only:
-            print(f"  R only (regressions!) : {r_only}")
+        if r_only_count:
+            print(f"  R only (regressions!) : {r_only_count}")
         speedups = [r.speedup for r in results if r.speedup is not None]
         if speedups:
-            print(f"  Mean speedup  : {np.mean(speedups):.1f}×")
-            print(f"  Median speedup: {np.median(speedups):.1f}×")
-            print(f"  Min / Max     : {np.min(speedups):.1f}× / {np.max(speedups):.1f}×")
+            print(f"  Mean speedup (warm) : {np.mean(speedups):.1f}×")
+            print(f"  Median speedup      : {np.median(speedups):.1f}×")
+            print(f"  Min / Max           : {np.min(speedups):.1f}× / {np.max(speedups):.1f}×")
+    cold_times = [r.python_cold_time for r in results if r.python_cold_time]
+    warm_times = [r.python_time for r in results if r.python_time]
+    if cold_times and warm_times:
+        print(f"  Mean cold-start : {np.mean(cold_times):.3f}s (includes JIT compilation)")
+        print(f"  Mean warm time  : {np.mean(warm_times):.4f}s (steady-state)")
     print()
 
-    # ── save JSON ─────────────────────────────────────────────────────────────
+    # Save JSON
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     raw_dir = Path(__file__).parent / "results" / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
@@ -560,24 +564,27 @@ def main() -> int:
         "r_available": r_available,
         "config": {
             "distributions": distributions,
-            "data_sizes": DATA_SIZES,
+            "data_sizes": data_sizes,
             "formulas": FORMULAS,
             "n_repeats": n_repeats,
             "warmup_runs": WARMUP,
+            "timing_method": "jax.block_until_ready() + cold/warm separation",
         },
         "results": [r.to_dict() for r in results],
     }
     json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(f"Raw results  → {json_path}")
 
-    # ── auto-generate Markdown report ─────────────────────────────────────────
+    # Auto-generate Markdown report
     reports_dir = Path(__file__).parent / "results" / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
     report_path = reports_dir / f"quick_report_{timestamp}.md"
     _generate_report(results, report_path, r_available)
 
-    return 0 if r_only == 0 else 1
+    return 0 if r_only_count == 0 else 1
 
 
 if __name__ == "__main__":
     sys.exit(main())
+
+

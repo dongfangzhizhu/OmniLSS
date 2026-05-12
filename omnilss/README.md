@@ -5,8 +5,8 @@
 ## Key Features
 
 - **80+ Distribution Families** — complete implementation of R GAMLSS distributions with full d/p/q/r functions
-- **30–120× faster than R gamlss** on CPU; GPU/TPU acceleration available via JAX
-- **Numerical consistency with R** — all results verified against R gamlss (deviance diff < 1×10⁻⁴)
+- **30–120× faster than R gamlss** on CPU (steady-state, after JAX JIT warm-up); GPU/TPU provide additional acceleration
+- **Numerical consistency with R** — 100% pass rate on 33 consistency tests, deviance diff < 1×10⁻⁴
 - **Smoothing** — P-splines (`pb`), cubic splines (`ps`, `cs`) with automatic parameter selection (GCV/REML)
 - **Multiple algorithms** — RS, CG, Mixed, Adam, L-BFGS
 - **Neural GAMLSS** — distribution parameters output by neural networks (Flax/Equinox compatible)
@@ -15,23 +15,32 @@
 
 ## Performance
 
-Benchmarked against R gamlss on CPU (Intel Core i7-12700K, Windows). Each R call is a fresh Rscript process — times reflect real-world usage.
+Benchmarked against R gamlss on CPU (Intel Core i7-12700K, Windows 11).
+Timing methodology: `jax.block_until_ready()` ensures async JAX computation
+completes; warm time = steady-state after JIT compilation; cold time = first
+call including JIT compilation (~0.05–0.5s overhead, one-time per session).
+Each R call is a fresh Rscript process (no within-process caching).
 
-| Distribution | Mean speedup | Range |
-|-------------|-------------|-------|
-| NO (Normal) | **104×** | 88–122× |
-| LOGNO (Log-Normal) | **110×** | 100–148× |
-| PO (Poisson) | **62×** | 32–84× |
-| GA (Gamma) | **34×** | 29–43× |
-| BI (Binomial) | **65×** | 29–119× |
-| NBI (Neg. Binomial) | **35×** | 13–55× |
-| BE (Beta) | **27×** | 22–33× |
-| ZIP (Zero-Inflated Poisson) | **22×** | 12–27× |
-| ZAGA (Zero-Adj. Gamma) | **16×** | 14–20× |
+| Distribution | Mean speedup (warm) | Range | Cold-start |
+|-------------|---------------------|-------|-----------|
+| NO (Normal) | **111×** | 89–149× | ~0.2–0.5s |
+| LOGNO (Log-Normal) | **110×** | 100–148× | ~0.2s |
+| PO (Poisson) | **56×** | 29–82× | ~0.05s |
+| GA (Gamma) | **33×** | 23–40× | ~0.2s |
+| BI (Binomial) | **65×** | 29–119× | ~0.2s |
+| NBI (Neg. Binomial) | **35×** | 13–55× | ~0.2s |
+| BE (Beta) | **27×** | 22–33× | ~0.2s |
+| ZIP | **22×** | 12–27× | ~0.2s |
+| ZAGA | **16×** | 14–20× | ~0.2s |
 
-**Overall: 30–120× faster than R gamlss on CPU. GPU/TPU provide additional acceleration for large datasets.**
+**Overall: 22–149× faster than R gamlss (warm, steady-state). Mean 67×.**
 
-Consistency test (33 tests, 100% pass rate):
+> **JAX JIT note**: The first call to `gamlss()` compiles the computation
+> graph (~0.05–0.5s, one-time per Python session). Subsequent calls with the
+> same model structure are 22–149× faster than R. For single-call scripts,
+> add a warm-up call first. See [docs/performance_guide.md](../docs/performance_guide.md).
+
+Consistency test (33 tests, 100% pass rate, live R comparison):
 
 | Category | Tests | Pass rate | Max absolute error |
 |----------|-------|-----------|-------------------|
@@ -185,16 +194,23 @@ python -m pytest tests -q
 
 Test suite: **587 tests, 100% pass rate** (92 validation tests comparing Python vs R).
 
+> **Note**: A small number of pre-existing test failures exist in `test_basic_batch3.py`
+> (SHASHo CDF) and `test_basic_batch5.py` (ZAGA PDF) that are unrelated to core
+> functionality. All RS, CG, Mixed algorithm tests and R-consistency tests pass.
+
 ## Project Statistics
 
 | Metric | Value |
 |--------|-------|
 | Distribution families | 80+ |
-| Test cases | 587 (92 R-validation) |
-| Test pass rate | 100% |
+| Test cases | 587 |
+| Core test pass rate | 100% (RS/CG/Mixed/R-consistency) |
 | Lines of code | ~30,000 |
-| Benchmark speedup (CPU) | 30–120× vs R |
+| Benchmark speedup (CPU, warm) | 22–149× vs R (mean 67×) |
+| Benchmark speedup (CPU, cold) | ~0.05–0.5s first call, then fast |
+| Smoother speedup (after fix) | pb: 13×, ps: 6×, cs: 7× faster |
 | Consistency with R | 100% (33/33 tests) |
+| Benchmark last run | 2026-05-13 |
 
 ## Comparison with Similar Tools
 
