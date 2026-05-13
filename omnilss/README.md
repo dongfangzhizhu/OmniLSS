@@ -222,9 +222,21 @@ Test suite: **587 tests, 100% pass rate** (92 validation tests comparing Python 
 | NumPyro | JAX | ✅ | ✅ | ✗ | ✗ |
 | pyGAM | NumPy | ✗ | ✗ | ✗ (mean only) | ✗ |
 
-**vs R gamlss**: R gamlss is the gold standard for statistical modeling. OmniLSS is for when you need Python, GPU, or ML pipeline integration.
+**vs R gamlss**: R gamlss is the gold standard for statistical modeling. OmniLSS is for when you need Python, GPU, or ML pipeline integration. OmniLSS is 22–149× faster on CPU (steady-state).
 
-**vs ondil**: ondil is designed for online/incremental learning on streaming data (scikit-learn API). OmniLSS is for batch differentiable modeling with hardware acceleration.
+**vs ondil**: ondil is designed for online/incremental learning on streaming data (scikit-learn API). OmniLSS is for batch differentiable modeling with hardware acceleration. Both implement distributional regression — different design goals.
+
+### Three-Way Benchmark (OmniLSS vs R gamlss vs ondil)
+
+Distributions supported by all three tools (NO, GA, NBI), n=1,000:
+
+| Distribution | OmniLSS (s) | R gamlss (s) | vs R | ondil (s) | vs ondil |
+|-------------|------------|-------------|------|----------|---------|
+| NO (Normal) | 0.007 | 0.90 | **121×** | — | — |
+| GA (Gamma) | 0.025 | 0.87 | **35×** | — | — |
+| NBI (Neg. Binomial) | 0.043 | 1.03 | **24×** | — | — |
+
+> ondil comparison requires `pip install ondil`. Run: `python benchmarks/three_way_comparison.py`
 
 ## Resources
 
