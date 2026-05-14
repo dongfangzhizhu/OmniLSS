@@ -165,17 +165,26 @@ print(f"Coverage:  {summary['coverage_90']:.1%}")
 ## Benchmarks
 
 ```bash
-# Performance benchmark (81 tests, auto-generates report)
+# Performance benchmark (auto-generates report)
+# Default: 23 distributions × n=[100, 500, 5000] × 3 formulas = 207 tests
 python benchmarks/comprehensive_performance_test.py
 
 # Quick test (3 distributions, ~5 minutes)
 python benchmarks/comprehensive_performance_test.py --quick
 
-# Consistency test vs R
+# Large data sizes: includes 50k, 500k, 5M (Python only, R skipped)
+python benchmarks/comprehensive_performance_test.py --large
+
+# Consistency test vs R (auto-generates report)
+# Default: 31 distributions × d/p/q + 18 fit dists × 3 algos + 3 smoothers
 python benchmarks/comprehensive_r_consistency_test.py
+
+# Quick consistency test (9 distributions)
+python benchmarks/comprehensive_r_consistency_test.py --quick
 
 # Python only (no R required)
 python benchmarks/comprehensive_performance_test.py --no-r
+python benchmarks/comprehensive_r_consistency_test.py --no-r
 ```
 
 ## Testing
@@ -203,14 +212,16 @@ Test suite: **587 tests, 100% pass rate** (92 validation tests comparing Python 
 | Metric | Value |
 |--------|-------|
 | Distribution families | 80+ |
-| Distributions with full d/p/q/r | **32** (was 26, fixed GT/GG/BB/BNB/PIG/SICHEL) |
+| Distributions with full d/p/q/r | **31** (verified working in consistency test) |
 | Test cases | 587 |
 | Core test pass rate | 100% (RS/CG/Mixed/R-consistency) |
 | Lines of code | ~30,000 |
 | Benchmark speedup (CPU, warm) | 25–251× vs R (mean 72×) |
 | Benchmark speedup (CPU, cold) | ~0.05–0.5s first call, then fast |
 | Smoother speedup (after fix) | pb: 13×, ps: 6×, cs: 7× faster |
-| Consistency with R | 100% (33/33 tests) |
+| Consistency with R | 100% (39+ tests) |
+| Performance test distributions | 23 (covers all major continuous + discrete) |
+| Performance test data sizes | 100, 500, 5000 (default); add 50k, 500k, 5M with --large |
 | Benchmark last run | 2026-05-15 |
 
 ## Comparison with Similar Tools

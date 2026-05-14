@@ -5143,15 +5143,34 @@ def pGT(q, mu=0.0, sigma=1.0, nu=2.0, tau=2.0, lower_tail=True, log_p=False):
     
     # Compute CDF using numerical integration
     q_array = np.asarray(q).flatten()
+    # Extract scalar values from potentially array-shaped parameters
+    mu_arr = np.asarray(mu).flatten()
+    sigma_arr = np.asarray(sigma).flatten()
+    nu_arr = np.asarray(nu).flatten()
+    tau_arr = np.asarray(tau).flatten()
+    n = q_array.size
+    # Broadcast parameter arrays to match q length
+    if mu_arr.size == 1: mu_arr = np.repeat(mu_arr, n)
+    if sigma_arr.size == 1: sigma_arr = np.repeat(sigma_arr, n)
+    if nu_arr.size == 1: nu_arr = np.repeat(nu_arr, n)
+    if tau_arr.size == 1: tau_arr = np.repeat(tau_arr, n)
+
     cdf_values = []
-    
-    for q_val in q_array:
-        # Integrate from -inf to q
-        # Use a reasonable lower bound instead of -inf
-        lower_bound = float(mu - 10.0 * sigma)
-        result, _ = quad(integrand, lower_bound, float(q_val))
+    for i, q_val in enumerate(q_array):
+        mu_i = float(mu_arr[i])
+        sigma_i = float(sigma_arr[i])
+        nu_i = float(nu_arr[i])
+        tau_i = float(tau_arr[i])
+
+        def integrand_i(x_val, _mu=mu_i, _sigma=sigma_i, _nu=nu_i, _tau=tau_i):
+            return float(dGT(jnp.array([x_val]),
+                             jnp.array([_mu]), jnp.array([_sigma]),
+                             jnp.array([_nu]), jnp.array([_tau]))[0])
+
+        lower_bound = mu_i - 10.0 * sigma_i
+        result, _ = quad(integrand_i, lower_bound, float(q_val))
         cdf_values.append(result)
-    
+
     cdf = jnp.asarray(cdf_values, dtype=jnp.float64).reshape(np.asarray(q).shape)
     
     if not lower_tail:
@@ -5213,31 +5232,40 @@ def qGT(p, mu=0.0, sigma=1.0, nu=2.0, tau=2.0, lower_tail=True, log_p=False):
     
     # For GT, we use numerical root finding
     from scipy.optimize import brentq
-    
+
     p_array = np.asarray(p).flatten()
+    mu_arr = np.asarray(mu).flatten()
+    sigma_arr = np.asarray(sigma).flatten()
+    nu_arr = np.asarray(nu).flatten()
+    tau_arr = np.asarray(tau).flatten()
+    n = p_array.size
+    if mu_arr.size == 1: mu_arr = np.repeat(mu_arr, n)
+    if sigma_arr.size == 1: sigma_arr = np.repeat(sigma_arr, n)
+    if nu_arr.size == 1: nu_arr = np.repeat(nu_arr, n)
+    if tau_arr.size == 1: tau_arr = np.repeat(tau_arr, n)
+
     q_values = []
-    
-    for p_val in p_array:
-        # Define function to find root: F(q) - p = 0
-        def objective(q_val):
-            cdf_val = float(pGT(jnp.array([q_val]), mu, sigma, nu, tau)[0])
+    for i, p_val in enumerate(p_array):
+        mu_i = float(mu_arr[i])
+        sigma_i = float(sigma_arr[i])
+        nu_i = float(nu_arr[i])
+        tau_i = float(tau_arr[i])
+
+        def objective(q_val, _mu=mu_i, _sigma=sigma_i, _nu=nu_i, _tau=tau_i):
+            cdf_val = float(pGT(jnp.array([q_val]),
+                                jnp.array([_mu]), jnp.array([_sigma]),
+                                jnp.array([_nu]), jnp.array([_tau]))[0])
             return cdf_val - float(p_val)
-        
-        # Find root using Brent's method
-        # Use reasonable bounds
-        lower_bound = float(mu - 10.0 * sigma)
-        upper_bound = float(mu + 10.0 * sigma)
-        
+
+        lower_bound = mu_i - 10.0 * sigma_i
+        upper_bound = mu_i + 10.0 * sigma_i
         try:
             q_val = brentq(objective, lower_bound, upper_bound)
-        except:
-            # If root finding fails, use a simple approximation
-            q_val = float(mu)
-        
+        except Exception:
+            q_val = mu_i
         q_values.append(q_val)
-    
+
     q = jnp.asarray(q_values, dtype=jnp.float64).reshape(np.asarray(p).shape)
-    
     return q
 
 
@@ -6719,27 +6747,38 @@ def pBB(q, mu=0.5, sigma=1.0, bd=10, lower_tail=True, log_p=False):
     # Floor q to integer
     q_int = jnp.floor(q)
 
-    # Sum PMF from 0 to q_int
-    def compute_cdf_scalar(q_val):
-        q_val = float(q_val)
-        if q_val < 0:
-            return 0.0
-        if q_val >= float(bd):
-            return 1.0
-        
-        # Sum from 0 to q_val
-        x_vals = jnp.arange(0, int(q_val) + 1)
-        pmf_vals = dBB(x_vals, mu, sigma, bd, log=False)
-        return float(jnp.sum(pmf_vals))
+    # Vectorize with scalar extraction
+    q_array = np.asarray(q_int).flatten()
+    mu_arr = np.asarray(mu).flatten()
+    sigma_arr = np.asarray(sigma).flatten()
+    bd_arr = np.asarray(bd).flatten()
+    n = q_array.size
+    if mu_arr.size == 1: mu_arr = np.repeat(mu_arr, n)
+    if sigma_arr.size == 1: sigma_arr = np.repeat(sigma_arr, n)
+    if bd_arr.size == 1: bd_arr = np.repeat(bd_arr, n)
 
-    # Vectorize
-    q_array = jnp.atleast_1d(q_int)
-    cdf_list = [compute_cdf_scalar(q_val) for q_val in q_array]
-    cdf = jnp.array(cdf_list)
-    
-    # Return scalar if input was scalar
+    cdf_list = []
+    for i, q_val in enumerate(q_array):
+        q_f = float(q_val)
+        bd_f = float(bd_arr[i])
+        mu_f = float(mu_arr[i])
+        sigma_f = float(sigma_arr[i])
+        if q_f < 0:
+            cdf_list.append(0.0)
+        elif q_f >= bd_f:
+            cdf_list.append(1.0)
+        else:
+            x_vals = jnp.arange(0, int(q_f) + 1)
+            pmf_vals = dBB(x_vals,
+                           jnp.array([mu_f]), jnp.array([sigma_f]),
+                           jnp.array([bd_f]), log=False)
+            cdf_list.append(float(jnp.sum(pmf_vals)))
+
+    cdf = jnp.asarray(cdf_list, dtype=jnp.float64)
     if jnp.ndim(q) == 0:
         cdf = cdf[0]
+    else:
+        cdf = cdf.reshape(jnp.asarray(q).shape)
 
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -6795,14 +6834,20 @@ def qBB(p, mu=0.5, sigma=1.0, bd=10, lower_tail=True, log_p=False):
     sigma = jnp.maximum(sigma, eps)
     bd = jnp.maximum(bd, 1.0)
 
+    # Extract scalar values for use inside the loop
+    mu_scalar    = float(jnp.mean(mu))
+    sigma_scalar = float(jnp.mean(sigma))
+    bd_scalar    = float(jnp.mean(bd))
+
     # Find quantile by searching
     def find_quantile(p_val):
         # Search from 0 to bd
-        for x in range(int(bd) + 1):
-            cdf_val = pBB(float(x), mu, sigma, bd, lower_tail=True, log_p=False)
+        for x in range(int(bd_scalar) + 1):
+            cdf_val = pBB(float(x), mu_scalar, sigma_scalar, bd_scalar,
+                          lower_tail=True, log_p=False)
             if cdf_val >= p_val:
                 return float(x)
-        return float(bd)
+        return float(bd_scalar)
 
     # Vectorize
     p_array = jnp.atleast_1d(p)
@@ -6945,7 +6990,7 @@ def dBNB(x, mu=1.0, sigma=1.0, log=False):
         return jnp.exp(log_pdf)
 
 
-def pBNB(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
+def pBNB(q, mu=1.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
     """CDF for Beta-Negative Binomial distribution.
 
     Parameters
@@ -6956,6 +7001,8 @@ def pBNB(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
         Mean parameter (mu > 0)
     sigma : array_like
         Dispersion parameter (sigma > 0)
+    nu : array_like
+        Shape parameter (nu > 0)
     lower_tail : bool
         If True, return P(X <= q), else P(X > q)
     log_p : bool
@@ -6973,10 +7020,17 @@ def pBNB(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     q = jnp.asarray(q, dtype=jnp.float64)
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
 
     eps = jnp.finfo(jnp.float64).eps
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
+    nu = jnp.maximum(nu, eps)
+
+    # Extract scalar values for use inside the loop
+    mu_scalar    = float(jnp.mean(mu))
+    sigma_scalar = float(jnp.mean(sigma))
+    nu_scalar    = float(jnp.mean(nu))
 
     # Floor q to integer
     q_int = jnp.floor(q)
@@ -6986,18 +7040,18 @@ def pBNB(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
         q_val = float(q_val)
         if q_val < 0:
             return 0.0
-        
+
         # Sum from 0 to min(q_val, reasonable upper bound)
         max_x = min(int(q_val) + 1, 1000)  # Limit for computational efficiency
         x_vals = jnp.arange(0, max_x)
-        pmf_vals = dBNB(x_vals, mu, sigma, log=False)
+        pmf_vals = dBNB(x_vals, mu_scalar, sigma_scalar, log=False)
         return float(jnp.sum(pmf_vals))
 
     # Vectorize
     q_array = jnp.atleast_1d(q_int)
     cdf_list = [compute_cdf_scalar(q_val) for q_val in q_array]
     cdf = jnp.array(cdf_list)
-    
+
     # Return scalar if input was scalar
     if jnp.ndim(q) == 0:
         cdf = cdf[0]
@@ -7011,7 +7065,7 @@ def pBNB(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     return cdf
 
 
-def qBNB(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
+def qBNB(p, mu=1.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
     """Quantile function for Beta-Negative Binomial distribution.
 
     Parameters
@@ -7022,6 +7076,8 @@ def qBNB(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
         Mean parameter (mu > 0)
     sigma : array_like
         Dispersion parameter (sigma > 0)
+    nu : array_like
+        Shape parameter (nu > 0)
     lower_tail : bool
         If True, p is P(X <= q), else P(X > q)
     log_p : bool
@@ -7040,6 +7096,7 @@ def qBNB(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     p = jnp.asarray(p, dtype=jnp.float64)
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
 
     if log_p:
         p = jnp.exp(p)
@@ -7051,13 +7108,20 @@ def qBNB(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     p = jnp.clip(p, eps, 1.0 - eps)
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
+    nu = jnp.maximum(nu, eps)
+
+    # Extract scalar values for use inside the loop
+    mu_scalar    = float(jnp.mean(mu))
+    sigma_scalar = float(jnp.mean(sigma))
+    nu_scalar    = float(jnp.mean(nu))
 
     # Find quantile by searching
     def find_quantile(p_val):
         # Search from 0 upward
-        max_search = int(mu * 10 + 100)  # Reasonable upper bound
+        max_search = int(mu_scalar * 10 + 100)  # Reasonable upper bound
         for x in range(max_search):
-            cdf_val = pBNB(float(x), mu, sigma, lower_tail=True, log_p=False)
+            cdf_val = pBNB(float(x), mu_scalar, sigma_scalar, nu_scalar,
+                           lower_tail=True, log_p=False)
             if cdf_val >= p_val:
                 return float(x)
         return float(max_search - 1)
@@ -7074,7 +7138,7 @@ def qBNB(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     return q
 
 
-def rBNB(key, n, mu=1.0, sigma=1.0):
+def rBNB(key, n, mu=1.0, sigma=1.0, nu=1.0):
     """Random generation for Beta-Negative Binomial distribution.
 
     Parameters
@@ -7087,31 +7151,28 @@ def rBNB(key, n, mu=1.0, sigma=1.0):
         Mean parameter (mu > 0)
     sigma : array_like
         Dispersion parameter (sigma > 0)
+    nu : array_like
+        Shape parameter (nu > 0)
 
     Returns
     -------
     array_like
         Random samples (integers)
-
-    Notes
-    -----
-    Generation algorithm:
-    1. Generate u ~ Uniform(0, 1)
-    2. Compute q = quantile(u)
-    3. Return q
     """
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
 
     eps = jnp.finfo(jnp.float64).eps
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
+    nu = jnp.maximum(nu, eps)
 
     # Generate uniform samples
     u = jrandom.uniform(key, shape=(n,))
 
     # Convert to BNB samples using quantile function
-    samples = qBNB(u, mu, sigma)
+    samples = qBNB(u, mu, sigma, nu)
 
     return samples
 
@@ -7166,37 +7227,45 @@ def dPIG(x, mu=1.0, sigma=1.0, log=False):
     x_int = jnp.round(jnp.maximum(x, 0.0)).astype(jnp.int32)
     x_int = jnp.clip(x_int, 0, 512)
 
-    # Base calculation
-    base = (1.0 - jnp.sqrt(1.0 + 2.0 * sigma * mu)) / sigma
-    tofy1 = mu * jnp.power(1.0 + 2.0 * sigma * mu, -0.5)
+    # Vectorize over elements
+    x_array = np.asarray(x_int).flatten()
+    mu_arr = np.asarray(mu).flatten()
+    sigma_arr = np.asarray(sigma).flatten()
+    n = x_array.size
+    if mu_arr.size == 1: mu_arr = np.repeat(mu_arr, n)
+    if sigma_arr.size == 1: sigma_arr = np.repeat(sigma_arr, n)
 
-    # Recursive calculation for log density
-    def compute_log_pdf_scalar(x_val):
-        x_val = int(x_val)
-        if x_val == 0:
-            return float(base)
-        
-        # Recursive computation
-        prev = tofy1
-        sum_log = 0.0
-        for j in range(1, x_val + 1):
-            prev = max(prev, eps)
-            current = (sigma * (2.0 * j - 1.0) / mu + 1.0 / prev) * (tofy1 ** 2)
-            current = max(current, eps)
-            sum_log += jnp.log(prev)
-            prev = current
-        
-        log_pdf = -float(gammaln(x_val + 1.0)) + float(base) + sum_log
-        return log_pdf
+    log_pdf_list = []
+    for i, x_val in enumerate(x_array):
+        mu_i = float(mu_arr[i])
+        sigma_i = float(sigma_arr[i])
+        eps_f = float(eps)
+        mu_i = max(mu_i, eps_f)
+        sigma_i = max(sigma_i, eps_f)
 
-    # Vectorize
-    x_array = jnp.atleast_1d(x_int)
-    log_pdf_list = [compute_log_pdf_scalar(x_val) for x_val in x_array]
-    log_pdf = jnp.array(log_pdf_list)
+        base_i = (1.0 - (1.0 + 2.0 * sigma_i * mu_i) ** 0.5) / sigma_i
+        tofy1_i = mu_i * (1.0 + 2.0 * sigma_i * mu_i) ** (-0.5)
 
-    # Return scalar if input was scalar
+        x_int_i = int(x_val)
+        if x_int_i == 0:
+            log_pdf_list.append(base_i)
+        else:
+            prev = tofy1_i
+            sum_log = 0.0
+            for j in range(1, x_int_i + 1):
+                prev = max(prev, eps_f)
+                current = (sigma_i * (2.0 * j - 1.0) / mu_i + 1.0 / prev) * (tofy1_i ** 2)
+                current = max(current, eps_f)
+                sum_log += float(np.log(prev))
+                prev = current
+            from scipy.special import gammaln as sp_gammaln
+            log_pdf_list.append(-sp_gammaln(x_int_i + 1.0) + base_i + sum_log)
+
+    log_pdf = jnp.asarray(log_pdf_list, dtype=jnp.float64)
     if jnp.ndim(x) == 0:
         log_pdf = log_pdf[0]
+    else:
+        log_pdf = log_pdf.reshape(jnp.asarray(x).shape)
 
     # Handle x < 0
     log_pdf = jnp.where(x < 0, -jnp.inf, log_pdf)
@@ -7240,6 +7309,10 @@ def pPIG(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
 
+    # Extract scalar values for use inside the loop
+    mu_scalar    = float(jnp.mean(mu))
+    sigma_scalar = float(jnp.mean(sigma))
+
     # Floor q to integer
     q_int = jnp.floor(q)
 
@@ -7248,11 +7321,11 @@ def pPIG(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
         q_val = float(q_val)
         if q_val < 0:
             return 0.0
-        
+
         # Sum from 0 to min(q_val, reasonable upper bound)
         max_x = min(int(q_val) + 1, 200)  # Limit for computational efficiency
         x_vals = jnp.arange(0, max_x)
-        pmf_vals = dPIG(x_vals, mu, sigma, log=False)
+        pmf_vals = dPIG(x_vals, mu_scalar, sigma_scalar, log=False)
         return float(jnp.sum(pmf_vals))
 
     # Vectorize
@@ -7314,12 +7387,17 @@ def qPIG(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
 
+    # Extract scalar values for use inside the loop
+    mu_scalar    = float(jnp.mean(mu))
+    sigma_scalar = float(jnp.mean(sigma))
+
     # Find quantile by searching
     def find_quantile(p_val):
         # Search from 0 upward
-        max_search = int(mu * 10 + 100)  # Reasonable upper bound
+        max_search = int(mu_scalar * 10 + 100)  # Reasonable upper bound
         for x in range(max_search):
-            cdf_val = pPIG(float(x), mu, sigma, lower_tail=True, log_p=False)
+            cdf_val = pPIG(float(x), mu_scalar, sigma_scalar,
+                           lower_tail=True, log_p=False)
             if cdf_val >= p_val:
                 return float(x)
         return float(max_search - 1)
@@ -7483,6 +7561,11 @@ def pSICHEL(q, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
 
+    # Extract scalar values for use inside the loop
+    mu_scalar    = float(jnp.mean(mu))
+    sigma_scalar = float(jnp.mean(sigma))
+    nu_scalar    = float(jnp.mean(nu))
+
     # Floor q to integer
     q_int = jnp.floor(q)
 
@@ -7491,11 +7574,11 @@ def pSICHEL(q, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
         q_val = float(q_val)
         if q_val < 0:
             return 0.0
-        
+
         # Sum from 0 to min(q_val, reasonable upper bound)
         max_x = min(int(q_val) + 1, 200)
         x_vals = jnp.arange(0, max_x)
-        pmf_vals = dSICHEL(x_vals, mu, sigma, nu, log=False)
+        pmf_vals = dSICHEL(x_vals, mu_scalar, sigma_scalar, nu_scalar, log=False)
         return float(jnp.sum(pmf_vals))
 
     # Vectorize
@@ -7560,12 +7643,18 @@ def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
 
+    # Extract scalar values for use inside the loop
+    mu_scalar    = float(jnp.mean(mu))
+    sigma_scalar = float(jnp.mean(sigma))
+    nu_scalar    = float(jnp.mean(nu))
+
     # Find quantile by searching
     def find_quantile(p_val):
         # Search from 0 upward
-        max_search = int(mu * 10 + 100)
+        max_search = int(mu_scalar * 10 + 100)
         for x in range(max_search):
-            cdf_val = pSICHEL(float(x), mu, sigma, nu, lower_tail=True, log_p=False)
+            cdf_val = pSICHEL(float(x), mu_scalar, sigma_scalar, nu_scalar,
+                              lower_tail=True, log_p=False)
             if cdf_val >= p_val:
                 return float(x)
         return float(max_search - 1)

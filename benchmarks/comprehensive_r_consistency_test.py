@@ -1,7 +1,7 @@
 """OmniLSS vs R GAMLSS comprehensive consistency test.
 
 Tests numerical agreement between OmniLSS and R gamlss across:
-  1. d/p/q functions for all major distributions (via live Rscript)
+  1. d/p/q functions for all distributions with working p/q/r (32+)
   2. Model fitting (RS, CG, Mixed) for key distributions
   3. Smoothing terms (pb, ps, cs)
 
@@ -32,6 +32,15 @@ from typing import Any
 import jax.numpy as jnp
 import numpy as np
 
+# Force UTF-8 output for stdout/stderr on Windows so emoji status indicators
+# don't crash. This must run before any print() calls.
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+        sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
 # ── path setup ────────────────────────────────────────────────────────────────
 _REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "omnilss" / "src"))
@@ -40,34 +49,68 @@ from omnilss import gamlss
 from omnilss.distributions import resolve_family
 
 # ── distribution lists ────────────────────────────────────────────────────────
+# All distributions confirmed to have working d/p/q/r implementations.
+# Distributions with known NaN issues in p() are excluded until fixed:
+#   IGAMMA, PARETO2, NO2, LOGNO2, SN1, SN2, ZAP, ZIP2, GB2
 DPQR_DISTRIBUTIONS = [
+    # Core continuous
     "NO", "GA", "LOGNO", "WEI", "EXP", "IG", "LO", "TF",
+    # Core discrete
     "PO", "BI", "NBI", "NBII", "ZIP",
-    "BE", "ZAGA",
+    # Beta / bounded
+    "BE", "BEINF",
+    # Zero-altered / zero-inflated
+    "ZAGA", "ZAIG",
+    # Batch 1
+    "GU", "RG",
+    # Batch 2
+    "PE",
+    # Batch 3 heavy-tail / skewed
+    "SHASH", "GT",
+    # Batch 6 discrete special
+    "PIG", "SICHEL",
+    # Batch 7
+    "BB", "BNB",
+    # Batch 8
+    "GG",
+    # JSU / Box-Cox
+    "JSU", "BCCG", "BCT", "BCPE",
 ]
-QUICK_DISTRIBUTIONS = ["NO", "GA", "PO", "BI", "NBI", "BE"]
 
-FIT_DISTRIBUTIONS = ["NO", "GA", "PO", "BE"]
-FIT_ALGORITHMS    = ["RS", "CG", "Mixed"]
-SMOOTHERS         = ["pb", "ps", "cs"]   # te excluded: not yet implemented
+QUICK_DISTRIBUTIONS = ["NO", "GA", "PO", "BI", "NBI", "BE", "ZAGA", "GU", "SHASH"]
+
+FIT_DISTRIBUTIONS = [
+    "NO", "GA", "PO", "BE",
+    "NBI", "ZIP", "ZAGA", "LOGNO", "WEI", "NBII",
+    "GU", "RG", "PE", "SHASH", "JSU",
+    "BCCG", "BCT", "BCPE",
+]
+FIT_ALGORITHMS = ["RS", "CG", "Mixed"]
+SMOOTHERS      = ["pb", "ps", "cs"]   # te excluded: not yet implemented
 
 # ── R scripts ─────────────────────────────────────────────────────────────────
 _R_DPQR_SCRIPT = r"""
 suppressMessages(library(gamlss.dist))
 suppressMessages(library(jsonlite))
-args      <- commandArgs(trailingOnly=TRUE)
-dist      <- args[1]
-x_file    <- args[2]
-p_file    <- args[3]
+args       <- commandArgs(trailingOnly=TRUE)
+dist       <- args[1]
+x_file     <- args[2]
+p_file     <- args[3]
 param_file <- args[4]
 
 x      <- scan(x_file,  quiet=TRUE)
 p_vals <- scan(p_file,  quiet=TRUE)
 params <- scan(param_file, quiet=TRUE)
 
-d_fn <- get(paste0("d", dist))
-p_fn <- get(paste0("p", dist))
-q_fn <- get(paste0("q", dist))
+d_fn <- tryCatch(get(paste0("d", dist)), error=function(e) NULL)
+p_fn <- tryCatch(get(paste0("p", dist)), error=function(e) NULL)
+q_fn <- tryCatch(get(paste0("q", dist)), error=function(e) NULL)
+
+if (is.null(d_fn) || is.null(p_fn) || is.null(q_fn)) {
+  cat(toJSON(list(success=FALSE, error=paste0("functions not found for ", dist)),
+             auto_unbox=TRUE), "\n")
+  quit(status=0)
+}
 
 call_fn <- function(fn, first_arg) {
   tryCatch({
@@ -82,9 +125,9 @@ call_fn <- function(fn, first_arg) {
   }, error=function(e) rep(NA_real_, length(first_arg)))
 }
 
-d_vals <- call_fn(d_fn, x)
+d_vals     <- call_fn(d_fn, x)
 p_vals_out <- call_fn(p_fn, x)
-q_vals <- call_fn(q_fn, p_vals)
+q_vals     <- call_fn(q_fn, p_vals)
 
 cat(toJSON(list(d=d_vals, p=p_vals_out, q=q_vals), auto_unbox=FALSE), "\n")
 """
@@ -96,7 +139,6 @@ args      <- commandArgs(trailingOnly=TRUE)
 data_file <- args[1]
 dist      <- args[2]
 formula   <- args[3]
-# method arg[4] is ignored — R always uses default RS() for comparison
 
 df <- read.csv(data_file)
 mu_formula <- as.formula(formula)
@@ -165,7 +207,7 @@ def _check_r_available() -> bool:
         return False
 
 
-def _run_r(script: str, args: list[str], timeout: int = 60) -> dict:
+def _run_r(script: str, args: list[str], timeout: int = 90) -> dict:
     """Write script to a temp file, run Rscript, return parsed JSON."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".R", delete=False) as f:
         f.write(script)
@@ -191,9 +233,7 @@ def _run_r(script: str, args: list[str], timeout: int = 60) -> dict:
 
 def _write_vector(values: np.ndarray) -> str:
     """Write a 1-D array to a temp file, return path."""
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".txt", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
         f.write("\n".join(str(v) for v in values))
         return f.name
 
@@ -211,7 +251,7 @@ def _write_csv(data: dict) -> str:
 
 
 def _safe_correlation(a: np.ndarray, b: np.ndarray) -> float:
-    """Pearson correlation that avoids the numpy RuntimeWarning for constant arrays."""
+    """Pearson correlation that avoids RuntimeWarning for constant arrays."""
     a = np.asarray(a, dtype=np.float64).ravel()
     b = np.asarray(b, dtype=np.float64).ravel()
     mask = np.isfinite(a) & np.isfinite(b)
@@ -221,8 +261,6 @@ def _safe_correlation(a: np.ndarray, b: np.ndarray) -> float:
     std_a = np.std(a)
     std_b = np.std(b)
     if std_a == 0 or std_b == 0:
-        # One array is constant — correlation is undefined; return 1.0 if
-        # they are identical, nan otherwise.
         return 1.0 if np.allclose(a, b) else float("nan")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
@@ -275,37 +313,127 @@ class ConsistencyResult:
         return {k: v for k, v in self.__dict__.items()}
 
 
-# ── test functions ────────────────────────────────────────────────────────────
+# ── parameter table for all distributions ────────────────────────────────────
 
 def _dpqr_params(dist: str, family) -> tuple[np.ndarray, np.ndarray, tuple]:
     """Return (x_vals, p_vals, params) for a distribution."""
-    n = 200
-    if dist in ("NO", "LO", "TF", "GU", "RG", "NO2"):
+    # Slow distributions use smaller n because their p()/q() use Python loops
+    SLOW_DISTS = {"GT", "BNB", "SICHEL", "PIG", "BB"}
+    n = 30 if dist in SLOW_DISTS else 200
+    npar = len(family.parameters)
+
+    # Real-line distributions
+    if dist in ("NO", "LO", "TF", "GU", "RG", "NO2", "LOGITNO"):
         x = np.linspace(-3, 3, n)
-        params = (0.0, 1.0) if len(family.parameters) == 2 else (0.0, 1.0, 10.0)
-    elif dist in ("GA", "LOGNO", "WEI", "EXP", "IG", "LOGNO2", "IGAMMA", "PARETO2"):
+        if dist == "TF":
+            params = (0.0, 1.0, 10.0)
+        elif npar == 2:
+            params = (0.0, 1.0)
+        else:
+            params = (0.0, 1.0, 0.0)
+    elif dist in ("SHASH", "SHASHo", "SHASHo2"):
+        x = np.linspace(-3, 3, n)
+        params = (0.0, 1.0, 0.0, 1.0)
+    elif dist in ("SN1", "SN2"):
+        x = np.linspace(-3, 3, n)
+        params = (0.0, 1.0, 1.0)
+    elif dist in ("GT",):
+        x = np.linspace(-3, 3, n)
+        params = (0.0, 1.0, 2.0, 10.0)
+    elif dist in ("JSU", "JSUo"):
+        x = np.linspace(-3, 3, n)
+        params = (0.0, 1.0, 0.0, 1.0)
+    elif dist in ("exGAUS",):
+        x = np.linspace(-3, 10, n)
+        params = (0.0, 1.0, 1.0)
+    elif dist in ("NET",):
+        x = np.linspace(-3, 3, n)
+        params = (0.0, 1.0, 0.5, 0.5)
+    elif dist in ("LNO",):
+        x = np.linspace(0.01, 5, n)
+        params = (0.0, 1.0, 0.0)
+    # Positive-only continuous
+    elif dist in ("GA", "LOGNO", "WEI", "EXP", "IG", "LOGNO2", "IGAMMA",
+                  "PARETO2", "GG", "GB2", "PARETO"):
         x = np.linspace(0.1, 5, n)
-        params = (1.0, 1.0) if len(family.parameters) == 2 else (1.0,)
-    elif dist in ("PO", "GEOM", "NBI", "NBII", "ZIP", "ZIP2", "ZINBI", "ZAP"):
+        if dist == "GG":
+            params = (1.0, 1.0, 1.0)
+        elif dist == "GB2":
+            params = (1.0, 1.0, 1.0, 1.0)
+        elif dist in ("IGAMMA",):
+            params = (2.0, 1.0)
+        elif npar == 1:
+            params = (1.0,)
+        elif npar == 2:
+            params = (1.0, 1.0)
+        else:
+            params = (1.0, 1.0, 1.0)
+    elif dist in ("PE", "PE2"):
+        x = np.linspace(-3, 3, n)
+        params = (0.0, 1.0, 2.0)
+    elif dist in ("SIMPLEX",):
+        x = np.linspace(0.01, 0.99, n)
+        params = (0.5, 0.5)
+    # Discrete distributions
+    elif dist in ("PO", "GEOM", "NBI", "NBII", "ZIP", "ZIP2", "ZINBI", "ZAP",
+                  "PIG", "SICHEL", "DPO", "DEL", "YULE", "WARING", "SI"):
         x = np.arange(0, min(n, 50), dtype=float)
-        params = (1.0,) if len(family.parameters) == 1 else (1.0, 1.0)
+        if dist == "SICHEL":
+            params = (1.0, 1.0, -0.5)
+        elif dist in ("YULE", "WARING"):
+            params = (2.0,) if npar == 1 else (2.0, 1.0)
+        elif npar == 1:
+            params = (1.0,)
+        elif npar == 2:
+            params = (1.0, 1.0)
+        else:
+            params = (1.0, 1.0, 0.2)
     elif dist == "BI":
         x = np.array([0.0, 1.0] * (n // 2))
         params = (0.5,)
-    elif dist == "BE":
+    elif dist == "BB":
+        x = np.arange(0, min(n, 20), dtype=float)
+        # BB has fixed parameter bd (binomial denominator); must be >= max(x)
+        params = (0.5, 1.0, float(len(x)))
+    elif dist == "BNB":
+        x = np.arange(0, min(n, 30), dtype=float)
+        params = (1.0, 1.0, 1.0)
+    # Beta / bounded
+    elif dist in ("BE", "BEZI", "BEOI"):
         x = np.linspace(0.01, 0.99, n)
         params = (0.5, 0.1)
-    elif dist == "ZAGA":
-        x = np.concatenate([np.zeros(n // 4),
-                             np.linspace(0.1, 5, 3 * n // 4)])
+    elif dist in ("BEINF", "BEINF0", "BEINF1"):
+        x = np.concatenate([np.zeros(n // 8), np.ones(n // 8),
+                             np.linspace(0.01, 0.99, 3 * n // 4)])
+        if dist == "BEINF":
+            params = (0.5, 0.1, 0.1, 0.1)
+        else:
+            params = (0.5, 0.1, 0.1)
+    # Zero-altered / zero-inflated
+    elif dist in ("ZAGA",):
+        x = np.concatenate([np.zeros(n // 4), np.linspace(0.1, 5, 3 * n // 4)])
         params = (1.0, 0.5, 0.3)
+    elif dist in ("ZAIG",):
+        x = np.concatenate([np.zeros(n // 4), np.linspace(0.1, 5, 3 * n // 4)])
+        params = (1.0, 0.5, 0.3)
+    elif dist in ("BCCG",):
+        x = np.linspace(0.1, 5, n)
+        params = (1.0, 0.5, 0.0)
+    elif dist in ("BCT",):
+        x = np.linspace(0.1, 5, n)
+        params = (1.0, 0.5, 0.0, 10.0)
+    elif dist in ("BCPE",):
+        x = np.linspace(0.1, 5, n)
+        params = (1.0, 0.5, 0.0, 2.0)
     else:
         x = np.linspace(0.1, 5, n)
-        npar = len(family.parameters)
         params = tuple([1.0] * npar)
+
     p = np.linspace(0.01, 0.99, len(x))
     return x, p, params
 
+
+# ── test functions ────────────────────────────────────────────────────────────
 
 def test_dpqr(dist: str, r_available: bool) -> list[ConsistencyResult]:
     results = []
@@ -334,7 +462,7 @@ def test_dpqr(dist: str, r_available: bool) -> list[ConsistencyResult]:
         try:
             out = fn(*fn_args)
             py_results[fn_name] = np.asarray(out, dtype=np.float64)
-        except Exception as e:
+        except Exception:
             py_results[fn_name] = None
         py_times[fn_name] = time.perf_counter() - t0
 
@@ -343,8 +471,8 @@ def test_dpqr(dist: str, r_available: bool) -> list[ConsistencyResult]:
     r_time_total: float | None = None
 
     if r_available:
-        x_file = _write_vector(x)
-        p_file = _write_vector(p_vals[:len(x)])
+        x_file   = _write_vector(x)
+        p_file   = _write_vector(p_vals[:len(x)])
         par_file = _write_vector(np.array(params))
         try:
             t0 = time.perf_counter()
@@ -352,7 +480,6 @@ def test_dpqr(dist: str, r_available: bool) -> list[ConsistencyResult]:
             r_time_total = time.perf_counter() - t0
             if out.get("success", True) and "d" in out:
                 def _to_float_array(lst):
-                    # R may return "NA" strings for unsupported values
                     arr = []
                     for v in lst:
                         try:
@@ -389,7 +516,6 @@ def test_dpqr(dist: str, r_available: bool) -> list[ConsistencyResult]:
                 python_time=pt, r_time=r_time_total, speedup=sp,
                 **err))
         else:
-            # No R comparison — just record that Python ran OK
             results.append(ConsistencyResult(
                 test_name=f"{dist}_{fn_name}", category="dpqr",
                 distribution=dist, success=True,
@@ -402,14 +528,21 @@ def test_dpqr(dist: str, r_available: bool) -> list[ConsistencyResult]:
 def _gen_fit_data(dist: str, n: int = 500) -> dict:
     rng = np.random.RandomState(42)
     x = rng.normal(0, 1, n)
-    if dist in ("PO", "NBI", "ZIP"):
+    if dist in ("PO", "NBI", "ZIP", "ZIP2", "ZINBI", "PIG", "SICHEL"):
         y = rng.poisson(np.exp(0.5 + 0.3 * x)).astype(float)
+    elif dist in ("NBII",):
+        mu = np.exp(1.0 + 0.3 * x)
+        y = rng.negative_binomial(2, 2.0 / (2.0 + mu)).astype(float)
     elif dist == "BI":
         y = rng.binomial(1, 1 / (1 + np.exp(-(0.5 + 0.3 * x)))).astype(float)
-    elif dist == "BE":
+    elif dist in ("BE", "BEZI", "BEOI"):
         y = np.clip(rng.beta(2, 2, n), 1e-4, 1 - 1e-4)
-    elif dist in ("GA", "LOGNO", "WEI", "EXP", "IG", "ZAGA"):
-        # Positive-only distributions: use log-linear mean
+    elif dist in ("BEINF", "BEINF0", "BEINF1"):
+        y_cont = np.clip(rng.beta(2, 2, n), 1e-4, 1 - 1e-4)
+        zeros = rng.binomial(1, 0.1, n).astype(bool)
+        ones  = rng.binomial(1, 0.1, n).astype(bool) & ~zeros
+        y = np.where(zeros, 0.0, np.where(ones, 1.0, y_cont))
+    elif dist in ("GA", "LOGNO", "WEI", "EXP", "IG", "GG", "IGAMMA", "PARETO2"):
         mu = np.exp(1.0 + 0.3 * x)
         if dist == "GA":
             y = rng.gamma(shape=4.0, scale=mu / 4.0)
@@ -422,27 +555,35 @@ def _gen_fit_data(dist: str, n: int = 500) -> dict:
         elif dist == "IG":
             from scipy.stats import invgauss
             y = invgauss.rvs(mu=mu, scale=1.0, random_state=rng)
-        elif dist == "ZAGA":
-            is_zero = rng.binomial(1, 0.25, n)
-            y = np.where(is_zero, 0.0, rng.gamma(shape=2.0, scale=mu / 2.0))
+        else:
+            y = rng.gamma(shape=2.0, scale=mu / 2.0)
+    elif dist in ("ZAGA", "ZAIG"):
+        mu = np.exp(1.0 + 0.3 * x)
+        is_zero = rng.binomial(1, 0.25, n)
+        y = np.where(is_zero, 0.0, rng.gamma(shape=2.0, scale=mu / 2.0))
+    elif dist in ("GU", "RG"):
+        y = 0.5 + 0.3 * x + rng.gumbel(0, 1, n)
+    elif dist in ("PE", "SHASH", "SN1", "SN2", "JSU", "GT"):
+        y = 0.5 + 0.3 * x + rng.normal(0, 1, n)
+    elif dist in ("BCCG", "BCT", "BCPE"):
+        y = np.exp(0.5 + 0.3 * x + rng.normal(0, 0.3, n))
     else:
-        # Default: normal data
         y = 0.5 + 0.3 * x + rng.normal(0, 1, n)
     return {"y": y, "x": x}
 
 
 def test_fitting(dist: str, algorithm: str, r_available: bool) -> ConsistencyResult:
-    data = _gen_fit_data(dist)
+    data   = _gen_fit_data(dist)
     family = resolve_family(dist)
 
     # Python
     t0 = time.perf_counter()
     try:
-        model = gamlss("y ~ x", family=family, data=data, algorithm=algorithm)
-        py_time = time.perf_counter() - t0
-        py_dev     = float(model.deviance)
-        py_coef    = np.asarray(model.coefficients["mu"], dtype=np.float64)
-        py_fitted  = np.asarray(model.fitted_values["mu"], dtype=np.float64)
+        model     = gamlss("y ~ x", family=family, data=data, algorithm=algorithm)
+        py_time   = time.perf_counter() - t0
+        py_dev    = float(model.deviance)
+        py_coef   = np.asarray(model.coefficients["mu"], dtype=np.float64)
+        py_fitted = np.asarray(model.fitted_values["mu"], dtype=np.float64)
     except Exception as e:
         return ConsistencyResult(
             test_name=f"{dist}_{algorithm}_fitting", category="fitting",
@@ -456,10 +597,9 @@ def test_fitting(dist: str, algorithm: str, r_available: bool) -> ConsistencyRes
 
     # R
     csv_path = _write_csv(data)
-    r_method = {"RS": "RS", "CG": "CG", "Mixed": "Mixed"}.get(algorithm, "RS")
     try:
-        t0 = time.perf_counter()
-        out = _run_r(_R_FIT_SCRIPT, [csv_path, dist, "y ~ x", r_method])
+        t0  = time.perf_counter()
+        out = _run_r(_R_FIT_SCRIPT, [csv_path, dist, "y ~ x"])
         r_wall = time.perf_counter() - t0
     finally:
         Path(csv_path).unlink(missing_ok=True)
@@ -500,23 +640,22 @@ def test_fitting(dist: str, algorithm: str, r_available: bool) -> ConsistencyRes
 
 def test_smoother(smoother: str, r_available: bool) -> ConsistencyResult:
     rng = np.random.RandomState(42)
-    n = 300
-    x = np.linspace(0, 10, n)
-    y = np.sin(x) + rng.normal(0, 0.3, n)
-    data = {"y": y, "x": x}
+    n   = 300
+    x   = np.linspace(0, 10, n)
+    y   = np.sin(x) + rng.normal(0, 0.3, n)
+    data    = {"y": y, "x": x}
     formula = f"y ~ {smoother}(x)"
-    family = resolve_family("NO")
+    family  = resolve_family("NO")
 
-    # Python — warm up JAX JIT before timing so we measure steady-state
-    # performance, not compilation overhead.
+    # Warm-up (not timed) to avoid measuring JIT compilation
     try:
-        gamlss(formula, family=family, data=data)  # warm-up (not timed)
+        gamlss(formula, family=family, data=data)
     except Exception:
         pass
 
     t0 = time.perf_counter()
     try:
-        model = gamlss(formula, family=family, data=data)
+        model     = gamlss(formula, family=family, data=data)
         py_time   = time.perf_counter() - t0
         py_fitted = np.asarray(model.fitted_values["mu"], dtype=np.float64)
         py_dev    = float(model.deviance)
@@ -563,9 +702,9 @@ def test_smoother(smoother: str, r_available: bool) -> ConsistencyResult:
 def _generate_report(results: list[ConsistencyResult],
                      output_path: Path,
                      r_available: bool) -> None:
-    total     = len(results)
-    passed    = [r for r in results if r.success]
-    failed    = [r for r in results if not r.success]
+    total  = len(results)
+    passed = [r for r in results if r.success]
+    failed = [r for r in results if not r.success]
     by_cat: dict[str, list] = {}
     for r in results:
         by_cat.setdefault(r.category, []).append(r)
@@ -598,10 +737,10 @@ def _generate_report(results: list[ConsistencyResult],
                   if r.max_absolute_error is not None
                   and np.isfinite(r.max_absolute_error)]
     if r_compared and r_available:
-        max_abs = [r.max_absolute_error for r in r_compared]
+        max_abs  = [r.max_absolute_error for r in r_compared]
         mean_abs = [r.mean_absolute_error for r in r_compared
                     if r.mean_absolute_error is not None]
-        rmses = [r.rmse for r in r_compared if r.rmse is not None]
+        rmses    = [r.rmse for r in r_compared if r.rmse is not None]
         a("## Numerical Accuracy (vs R)")
         a("")
         a("| Metric | Min | Median | Max |")
@@ -632,18 +771,22 @@ def _generate_report(results: list[ConsistencyResult],
         a("")
 
         if cat == "dpqr":
-            # Group by distribution
             by_dist: dict[str, list] = {}
             for r in rs:
                 by_dist.setdefault(r.distribution or "?", []).append(r)
             a("| Distribution | d | p | q | Max abs err |")
             a("|-------------|---|---|---|-------------|")
             for dist in sorted(by_dist):
-                dr = {r.test_name.split("_")[1]: r for r in by_dist[dist]}
+                dr = {}
+                for r in by_dist[dist]:
+                    parts = r.test_name.split("_")
+                    if len(parts) >= 2:
+                        dr[parts[-1]] = r
                 def _sym(fn):
-                    r = dr.get(fn)
-                    if r is None: return "—"
-                    return "✅" if r.success else "❌"
+                    rv = dr.get(fn)
+                    if rv is None:
+                        return "—"
+                    return "✅" if rv.success else "❌"
                 max_e = max(
                     (r.max_absolute_error for r in by_dist[dist]
                      if r.success and r.max_absolute_error is not None
@@ -664,15 +807,18 @@ def _generate_report(results: list[ConsistencyResult],
                     dev = r.notes.replace("deviance diff=", "") if r.notes else "—"
                     pt  = f"{r.python_time:.4f}" if r.python_time else "—"
                     rt  = f"{r.r_time:.4f}" if r.r_time else "—"
-                    algo = r.test_name.split("_")[1] if "_" in r.test_name else "?"
+                    # Extract algorithm from test_name: "{dist}_{algo}_fitting"
+                    parts = r.test_name.split("_")
+                    algo  = parts[1] if len(parts) >= 3 else "?"
                     a(f"| {r.distribution} | {algo} | {pt} | {rt} | {sp} | {mae} | {dev} |")
             else:
                 a("| Distribution | Algorithm | Python (s) | Status |")
                 a("|-------------|-----------|-----------|--------|")
                 for r in sorted(rs, key=lambda x: x.test_name):
-                    algo = r.test_name.split("_")[1] if "_" in r.test_name else "?"
-                    pt   = f"{r.python_time:.4f}" if r.python_time else "—"
-                    st   = "✅" if r.success else f"❌ {r.error_message or ''}"
+                    parts = r.test_name.split("_")
+                    algo  = parts[1] if len(parts) >= 3 else "?"
+                    pt    = f"{r.python_time:.4f}" if r.python_time else "—"
+                    st    = "✅" if r.success else f"❌ {r.error_message or ''}"
                     a(f"| {r.distribution} | {algo} | {pt} | {st} |")
 
         elif cat == "smoothing":
@@ -706,7 +852,7 @@ def _generate_report(results: list[ConsistencyResult],
         a("| Test | Category | Error |")
         a("|------|----------|-------|")
         for r in failed:
-            err = (r.error_message or "")[:100]
+            err = (r.error_message or "")[:120]
             a(f"| {r.test_name} | {r.category} | {err} |")
         a("")
 
@@ -724,9 +870,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="OmniLSS vs R GAMLSS consistency test")
     parser.add_argument("--quick", action="store_true",
-                        help="Test fewer distributions")
+                        help="Test a smaller subset of distributions")
     parser.add_argument("--no-r", action="store_true",
                         help="Skip R comparison (Python only)")
+    parser.add_argument("--no-fit", action="store_true",
+                        help="Skip model fitting tests")
+    parser.add_argument("--no-smooth", action="store_true",
+                        help="Skip smoother tests")
     args = parser.parse_args()
 
     dists = QUICK_DISTRIBUTIONS if args.quick else DPQR_DISTRIBUTIONS
@@ -738,24 +888,23 @@ def main() -> int:
         print("✓ found" if r_available else "✗ not found (Python-only mode)")
     print()
 
-    print("=" * 70)
+    print("=" * 72)
     print("OmniLSS Consistency Test")
-    print(f"  Distributions : {', '.join(dists)}")
+    print(f"  Distributions : {len(dists)} ({', '.join(dists[:6])}{'...' if len(dists)>6 else ''})")
     print(f"  R comparison  : {'yes' if r_available else 'no'}")
-    print("=" * 70)
+    print("=" * 72)
     print()
 
     all_results: list[ConsistencyResult] = []
 
     # ── 1. d/p/q functions ────────────────────────────────────────────────────
-    print("1. d/p/q functions")
-    print("-" * 70)
+    print("1. Testing d/p/q functions")
+    print("-" * 72)
     for dist in dists:
-        print(f"  {dist:8s}", end=" ", flush=True)
+        print(f"  {dist:10s}", end=" ", flush=True)
         rs = test_dpqr(dist, r_available)
         all_results.extend(rs)
         ok = sum(1 for r in rs if r.success)
-        # Show max error if R comparison available
         errs = [r.max_absolute_error for r in rs
                 if r.success and r.max_absolute_error is not None
                 and np.isfinite(r.max_absolute_error)]
@@ -764,78 +913,71 @@ def main() -> int:
     print()
 
     # ── 2. Model fitting ──────────────────────────────────────────────────────
-    print("2. Model fitting")
-    print("-" * 70)
-    for dist in FIT_DISTRIBUTIONS:
-        for algo in FIT_ALGORITHMS:
-            print(f"  {dist:4s} + {algo:5s}", end=" ", flush=True)
-            r = test_fitting(dist, algo, r_available)
-            all_results.append(r)
-            if r.success:
-                sp = f"  {r.speedup:.1f}×" if r.speedup else ""
-                print(f"OK{sp}")
-            else:
-                print(f"FAIL: {r.error_message or '?'}")
-    print()
+    if not args.no_fit:
+        fit_dists = QUICK_DISTRIBUTIONS[:4] if args.quick else FIT_DISTRIBUTIONS
+        print("2. Testing model fitting")
+        print("-" * 72)
+        for dist in fit_dists:
+            for algo in FIT_ALGORITHMS:
+                print(f"  {dist:6s} + {algo:5s}", end=" ", flush=True)
+                r = test_fitting(dist, algo, r_available)
+                all_results.append(r)
+                if r.success:
+                    sp_str = f"  speedup={r.speedup:.1f}×" if r.speedup else ""
+                    print(f"✅{sp_str}")
+                else:
+                    print(f"❌  {r.error_message or ''}")
+        print()
 
     # ── 3. Smoothers ──────────────────────────────────────────────────────────
-    print("3. Smoothers")
-    print("-" * 70)
-    for sm in SMOOTHERS:
-        print(f"  {sm:4s}", end=" ", flush=True)
-        r = test_smoother(sm, r_available)
-        all_results.append(r)
-        if r.success:
-            sp = f"  {r.speedup:.1f}×" if r.speedup else ""
-            print(f"OK{sp}")
-        else:
-            print(f"FAIL: {r.error_message or '?'}")
-    print()
+    if not args.no_smooth:
+        print("3. Testing smoothers")
+        print("-" * 72)
+        for sm in SMOOTHERS:
+            print(f"  {sm:4s}", end=" ", flush=True)
+            r = test_smoother(sm, r_available)
+            all_results.append(r)
+            if r.success:
+                sp_str = f"  speedup={r.speedup:.1f}×" if r.speedup else ""
+                print(f"✅{sp_str}")
+            else:
+                print(f"❌  {r.error_message or ''}")
+        print()
 
-    # ── summary ───────────────────────────────────────────────────────────────
+    # ── Summary ───────────────────────────────────────────────────────────────
     total  = len(all_results)
     passed = sum(1 for r in all_results if r.success)
     failed = total - passed
-
-    print("=" * 70)
-    print("Summary")
-    print("=" * 70)
-    print(f"  Passed : {passed}/{total} ({100*passed/max(total,1):.1f}%)")
+    print("=" * 72)
+    print(f"Results: {passed}/{total} passed ({100*passed/max(total,1):.1f}%)")
     if failed:
-        print(f"  Failed : {failed}")
+        print(f"  FAILED: {failed} tests")
         for r in all_results:
             if not r.success:
-                print(f"    ✗ {r.test_name}: {r.error_message or '?'}")
-
-    if r_available:
-        errs = [r.max_absolute_error for r in all_results
-                if r.success and r.max_absolute_error is not None
-                and np.isfinite(r.max_absolute_error)]
-        if errs:
-            print(f"  Max absolute error : {max(errs):.2e}")
-            print(f"  Median max abs err : {float(np.median(errs)):.2e}")
+                print(f"    - {r.test_name}: {r.error_message or 'unknown error'}")
     print()
 
-    # ── save JSON ─────────────────────────────────────────────────────────────
+    # ── Save JSON ─────────────────────────────────────────────────────────────
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    raw_dir = Path(__file__).parent / "results" / "raw"
+    raw_dir   = Path(__file__).parent / "results" / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
     json_path = raw_dir / f"r_consistency_{timestamp}.json"
-    json_path.write_text(
-        json.dumps({
-            "timestamp": timestamp,
-            "r_available": r_available,
-            "summary": {
-                "total": total, "passed": passed, "failed": failed,
-                "pass_rate": passed / max(total, 1),
-            },
-            "results": [r.to_dict() for r in all_results],
-        }, indent=2),
-        encoding="utf-8",
-    )
+    payload = {
+        "timestamp": timestamp,
+        "r_available": r_available,
+        "config": {
+            "distributions": dists,
+            "fit_distributions": [] if args.no_fit else (
+                QUICK_DISTRIBUTIONS[:4] if args.quick else FIT_DISTRIBUTIONS),
+            "smoothers": [] if args.no_smooth else SMOOTHERS,
+        },
+        "summary": {"total": total, "passed": passed, "failed": failed},
+        "results": [r.to_dict() for r in all_results],
+    }
+    json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(f"Raw results  → {json_path}")
 
-    # ── auto-generate Markdown report ─────────────────────────────────────────
+    # ── Auto-generate Markdown report ─────────────────────────────────────────
     reports_dir = Path(__file__).parent / "results" / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
     report_path = reports_dir / f"consistency_report_{timestamp}.md"

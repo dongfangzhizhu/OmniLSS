@@ -17,7 +17,7 @@ Usage
     python benchmarks/comprehensive_performance_test.py
     python benchmarks/comprehensive_performance_test.py --quick      # 3 dists
     python benchmarks/comprehensive_performance_test.py --no-r       # Python only
-    python benchmarks/comprehensive_performance_test.py --large      # add n=50000,500000
+    python benchmarks/comprehensive_performance_test.py --large      # add n=50000,500000,5000000
     python benchmarks/comprehensive_performance_test.py --n-repeats 5
 """
 
@@ -36,6 +36,15 @@ from pathlib import Path
 import jax
 import numpy as np
 
+# Force UTF-8 output for stdout/stderr on Windows so emoji/special characters
+# in console output don't crash. This must run before any print() calls.
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+        sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
 # ── path setup ────────────────────────────────────────────────────────────────
 _REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "omnilss" / "src"))
@@ -44,10 +53,26 @@ from omnilss import gamlss
 from omnilss.distributions import resolve_family
 
 # ── constants ─────────────────────────────────────────────────────────────────
-DISTRIBUTIONS = ["NO", "GA", "LOGNO", "PO", "BI", "NBI", "BE", "ZIP", "ZAGA"]
+# All distributions with confirmed working d/p/q/r and fitting support
+DISTRIBUTIONS = [
+    # Core continuous
+    "NO", "GA", "LOGNO", "WEI", "EXP", "IG", "LO", "TF",
+    # Core discrete
+    "PO", "BI", "NBI", "NBII", "ZIP",
+    # Beta / bounded
+    "BE",
+    # Zero-altered
+    "ZAGA",
+    # Batch 1
+    "GU", "RG", "PE",
+    # Batch 3 heavy-tail / skewed
+    "SHASH", "JSU",
+    # Box-Cox
+    "BCCG", "BCT", "BCPE",
+]
 QUICK_DISTRIBUTIONS = ["NO", "GA", "PO"]
 DATA_SIZES = [100, 500, 5000]
-LARGE_DATA_SIZES = [100, 500, 5000, 50_000, 500_000]
+LARGE_DATA_SIZES = [100, 500, 5000, 50_000, 500_000, 5_000_000]
 FORMULAS = ["y ~ 1", "y ~ x1", "y ~ x1 + x2"]
 N_REPEATS = 3
 WARMUP = 1
@@ -94,7 +119,7 @@ def _generate_data(dist: str, n: int, seed: int = 42) -> dict[str, np.ndarray]:
 
     if dist == "NO":
         y = 10.0 + 2.0 * x1 + rng.normal(0, 2.5, n)
-    elif dist == "LOGNO":
+    elif dist in ("LOGNO", "LOGNO2"):
         y = np.exp(rng.normal(2.0 + 0.3 * x1, 0.6, n))
     elif dist == "GA":
         mu = np.exp(2.0 + 0.5 * x1)
@@ -103,7 +128,10 @@ def _generate_data(dist: str, n: int, seed: int = 42) -> dict[str, np.ndarray]:
         y = rng.poisson(np.exp(1.0 + 0.3 * x1)).astype(float)
     elif dist == "BI":
         y = rng.binomial(1, 1 / (1 + np.exp(-0.5 * x1))).astype(float)
-    elif dist == "NBI":
+    elif dist in ("NBI", "PIG", "SICHEL"):
+        mu = np.exp(1.5 + 0.3 * x1)
+        y = rng.negative_binomial(2.0, 2.0 / (2.0 + mu)).astype(float)
+    elif dist == "NBII":
         mu = np.exp(1.5 + 0.3 * x1)
         y = rng.negative_binomial(2.0, 2.0 / (2.0 + mu)).astype(float)
     elif dist == "BE":
@@ -115,6 +143,36 @@ def _generate_data(dist: str, n: int, seed: int = 42) -> dict[str, np.ndarray]:
     elif dist == "ZAGA":
         mu = np.exp(1.5 + 0.2 * x1)
         y = np.where(rng.binomial(1, 0.25, n), 0.0, rng.gamma(2.78, mu / 2.78))
+    elif dist == "ZAIG":
+        mu = np.exp(1.5 + 0.2 * x1)
+        y = np.where(rng.binomial(1, 0.25, n), 0.0, rng.gamma(2.78, mu / 2.78))
+    elif dist == "WEI":
+        mu = np.exp(1.5 + 0.3 * x1)
+        y = rng.weibull(2.0, n) * mu
+    elif dist == "EXP":
+        mu = np.exp(1.0 + 0.3 * x1)
+        y = rng.exponential(mu)
+    elif dist == "IG":
+        mu = np.exp(1.0 + 0.3 * x1)
+        # Approximate inverse Gaussian via normal approximation for speed
+        y = np.abs(rng.normal(mu, mu * 0.5))
+    elif dist in ("LO",):
+        y = 0.5 + 0.3 * x1 + rng.logistic(0, 1, n)
+    elif dist == "TF":
+        y = 0.5 + 0.3 * x1 + rng.standard_t(10, n)
+    elif dist in ("GU",):
+        y = 0.5 + 0.3 * x1 + rng.gumbel(0, 1, n)
+    elif dist in ("RG",):
+        y = 0.5 + 0.3 * x1 - rng.gumbel(0, 1, n)
+    elif dist in ("PE", "NO2"):
+        y = 0.5 + 0.3 * x1 + rng.normal(0, 1, n)
+    elif dist in ("SHASH", "SN1", "SN2", "JSU", "GT"):
+        y = 0.5 + 0.3 * x1 + rng.normal(0, 1, n)
+    elif dist in ("BCCG", "BCT", "BCPE"):
+        y = np.exp(0.5 + 0.3 * x1 + rng.normal(0, 0.3, n))
+    elif dist in ("IGAMMA", "PARETO2", "GG", "GB2"):
+        mu = np.exp(1.0 + 0.3 * x1)
+        y = rng.gamma(2.0, mu / 2.0)
     else:
         y = rng.normal(0, 1, n)
 
@@ -435,7 +493,7 @@ def main() -> int:
     parser.add_argument("--no-r", action="store_true",
                         help="Skip R comparison (Python timing only)")
     parser.add_argument("--large", action="store_true",
-                        help="Include large data sizes (50k, 500k) — Python only")
+                        help="Include large data sizes (50k, 500k, 5M) — Python only for n>=50k")
     parser.add_argument("--n-repeats", type=int, default=N_REPEATS,
                         help=f"Timing repetitions (default {N_REPEATS})")
     args = parser.parse_args()
