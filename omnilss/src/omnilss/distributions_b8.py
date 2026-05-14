@@ -108,6 +108,7 @@ def _gg_log_pdf(y, mu, sigma, nu):
 
 
 def GG() -> GeneralizedGammaFamily:
+    from .dpqr_functions import pGG, qGG, rGG
     return build_ad_family(
         family_class=GeneralizedGammaFamily,
         name="GG",
@@ -118,6 +119,9 @@ def GG() -> GeneralizedGammaFamily:
         link_functions={"mu": log_link, "sigma": log_link, "nu": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": log_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": log_derivative},
+        p=pGG,
+        q=qGG,
+        r=rGG,
     )
 
 

@@ -289,6 +289,17 @@ def _gt_log_pdf(y, mu, sigma, nu, tau):
 
 def GT() -> GeneralisedTFamily:
     _attach_numeric_real_line_dpq(GeneralisedTFamily, _gt_log_pdf)
+    # _attach_numeric_real_line_dpq sets instance methods (with self).
+    # Wrap them as standalone functions for build_ad_family.
+    _p_method = GeneralisedTFamily.p
+    _q_method = GeneralisedTFamily.q
+
+    def _p_standalone(x, *params, lower_tail=True, log_p=False):
+        return _p_method(None, x, *params)
+
+    def _q_standalone(probs, *params, lower_tail=True, log_p=False):
+        return _q_method(None, probs, *params)
+
     return build_ad_family(
         family_class=GeneralisedTFamily,
         name="GT",
@@ -300,8 +311,8 @@ def GT() -> GeneralisedTFamily:
         link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
         link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative, "tau": log_derivative},
         d=dGT,
-        p=pGT,
-        q=qGT,
+        p=_p_standalone,
+        q=_q_standalone,
         r=rGT,
     )
 

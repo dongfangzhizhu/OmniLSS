@@ -79,6 +79,7 @@ def _pig_log_pdf(y, mu, sigma):
 
 
 def PIG() -> PoissonInverseGaussianFamily:
+    from .dpqr_functions import pPIG, qPIG, rPIG
     return build_ad_family(
         family_class=PoissonInverseGaussianFamily,
         name="PIG",
@@ -89,6 +90,9 @@ def PIG() -> PoissonInverseGaussianFamily:
         link_functions={"mu": log_link, "sigma": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative},
+        p=pPIG,
+        q=qPIG,
+        r=rPIG,
     )
 
 
@@ -194,6 +198,7 @@ def _sichel_log_pdf(y, mu, sigma, nu):
 
 
 def SICHEL() -> SichelFamily:
+    from .dpqr_functions import pSICHEL, qSICHEL, rSICHEL
     return build_ad_family(
         family_class=SichelFamily,
         name="SICHEL",
@@ -204,6 +209,9 @@ def SICHEL() -> SichelFamily:
         link_functions={"mu": log_link, "sigma": log_link, "nu": identity_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": identity_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": identity_derivative},
+        p=pSICHEL,
+        q=qSICHEL,
+        r=rSICHEL,
     )
 
 

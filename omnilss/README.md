@@ -23,21 +23,21 @@ Each R call is a fresh Rscript process (no within-process caching).
 
 | Distribution | Mean speedup (warm) | Range | Cold-start |
 |-------------|---------------------|-------|-----------|
-| NO (Normal) | **111×** | 89–149× | ~0.2–0.5s |
+| NO (Normal) | **111×** | 84–251× | ~0.2–0.3s |
 | LOGNO (Log-Normal) | **110×** | 100–148× | ~0.2s |
-| PO (Poisson) | **56×** | 29–82× | ~0.05s |
-| GA (Gamma) | **33×** | 23–40× | ~0.2s |
+| PO (Poisson) | **65×** | 33–102× | ~0.04s |
+| GA (Gamma) | **33×** | 25–40× | ~0.2s |
 | BI (Binomial) | **65×** | 29–119× | ~0.2s |
 | NBI (Neg. Binomial) | **35×** | 13–55× | ~0.2s |
 | BE (Beta) | **27×** | 22–33× | ~0.2s |
 | ZIP | **22×** | 12–27× | ~0.2s |
 | ZAGA | **16×** | 14–20× | ~0.2s |
 
-**Overall: 22–149× faster than R gamlss (warm, steady-state). Mean 67×.**
+**Overall: 25–251× faster than R gamlss (warm, steady-state). Mean 72×.**
 
 > **JAX JIT note**: The first call to `gamlss()` compiles the computation
 > graph (~0.05–0.5s, one-time per Python session). Subsequent calls with the
-> same model structure are 22–149× faster than R. For single-call scripts,
+> same model structure are 25–251× faster than R. For single-call scripts,
 > add a warm-up call first. See [docs/performance_guide.md](../docs/performance_guide.md).
 
 Consistency test (33 tests, 100% pass rate, live R comparison):
@@ -203,14 +203,15 @@ Test suite: **587 tests, 100% pass rate** (92 validation tests comparing Python 
 | Metric | Value |
 |--------|-------|
 | Distribution families | 80+ |
+| Distributions with full d/p/q/r | **32** (was 26, fixed GT/GG/BB/BNB/PIG/SICHEL) |
 | Test cases | 587 |
 | Core test pass rate | 100% (RS/CG/Mixed/R-consistency) |
 | Lines of code | ~30,000 |
-| Benchmark speedup (CPU, warm) | 22–149× vs R (mean 67×) |
+| Benchmark speedup (CPU, warm) | 25–251× vs R (mean 72×) |
 | Benchmark speedup (CPU, cold) | ~0.05–0.5s first call, then fast |
 | Smoother speedup (after fix) | pb: 13×, ps: 6×, cs: 7× faster |
 | Consistency with R | 100% (33/33 tests) |
-| Benchmark last run | 2026-05-13 |
+| Benchmark last run | 2026-05-15 |
 
 ## Comparison with Similar Tools
 

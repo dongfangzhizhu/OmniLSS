@@ -115,6 +115,7 @@ def BB() -> BetaBinomialFamily:
         data = {"y": counts, "bd": denominators}
         model = gamlss(formula="y ~ x", family=BB(), data=data)
     """
+    from .dpqr_functions import pBB, qBB, rBB
     return build_ad_family(
         family_class=BetaBinomialFamily,
         name="BB",
@@ -126,6 +127,9 @@ def BB() -> BetaBinomialFamily:
         link_inverses={"mu": logit_inverse, "sigma": log_inverse, "bd": identity_inverse},
         link_derivatives={"mu": logit_derivative, "sigma": log_derivative, "bd": identity_derivative},
         fixed_parameters=("bd",),  # bd is fixed, not estimated
+        p=pBB,
+        q=qBB,
+        r=rBB,
     )
 
 
@@ -179,6 +183,7 @@ def _bnb_log_pdf(y, mu, sigma, nu):
 
 
 def BNB() -> BetaNegativeBinomialFamily:
+    from .dpqr_functions import pBNB, qBNB, rBNB
     return build_ad_family(
         family_class=BetaNegativeBinomialFamily,
         name="BNB",
@@ -189,6 +194,9 @@ def BNB() -> BetaNegativeBinomialFamily:
         link_functions={"mu": log_link, "sigma": log_link, "nu": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": log_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": log_derivative},
+        p=pBNB,
+        q=qBNB,
+        r=rBNB,
     )
 
 
