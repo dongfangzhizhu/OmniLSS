@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 # Enable float64 precision for numerical accuracy
-import jax
-jax.config.update("jax_enable_x64", True)
-
 
 """Batch 14: Skew distribution variants and SHASH variants."""
 from dataclasses import dataclass

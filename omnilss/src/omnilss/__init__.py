@@ -610,7 +610,6 @@ __all__ = [
     "gamlss",
     "gamlss_control",
     "gamlss_control_exact",
-    "gamlssML",
     "gamlss_ml",
     "glim_control",
     "glim_control_exact",
