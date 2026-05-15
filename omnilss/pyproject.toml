@@ -53,6 +53,9 @@ Issues = "https://github.com/dongfangzhizhu/OmniLSS/issues"
 Changelog = "https://github.com/dongfangzhizhu/OmniLSS/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
+serialization = [
+  "cloudpickle>=3.0.0",
+]
 deep = [
   "flax>=0.7.0",
   "optax>=0.1.7",
@@ -81,7 +84,7 @@ benchmarks = [
   "matplotlib>=3.5.0",
 ]
 all = [
-  "omnilss[deep,sklearn,scoring,dev,docs,benchmarks]",
+  "omnilss[deep,serialization,sklearn,scoring,dev,docs,benchmarks]",
 ]
 
 [tool.setuptools]

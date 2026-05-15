@@ -686,6 +686,8 @@ __all__ = [
     "LINK_REGISTRY",
     "get_link",
     "get_link_fn",
+    "save_model",
+    "load_model",
 ]
 
 
@@ -762,5 +764,12 @@ try:
         sqrt_inverse,
         sqrt_link,
     )
+except ImportError:
+    pass
+
+
+# Serialization API
+try:
+    from .serialization import load_model, save_model
 except ImportError:
     pass
