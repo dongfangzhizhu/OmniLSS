@@ -1,4 +1,4 @@
-"""Cole-Green (CG) Algorithm for GAMLSS.
+"""Joint L-BFGS optimizer wrapper (historical CG module).
 
 The CG algorithm is one of the three core GAMLSS fitting algorithms.
 Unlike RS which updates each parameter using only the diagonal Hessian block,
@@ -213,7 +213,7 @@ def _irls_step_with_adjustment(
 # ---------------------------------------------------------------------------
 
 
-def cg_fit(
+def joint_lbfgs_fit(
     formula: str,
     sigma_formula: str = "~ 1",
     nu_formula: Optional[str] = None,
@@ -230,7 +230,7 @@ def cg_fit(
     inner_tol: float = 1e-4,
     verbose: bool = False,
 ) -> GAMLSSModel:
-    """Fit a GAMLSS model using the Cole-Green (CG) algorithm.
+    """Fit a GAMLSS model using the current joint optimizer backend (L-BFGS path).
 
     CG extends RS by incorporating cross-derivative corrections between
     distribution parameters, which can improve convergence when parameters
@@ -302,3 +302,17 @@ def cg_fit(
         model.additional_slots["cg_cross_derivative_summary"] = {}
 
     return model
+
+
+
+def cg_fit(*args, **kwargs):
+    """Deprecated alias for joint_lbfgs_fit().
+
+    Notes
+    -----
+    This function name is kept for backward compatibility.
+    It currently delegates to the same joint optimization backend.
+    """
+    import warnings
+    warnings.warn("cg_fit is deprecated; use joint_lbfgs_fit for accurate naming.", DeprecationWarning, stacklevel=2)
+    return joint_lbfgs_fit(*args, **kwargs)

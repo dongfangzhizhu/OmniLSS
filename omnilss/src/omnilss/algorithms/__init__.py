@@ -9,13 +9,14 @@ The RS algorithm is the default and most commonly used.
 """
 
 from .rs_algorithm import rs_fit, rs_step
-from .cg_algorithm import cg_fit
+from .cg_algorithm import cg_fit, joint_lbfgs_fit
 from .mixed_algorithm import mixed_fit, compare_algorithms
 
 __all__ = [
     "rs_fit",
     "rs_step",
     "cg_fit",
+    "joint_lbfgs_fit",
     "mixed_fit",
     "compare_algorithms",
 ]
