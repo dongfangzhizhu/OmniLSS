@@ -178,10 +178,9 @@ def NO() -> NormalFamily:
         return -1.0 / sigma + jnp.square(y - mu) / jnp.power(sigma, 3)
 
     def d2ldd2(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp.ndarray:
-        y = jnp.asarray(y, dtype=jnp.float64)
-        mu = jnp.asarray(mu, dtype=jnp.float64)
+        """Expected Hessian wrt sigma (Fisher information), aligned with R gamlss."""
         sigma = jnp.asarray(sigma, dtype=jnp.float64)
-        return 1.0 / jnp.square(sigma) - 3.0 * jnp.square(y - mu) / jnp.power(sigma, 4)
+        return -2.0 / jnp.square(sigma)
 
     return NormalFamily(
         name="NO",
