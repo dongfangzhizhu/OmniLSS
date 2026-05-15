@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 # Enable float64 precision for numerical accuracy
-import jax
-jax.config.update("jax_enable_x64", True)
-
 
 """Batch 15: Final distributions - SEP, SST, EGB2, GB2, LQNO, etc."""
 from dataclasses import dataclass

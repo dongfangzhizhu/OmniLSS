@@ -1,32 +1,31 @@
-"""Deep GAMLSS module
+"""Deep GAMLSS module."""
 
-使用神经网络建模分布参数，这是 OmniLSS 超越 R gamlss 的创新功能。
+from __future__ import annotations
 
-Deep GAMLSS 的核心思想是使用神经网络自动学习复杂的非线性关系，
-而不需要手动指定平滑项或交互项。
+try:
+    from .deep_gamlss import (
+        ParameterNetwork,
+        DeepGAMLSS,
+        fit_deep_gamlss,
+        predict_deep_gamlss,
+    )
+except ImportError as exc:  # optional dependency gate
+    _IMPORT_ERROR = exc
 
-Examples
---------
->>> from omnilss.deep import DeepGAMLSS, fit_deep_gamlss
->>> from omnilss import NO
->>> 
->>> # 拟合 Deep GAMLSS
->>> model, params = fit_deep_gamlss(X, y, family=NO())
->>> 
->>> # 预测
->>> pred_params = model.apply(params, X_new)
-"""
+    def _missing(*args, **kwargs):
+        raise ImportError(
+            "Deep GAMLSS requires optional dependencies. "
+            "Install with: pip install omnilss[deep]"
+        ) from _IMPORT_ERROR
 
-from .deep_gamlss import (
-    ParameterNetwork,
-    DeepGAMLSS,
-    fit_deep_gamlss,
-    predict_deep_gamlss
-)
+    ParameterNetwork = _missing  # type: ignore
+    DeepGAMLSS = _missing  # type: ignore
+    fit_deep_gamlss = _missing  # type: ignore
+    predict_deep_gamlss = _missing  # type: ignore
 
 __all__ = [
     "ParameterNetwork",
     "DeepGAMLSS",
     "fit_deep_gamlss",
-    "predict_deep_gamlss"
+    "predict_deep_gamlss",
 ]
