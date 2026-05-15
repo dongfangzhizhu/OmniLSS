@@ -91,7 +91,7 @@ curves = model.centiles(xvar="x", cent=[5, 50, 95])
 # RS algorithm (default, most stable)
 model = gamlss("y ~ x", family=NO(), data=data, method="RS")
 
-# CG algorithm
+# Joint optimizer path (historical method="CG" route)
 model = gamlss("y ~ x", family=NO(), data=data, method="CG")
 
 # Joint optimization with Adam
