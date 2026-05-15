@@ -39,7 +39,9 @@ class DistributionProtocol(Protocol):
         """Return quantiles for probabilities ``q`` under ``params``."""
         ...
 
-    def sample(self, key: RandomKey, params: Params, shape: tuple[int, ...] = ()) -> jnp.ndarray:
+    def sample(
+        self, key: RandomKey, params: Params, shape: tuple[int, ...] = ()
+    ) -> jnp.ndarray:
         """Draw samples from ``params`` using an explicit JAX PRNG key."""
         ...
 
@@ -78,12 +80,17 @@ REQUIRED_DISTRIBUTION_METHODS = (
     "init_params",
     "parameter_constraints",
     "links",
+    "parameters",
 )
 
 
 def assert_distribution_protocol(distribution: Any) -> None:
     """Raise ``TypeError`` if an object does not expose the canonical methods."""
-    missing = [name for name in REQUIRED_DISTRIBUTION_METHODS if not callable(getattr(distribution, name, None))]
+    missing = [
+        name
+        for name in REQUIRED_DISTRIBUTION_METHODS
+        if not callable(getattr(distribution, name, None))
+    ]
     if missing:
         raise TypeError(
             f"{distribution!r} does not implement DistributionProtocol; missing {missing}"
