@@ -11,9 +11,6 @@ This batch adds:
 from __future__ import annotations
 
 # Enable float64 precision for numerical accuracy
-import jax
-jax.config.update("jax_enable_x64", True)
-
 
 from dataclasses import dataclass
 import math

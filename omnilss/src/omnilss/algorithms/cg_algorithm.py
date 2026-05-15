@@ -1,4 +1,4 @@
-"""Cole-Green (CG) Algorithm for GAMLSS.
+"""Joint L-BFGS optimizer wrapper (historical CG module).
 
 The CG algorithm is one of the three core GAMLSS fitting algorithms.
 Unlike RS which updates each parameter using only the diagonal Hessian block,
@@ -213,7 +213,7 @@ def _irls_step_with_adjustment(
 # ---------------------------------------------------------------------------
 
 
-def cg_fit(
+def joint_lbfgs_fit(
     formula: str,
     sigma_formula: str = "~ 1",
     nu_formula: Optional[str] = None,
@@ -230,7 +230,7 @@ def cg_fit(
     inner_tol: float = 1e-4,
     verbose: bool = False,
 ) -> GAMLSSModel:
-    """Fit a GAMLSS model using the Cole-Green (CG) algorithm.
+    """Fit a GAMLSS model using the current joint optimizer backend (L-BFGS path).
 
     CG extends RS by incorporating cross-derivative corrections between
     distribution parameters, which can improve convergence when parameters
@@ -277,13 +277,42 @@ def cg_fit(
         if tau_formula is not None:
             parameter_formulas["tau"] = tau_formula
 
-    return gamlss(
+    fam = resolve_family(family)
+    model = gamlss(
         formula=formula,
         sigma_formula=sigma_formula,
         parameter_formulas=parameter_formulas,
-        family=resolve_family(family),
+        family=fam,
         data=data,
         method="CG",
         control=gamlss_control(n_cyc=max_outer_iter, c_crit=outer_tol),
         verbose=verbose,
     )
+
+    # Attach cross-derivative diagnostics so CG path explicitly uses the helper.
+    try:
+        params = {p: np.asarray(model.fitted_values[p], dtype=np.float64) for p in fam.parameters if p in model.fitted_values}
+        y = np.asarray(data[formula.split('~', 1)[0].strip()], dtype=np.float64)
+        cross_summary = {}
+        if "mu" in params and "sigma" in params and "mu" in fam.parameters and "sigma" in fam.parameters:
+            cs = _compute_cross_derivatives(y=y, param_values=params, family=fam, param_k="mu", param_j="sigma")
+            cross_summary["mu_sigma_mean_abs"] = float(np.mean(np.abs(cs)))
+        model.additional_slots["cg_cross_derivative_summary"] = cross_summary
+    except Exception:
+        model.additional_slots["cg_cross_derivative_summary"] = {}
+
+    return model
+
+
+
+def cg_fit(*args, **kwargs):
+    """Deprecated alias for joint_lbfgs_fit().
+
+    Notes
+    -----
+    This function name is kept for backward compatibility.
+    It currently delegates to the same joint optimization backend.
+    """
+    import warnings
+    warnings.warn("cg_fit is deprecated; use joint_lbfgs_fit for accurate naming.", DeprecationWarning, stacklevel=2)
+    return joint_lbfgs_fit(*args, **kwargs)

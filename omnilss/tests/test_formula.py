@@ -235,3 +235,39 @@ class TestDesignMatrix(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+import numpy as np
+
+from omnilss.formula_parser import parse_formula, build_design_matrix
+
+
+def test_parse_interaction_and_star_expansion():
+    parsed = parse_formula("y ~ x1 * x2")
+    names = [t.variable for t in parsed.linear_terms]
+    assert names == ["x1", "x2", "x1:x2"]
+
+
+def test_build_design_matrix_interaction_term():
+    data = {
+        "y": np.array([1.0, 2.0, 3.0]),
+        "x1": np.array([1.0, 2.0, 3.0]),
+        "x2": np.array([4.0, 5.0, 6.0]),
+    }
+    parsed = parse_formula("y ~ x1:x2")
+    X, _ = build_design_matrix(parsed, data)
+    assert X.shape == (3, 2)
+    np.testing.assert_array_equal(X[:, 1], data["x1"] * data["x2"])
+
+
+def test_build_design_matrix_factor_term():
+    data = {
+        "y": np.array([1.0, 2.0, 3.0, 4.0]),
+        "grp": np.array(["a", "b", "a", "c"]),
+    }
+    parsed = parse_formula("y ~ factor(grp)")
+    X, _ = build_design_matrix(parsed, data)
+    assert X.shape == (4, 3)
+    # treatment coding (baseline=a): columns are [b, c]
+    np.testing.assert_array_equal(X[:, 1], np.array([0.0, 1.0, 0.0, 0.0]))
+    np.testing.assert_array_equal(X[:, 2], np.array([0.0, 0.0, 0.0, 1.0]))

@@ -94,6 +94,8 @@ nav:
       - RS Algorithm Fix: reports/RS_ALGORITHM_FIX_2026_05_06.md
       - NBI & ZAGA Verification: reports/NBI_ZAGA_VERIFICATION_2026_05_06.md
   - Development:
+      - Priority Roadmap (2026 Q2): development/priority-roadmap-2026Q2.md
+      - T1-T4 Status Audit (2026-05-15): development/t1-t4-status-2026-05-15.md
       - Contributing: ../CONTRIBUTING.md
       - Code of Conduct: ../CODE_OF_CONDUCT.md
       - Changelog: ../CHANGELOG.md
