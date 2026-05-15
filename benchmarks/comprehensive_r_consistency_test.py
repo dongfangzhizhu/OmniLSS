@@ -88,6 +88,11 @@ FIT_DISTRIBUTIONS = [
 FIT_ALGORITHMS = ["RS", "CG", "Mixed"]
 SMOOTHERS      = ["pb", "ps", "cs"]   # te excluded: not yet implemented
 
+DEFAULT_DPQR_ABS_TOL = 1e-5
+DEFAULT_DPQR_REL_TOL = 1e-5
+DEFAULT_FIT_ABS_TOL = 1e-3
+DEFAULT_FIT_REL_TOL = 1e-3
+
 # ── R scripts ─────────────────────────────────────────────────────────────────
 _R_DPQR_SCRIPT = r"""
 suppressMessages(library(gamlss.dist))
@@ -289,6 +294,23 @@ def _errors(py: np.ndarray, r: np.ndarray) -> dict:
     )
 
 
+def _within_tolerance(errors: dict, abs_tol: float, rel_tol: float) -> bool:
+    """Return True when absolute or relative error is within configured bounds."""
+    max_abs = errors.get("max_absolute_error", float("inf"))
+    max_rel = errors.get("max_relative_error", float("inf"))
+    return bool(np.isfinite(max_abs) and np.isfinite(max_rel) and (
+        max_abs <= abs_tol or max_rel <= rel_tol
+    ))
+
+
+def _tolerance_note(errors: dict, abs_tol: float, rel_tol: float) -> str:
+    return (
+        f"max_abs={errors.get('max_absolute_error', float('nan')):.3e}; "
+        f"max_rel={errors.get('max_relative_error', float('nan')):.3e}; "
+        f"tolerances abs={abs_tol:.1e}, rel={rel_tol:.1e}"
+    )
+
+
 # ── result dataclass ──────────────────────────────────────────────────────────
 
 @dataclass
@@ -308,6 +330,8 @@ class ConsistencyResult:
     speedup:             float | None = None
     error_message:       str | None = None
     notes:               str = ""
+    abs_tolerance:       float | None = None
+    rel_tolerance:       float | None = None
 
     def to_dict(self) -> dict:
         return {k: v for k, v in self.__dict__.items()}
@@ -435,7 +459,12 @@ def _dpqr_params(dist: str, family) -> tuple[np.ndarray, np.ndarray, tuple]:
 
 # ── test functions ────────────────────────────────────────────────────────────
 
-def test_dpqr(dist: str, r_available: bool) -> list[ConsistencyResult]:
+def test_dpqr(
+    dist: str,
+    r_available: bool,
+    abs_tol: float = DEFAULT_DPQR_ABS_TOL,
+    rel_tol: float = DEFAULT_DPQR_REL_TOL,
+) -> list[ConsistencyResult]:
     results = []
     try:
         family = resolve_family(dist)
@@ -509,11 +538,15 @@ def test_dpqr(dist: str, r_available: bool) -> list[ConsistencyResult]:
 
         if r_val is not None:
             err = _errors(py_val, r_val)
+            passed = _within_tolerance(err, abs_tol, rel_tol)
             sp  = (r_time_total / pt) if (r_time_total and pt and pt > 0) else None
             results.append(ConsistencyResult(
                 test_name=f"{dist}_{fn_name}", category="dpqr",
-                distribution=dist, success=True,
+                distribution=dist, success=passed,
                 python_time=pt, r_time=r_time_total, speedup=sp,
+                error_message=None if passed else "R comparison exceeded tolerance",
+                notes=_tolerance_note(err, abs_tol, rel_tol),
+                abs_tolerance=abs_tol, rel_tolerance=rel_tol,
                 **err))
         else:
             results.append(ConsistencyResult(
@@ -572,7 +605,13 @@ def _gen_fit_data(dist: str, n: int = 500) -> dict:
     return {"y": y, "x": x}
 
 
-def test_fitting(dist: str, algorithm: str, r_available: bool) -> ConsistencyResult:
+def test_fitting(
+    dist: str,
+    algorithm: str,
+    r_available: bool,
+    abs_tol: float = DEFAULT_FIT_ABS_TOL,
+    rel_tol: float = DEFAULT_FIT_REL_TOL,
+) -> ConsistencyResult:
     data   = _gen_fit_data(dist)
     family = resolve_family(dist)
 
@@ -621,24 +660,37 @@ def test_fitting(dist: str, algorithm: str, r_available: bool) -> ConsistencyRes
     dev_diff   = abs(py_dev - r_dev)
     sp = r_time / py_time if py_time > 0 else None
 
+    combined_err = {
+        "max_absolute_error": max(coef_err["max_absolute_error"],
+                                  fitted_err["max_absolute_error"],
+                                  dev_diff),
+        "max_relative_error": max(coef_err["max_relative_error"],
+                                  fitted_err["max_relative_error"]),
+        "mean_absolute_error": (coef_err["mean_absolute_error"] +
+                                fitted_err["mean_absolute_error"]) / 2,
+        "mean_relative_error": (coef_err["mean_relative_error"] +
+                                fitted_err["mean_relative_error"]) / 2,
+        "rmse": fitted_err["rmse"],
+        "correlation": fitted_err["correlation"],
+    }
+    passed = _within_tolerance(combined_err, abs_tol, rel_tol)
+
     return ConsistencyResult(
         test_name=f"{dist}_{algorithm}_fitting", category="fitting",
-        distribution=dist, success=True,
+        distribution=dist, success=passed,
         python_time=py_time, r_time=r_time, speedup=sp,
-        max_absolute_error  = max(coef_err["max_absolute_error"],
-                                  fitted_err["max_absolute_error"]),
-        max_relative_error  = max(coef_err["max_relative_error"],
-                                  fitted_err["max_relative_error"]),
-        mean_absolute_error = (coef_err["mean_absolute_error"] +
-                               fitted_err["mean_absolute_error"]) / 2,
-        mean_relative_error = (coef_err["mean_relative_error"] +
-                               fitted_err["mean_relative_error"]) / 2,
-        rmse        = fitted_err["rmse"],
-        correlation = fitted_err["correlation"],
-        notes=f"deviance diff={dev_diff:.4e}")
+        error_message=None if passed else "R comparison exceeded tolerance",
+        notes=f"deviance diff={dev_diff:.4e}; " + _tolerance_note(combined_err, abs_tol, rel_tol),
+        abs_tolerance=abs_tol, rel_tolerance=rel_tol,
+        **combined_err)
 
 
-def test_smoother(smoother: str, r_available: bool) -> ConsistencyResult:
+def test_smoother(
+    smoother: str,
+    r_available: bool,
+    abs_tol: float = DEFAULT_FIT_ABS_TOL,
+    rel_tol: float = DEFAULT_FIT_REL_TOL,
+) -> ConsistencyResult:
     rng = np.random.RandomState(42)
     n   = 300
     x   = np.linspace(0, 10, n)
@@ -689,12 +741,18 @@ def test_smoother(smoother: str, r_available: bool) -> ConsistencyResult:
     err = _errors(py_fitted, r_fitted)
     sp  = r_time / py_time if (r_time > 0 and py_time > 0) else None
 
+    dev_diff = abs(py_dev - r_dev)
+    combined_err = {**err, "max_absolute_error": max(err["max_absolute_error"], dev_diff)}
+    passed = _within_tolerance(combined_err, abs_tol, rel_tol)
+
     return ConsistencyResult(
         test_name=f"{smoother}_NO_smoothing", category="smoothing",
-        distribution="NO", success=True,
+        distribution="NO", success=passed,
         python_time=py_time, r_time=r_time, speedup=sp,
-        notes=f"deviance diff={abs(py_dev - r_dev):.4e}",
-        **err)
+        error_message=None if passed else "R comparison exceeded tolerance",
+        notes=f"deviance diff={dev_diff:.4e}; " + _tolerance_note(combined_err, abs_tol, rel_tol),
+        abs_tolerance=abs_tol, rel_tolerance=rel_tol,
+        **combined_err)
 
 
 # ── report generation ─────────────────────────────────────────────────────────
@@ -877,6 +935,16 @@ def main() -> int:
                         help="Skip model fitting tests")
     parser.add_argument("--no-smooth", action="store_true",
                         help="Skip smoother tests")
+    parser.add_argument("--require-r", action="store_true",
+                        help="Fail immediately if Rscript with gamlss/jsonlite is unavailable")
+    parser.add_argument("--dpqr-abs-tol", type=float, default=DEFAULT_DPQR_ABS_TOL,
+                        help=f"Absolute tolerance for d/p/q comparisons (default {DEFAULT_DPQR_ABS_TOL:g})")
+    parser.add_argument("--dpqr-rel-tol", type=float, default=DEFAULT_DPQR_REL_TOL,
+                        help=f"Relative tolerance for d/p/q comparisons (default {DEFAULT_DPQR_REL_TOL:g})")
+    parser.add_argument("--fit-abs-tol", type=float, default=DEFAULT_FIT_ABS_TOL,
+                        help=f"Absolute tolerance for fitting/smoothing comparisons (default {DEFAULT_FIT_ABS_TOL:g})")
+    parser.add_argument("--fit-rel-tol", type=float, default=DEFAULT_FIT_REL_TOL,
+                        help=f"Relative tolerance for fitting/smoothing comparisons (default {DEFAULT_FIT_REL_TOL:g})")
     args = parser.parse_args()
 
     dists = QUICK_DISTRIBUTIONS if args.quick else DPQR_DISTRIBUTIONS
@@ -885,13 +953,20 @@ def main() -> int:
     if not args.no_r:
         print("Checking R availability...", end=" ", flush=True)
         r_available = _check_r_available()
-        print("✓ found" if r_available else "✗ not found (Python-only mode)")
+        print("✓ found" if r_available else "✗ not found")
+        if args.require_r and not r_available:
+            print("R comparison is required but Rscript with gamlss/jsonlite is unavailable.")
+            return 2
+        if not r_available:
+            print("Continuing in Python-only mode; numerical equivalence with R is not verified.")
     print()
 
     print("=" * 72)
     print("OmniLSS Consistency Test")
     print(f"  Distributions : {len(dists)} ({', '.join(dists[:6])}{'...' if len(dists)>6 else ''})")
     print(f"  R comparison  : {'yes' if r_available else 'no'}")
+    print(f"  d/p/q tol     : abs={args.dpqr_abs_tol:.1e}, rel={args.dpqr_rel_tol:.1e}")
+    print(f"  fit/smooth tol: abs={args.fit_abs_tol:.1e}, rel={args.fit_rel_tol:.1e}")
     print("=" * 72)
     print()
 
@@ -902,7 +977,7 @@ def main() -> int:
     print("-" * 72)
     for dist in dists:
         print(f"  {dist:10s}", end=" ", flush=True)
-        rs = test_dpqr(dist, r_available)
+        rs = test_dpqr(dist, r_available, args.dpqr_abs_tol, args.dpqr_rel_tol)
         all_results.extend(rs)
         ok = sum(1 for r in rs if r.success)
         errs = [r.max_absolute_error for r in rs
@@ -920,7 +995,7 @@ def main() -> int:
         for dist in fit_dists:
             for algo in FIT_ALGORITHMS:
                 print(f"  {dist:6s} + {algo:5s}", end=" ", flush=True)
-                r = test_fitting(dist, algo, r_available)
+                r = test_fitting(dist, algo, r_available, args.fit_abs_tol, args.fit_rel_tol)
                 all_results.append(r)
                 if r.success:
                     sp_str = f"  speedup={r.speedup:.1f}×" if r.speedup else ""
@@ -935,7 +1010,7 @@ def main() -> int:
         print("-" * 72)
         for sm in SMOOTHERS:
             print(f"  {sm:4s}", end=" ", flush=True)
-            r = test_smoother(sm, r_available)
+            r = test_smoother(sm, r_available, args.fit_abs_tol, args.fit_rel_tol)
             all_results.append(r)
             if r.success:
                 sp_str = f"  speedup={r.speedup:.1f}×" if r.speedup else ""
@@ -970,6 +1045,12 @@ def main() -> int:
             "fit_distributions": [] if args.no_fit else (
                 QUICK_DISTRIBUTIONS[:4] if args.quick else FIT_DISTRIBUTIONS),
             "smoothers": [] if args.no_smooth else SMOOTHERS,
+            "tolerances": {
+                "dpqr_abs": args.dpqr_abs_tol,
+                "dpqr_rel": args.dpqr_rel_tol,
+                "fit_abs": args.fit_abs_tol,
+                "fit_rel": args.fit_rel_tol,
+            },
         },
         "summary": {"total": total, "passed": passed, "failed": failed},
         "results": [r.to_dict() for r in all_results],
