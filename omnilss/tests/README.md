@@ -148,22 +148,19 @@ Python-only benchmark smoke checks do not prove R equivalence.
 
 ## 测试状态
 
-### 当前统计
+测试数量、跳过数量和通过率会随着架构迁移和 R 可用性变化，不再在本文档
+中维护静态数字。请以当前环境中的 pytest 输出、CI 结果和 benchmark
+validation gate 生成的报告为准。
 
-- **总测试数**: 565
-- **通过**: 565 ✅
-- **跳过**: 13 (R依赖或收敛性)
-- **失败**: 0 ✅
+当前维护重点：
 
-### 跳过的测试
-
-跳过的测试主要因为：
-
-1. **R不可用**: 需要R环境但未安装
-2. **R不收敛**: R参考实现在某些数据上不收敛
-3. **数值不稳定**: 已知的数值稳定性问题
-
-这些跳过是合理的，不影响Python实现的正确性。
+1. **架构契约测试**：`test_core_architecture_contracts.py` 覆盖 canonical
+   parameter、distribution protocol、legacy adapter 固定数据参数边界以及
+   Optax optimizer adapter。
+2. **R 一致性测试**：在缺少 `Rscript`、`gamlss` 或 `gamlss.dist` 的普通
+   Python CI 环境中应跳过；发布 R 等价声明前必须在 R-enabled 环境运行。
+3. **Benchmark gate**：Python-only smoke check 只能证明代码路径可执行，
+   不能证明与 R `gamlss` 等价。
 
 ## R桥接
 

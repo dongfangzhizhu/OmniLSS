@@ -160,39 +160,29 @@ See [`../benchmarks/README.md`](../benchmarks/README.md) for methodology and rep
 ## Testing
 
 ```bash
-# Full test suite
-./run_tests.sh          # Linux/macOS
-./run_tests.ps1 -All    # Windows
+# Architecture-contract smoke tests
+PYTHONPATH=src python -m pytest tests/test_core_architecture_contracts.py -q
 
-# Direct pytest
+# Full package tests
 python -m pytest tests -q
-
-# Specific suite
-./run_tests.sh --suite consistency_advanced_fit
 ```
 
-Test suite: **587 tests, 100% pass rate** (92 validation tests comparing Python vs R).
+R-backed consistency tests remain required for release and benchmark claims, but
+they skip in Python-only environments when native R, `gamlss`, or `gamlss.dist`
+are unavailable. Use the repository-level benchmark validation gate before
+publishing equivalence or speed claims.
 
-> **Note**: A small number of pre-existing test failures exist in `test_basic_batch3.py`
-> (SHASHo CDF) and `test_basic_batch5.py` (ZAGA PDF) that are unrelated to core
-> functionality. All RS, CG, Mixed algorithm tests and R-consistency tests pass.
+## Project Status
 
-## Project Statistics
-
-| Metric | Value |
+| Area | Current policy |
 |--------|-------|
-| Distribution families | 80+ |
-| Distributions with full d/p/q/r | **31** (verified working in consistency test) |
-| Test cases | 587 |
-| Core test pass rate | 100% (RS/CG/Mixed/R-consistency) |
-| Lines of code | ~30,000 |
-| Benchmark speedup (CPU, warm) | 25–251× vs R (mean 72×) |
-| Benchmark speedup (CPU, cold) | ~0.05–0.5s first call, then fast |
-| Smoother speedup (after fix) | pb: 13×, ps: 6×, cs: 7× faster |
-| Consistency with R | 100% (39+ tests) |
-| Performance test distributions | 23 (covers all major continuous + discrete) |
-| Performance test data sizes | 100, 500, 5000 (default); add 50k, 500k, 5M with --large |
-| Benchmark last run | 2026-05-15 |
+| Architecture mode | 30-day stabilization: Architecture > Features |
+| Distribution families | 80+ legacy families, with protocol migration in progress |
+| Distributions with full d/p/q/r | Tracked by generated consistency reports, not static README claims |
+| Canonical protocols | Distribution, optimizer, parameter, link, and constraint boundaries exist |
+| Benchmark claims | Must cite generated validation artifacts with hardware/backend/R availability |
+| R equivalence | Requires native R `gamlss` validation; Python-only smoke checks are not proof |
+| License | GPL-3.0-or-later |
 
 ## Comparison with Similar Tools
 
@@ -204,28 +194,17 @@ Test suite: **587 tests, 100% pass rate** (92 validation tests comparing Python 
 | NumPyro | JAX | ✅ | ✅ | ✗ | ✗ |
 | pyGAM | NumPy | ✗ | ✗ | ✗ (mean only) | ✗ |
 
-**vs R gamlss**: R gamlss is the gold standard for statistical modeling. OmniLSS is for when you need Python, GPU, or ML pipeline integration. OmniLSS is 22–149× faster on CPU (steady-state).
+**vs R gamlss**: R gamlss is the gold standard for statistical modeling. OmniLSS is for when you need Python, GPU, or ML pipeline integration. Any performance comparison must cite a generated benchmark report.
 
 **vs ondil**: ondil is designed for online/incremental learning on streaming data (scikit-learn API). OmniLSS is for batch differentiable modeling with hardware acceleration. Both implement distributional regression — different design goals.
 
-### Three-Way Benchmark (OmniLSS vs R gamlss vs ondil)
-
-Distributions supported by all three tools (NO, GA, NBI), n=1,000:
-
-| Distribution | OmniLSS (s) | R gamlss (s) | vs R | ondil (s) | vs ondil |
-|-------------|------------|-------------|------|----------|---------|
-| NO (Normal) | 0.007 | 0.90 | **121×** | — | — |
-| GA (Gamma) | 0.025 | 0.87 | **35×** | — | — |
-| NBI (Neg. Binomial) | 0.043 | 1.03 | **24×** | — | — |
-
-> ondil comparison requires `pip install ondil`. Run: `python benchmarks/three_way_comparison.py`
-
 ## Resources
 
-- [Benchmarks](../benchmarks/) — performance and consistency tests
-- [Tutorials](../tutorials/) — learning path and R migration guide
-- [Colab Notebooks](../examples/colab/) — GPU/TPU testing on Google Colab
-- [JOSS Paper Draft](../docs/joss_paper/) — academic reference
+- [Benchmarks](../benchmarks/) — performance and consistency scripts
+- [R consistency coverage](../docs/testing/r-consistency-coverage.md) — current R-backed d/p/q coverage map
+- [Benchmark methodology](../docs/benchmarks/benchmarking-principles.md) — reporting rules for generated artifacts
+- [Architecture freeze](../docs/architecture/30-day-feature-freeze.md) — current stabilization policy
+- [Maintenance status](../docs/maintenance/30-day-refactor-status.md) — active refactor tasks and audit links
 - [R GAMLSS](http://www.gamlss.org/) — original R implementation
 - [JAX Documentation](https://jax.readthedocs.io/)
 

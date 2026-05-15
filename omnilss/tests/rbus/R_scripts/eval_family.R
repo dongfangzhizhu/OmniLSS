@@ -3,6 +3,7 @@
 # Rscript that bridges omnilss RTestBus and the gamlss package
 suppressPackageStartupMessages(library(jsonlite))
 suppressPackageStartupMessages(library(gamlss))
+suppressPackageStartupMessages(library(gamlss.dist))
 
 args_cli <- commandArgs(trailingOnly = TRUE)
 if (length(args_cli) == 0) {
@@ -26,7 +27,7 @@ target_func <- paste0(func_type, family_name)
 
 if (!exists(target_func, mode = "function")) {
   cat(toJSON(list(error = paste("Function not found:", target_func)), auto_unbox = TRUE))
-  quit(status = 1)
+  quit(status = 0)
 }
 
 # Invoke the function element-wise so that families with imperfect vectorisation
@@ -48,14 +49,14 @@ result <- tryCatch({
     scalar_args <- lapply(normalized_args, function(arg) arg[[i]])
     as.numeric(do.call(target_func, scalar_args))
   }, numeric(1))
-  values
+  list(values = values)
 }, error = function(e) {
-  e$message
+  list(error = e$message)
 })
 
-if (is.character(result) && length(result) == 1 && inherits(result, "error")) {
-    cat(toJSON(list(error = result), auto_unbox = TRUE))
+if (!is.null(result$error)) {
+    cat(toJSON(list(error = result$error), auto_unbox = TRUE))
 } else {
     # Ensure vectors are preserved
-    cat(toJSON(list(values = as.numeric(result)), auto_unbox = TRUE, digits = 10))
+    cat(toJSON(list(values = as.numeric(result$values)), auto_unbox = TRUE, digits = 10))
 }
