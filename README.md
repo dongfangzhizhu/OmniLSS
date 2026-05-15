@@ -160,36 +160,29 @@ See [`benchmarks/README.md`](benchmarks/README.md) for methodology and reporting
 ## Testing
 
 ```bash
-# Full test suite
-./run_tests.sh          # Linux/macOS
-./run_tests.ps1 -All    # Windows
+# Architecture-contract smoke tests
+PYTHONPATH=omnilss/src python -m pytest omnilss/tests/test_core_architecture_contracts.py -q
 
-# Direct pytest
+# Full package tests from the package directory
+cd omnilss
 python -m pytest tests -q
-
-# Specific suite
-./run_tests.sh --suite consistency_advanced_fit
 ```
 
-Test suite: **587 tests, 100% pass rate** (92 validation tests comparing Python vs R).
+R-backed consistency tests remain required for release and benchmark claims, but
+they skip in Python-only environments when native R, `gamlss`, or `gamlss.dist`
+are unavailable. Use the benchmark validation gate before publishing equivalence
+or speed claims.
 
-> **Note**: A small number of pre-existing test failures exist in `test_basic_batch3.py`
-> (SHASHo CDF) and `test_basic_batch5.py` (ZAGA PDF) that are unrelated to core
-> functionality. All RS, CG, Mixed algorithm tests and R-consistency tests pass.
+## Project Status
 
-## Project Statistics
-
-| Metric | Value |
+| Area | Current policy |
 |--------|-------|
-| Distribution families | 80+ |
-| Test cases | 587 |
-| Core test pass rate | 100% (RS/CG/Mixed/R-consistency) |
-| Lines of code | ~30,000 |
-| Benchmark speedup (CPU, warm) | 22–149× vs R (mean 67×) |
-| Benchmark speedup (CPU, cold) | ~0.05–0.5s first call, then fast |
-| Smoother speedup (after fix) | pb: 13×, ps: 6×, cs: 7× faster |
-| Consistency with R | 100% (33/33 tests) |
-| Benchmark last run | 2026-05-13 |
+| Architecture mode | 30-day stabilization: Architecture > Features |
+| Distribution families | 80+ legacy families, with protocol migration in progress |
+| Canonical protocols | Distribution, optimizer, parameter, link, and constraint boundaries exist |
+| Benchmark claims | Must cite generated validation artifacts with hardware/backend/R availability |
+| R equivalence | Requires native R `gamlss` validation; Python-only smoke checks are not proof |
+| License | GPL-3.0-or-later |
 
 ## Comparison with Similar Tools
 
@@ -207,10 +200,10 @@ Test suite: **587 tests, 100% pass rate** (92 validation tests comparing Python 
 
 ## Resources
 
-- [Benchmarks](../benchmarks/) — performance and consistency tests
-- [Tutorials](../tutorials/) — learning path and R migration guide
-- [Colab Notebooks](../examples/colab/) — GPU/TPU testing on Google Colab
-- [JOSS Paper Draft](../docs/joss_paper/) — academic reference
+- [Benchmarks](benchmarks/) — performance and consistency scripts
+- [Benchmark methodology](docs/benchmarks/benchmarking-principles.md) — reporting rules for generated artifacts
+- [Architecture freeze](docs/architecture/30-day-feature-freeze.md) — current stabilization policy
+- [Maintenance status](docs/maintenance/30-day-refactor-status.md) — active refactor tasks and audit links
 - [R GAMLSS](http://www.gamlss.org/) — original R implementation
 - [JAX Documentation](https://jax.readthedocs.io/)
 

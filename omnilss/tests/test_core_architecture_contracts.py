@@ -33,7 +33,12 @@ def test_parameter_transform_inverse_validate_and_pytree_roundtrip() -> None:
 def test_canonical_parameters_cover_standard_gamlss_names() -> None:
     parameters = parameters_from_names(("mu", "sigma", "nu", "tau"))
 
-    assert tuple(parameter.name for parameter in parameters) == ("mu", "sigma", "nu", "tau")
+    assert tuple(parameter.name for parameter in parameters) == (
+        "mu",
+        "sigma",
+        "nu",
+        "tau",
+    )
     assert isinstance(parameters[1].constraint, Positive)
 
 
@@ -43,7 +48,9 @@ def test_family_distribution_adapter_exposes_protocol_methods() -> None:
     y = jnp.array([0.0, 1.0])
 
     assert_distribution_protocol(distribution)
-    assert all(callable(getattr(distribution, name)) for name in REQUIRED_DISTRIBUTION_METHODS)
+    assert all(
+        callable(getattr(distribution, name)) for name in REQUIRED_DISTRIBUTION_METHODS
+    )
     assert jnp.allclose(
         distribution.logpdf(y, params),
         jnp.array([-0.91893853, -1.41893853]),
@@ -66,3 +73,25 @@ def test_optax_optimizer_protocol_updates_without_model_mutation() -> None:
     assert new_state is not state
     assert params["x"] == 1.0
     assert new_params["x"] > params["x"]
+
+
+def test_family_distribution_adapter_excludes_fixed_data_parameters() -> None:
+    from omnilss.distributions_b7 import BB
+
+    distribution = as_distribution_protocol(BB())
+    params = {
+        "mu": jnp.array([0.4, 0.6]),
+        "sigma": jnp.array([0.2, 0.3]),
+        "bd": jnp.array([10.0, 12.0]),
+    }
+    y = jnp.array([3.0, 7.0])
+
+    assert tuple(parameter.name for parameter in distribution.parameters()) == (
+        "mu",
+        "sigma",
+    )
+    assert set(distribution.parameter_constraints()) == {"mu", "sigma"}
+    assert set(distribution.links()) == {"mu", "sigma"}
+    assert set(distribution.score(y, params)) == {"mu", "sigma"}
+    assert set(distribution.hessian(y, params)) == {"mu", "sigma"}
+    assert jnp.all(jnp.isfinite(distribution.logpdf(y, params)))
