@@ -16,6 +16,7 @@ iterative procedure, extended to handle multiple distribution parameters.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import warnings
 from typing import Any, Dict, Optional, Tuple
 
 import jax.numpy as jnp
@@ -726,6 +727,7 @@ def rs_fit(
     iteration = 0
     converged = False
     deviance_history = [float(g_dev)]
+    lambda_update_warnings: list[str] = []
 
     while abs(g_dev_old - g_dev) > tol and iteration < max_iter:
         iteration += 1
@@ -817,6 +819,7 @@ def rs_fit(
                 z_k = last_working_response.get(param_k, np.zeros(n))
 
                 try:
+                    old_lambdas = [float(sf.lambda_) for sf in smooth_design.smooth_fits]
                     updated_fits = update_smooth_lambdas(
                         X=X_k,
                         y=z_k,  # IRLS 工作响应
@@ -832,8 +835,16 @@ def rs_fit(
                         linear_columns=smooth_design.linear_columns,
                         has_intercept=smooth_design.has_intercept,
                     )
-                except Exception:
-                    pass  # λ 更新失败时保持旧値，不中断主循环
+                    if verbose:
+                        new_lambdas = [float(sf.lambda_) for sf in updated_fits]
+                        print(f"  lambda update ({param_k}): {old_lambdas} -> {new_lambdas}")
+                except Exception as e:
+                    msg = (
+                        f"Lambda update failed for parameter '{param_k}': {e}. "
+                        "Keeping previous lambda value."
+                    )
+                    lambda_update_warnings.append(msg)
+                    warnings.warn(msg, UserWarning, stacklevel=2)
 
         # Check for increasing deviance
         if g_dev > g_dev_old + 1e-6 and iteration > 1:
@@ -970,6 +981,7 @@ def rs_fit(
             "converged": converged,
             "cycles": int(iteration),
             "deviance_history": tuple(float(v) for v in deviance_history),
+            "lambda_update_warnings": tuple(lambda_update_warnings),
         },
     )
 
