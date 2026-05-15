@@ -94,3 +94,6 @@ python_files = ["test_*.py"]
 norecursedirs = [".git", ".venv", ".pytest_cache", "__pycache__", "tests/debug", "scratch", "temp_tests", "legacy", "results"]
 cache_dir = "tmp/.pytest_cache"
 addopts = "-q -p no:cacheprovider"
+markers = [
+  "slow: marks tests as slow",
+]

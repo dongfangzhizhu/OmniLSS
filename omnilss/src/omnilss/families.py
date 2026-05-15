@@ -13,6 +13,8 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+import jax.numpy as jnp
+
 
 @dataclass(frozen=True)
 class FamilyDefinition:
@@ -48,6 +50,15 @@ class FamilyDefinition:
     p: Callable[..., Any] | None = None  # CDF function
     q: Callable[..., Any] | None = None  # Quantile function
     r: Callable[..., Any] | None = None  # Random generation function
+
+    def pdf(self, *args: Any, **kwargs: Any) -> Any:
+        """Evaluate the density/PMF through the standard ``d`` function."""
+        if self.d is None:
+            raise NotImplementedError(f"Family {self.name!r} does not define a density function")
+        result = self.d(*args, **kwargs)
+        if args and jnp.asarray(args[0]).ndim > 0 and jnp.asarray(result).ndim == 0:
+            return jnp.reshape(jnp.asarray(result), (1,))
+        return result
 
     @property
     def nopar(self) -> int:

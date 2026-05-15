@@ -130,6 +130,22 @@ def test_no_r_consistency(self):
 - **复杂分布测试**: `test_bug_condition_*.py`
 - **保留性测试**: `test_preservation_*.py`
 
+
+## CI and R-dependent Tests
+
+The default GitHub Actions matrix runs Python 3.10, 3.11, and 3.12 on Linux,
+Windows, and macOS without requiring native R. Tests that require `Rscript`,
+`gamlss`, or `gamlss.dist` must skip when those dependencies are unavailable.
+
+R-backed consistency remains important, but it belongs in an R-enabled validation
+environment or the benchmark gate:
+
+```bash
+python benchmarks/run_local_validation.py --quick
+```
+
+Python-only benchmark smoke checks do not prove R equivalence.
+
 ## 测试状态
 
 ### 当前统计

@@ -400,6 +400,9 @@ def _compute_residuals(
     if family.name == "LOGNO" and sigma is not None:
         log_y = np.log(np.maximum(y, np.finfo(np.float64).eps))
         return jnp.asarray((log_y - mu) / sigma, dtype=jnp.float64)
+    if family.name == "GA" and sigma is not None and family.p is not None:
+        probabilities = np.asarray(family.p(y, mu, sigma), dtype=np.float64)
+        return jnp.asarray(_normal_quantile(probabilities), dtype=jnp.float64)
     if sigma is not None:
         return jnp.asarray((y - mu) / sigma, dtype=jnp.float64)
     return jnp.asarray((y - mu) / np.sqrt(np.maximum(mu, 1e-12)), dtype=jnp.float64)

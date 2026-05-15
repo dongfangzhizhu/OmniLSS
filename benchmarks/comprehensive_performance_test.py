@@ -29,6 +29,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import tracemalloc
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -76,6 +77,8 @@ LARGE_DATA_SIZES = [100, 500, 5000, 50_000, 500_000, 5_000_000]
 FORMULAS = ["y ~ 1", "y ~ x1", "y ~ x1 + x2"]
 N_REPEATS = 3
 WARMUP = 1
+DEFAULT_DEVIANCE_ABS_TOL = 1e-5
+DEFAULT_DEVIANCE_REL_TOL = 1e-5
 
 # R script — one warm-up call (untimed) then n_repeats timed calls
 _R_SCRIPT = r"""
@@ -206,14 +209,19 @@ def _time_python(
             pass
         return model
 
-    # Cold-start: first call includes JIT compilation
+    # Cold-start: first call includes JIT compilation.  tracemalloc reports
+    # Python heap peak memory only; JAX device allocator memory is backend-specific.
     t_cold_start = time.perf_counter()
+    tracemalloc.start()
     try:
         model = _fit()
+        _, peak_bytes = tracemalloc.get_traced_memory()
         cold_time = time.perf_counter() - t_cold_start
         deviance = float(model.g_dev)
     except Exception as e:
         return {"success": False, "error": str(e)}
+    finally:
+        tracemalloc.stop()
 
     # Additional warm-up calls (if warmup > 1)
     for _ in range(warmup - 1):
@@ -240,6 +248,7 @@ def _time_python(
         "mean_time": float(np.mean(times)),
         "min_time": float(np.min(times)),
         "deviance": deviance,
+        "python_peak_memory_mb": float(peak_bytes / (1024 * 1024)),
     }
 
 
@@ -334,6 +343,10 @@ class ComparisonResult:
     r_deviance: float | None = None
     deviance_diff: float | None = None
     deviance_rel_diff: float | None = None
+    deviance_consistent: bool | None = None
+    deviance_abs_tolerance: float | None = None
+    deviance_rel_tolerance: float | None = None
+    python_peak_memory_mb: float | None = None
     python_error: str | None = None
     r_error: str | None = None
 
@@ -353,6 +366,7 @@ def _generate_report(
     python_only = [r for r in results if r.python_success and not r.r_success]
     r_only = [r for r in results if not r.python_success and r.r_success]
     both_failed = [r for r in results if not r.python_success and not r.r_success]
+    deviance_mismatches = [r for r in successful if r.deviance_consistent is False]
 
     lines: list[str] = []
     a = lines.append
@@ -367,6 +381,8 @@ def _generate_report(
     a("- **Python warm time**: steady-state after JAX JIT compilation; "
       "`jax.block_until_ready()` ensures async computation completes.")
     a("- **Python cold time**: first call including JIT compilation overhead.")
+    a("- **Python memory**: peak Python heap during cold fit via `tracemalloc`; "
+      "JAX device allocator memory is not included.")
     a("- **R time**: wall-clock from Python side; each call is a fresh Rscript "
       "process with one untimed warm-up call inside.")
     a("")
@@ -379,6 +395,8 @@ def _generate_report(
     a(f"- **Python only**: {len(python_only)}")
     a(f"- **R only**: {len(r_only)}")
     a(f"- **Both failed**: {len(both_failed)}")
+    if r_available:
+        a(f"- **Deviance mismatches**: {len(deviance_mismatches)}")
     a("")
 
     if successful and r_available:
@@ -412,29 +430,34 @@ def _generate_report(
         a("")
         if ok and r_available:
             speedups = [r.speedup for r in ok if r.speedup is not None]
+            consistent_count = sum(1 for r in ok if r.deviance_consistent is not False)
             a(f"- Passed: {len(ok)}/{len(dist_results)}")
+            a(f"- Deviance consistent: {consistent_count}/{len(ok)}")
             if speedups:
                 a(f"- Mean speedup: **{np.mean(speedups):.1f}×** "
                   f"(range {np.min(speedups):.1f}–{np.max(speedups):.1f}×)")
             a("")
-            a("| n | Formula | Python warm (s) | Python cold (s) | R (s) | Speedup | Dev diff |")
-            a("|---|---------|----------------|----------------|-------|---------|----------|")
+            a("| n | Formula | Python warm (s) | Python cold (s) | Python peak MB | R (s) | Speedup | Dev diff | Consistent |")
+            a("|---|---------|----------------|----------------|----------------|-------|---------|----------|------------|")
             for r in sorted(ok, key=lambda x: (x.data_size, x.model_config)):
                 dev = f"{r.deviance_diff:.2e}" if r.deviance_diff is not None else "—"
                 sp = f"{r.speedup:.1f}×" if r.speedup else "—"
                 cold = f"{r.python_cold_time:.4f}" if r.python_cold_time else "—"
+                mem = f"{r.python_peak_memory_mb:.2f}" if r.python_peak_memory_mb is not None else "—"
+                consistent = "✅" if r.deviance_consistent else "❌"
                 a(f"| {r.data_size} | `{r.model_config}` | "
-                  f"{r.python_time:.4f} | {cold} | {r.r_time:.4f} | {sp} | {dev} |")
+                  f"{r.python_time:.4f} | {cold} | {mem} | {r.r_time:.4f} | {sp} | {dev} | {consistent} |")
         else:
             a(f"- Passed: {sum(1 for r in dist_results if r.python_success)}/{len(dist_results)}")
             a("")
-            a("| n | Formula | Python warm (s) | Python cold (s) | Status |")
-            a("|---|---------|----------------|----------------|--------|")
+            a("| n | Formula | Python warm (s) | Python cold (s) | Python peak MB | Status |")
+            a("|---|---------|----------------|----------------|----------------|--------|")
             for r in sorted(dist_results, key=lambda x: (x.data_size, x.model_config)):
                 status = "✅" if r.python_success else f"❌ {r.python_error or ''}"
                 pt = f"{r.python_time:.4f}" if r.python_time else "—"
                 cold = f"{r.python_cold_time:.4f}" if r.python_cold_time else "—"
-                a(f"| {r.data_size} | `{r.model_config}` | {pt} | {cold} | {status} |")
+                mem = f"{r.python_peak_memory_mb:.2f}" if r.python_peak_memory_mb is not None else "—"
+                a(f"| {r.data_size} | `{r.model_config}` | {pt} | {cold} | {mem} | {status} |")
         a("")
 
     if r_only or both_failed:
@@ -496,6 +519,12 @@ def main() -> int:
                         help="Include large data sizes (50k, 500k, 5M) — Python only for n>=50k")
     parser.add_argument("--n-repeats", type=int, default=N_REPEATS,
                         help=f"Timing repetitions (default {N_REPEATS})")
+    parser.add_argument("--require-r", action="store_true",
+                        help="Fail immediately if Rscript with gamlss/jsonlite is unavailable")
+    parser.add_argument("--deviance-abs-tol", type=float, default=DEFAULT_DEVIANCE_ABS_TOL,
+                        help=f"Absolute tolerance for OmniLSS/R deviance checks (default {DEFAULT_DEVIANCE_ABS_TOL:g})")
+    parser.add_argument("--deviance-rel-tol", type=float, default=DEFAULT_DEVIANCE_REL_TOL,
+                        help=f"Relative tolerance for OmniLSS/R deviance checks (default {DEFAULT_DEVIANCE_REL_TOL:g})")
     args = parser.parse_args()
 
     distributions = QUICK_DISTRIBUTIONS if args.quick else DISTRIBUTIONS
@@ -510,7 +539,12 @@ def main() -> int:
     if not args.no_r:
         print("Checking R availability...", end=" ", flush=True)
         r_available = _check_r_available()
-        print("✓ found" if r_available else "✗ not found (Python-only mode)")
+        print("✓ found" if r_available else "✗ not found")
+        if args.require_r and not r_available:
+            print("R comparison is required but Rscript with gamlss/jsonlite is unavailable.")
+            return 2
+        if not r_available:
+            print("Continuing in Python-only mode; performance against R is not measured.")
     print()
 
     total = len(distributions) * len(data_sizes) * len(FORMULAS)
@@ -521,6 +555,7 @@ def main() -> int:
     print(f"  Formulas      : {FORMULAS}")
     print(f"  Total tests   : {total}")
     print(f"  R comparison  : {'yes' if r_available else 'no'}")
+    print(f"  Deviance tol  : abs={args.deviance_abs_tol:.1e}, rel={args.deviance_rel_tol:.1e}")
     print(f"  Timing        : warm (steady-state) + cold (first call / JIT)")
     print(f"{'='*70}")
     print()
@@ -550,6 +585,7 @@ def main() -> int:
                     cr.python_time = py["mean_time"]
                     cr.python_cold_time = py.get("cold_time")
                     cr.python_deviance = py.get("deviance")
+                    cr.python_peak_memory_mb = py.get("python_peak_memory_mb")
                 else:
                     cr.python_error = py.get("error", "")
 
@@ -566,6 +602,12 @@ def main() -> int:
                             cr.deviance_diff = abs(cr.python_deviance - cr.r_deviance)
                             denom = abs(cr.r_deviance) if cr.r_deviance else 1.0
                             cr.deviance_rel_diff = cr.deviance_diff / denom
+                            cr.deviance_abs_tolerance = args.deviance_abs_tol
+                            cr.deviance_rel_tolerance = args.deviance_rel_tol
+                            cr.deviance_consistent = (
+                                cr.deviance_diff <= args.deviance_abs_tol
+                                or cr.deviance_rel_diff <= args.deviance_rel_tol
+                            )
                     else:
                         cr.r_error = r.get("error", "")
 
@@ -599,6 +641,10 @@ def main() -> int:
         print(f"  Both passed   : {both_ok}/{total}")
         if r_only_count:
             print(f"  R only (regressions!) : {r_only_count}")
+        inconsistent = [r for r in results if r.deviance_consistent is False]
+        print(f"  Deviance consistent : {both_ok - len(inconsistent)}/{both_ok}")
+        if inconsistent:
+            print(f"  Deviance mismatches : {len(inconsistent)}")
         speedups = [r.speedup for r in results if r.speedup is not None]
         if speedups:
             print(f"  Mean speedup (warm) : {np.mean(speedups):.1f}×")
@@ -627,6 +673,11 @@ def main() -> int:
             "n_repeats": n_repeats,
             "warmup_runs": WARMUP,
             "timing_method": "jax.block_until_ready() + cold/warm separation",
+            "deviance_tolerances": {
+                "abs": args.deviance_abs_tol,
+                "rel": args.deviance_rel_tol,
+            },
+            "memory_method": "Python tracemalloc peak during cold fit; excludes JAX device allocator",
         },
         "results": [r.to_dict() for r in results],
     }
@@ -639,7 +690,8 @@ def main() -> int:
     report_path = reports_dir / f"quick_report_{timestamp}.md"
     _generate_report(results, report_path, r_available)
 
-    return 0 if r_only_count == 0 else 1
+    deviance_mismatches = sum(1 for r in results if r.deviance_consistent is False)
+    return 0 if r_only_count == 0 and deviance_mismatches == 0 else 1
 
 
 if __name__ == "__main__":
