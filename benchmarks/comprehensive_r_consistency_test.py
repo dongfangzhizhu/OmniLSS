@@ -24,11 +24,12 @@ import sys
 import tempfile
 import time
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 import numpy as np
 
@@ -45,8 +46,8 @@ if sys.platform == "win32":
 _REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "omnilss" / "src"))
 
-from omnilss import gamlss
-from omnilss.distributions import resolve_family
+from omnilss import gamlss  # noqa: E402
+from omnilss.distributions import resolve_family  # noqa: E402
 
 # ── distribution lists ────────────────────────────────────────────────────────
 # All distributions confirmed to have working d/p/q/r implementations.
@@ -224,7 +225,7 @@ def _run_r(script: str, args: list[str], timeout: int = 90) -> dict:
         )
         if result.returncode != 0:
             return {"success": False, "error": result.stderr.strip()[:300]}
-        lines = [l.strip() for l in result.stdout.splitlines() if l.strip()]
+        lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
         if not lines:
             return {"success": False, "error": "no output"}
         return json.loads(lines[-1])
@@ -253,6 +254,17 @@ def _write_csv(data: dict) -> str:
         for row in zip(*[data[k] for k in keys]):
             writer.writerow(row)
         return f.name
+
+
+def _block_until_ready_model(model: Any) -> None:
+    """Synchronize JAX-backed model arrays before stopping benchmark timers."""
+    for collection_name in ("fitted_values", "coefficients", "linear_predictors"):
+        collection = getattr(model, collection_name, {})
+        for value in getattr(collection, "values", lambda: [])():
+            try:
+                jax.block_until_ready(value)
+            except Exception:
+                pass
 
 
 def _safe_correlation(a: np.ndarray, b: np.ndarray) -> float:
@@ -615,10 +627,18 @@ def test_fitting(
     data   = _gen_fit_data(dist)
     family = resolve_family(dist)
 
-    # Python
+    # Python: run one untimed warm-up so timing reflects steady-state execution
+    # rather than first-call JAX compilation/setup.
+    try:
+        warm_model = gamlss("y ~ x", family=family, data=data, method=algorithm)
+        _block_until_ready_model(warm_model)
+    except Exception:
+        pass
+
     t0 = time.perf_counter()
     try:
-        model     = gamlss("y ~ x", family=family, data=data, algorithm=algorithm)
+        model     = gamlss("y ~ x", family=family, data=data, method=algorithm)
+        _block_until_ready_model(model)
         py_time   = time.perf_counter() - t0
         py_dev    = float(model.deviance)
         py_coef   = np.asarray(model.coefficients["mu"], dtype=np.float64)
@@ -708,6 +728,7 @@ def test_smoother(
     t0 = time.perf_counter()
     try:
         model     = gamlss(formula, family=family, data=data)
+        _block_until_ready_model(model)
         py_time   = time.perf_counter() - t0
         py_fitted = np.asarray(model.fitted_values["mu"], dtype=np.float64)
         py_dev    = float(model.deviance)

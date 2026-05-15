@@ -8,7 +8,7 @@
 - **Benchmark validation gate** — consistency with native R `gamlss` is checked before performance comparisons
 - **Transparent performance reporting** — benchmark reports separate cold time, warm time, deviance difference, and Python heap peak memory
 - **Smoothing** — P-splines (`pb`), cubic splines (`ps`, `cs`) with automatic parameter selection (GCV/REML)
-- **Multiple algorithms** — RS, CG, Mixed, Adam, L-BFGS
+- **Multiple algorithms** — RS, complete CG (JAX Hessian cross derivatives), Mixed, Adam, L-BFGS
 - **Neural GAMLSS** — distribution parameters output by neural networks (Flax/Equinox compatible)
 - **scikit-learn compatible** — optional `GAMLSSRegressor` wrapper for Pipeline integration
 - **Probabilistic scoring** — CRPS, log score, DSS, interval score, PIT histogram
@@ -89,17 +89,17 @@ curves = model.centiles(xvar="x", cent=[5, 50, 95])
 
 ```python
 # RS algorithm (default, most stable)
-model = gamlss("y ~ x", family=NO(), data=data, algorithm="RS")
+model = gamlss("y ~ x", family=NO(), data=data, method="RS")
 
 # CG algorithm
-model = gamlss("y ~ x", family=NO(), data=data, algorithm="CG")
+model = gamlss("y ~ x", family=NO(), data=data, method="CG")
 
 # Joint optimization with Adam
-model = gamlss("y ~ x", family=NO(), data=data, algorithm="Adam",
-               learning_rate=0.01)
+model = gamlss("y ~ x", family=NO(), data=data, method="joint",
+               optimizer="adam", learning_rate=0.01)
 
 # L-BFGS quasi-Newton
-model = gamlss("y ~ x", family=NO(), data=data, algorithm="L-BFGS")
+model = gamlss("y ~ x", family=NO(), data=data, method="lbfgs")
 ```
 
 ## Neural GAMLSS

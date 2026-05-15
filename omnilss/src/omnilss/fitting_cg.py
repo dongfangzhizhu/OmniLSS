@@ -39,16 +39,10 @@ from typing import Optional, Dict, Tuple, Callable
 from dataclasses import dataclass
 import warnings
 
-import jax
 import jax.numpy as jnp
-from jax import grad, jit
+from jax import grad, hessian
 
-from .fisher_information import (
-    compute_fisher_matrix,
-    compute_score_vector,
-    flatten_params,
-    check_fisher_matrix,
-)
+from .fisher_information import flatten_params
 
 
 # =============================================================================
@@ -115,7 +109,9 @@ def fit_cg(
     """Fit GAMLSS model using Cole-Green algorithm.
     
     The CG algorithm uses global scoring to update all parameters
-    simultaneously. This is more stable than RS but may be slower.
+    simultaneously with the full observed information matrix, including
+    cross-derivative blocks between distribution parameters. This is more
+    stable than RS but may be slower.
     
     Parameters
     ----------
@@ -158,7 +154,7 @@ def fit_cg(
     The CG algorithm updates parameters using:
         θ^(t+1) = θ^(t) + α * I^(-1) * u
     where:
-        - I is the Fisher information matrix
+        - I is the full observed information matrix, including cross derivatives
         - u is the score vector (gradient)
         - α is the step size
     
@@ -249,8 +245,11 @@ def fit_cg(
                 # Optionally compute final Fisher matrix
                 fisher = None
                 if return_fisher:
-                    fisher = compute_fisher_matrix(
-                        log_likelihood, params, data
+                    fisher, _ = _compute_full_observed_information_and_score(
+                        log_likelihood,
+                        params,
+                        data,
+                        regularization=regularization,
                     )
                 
                 return CGResult(
@@ -263,45 +262,22 @@ def fit_cg(
                     fisher_matrix=fisher
                 )
         
-        # Compute Fisher information matrix
+        # Compute the full observed information matrix and score vector.
+        # This uses jax.hessian over the flattened beta coefficients, so the
+        # CG update includes cross-derivative blocks such as beta_mu/beta_sigma
+        # instead of the older block-diagonal approximation.
         try:
-            # For GAMLSS, use expected Fisher information based on family's hessian functions
-            # This is more stable than observed information (Hessian of log-likelihood)
-            fisher = _compute_expected_fisher(
-                params, design_matrices, family, y, weights
+            fisher, score = _compute_full_observed_information_and_score(
+                log_likelihood,
+                params,
+                data,
+                regularization=regularization,
             )
-            
-            # Check Fisher matrix properties
-            checks = check_fisher_matrix(fisher, tol=1e-10)
-            if not checks["positive_definite"]:
-                # Try with more regularization
-                n_params = fisher.shape[0]
-                fisher = fisher + 10 * regularization * jnp.eye(n_params)
-                checks = check_fisher_matrix(fisher, tol=1e-10)
-                if not checks["positive_definite"]:
-                    warnings.warn(
-                        f"Fisher matrix not positive definite at iteration {iteration}",
-                        RuntimeWarning
-                    )
-                    # Use diagonal approximation as fallback
-                    fisher = jnp.diag(jnp.maximum(jnp.diag(fisher), regularization))
         except Exception as e:
             import traceback
             warnings.warn(
-                f"Failed to compute Fisher matrix at iteration {iteration}: {e}\n{traceback.format_exc()}",
-                RuntimeWarning
-            )
-            break
-        
-        # Compute score vector
-        try:
-            score = _compute_score_gamlss(
-                params, design_matrices, family, y, weights
-            )
-        except Exception as e:
-            warnings.warn(
-                f"Failed to compute score at iteration {iteration}: {e}",
-                RuntimeWarning
+                f"Failed to compute full CG derivatives at iteration {iteration}: {e}\n{traceback.format_exc()}",
+                RuntimeWarning,
             )
             break
         
@@ -317,15 +293,30 @@ def fit_cg(
             # If solve fails, try pseudo-inverse
             try:
                 delta = jnp.linalg.lstsq(fisher, score, rcond=None)[0]
-            except:
+            except Exception:
                 warnings.warn(
                     f"Failed to solve Fisher system at iteration {iteration}: {e}",
                     RuntimeWarning
                 )
                 break
         
-        # Update parameters with step size
-        params = _update_params(params, delta, step_size)
+        # Update parameters with a small backtracking line search.  The full
+        # observed Hessian may be indefinite far from the optimum; projection and
+        # backtracking keep CG numerically stable without discarding cross terms.
+        params, accepted_deviance = _line_search_update(
+            params,
+            delta,
+            step_size,
+            current_deviance=float(deviance),
+            log_likelihood=log_likelihood,
+            data=data,
+        )
+        if accepted_deviance is None:
+            warnings.warn(
+                f"CG line search failed at iteration {iteration}",
+                RuntimeWarning,
+            )
+            break
     
     # Did not converge
     if verbose:
@@ -348,8 +339,13 @@ def fit_cg(
     fisher = None
     if return_fisher:
         try:
-            fisher = compute_fisher_matrix(log_likelihood, params, data)
-        except:
+            fisher, _ = _compute_full_observed_information_and_score(
+                log_likelihood,
+                params,
+                data,
+                regularization=regularization,
+            )
+        except Exception:
             pass
     
     return CGResult(
@@ -393,24 +389,31 @@ def _initialize_params(
     """
     params = {}
     
-    # Initialize mu (use mean of y)
+    # Initialize mu with a link-scale least-squares fit when possible.
     if X_mu is not None:
-        # Simple initialization: intercept = mean(y), slopes = 0
         p_mu = X_mu.shape[1]
         beta_mu = jnp.zeros(p_mu)
         if p_mu > 0:
-            # Set intercept to transformed mean
-            mean_y = jnp.mean(y)
-            # Clip to valid range for the family
+            target_y = jnp.asarray(y, dtype=jnp.float64)
+            if family.name in ["BI", "BE"]:
+                target_y = jnp.clip(target_y, 0.01, 0.99)
+            elif family.name in ["PO", "GA", "EXP", "NBI", "GEOM", "ZAGA"]:
+                target_y = jnp.maximum(target_y, 0.1)
+
             if hasattr(family, 'link_functions') and 'mu' in family.link_functions:
-                # For bounded distributions, ensure mean is in valid range
-                if family.name in ["BI", "BE"]:
-                    mean_y = jnp.clip(mean_y, 0.01, 0.99)
-                elif family.name in ["PO", "GA", "EXP", "NBI", "GEOM"]:
-                    mean_y = jnp.maximum(mean_y, 0.1)
-                beta_mu = beta_mu.at[0].set(family.link_functions['mu'](mean_y))
+                target_eta = family.link_functions['mu'](target_y)
             else:
-                beta_mu = beta_mu.at[0].set(mean_y)
+                target_eta = target_y
+            target_eta = jnp.where(jnp.isfinite(target_eta), target_eta, jnp.mean(target_eta[jnp.isfinite(target_eta)]))
+
+            try:
+                beta_mu = jnp.linalg.lstsq(X_mu, target_eta, rcond=None)[0]
+            except Exception:
+                mean_y = jnp.mean(target_y)
+                if hasattr(family, 'link_functions') and 'mu' in family.link_functions:
+                    beta_mu = beta_mu.at[0].set(family.link_functions['mu'](mean_y))
+                else:
+                    beta_mu = beta_mu.at[0].set(mean_y)
         params["beta_mu"] = beta_mu
     
     # Initialize sigma (use std of y or reasonable default)
@@ -619,6 +622,89 @@ def _update_params(
     new_params = unflatten_fn(new_param_vec)
     
     return new_params
+
+
+def _compute_full_observed_information_and_score(
+    log_likelihood: Callable[
+        [Dict[str, jnp.ndarray], Dict[str, jnp.ndarray]], jnp.ndarray
+    ],
+    params: Dict[str, jnp.ndarray],
+    data: Dict[str, jnp.ndarray],
+    regularization: float = 1e-6,
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Compute complete CG derivatives with JAX automatic differentiation.
+
+    The previous CG backend assembled a block-diagonal Fisher matrix from
+    per-parameter Hessian functions, which implicitly set all cross-derivative
+    blocks to zero.  Cole-Green scoring needs the coupled curvature between all
+    estimated distribution parameters.  This helper flattens the beta
+    coefficients and differentiates the scalar log-likelihood directly so
+    ``jax.hessian`` returns every block, including mu/sigma/nu/tau interactions.
+    """
+    param_vec, unflatten_fn = flatten_params(params)
+
+    def log_lik_vec(theta_vec):
+        theta_dict = unflatten_fn(theta_vec)
+        return log_likelihood(theta_dict, data)
+
+    score = grad(log_lik_vec)(param_vec)
+    hess = hessian(log_lik_vec)(param_vec)
+    fisher = -hess
+    fisher = 0.5 * (fisher + fisher.T)
+    fisher = _stabilize_information_matrix(fisher, regularization)
+    score = jnp.where(jnp.isfinite(score), score, 0.0)
+    return fisher, score
+
+
+def _stabilize_information_matrix(
+    fisher: jnp.ndarray,
+    regularization: float,
+) -> jnp.ndarray:
+    """Return a finite positive-definite information matrix preserving cross terms."""
+    fisher = jnp.where(jnp.isfinite(fisher), fisher, 0.0)
+    fisher = 0.5 * (fisher + fisher.T)
+    n_params = fisher.shape[0]
+    eigvals, eigvecs = jnp.linalg.eigh(fisher)
+    base_floor = jnp.maximum(
+        jnp.asarray(regularization, dtype=fisher.dtype),
+        jnp.finfo(fisher.dtype).eps,
+    )
+    relative_floor = 1e-2 * jnp.max(
+        jnp.maximum(jnp.abs(eigvals), jnp.ones_like(eigvals))
+    )
+    floor = jnp.where(
+        jnp.min(eigvals) <= base_floor,
+        jnp.maximum(base_floor, relative_floor),
+        base_floor,
+    )
+    eigvals = jnp.maximum(eigvals, floor)
+    stabilized = (eigvecs * eigvals) @ eigvecs.T
+    stabilized = 0.5 * (stabilized + stabilized.T)
+    return stabilized + floor * jnp.eye(n_params, dtype=fisher.dtype)
+
+
+def _line_search_update(
+    params: Dict[str, jnp.ndarray],
+    delta: jnp.ndarray,
+    step_size: float,
+    current_deviance: float,
+    log_likelihood: Callable[
+        [Dict[str, jnp.ndarray], Dict[str, jnp.ndarray]], jnp.ndarray
+    ],
+    data: Dict[str, jnp.ndarray],
+    max_halving: int = 30,
+) -> Tuple[Dict[str, jnp.ndarray], Optional[float]]:
+    """Apply a damped CG update, accepting only finite non-increasing deviance."""
+    for i in range(max_halving + 1):
+        candidate_step = step_size * (0.5 ** i)
+        candidate = _update_params(params, delta, candidate_step)
+        candidate_deviance = float(-2.0 * log_likelihood(candidate, data))
+        if (
+            jnp.isfinite(candidate_deviance)
+            and candidate_deviance <= current_deviance + 1e-8
+        ):
+            return candidate, candidate_deviance
+    return params, None
 
 
 def _compute_expected_fisher(

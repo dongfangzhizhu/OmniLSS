@@ -16,7 +16,6 @@ the LMS method and penalized likelihood. Statistics in Medicine, 11(10), 1305-13
 
 from __future__ import annotations
 
-import warnings
 from typing import Any, Dict, Optional, Tuple
 
 import jax
@@ -235,8 +234,8 @@ def cg_fit(
 
     CG extends RS by incorporating cross-derivative corrections between
     distribution parameters, which can improve convergence when parameters
-    are correlated.  The implementation uses RS-style IRLS updates with
-    optional cross-derivative adjustments applied after the first iteration.
+    are correlated.  This wrapper delegates to ``gamlss(method="CG")``, whose
+    backend computes the full observed-information matrix with ``jax.hessian``.
 
     Parameters
     ----------
@@ -251,7 +250,8 @@ def cg_fit(
     data : dict
         Data dictionary {variable: array}
     mu_step, sigma_step, nu_step, tau_step : float
-        Step sizes in (0, 1]
+        Deprecated compatibility arguments; the full-Hessian CG backend uses
+        its own damped line search.
     max_outer_iter : int
         Maximum outer loop iterations (default 50)
     outer_tol : float
@@ -267,12 +267,7 @@ def cg_fit(
     if data is None:
         raise ValueError("data must be provided")
 
-    # Delegate to the RS algorithm which is numerically stable and proven.
-    # CG's cross-derivative corrections are applied as a post-processing
-    # refinement step.  For most practical models, RS and CG converge to
-    # the same solution; the difference is in convergence speed for models
-    # with strongly correlated parameters.
-    from ..algorithms.rs_algorithm import rs_fit
+    from ..fitting import gamlss, gamlss_control
 
     parameter_formulas: dict | None = None
     if nu_formula is not None or tau_formula is not None:
@@ -282,40 +277,13 @@ def cg_fit(
         if tau_formula is not None:
             parameter_formulas["tau"] = tau_formula
 
-    rs_model = rs_fit(
+    return gamlss(
         formula=formula,
         sigma_formula=sigma_formula,
         parameter_formulas=parameter_formulas,
-        family=family,
+        family=resolve_family(family),
         data=data,
-        mu_step=mu_step,
-        sigma_step=sigma_step,
-        nu_step=nu_step,
-        tau_step=tau_step,
-        max_iter=max_outer_iter,
-        tol=outer_tol,
+        method="CG",
+        control=gamlss_control(n_cyc=max_outer_iter, c_crit=outer_tol),
         verbose=verbose,
-    )
-
-    # Translate RS slots to CG slots so tests and downstream code work
-    rs_converged = rs_model.additional_slots.get("rs_converged", True)
-    rs_iterations = rs_model.additional_slots.get("rs_iterations", 1)
-
-    updated_slots = dict(rs_model.additional_slots)
-    updated_slots.update({
-        "method": "CG",
-        "cg_converged": rs_converged,
-        "cg_iterations": rs_iterations,
-        "cg_final_deviance": rs_model.g_dev,
-        "converged": rs_converged,
-    })
-
-    import dataclasses
-    return dataclasses.replace(
-        rs_model,
-        additional_slots=updated_slots,
-        call={
-            **(rs_model.call or {}),
-            "method": "CG",
-        },
     )

@@ -13,7 +13,7 @@
    data parameters.
 5. **Regression snapshots**: protect refactors from silently changing known
    fitted values, likelihoods, and predictions.
-6. **Benchmarks**: separate compile time, cold runtime, warm runtime, memory,
+6. **Benchmarks**: separate compile/setup time, cold runtime, warm runtime, setup-excluded R elapsed time, memory,
    GPU runtime, and batch scaling.
 
 ## Freeze Rule
@@ -34,4 +34,4 @@ optimizer adapter's non-mutating step boundary.
 import-time script checks, so BB d/p/q/r behavior contributes to normal pytest
 status reporting.
 
-R-backed d/p/q coverage is tracked in [`r-consistency-coverage.md`](r-consistency-coverage.md).
+R-backed d/p/q coverage is tracked in [`r-consistency-coverage.md`](r-consistency-coverage.md). CG algorithm integrity is tracked in [`../validation/cg-algorithm-integrity.md`](../validation/cg-algorithm-integrity.md).

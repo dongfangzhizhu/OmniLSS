@@ -9,8 +9,9 @@ Timing methodology
   ensures async computation completes before stopping the clock.
   Both cold-start (first call including JIT compilation) and warm times
   (steady-state after compilation) are reported.
-- R: each call is a fresh Rscript subprocess (no within-process caching);
-  one untimed warm-up call inside the R script before the timed runs.
+- R: one Rscript subprocess per benchmark case. CSV loading and package startup
+  are excluded from reported timings; the R script performs one untimed warm-up
+  fit, then reports in-process elapsed time for the requested timed repeats.
 
 Usage
 -----
@@ -50,8 +51,8 @@ if sys.platform == "win32":
 _REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "omnilss" / "src"))
 
-from omnilss import gamlss
-from omnilss.distributions import resolve_family
+from omnilss import gamlss  # noqa: E402
+from omnilss.distributions import resolve_family  # noqa: E402
 
 # ── constants ─────────────────────────────────────────────────────────────────
 # All distributions with confirmed working d/p/q/r and fitting support
@@ -267,7 +268,7 @@ def _check_r_available() -> bool:
 
 
 def _time_r(dist: str, formula: str, data: dict, n_repeats: int) -> dict:
-    """Time R gamlss() via Rscript subprocess (wall-clock from Python side)."""
+    """Time R gamlss() using in-process elapsed time from one Rscript run."""
     import csv
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, newline="") as f:
@@ -282,40 +283,31 @@ def _time_r(dist: str, formula: str, data: dict, n_repeats: int) -> dict:
         r_path = f.name
         f.write(_R_SCRIPT)
 
-    times = []
-    deviance = None
-
     try:
-        for _ in range(n_repeats):
-            t0 = time.perf_counter()
-            result = subprocess.run(
-                ["Rscript", r_path, csv_path, dist, formula, "1"],
-                capture_output=True, text=True, timeout=120,
-            )
-            elapsed = time.perf_counter() - t0
+        result = subprocess.run(
+            ["Rscript", r_path, csv_path, dist, formula, str(n_repeats)],
+            capture_output=True, text=True, timeout=120,
+        )
 
-            if result.returncode != 0:
-                return {"success": False, "error": result.stderr.strip()[:200]}
+        if result.returncode != 0:
+            return {"success": False, "error": result.stderr.strip()[:200]}
 
-            lines = [l.strip() for l in result.stdout.splitlines() if l.strip()]
-            if not lines:
-                return {"success": False, "error": "no output from R"}
-            try:
-                parsed = json.loads(lines[-1])
-            except json.JSONDecodeError:
-                return {"success": False, "error": f"bad JSON: {lines[-1][:100]}"}
+        lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        if not lines:
+            return {"success": False, "error": "no output from R"}
+        try:
+            parsed = json.loads(lines[-1])
+        except json.JSONDecodeError:
+            return {"success": False, "error": f"bad JSON: {lines[-1][:100]}"}
 
-            if not parsed.get("converged", False):
-                return {"success": False, "error": "R did not converge"}
-
-            times.append(elapsed)
-            deviance = float(parsed["deviance"])
+        if not parsed.get("converged", False):
+            return {"success": False, "error": "R did not converge"}
 
         return {
             "success": True,
-            "mean_time": float(np.mean(times)),
-            "min_time": float(np.min(times)),
-            "deviance": deviance,
+            "mean_time": float(parsed["mean_time"]),
+            "min_time": float(parsed["min_time"]),
+            "deviance": float(parsed["deviance"]),
         }
     except subprocess.TimeoutExpired:
         return {"success": False, "error": "R timeout"}
@@ -383,8 +375,8 @@ def _generate_report(
     a("- **Python cold time**: first call including JIT compilation overhead.")
     a("- **Python memory**: peak Python heap during cold fit via `tracemalloc`; "
       "JAX device allocator memory is not included.")
-    a("- **R time**: wall-clock from Python side; each call is a fresh Rscript "
-      "process with one untimed warm-up call inside.")
+    a("- **R time**: in-process elapsed time reported by one Rscript run after "
+      "CSV/package setup, with one untimed warm-up fit before timed repeats.")
     a("")
     a("---")
     a("")
@@ -530,6 +522,9 @@ def main() -> int:
     distributions = QUICK_DISTRIBUTIONS if args.quick else DISTRIBUTIONS
     data_sizes = LARGE_DATA_SIZES if args.large else DATA_SIZES
     n_repeats = args.n_repeats
+    if n_repeats < 1:
+        print("--n-repeats must be >= 1")
+        return 2
 
     # Large datasets: Python only (R would be too slow)
     if args.large:
@@ -549,14 +544,14 @@ def main() -> int:
 
     total = len(distributions) * len(data_sizes) * len(FORMULAS)
     print(f"{'='*70}")
-    print(f"OmniLSS Performance Benchmark")
+    print("OmniLSS Performance Benchmark")
     print(f"  Distributions : {', '.join(distributions)}")
     print(f"  Data sizes    : {data_sizes}")
     print(f"  Formulas      : {FORMULAS}")
     print(f"  Total tests   : {total}")
     print(f"  R comparison  : {'yes' if r_available else 'no'}")
     print(f"  Deviance tol  : abs={args.deviance_abs_tol:.1e}, rel={args.deviance_rel_tol:.1e}")
-    print(f"  Timing        : warm (steady-state) + cold (first call / JIT)")
+    print("  Timing        : warm (steady-state) + cold (first call / JIT)")
     print(f"{'='*70}")
     print()
 
@@ -672,7 +667,7 @@ def main() -> int:
             "formulas": FORMULAS,
             "n_repeats": n_repeats,
             "warmup_runs": WARMUP,
-            "timing_method": "jax.block_until_ready() + cold/warm separation",
+            "timing_method": "Python jax.block_until_ready() + cold/warm separation; R in-process elapsed timing after setup",
             "deviance_tolerances": {
                 "abs": args.deviance_abs_tol,
                 "rel": args.deviance_rel_tol,
