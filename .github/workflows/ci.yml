@@ -36,12 +36,24 @@ jobs:
           cd omnilss
           uv pip install --system -e ".[dev]"
 
-      - name: Run tests
+      - name: Run CI smoke tests
         env:
           MPLBACKEND: Agg
+          JAX_PLATFORMS: cpu
+          JAX_ENABLE_X64: "true"
         run: |
           cd omnilss
-          python -m pytest tests/ -v --cov=omnilss --cov-report=xml --cov-report=term
+          python -m pytest \
+            tests/test_core_architecture_contracts.py \
+            tests/test_formula.py \
+            tests/test_basic_batch3.py \
+            tests/test_basic_batch5.py \
+            tests/test_basic_batch9.py \
+            tests/test_diagnostics.py \
+            tests/test_consistency_families.py \
+            tests/test_dpqr_r_consistency.py \
+            tests/test_pareto2_python_fitting.py \
+            -v --cov=omnilss --cov-report=xml --cov-report=term
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.10'

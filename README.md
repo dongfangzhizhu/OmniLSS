@@ -4,51 +4,34 @@
 
 ## Key Features
 
-- **80+ Distribution Families** — complete implementation of R GAMLSS distributions with full d/p/q/r functions
-- **30–120× faster than R gamlss** on CPU (steady-state, after JAX JIT warm-up); GPU/TPU provide additional acceleration
-- **Numerical consistency with R** — 100% pass rate on 33 consistency tests, deviance diff < 1×10⁻⁴
+- **80+ Distribution Families** — broad R GAMLSS distribution coverage with ongoing d/p/q/r migration tracking
+- **Benchmark validation gate** — consistency with native R `gamlss` is checked before performance comparisons
+- **Transparent performance reporting** — benchmark reports separate cold time, warm time, deviance difference, and Python heap peak memory
 - **Smoothing** — P-splines (`pb`), cubic splines (`ps`, `cs`) with automatic parameter selection (GCV/REML)
 - **Multiple algorithms** — RS, CG, Mixed, Adam, L-BFGS
 - **Neural GAMLSS** — distribution parameters output by neural networks (Flax/Equinox compatible)
 - **scikit-learn compatible** — optional `GAMLSSRegressor` wrapper for Pipeline integration
 - **Probabilistic scoring** — CRPS, log score, DSS, interval score, PIT histogram
 
-## Performance
+## Architecture Freeze and Benchmark Policy
 
-Benchmarked against R gamlss on CPU (Intel Core i7-12700K, Windows 11).
-Timing methodology: `jax.block_until_ready()` ensures async JAX computation
-completes; warm time = steady-state after JIT compilation; cold time = first
-call including JIT compilation (~0.05–0.5s overhead, one-time per session).
-Each R call is a fresh Rscript process (no within-process caching).
+OmniLSS is currently in a 30-day architecture stabilization phase. The active
+priority is to reduce complexity, stabilize protocol boundaries, and improve
+long-term maintainability rather than adding new distributions, optimizers,
+formula syntax, wrappers, or smoothing methods.
 
-| Distribution | Mean speedup (warm) | Range | Cold-start |
-|-------------|---------------------|-------|-----------|
-| NO (Normal) | **111×** | 89–149× | ~0.2–0.5s |
-| LOGNO (Log-Normal) | **110×** | 100–148× | ~0.2s |
-| PO (Poisson) | **56×** | 29–82× | ~0.05s |
-| GA (Gamma) | **33×** | 23–40× | ~0.2s |
-| BI (Binomial) | **65×** | 29–119× | ~0.2s |
-| NBI (Neg. Binomial) | **35×** | 13–55× | ~0.2s |
-| BE (Beta) | **27×** | 22–33× | ~0.2s |
-| ZIP | **22×** | 12–27× | ~0.2s |
-| ZAGA | **16×** | 14–20× | ~0.2s |
+Current status and documentation-maintenance tasks are tracked in
+[`docs/maintenance/30-day-refactor-status.md`](docs/maintenance/30-day-refactor-status.md).
 
-**Overall: 22–149× faster than R gamlss (warm, steady-state). Mean 67×.**
+Benchmark claims must be generated from the validation gate in `benchmarks/`:
 
-> **JAX JIT note**: The first call to `gamlss()` compiles the computation
-> graph (~0.05–0.5s, one-time per Python session). Subsequent calls with the
-> same model structure are 22–149× faster than R. For single-call scripts,
-> add a warm-up call first. See [docs/performance_guide.md](../docs/performance_guide.md).
+```bash
+python benchmarks/run_local_validation.py --quick
+```
 
-Consistency test (33 tests, 100% pass rate, live R comparison):
-
-| Category | Tests | Pass rate | Max absolute error |
-|----------|-------|-----------|-------------------|
-| d/p/q functions | 18 | 100% | < 5×10⁻⁵ (continuous) |
-| Model fitting (RS/CG/Mixed) | 12 | 100% | < 5×10⁻⁵ |
-| Smoothers (pb/ps/cs) | 3 | 100% | < 1 |
-
-> See [`benchmarks/`](../benchmarks/) for reproducible benchmark scripts.
+That command requires native R `gamlss` and runs numerical consistency before
+performance. In environments without R, `--allow-python-only` is a smoke check
+only and must not be used to claim R equivalence.
 
 ## Installation
 
@@ -164,19 +147,15 @@ print(f"Coverage:  {summary['coverage_90']:.1%}")
 
 ## Benchmarks
 
+Run the validation gate from the repository root. It fails fast when R is
+required but unavailable, runs consistency first, and only then runs performance.
+
 ```bash
-# Performance benchmark (81 tests, auto-generates report)
-python benchmarks/comprehensive_performance_test.py
-
-# Quick test (3 distributions, ~5 minutes)
-python benchmarks/comprehensive_performance_test.py --quick
-
-# Consistency test vs R
-python benchmarks/comprehensive_r_consistency_test.py
-
-# Python only (no R required)
-python benchmarks/comprehensive_performance_test.py --no-r
+python benchmarks/run_local_validation.py --quick
+python benchmarks/run_local_validation.py --quick --allow-python-only --no-fit --no-smooth  # smoke only
 ```
+
+See [`benchmarks/README.md`](benchmarks/README.md) for methodology and reporting rules.
 
 ## Testing
 

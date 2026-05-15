@@ -24,6 +24,7 @@ from jax.scipy.special import gammaln
 from jax.scipy.stats import norm
 from scipy.integrate import quad
 from scipy.optimize import brentq
+from scipy.stats import skewnorm as scipy_skewnorm
 
 from .ad import build_ad_family
 from .families import FamilyDefinition
@@ -36,6 +37,74 @@ from .links import (
     log_link,
 )
 from .dpqr_functions import dSHASH, pSHASH, qSHASH, rSHASH, dGT, pGT, qGT, rGT
+
+
+def _broadcast_jax_args(args):
+    arrays = [jnp.asarray(arg, dtype=jnp.float64) for arg in args]
+    target_size = max(arr.size if arr.ndim > 0 else 1 for arr in arrays)
+    scalar_output = target_size == 1 and all(arr.ndim == 0 for arr in arrays)
+    prepared = []
+    for arr in arrays:
+        flat = jnp.reshape(arr, (-1,)) if arr.ndim > 0 else jnp.reshape(arr, (1,))
+        if flat.size == target_size:
+            prepared.append(flat)
+        elif flat.size == 1:
+            prepared.append(jnp.repeat(flat, target_size))
+        else:
+            raise ValueError("Arguments must be broadcastable to a common length")
+    return prepared, scalar_output
+
+
+def _shasho_p(x, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, lower_tail=True, log_p=False):
+    x, mu, sigma, nu, tau = [jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu, tau)]
+    eps = jnp.finfo(jnp.float64).eps
+    sigma = jnp.maximum(sigma, eps)
+    tau = jnp.maximum(tau, eps)
+    z = (x - mu) / sigma
+    r = jnp.sinh(tau * jnp.arcsinh(z) - nu)
+    prob = norm.cdf(r)
+    if not lower_tail:
+        prob = 1.0 - prob
+    return jnp.log(prob) if log_p else prob
+
+
+def _shasho_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, lower_tail=True, log_p=False):
+    p, mu, sigma, nu, tau = [jnp.asarray(v, dtype=jnp.float64) for v in (p, mu, sigma, nu, tau)]
+    if log_p:
+        p = jnp.exp(p)
+    if not lower_tail:
+        p = 1.0 - p
+    eps = jnp.finfo(jnp.float64).eps
+    p = jnp.clip(p, eps, 1.0 - eps)
+    sigma = jnp.maximum(sigma, eps)
+    tau = jnp.maximum(tau, eps)
+    r = norm.ppf(p)
+    z = jnp.sinh((jnp.arcsinh(r) + nu) / tau)
+    return mu + sigma * z
+
+
+def _sn1_p(x, mu=0.0, sigma=1.0, nu=0.0, lower_tail=True, log_p=False):
+    args, scalar_output = _broadcast_jax_args((x, mu, sigma, nu))
+    vals = scipy_skewnorm.cdf(np.asarray(args[0]), np.asarray(args[3]), loc=np.asarray(args[1]), scale=np.asarray(args[2]))
+    vals = 1.0 - vals if not lower_tail else vals
+    vals = np.log(vals) if log_p else vals
+    if scalar_output:
+        return jnp.asarray(vals[0], dtype=jnp.float64)
+    return jnp.asarray(vals, dtype=jnp.float64)
+
+
+def _sn1_q(p, mu=0.0, sigma=1.0, nu=0.0, lower_tail=True, log_p=False):
+    args, scalar_output = _broadcast_jax_args((p, mu, sigma, nu))
+    probs = np.asarray(args[0])
+    if log_p:
+        probs = np.exp(probs)
+    if not lower_tail:
+        probs = 1.0 - probs
+    probs = np.clip(probs, np.finfo(float).eps, 1.0 - np.finfo(float).eps)
+    vals = scipy_skewnorm.ppf(probs, np.asarray(args[3]), loc=np.asarray(args[1]), scale=np.asarray(args[2]))
+    if scalar_output:
+        return jnp.asarray(vals[0], dtype=jnp.float64)
+    return jnp.asarray(vals, dtype=jnp.float64)
 
 
 def _attach_numeric_real_line_dpq(family_class: type[FamilyDefinition], log_pdf_func):
@@ -66,7 +135,22 @@ def _attach_numeric_real_line_dpq(family_class: type[FamilyDefinition], log_pdf_
         return float(jnp.exp(log_pdf_func(*args)))
 
     def _cdf_scalar(x, params):
-        return quad(lambda t: _pdf_scalar(t, params), -np.inf, float(x), limit=200)[0]
+        x = float(x)
+        lo, hi = _guess_bounds(params)
+        if x <= lo:
+            return 0.0
+        if x >= hi:
+            return 1.0
+
+        def safe_pdf(t):
+            value = _pdf_scalar(t, params)
+            return value if np.isfinite(value) else 0.0
+
+        numerator = quad(safe_pdf, lo, x, limit=200)[0]
+        denominator = quad(safe_pdf, lo, hi, limit=200)[0]
+        if not np.isfinite(denominator) or denominator <= 0.0:
+            return np.nan
+        return numerator / denominator
 
     def _guess_bounds(params):
         mu = float(params[0]) if params else 0.0
@@ -205,7 +289,6 @@ def _shasho_log_pdf(y, mu, sigma, nu, tau):
 
 
 def SHASHo() -> SinhArcsinhOFamily:
-    _attach_numeric_real_line_dpq(SinhArcsinhOFamily, _shasho_log_pdf)
     return build_ad_family(
         family_class=SinhArcsinhOFamily,
         name="SHASHo",
@@ -216,6 +299,8 @@ def SHASHo() -> SinhArcsinhOFamily:
         link_functions={"mu": identity_link, "sigma": log_link, "nu": identity_link, "tau": log_link},
         link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": identity_inverse, "tau": log_inverse},
         link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": identity_derivative, "tau": log_derivative},
+        p=_shasho_p,
+        q=_shasho_q,
     )
 
 
@@ -243,6 +328,15 @@ def _sn2_log_pdf(y, mu, sigma, nu):
 
 def SN2() -> SkewNormal2Family:
     _attach_numeric_real_line_dpq(SkewNormal2Family, _sn2_log_pdf)
+    _p_method = SkewNormal2Family.p
+    _q_method = SkewNormal2Family.q
+
+    def _p_standalone(x, *params, lower_tail=True, log_p=False):
+        return _p_method(None, x, *params)
+
+    def _q_standalone(probs, *params, lower_tail=True, log_p=False):
+        return _q_method(None, probs, *params)
+
     return build_ad_family(
         family_class=SkewNormal2Family,
         name="SN2",
@@ -253,6 +347,8 @@ def SN2() -> SkewNormal2Family:
         link_functions={"mu": identity_link, "sigma": log_link, "nu": log_link},
         link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse},
         link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative},
+        p=_p_standalone,
+        q=_q_standalone,
     )
 
 
@@ -337,7 +433,6 @@ def _sn1_log_pdf(y, mu, sigma, nu):
 
 
 def SN1() -> SkewNormal1Family:
-    _attach_numeric_real_line_dpq(SkewNormal1Family, _sn1_log_pdf)
     return build_ad_family(
         family_class=SkewNormal1Family,
         name="SN1",
@@ -348,4 +443,6 @@ def SN1() -> SkewNormal1Family:
         link_functions={"mu": identity_link, "sigma": log_link, "nu": identity_link},
         link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": identity_inverse},
         link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": identity_derivative},
+        p=_sn1_p,
+        q=_sn1_q,
     )

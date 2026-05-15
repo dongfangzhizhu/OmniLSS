@@ -27,11 +27,14 @@ class RTestBus:
         else:
             self.scripts_dir = Path(scripts_dir)
         
-        # Verify Rscript is available
+        # Verify Rscript is available. General CI does not install R, so callers
+        # should be able to skip R-backed tests at setup time instead of failing
+        # later during the first subprocess call.
         try:
             subprocess.run(["Rscript", "--version"], check=True, capture_output=True)
-        except (subprocess.SubprocessError, FileNotFoundError):
-            logger.warning("Rscript not found in PATH or failed to execute. RTestBus will fail on invocation.")
+        except (subprocess.SubprocessError, FileNotFoundError) as exc:
+            logger.warning("Rscript not found in PATH or failed to execute.")
+            raise RuntimeError("Rscript not available") from exc
 
     def _run_script(self, script_name: str, **kwargs) -> Dict[str, Any]:
         """Runs an R script with a JSON payload of arguments via a temporary file."""

@@ -1,15 +1,21 @@
 """Test PARETO2 fitting in Python."""
 
-import numpy as np
+import shutil
+import subprocess
 import sys
 from pathlib import Path
+
+import numpy as np
+import pytest
 
 src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
 from omnilss.distributions_b1 import PARETO2
 from omnilss.fitting import gamlss
-import subprocess
+
+if shutil.which("Rscript") is None:
+    pytest.skip("Rscript not available; skipping PARETO2 R-data fitting smoke test", allow_module_level=True)
 
 # Generate data using R
 r_script = """
@@ -25,7 +31,15 @@ result = subprocess.run(
     text=True
 )
 
+if result.returncode != 0:
+    pytest.skip(
+        "R gamlss.dist package unavailable; skipping PARETO2 R-data fitting smoke test",
+        allow_module_level=True,
+    )
+
 y = np.array([float(v) for v in result.stdout.strip().split()])
+if y.size == 0:
+    pytest.skip("R did not emit PARETO2 sample data", allow_module_level=True)
 
 print("Data summary:")
 print(f"  n = {len(y)}")
