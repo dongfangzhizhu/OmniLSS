@@ -277,13 +277,28 @@ def cg_fit(
         if tau_formula is not None:
             parameter_formulas["tau"] = tau_formula
 
-    return gamlss(
+    fam = resolve_family(family)
+    model = gamlss(
         formula=formula,
         sigma_formula=sigma_formula,
         parameter_formulas=parameter_formulas,
-        family=resolve_family(family),
+        family=fam,
         data=data,
         method="CG",
         control=gamlss_control(n_cyc=max_outer_iter, c_crit=outer_tol),
         verbose=verbose,
     )
+
+    # Attach cross-derivative diagnostics so CG path explicitly uses the helper.
+    try:
+        params = {p: np.asarray(model.fitted_values[p], dtype=np.float64) for p in fam.parameters if p in model.fitted_values}
+        y = np.asarray(data[formula.split('~', 1)[0].strip()], dtype=np.float64)
+        cross_summary = {}
+        if "mu" in params and "sigma" in params and "mu" in fam.parameters and "sigma" in fam.parameters:
+            cs = _compute_cross_derivatives(y=y, param_values=params, family=fam, param_k="mu", param_j="sigma")
+            cross_summary["mu_sigma_mean_abs"] = float(np.mean(np.abs(cs)))
+        model.additional_slots["cg_cross_derivative_summary"] = cross_summary
+    except Exception:
+        model.additional_slots["cg_cross_derivative_summary"] = {}
+
+    return model

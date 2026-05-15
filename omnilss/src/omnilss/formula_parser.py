@@ -190,6 +190,9 @@ def parse_formula(formula: str) -> ParsedFormula:
         has_intercept = False
         rhs = rhs.replace("- 1", "").replace("-1", "")
     
+    # Expand shorthand operators (* and :) before splitting by +
+    rhs = _expand_formula_operators(rhs)
+
     # Split by + but not inside parentheses
     terms = _split_formula_terms(rhs)
     
@@ -258,6 +261,39 @@ def _split_formula_terms(rhs: str) -> list[str]:
     
     return terms
 
+
+
+def _expand_formula_operators(rhs: str) -> str:
+    """Expand top-level formula shorthand operators.
+
+    Currently supports:
+    - a*b -> a + b + a:b
+    - a:b keeps as interaction term
+
+    Notes
+    -----
+    This intentionally operates only at top-level (outside parentheses).
+    """
+    terms = _split_formula_terms(rhs)
+    expanded_terms: list[str] = []
+
+    for raw_term in terms:
+        term = raw_term.strip()
+        if not term:
+            continue
+
+        if '*' in term and '(' not in term:
+            parts = [p.strip() for p in term.split('*') if p.strip()]
+            if len(parts) == 2:
+                a, b = parts
+                expanded_terms.extend([a, b, f"{a}:{b}"])
+                continue
+
+        expanded_terms.append(term)
+
+    # de-duplicate preserving order
+    unique_terms = list(dict.fromkeys(expanded_terms))
+    return ' + '.join(unique_terms)
 
 def _parse_smooth_term(smoother: str, args_str: str) -> SmoothTerm:
     """Parse smooth term arguments.
@@ -470,15 +506,10 @@ def build_design_matrix(
     
     # Add linear terms
     for term in parsed.linear_terms:
-        if term.variable not in data:
-            raise ValueError(f"Variable '{term.variable}' not found in data")
-        
-        x = np.asarray(data[term.variable])
-        if len(x) != n:
-            raise ValueError(f"Variable '{term.variable}' has wrong length")
-        
-        columns.append(x)
-        column_names.append(term.variable)
+        term_matrix, term_names = _resolve_linear_term_columns(term.variable, data, n)
+        for j, name in enumerate(term_names):
+            columns.append(term_matrix[:, j])
+            column_names.append(name)
     
     # Add smooth terms
     if fit_smooths:
@@ -536,6 +567,63 @@ def build_design_matrix(
     
     return X, smooth_info
 
+
+
+
+def _resolve_linear_term_columns(variable: str, data: dict[str, Any], n: int) -> tuple[np.ndarray, list[str]]:
+    """Resolve a linear term into one or more numeric columns and names."""
+    factor_match = re.fullmatch(r"factor\(([^)]+)\)", variable)
+    if factor_match:
+        base_var = factor_match.group(1).strip()
+        if base_var not in data:
+            raise ValueError(f"Variable '{base_var}' not found in data")
+        x = np.asarray(data[base_var])
+        if len(x) != n:
+            raise ValueError(f"Variable '{base_var}' has wrong length")
+        levels = np.unique(x)
+        # treatment coding: drop first level as baseline
+        if len(levels) <= 1:
+            return np.zeros((n, 0), dtype=float), []
+        cols=[]
+        names=[]
+        for lvl in levels[1:]:
+            cols.append((x == lvl).astype(float))
+            names.append(f"factor({base_var})[{lvl}]")
+        return np.column_stack(cols), names
+
+    arr = _resolve_linear_term_array(variable, data, n).reshape(-1,1)
+    return arr, [variable]
+
+def _resolve_linear_term_array(variable: str, data: dict[str, Any], n: int) -> np.ndarray:
+    """Resolve linear, interaction, and factor() terms into a numeric column."""
+    # Interaction term: x1:x2
+    if ':' in variable and '(' not in variable:
+        parts = [p.strip() for p in variable.split(':') if p.strip()]
+        if len(parts) != 2:
+            raise ValueError(f"Unsupported interaction term '{variable}'")
+        left = _resolve_linear_term_array(parts[0], data, n)
+        right = _resolve_linear_term_array(parts[1], data, n)
+        return left * right
+
+    # factor(x): simple integer coding (first level as baseline not expanded)
+    factor_match = re.fullmatch(r"factor\(([^)]+)\)", variable)
+    if factor_match:
+        base_var = factor_match.group(1).strip()
+        if base_var not in data:
+            raise ValueError(f"Variable '{base_var}' not found in data")
+        x = np.asarray(data[base_var])
+        if len(x) != n:
+            raise ValueError(f"Variable '{base_var}' has wrong length")
+        _, encoded = np.unique(x, return_inverse=True)
+        return encoded.astype(float)
+
+    if variable not in data:
+        raise ValueError(f"Variable '{variable}' not found in data")
+
+    x = np.asarray(data[variable])
+    if len(x) != n:
+        raise ValueError(f"Variable '{variable}' has wrong length")
+    return x
 
 def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
     """Build basis matrix for a smooth term.

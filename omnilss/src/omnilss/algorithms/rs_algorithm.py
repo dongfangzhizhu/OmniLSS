@@ -321,13 +321,14 @@ def rs_step(
         else:
             # ── 标准加权最小二乘（无平滑项）──
             sqrt_W = np.sqrt(W)
-            WX = X * sqrt_W[:, None]
-            Wy = working_response * sqrt_W
+            WX = jnp.asarray(X * sqrt_W[:, None], dtype=jnp.float64)
+            Wy = jnp.asarray(working_response * sqrt_W, dtype=jnp.float64)
 
             try:
-                coef, _, _, _ = np.linalg.lstsq(WX, Wy, rcond=None)
-            except np.linalg.LinAlgError:
-                coef = np.linalg.pinv(WX, rcond=1e-10) @ Wy
+                coef_jax, _, _, _ = jnp.linalg.lstsq(WX, Wy, rcond=None)
+                coef = np.asarray(coef_jax, dtype=np.float64)
+            except Exception:
+                coef = np.linalg.pinv(np.asarray(WX), rcond=1e-10) @ np.asarray(Wy)
 
         # Update linear predictor with step size
         eta_old = eta.copy()
