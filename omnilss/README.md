@@ -201,6 +201,7 @@ publishing equivalence or speed claims.
 ## Resources
 
 - [Benchmarks](../benchmarks/) — performance and consistency scripts
+- [R consistency coverage](../docs/testing/r-consistency-coverage.md) — current R-backed d/p/q coverage map
 - [Benchmark methodology](../docs/benchmarks/benchmarking-principles.md) — reporting rules for generated artifacts
 - [Architecture freeze](../docs/architecture/30-day-feature-freeze.md) — current stabilization policy
 - [Maintenance status](../docs/maintenance/30-day-refactor-status.md) — active refactor tasks and audit links

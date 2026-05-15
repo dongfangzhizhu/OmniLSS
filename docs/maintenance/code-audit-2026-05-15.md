@@ -79,3 +79,15 @@ architecture policy and validation-gate guidance.
   evaluation but excluded from canonical estimable parameter metadata.
 - `tests/test_bb_dpqr.py` is now pytest-collectable and verifies core BB d/p/q/r
   behavior.
+
+
+## Follow-up Compatibility Work
+
+- The R bridge now verifies `jsonlite`, `gamlss`, and `gamlss.dist` availability
+  during setup, loads `gamlss.dist` in the evaluation script, and returns
+  structured JSON errors from R.
+- `tests/test_dpqr_r_consistency.py` now includes BB d/p/q cases so the fixed
+  `bd` parameter boundary is checked against R when an R-enabled environment is
+  available.
+- Detailed R-backed d/p/q coverage is tracked in
+  [`../testing/r-consistency-coverage.md`](../testing/r-consistency-coverage.md).

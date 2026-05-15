@@ -13,7 +13,7 @@ May 15, 2026. The project remains in **Architecture > Features** mode.
 | P0 | Task 4: Optimizer Interface | Partial | `OptimizerProtocol` and Optax adapter exist; RS/CG/Mixed/L-BFGS still need protocol wrappers. |
 | P0 | Task 5: Parameter System | Partial | Canonical `Parameter`, links, and constraints exist; adapter metadata now excludes fixed data parameters such as `bd`. Distribution-specific parameter logic still needs broader removal. |
 | P1 | Task 6: Formula System Freeze | Complete / ongoing | Formula freeze is documented; no new DSL syntax should be accepted without a new ADR. |
-| P1 | Task 7: Test Matrix | Partial | Test matrix and benchmark gate docs exist; CI now skips R-only tests when R is unavailable. Architecture contract coverage now includes protocol required-method checks and a fixed-parameter adapter regression; BB d/p/q/r script checks were converted into pytest assertions. More snapshot/gradient coverage needed. |
+| P1 | Task 7: Test Matrix | Partial | Test matrix and benchmark gate docs exist; CI now skips R-only tests when R is unavailable. Architecture contract coverage now includes protocol required-method checks and a fixed-parameter adapter regression; BB d/p/q/r script checks were converted into pytest assertions, and BB fixed-parameter d/p/q R consistency cases were added. More snapshot/gradient coverage needed. |
 | P1 | Task 8: Benchmark System | Partial | Validation gate enforces consistency-before-performance and reports cold/warm/memory. GPU and batch-scaling reporting remain future work. |
 | P1 | Task 9: ADRs | Complete | ADR-001 through ADR-005 have been added. |
 | P2 | Task 10: JAX-native computational graph | Not started | Requires a separate design phase after P0/P1 stabilization. |
@@ -23,6 +23,7 @@ May 15, 2026. The project remains in **Architecture > Features** mode.
 ## Latest Audit
 
 - See [`code-audit-2026-05-15.md`](code-audit-2026-05-15.md) for the current code-level findings, actions taken, and remaining risks.
+- See [`../testing/r-consistency-coverage.md`](../testing/r-consistency-coverage.md) for the R-backed compatibility coverage map.
 - No benchmark artifacts were regenerated for this audit; no new performance or R-equivalence claims are added.
 
 ## Documentation Maintenance Task List

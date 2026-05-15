@@ -33,3 +33,5 @@ optimizer adapter's non-mutating step boundary.
 `tests/test_bb_dpqr.py` also now uses collectable pytest functions rather than
 import-time script checks, so BB d/p/q/r behavior contributes to normal pytest
 status reporting.
+
+R-backed d/p/q coverage is tracked in [`r-consistency-coverage.md`](r-consistency-coverage.md).

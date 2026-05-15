@@ -14,6 +14,7 @@ from omnilss.core.links import LogLink
 from omnilss.core.optimization import OptaxOptimizer
 from omnilss.core.params import Parameter, parameters_from_names
 from omnilss.distributions import NO
+from omnilss.families import FamilyDefinition
 
 
 def test_parameter_transform_inverse_validate_and_pytree_roundtrip() -> None:
@@ -95,3 +96,26 @@ def test_family_distribution_adapter_excludes_fixed_data_parameters() -> None:
     assert set(distribution.score(y, params)) == {"mu", "sigma"}
     assert set(distribution.hessian(y, params)) == {"mu", "sigma"}
     assert jnp.all(jnp.isfinite(distribution.logpdf(y, params)))
+
+
+def test_family_distribution_adapter_preserves_internal_type_errors() -> None:
+    def d_raises_internal_type_error(y, mu, log=False):
+        del y, mu, log
+        raise TypeError("internal density failure")
+
+    family = FamilyDefinition(
+        name="BROKEN",
+        parameters=("mu",),
+        g_dev_inc=lambda y, mu: y + mu,
+        d=d_raises_internal_type_error,
+    )
+    distribution = as_distribution_protocol(family)
+
+    try:
+        distribution.logpdf(jnp.array([1.0]), {"mu": jnp.array([0.0])})
+    except TypeError as exc:
+        assert "internal density failure" in str(exc)
+    else:
+        raise AssertionError(
+            "internal TypeError should not trigger positional fallback"
+        )

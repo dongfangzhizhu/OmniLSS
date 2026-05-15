@@ -7,6 +7,7 @@ moves while giving tests and new code a single target contract.
 from __future__ import annotations
 
 from collections.abc import Mapping
+import inspect
 from dataclasses import dataclass
 from typing import Any
 
@@ -56,39 +57,49 @@ class FamilyDistributionAdapter:
     def _ordered_values(self, params: Mapping[str, Any]) -> tuple[Any, ...]:
         return tuple(params[name] for name in self.family.parameters if name in params)
 
-    def logpdf(self, y: Any, params: Mapping[str, Any]) -> jnp.ndarray:
-        fn = self._require("d")
+    def _supports_keyword_params(self, fn: Any, params: Mapping[str, Any]) -> bool:
         try:
-            result = fn(y, log=True, **dict(params))
-        except TypeError:
-            result = fn(y, *self._ordered_values(params), log=True)
+            signature = inspect.signature(fn)
+        except (TypeError, ValueError):
+            return False
+
+        signature_parameters = signature.parameters
+        if any(
+            parameter.kind == inspect.Parameter.VAR_KEYWORD
+            for parameter in signature_parameters.values()
+        ):
+            return True
+        return all(name in signature_parameters for name in params)
+
+    def _call_dpqr(
+        self,
+        fn: Any,
+        leading_args: tuple[Any, ...],
+        params: Mapping[str, Any],
+        extra_kwargs: Mapping[str, Any] | None = None,
+    ) -> Any:
+        extra_kwargs = {} if extra_kwargs is None else dict(extra_kwargs)
+        if self._supports_keyword_params(fn, params):
+            return fn(*leading_args, **dict(params), **extra_kwargs)
+        return fn(*leading_args, *self._ordered_values(params), **extra_kwargs)
+
+    def logpdf(self, y: Any, params: Mapping[str, Any]) -> jnp.ndarray:
+        result = self._call_dpqr(self._require("d"), (y,), params, {"log": True})
         return jnp.asarray(result)
 
     def cdf(self, y: Any, params: Mapping[str, Any]) -> jnp.ndarray:
-        fn = self._require("p")
-        try:
-            result = fn(y, **dict(params))
-        except TypeError:
-            result = fn(y, *self._ordered_values(params))
+        result = self._call_dpqr(self._require("p"), (y,), params)
         return jnp.asarray(result)
 
     def ppf(self, q: Any, params: Mapping[str, Any]) -> jnp.ndarray:
-        fn = self._require("q")
-        try:
-            result = fn(q, **dict(params))
-        except TypeError:
-            result = fn(q, *self._ordered_values(params))
+        result = self._call_dpqr(self._require("q"), (q,), params)
         return jnp.asarray(result)
 
     def sample(
         self, key: Any, params: Mapping[str, Any], shape: tuple[int, ...] = ()
     ) -> jnp.ndarray:
         n = int(np.prod(shape)) if shape else 1
-        fn = self._require("r")
-        try:
-            draws = jnp.asarray(fn(key, n, **dict(params)))
-        except TypeError:
-            draws = jnp.asarray(fn(key, n, *self._ordered_values(params)))
+        draws = jnp.asarray(self._call_dpqr(self._require("r"), (key, n), params))
         return jnp.reshape(draws, shape) if shape else draws
 
     def score(self, y: Any, params: Mapping[str, Any]) -> Mapping[str, jnp.ndarray]:
