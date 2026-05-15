@@ -87,3 +87,35 @@ from .parameter_spec import (
     infer_param_spec,
     specs_from_names,
 )
+
+# ── Architecture freeze protocol boundaries ──
+from .constraints import Constraint, Positive, Real, UnitInterval
+from .distributions import (
+    DistributionProtocol,
+    FamilyDistributionAdapter,
+    as_distribution_protocol,
+    assert_distribution_protocol,
+)
+from .links import IdentityLink, Link, LogLink, LogitLink
+from .optimization import OptaxOptimizer, OptimizerProtocol
+from .params import DEFAULT_PARAMETERS, Parameter, parameters_from_names
+
+__all__ += [
+    "Constraint",
+    "DEFAULT_PARAMETERS",
+    "DistributionProtocol",
+    "FamilyDistributionAdapter",
+    "IdentityLink",
+    "Link",
+    "LogLink",
+    "LogitLink",
+    "OptaxOptimizer",
+    "OptimizerProtocol",
+    "Parameter",
+    "Positive",
+    "Real",
+    "UnitInterval",
+    "as_distribution_protocol",
+    "assert_distribution_protocol",
+    "parameters_from_names",
+]
