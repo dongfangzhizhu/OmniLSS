@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import asdict
+import warnings
 import math
 from statistics import NormalDist
 from typing import Any
@@ -23,6 +24,7 @@ import numpy as np
 from .controls import GAMLSSControl, GLIMControl, gamlss_control, glim_control
 from .distributions import resolve_family
 from .families import FamilyDefinition
+from .formula_parser import parse_formula as parse_full_formula
 from .model import GAMLSSModel
 
 _STANDARD_NORMAL = NormalDist()
@@ -57,26 +59,59 @@ def _has_smooth_terms(formula: str) -> bool:
 
 
 def _parse_formula(formula: str) -> tuple[str, list[str]]:
-    if "~" not in formula:
-        raise ValueError("formula must contain '~'")
-    left, right = formula.split("~", 1)
-    response = left.strip()
-    rhs = [term.strip() for term in right.split("+") if term.strip()]
-    if rhs == ["1"] or not rhs:
-        return response, []
-    return response, rhs
+    """Deprecated shim: use omnilss.formula_parser.parse_formula internally."""
+    warnings.warn(
+        "fitting._parse_formula is deprecated; formula_parser.parse_formula is used internally.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    parsed = parse_full_formula(formula)
+    predictors = [term.variable for term in parsed.linear_terms]
+    return parsed.response, predictors
 
 
+def _parse_formula_core(formula: str):
+    """Internal parser returning ParsedFormula without deprecation warnings."""
+    return parse_full_formula(formula)
+
+
+
+
+def _eval_linear_term(term: str, data: Mapping[str, Any], n: int) -> np.ndarray:
+    if term in data:
+        arr = np.asarray(data[term], dtype=np.float64)
+        if len(arr) != n:
+            raise ValueError(f"Variable '{term}' has wrong length")
+        return arr
+
+    if ":" in term and "(" not in term:
+        parts=[p.strip() for p in term.split(":") if p.strip()]
+        if len(parts)==2:
+            return _eval_linear_term(parts[0], data, n) * _eval_linear_term(parts[1], data, n)
+
+    safe_env = {k: np.asarray(v, dtype=np.float64) for k, v in data.items()}
+    safe_env.update({"np": np, "log": np.log, "exp": np.exp, "sqrt": np.sqrt, "I": lambda x: x})
+    try:
+        arr = np.asarray(eval(term, {"__builtins__": {}}, safe_env), dtype=np.float64)
+    except Exception as exc:
+        raise ValueError(f"Unable to evaluate term '{term}'") from exc
+    if arr.ndim == 0:
+        arr = np.full(n, float(arr), dtype=np.float64)
+    if len(arr) != n:
+        raise ValueError(f"Term '{term}' has wrong length")
+    return arr
 def _build_design_matrix(
     formula: str,
     data: Mapping[str, Any],
 ) -> tuple[str, np.ndarray, list[str]]:
-    response, predictors = _parse_formula(formula)
+    parsed = _parse_formula_core(formula)
+    response = parsed.response
+    predictors = [term.variable for term in parsed.linear_terms]
     n = len(np.asarray(data[response]))
-    columns = [np.ones(n, dtype=np.float64)]
+    columns = [np.ones(n, dtype=np.float64)] if parsed.has_intercept else []
     labels = []
     for predictor in predictors:
-        columns.append(np.asarray(data[predictor], dtype=np.float64))
+        columns.append(_eval_linear_term(predictor, data, n))
         labels.append(predictor)
     design = np.column_stack(columns)
     return response, design, labels
