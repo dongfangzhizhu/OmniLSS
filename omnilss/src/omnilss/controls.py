@@ -26,6 +26,7 @@ class GAMLSSControl:
     trace: bool = True
     autostep: bool = True
     save: bool = True
+    memory_optimization: bool = False
 
     def as_dict(self) -> dict[str, float | int | bool]:
         return asdict(self)
@@ -58,6 +59,7 @@ def gamlss_control(
     trace: bool = True,
     autostep: bool = True,
     save: bool = True,
+    memory_optimization: bool = False,
 ) -> GAMLSSControl:
     """R reference: `gamlss/R/gamlss-5.R::gamlss.control`."""
 
@@ -81,6 +83,7 @@ def gamlss_control(
         trace=bool(trace),
         autostep=bool(autostep),
         save=bool(save),
+        memory_optimization=bool(memory_optimization),
     )
 
 

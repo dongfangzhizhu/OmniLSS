@@ -127,33 +127,24 @@ def _zaga_log_pdf(y, mu, sigma, nu):
 
 @lru_cache(maxsize=1)
 def ZAGA() -> ZeroAlteredGammaFamily:
-    """Zero-Altered Gamma family.
-    
-    Uses optimized hand-written derivatives for better performance.
-    Falls back to AD version if optimization fails.
-    """
-    try:
-        from .distributions_b5_optimized import ZAGA_OPTIMIZED
-        return ZAGA_OPTIMIZED()
-    except Exception:
-        # Fallback to AD version
-        from .dpqr_functions import dZAGA, pZAGA, qZAGA, rZAGA
-        
-        return build_ad_family(
-            family_class=ZeroAlteredGammaFamily,
-            name="ZAGA",
-            parameters=("mu", "sigma", "nu"),
-            log_pdf_func=_zaga_log_pdf,
-            type_="Mixed",
-            links={"mu": "log", "sigma": "log", "nu": "logit"},
-            link_functions={"mu": log_link, "sigma": log_link, "nu": logit_link},
-            link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": logit_inverse},
-            link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": logit_derivative},
-            d=dZAGA,
-            p=pZAGA,
-            q=qZAGA,
-            r=rZAGA,
-        )
+    """Zero-Altered Gamma family."""
+    from .dpqr_functions import dZAGA, pZAGA, qZAGA, rZAGA
+
+    return build_ad_family(
+        family_class=ZeroAlteredGammaFamily,
+        name="ZAGA",
+        parameters=("mu", "sigma", "nu"),
+        log_pdf_func=_zaga_log_pdf,
+        type_="Mixed",
+        links={"mu": "log", "sigma": "log", "nu": "logit"},
+        link_functions={"mu": log_link, "sigma": log_link, "nu": logit_link},
+        link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": logit_inverse},
+        link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": logit_derivative},
+        d=dZAGA,
+        p=pZAGA,
+        q=qZAGA,
+        r=rZAGA,
+    )
 
 
 # ------------------------------------------------------------------
