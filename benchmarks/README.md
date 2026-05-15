@@ -33,7 +33,7 @@ check that the benchmark scripts and OmniLSS code paths execute.
 |--------|---------|----------------|
 | `run_local_validation.py` | Runs consistency first, then performance if consistency passes | Delegates to the two scripts below |
 | `comprehensive_r_consistency_test.py` | Compares d/p/q, fitting, and smoothing results with R `gamlss` | `benchmarks/results/raw/r_consistency_*.json` and `benchmarks/results/reports/consistency_report_*.md` |
-| `comprehensive_performance_test.py` | Measures cold time, warm time, Python heap peak memory, and R timings | `benchmarks/results/raw/quick_results_*.json` and `benchmarks/results/reports/quick_report_*.md` |
+| `comprehensive_performance_test.py` | Measures cold time, warm steady-state time, Python heap peak memory, and setup-excluded in-process R timings | `benchmarks/results/raw/quick_results_*.json` and `benchmarks/results/reports/quick_report_*.md` |
 | `three_way_comparison.py` | Optional OmniLSS/R/ondil exploratory comparison | `benchmarks/results/raw/three_way_*.json` and report Markdown |
 | `generate_plots.py` | Plot benchmark result artifacts | `benchmarks/results/figures/` |
 
@@ -61,7 +61,7 @@ Reports separate:
 
 - cold OmniLSS time: first fit, including JAX compilation;
 - warm OmniLSS time: repeated steady-state fit time;
-- R time: wall-clock `Rscript` timing with an untimed R warm-up call;
+- R time: in-process elapsed timing from a single `Rscript` run after package/CSV setup, with one untimed R warm-up fit;
 - Python heap peak memory: `tracemalloc` peak during cold fit.
 
 Do not summarize results with static marketing claims. Cite the generated report,

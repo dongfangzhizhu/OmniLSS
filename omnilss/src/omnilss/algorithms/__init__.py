@@ -2,7 +2,7 @@
 
 This module contains various algorithms for fitting GAMLSS models:
 - RS (Rigby-Stasinopoulos): The original GAMLSS algorithm (fully implemented)
-- CG (Cole-Green): Alternative algorithm with cross-derivative adjustments (simplified version)
+- CG (Cole-Green): Alternative algorithm with complete JAX Hessian cross-derivative adjustments
 - Mixed: Intelligent algorithm selection combining RS and CG
 
 The RS algorithm is the default and most commonly used.

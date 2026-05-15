@@ -42,7 +42,7 @@ python benchmarks/comprehensive_r_consistency_test.py --quick --require-r \
 ## Interpreting Results
 
 - Consistency failures stop `run_local_validation.py` before performance runs.
-- Performance reports include cold time, warm time, R time, deviance difference,
+- Performance reports include cold time, warm steady-state time, setup-excluded R elapsed time, deviance difference,
   and Python heap peak memory.
 - A speed ratio is only meaningful for the exact generated report context:
   hardware, backend, distribution, data size, formula, and repetitions.

@@ -367,7 +367,7 @@ def test_cg_large_sample():
 
 def test_cg_verbose_output(capsys, intercept_only_data):
     """Test verbose output."""
-    result = fit_cg(
+    fit_cg(
         NO(),
         intercept_only_data["y"],
         intercept_only_data["X_mu"],
@@ -398,6 +398,66 @@ def test_cg_vs_simple_estimate():
     
     # Mean should be 3.0
     assert jnp.abs(result.fitted_values["mu"][0] - 3.0) < 0.01
+
+
+def test_full_observed_information_includes_cross_derivative_blocks(simple_normal_data):
+    """CG observed information should retain cross-parameter Hessian blocks."""
+    from omnilss.fitting_cg import (
+        _compute_full_observed_information_and_score,
+        _compute_log_likelihood,
+    )
+
+    family = NO()
+    # Use an intentionally coupled off-optimum state so the Normal
+    # mu/sigma cross block is measurably non-zero.
+    params = {
+        "beta_mu": jnp.array([jnp.mean(simple_normal_data["y"]), 0.0]),
+        "beta_sigma": jnp.array([jnp.log(jnp.std(simple_normal_data["y"]))]),
+    }
+    design_matrices = {
+        "X_mu": simple_normal_data["X_mu"],
+        "X_sigma": simple_normal_data["X_sigma"],
+        "X_nu": None,
+        "X_tau": None,
+    }
+    data = {
+        "y": simple_normal_data["y"],
+        "weights": jnp.ones_like(simple_normal_data["y"]),
+        **design_matrices,
+    }
+
+    def log_likelihood(params_dict, data_dict):
+        return _compute_log_likelihood(params_dict, data_dict, family, design_matrices)
+
+    fisher, score = _compute_full_observed_information_and_score(log_likelihood, params, data)
+
+    assert fisher.shape == (3, 3)
+    assert score.shape == (3,)
+    assert jnp.allclose(fisher, fisher.T)
+    # Flattening order is beta_mu (2 coefficients), then beta_sigma (1 coefficient).
+    # The slope/sigma block is non-zero for this heteroscedastic Normal likelihood.
+    assert jnp.abs(fisher[1, 2]) > 1e-3
+
+
+
+def test_gamlss_algorithm_alias_exercises_cg_backend():
+    """The legacy algorithm= alias should select the complete CG backend."""
+    from omnilss.fitting import gamlss, gamlss_control
+
+    x = np.linspace(0.0, 1.0, 40)
+    y = 1.0 + 2.0 * x + np.linspace(-0.05, 0.05, 40)
+    model = gamlss(
+        "y ~ x",
+        sigma_formula="~ 1",
+        family=NO(),
+        data={"y": y, "x": x},
+        algorithm="CG",
+        control=gamlss_control(n_cyc=20, c_crit=1e-5),
+    )
+
+    assert model.additional_slots["method"] == "CG"
+    assert "cg_converged" in model.additional_slots
+    assert "cg_iterations" in model.additional_slots
 
 
 if __name__ == "__main__":

@@ -52,8 +52,8 @@ python benchmarks/comprehensive_performance_test.py --quick --require-r --n-repe
 The report separates:
 
 - OmniLSS cold time, including first-call JAX compilation;
-- OmniLSS warm steady-state time;
-- R wall-clock time from a fresh `Rscript` subprocess;
+- OmniLSS warm steady-state time after an untimed warm-up;
+- R in-process elapsed time from a single `Rscript` subprocess, excluding package startup and CSV loading;
 - deviance difference and pass/fail against configured tolerances;
 - Python heap peak memory via `tracemalloc`.
 

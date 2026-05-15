@@ -128,8 +128,6 @@ def _build_design_matrix_with_smooths(
         # Use simple design builder
         response, design, labels = _build_design_matrix(formula, data)
         return response, design, labels, None
-    design = np.column_stack(columns)
-    return response, design, labels
 
 
 def _normalize_parameter_formula(response: str, formula: str) -> str:
@@ -963,8 +961,8 @@ def gamlss(
     method : str, default "RS"
         Fitting method: "RS", "CG", "MIXED", "joint", or "lbfgs"
         - "RS": Rigby-Stasinopoulos algorithm (traditional)
-        - "CG": Cole-Green algorithm (not yet implemented)
-        - "MIXED": Mixed RS/CG (not yet implemented)
+        - "CG": Cole-Green algorithm with full JAX Hessian cross derivatives
+        - "MIXED": Mixed RS/CG damped update path
         - "joint": Joint optimization with Optax (Adam/SGD/RMSprop/Adagrad)
         - "lbfgs": L-BFGS quasi-Newton method
     control : GAMLSSControl or None
@@ -1023,6 +1021,9 @@ def gamlss(
     if data is None:
         raise ValueError("data is required")
     family = resolve_family(family)
+    if "algorithm" in optimizer_kwargs:
+        # Backward-compatible alias used by examples and benchmark scripts.
+        method = optimizer_kwargs.pop("algorithm")
     method_name = str(method).upper()
     
     # Handle new optimizer methods
@@ -1033,7 +1034,7 @@ def gamlss(
         # Get initial model using RS/ML
         if verbose:
             print(f"\n{'='*70}")
-            print(f"Step 1: Getting initial estimates with RS/ML")
+            print("Step 1: Getting initial estimates with RS/ML")
             print(f"{'='*70}")
         
         initial_model = gamlss_ml(
@@ -1144,7 +1145,6 @@ def gamlss(
     # Initialize performance monitoring if verbose
     if verbose:
         from .performance import PerformanceMonitor
-        import time
         monitor = PerformanceMonitor(
             use_jit=False,
             n_observations=len(data[list(data.keys())[0]]),
@@ -1197,43 +1197,55 @@ def gamlss(
     else:
         w = np.asarray(weights, dtype=np.float64)
 
-    initial = gamlss_ml(
-        formula=formula,
-        sigma_formula=sigma_formula,
-        parameter_formulas=parameter_formulas,
-        family=family,
-        data=data,
-        weights=weights,
-        control=control,
-        i_control=i_control,
-    )
-    mu = np.asarray(initial.fitted_values["mu"], dtype=np.float64)
-    eta_mu = np.asarray(initial.linear_predictors["mu"], dtype=np.float64)
-    beta_mu = np.asarray(initial.coefficients["mu"], dtype=np.float64)
-    parameter_values = {
-        parameter: np.asarray(initial.fitted_values[parameter], dtype=np.float64)
-        for parameter in family.parameters
-        if parameter != "mu"
-    }
-    parameter_eta = {
-        parameter: np.asarray(initial.linear_predictors[parameter], dtype=np.float64)
-        for parameter in family.estimable_parameters
-        if parameter != "mu"
-    }
-    parameter_beta = {
-        parameter: np.asarray(initial.coefficients[parameter], dtype=np.float64)
-        for parameter in family.estimable_parameters
-        if parameter != "mu"
-    }
-    extra_parameter_values = {
-        parameter: np.asarray(initial.fitted_values[parameter], dtype=np.float64)
-        for parameter in family.parameters
-        if parameter not in {"mu", "sigma"}
-    }
-    g_dev = float(initial.g_dev)
-    old_g_dev = g_dev + 1.0
+    initial = None
+    if method_name != "CG":
+        initial = gamlss_ml(
+            formula=formula,
+            sigma_formula=sigma_formula,
+            parameter_formulas=parameter_formulas,
+            family=family,
+            data=data,
+            weights=weights,
+            control=control,
+            i_control=i_control,
+        )
+        mu = np.asarray(initial.fitted_values["mu"], dtype=np.float64)
+        eta_mu = np.asarray(initial.linear_predictors["mu"], dtype=np.float64)
+        beta_mu = np.asarray(initial.coefficients["mu"], dtype=np.float64)
+        parameter_values = {
+            parameter: np.asarray(initial.fitted_values[parameter], dtype=np.float64)
+            for parameter in family.parameters
+            if parameter != "mu"
+        }
+        parameter_eta = {
+            parameter: np.asarray(initial.linear_predictors[parameter], dtype=np.float64)
+            for parameter in family.estimable_parameters
+            if parameter != "mu"
+        }
+        parameter_beta = {
+            parameter: np.asarray(initial.coefficients[parameter], dtype=np.float64)
+            for parameter in family.estimable_parameters
+            if parameter != "mu"
+        }
+        extra_parameter_values = {
+            parameter: np.asarray(initial.fitted_values[parameter], dtype=np.float64)
+            for parameter in family.parameters
+            if parameter not in {"mu", "sigma"}
+        }
+        g_dev = float(initial.g_dev)
+        deviance_history = [g_dev]
+    else:
+        beta_mu = np.zeros(mu_x.shape[1], dtype=np.float64)
+        eta_mu = mu_x @ beta_mu
+        mu = np.asarray(family.link_inverses["mu"](eta_mu), dtype=np.float64)
+        parameter_values = {}
+        parameter_eta = {}
+        parameter_beta = {}
+        extra_parameter_values = {}
+        g_dev = float("nan")
+        deviance_history = []
+    old_g_dev = g_dev + 1.0 if np.isfinite(g_dev) else float("inf")
     iteration = 0  # Start from 0, not control.iter
-    deviance_history = [g_dev]
     working_vectors_extra: dict[str, np.ndarray] = {}
     iterative_weights_extra: dict[str, np.ndarray] = {}
     
@@ -1244,12 +1256,70 @@ def gamlss(
     # Print initial status if verbose
     if verbose:
         print(f"\n{'='*70}")
-        print(f"Starting iterative fitting")
+        print("Starting iterative fitting")
         print(f"{'='*70}")
-        print(f"Initial deviance: {g_dev:.4f}")
-        print(f"\nIteration progress:")
+        if np.isfinite(g_dev):
+            print(f"Initial deviance: {g_dev:.4f}")
+        else:
+            print("Initial deviance: computed inside CG backend")
+        print("\nIteration progress:")
 
-    while abs(old_g_dev - g_dev) > control.c_crit and iteration < control.n_cyc:
+    if method_name == "CG":
+        from .fitting_cg import fit_cg
+
+        cg_start_params = None
+        cg_designs: dict[str, Any] = {"X_sigma": None, "X_nu": None, "X_tau": None}
+        for parameter in family.estimable_parameters:
+            if parameter == "mu":
+                continue
+            design = parameter_designs.get(parameter)
+            if design is not None:
+                cg_designs[f"X_{parameter}"] = jnp.asarray(design, dtype=jnp.float64)
+
+        cg_result = fit_cg(
+            family=family,
+            y=jnp.asarray(y, dtype=jnp.float64),
+            X_mu=jnp.asarray(mu_x, dtype=jnp.float64),
+            X_sigma=cg_designs["X_sigma"],
+            X_nu=cg_designs["X_nu"],
+            X_tau=cg_designs["X_tau"],
+            weights=jnp.asarray(w, dtype=jnp.float64),
+            start_params=cg_start_params,
+            max_iter=control.n_cyc,
+            tol=control.c_crit,
+            verbose=verbose,
+        )
+
+        beta_mu = np.asarray(cg_result.params["beta_mu"], dtype=np.float64)
+        eta_mu = mu_x @ beta_mu
+        mu = np.asarray(cg_result.fitted_values["mu"], dtype=np.float64)
+        z_mu = eta_mu.copy()
+        w_mu = np.ones_like(eta_mu, dtype=np.float64)
+
+        for parameter in family.estimable_parameters:
+            if parameter == "mu" or f"beta_{parameter}" not in cg_result.params:
+                continue
+            beta_param = np.asarray(cg_result.params[f"beta_{parameter}"], dtype=np.float64)
+            x_param = parameter_designs.get(parameter)
+            if x_param is None:
+                continue
+            eta_param = x_param @ beta_param
+            value_param = np.asarray(cg_result.fitted_values[parameter], dtype=np.float64)
+            parameter_beta[parameter] = beta_param
+            parameter_eta[parameter] = eta_param
+            parameter_values[parameter] = value_param
+            if parameter not in {"mu", "sigma"}:
+                extra_parameter_values[parameter] = value_param
+            working_vectors_extra[parameter] = eta_param.copy()
+            iterative_weights_extra[parameter] = np.ones_like(eta_param, dtype=np.float64)
+
+        g_dev = float(cg_result.final_deviance)
+        old_g_dev = deviance_history[-1] if deviance_history else g_dev
+        iteration = int(cg_result.n_iter)
+        deviance_history = [float(value) for value in cg_result.deviance_history]
+        converged = bool(cg_result.converged)
+
+    while method_name != "CG" and abs(old_g_dev - g_dev) > control.c_crit and iteration < control.n_cyc:
         if verbose:
             monitor.start_iteration()
         old_g_dev = g_dev
@@ -1407,7 +1477,8 @@ def gamlss(
             monitor.finish_iteration()
             monitor.print_iteration(iteration, g_dev, converged=False)
 
-    converged = abs(old_g_dev - g_dev) <= control.c_crit
+    if method_name != "CG":
+        converged = abs(old_g_dev - g_dev) <= control.c_crit
     
     # Print final status if verbose
     if verbose:
@@ -1469,7 +1540,7 @@ def gamlss(
             iterative_weights[parameter] = jnp.asarray(iterative_weights_extra[parameter], dtype=jnp.float64)
         offsets[parameter] = jnp.zeros(n, dtype=jnp.float64)
         formulas[parameter] = resolved_formulas[parameter]
-        term_labels = parameter_labels.get(parameter, list(initial.terms.get(parameter, {}).get("term_labels", [])))
+        term_labels = parameter_labels.get(parameter, [])
         term_map[parameter] = {
             "term_labels": term_labels,
             "response": response_name,
@@ -1486,6 +1557,20 @@ def gamlss(
         offsets[parameter] = jnp.zeros(n, dtype=jnp.float64)
         formulas[parameter] = _fixed_parameter_formula(parameter)
         term_map[parameter] = _fixed_parameter_term(response_name, parameter)
+
+    method_slots: dict[str, Any] = {}
+    if method_name == "CG":
+        method_slots = {
+            "cg_converged": bool(converged),
+            "cg_iterations": int(iteration),
+            "cg_final_deviance": float(g_dev),
+        }
+    elif method_name == "MIXED":
+        method_slots = {
+            "mixed_converged": bool(converged),
+            "mixed_iterations": int(iteration),
+            "mixed_final_deviance": float(g_dev),
+        }
 
     residual_values = (
         rqres_callable(y=y, mu=mu, sigma=parameter_values.get("sigma"))
@@ -1550,6 +1635,7 @@ def gamlss(
             "deviance_history": tuple(float(value) for value in deviance_history),
             "smooth_fits": {p: smooth_infos[p].smooth_fits if smooth_infos.get(p) else [] for p in family.parameters},
             "smooth_edf": smooth_edf,
+            **method_slots,
         },
         call={
             "data": data,
