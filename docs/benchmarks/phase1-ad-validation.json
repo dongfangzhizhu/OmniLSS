@@ -1,0 +1,5 @@
+{
+  "pipeline": "finite_difference_vs_autodiff_no_mu",
+  "max_abs_error": 0.0025558173656463623,
+  "mean_abs_error": 0.0020888345316052437
+}

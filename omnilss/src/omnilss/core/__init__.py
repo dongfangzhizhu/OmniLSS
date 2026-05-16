@@ -96,7 +96,7 @@ from .distributions import (
     as_distribution_protocol,
     assert_distribution_protocol,
 )
-from .links import IdentityLink, Link, LogLink, LogitLink
+from .links import IdentityLink, Link, LogLink, LogitLink, SoftplusLink
 from .optimization import OptaxOptimizer, OptimizerProtocol
 from .params import DEFAULT_PARAMETERS, Parameter, parameters_from_names
 
@@ -109,6 +109,7 @@ __all__ += [
     "Link",
     "LogLink",
     "LogitLink",
+    "SoftplusLink",
     "OptaxOptimizer",
     "OptimizerProtocol",
     "Parameter",

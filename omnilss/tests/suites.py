@@ -142,6 +142,20 @@ SUITES: OrderedDict[str, list[str]] = OrderedDict(
             ],
         ),
         (
+            "phase0_gate",
+            [
+                "tests.test_r_consistency_no",
+                "tests.test_r_consistency_ga",
+                "tests.test_r_consistency_tf",
+                "tests.test_r_consistency_be",
+                "tests.test_r_consistency_zip",
+                "tests.consistency.test_gradient_no_finite_difference",
+                "tests.consistency.test_stability_extreme_inputs",
+                "tests.test_rs_phase0_diagnostics",
+                "tests.test_optimizer_phase0_diagnostics",
+            ],
+        ),
+        (
             "quick",
             [
                 "tests.test_operations",
@@ -232,6 +246,7 @@ SUITE_ALIASES = {
     "unit": "unit_core",
     "smoothers": "unit_smoothers",
     "consistency": "consistency_all",
+    "phase0": "phase0_gate",
 }
 
 
