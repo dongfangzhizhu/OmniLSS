@@ -388,3 +388,65 @@ def should_use_jit(family_name: str, n_obs: int) -> bool:
     # Use JIT for complex families with sufficient data
     # Threshold of 100 observations ensures compilation overhead is worthwhile
     return family_name in complex_families and n_obs > 100
+
+
+def create_jit_rs_no_core(max_iter: int = 30, tol: float = 1e-6) -> Callable:
+    """Experimental fully-jitted RS core loop for NO family (mu/sigma intercept).
+
+    This is an isolated technical-debt sandbox for TASK-01-C.
+    """
+
+    def _core(y: jnp.ndarray):
+        n = y.shape[0]
+        X = jnp.ones((n, 1), dtype=jnp.float64)
+        w = jnp.ones(n, dtype=jnp.float64)
+
+        mu0 = jnp.mean(y)
+        sigma0 = jnp.maximum(jnp.std(y), 1e-6)
+        eta_mu0 = jnp.full((n,), mu0)
+        eta_sigma0 = jnp.full((n,), jnp.log(sigma0))
+
+        def irls_param(eta, other, is_mu: bool):
+            def body(i, cur_eta):
+                mu = jnp.where(is_mu, cur_eta, other)
+                sigma = jnp.where(is_mu, jnp.exp(other), jnp.exp(cur_eta))
+                if is_mu:
+                    score = (y - mu) / (sigma**2)
+                    hess = -jnp.ones_like(y) / (sigma**2)
+                    link_deriv = jnp.ones_like(y)
+                else:
+                    score = -1.0 + ((y - mu) ** 2) / (sigma**2)
+                    hess = -2.0 * ((y - mu) ** 2) / (sigma**2)
+                    link_deriv = jnp.ones_like(y)
+                hess = jnp.where(hess < -1e-12, hess, -1e-12)
+                ww = -(hess / (link_deriv**2))
+                ww = jnp.clip(ww, 1e-8, 1e8)
+                z = cur_eta + score / (link_deriv * ww + 1e-12)
+                beta = create_jit_wls_solver()(X, z, ww * w)
+                return X @ beta
+
+            return jax.lax.fori_loop(0, 5, body, eta)
+
+        def cond_fn(state):
+            gdev, gdev_old, it, eta_mu, eta_sigma = state
+            return jnp.logical_and(jnp.abs(gdev_old - gdev) > tol, it < max_iter)
+
+        def body_fn(state):
+            gdev, _gdev_old, it, eta_mu, eta_sigma = state
+            eta_mu_new = irls_param(eta_mu, eta_sigma, True)
+            eta_sigma_new = irls_param(eta_sigma, eta_mu_new, False)
+            mu = eta_mu_new
+            sigma = jnp.exp(eta_sigma_new)
+            dev = jnp.sum(-2.0 * (-jnp.log(sigma) - 0.5 * jnp.log(2 * jnp.pi) - 0.5 * ((y - mu) / sigma) ** 2))
+            return (dev, gdev, it + 1, eta_mu_new, eta_sigma_new)
+
+        init_mu = eta_mu0
+        init_sigma = eta_sigma0
+        mu = init_mu
+        sigma = jnp.exp(init_sigma)
+        gdev0 = jnp.sum(-2.0 * (-jnp.log(sigma) - 0.5 * jnp.log(2 * jnp.pi) - 0.5 * ((y - mu) / sigma) ** 2))
+        init = (gdev0, gdev0 + 1.0, jnp.array(0), init_mu, init_sigma)
+        gdev, _gdev_old, it, eta_mu, eta_sigma = jax.lax.while_loop(cond_fn, body_fn, init)
+        return {"mu": eta_mu, "sigma": jnp.exp(eta_sigma), "g_dev": gdev, "iterations": it}
+
+    return jax.jit(_core)
