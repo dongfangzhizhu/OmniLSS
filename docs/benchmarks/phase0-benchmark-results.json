@@ -1,0 +1,13 @@
+[
+  {
+    "n": 200,
+    "method": "RS",
+    "family": "NO",
+    "runtime_s": 1.7365249960002984,
+    "converged": true,
+    "iterations": 1,
+    "g_dev": 576.7195136547089,
+    "memory_peak_bytes": 2243097,
+    "jit_compile_time_s": 0.0
+  }
+]

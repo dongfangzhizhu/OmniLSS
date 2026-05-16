@@ -25,6 +25,8 @@ import numpy as np
 from ..distributions import resolve_family
 from ..families import FamilyDefinition
 from ..model import GAMLSSModel
+from ..numerical_stability import sanitize_gradient, step_halving
+from ..tensor_protocol import validate_design_matrix, validate_vector
 
 
 class ConvergenceWarning(UserWarning):
@@ -63,6 +65,9 @@ class RSStepResult:
     deviance: float
     converged: bool
     iterations: int
+    step_halving_count: int
+    last_condition_number: float
+    last_gradient_norm: float
 
 
 def compute_working_weights_and_response(
@@ -252,12 +257,15 @@ def rs_step(
     )
     old_deviance = np.inf
     converged = False
+    step_halving_count = 0
+    last_condition_number = float("nan")
+    last_gradient_norm = float("nan")
 
     # Compute INITIAL derivatives (before loop, following R's glim.fit structure)
     param_dict = {"y": y, parameter: fitted_values}
     param_dict.update(other_parameters)
 
-    first_deriv = np.asarray(dldp(**param_dict), dtype=np.float64)
+    first_deriv = np.asarray(sanitize_gradient(jnp.asarray(dldp(**param_dict), dtype=jnp.float64)), dtype=np.float64)
     second_deriv = np.asarray(d2ldp2(**param_dict), dtype=np.float64)
 
     # Compute link derivative (dη/dμ) using analytical formula
@@ -326,7 +334,10 @@ def rs_step(
         else:
             # ── 标准加权最小二乘（无平滑项）──
             sqrt_W = np.sqrt(W)
-            WX = jnp.asarray(X * sqrt_W[:, None], dtype=jnp.float64)
+            WX_np = X * sqrt_W[:, None]
+            gram = WX_np.T @ WX_np
+            last_condition_number = float(np.linalg.cond(gram)) if gram.size else float("nan")
+            WX = jnp.asarray(WX_np, dtype=jnp.float64)
             Wy = jnp.asarray(working_response * sqrt_W, dtype=jnp.float64)
 
             try:
@@ -358,7 +369,8 @@ def rs_step(
         # Auto step-halving if deviance increases
         if auto_step and deviance > old_deviance and iteration >= 1:
             for _ in range(5):
-                eta = (eta + eta_old) / 2
+                eta = np.asarray(step_halving(jnp.asarray(eta_old), jnp.asarray(eta), factor=0.5), dtype=np.float64)
+                step_halving_count += 1
                 fitted_values = np.asarray(
                     link_inv(jnp.asarray(eta, dtype=jnp.float64)), dtype=np.float64
                 )
@@ -386,7 +398,7 @@ def rs_step(
         param_dict = {"y": y, parameter: fitted_values}
         param_dict.update(other_parameters)
 
-        first_deriv = np.asarray(dldp(**param_dict), dtype=np.float64)
+        first_deriv = np.asarray(sanitize_gradient(jnp.asarray(dldp(**param_dict), dtype=jnp.float64)), dtype=np.float64)
         second_deriv = np.asarray(d2ldp2(**param_dict), dtype=np.float64)
 
         # Recompute link derivative
@@ -415,6 +427,9 @@ def rs_step(
         deviance=deviance,
         converged=converged,
         iterations=iteration + 1,
+        step_halving_count=step_halving_count,
+        last_condition_number=last_condition_number,
+        last_gradient_norm=last_gradient_norm,
     )
 
 
@@ -734,6 +749,10 @@ def rs_fit(
     deviance_history = [float(g_dev)]
     lambda_update_warnings: list[str] = []
     lambda_update_failed_params: set[str] = set()
+    rs_step_halving_by_param: dict[str, int] = {p: 0 for p in family.estimable_parameters}
+    rs_last_condition_number_by_param: dict[str, float] = {p: float("nan") for p in family.estimable_parameters}
+    rs_last_gradient_norm_by_param: dict[str, float] = {p: float("nan") for p in family.estimable_parameters}
+
 
     while abs(g_dev_old - g_dev) > tol and iteration < max_iter:
         iteration += 1
@@ -774,6 +793,10 @@ def rs_fit(
             # 记录 IRLS 工作向量，用于λ更新
             last_working_weights[parameter] = result.working_weights
             last_working_response[parameter] = result.working_response
+
+            rs_step_halving_by_param[parameter] = rs_step_halving_by_param.get(parameter, 0) + int(result.step_halving_count)
+            rs_last_condition_number_by_param[parameter] = float(result.last_condition_number)
+            rs_last_gradient_norm_by_param[parameter] = float(result.last_gradient_norm)
 
             # Update parameter values
             parameter_values[parameter] = result.fitted_values
@@ -943,6 +966,9 @@ def rs_fit(
         )
     )
 
+    _cond_vals = np.asarray(list(rs_last_condition_number_by_param.values()), dtype=np.float64)
+    _grad_vals = np.asarray(list(rs_last_gradient_norm_by_param.values()), dtype=np.float64)
+
     model = GAMLSSModel(
         par=family.parameters,
         family=family,
@@ -992,6 +1018,16 @@ def rs_fit(
             "deviance_history": tuple(float(v) for v in deviance_history),
             "lambda_update_warnings": tuple(lambda_update_warnings),
             "lambda_update_failed_params": tuple(sorted(lambda_update_failed_params)),
+            "rs_step_halving_by_param": dict(rs_step_halving_by_param),
+            "rs_last_condition_number_by_param": dict(rs_last_condition_number_by_param),
+            "rs_last_gradient_norm_by_param": dict(rs_last_gradient_norm_by_param),
+            "step_size_by_param": dict(step_sizes),
+            "condition_number": (
+                float(np.nanmax(_cond_vals)) if (_cond_vals.size and np.isfinite(_cond_vals).any()) else float("nan")
+            ),
+            "gradient_norm": (
+                float(np.nanmax(_grad_vals)) if (_grad_vals.size and np.isfinite(_grad_vals).any()) else float("nan")
+            ),
         },
     )
 

@@ -304,3 +304,17 @@ RuntimeError: R not available
 
 **维护者**: OmniLSS团队  
 **最后更新**: 2026-04-25
+
+## Phase 0 gate suite
+
+Use the centralized suite registry to run the Phase 0 stability/consistency gate:
+
+```bash
+PYTHONPATH=src python -m unittest tests.suites phase0_gate
+```
+
+Alias form:
+
+```bash
+PYTHONPATH=src python -m unittest tests.suites phase0
+```
