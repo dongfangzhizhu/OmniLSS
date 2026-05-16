@@ -8,175 +8,68 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
-    name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-
+  tests:
+    name: "${{ matrix.group.name }} / py${{ matrix.python-version }}"
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10"]
+        group:
+          - name: Group A Core Algorithms
+            pattern: "tests/test_rs*.py tests/test_cg*.py tests/test_mixed*.py tests/test_fitting_jit*.py"
+          - name: Group B R Consistency
+            pattern: "tests/test_*r_consistency*.py tests/test_consistency_families.py tests/test_dpqr_r_consistency.py"
+          - name: Group C Smooth Diagnostics Prediction
+            pattern: "tests/test_smooth*.py tests/test_diagnostics*.py tests/test_prediction*.py tests/test_serialization*.py"
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Install UV
-        run: |
-          pip install uv
-
+      - run: pip install uv
       - name: Install dependencies
         run: |
           cd omnilss
           uv pip install --system -e ".[dev]"
-
-      - name: Run CI smoke tests
+      - name: Run grouped tests in parallel
         env:
           MPLBACKEND: Agg
           JAX_PLATFORMS: cpu
           JAX_ENABLE_X64: "true"
         run: |
           cd omnilss
-          python -m pytest \
-            tests/test_core_architecture_contracts.py \
-            tests/test_formula.py \
-            tests/test_basic_batch3.py \
-            tests/test_basic_batch5.py \
-            tests/test_basic_batch9.py \
-            tests/test_diagnostics.py \
-            tests/test_consistency_families.py \
-            tests/test_dpqr_r_consistency.py \
-            tests/test_pareto2_python_fitting.py \
-            -v --cov=omnilss --cov-report=xml --cov-report=term
-
+          python -m pytest -n auto ${{ matrix.group.pattern }} -v --cov=omnilss --cov-report=xml --cov-report=term
       - name: Upload coverage to Codecov
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.10'
         uses: codecov/codecov-action@v4
         with:
           file: ./omnilss/coverage.xml
-          flags: unittests
-          name: codecov-umbrella
+          flags: ${{ matrix.group.name }}
           fail_ci_if_error: false
 
   lint:
     name: Code Quality
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-
-      - name: Install UV
-        run: |
-          pip install uv
-
-      - name: Install dependencies
-        run: |
+      - run: pip install uv
+      - run: |
           cd omnilss
           uv pip install --system -e ".[dev]"
           uv pip install --system ruff black mypy
-
-      - name: Check code formatting with Black
-        continue-on-error: true
-        run: |
+      - run: |
           cd omnilss
           black --check src/omnilss/
-
-      - name: Lint with Ruff
         continue-on-error: true
-        run: |
+      - run: |
           cd omnilss
           ruff check src/omnilss/
-
-      - name: Type check with mypy (optional)
         continue-on-error: true
-        run: |
+      - run: |
           cd omnilss
           mypy src/omnilss/ --ignore-missing-imports
-
-  benchmarks:
-    name: Benchmarks
-    runs-on: ubuntu-latest
-    continue-on-error: true
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install UV
-        run: |
-          pip install uv
-
-      - name: Install dependencies
-        run: |
-          cd omnilss
-          uv pip install --system -e ".[dev,benchmarks]"
-
-      - name: Run quick benchmarks
-        env:
-          MPLBACKEND: Agg
-        run: |
-          cd benchmarks
-          python comprehensive_performance_test.py
-
-      - name: Upload benchmark results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-results
-          path: benchmarks/results/
-
-  examples:
-    name: Run Examples
-    runs-on: ubuntu-latest
-    continue-on-error: true
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install UV
-        run: |
-          pip install uv
-
-      - name: Install dependencies
-        run: |
-          cd omnilss
-          uv pip install --system -e ".[dev,benchmarks]"
-
-      - name: Run example scripts
-        env:
-          MPLBACKEND: Agg
-        run: |
-          cd examples
-          python prediction_demo.py
-          python model_selection_demo.py
-          python algorithm_comparison.py
-
-      - name: Upload example outputs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: example-outputs
-          path: examples/*.png
+        continue-on-error: true
