@@ -27,6 +27,7 @@ from ..families import FamilyDefinition
 from ..model import GAMLSSModel
 from ..numerical_stability import sanitize_gradient, step_halving
 from ..tensor_protocol import validate_design_matrix, validate_vector
+from ..diagnostic_warnings import evaluate_numerical_warnings
 
 
 class ConvergenceWarning(UserWarning):
@@ -969,6 +970,14 @@ def rs_fit(
     _cond_vals = np.asarray(list(rs_last_condition_number_by_param.values()), dtype=np.float64)
     _grad_vals = np.asarray(list(rs_last_gradient_norm_by_param.values()), dtype=np.float64)
 
+    _phase1_slots_seed = {
+        "gradient_norm": (float(np.nanmax(_grad_vals)) if (_grad_vals.size and np.isfinite(_grad_vals).any()) else float("nan")),
+        "condition_number": (float(np.nanmax(_cond_vals)) if (_cond_vals.size and np.isfinite(_cond_vals).any()) else float("nan")),
+        "step_size_by_param": dict(step_sizes),
+        "lambda_update_failed_params": tuple(sorted(lambda_update_failed_params)),
+    }
+    _warning_events = evaluate_numerical_warnings(_phase1_slots_seed)
+
     model = GAMLSSModel(
         par=family.parameters,
         family=family,
@@ -1022,12 +1031,9 @@ def rs_fit(
             "rs_last_condition_number_by_param": dict(rs_last_condition_number_by_param),
             "rs_last_gradient_norm_by_param": dict(rs_last_gradient_norm_by_param),
             "step_size_by_param": dict(step_sizes),
-            "condition_number": (
-                float(np.nanmax(_cond_vals)) if (_cond_vals.size and np.isfinite(_cond_vals).any()) else float("nan")
-            ),
-            "gradient_norm": (
-                float(np.nanmax(_grad_vals)) if (_grad_vals.size and np.isfinite(_grad_vals).any()) else float("nan")
-            ),
+            "condition_number": _phase1_slots_seed["condition_number"],
+            "gradient_norm": _phase1_slots_seed["gradient_norm"],
+            "phase1_warning_events": tuple((e.code, e.level, e.message) for e in _warning_events),
         },
     )
 
