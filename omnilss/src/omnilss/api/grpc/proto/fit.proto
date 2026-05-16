@@ -2,3 +2,4 @@ syntax = "proto3";
 package omnilss;
 message FitRequest { string formula = 1; string family = 2; string data_json = 3; }
 message FitResponse { string model_id = 1; bool success = 2; string error = 3; }
+service FitService { rpc Fit(FitRequest) returns (FitResponse); }

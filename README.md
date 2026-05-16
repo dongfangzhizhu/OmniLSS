@@ -222,3 +222,8 @@ GNU General Public License v3 or later (GPL-3.0+)
 - 手写解析梯度（vs R 数值差分）通常带来显著加速（依分布与样本规模而异）。
 - `rs_jax.py` 当前提供 JAX WLS 与惩罚 WLS 数值核心；完整 `rs_fit_jax` 主循环仍在开发中。
 - `omnilss.algorithms.cg_fit` 现为 CG v2 显式外循环实现（含跨导数修正）；`method="CG"` 的后端路径仍可用于对照与回归验证。
+
+
+## Service APIs
+- REST scaffold: `omnilss-server/` (FastAPI) with `/fit`, `/predict`, `/diagnostics/{model_id}`, `/distributions/select`.
+- gRPC boundary: protobuf files under `omnilss/src/omnilss/api/grpc/proto/` and runtime server wiring in `omnilss.api.grpc.serve`.

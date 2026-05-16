@@ -2,3 +2,4 @@ syntax = "proto3";
 package omnilss;
 message SampleRequest { string model_id = 1; int32 n = 2; }
 message SampleResponse { string samples_json = 1; bool success = 2; string error = 3; }
+service SampleService { rpc Sample(SampleRequest) returns (SampleResponse); }

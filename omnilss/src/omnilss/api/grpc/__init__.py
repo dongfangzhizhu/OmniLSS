@@ -1,7 +1,9 @@
-"""gRPC API boundary placeholder.
+"""gRPC boundary for OmniLSS.
 
-Only FitRequest, PredictRequest, and SampleRequest protocol surfaces should be
-introduced here.  Internal JAX graphs must not cross this boundary.
+Contains protobuf definitions under `proto/` and runtime server wiring in
+`server.py`. Closed-source clients should call this boundary only.
 """
 
-__all__: list[str] = []
+from .server import serve
+
+__all__ = ["serve"]

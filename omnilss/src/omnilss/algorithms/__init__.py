@@ -40,8 +40,8 @@ __all__ = [
     # CG variants
     "cg_fit",
     "cg_fit_lbfgs",
+    "joint_lbfgs_fit",
     "cg_fit_v2",
-    # Mixed
     "mixed_fit",
     "compare_algorithms",
     # JAX-native RS
