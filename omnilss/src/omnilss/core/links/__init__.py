@@ -26,6 +26,10 @@ class Link(Protocol):
         """Map linear-predictor values back to constrained values."""
         ...
 
+    def derivative(self, eta: ArrayLike) -> jnp.ndarray:
+        """Derivative of inverse link w.r.t. eta."""
+        ...
+
 
 @dataclass(frozen=True)
 class IdentityLink:
@@ -36,6 +40,9 @@ class IdentityLink:
 
     def inverse(self, eta: ArrayLike) -> jnp.ndarray:
         return jnp.asarray(eta)
+
+    def derivative(self, eta: ArrayLike) -> jnp.ndarray:
+        return jnp.ones_like(jnp.asarray(eta), dtype=jnp.asarray(eta).dtype)
 
 
 @dataclass(frozen=True)
@@ -49,6 +56,9 @@ class LogLink:
 
     def inverse(self, eta: ArrayLike) -> jnp.ndarray:
         return jnp.maximum(jnp.exp(jnp.asarray(eta)), self.eps)
+
+    def derivative(self, eta: ArrayLike) -> jnp.ndarray:
+        return self.inverse(eta)
 
 
 @dataclass(frozen=True)
@@ -65,5 +75,27 @@ class LogitLink:
         value = 1.0 / (1.0 + jnp.exp(-jnp.asarray(eta)))
         return jnp.clip(value, self.eps, 1.0 - self.eps)
 
+    def derivative(self, eta: ArrayLike) -> jnp.ndarray:
+        p = self.inverse(eta)
+        return p * (1.0 - p)
 
-__all__ = ["IdentityLink", "Link", "LogLink", "LogitLink"]
+
+@dataclass(frozen=True)
+class SoftplusLink:
+    """Softplus link for positive parameters with smoother gradients."""
+
+    eps: float = 1e-12
+
+    def transform(self, value: ArrayLike) -> jnp.ndarray:
+        value = jnp.maximum(jnp.asarray(value), self.eps)
+        return jnp.log(jnp.expm1(value))
+
+    def inverse(self, eta: ArrayLike) -> jnp.ndarray:
+        return jnp.logaddexp(jnp.asarray(eta), 0.0) + self.eps
+
+    def derivative(self, eta: ArrayLike) -> jnp.ndarray:
+        eta = jnp.asarray(eta)
+        return 1.0 / (1.0 + jnp.exp(-eta))
+
+
+__all__ = ["IdentityLink", "Link", "LogLink", "LogitLink", "SoftplusLink"]

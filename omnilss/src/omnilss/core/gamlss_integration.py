@@ -284,6 +284,13 @@ def _reconstruct_model(
             "loss_history": optimization_result.loss_history,
             "grad_norms": optimization_result.grad_norms,
             "optimizer_result": optimization_result,
+            "gradient_norm": (
+                float(optimization_result.grad_norms[-1])
+                if optimization_result.grad_norms
+                else float("nan")
+            ),
+            "step_size": float("nan"),
+            "condition_number": float("nan"),
         },
         call=initial_model.call,
         control=initial_model.control,
