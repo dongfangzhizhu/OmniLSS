@@ -2,21 +2,36 @@
 
 from __future__ import annotations
 
+import json
+import zipfile
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
+OMNILSS_MODEL_VERSION = "0.3.0"
+
+
+def _json_safe(value: Any) -> Any:
+    value = _to_numpy_safe(value)
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    return value
+
 
 def _to_numpy_safe(value: Any) -> Any:
-    """Recursively convert JAX arrays/array-likes to numpy arrays for portability."""
     if isinstance(value, dict):
         return {k: _to_numpy_safe(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
         converted = [_to_numpy_safe(v) for v in value]
         return type(value)(converted)
     try:
-        import jax.numpy as jnp  # local import
+        import jax.numpy as jnp
+
         if isinstance(value, jnp.ndarray):
             return np.asarray(value)
     except Exception:
@@ -29,13 +44,7 @@ def _to_numpy_safe(value: Any) -> Any:
     return value
 
 
-def save_model(model: Any, path: str | Path) -> None:
-    """Save a fitted GAMLSS model using cloudpickle.
-
-    Notes
-    -----
-    cloudpickle is used to support closure fields like `rqres`.
-    """
+def save_model_pickle(model: Any, path: str | Path) -> None:
     try:
         import cloudpickle  # type: ignore
     except ImportError as exc:
@@ -48,8 +57,7 @@ def save_model(model: Any, path: str | Path) -> None:
         cloudpickle.dump(payload, f)
 
 
-def load_model(path: str | Path) -> Any:
-    """Load a serialized GAMLSS model."""
+def load_model_pickle(path: str | Path) -> Any:
     try:
         import cloudpickle  # type: ignore
     except ImportError as exc:
@@ -57,3 +65,91 @@ def load_model(path: str | Path) -> Any:
 
     with Path(path).open("rb") as f:
         return cloudpickle.load(f)
+
+
+def save_model_json(model: Any, path: str | Path) -> None:
+    from .model import GAMLSSModel
+
+    if not isinstance(model, GAMLSSModel):
+        raise TypeError("save_model_json currently supports GAMLSSModel instances only")
+
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+
+    with zipfile.ZipFile(p, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        arrays: dict[str, np.ndarray] = {}
+        arrays["y"] = np.asarray(model.y)
+        for k, v in model.coefficients.items():
+            arrays[f"coef__{k}"] = np.asarray(v)
+        for k, v in model.linear_predictors.items():
+            arrays[f"eta__{k}"] = np.asarray(v)
+        for k, v in model.fitted_values.items():
+            arrays[f"fit__{k}"] = np.asarray(v)
+
+        import io
+
+        buf = io.BytesIO()
+        np.savez(buf, **arrays)
+        zf.writestr("arrays.npz", buf.getvalue())
+
+        meta = {
+            "omnilss_version": OMNILSS_MODEL_VERSION,
+            "family": getattr(model.family, "name", str(model.family)),
+            "parameters": list(model.parameters),
+            "formulas": dict(model.formulas),
+            "n": int(model.n),
+            "g_dev": float(model.g_dev),
+            "iter": int(model.iter),
+            "type": str(model.type),
+            "call": _json_safe(dict(model.call or {})),
+        }
+        zf.writestr("meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
+
+
+def load_model_json(path: str | Path):
+    from .distributions import resolve_family
+    from .model import GAMLSSModel
+
+    with zipfile.ZipFile(Path(path), "r") as zf:
+        meta = json.loads(zf.read("meta.json").decode("utf-8"))
+        version = meta.get("omnilss_version", "")
+        if not str(version).startswith("0.3."):
+            raise ValueError(f"Incompatible model version: {version}")
+
+        import io
+
+        npz = np.load(io.BytesIO(zf.read("arrays.npz")))
+        params = tuple(meta["parameters"])
+        fitted = {p: npz[f"fit__{p}"] for p in params if f"fit__{p}" in npz}
+        coeffs = {p: npz[f"coef__{p}"] for p in params if f"coef__{p}" in npz}
+        etas = {p: npz[f"eta__{p}"] for p in params if f"eta__{p}" in npz}
+        y = npz["y"]
+
+    fam = resolve_family(meta["family"])
+    n = int(meta["n"])
+    return GAMLSSModel(
+        par=params,
+        family=fam,
+        df_fit=float(sum(len(np.ravel(coeffs.get(p, np.array([0.0])))) for p in params)),
+        g_dev=float(meta["g_dev"]),
+        n=n,
+        y=y,
+        fitted_values=fitted,
+        coefficients=coeffs,
+        linear_predictors=etas,
+        formulas=meta.get("formulas", {}),
+        terms={},
+        design_matrices={p: np.zeros((n, max(int(np.size(coeffs.get(p, np.array([0.0])))), 1))) for p in params},
+        weights=np.ones(n),
+        residuals=np.zeros(n),
+        iter=int(meta.get("iter", 0)),
+        type=meta.get("type", "Continuous"),
+        parameters=params,
+        call=meta.get("call", {}),
+        additional_slots={"loaded_from_json": True, "omnilss_version": version},
+    )
+
+
+# Backward-compatible aliases
+save_model = save_model_pickle
+load_model = load_model_pickle
