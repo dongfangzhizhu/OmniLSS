@@ -8,7 +8,7 @@
 - **Benchmark validation gate** — consistency with native R `gamlss` is checked before performance comparisons
 - **Transparent performance reporting** — benchmark reports separate cold time, warm time, deviance difference, and Python heap peak memory
 - **Smoothing** — P-splines (`pb`), cubic splines (`ps`, `cs`) with automatic parameter selection (GCV/REML)
-- **Multiple algorithms** — RS, complete CG (JAX Hessian cross derivatives), Mixed, Adam, L-BFGS
+- **Multiple algorithms** — RS, CG v2 (explicit outer-loop with cross-derivative correction), Mixed, Adam, L-BFGS
 - **Neural GAMLSS** — distribution parameters output by neural networks (Flax/Equinox compatible)
 - **scikit-learn compatible** — optional `GAMLSSRegressor` wrapper for Pipeline integration
 - **Probabilistic scoring** — CRPS, log score, DSS, interval score, PIT histogram
@@ -145,6 +145,11 @@ print(f"Log score: {summary['log_score']:.4f}")
 print(f"Coverage:  {summary['coverage_90']:.1%}")
 ```
 
+## Experimental JIT RS Core
+
+- Added `fitting_jit.create_jit_rs_no_core()` as an isolated experiment for TASK-01-C.
+- It uses `jax.lax.while_loop` (outer loop) and `jax.lax.fori_loop` (inner IRLS) for NO family core updates without changing the production RS path.
+
 ## Benchmarks
 
 Run the validation gate from the repository root. It fails fast when R is
@@ -211,3 +216,9 @@ or speed claims.
 ## License
 
 GNU General Public License v3 or later (GPL-3.0+)
+
+
+## 性能说明
+- 手写解析梯度（vs R 数值差分）通常带来显著加速（依分布与样本规模而异）。
+- `rs_jax.py` 当前提供 JAX WLS 与惩罚 WLS 数值核心；完整 `rs_fit_jax` 主循环仍在开发中。
+- `omnilss.algorithms.cg_fit` 现为 CG v2 显式外循环实现（含跨导数修正）；`method="CG"` 的后端路径仍可用于对照与回归验证。
