@@ -977,80 +977,101 @@ def gamlss(
     history_size: int = 10,
     **optimizer_kwargs
 ) -> GAMLSSModel:
-    """Staged Python port of `gamlss()` for currently supported families.
-    
+    """Fit a GAMLSS model.
+
     Parameters
     ----------
     formula : str
-        Formula for the mu parameter
-    sigma_formula : str, default "~1"
-        Formula for the sigma parameter
-    family : FamilyDefinition or None
-        Distribution family
-    data : Mapping[str, Any] or None
-        Data dictionary
-    weights : Any or None
-        Observation weights
-    parameter_formulas : Mapping[str, str] or None
-        Formulas for additional parameters
-    method : str, default "RS"
-        Fitting method: "RS", "CG", "MIXED", "joint", or "lbfgs"
-        - "RS": Rigby-Stasinopoulos algorithm (traditional)
-        - "CG": Cole-Green algorithm with full JAX Hessian cross derivatives
-        - "MIXED": Mixed RS/CG damped update path
-        - "joint": Joint optimization with Optax (Adam/SGD/RMSprop/Adagrad)
-        - "lbfgs": L-BFGS quasi-Newton method
+        Formula for the mu parameter, e.g. ``"y ~ x1 + x2"``.
+    sigma_formula : str, default ``"~1"``
+        Formula for the sigma parameter.
+    family : FamilyDefinition or str or None
+        Distribution family.  Pass a family object (e.g. ``NO()``) or a
+        string name (e.g. ``"NO"``).
+    data : dict or None
+        Data dictionary mapping variable names to arrays.
+    weights : array-like or None
+        Observation weights.
+    parameter_formulas : dict or None
+        Formulas for additional parameters (nu, tau).
+    method : str, default ``"RS"``
+        Fitting method.  One of:
+
+        ``"RS"``
+            Rigby-Stasinopoulos algorithm (NumPy IRLS).  Default and
+            fastest on CPU for all n.
+
+        ``"RS_JAX"``
+            JAX-native RS with ``jax.lax.while_loop`` + ``jnp.linalg.lstsq``.
+            Supported families: NO, GA, PO, BI, WEI, TF.
+            On CPU this is **slower** than ``"RS"`` due to JAX overhead.
+            On GPU the crossover point depends on hardware — see
+            ``omnilss.config`` and ``docs/benchmarks/``.
+
+        ``"auto"``
+            Automatically select ``"RS"`` or ``"RS_JAX"`` based on the
+            current JAX device and n.  See ``omnilss.config.auto_select_method``
+            for the decision logic and crossover thresholds.
+            Currently equivalent to ``"RS"`` on all tested hardware
+            (no crossover found up to n=500,000 on RTX 3060).
+
+        ``"CG"``
+            Cole-Green algorithm with full JAX Hessian cross-derivatives.
+
+        ``"MIXED"``
+            Mixed RS/CG damped update path.
+
+        ``"joint"``
+            Joint optimization with Optax (Adam/SGD/RMSprop/Adagrad).
+
+        ``"lbfgs"``
+            L-BFGS quasi-Newton method.
+
     control : GAMLSSControl or None
-        Control parameters for outer loop
+        Control parameters for the outer loop (n_cyc, c_crit).
     i_control : GLIMControl or None
-        Control parameters for inner loop
+        Control parameters for the inner GLIM loop.
     verbose : bool, default False
-        If True, print detailed fitting progress including iteration times,
-        deviance values, and convergence status.
-    optimizer : str, default "adam"
-        Optimizer type for method="joint": "adam", "sgd", "rmsprop", "adagrad"
+        Print detailed fitting progress.
+    optimizer : str, default ``"adam"``
+        Optimizer type for ``method="joint"``.
     learning_rate : float, default 0.01
-        Learning rate for gradient-based optimizers
+        Learning rate for gradient-based optimizers.
     max_iter : int or None
-        Maximum iterations (overrides control.n_cyc if provided)
+        Maximum iterations (overrides ``control.n_cyc`` if provided).
     history_size : int, default 10
-        L-BFGS history size (for method="lbfgs")
+        L-BFGS history size (for ``method="lbfgs"``).
     **optimizer_kwargs
-        Additional optimizer arguments
-    
+        Additional optimizer arguments.
+
     Returns
     -------
     GAMLSSModel
-        Fitted GAMLSS model
-    
+        Fitted GAMLSS model.
+
+    Notes
+    -----
+    **Method selection guide**:
+
+    - For most use cases, ``method="RS"`` (default) is the best choice.
+    - ``method="RS_JAX"`` is available for GPU workloads but currently
+      shows no speedup over NumPy RS on tested hardware (RTX 3060, n ≤ 500k).
+      See ``docs/benchmarks/`` for details.
+    - ``method="auto"`` is a forward-compatible alias that will automatically
+      use JAX when a crossover point is established for your hardware.
+      Override thresholds via ``omnilss.config.GPU_CROSSOVER_N``.
+
+    **Customising auto-selection**::
+
+        import omnilss.config as cfg
+        cfg.GPU_CROSSOVER_N["NO"] = 50_000   # use JAX for NO when n >= 50k
+        cfg.GPU_CROSSOVER_N["default"] = 100_000
+
     Examples
     --------
-    Traditional RS algorithm:
-    
-    >>> model = gamlss("y ~ x1 + x2", family="NO", data=data)
-    
-    Joint optimization with Adam:
-    
-    >>> model = gamlss(
-    ...     "y ~ x1 + x2",
-    ...     family="NO",
-    ...     data=data,
-    ...     method="joint",
-    ...     optimizer="adam",
-    ...     learning_rate=0.01,
-    ...     verbose=True
-    ... )
-    
-    L-BFGS optimization:
-    
-    >>> model = gamlss(
-    ...     "y ~ x1 + x2",
-    ...     family="NO",
-    ...     data=data,
-    ...     method="lbfgs",
-    ...     max_iter=100,
-    ...     verbose=True
-    ... )
+    >>> model = gamlss("y ~ x", family=NO(), data=data)
+    >>> model = gamlss("y ~ x", family="GA", data=data, method="RS")
+    >>> model = gamlss("y ~ pb(x)", family=NO(), data=data)  # P-spline
     """
 
     if data is None:
@@ -1060,6 +1081,18 @@ def gamlss(
         # Backward-compatible alias used by examples and benchmark scripts.
         method = optimizer_kwargs.pop("algorithm")
     method_name = str(method).upper()
+
+    # ── Auto method selection ────────────────────────────────────────────────
+    # When method='auto', choose RS vs RS_JAX based on device and n.
+    if method_name == "AUTO":
+        from . import config as _cfg
+        # Determine n_obs from data (need response variable name)
+        try:
+            _resp, _ = _parse_formula(formula)
+            _n_obs = len(data[_resp])
+        except Exception:
+            _n_obs = 0
+        method_name = _cfg.auto_select_method(family.name, _n_obs).upper()
     
     # Handle new optimizer methods
     if method_name in {"JOINT", "LBFGS"}:
@@ -1151,11 +1184,27 @@ def gamlss(
             )
     
     # Traditional RS/CG/MIXED methods
-    if method_name not in {"RS", "CG", "MIXED"}:
+    if method_name not in {"RS", "RS_JAX", "CG", "MIXED"}:
         raise ValueError(
-            f"method must be one of 'RS', 'CG', 'MIXED', 'joint', or 'lbfgs', got {method!r}"
+            f"method must be one of 'RS', 'RS_JAX', 'auto', 'CG', 'MIXED', 'joint', or 'lbfgs', "
+            f"got {method!r}"
         )
-    
+
+    # RS_JAX: fully JAX-traced RS loop (GPU/TPU ready, no smooth terms)
+    if method_name == "RS_JAX":
+        from .algorithms.jax_rs_integration import gamlss_rs_jax
+        return gamlss_rs_jax(
+            formula=formula,
+            family=family,
+            data=data,
+            sigma_formula=sigma_formula,
+            parameter_formulas=parameter_formulas,
+            weights=weights,
+            control=control,
+            i_control=i_control,
+            verbose=verbose,
+        )
+
     # For RS method, use the dedicated rs_fit function which implements the correct algorithm
     if method_name == "RS":
         from .algorithms.rs_algorithm import rs_fit
