@@ -688,6 +688,10 @@ __all__ = [
     "get_link_fn",
     "save_model",
     "load_model",
+    "save_model_json",
+    "load_model_json",
+    "save_model_pickle",
+    "load_model_pickle",
 ]
 
 
@@ -770,6 +774,13 @@ except ImportError:
 
 # Serialization API
 try:
-    from .serialization import load_model, save_model
+    from .serialization import (
+        load_model,
+        save_model,
+        load_model_json,
+        save_model_json,
+        load_model_pickle,
+        save_model_pickle,
+    )
 except ImportError:
     pass

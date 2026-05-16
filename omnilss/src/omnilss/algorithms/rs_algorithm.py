@@ -27,6 +27,10 @@ from ..families import FamilyDefinition
 from ..model import GAMLSSModel
 
 
+class ConvergenceWarning(UserWarning):
+    """Convergence warning for RS updates."""
+
+
 @dataclass
 class RSStepResult:
     """Result from a single RS algorithm step.
@@ -429,6 +433,7 @@ def rs_fit(
     tau_step: float = 1.0,
     auto_step: bool = True,
     verbose: bool = False,
+    raise_on_lambda_failure: bool = False,
 ) -> GAMLSSModel:
     """Fit GAMLSS model using RS (Rigby-Stasinopoulos) algorithm.
 
@@ -728,6 +733,7 @@ def rs_fit(
     converged = False
     deviance_history = [float(g_dev)]
     lambda_update_warnings: list[str] = []
+    lambda_update_failed_params: set[str] = set()
 
     while abs(g_dev_old - g_dev) > tol and iteration < max_iter:
         iteration += 1
@@ -843,7 +849,10 @@ def rs_fit(
                         f"Lambda update failed for parameter '{param_k}': {e}. "
                         "Keeping previous lambda value."
                     )
+                    lambda_update_failed_params.add(param_k)
                     lambda_update_warnings.append(msg)
+                    if raise_on_lambda_failure:
+                        raise ConvergenceWarning(msg) from e
                     warnings.warn(msg, UserWarning, stacklevel=2)
 
         # Check for increasing deviance
@@ -982,6 +991,7 @@ def rs_fit(
             "cycles": int(iteration),
             "deviance_history": tuple(float(v) for v in deviance_history),
             "lambda_update_warnings": tuple(lambda_update_warnings),
+            "lambda_update_failed_params": tuple(sorted(lambda_update_failed_params)),
         },
     )
 
