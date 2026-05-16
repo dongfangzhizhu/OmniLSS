@@ -8,6 +8,8 @@ except PackageNotFoundError:
     __version__ = "0.2.0"
 
 from . import config as _config
+from . import config  # public: omnilss.config.GPU_CROSSOVER_N etc.
+from .config import auto_select_method, get_config_summary
 from .centilesFan import centiles_fan
 from .chooseDistParallel import chooseDist, chooseDistPred, getOrder
 from .controls import GAMLSSControl, GLIMControl, gamlss_control, glim_control
