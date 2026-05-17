@@ -1,0 +1,48 @@
+# OmniLSS development dependency set for devcontainer/Codex bootstrap.
+# Keep this file in sync with omnilss/pyproject.toml optional dependencies and
+# service/benchmark tooling so a freshly built container can keep working when
+# later used offline.
+
+# Packaging / release
+build>=1.2.0
+twine>=5.0.0
+wheel>=0.43.0
+setuptools>=69
+
+# Core runtime
+jax>=0.4.20
+jaxlib>=0.4.20
+numpy>=1.24.0
+scipy>=1.11.0
+pandas>=2.0.0
+
+# Optional OmniLSS extras
+cloudpickle>=3.0.0
+flax>=0.7.0
+optax>=0.1.7
+scikit-learn>=1.3.0
+scoringrules>=0.6.0
+grpcio>=1.50.0
+protobuf>=3.20.0
+grpcio-tools>=1.50.0
+matplotlib>=3.5.0
+
+# Dev / test / docs
+pytest>=7.0.0
+pytest-cov>=4.0.0
+pytest-xdist>=3.0.0
+black>=23.0.0
+ruff>=0.1.0
+mypy>=1.0.0
+pre-commit>=3.0.0
+mkdocs-material>=9.0.0
+mkdocstrings[python]>=0.24.0
+mkdocs-jupyter>=0.24.0
+sphinx>=6.0.0
+sphinx-rtd-theme>=1.0.0
+myst-parser>=1.0.0
+
+# Server / Pro prototype
+fastapi>=0.110.0
+uvicorn>=0.27.0
+httpx>=0.27.0

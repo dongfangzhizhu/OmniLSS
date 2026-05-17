@@ -230,16 +230,19 @@ GNU General Public License v3 or later (GPL-3.0+)
 
 ## 性能说明
 
-| Distribution | Speedup vs R | Test conditions |
-|---|---|---|
-| NO, LOGNO | ~30-100x | n=200, intercept-only, JAX JIT warm |
-| GA, WEI | ~20-50x | n=200, single predictor |
-| BE | ~2x | n=200（见注1） |
-| ZAGA | ~15x | n=200, hand-optimized derivatives |
+性能数字必须从 `benchmarks/comprehensive_performance_test.py` 或生成的
+`benchmarks/results/` 报告中引用，不能手写静态宣传值。当前基准方法：
 
-> **注1**：BE 分布使用了手写导数，加速比相对较低是因为 R 侧 BE 本身有高度优化的 C 实现。  
-> **注2**：以上数据基于单次 JIT warm-up 后的测量，首次调用含编译开销（通常 2-5x 更慢）。  
-> **注3**：性能基准脚本位于 `benchmarks/comprehensive_performance_test.py`，可本地复现。
+- Python warm time 使用 JAX warm-up 后的多次运行中位数，排除 JIT 编译时间。
+- Python cold time 单独报告首次调用延迟（包含可能的 JIT 编译开销）。
+- R 对比只在安装了 R、`gamlss` 和 `jsonlite` 的环境中启用；否则报告必须标注 skipped。
+- GPU 数字只在检测到 GPU backend 时生成；CPU-only 结果不能外推为 GPU 结果。
+
+本地复现示例：
+
+```bash
+python benchmarks/comprehensive_performance_test.py --quick --no-r --n-repeats 10
+```
 
 
 ## Service APIs

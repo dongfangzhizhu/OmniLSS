@@ -1,5 +1,39 @@
+version: "3.9"
+
 services:
-  omnilss-server:
+  omnilss-core-grpc:
+    build: ./omnilss-server
+    ports:
+      - "50051:50051"
+    command: python grpc_main.py --host 0.0.0.0 --port 50051
+    environment:
+      JAX_PLATFORMS: cpu
+      JAX_ENABLE_X64: "true"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import grpc; c=grpc.insecure_channel('localhost:50051'); grpc.channel_ready_future(c).result(timeout=5)"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  omnilss-core-http:
     build: ./omnilss-server
     ports:
       - "8000:8000"
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    environment:
+      JAX_PLATFORMS: cpu
+      JAX_ENABLE_X64: "true"
+
+  omnilss-pro-demo:
+    build: ./omnilss-pro
+    depends_on:
+      omnilss-core-grpc:
+        condition: service_healthy
+    environment:
+      OMNILSS_CORE_HOST: omnilss-core-grpc
+      OMNILSS_CORE_PORT: "50051"
+    command: python -m pytest tests/test_integration.py -v

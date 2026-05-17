@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omnilss-pro"
+version = "0.1.0"
+description = "Professional extensions for OmniLSS (commercial boundary prototype)"
+requires-python = ">=3.10"
+dependencies = [
+  "grpcio>=1.50.0",
+  "protobuf>=3.20.0",
+  "numpy>=1.24.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+omnilss_pro = [
+  "api/grpc/proto/*.proto",
+  "api/grpc/generated/*.py",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

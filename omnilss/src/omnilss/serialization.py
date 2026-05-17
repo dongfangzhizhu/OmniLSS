@@ -36,7 +36,11 @@ def _to_numpy_safe(value: Any) -> Any:
             return np.asarray(value)
     except Exception:
         pass
-    if hasattr(value, "shape") and hasattr(value, "dtype") and not isinstance(value, np.ndarray):
+    if (
+        hasattr(value, "shape")
+        and hasattr(value, "dtype")
+        and not isinstance(value, np.ndarray)
+    ):
         try:
             return np.asarray(value)
         except Exception:
@@ -48,7 +52,9 @@ def save_model_pickle(model: Any, path: str | Path) -> None:
     try:
         import cloudpickle  # type: ignore
     except ImportError as exc:
-        raise ImportError("Model serialization requires cloudpickle. Install with: pip install cloudpickle") from exc
+        raise ImportError(
+            "Model serialization requires cloudpickle. Install with: pip install cloudpickle"
+        ) from exc
 
     payload = _to_numpy_safe(model)
     p = Path(path)
@@ -61,7 +67,9 @@ def load_model_pickle(path: str | Path) -> Any:
     try:
         import cloudpickle  # type: ignore
     except ImportError as exc:
-        raise ImportError("Model serialization requires cloudpickle. Install with: pip install cloudpickle") from exc
+        raise ImportError(
+            "Model serialization requires cloudpickle. Install with: pip install cloudpickle"
+        ) from exc
 
     with Path(path).open("rb") as f:
         return cloudpickle.load(f)
@@ -96,7 +104,7 @@ def save_model_json(model: Any, path: str | Path) -> None:
             "omnilss_version": OMNILSS_MODEL_VERSION,
             "family": getattr(model.family, "name", str(model.family)),
             "parameters": list(model.parameters),
-            "formulas": dict(model.formulas),
+            "formulas": {k: str(v) for k, v in dict(model.formulas).items()},
             "n": int(model.n),
             "g_dev": float(model.g_dev),
             "iter": int(model.iter),
@@ -130,7 +138,9 @@ def load_model_json(path: str | Path):
     return GAMLSSModel(
         par=params,
         family=fam,
-        df_fit=float(sum(len(np.ravel(coeffs.get(p, np.array([0.0])))) for p in params)),
+        df_fit=float(
+            sum(len(np.ravel(coeffs.get(p, np.array([0.0])))) for p in params)
+        ),
         g_dev=float(meta["g_dev"]),
         n=n,
         y=y,
@@ -139,7 +149,10 @@ def load_model_json(path: str | Path):
         linear_predictors=etas,
         formulas=meta.get("formulas", {}),
         terms={},
-        design_matrices={p: np.zeros((n, max(int(np.size(coeffs.get(p, np.array([0.0])))), 1))) for p in params},
+        design_matrices={
+            p: np.zeros((n, max(int(np.size(coeffs.get(p, np.array([0.0])))), 1)))
+            for p in params
+        },
         weights=np.ones(n),
         residuals=np.zeros(n),
         iter=int(meta.get("iter", 0)),

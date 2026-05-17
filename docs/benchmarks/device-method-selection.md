@@ -1,158 +1,149 @@
-# Device-Aware Method Selection
+# 设备感知方法路由指南
 
-## TL;DR
+OmniLSS 有两条 RS 拟合路径：
 
-| Your hardware | What `method='RS'` does | What `method='auto'` does |
-|---------------|------------------------|--------------------------|
-| CPU (any) | NumPy IRLS — fastest | Same as `'RS'` |
-| GPU (RTX 3060, tested) | NumPy IRLS — fastest | Same as `'RS'` (no crossover found) |
-| GPU (untested) | NumPy IRLS | Same as `'RS'` until you set crossover |
-| TPU | NumPy IRLS | Same as `'RS'` until you set crossover |
+- `method="RS"`：NumPy IRLS，当前默认路径。
+- `method="RS_JAX"`：JAX JIT 编译 IRLS，仅覆盖核心 JAX 族。
+- `method="auto"`：根据设备、观测数 `n` 和配置阈值自动选择 `RS` 或 `RS_JAX`。
 
-**Bottom line**: `method='RS'` and `method='auto'` are currently equivalent
-on all tested hardware.  `method='RS_JAX'` is available for experimentation
-but is not faster in practice yet.
+## 快速结论
 
----
+| 场景 | 推荐方法 |
+|---|---|
+| CPU，任意规模 | `method="RS"`（NumPy，默认） |
+| GPU，`n` 小于实测阈值 | `method="RS"` |
+| GPU，`n` 大于等于实测阈值 | `method="auto"` 或 `method="RS_JAX"` |
+| TPU | `method="auto"`（阈值待测，当前等同 `RS`） |
+| 需要平滑项（`pb`/`cs`/`ps`） | 只能用 `method="RS"` |
+| 不在 6 个核心 JAX 族内 | 只能用 `method="RS"` |
 
-## Why JAX RS is Slower on CPU and GPU
+当前包内 GPU/TPU 阈值仍为 `math.inf` 占位符，因此在维护者或用户写入实测阈值之前，`method="auto"` 在 CPU/GPU/TPU 上都会保守地选择 `RS`。
 
-OmniLSS has two RS fitting backends:
+## 为什么 CPU 上 JAX 更慢？
 
-**`method='RS'`** — NumPy IRLS  
-Uses `np.linalg.lstsq` (CPU LAPACK) for the weighted least squares step.
-For typical GAMLSS design matrices (p = 2–10 columns), CPU LAPACK is
-extremely fast because the matrices are small.
+CPU 上 NumPy RS 通常更快，主要原因是：
 
-**`method='RS_JAX'`** — JAX `while_loop` + `jnp.linalg.lstsq`  
-Uses `jax.lax.while_loop` for the outer RS loop and `jnp.linalg.lstsq`
-(cuSOLVER on GPU) for WLS.  Includes a NumPy RS warm-start for numerical
-stability.
+1. **XLA 编译开销**：`RS_JAX` 首次调用需要编译，冷启动成本无法在小模型中摊销。
+2. **Python → JAX 边界成本**：当前 JAX 路径仍需要复用 OmniLSS 的公式解析、初始化和模型包装逻辑。
+3. **小矩阵线性代数**：典型 GAMLSS 设计矩阵列数较小（例如 `p=2–10`），CPU LAPACK 对这类 WLS 问题非常高效。
+4. **GPU 核启动开销**：在小 `p` 场景中，GPU kernel launch 延迟可能超过矩阵运算本身收益。
 
-**Why JAX is slower for small p**:
+这也是默认策略仍保持“CPU 永不自动切到 JAX；GPU/TPU 只有达到实测阈值才切换”的原因。
 
-1. **GPU kernel launch overhead** — each `jnp.linalg.lstsq` call on a
-   `[n, 2]` matrix incurs GPU kernel launch latency (~100–500 µs).
-   For p=2, this overhead dominates the actual computation.
+## 基准测试结果
 
-2. **Warm-start cost** — `method='RS_JAX'` runs a full NumPy RS fit first
-   to get stable initial values, then refines with JAX.  This doubles the
-   NumPy RS cost before JAX even starts.
+### 已知 CPU/GPU 初测结论
 
-3. **Sequential IRLS** — IRLS is inherently sequential (each iteration
-   depends on the previous).  GPU parallelism helps with the matrix
-   operations but not the sequential structure.
+| 设备 | 结论 |
+|---|---|
+| CPU：Intel i7-12700K，JAX 0.6.2 CPU backend | `RS_JAX` 在 `n ≤ 1,000,000` 范围内未超过 NumPy `RS`。 |
+| GPU：NVIDIA RTX 3060 12 GB，JAX 0.10.0，CUDA 12，`p=2` | `RS_JAX` 在 `n ≤ 500,000` 范围内仍约慢于 NumPy `RS`，默认阈值保持 `math.inf`。 |
+| TPU | 尚未完成基准测试，默认阈值保持 `math.inf`。 |
 
-**When JAX would be faster**:
-- Very large design matrices (p >> 10), where GPU matrix operations dominate
-- Batch fitting across many datasets simultaneously
-- Future: fully JAX-native IRLS without NumPy warm-start
+### 运行 GPU 阈值扫描
 
----
+使用新的 GPU sweep 脚本生成原始 JSON 和 Markdown 报告：
 
-## Benchmark Results
+```bash
+PYTHONPATH=omnilss/src python benchmarks/gpu_crossover_sweep.py
+```
 
-### CPU: Intel i7-12700K (12P/20L cores, 34 GB RAM)
+默认矩阵覆盖：
 
-JAX 0.6.2, CPU backend.  No crossover found up to n = 1,000,000.
+| 变量 | 取值 |
+|---|---|
+| `n` | 100 · 500 · 1,000 · 5,000 · 10,000 · 50,000 · 100,000 · 500,000 |
+| `p` | 2 · 5 · 10 · 20 · 50 |
+| 分布族 | NO · GA · PO · BI · WEI · TF |
+| 方法 | `RS` vs `RS_JAX`（JAX 预热后计时） |
 
-| Family | n | JAX warm (ms) | NumPy warm (ms) | Speedup vs R |
-|--------|---|---:|---:|---:|
-| NO | 100,000 | 250 | 43 | 1.88x vs R |
-| GA | 100,000 | 564 | 221 | 2.34x vs R |
-| WEI | 100,000 | 566 | 312 | 3.68x vs R |
-| TF | 100,000 | 5,946 | 5,830 | 1.57x vs R |
+输出位置：
 
-Note: JAX is faster than **R gamlss** at large n, even on CPU.
+- `benchmarks/results/gpu_crossover_<timestamp>.json`
+- `docs/benchmarks/gpu_crossover_<timestamp>.md`
 
-### GPU: NVIDIA RTX 3060 12 GB (WSL2, JAX 0.10.0, CUDA 12)
+脚本会记录 `nvidia-smi` 快照、JAX backend、设备列表、每组 p50/p95 计时，并给出保守的阈值建议。
 
-No crossover found up to n = 500,000 for p=2 design matrices.
+## 如何自定义阈值
 
-| Family | n | JAX warm (ms) | NumPy warm (ms) |
-|--------|---|---:|---:|
-| NO | 500,000 | 1,448 | 419 |
-| GA | 500,000 | 3,232 | 1,331 |
-| WEI | 500,000 | 4,296 | 3,255 |
-
----
-
-## Configuring Auto-Selection
-
-After benchmarking on your hardware, update the crossover thresholds:
+### 运行时设置
 
 ```python
 import omnilss.config as cfg
 
-# Check current state
-print(cfg.get_config_summary())
-
-# Set GPU crossover after your benchmarking
-# (n at which JAX warm time < NumPy warm time)
-cfg.GPU_CROSSOVER_N["NO"]  = 50_000   # example
-cfg.GPU_CROSSOVER_N["GA"]  = 80_000   # example
-cfg.GPU_CROSSOVER_N["default"] = 100_000  # fallback for other families
-
-# Now method='auto' will use JAX for NO when n >= 50,000
-model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+cfg.set_crossover("gpu", n=50_000, family="NO")
+cfg.set_crossover("gpu", n=100_000)          # default fallback
+cfg.set_crossover("tpu", n=10_000, family="NO")
+cfg.crossover_summary(verbose=True)
 ```
 
-Via environment variables (before importing omnilss):
-```bash
-# Use JAX for all families when n >= 50,000 on GPU
-export OMNILSS_GPU_CROSSOVER_N=50000
-
-# Disable auto-switching entirely
-export OMNILSS_AUTO_METHOD=0
-
-# Force JAX everywhere (for testing/benchmarking)
-export OMNILSS_FORCE_JAX=1
-```
-
-### TPU Configuration
-
-TPU has not been benchmarked yet.  To configure after testing:
+### 临时实验
 
 ```python
 import omnilss.config as cfg
-cfg.TPU_CROSSOVER_N["NO"]      = 10_000   # example
-cfg.TPU_CROSSOVER_N["default"] = 20_000
+from omnilss import NO, gamlss
+
+with cfg.crossover_config(gpu={"NO": 50_000, "default": 100_000}):
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
 ```
 
----
+### YAML / JSON 配置文件
 
-## Running Your Own Benchmark
+OmniLSS 导入 `omnilss.config` 时会加载第一个存在的配置文件：
+
+1. `OMNILSS_CONFIG_FILE` 指定路径
+2. 当前工作目录 `./omnilss_config.yaml`
+3. 用户主目录 `~/.omnilss/config.yaml`
+
+示例：
+
+```yaml
+auto_method_enabled: true
+force_jax: false
+
+gpu_crossover_n:
+  NO: 50000
+  GA: 80000
+  default: .inf
+
+tpu_crossover_n:
+  NO: 10000
+  default: .inf
+```
+
+环境变量优先级高于配置文件：
 
 ```bash
-# GPU crossover benchmark (run in GPU environment)
-source /path/to/jax-gpu-env/bin/activate
-PYTHONPATH=omnilss/src python benchmarks/_gpu_benchmark_runner.py \
-    --n-values 1000 5000 10000 50000 100000 200000 500000 \
-    --families NO GA PO BI WEI TF
-
-# Full benchmark with R comparison (CPU)
-PYTHONPATH=omnilss/src python benchmarks/jax_rs_benchmark.py \
-    --n-values 1000 10000 100000 500000
+export OMNILSS_GPU_CROSSOVER_N='NO=50000,GA=80000,default=inf'
+export OMNILSS_TPU_CROSSOVER_N='NO=10000,default=inf'
+export OMNILSS_AUTO_METHOD=1
+export OMNILSS_FORCE_JAX=0
 ```
 
-Results are written to `docs/benchmarks/`.
+## TPU 配置指南
 
----
+TPU 阈值尚未完成实测。当前 `TPU_CROSSOVER_N` 已为所有 JAX 支持族提供占位符：NO、GA、PO、BI、WEI、TF 和 `default`。
 
-## Explicit Method Override
+推荐流程：
 
-You can always override auto-selection:
+1. 在目标 TPU v2/v3/v4 环境运行与 GPU 相同的 `(n, p, family)` 矩阵。
+2. 记录 JAX/JAXLIB/XLA/拓扑信息和 OOM 或编译失败行。
+3. 对每个 `(family, p)` 找到 `time(RS_JAX) < time(RS)` 的最小 `n`。
+4. 若 `p` 影响小于 2x，取各 `p` 阈值的保守上界写入 `TPU_CROSSOVER_N` 或 YAML；若超过 2x，先完成二维阈值设计再启用自动切换。
+
+更多占位和手动更新说明见 `docs/benchmarks/tpu_crossover_placeholder.md`。
+
+## 显式方法覆盖
+
+用户始终可以绕过自动路由：
 
 ```python
-# Always use NumPy RS (fastest on CPU, safe everywhere)
+# 始终使用 NumPy RS（安全、默认、支持全部族和平滑项）
 model = gamlss("y ~ x", family=NO(), data=data, method="RS")
 
-# Always use JAX RS (for testing or GPU workloads)
+# 强制 JAX RS（仅支持 NO/GA/PO/BI/WEI/TF，且不支持平滑项）
 model = gamlss("y ~ x", family=NO(), data=data, method="RS_JAX")
 
-# Auto-select based on device and n (currently == 'RS' everywhere)
+# 使用设备感知路由（当前阈值占位时等同 RS）
 model = gamlss("y ~ x", family=NO(), data=data, method="auto")
 ```
-
-Supported families for `method='RS_JAX'`: NO, GA, PO, BI, WEI, TF.  
-Other families fall back to `method='RS'` automatically.

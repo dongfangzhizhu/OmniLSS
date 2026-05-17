@@ -27,7 +27,12 @@ jobs:
 
       - name: Install build tools
         run: |
-          pip install build twine
+          pip install build twine protobuf grpcio-tools
+
+      - name: Generate gRPC stubs
+        run: |
+          cd omnilss
+          python tools/generate_grpc_stubs.py
 
       - name: Build package
         run: |
@@ -85,7 +90,7 @@ jobs:
     name: Publish to PyPI
     needs: [build, test-install]
     runs-on: ubuntu-latest
-    environment: release
+    environment: pypi
     permissions:
       id-token: write # Required for trusted publishing
 

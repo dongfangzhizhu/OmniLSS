@@ -165,3 +165,149 @@ class TestGamlssAutoMethod:
         data = data_fn()
         model = gamlss("y ~ x", family=family_fn(), data=data, method="auto")
         assert math.isfinite(model.g_dev)
+
+
+# ---------------------------------------------------------------------------
+# User-facing crossover configuration API
+# ---------------------------------------------------------------------------
+
+def test_set_crossover_gpu():
+    """set_crossover() correctly updates GPU_CROSSOVER_N."""
+    original = dict(cfg.GPU_CROSSOVER_N)
+    try:
+        cfg.set_crossover("gpu", n=50_000, family="NO")
+        assert cfg.GPU_CROSSOVER_N["NO"] == 50_000
+    finally:
+        cfg.GPU_CROSSOVER_N.clear()
+        cfg.GPU_CROSSOVER_N.update(original)
+
+
+def test_set_crossover_invalid_device():
+    """set_crossover("cpu", ...) raises ValueError."""
+    with pytest.raises(ValueError, match="device must be"):
+        cfg.set_crossover("cpu", n=10)  # type: ignore[arg-type]
+
+
+def test_set_crossover_negative_threshold():
+    """Negative crossover thresholds are rejected."""
+    with pytest.raises(ValueError, match="non-negative"):
+        cfg.set_crossover("gpu", n=-1, family="NO")
+
+
+def test_crossover_context_manager_restores():
+    """crossover_config() restores original values after exit."""
+    original_gpu = dict(cfg.GPU_CROSSOVER_N)
+    original_tpu = dict(cfg.TPU_CROSSOVER_N)
+    with cfg.crossover_config(gpu={"NO": 10, "default": 20}, tpu={"GA": 30}):
+        assert cfg.GPU_CROSSOVER_N["NO"] == 10
+        assert cfg.GPU_CROSSOVER_N["default"] == 20
+        assert cfg.TPU_CROSSOVER_N["GA"] == 30
+    assert cfg.GPU_CROSSOVER_N == original_gpu
+    assert cfg.TPU_CROSSOVER_N == original_tpu
+
+
+def test_force_jax_overrides_cpu(monkeypatch):
+    """FORCE_JAX=True returns RS_JAX even on CPU for supported families."""
+    original_force = cfg.FORCE_JAX
+    monkeypatch.setattr(cfg, "_current_backend", lambda: ("cpu", []))
+    try:
+        cfg.FORCE_JAX = True
+        assert cfg.auto_select_method("NO", 1) == "RS_JAX"
+    finally:
+        cfg.FORCE_JAX = original_force
+
+
+def test_auto_method_disabled(monkeypatch):
+    """AUTO_METHOD_ENABLED=False makes auto_select_method() return RS."""
+    original_auto = cfg.AUTO_METHOD_ENABLED
+    original_force = cfg.FORCE_JAX
+    monkeypatch.setattr(cfg, "_current_backend", lambda: ("gpu", []))
+    try:
+        cfg.FORCE_JAX = False
+        cfg.AUTO_METHOD_ENABLED = False
+        cfg.set_crossover("gpu", n=1, family="NO")
+        assert cfg.auto_select_method("NO", 1_000_000) == "RS"
+    finally:
+        cfg.AUTO_METHOD_ENABLED = original_auto
+        cfg.FORCE_JAX = original_force
+
+
+def test_yaml_config_loading(tmp_path, monkeypatch):
+    """YAML config files load crossover thresholds."""
+    import importlib
+
+    config_file = tmp_path / "omnilss_config.yaml"
+    config_file.write_text(
+        "auto_method_enabled: false\n"
+        "force_jax: true\n"
+        "gpu_crossover_n:\n"
+        "  NO: 50000\n"
+        "  default: .inf\n"
+        "tpu_crossover_n:\n"
+        "  GA: 10000\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OMNILSS_CONFIG_FILE", str(config_file))
+    monkeypatch.delenv("OMNILSS_AUTO_METHOD", raising=False)
+    monkeypatch.delenv("OMNILSS_FORCE_JAX", raising=False)
+    monkeypatch.delenv("OMNILSS_GPU_CROSSOVER_N", raising=False)
+    monkeypatch.delenv("OMNILSS_TPU_CROSSOVER_N", raising=False)
+
+    reloaded = importlib.reload(cfg)
+    try:
+        assert reloaded.AUTO_METHOD_ENABLED is False
+        assert reloaded.FORCE_JAX is True
+        assert reloaded.GPU_CROSSOVER_N["NO"] == 50_000
+        assert reloaded.GPU_CROSSOVER_N["default"] == math.inf
+        assert reloaded.TPU_CROSSOVER_N["GA"] == 10_000
+    finally:
+        monkeypatch.delenv("OMNILSS_CONFIG_FILE", raising=False)
+        importlib.reload(cfg)
+
+
+def test_yaml_config_env_overrides_file(tmp_path, monkeypatch):
+    """Environment variables take precedence over YAML config files."""
+    import importlib
+
+    config_file = tmp_path / "omnilss_config.yaml"
+    config_file.write_text(
+        "auto_method_enabled: false\n"
+        "gpu_crossover_n:\n"
+        "  NO: 50000\n"
+        "  default: .inf\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OMNILSS_CONFIG_FILE", str(config_file))
+    monkeypatch.setenv("OMNILSS_AUTO_METHOD", "1")
+    monkeypatch.setenv("OMNILSS_GPU_CROSSOVER_N", "NO=25000,GA=80000,default=90000")
+
+    reloaded = importlib.reload(cfg)
+    try:
+        assert reloaded.AUTO_METHOD_ENABLED is True
+        assert reloaded.GPU_CROSSOVER_N["NO"] == 25_000
+        assert reloaded.GPU_CROSSOVER_N["GA"] == 80_000
+        assert reloaded.GPU_CROSSOVER_N["default"] == 90_000
+    finally:
+        monkeypatch.delenv("OMNILSS_CONFIG_FILE", raising=False)
+        monkeypatch.delenv("OMNILSS_AUTO_METHOD", raising=False)
+        monkeypatch.delenv("OMNILSS_GPU_CROSSOVER_N", raising=False)
+        importlib.reload(cfg)
+
+
+def test_unknown_family_warns_but_accepts():
+    """set_crossover() warns for unknown families but keeps the value."""
+    original = dict(cfg.GPU_CROSSOVER_N)
+    try:
+        with pytest.warns(UserWarning, match="Unknown family"):
+            cfg.set_crossover("gpu", n=123, family="FUTURE")
+        assert cfg.GPU_CROSSOVER_N["FUTURE"] == 123
+    finally:
+        cfg.GPU_CROSSOVER_N.clear()
+        cfg.GPU_CROSSOVER_N.update(original)
+
+
+def test_tpu_crossover_has_all_jax_family_placeholders():
+    """TPU placeholders cover every currently JAX-supported family."""
+    for family in cfg.JAX_SUPPORTED_FAMILIES:
+        assert family in cfg.TPU_CROSSOVER_N
+        assert cfg.TPU_CROSSOVER_N[family] == math.inf

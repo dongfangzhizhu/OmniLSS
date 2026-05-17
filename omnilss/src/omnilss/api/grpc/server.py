@@ -7,6 +7,7 @@ while `serve()` will raise a clear runtime error.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import uuid
 from concurrent import futures
@@ -52,23 +53,47 @@ def _from_json(text: str) -> dict[str, Any]:
     return parsed
 
 
+def _grpc_runtime_gaps() -> list[str]:
+    """Return missing runtime pieces required by generated gRPC stubs."""
+    gaps: list[str] = []
+    if importlib.util.find_spec("grpc") is None:
+        gaps.append("grpcio")
+    if importlib.util.find_spec("google") is None:
+        gaps.append("protobuf")
+    elif importlib.util.find_spec("google.protobuf") is None:
+        gaps.append("protobuf")
+    for module in (
+        "omnilss.api.grpc.generated.fit_pb2",
+        "omnilss.api.grpc.generated.fit_pb2_grpc",
+        "omnilss.api.grpc.generated.predict_pb2",
+        "omnilss.api.grpc.generated.predict_pb2_grpc",
+        "omnilss.api.grpc.generated.sample_pb2",
+        "omnilss.api.grpc.generated.sample_pb2_grpc",
+    ):
+        if importlib.util.find_spec(module) is None:
+            gaps.append(module)
+    return gaps
+
+
 def create_service():
     """Create gRPC service class instance from generated stubs."""
-    try:
-        import grpc  # noqa: F401
-        from .generated import (
-            fit_pb2,
-            fit_pb2_grpc,
-            predict_pb2,
-            predict_pb2_grpc,
-            sample_pb2,
-            sample_pb2_grpc,
-        )
-    except Exception as exc:  # pragma: no cover
+    gaps = _grpc_runtime_gaps()
+    if gaps:
         raise RuntimeError(
-            "Generated gRPC stubs not found. Run protoc to generate under "
-            "omnilss.api.grpc.generated."
-        ) from exc
+            "OmniLSS gRPC runtime is incomplete. Missing: "
+            + ", ".join(gaps)
+            + ". Install the grpc extra (`pip install 'omnilss[grpc]'`) and "
+            "ensure generated stubs exist under omnilss.api.grpc.generated."
+        )
+
+    from .generated import (
+        fit_pb2,
+        fit_pb2_grpc,
+        predict_pb2,
+        predict_pb2_grpc,
+        sample_pb2,
+        sample_pb2_grpc,
+    )
 
     class OmniLSSService(
         fit_pb2_grpc.FitServiceServicer,
@@ -78,9 +103,39 @@ def create_service():
         def Fit(self, request, context):  # noqa: N802
             try:
                 data = _from_json(request.data_json)
-                model = gamlss(request.formula, family=request.family, data=data)
+                kwargs: dict[str, Any] = {
+                    "formula": request.formula,
+                    "family": request.family,
+                    "data": data,
+                }
+                if request.sigma_formula:
+                    kwargs["sigma_formula"] = request.sigma_formula
+                if request.nu_formula:
+                    kwargs.setdefault("parameter_formulas", {})[
+                        "nu"
+                    ] = request.nu_formula
+                if request.tau_formula:
+                    kwargs.setdefault("parameter_formulas", {})[
+                        "tau"
+                    ] = request.tau_formula
+                if request.method:
+                    kwargs["method"] = request.method
+                if request.max_iter > 0:
+                    kwargs["max_iter"] = int(request.max_iter)
+                kwargs["verbose"] = bool(request.verbose)
+
+                model = gamlss(**kwargs)
                 model_id = REGISTRY.save(model)
-                return fit_pb2.FitResponse(model_id=model_id, success=True, error="")
+                slots = dict(getattr(model, "additional_slots", {}) or {})
+                converged = slots.get("rs_converged", slots.get("cg_converged", True))
+                return fit_pb2.FitResponse(
+                    model_id=model_id,
+                    success=True,
+                    error="",
+                    deviance=float(model.g_dev),
+                    iterations=int(model.iter),
+                    converged=bool(converged),
+                )
             except Exception as exc:
                 return fit_pb2.FitResponse(model_id="", success=False, error=str(exc))
 
@@ -90,19 +145,57 @@ def create_service():
                 newdata = _from_json(request.newdata_json)
                 params = model.predict_params(newdata)
                 as_json = {k: list(map(float, v)) for k, v in params.items()}
-                return predict_pb2.PredictResponse(params_json=_to_json(as_json), success=True, error="")
+                return predict_pb2.PredictResponse(
+                    params_json=_to_json(as_json), success=True, error=""
+                )
             except Exception as exc:
-                return predict_pb2.PredictResponse(params_json="{}", success=False, error=str(exc))
+                return predict_pb2.PredictResponse(
+                    params_json="{}", success=False, error=str(exc)
+                )
 
         def Sample(self, request, context):  # noqa: N802
             try:
+                import inspect
+
+                import jax
+                import jax.numpy as jnp
+                import numpy as np
+
                 model = REGISTRY.load(request.model_id)
-                n = int(request.n)
-                y = model.y
-                samples = [float(v) for v in y[: max(0, min(n, len(y)))]]
-                return sample_pb2.SampleResponse(samples_json=_to_json({"samples": samples}), success=True, error="")
+                n = max(0, int(request.n))
+                family = model.family
+                fitted = getattr(model, "fitted_values", {}) or {}
+                param_means = {
+                    p: float(jnp.mean(jnp.asarray(v)))
+                    for p, v in fitted.items()
+                    if p in family.parameters
+                }
+
+                rng_fn = getattr(family, "r", None)
+                if rng_fn is not None:
+                    sig = inspect.signature(rng_fn)
+                    if "key" in sig.parameters:
+                        samples_arr = rng_fn(jax.random.PRNGKey(42), n, **param_means)
+                    else:
+                        samples_arr = rng_fn(n, **param_means)
+                    samples = [float(v) for v in np.asarray(samples_arr).reshape(-1)]
+                else:
+                    q_fn = getattr(family, "q", None)
+                    if q_fn is None:
+                        raise NotImplementedError(
+                            f"Family {family.name} does not support sampling"
+                        )
+                    rng = np.random.default_rng(42)
+                    u = rng.uniform(0.0, 1.0, n)
+                    samples = [float(q_fn(float(ui), **param_means)) for ui in u]
+
+                return sample_pb2.SampleResponse(
+                    samples_json=_to_json({"samples": samples}), success=True, error=""
+                )
             except Exception as exc:
-                return sample_pb2.SampleResponse(samples_json="{}", success=False, error=str(exc))
+                return sample_pb2.SampleResponse(
+                    samples_json="{}", success=False, error=str(exc)
+                )
 
     return OmniLSSService(), fit_pb2_grpc, predict_pb2_grpc, sample_pb2_grpc
 
