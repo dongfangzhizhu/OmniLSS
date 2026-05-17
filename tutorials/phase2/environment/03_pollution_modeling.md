@@ -1,5 +1,7 @@
 # Pollution Concentration
 
+[中文版本](03_pollution_modeling_cn.md)
+
 > Status: scenario scaffold aligned with the current OmniLSS API. Expand with a
 > full dataset walkthrough, business interpretation, and deployment notes.
 

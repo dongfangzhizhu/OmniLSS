@@ -1,5 +1,7 @@
 # OmniLSS Benchmark and Consistency Guide
 
+[中文版本](COMPREHENSIVE_TESTING_GUIDE_cn.md)
+
 ## Purpose
 
 The benchmark suite is a validation gate, not a marketing tool. It should answer

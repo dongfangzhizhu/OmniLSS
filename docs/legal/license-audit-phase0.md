@@ -1,5 +1,7 @@
 # License Audit (Phase 0)
 
+[中文版本](license-audit-phase0_cn.md)
+
 ## Provenance policy
 - Mathematical formulations are re-implemented, not code-translated.
 - References to R `gamlss` papers/docs are conceptual only.

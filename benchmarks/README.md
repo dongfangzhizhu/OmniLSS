@@ -1,5 +1,7 @@
 # OmniLSS Benchmarks
 
+[中文版本](README_cn.md)
+
 Benchmark scripts for validating OmniLSS against native R `gamlss` before making
 performance claims.
 

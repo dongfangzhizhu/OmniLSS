@@ -1,5 +1,7 @@
 # Hessian Audit (Phase-1 T-02)
 
+[中文版本](hessian_audit_cn.md)
+
 Date: 2026-05-15
 
 This report tracks hand-written Hessian usage in `omnilss/src/omnilss/distributions.py` for core families.

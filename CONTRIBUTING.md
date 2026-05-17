@@ -1,5 +1,7 @@
 # Contributing to OmniLSS
 
+[中文版本](CONTRIBUTING_cn.md)
+
 Thank you for your interest in contributing to OmniLSS! This document provides guidelines and instructions for contributing.
 
 ## 📋 Table of Contents

@@ -1,5 +1,7 @@
 # RS Algorithm Structure Comparison
 
+[中文版本](compare_rs_structure_cn.md)
+
 ## R's glim.fit Structure
 
 ```r

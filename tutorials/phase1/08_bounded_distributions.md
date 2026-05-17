@@ -1,5 +1,7 @@
 # Simplex and Other Bounded Distributions
 
+[中文版本](08_bounded_distributions_cn.md)
+
 > Status: scaffold aligned with the current OmniLSS API. Expand this page with
 > distribution-specific derivations, R comparisons, and exercises as content is
 > authored.

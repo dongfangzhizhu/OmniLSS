@@ -1,5 +1,7 @@
 # OmniLSS Documentation
 
+[中文版本](index_cn.md)
+
 OmniLSS is a Python/JAX implementation of generalized additive models for
 location, scale, and shape (GAMLSS). This documentation set focuses on the
 maintained project references that are present in this repository: algorithm

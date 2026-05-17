@@ -1,5 +1,7 @@
 # ADR-002: Optimizer Interface
 
+[中文版本](ADR-002-optimizer-interface_cn.md)
+
 # Context
 
 RS, CG, mixed algorithms, Adam, and L-BFGS are implemented through different

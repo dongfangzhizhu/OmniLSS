@@ -1,5 +1,7 @@
 # Google Colab Notebooks 快速参考
 
+[中文版本](QUICK_REFERENCE_cn.md)
+
 一页纸的快速参考指南。
 
 ---
