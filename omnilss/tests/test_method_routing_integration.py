@@ -106,3 +106,37 @@ def test_auto_routes_to_jax_above_threshold(monkeypatch):
 
     assert result.additional_slots["method"] == "RS_JAX"
     assert calls == ["jax"]
+
+
+def test_strict_capabilities_allow_validated_no_rs_route(monkeypatch):
+    calls: list[str] = []
+
+    def fake_rs_fit(**kwargs):
+        calls.append("rs")
+        return SimpleNamespace(additional_slots={"method": "RS"})
+
+    monkeypatch.setattr(rs_algorithm, "rs_fit", fake_rs_fit)
+
+    result = gamlss(
+        "y ~ x",
+        family=NO(),
+        data=_make_no_data(),
+        method="RS",
+        strict_capabilities=True,
+    )
+
+    assert result.additional_slots["method"] == "RS"
+    assert calls == ["rs"]
+
+
+def test_strict_capabilities_reject_experimental_ga_rs_route():
+    from omnilss import GA
+
+    with pytest.raises(FamilyCapabilityError, match="requested evidence tier"):
+        gamlss(
+            "y ~ x",
+            family=GA(),
+            data=_make_no_data(),
+            method="RS",
+            strict_capabilities=True,
+        )

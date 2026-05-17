@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any, Literal, Optional
+from typing import Any, Optional
 
 import jax.numpy as jnp
 import numpy as np
@@ -237,30 +237,88 @@ def parse_formula(formula: str) -> ParsedFormula:
     )
 
 
-def _split_formula_terms(rhs: str) -> list[str]:
-    """Split formula terms by + but not inside parentheses."""
-    terms = []
-    current = []
+def _split_top_level(text: str, delimiter: str) -> list[str]:
+    """Split text at a delimiter outside brackets and quoted strings."""
+
+    parts: list[str] = []
+    current: list[str] = []
     depth = 0
-    
-    for char in rhs:
-        if char == '(':
+    quote: str | None = None
+    escaped = False
+
+    for char in text:
+        if quote is not None:
+            current.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+
+        if char in {"'", '"'}:
+            quote = char
+            current.append(char)
+        elif char in "([{":
             depth += 1
             current.append(char)
-        elif char == ')':
+        elif char in ")]}":
             depth -= 1
+            if depth < 0:
+                raise ValueError("unbalanced closing delimiter in formula")
             current.append(char)
-        elif char == '+' and depth == 0:
-            terms.append(''.join(current))
+        elif char == delimiter and depth == 0:
+            parts.append("".join(current))
             current = []
         else:
             current.append(char)
-    
-    if current:
-        terms.append(''.join(current))
-    
-    return terms
 
+    if quote is not None:
+        raise ValueError("unterminated quoted string in formula")
+    if depth != 0:
+        raise ValueError("unbalanced delimiters in formula")
+    if current:
+        parts.append("".join(current))
+    return parts
+
+
+def _split_formula_terms(rhs: str) -> list[str]:
+    """Split formula terms by + but not inside nested calls or literals."""
+
+    return _split_top_level(rhs, "+")
+
+
+def _split_formula_args(args_str: str) -> list[str]:
+    """Split smooth/tensor arguments by top-level commas only."""
+
+    return [arg.strip() for arg in _split_top_level(args_str, ",") if arg.strip()]
+
+
+def _strip_quotes(value: str) -> str:
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        return value[1:-1]
+    return value
+
+
+def _parse_numeric(value: str, name: str) -> float:
+    try:
+        return float(value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a number, got {value!r}") from exc
+
+
+def _parse_int_list(value: str, name: str) -> list[int]:
+    text = value.strip()
+    if not (text.startswith("[") and text.endswith("]")):
+        raise ValueError(f"{name} must be a bracketed list of integers")
+    inner = text[1:-1].strip()
+    if not inner:
+        return []
+    try:
+        return [int(item.strip()) for item in _split_formula_args(inner)]
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a list of integers") from exc
 
 
 def _expand_formula_operators(rhs: str) -> str:
@@ -305,9 +363,8 @@ def _parse_smooth_term(smoother: str, args_str: str) -> SmoothTerm:
     - "x, method='REML'" -> variable="x", method="REML"
     - "x, method='auto', smoother='ps'" -> variable="x", method="auto", smoother="ps"
     """
-    # Split arguments
-    args = [arg.strip() for arg in args_str.split(',')]
-    
+    args = _split_formula_args(args_str)
+
     if not args or not args[0]:
         raise ValueError(f"Smooth term {smoother}() must have a variable")
     
@@ -327,32 +384,24 @@ def _parse_smooth_term(smoother: str, args_str: str) -> SmoothTerm:
         key = key.strip()
         value = value.strip()
         
-        # Remove quotes from string values
-        if value.startswith(("'", '"')) and value.endswith(("'", '"')):
-            value = value[1:-1]
-        
+        unquoted_value = _strip_quotes(value)
+
         # Handle special keys
         if key == 'method':
-            method = value
+            method = unquoted_value
         elif key == 'smoother':
-            actual_smoother = value
+            actual_smoother = unquoted_value
         elif key == 'df':
-            try:
-                df = float(value)
-            except ValueError:
-                raise ValueError(f"df must be a number, got {value!r}")
+            df = _parse_numeric(value, "df")
         elif key in ('lambda', 'lambda_'):
-            try:
-                lambda_ = float(value)
-            except ValueError:
-                raise ValueError(f"lambda must be a number, got {value!r}")
+            lambda_ = _parse_numeric(value, "lambda")
         else:
             # Try to parse as number
             try:
                 kwargs[key] = float(value)
             except ValueError:
                 # Keep as string
-                kwargs[key] = value
+                kwargs[key] = unquoted_value
     
     # Create SmoothTerm
     term = SmoothTerm(
@@ -375,40 +424,27 @@ def _parse_smooth_term(smoother: str, args_str: str) -> SmoothTerm:
 
 def _parse_tensor_term(smoother: str, args_str: str) -> TensorProductTerm:
     """Parse tensor product term arguments.
-    
+
     Examples:
     - "x1, x2" -> variables=["x1", "x2"]
     - "x1, x2, k=10" -> variables=["x1", "x2"], k=10
     - "x1, x2, k_list=[5, 8]" -> variables=["x1", "x2"], k_list=[5, 8]
     - "x1, x2, x3, bs='cr'" -> variables=["x1", "x2", "x3"], bs="cr"
     """
-    # First, handle k_list specially because it contains commas
-    k_list = None
-    if 'k_list=' in args_str:
-        # Extract k_list value
-        match = re.search(r'k_list\s*=\s*\[([^\]]+)\]', args_str)
-        if match:
-            k_list_str = match.group(1)
-            try:
-                k_list = [int(x.strip()) for x in k_list_str.split(',')]
-            except ValueError:
-                raise ValueError(f"k_list must be a list of integers")
-            # Remove k_list from args_str
-            args_str = re.sub(r',?\s*k_list\s*=\s*\[[^\]]+\]', '', args_str)
-    
-    # Split remaining arguments
-    args = [arg.strip() for arg in args_str.split(',') if arg.strip()]
-    
+
+    args = _split_formula_args(args_str)
+
     if len(args) < 2:
         raise ValueError(f"Tensor product {smoother}() requires at least 2 variables")
-    
+
     # Extract variables (all non-keyword arguments)
     variables = []
     k = None
+    k_list = None
     bs = "ps"
     lambda_ = None
     kwargs = {}
-    
+
     for arg in args:
         if '=' not in arg:
             # Variable name
@@ -418,35 +454,31 @@ def _parse_tensor_term(smoother: str, args_str: str) -> TensorProductTerm:
             key, value = arg.split('=', 1)
             key = key.strip()
             value = value.strip()
-            
-            # Remove quotes from string values
-            if value.startswith(("'", '"')) and value.endswith(("'", '"')):
-                value = value[1:-1]
-            
+            unquoted_value = _strip_quotes(value)
+
             # Handle special keys
             if key == 'k':
                 try:
                     k = int(value)
-                except ValueError:
-                    raise ValueError(f"k must be an integer, got {value!r}")
+                except ValueError as exc:
+                    raise ValueError(f"k must be an integer, got {value!r}") from exc
+            elif key == 'k_list':
+                k_list = _parse_int_list(value, "k_list")
             elif key == 'bs':
-                bs = value
+                bs = unquoted_value
             elif key in ('lambda', 'lambda_'):
-                try:
-                    lambda_ = float(value)
-                except ValueError:
-                    raise ValueError(f"lambda must be a number, got {value!r}")
+                lambda_ = _parse_numeric(value, "lambda")
             else:
                 # Try to parse as number
                 try:
                     kwargs[key] = float(value)
                 except ValueError:
                     # Keep as string
-                    kwargs[key] = value
-    
+                    kwargs[key] = unquoted_value
+
     if len(variables) < 2:
         raise ValueError(f"Tensor product {smoother}() requires at least 2 variables")
-    
+
     return TensorProductTerm(
         smoother=smoother,
         variables=variables,
@@ -704,7 +736,7 @@ def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
         # Returns a "virtual" basis: identity columns (fitted values are stored directly)
         from omnilss.smoothers.cs import fit_cubic_spline
 
-        r = fit_cubic_spline(x, np.zeros(len(x)), df=term.df)  # placeholder fit
+        fit_cubic_spline(x, np.zeros(len(x)), df=term.df)  # placeholder fit
         # For cs(), we store the spline object and use it directly at fit time
         # The "basis" is a single column of ones (intercept-like placeholder)
         return {
