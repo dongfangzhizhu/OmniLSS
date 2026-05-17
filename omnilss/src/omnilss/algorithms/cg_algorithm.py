@@ -16,10 +16,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional, Tuple
 
-import jax
-import jax.numpy as jnp
 import numpy as np
 
+from ..cg_derivatives import eta_cross_hessian
 from ..distributions import resolve_family
 from ..model import GAMLSSModel
 
@@ -35,88 +34,29 @@ def _compute_cross_derivatives(
     param_k: str,
     param_j: str,
 ) -> np.ndarray:
-    """Compute cross second-order derivatives d2l/deta_k*deta_j via JAX autodiff.
+    """Compute element-wise eta-scale CG cross derivatives.
 
-    Uses JAX automatic differentiation to compute cross-derivatives without
-    requiring hand-written analytical formulas for each distribution family.
-
-    Parameters
-    ----------
-    y : np.ndarray
-        Response variable
-    param_values : dict
-        Current parameter values {param_name: current_fitted_values}
-    family : FamilyDefinition
-        Distribution family
-    param_k : str
-        First parameter name (the parameter being updated)
-    param_j : str
-        Second parameter name (the other parameter in the cross-derivative)
-
-    Returns
-    -------
-    cross_deriv : np.ndarray
-        Element-wise cross-derivative array (n,), i.e. d2l_i/(deta_k,i * deta_j,i)
-        for each observation i
+    This helper returns ``d² l_i / (d eta_k,i d eta_j,i)`` for every
+    observation.  It delegates to the shared AD derivative kernel and raises
+    explicit errors instead of silently returning zeros, because a zero fallback
+    would turn the CG correction back into an RS-style block-diagonal update.
     """
-    y_jax = jnp.asarray(y, dtype=jnp.float64)
-
-    # Get current fitted values (fitted values = g^{-1}(eta))
-    link_k = family.link_functions[param_k]
-    link_j = family.link_functions[param_j]
-
-    fv_k = jnp.asarray(param_values[param_k], dtype=jnp.float64)
-    fv_j = jnp.asarray(param_values[param_j], dtype=jnp.float64)
-
-    # Fix other parameters (not differentiated)
-    fixed_params = {}
-    for p, v in param_values.items():
-        if p not in (param_k, param_j):
-            fixed_params[p] = jnp.asarray(v, dtype=jnp.float64)
-
-    # Convert fitted values to eta (linear predictor)
-    eta_k_all = jnp.asarray(link_k(fv_k), dtype=jnp.float64)
-    eta_j_all = jnp.asarray(link_j(fv_j), dtype=jnp.float64)
-
+    order = tuple(family.estimable_parameters)
     try:
-        # Use vmap to vectorize cross-derivative computation over all observations
-        def cross_deriv_single(eta_k_i, eta_j_i, y_i):
-            """Compute d2l/(deta_k * deta_j) for a single observation."""
-            # Apply inverse link to get distribution parameters
-            theta_k_i = family.link_inverses[param_k](eta_k_i)
-            theta_j_i = family.link_inverses[param_j](eta_j_i)
+        k_idx = order.index(param_k)
+        j_idx = order.index(param_j)
+    except ValueError as exc:
+        raise ValueError(
+            f"parameters {param_k!r}/{param_j!r} must be estimable parameters {order}"
+        ) from exc
 
-            # Scalar fixed parameters (avoid shape issues in vmap)
-            params_i = {
-                p: v[0] if hasattr(v, "__len__") else v for p, v in fixed_params.items()
-            }
-            params_i[param_k] = theta_k_i
-            params_i[param_j] = theta_j_i
-
-            # Differentiate dl/deta_k with respect to eta_j:
-            # d/deta_j [ d/deta_k log p(y | params) ]
-            d_kj = jax.grad(
-                lambda ej: jax.grad(
-                    lambda ek: family.logpdf(
-                        y=y_i,
-                        **{
-                            **params_i,
-                            param_k: family.link_inverses[param_k](ek),
-                            param_j: family.link_inverses[param_j](ej),
-                        },
-                    )
-                )(eta_k_i)
-            )(eta_j_i)
-
-            return d_kj
-
-        # Vectorize over all n observations
-        cross_derivs = jax.vmap(cross_deriv_single)(eta_k_all, eta_j_all, y_jax)
-        return np.asarray(cross_derivs, dtype=np.float64)
-
-    except Exception:
-        # Fall back to zero vector — degrades to RS update (no cross-derivative correction)
-        return np.zeros(len(y), dtype=np.float64)
+    hessian = eta_cross_hessian(
+        y=y,
+        param_values=param_values,
+        family=family,
+        parameter_order=order,
+    )
+    return np.asarray(hessian[:, k_idx, j_idx], dtype=np.float64)
 
 
 # ---------------------------------------------------------------------------

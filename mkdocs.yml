@@ -10,7 +10,6 @@ edit_uri: edit/main/docs/
 theme:
   name: material
   palette:
-    # Light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
       primary: indigo
@@ -18,7 +17,6 @@ theme:
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
-    # Dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: indigo
@@ -73,29 +71,52 @@ extra_javascript:
 
 nav:
   - Home: index.md
-  - Getting Started:
-      - Installation: getting_started/installation.md
-      - Quick Start: getting_started/quickstart.md
-  - User Guide:
-      - Distributions: user_guide/distributions.md
-      - Diagnostics: user_guide/diagnostics.md
-      - Algorithms: algorithm_guide.md
-      - Smoothing Parameters: smoothing_parameter_guide.md
-      - Optimization: optimizer_guide.md
-      - Prediction: prediction_guide.md
-      - Device Management: device_management_guide.md
   - API Reference:
-      - Models: api/models.md
-      - Distributions: api/distributions.md
       - Algorithms: api/algorithms.md
-      - Smoothers: api/smoothers.md
-      - Diagnostics: api/diagnostics.md
-  - Technical Reports:
-      - RS Algorithm Fix: reports/RS_ALGORITHM_FIX_2026_05_06.md
-      - NBI & ZAGA Verification: reports/NBI_ZAGA_VERIFICATION_2026_05_06.md
+      - Configuration: api/config.md
+      - gRPC Boundary: api/grpc-boundary-phase0.md
+      - Serving Runtime Prototype: api/serving-runtime-prototype.md
+      - Monitoring Runtime Prototype: api/monitoring-runtime-prototype.md
+  - Validation and Testing:
+      - CG Algorithm Integrity: validation/cg-algorithm-integrity.md
+      - Hessian Audit: reports/hessian_audit.md
+      - Test Matrix: testing/test-matrix.md
+      - R Consistency Coverage: testing/r-consistency-coverage.md
+  - Benchmarks:
+      - Benchmarking Principles: benchmarks/benchmarking-principles.md
+      - Device Method Selection: benchmarks/device-method-selection.md
+      - CG Cross-Derivative Reference: benchmarks/cg-cross-derivative-reference-2026-05-17.md
+      - Phase 0 Methodology: benchmarks/phase0-benchmark-methodology.md
+      - JAX RS Notes: benchmarks/jax_rs_notes.md
   - Development:
       - Priority Roadmap (2026 Q2): development/priority-roadmap-2026Q2.md
-      - T1-T4 Status Audit (2026-05-15): development/t1-t4-status-2026-05-15.md
+      - Phase 0 Execution Plan: development/phase0-execution-plan-2026Q2.md
+      - Phase 1 Execution Plan: development/phase1-execution-plan-2026H2.md
+      - JAX Capability Matrix: development/phase1-jax-capability-matrix.md
+      - Offline Development Bootstrap: development/offline-dev-bootstrap-2026-05-17.md
+      - R Environment Setup: development/r-environment-setup.md
       - Contributing: ../CONTRIBUTING.md
       - Code of Conduct: ../CODE_OF_CONDUCT.md
       - Changelog: ../CHANGELOG.md
+  - Architecture:
+      - Core/Pro Boundary: architecture/core-pro-boundary.md
+      - 30-Day Feature Freeze: architecture/30-day-feature-freeze.md
+      - ADR 001 Distribution Protocol: adr/ADR-001-distribution-protocol.md
+      - ADR 002 Optimizer Interface: adr/ADR-002-optimizer-interface.md
+      - ADR 003 Formula System: adr/ADR-003-formula-system.md
+      - ADR 004 Parameter System: adr/ADR-004-parameter-system.md
+      - ADR 005 JAX Functional Design: adr/ADR-005-jax-functional-design.md
+      - ADR 006 Device-Aware Method Selection: adr/ADR-006-device-aware-method-selection.md
+  - Maintenance and Notes:
+      - Code Audit (2026-05-15): maintenance/code-audit-2026-05-15.md
+      - 30-Day Refactor Status: maintenance/30-day-refactor-status.md
+      - Positioning Phase 0: positioning-phase0.md
+      - Family Math Derivations: notes/family-math-derivations-phase0.md
+      - Differentiable RS JAX: notes/note-01-differentiable-rs-jax.md
+      - Numerical Stability: notes/note-02-numerical-stability-distributional-regression.md
+      - Differentiable Runtime: notes/note-03-differentiable-distribution-runtime.md
+      - Phase 1 Blog Series: notes/phase1-blog-series.md
+      - Phase 1 Paper Outline: notes/phase1-paper-draft-outline.md
+  - Legal:
+      - License Audit Phase 0: legal/license-audit-phase0.md
+      - License Firewall Phase 1: legal/license-firewall-phase1.md

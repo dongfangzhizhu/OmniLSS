@@ -94,7 +94,7 @@ library(gamlss.dist)
 
 # 导入
 import jax.numpy as jnp
-import omnilss as om
+from omnilss import gamlss
 from omnilss import GA, IG
 import pandas as pd
 import numpy as np
@@ -120,7 +120,7 @@ summary(model_r)
 **Python 代码**:
 ```python
 # 拟合 GA 分布
-model_py = jg.gamlss(
+model_py = gamlss(
     formula="y ~ x",
     sigma_formula="~ x",
     family=GA(),
@@ -128,7 +128,8 @@ model_py = jg.gamlss(
 )
 
 # 查看结果
-print(model_py.summary())
+print(f"Global deviance: {model_py.g_dev:.4f}")
+print(model_py.coefficients["mu"])
 ```
 
 ---
@@ -143,7 +144,7 @@ print(model_py.summary())
 ```python
 import numpy as np
 import pandas as pd
-import omnilss as om
+from omnilss import gamlss
 from omnilss import GA
 
 # 设置随机种子
@@ -196,21 +197,22 @@ AIC(model_r)
 from omnilss import GA
 
 # 拟合模型
-model_py = jg.gamlss(
+model_py = gamlss(
     formula="y ~ x",
     family=GA(),
     data=data
 )
 
 # 查看结果
-print(model_py.summary())
+print(f"Global deviance: {model_py.g_dev:.4f}")
+print(model_py.coefficients["mu"])
 
 # 提取系数
-print("Mu coefficients:", model_py.coef_mu)
-print("Sigma coefficients:", model_py.coef_sigma)
+print("Mu coefficients:", model_py.coefficients["mu"])
+print("Sigma coefficients:", model_py.coefficients["sigma"])
 
 # AIC
-print(f"AIC: {model_py.aic:.2f}")
+print(f"AIC: {model_py.additional_slots['aic']:.2f}")
 ```
 
 #### 可视化
@@ -285,14 +287,14 @@ summary(model_ig_r)
 # Python 代码
 from omnilss import IG
 
-model_ig_py = om.gamlss(
+model_ig_py = gamlss(
     formula="y ~ x",
     family=IG(),
     data=data_ig
 )
 
-print(model_ig_py.summary())
-print(f"AIC: {model_ig_py.aic:.2f}")
+print(f"Global deviance: {model_ig_py.g_dev:.4f}")
+print(f"AIC: {model_ig_py.additional_slots['aic']:.2f}")
 ```
 
 ---
@@ -405,14 +407,14 @@ summary(model1_r)
 **Python 实现**:
 ```python
 # Python 代码
-model1_py = jg.gamlss(
+model1_py = gamlss(
     formula="claim_amount ~ age + vehicle_age",
     family=GA(),
     data=data_claims
 )
 
-print(model1_py.summary())
-print(f"Model 1 AIC: {model1_py.aic:.2f}")
+print(f"Global deviance: {model1_py.g_dev:.4f}")
+print(f"Model 1 AIC: {model1_py.additional_slots['aic']:.2f}")
 ```
 
 #### 模型 2: 添加地区因素
@@ -422,31 +424,31 @@ print(f"Model 1 AIC: {model1_py.aic:.2f}")
 data_claims['region_Urban'] = (data_claims['region'] == 'Urban').astype(int)
 data_claims['region_Suburban'] = (data_claims['region'] == 'Suburban').astype(int)
 
-model2_py = jg.gamlss(
+model2_py = gamlss(
     formula="claim_amount ~ age + vehicle_age + region_Urban + region_Suburban",
     family=GA(),
     data=data_claims
 )
 
-print(model2_py.summary())
-print(f"Model 2 AIC: {model2_py.aic:.2f}")
-print(f"AIC improvement: {model1_py.aic - model2_py.aic:.2f}")
+print(f"Global deviance: {model2_py.g_dev:.4f}")
+print(f"Model 2 AIC: {model2_py.additional_slots['aic']:.2f}")
+print(f"AIC improvement: {model1_py.additional_slots["aic"] - model2_py.additional_slots['aic']:.2f}")
 ```
 
 #### 模型 3: 建模方差
 
 ```python
 # 建模 sigma（方差）
-model3_py = jg.gamlss(
+model3_py = gamlss(
     formula="claim_amount ~ age + vehicle_age + region_Urban + region_Suburban",
     sigma_formula="~ age",
     family=GA(),
     data=data_claims
 )
 
-print(model3_py.summary())
-print(f"Model 3 AIC: {model3_py.aic:.2f}")
-print(f"AIC improvement: {model2_py.aic - model3_py.aic:.2f}")
+print(f"Global deviance: {model3_py.g_dev:.4f}")
+print(f"Model 3 AIC: {model3_py.additional_slots['aic']:.2f}")
+print(f"AIC improvement: {model2_py.additional_slots["aic"] - model3_py.additional_slots['aic']:.2f}")
 ```
 
 ### 模型比较
@@ -461,8 +463,8 @@ models = {
 
 comparison = pd.DataFrame({
     'Model': list(models.keys()),
-    'AIC': [m.aic for m in models.values()],
-    'BIC': [m.bic for m in models.values()],
+    'AIC': [m.additional_slots["aic"] for m in models.values()],
+    'BIC': [m.additional_slots["sbc"] for m in models.values()],
     'Deviance': [m.deviance for m in models.values()]
 })
 
@@ -489,22 +491,22 @@ plt.show()
 # 提取最终模型的系数
 print("\n最终模型系数解释:")
 print("\nMu 参数（均值模型）:")
-print(f"  截距: {model3_py.coef_mu[0]:.4f}")
-print(f"  年龄效应: {model3_py.coef_mu[1]:.4f}")
-print(f"  车龄效应: {model3_py.coef_mu[2]:.4f}")
-print(f"  城市地区效应: {model3_py.coef_mu[3]:.4f}")
-print(f"  郊区效应: {model3_py.coef_mu[4]:.4f}")
+print(f"  截距: {model3_py.coefficients["mu"][0]:.4f}")
+print(f"  年龄效应: {model3_py.coefficients["mu"][1]:.4f}")
+print(f"  车龄效应: {model3_py.coefficients["mu"][2]:.4f}")
+print(f"  城市地区效应: {model3_py.coefficients["mu"][3]:.4f}")
+print(f"  郊区效应: {model3_py.coefficients["mu"][4]:.4f}")
 
 print("\nSigma 参数（方差模型）:")
-print(f"  截距: {model3_py.coef_sigma[0]:.4f}")
-print(f"  年龄效应: {model3_py.coef_sigma[1]:.4f}")
+print(f"  截距: {model3_py.coefficients["sigma"][0]:.4f}")
+print(f"  年龄效应: {model3_py.coefficients["sigma"][1]:.4f}")
 
 # 业务解释
 print("\n业务解释:")
 print("1. 车龄每增加1年，索赔金额平均增加约 {:.1f}%".format(
-    (np.exp(model3_py.coef_mu[2]) - 1) * 100))
+    (np.exp(model3_py.coefficients["mu"][2]) - 1) * 100))
 print("2. 城市地区的索赔金额比农村地区高约 {:.1f}%".format(
-    (np.exp(model3_py.coef_mu[3]) - 1) * 100))
+    (np.exp(model3_py.coefficients["mu"][3]) - 1) * 100))
 print("3. 年龄越大，索赔金额的变异性越大")
 ```
 
@@ -520,12 +522,12 @@ new_data = pd.DataFrame({
 })
 
 # 预测
-pred_mu = model3_py.predict(new_data, what='mu')
-pred_sigma = model3_py.predict(new_data, what='sigma')
+pred_mu = model3_py.predict_params(new_data)["mu"]
+pred_sigma = model3_py.predict_params(new_data)["sigma"]
 
 # 计算预测区间
-pred_lower = model3_py.predict(new_data, what='quantile', quantile=0.05)
-pred_upper = model3_py.predict(new_data, what='quantile', quantile=0.95)
+pred_lower = model3_py.predict_quantiles(new_data, [0.05])[0.05]
+pred_upper = model3_py.predict_quantiles(new_data, [0.95])[0.95]
 
 # 展示预测结果
 pred_results = pd.DataFrame({
@@ -566,7 +568,7 @@ def benchmark_gamma(n_samples, n_repeats=3):
         times_py = []
         for _ in range(n_repeats):
             start = time.time()
-            model = jg.gamlss(formula="y ~ x", family=GA(), data=data)
+            model = gamlss(formula="y ~ x", family=GA(), data=data)
             times_py.append(time.time() - start)
         
         results.append({
@@ -646,15 +648,16 @@ plot(model)
 **等价 Python 代码**:
 ```python
 # 完整的 Python 工作流
+import numpy as np
 import pandas as pd
-import omnilss as om
+from omnilss import gamlss
 from omnilss import GA
 
 # 读取数据
 data = pd.read_csv("claims.csv")
 
 # 拟合模型
-model = jg.gamlss(
+model = gamlss(
     formula="claim_amount ~ age + vehicle_age",
     sigma_formula="~ age",
     family=GA(),
@@ -662,17 +665,17 @@ model = jg.gamlss(
 )
 
 # 查看结果
-print(model.summary())
+print(f"Global deviance: {model.g_dev:.4f}")
 
 # 预测
-new_data = pd.DataFrame({
-    'age': [30, 50],
-    'vehicle_age': [5, 10]
-})
-predictions = model.predict(new_data, what='mu')
+new_data = {
+    "age": np.array([30, 50]),
+    "vehicle_age": np.array([5, 10]),
+}
+predictions = model.predict_params(new_data)["mu"]
 
-# 诊断图
-model.plot()
+# 诊断信息
+print(model.additional_slots["aic"])
 ```
 
 ### 常见陷阱
@@ -688,7 +691,7 @@ assert (data['y'] > 0).all(), "Gamma 分布要求所有值为正"
 
 # 如果有零值，考虑使用 Zero-Adjusted Gamma (ZAGA)
 from omnilss import ZAGA
-model = om.gamlss(formula="y ~ x", family=ZAGA(), data=data)
+model = gamlss(formula="y ~ x", family=ZAGA(), data=data)
 ```
 
 #### 陷阱 2: 参数化差异
@@ -704,8 +707,8 @@ model = om.gamlss(formula="y ~ x", family=ZAGA(), data=data)
 # 验证参数化
 print(f"Mean: {data['y'].mean()}")
 print(f"CV: {data['y'].std() / data['y'].mean()}")
-print(f"Model mu: {model.coef_mu}")
-print(f"Model sigma: {model.coef_sigma}")
+print(f"Model mu: {model.coefficients['mu']}")
+print(f"Model sigma: {model.coefficients['sigma']}")
 ```
 
 ---
@@ -728,11 +731,11 @@ print(f"Model sigma: {model.coef_sigma}")
 
 可以通过 AIC 比较：
 ```python
-model_ga = jg.gamlss(formula="y ~ x", family=GA(), data=data)
-model_logno = jg.gamlss(formula="y ~ x", family=LOGNO(), data=data)
+model_ga = gamlss(formula="y ~ x", family=GA(), data=data)
+model_logno = gamlss(formula="y ~ x", family=LOGNO(), data=data)
 
-print(f"GA AIC: {model_ga.aic:.2f}")
-print(f"LOGNO AIC: {model_logno.aic:.2f}")
+print(f"GA AIC: {model_ga.additional_slots['aic']:.2f}")
+print(f"LOGNO AIC: {model_logno.additional_slots['aic']:.2f}")
 ```
 
 ### Q3: Gamma 回归 vs GLM Gamma？
@@ -759,7 +762,7 @@ data_clean = data[~outliers]
 
 # 选项 2: 使用更稳健的分布（如 GG）
 from omnilss import GG
-model_robust = om.gamlss(formula="y ~ x", family=GG(), data=data)
+model_robust = gamlss(formula="y ~ x", family=GG(), data=data)
 ```
 
 ### Q5: 如何解释 sigma 参数？

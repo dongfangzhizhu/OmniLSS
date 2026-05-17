@@ -13,7 +13,7 @@ OmniLSS has two RS fitting backends:
 | Backend | Implementation | When faster |
 |---------|---------------|-------------|
 | `method='RS'` | NumPy IRLS (`algorithms/rs_algorithm.py`) | Always on CPU; also on GPU for small n |
-| `method='RS_JAX'` | JAX `while_loop` + `jnp.linalg.lstsq` (`algorithms/jax_rs_core.py`) | GPU at large n (crossover TBD) |
+| `method='RS_JAX'` | JAX `while_loop` + `jnp.linalg.lstsq` (`algorithms/jax_rs_core.py`) | GPU at large n after benchmarked finite thresholds |
 
 Users should not need to know which backend to use.  The system should
 choose automatically based on the available device and dataset size.

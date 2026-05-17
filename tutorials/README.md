@@ -3,6 +3,16 @@
 Welcome to the OmniLSS tutorial series! These tutorials help you migrate from R gamlss
 to Python OmniLSS and apply distributional regression in real-world scenarios.
 
+
+## Current fitting API notes
+
+Tutorial snippets now use the current OmniLSS model API:
+
+- `gamlss(..., method="RS")` remains the routine CPU default.
+- `gamlss(..., method="CG")` uses the auditable `CG_FULL_HESSIAN` Cole-Green backend by default and records `cg_backend` / `cg_cross_derivatives` in `model.additional_slots`.
+- `gamlss(..., method="CG", cg_backend="irls_cross")` enables the experimental eta-scale IRLS cross-derivative backend.
+- Model diagnostics such as AIC/BIC live in `model.additional_slots["aic"]` and `model.additional_slots["sbc"]`; coefficients are in `model.coefficients[parameter]`; fitted parameter values are in `model.fitted_values[parameter]`.
+
 ## Tutorial Structure
 
 ### Phase 1: Feature Comparison and Usage Guide
@@ -222,8 +232,8 @@ End-to-end tutorials for practical use cases.
 ### Code Repository
 
 All tutorial code and data:
-- Phase 1 code: `tutorials/phase1/code/`
-- Phase 2 code: `tutorials/phase2/code/`
+- Phase 1 code: `tutorials/code/phase1/`
+- Phase 2 code: `tutorials/code/phase2/`
 - Datasets: `tutorials/datasets/`
 
 ---
