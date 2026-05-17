@@ -81,6 +81,16 @@ def _design_matrix_schema(model: Any) -> dict[str, Any]:
     return schema
 
 
+def _family_capability_snapshot(model: Any) -> dict[str, Any]:
+    """Build a JSON-safe capability snapshot for the model family."""
+
+    from .family_capabilities import get_family_capability
+
+    family_obj = getattr(model, "family", None)
+    family_name = getattr(family_obj, "name", str(family_obj))
+    return get_family_capability(str(family_name)).as_dict()
+
+
 def save_model_pickle(model: Any, path: str | Path) -> None:
     try:
         import cloudpickle  # type: ignore
@@ -145,6 +155,7 @@ def save_model_json(model: Any, path: str | Path) -> None:
             "type": str(model.type),
             "call": _json_safe(dict(model.call or {})),
             "design_matrix_schema": _json_safe(ensure_model_design_schema(model)),
+            "family_capability": _json_safe(_family_capability_snapshot(model)),
         }
         zf.writestr("meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
 
@@ -156,6 +167,7 @@ def load_model_json(path: str | Path):
     with zipfile.ZipFile(Path(path), "r") as zf:
         meta = json.loads(zf.read("meta.json").decode("utf-8"))
         design_matrix_schema = meta.get("design_matrix_schema", {})
+        family_capability = meta.get("family_capability", {})
         version = meta.get("omnilss_version", "")
         if not str(version).startswith("0.3."):
             raise ValueError(f"Incompatible model version: {version}")
@@ -196,6 +208,7 @@ def load_model_json(path: str | Path):
             "loaded_from_json": True,
             "omnilss_version": version,
             "design_matrix_schema": design_matrix_schema,
+            "family_capability": family_capability,
         },
     )
 
