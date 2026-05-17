@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - 完成 CG full-Hessian correctness backend 的交叉导数实现闭环，并将 `CG_IRLS_CROSS` 推进为显式可选实验后端：新增 eta-scale derivative kernel、observed-information block extraction helpers、CG backend diagnostics、IRLS-cross global line search 与回归测试、验证矩阵与 smoke/reference artifact，确保 `method="CG"` 可审计地使用 cross-derivative 信息而不是静默退化为 RS。
+- 完成 CG full-Hessian correctness backend 的交叉导数实现闭环，并将 `CG_IRLS_CROSS` 推进为显式可选实验后端：新增 eta-scale derivative kernel、observed-information block extraction helpers、CG backend diagnostics、IRLS-cross global line search 与回归测试、验证矩阵与 smoke/reference artifact，确保 `method="CG"` 可审计地使用 cross-derivative 信息而不是静默退化为 RS。
 
 ### Changed
+- 离线开发环境构建文档与 devcontainer bootstrap 补充一次性 build-time 依赖清单、镜像构建期依赖校验、发布/架构/R/gRPC 验证命令和维护规则，避免后续离线会话因缺少 `optax`、`build`、`twine`、R 包或 protobuf tooling 阻塞开发。
 - 离线开发环境构建文档与 devcontainer bootstrap 补充一次性 build-time 依赖清单、镜像构建期依赖校验、发布/架构/R/gRPC 验证命令和维护规则，避免后续离线会话因缺少 `optax`、`build`、`twine`、R 包或 protobuf tooling 阻塞开发。
 
 
@@ -18,8 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - R 运行环境安装与验证文档：`docs/development/r-environment-setup.md`（包含 apt/conda 安装路径与 R 侧最小验证命令）。
-- v0.3.0 发布前阶段性收尾文档：`docs/development/v0.3.0-release-closure-2026-05-17.md`，集中记录发布门禁、环境限制与剩余非阻塞项。
-- CG 交叉导数开发路径文档：`docs/development/cg-cross-derivatives-development-path-2026-05-17.md`，用于后续统一 eta-level correction 与 coefficient-level Hessian 路径。
+- 发布与 CG 交叉导数状态已收敛到维护中的验证文档：`docs/validation/cg-algorithm-integrity.md`；一次性收尾清单与开发路径草案不再作为长期文档发布。
 - `fitting.py` 拆分辅助模块：`_fitting_utils.py`、`_fitting_init.py`、`_fitting_residuals.py`，用于承载公式工具、初始化与残差/rqres 逻辑。
 
 ### Changed
@@ -39,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known limitations
 - 当前开发容器缺少 `build` / `twine` / `optax` / R `gamlss` 相关依赖，因此打包检查、架构 smoke test 与 R 一致性门禁需要在依赖齐全的发布环境中复跑。
-- CG 路径仍需在后续版本中统一 full coefficient Hessian 与 eta-level cross-derivative correction 的实现、测试和 benchmark artifact。
+- `CG_FULL_HESSIAN` 是默认 correctness backend；`CG_IRLS_CROSS` 保持显式 opt-in 实验 backend，发布声明以验证文档和 benchmark artifact 为准。
 
 ### Installation diagnostics
 - `omnilss.check_installation()` 安装健康检查函数。
