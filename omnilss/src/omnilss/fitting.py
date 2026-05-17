@@ -693,25 +693,39 @@ def gamlss(
     parameter_formulas : dict or None
         Formulas for additional parameters (nu, tau).
     method : str, default ``"RS"``
-        Fitting method.  One of:
+        Fitting algorithm selection.  One of:
 
         ``"RS"``
-            Rigby-Stasinopoulos algorithm (NumPy IRLS).  Default and
-            fastest on CPU for all n.
+            NumPy IRLS (default).  This is the fastest CPU path, supports all
+            OmniLSS distribution families, and supports smooth terms such as
+            ``pb()``, ``cs()``, and ``ps()``.
 
         ``"RS_JAX"``
-            JAX-native RS with ``jax.lax.while_loop`` + ``jnp.linalg.lstsq``.
-            Supported families: NO, GA, PO, BI, WEI, TF.
-            On CPU this is **slower** than ``"RS"`` due to JAX overhead.
-            On GPU the crossover point depends on hardware — see
-            ``omnilss.config`` and ``docs/benchmarks/``.
+            JAX JIT-compiled IRLS.  This path currently supports the six core
+            JAX families (NO, GA, PO, BI, WEI, TF) and does not support smooth
+            terms.  It may be faster for large GPU/TPU workloads after
+            hardware-specific crossover thresholds are configured.
 
         ``"auto"``
-            Automatically select ``"RS"`` or ``"RS_JAX"`` based on the
-            current JAX device and n.  See ``omnilss.config.auto_select_method``
-            for the decision logic and crossover thresholds.
-            Currently equivalent to ``"RS"`` on all tested hardware
-            (no crossover found up to n=500,000 on RTX 3060).
+            Device-aware routing.  CPU always resolves to ``"RS"``.  GPU/TPU
+            resolves to ``"RS_JAX"`` only when ``n`` is greater than or equal
+            to ``config.GPU_CROSSOVER_N[family]`` or
+            ``config.TPU_CROSSOVER_N[family]``; otherwise it resolves to
+            ``"RS"``.  Current placeholder thresholds are ``math.inf`` until
+            benchmarks establish a crossover for target hardware.
+
+        Manual routing examples::
+
+            # Force JAX for supported families, even on CPU, for testing.
+            import omnilss.config as cfg
+            cfg.FORCE_JAX = True
+
+            # Force NumPy, even on a GPU host.
+            model = gamlss("y ~ x", family="NO", data=data, method="RS")
+
+            # Configure the current session's GPU threshold.
+            cfg.set_crossover("gpu", n=50_000, family="NO")
+            model = gamlss("y ~ x", family="NO", data=data, method="auto")
 
         ``"CG"``
             Cole-Green algorithm with full JAX Hessian cross-derivatives.
@@ -762,8 +776,9 @@ def gamlss(
     **Customising auto-selection**::
 
         import omnilss.config as cfg
-        cfg.GPU_CROSSOVER_N["NO"] = 50_000   # use JAX for NO when n >= 50k
-        cfg.GPU_CROSSOVER_N["default"] = 100_000
+        cfg.set_crossover("gpu", n=50_000, family="NO")
+        cfg.set_crossover("gpu", n=100_000)
+        cfg.crossover_summary()
 
     Examples
     --------
@@ -790,7 +805,35 @@ def gamlss(
             _n_obs = len(data[_resp])
         except Exception:
             _n_obs = 0
+        _backend, _ = _cfg._current_backend()
+        if _backend == "gpu":
+            _table = _cfg.GPU_CROSSOVER_N
+        elif _backend == "tpu":
+            _table = _cfg.TPU_CROSSOVER_N
+        else:
+            _table = None
+        _threshold = (
+            _cfg._get_crossover(_table, family.name)
+            if _table is not None
+            else math.inf
+        )
         method_name = _cfg.auto_select_method(family.name, _n_obs).upper()
+        if verbose:
+            print("OmniLSS 方法路由")
+            print(f"  设备：{_backend.upper()} · n={_n_obs} · 族：{family.name}")
+            if _backend in {"gpu", "tpu"}:
+                _threshold_text = "inf" if _threshold == math.inf else f"{_threshold:g}"
+                print(
+                    f"  {_backend.upper()} 切换阈值（{family.name}）："
+                    f"{_threshold_text} → 选择 {method_name}"
+                )
+            else:
+                print(f"  CPU/未知后端默认选择 {method_name}（NumPy）")
+            if method_name == "RS" and _backend in {"gpu", "tpu"}:
+                print(
+                    f'  提示：运行基准测试后通过 cfg.set_crossover("{_backend}", n=...) '
+                    "启用自动 JAX 加速"
+                )
     
     # Handle new optimizer methods
     if method_name in {"JOINT", "LBFGS"}:
