@@ -1,0 +1,25 @@
+# Month 1 Core Artifact Progress (2026-05-18)
+
+> Chinese version: [month1-core-artifact-progress-2026-05-18_cn.md](month1-core-artifact-progress-2026-05-18_cn.md)
+>
+> Parent plan: [six-month-execution-plan-2026-05-17.md](six-month-execution-plan-2026-05-17.md)
+
+## Scope
+
+This note records the next implementation step against Month 1 / Workstream D1: **Model Artifact and Design-Matrix Schema v2**.
+
+## Implemented Progress
+
+- JSON model artifacts now omit full training data by default.
+- The training response array is written only when `include_training_data=True` is passed to `save_model_json()`.
+- Serialized call metadata marks `training_data_omitted=true` when training data is redacted.
+- `df_fit` is persisted in JSON metadata and restored on load instead of being recomputed from nominal coefficient counts.
+- Stable scalar diagnostics are captured in artifact metadata for downstream audit/reporting paths.
+- Smooth-aware fit degrees of freedom are now computed through a shared algorithm helper to keep RS and CG accounting consistent.
+
+## Remaining D1 Work
+
+- Persist enough smooth-basis metadata for schema-safe smooth prediction roundtrips where supported.
+- Add structured prediction/artifact error codes beyond `PredictionSchemaError`.
+- Expand schema validation to cover categorical encodings and transformed numeric terms more comprehensively.
+- Add explicit artifact migration policy for future schema versions.
