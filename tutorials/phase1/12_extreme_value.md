@@ -1,5 +1,7 @@
 # Pareto and Extreme Value - PARETO, PARETO2, GU, RG
 
+[中文版本](12_extreme_value_cn.md)
+
 > Status: scaffold aligned with the current OmniLSS API. Expand this page with
 > distribution-specific derivations, R comparisons, and exercises as content is
 > authored.

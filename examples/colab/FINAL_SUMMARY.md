@@ -1,5 +1,7 @@
 # Google Colab Notebooks 最终总结
 
+[中文版本](FINAL_SUMMARY_cn.md)
+
 **完成日期**: 2026-05-08  
 **状态**: ✅ 框架完成，工具就绪  
 **项目**: OmniLSS Google Colab 测试套件

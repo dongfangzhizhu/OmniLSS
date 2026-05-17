@@ -1,5 +1,7 @@
 # Other Special Distributions - exGAUS, PE, NET
 
+[中文版本](14_special_distributions_cn.md)
+
 > Status: scaffold aligned with the current OmniLSS API. Expand this page with
 > distribution-specific derivations, R comparisons, and exercises as content is
 > authored.

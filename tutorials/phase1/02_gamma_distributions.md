@@ -1,5 +1,7 @@
 # Gamma 分布族 - GA, GG, IGAMMA, IG
 
+[中文版本](02_gamma_distributions_cn.md)
+
 > **系列**: OmniLSS 教程 - 第一阶段  
 > **难度**: ⭐⭐⭐☆☆  
 > **预计阅读时间**: 30 分钟  

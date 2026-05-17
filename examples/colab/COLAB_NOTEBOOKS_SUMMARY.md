@@ -1,5 +1,7 @@
 # Google Colab Notebooks 创建总结
 
+[中文版本](COLAB_NOTEBOOKS_SUMMARY_cn.md)
+
 **完成日期**: 2026-05-08  
 **状态**: ✅ 基础框架完成  
 **下一步**: 按计划创建剩余 notebooks

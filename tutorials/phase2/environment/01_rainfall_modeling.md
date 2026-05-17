@@ -1,5 +1,7 @@
 # Rainfall Modeling
 
+[中文版本](01_rainfall_modeling_cn.md)
+
 > Status: scenario scaffold aligned with the current OmniLSS API. Expand with a
 > full dataset walkthrough, business interpretation, and deployment notes.
 

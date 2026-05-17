@@ -1,5 +1,7 @@
 # Benchmarks Quick Start
 
+[中文版本](QUICK_START_cn.md)
+
 ## Recommended Local Gate
 
 Run consistency first, then performance:

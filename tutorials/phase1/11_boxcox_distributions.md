@@ -1,5 +1,7 @@
 # Box-Cox Transformation - BCCG, BCT, BCPE
 
+[中文版本](11_boxcox_distributions_cn.md)
+
 > Status: scaffold aligned with the current OmniLSS API. Expand this page with
 > distribution-specific derivations, R comparisons, and exercises as content is
 > authored.

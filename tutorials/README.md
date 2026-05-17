@@ -1,5 +1,7 @@
 # OmniLSS Tutorial Series
 
+[中文版本](README_cn.md)
+
 Welcome to the OmniLSS tutorial series! These tutorials help you migrate from R gamlss
 to Python OmniLSS and apply distributional regression in real-world scenarios.
 

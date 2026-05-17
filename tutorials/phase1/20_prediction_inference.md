@@ -1,5 +1,7 @@
 # Prediction and Inference
 
+[中文版本](20_prediction_inference_cn.md)
+
 > Status: scaffold aligned with the current OmniLSS API. Expand this page with
 > distribution-specific derivations, R comparisons, and exercises as content is
 > authored.

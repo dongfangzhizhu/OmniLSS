@@ -1,5 +1,7 @@
 # Zero-Inflated Distributions - ZIP, ZINBI, ZAGA, ZAIG
 
+[中文版本](06_zero_inflated_cn.md)
+
 > Status: scaffold aligned with the current OmniLSS API. Expand this page with
 > distribution-specific derivations, R comparisons, and exercises as content is
 > authored.

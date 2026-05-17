@@ -1,3 +1,5 @@
+
+[中文版本](paper_cn.md)
 ---
 title: 'OmniLSS: High-Performance GAMLSS in Python using JAX'
 tags:

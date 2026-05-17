@@ -1,5 +1,7 @@
 # OmniLSS Google Colab Notebooks
 
+[中文版本](README_cn.md)
+
 这个目录包含一系列 Google Colab notebooks，用于测试 OmniLSS 与 R GAMLSS 的功能一致性和性能对比。
 
 ---

@@ -1,5 +1,7 @@
 # Beta Family - BE, BEINF, BEZI, BEOI
 
+[中文版本](07_beta_distributions_cn.md)
+
 > Status: scaffold aligned with the current OmniLSS API. Expand this page with
 > distribution-specific derivations, R comparisons, and exercises as content is
 > authored.

@@ -1,4 +1,4 @@
-"""Validate bilingual documentation pairs under ``docs/``.
+"""Validate bilingual Markdown documentation pairs.
 
 The project documentation policy uses English as the default file and stores the
 Chinese counterpart next to it with ``_cn`` appended to the stem.  Each pair must
@@ -11,7 +11,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-DOCS_ROOT = ROOT / "docs"
+DOCS_ROOT = ROOT
+EXCLUDED_PARTS = {".git", ".github", "site", ".venv", "venv", "node_modules", "__pycache__"}
 
 
 def iter_english_docs(docs_root: Path = DOCS_ROOT):
@@ -20,11 +21,13 @@ def iter_english_docs(docs_root: Path = DOCS_ROOT):
     for path in sorted(docs_root.rglob("*.md")):
         if path.stem.endswith("_cn"):
             continue
+        if any(part in EXCLUDED_PARTS for part in path.relative_to(docs_root).parts):
+            continue
         yield path
 
 
 def validate_docs_localization(docs_root: Path = DOCS_ROOT) -> list[str]:
-    """Return localization-policy violations for Markdown docs."""
+    """Return localization-policy violations for project Markdown docs."""
 
     errors: list[str] = []
     for english_path in iter_english_docs(docs_root):
