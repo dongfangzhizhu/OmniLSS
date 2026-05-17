@@ -108,8 +108,12 @@ def _build_design_matrix_for_prediction(
                 f"Cannot infer prediction row count for parameter {param!r}"
             )
 
-    smooth_infos = getattr(model, "additional_slots", {}).get("smooth_infos", {})
+    additional_slots = getattr(model, "additional_slots", {}) or {}
+    smooth_infos = additional_slots.get("smooth_infos", {})
     param_smooth_info = smooth_infos.get(param)
+    design_schema = (additional_slots.get("design_matrix_schema", {}) or {}).get(
+        "parameters", {}
+    ).get(param, {})
     formula = model.formulas.get(param, "")
     if not formula or "~" not in formula:
         raise PredictionSchemaError(
@@ -223,6 +227,13 @@ def _build_design_matrix_for_prediction(
         raise PredictionSchemaError(
             f"Failed to assemble prediction matrix for parameter {param!r}: {exc}"
         ) from exc
+
+    expected_columns = design_schema.get("n_columns")
+    if expected_columns is not None and X_new.shape[1] != int(expected_columns):
+        raise PredictionSchemaError(
+            f"Prediction design for parameter {param!r} has {X_new.shape[1]} columns, "
+            f"but saved schema expects {int(expected_columns)} columns"
+        )
 
     if param in model.coefficients:
         n_coefs = len(np.asarray(model.coefficients[param]))
