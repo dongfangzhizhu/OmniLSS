@@ -96,6 +96,17 @@ from .distributions_b15 import (
 )
 from .distributions_b16 import DPO1, PARETO1, SEP, BCCGo, LOGSHASHo, PARETO1o
 from .families import FamilyDefinition
+from .family_capabilities import (
+    CapabilityStatus,
+    FEATURES as FAMILY_CAPABILITY_FEATURES,
+    FamilyCapability,
+    FamilyCapabilityError,
+    family_capability_names,
+    family_supports,
+    get_family_capability,
+    list_family_capabilities,
+    require_family_capability,
+)
 from .fitDist import fitDist
 from .fitDistPred import fitDistPred, gamlssMLpred
 from .fitted_plot import fitted_plot
