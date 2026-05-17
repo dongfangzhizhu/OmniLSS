@@ -118,20 +118,45 @@ print(f"偏差: {model.g_dev:.4f}")
 ✅ 偏差: 774.07
 ```
 
-#### 统一接口（Mixed Algorithm）
+#### 统一接口与 CG 后端
 
 ```python
-from omnilss import gamlss
+from omnilss import gamlss, gamlss_control
 
-# 自动选择最佳算法
-model = gamlss(
+# 日常默认路径：RS（Rigby-Stasinopoulos）
+model_rs = gamlss(
     formula="y ~ x",
     sigma_formula="~ x",
     family="NO",
     data=data,
-    algorithm="auto",  # 自动选择 RS 或 CG
-    verbose=True
+    method="RS",
+    control=gamlss_control(n_cyc=20, c_crit=1e-4),
 )
+
+# Cole-Green correctness/reference 路径：完整 coefficient-level Hessian
+model_cg = gamlss(
+    formula="y ~ x",
+    sigma_formula="~ x",
+    family="NO",
+    data=data,
+    method="CG",
+    cg_backend="full_hessian",  # 默认值，可显式写出以便审计
+    control=gamlss_control(n_cyc=20, c_crit=1e-4),
+)
+
+print(model_cg.additional_slots["cg_backend"])           # CG_FULL_HESSIAN
+print(model_cg.additional_slots["cg_cross_derivatives"]) # full_hessian
+
+# 实验性 eta-scale IRLS cross-derivative 后端
+model_cg_irls = gamlss(
+    formula="y ~ x",
+    sigma_formula="~ x",
+    family="NO",
+    data=data,
+    method="CG",
+    cg_backend="irls_cross",
+)
+print(model_cg_irls.additional_slots["cg_backend"])      # CG_IRLS_CROSS
 ```
 
 ---
@@ -261,12 +286,13 @@ model = gamlss(
     sigma_formula="~ x1",
     family="NO",
     data=mydata,
-    max_iterations=20
+    method="RS",
 )
 
 # 查看结果
-print(model.summary())
-model.plot()
+print(f"Global deviance: {model.g_dev:.4f}")
+print(f"AIC: {model.additional_slots['aic']:.2f}")
+print(model.coefficients["mu"])
 ```
 
 **相似之处**：
@@ -276,7 +302,7 @@ model.plot()
 - ✅ 模型诊断方法
 
 **改进之处**：
-- ✅ 更清晰的参数名称（max_iterations vs n.cyc）
+- ✅ 更清晰的参数名称（method、control、sigma_formula）
 - ✅ 更好的类型提示和文档
 - ✅ 更一致的返回值结构
 - ✅ 更好的错误消息
@@ -344,16 +370,15 @@ model = gamlss(
 # 预测
 predictions = model.predict(new_data)
 
-# 绘图
-model.plot()
-plt.show()
+# 诊断信息
+print(model.additional_slots["aic"])
 ```
 
 **差异**：
 - 数据读取：`read.csv()` → `pd.read_csv()`
 - 模型拟合：`gamlss()` → `gamlss()`
 - 预测：`predict(..., type="response")` → `model.predict()`
-- 绘图：`plot()` → `model.plot(); plt.show()`
+- 诊断：`summary()` / `plot()` → 读取 `model.g_dev`、`model.coefficients`、`model.additional_slots`，并按需使用 Python 绘图库作图
 
 ### 生态系统优势
 
@@ -482,7 +507,7 @@ model_ga = gamlss(
 print(f"✅ 收敛: {model_ga.additional_slots['rs_converged']}")
 print(f"✅ 迭代次数: {model_ga.additional_slots['rs_iterations']}")
 print(f"✅ 偏差: {model_ga.g_dev:.2f}")
-print(f"✅ AIC: {model_ga.aic:.2f}")
+print(f"✅ AIC: {model_ga.additional_slots['aic']:.2f}")
 ```
 
 **输出**：
@@ -508,8 +533,8 @@ model_logno = gamlss(
 )
 
 # 比较 AIC
-print(f"Gamma AIC: {model_ga.aic:.2f}")
-print(f"Log-Normal AIC: {model_logno.aic:.2f}")
+print(f"Gamma AIC: {model_ga.additional_slots['aic']:.2f}")
+print(f"Log-Normal AIC: {model_logno.additional_slots['aic']:.2f}")
 
 # Gamma 模型更优
 ```
@@ -519,10 +544,10 @@ print(f"Log-Normal AIC: {model_logno.aic:.2f}")
 ```python
 # 查看参数估计
 print("\n=== Mu 参数（均值）===")
-print(model_ga.mu_coefficients)
+print(model_ga.coefficients["mu"])
 
 print("\n=== Sigma 参数（方差）===")
-print(model_ga.sigma_coefficients)
+print(model_ga.coefficients["sigma"])
 
 # 风险因子影响
 # risk_score 系数为正 → 风险评分越高，索赔金额越大

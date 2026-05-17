@@ -89,7 +89,7 @@ library(gamlss.dist)
 
 # 导入
 import jax.numpy as jnp
-import omnilss as om
+from omnilss import gamlss
 from omnilss import NO, LOGNO
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -114,7 +114,7 @@ summary(model_r)
 **Python 代码**:
 ```python
 # 拟合 NO 分布
-model_py = jg.gamlss(
+model_py = gamlss(
     formula="y ~ x",
     sigma_formula="~ x",
     family=NO(),
@@ -122,13 +122,14 @@ model_py = jg.gamlss(
 )
 
 # 查看结果
-print(model_py.summary())
+print(f"Global deviance: {model_py.g_dev:.4f}")
+print(model_py.coefficients["mu"])
 ```
 
 **主要差异**:
 - Python 使用字符串形式的公式（与 R 类似）
 - 参数名使用下划线（`sigma_formula` vs `sigma.formula`）
-- 方法调用使用点号（`model.summary()` vs `summary(model)`）
+- 结果通过模型字段和 `additional_slots` 访问（如 `model.g_dev`、`model.coefficients`、`model.additional_slots["aic"]`）
 
 ---
 
@@ -142,7 +143,7 @@ print(model_py.summary())
 ```python
 import numpy as np
 import jax.numpy as jnp
-import omnilss as om
+from omnilss import gamlss
 from omnilss import NO
 
 # 设置随机种子
@@ -186,10 +187,10 @@ coef(model_r, what = "sigma")
 ```python
 # Python 代码
 from omnilss import NO
-import omnilss as om
+from omnilss import gamlss
 
 # 拟合模型
-model_py = jg.gamlss(
+model_py = gamlss(
     formula="y ~ x",
     sigma_formula="~ x",
     family=NO(),
@@ -197,11 +198,12 @@ model_py = jg.gamlss(
 )
 
 # 查看结果
-print(model_py.summary())
+print(f"Global deviance: {model_py.g_dev:.4f}")
+print(model_py.coefficients["mu"])
 
 # 提取系数
-print("Mu coefficients:", model_py.coef_mu)
-print("Sigma coefficients:", model_py.coef_sigma)
+print("Mu coefficients:", model_py.coefficients["mu"])
+print("Sigma coefficients:", model_py.coefficients["sigma"])
 ```
 
 #### 结果对比
@@ -260,13 +262,13 @@ summary(model_logno_r)
 # Python 代码
 from omnilss import LOGNO
 
-model_logno_py = om.gamlss(
+model_logno_py = gamlss(
     formula="y ~ x",
     family=LOGNO(),
     data=data_logno
 )
 
-print(model_logno_py.summary())
+print(f"Global deviance: {model_logno_py.g_dev:.4f}")
 ```
 
 ---
@@ -327,12 +329,12 @@ summary(model1_r)
 **Python 实现**:
 ```python
 # Python 代码
-model1_py = jg.gamlss(
+model1_py = gamlss(
     formula="height ~ age",
     family=NO(),
     data=data_height
 )
-print(model1_py.summary())
+print(f"Global deviance: {model1_py.g_dev:.4f}")
 ```
 
 #### 模型 2: 二次模型（更好地拟合增长曲线）
@@ -353,21 +355,21 @@ summary(model2_r)
 # 添加二次项
 data_height['age2'] = data_height['age'] ** 2
 
-model2_py = jg.gamlss(
+model2_py = gamlss(
     formula="height ~ age + age2",
     sigma_formula="~ age",
     family=NO(),
     data=data_height
 )
-print(model2_py.summary())
+print(f"Global deviance: {model2_py.g_dev:.4f}")
 ```
 
 ### 模型比较
 
 ```python
 # 比较 AIC
-print(f"Model 1 AIC: {model1_py.aic:.2f}")
-print(f"Model 2 AIC: {model2_py.aic:.2f}")
+print(f"Model 1 AIC: {model1_py.additional_slots['aic']:.2f}")
+print(f"Model 2 AIC: {model2_py.additional_slots['aic']:.2f}")
 
 # Model 2 应该有更低的 AIC（更好）
 ```
@@ -383,8 +385,8 @@ data_pred = pd.DataFrame({
 })
 
 # 获取预测值
-pred_mu = model2_py.predict(data_pred, what='mu')
-pred_sigma = model2_py.predict(data_pred, what='sigma')
+pred_mu = model2_py.predict_params(data_pred)["mu"]
+pred_sigma = model2_py.predict_params(data_pred)["sigma"]
 
 # 绘制结果
 plt.figure(figsize=(12, 6))
@@ -453,7 +455,7 @@ def benchmark_normal(n_samples, n_repeats=5):
         times_py = []
         for _ in range(n_repeats):
             start = time.time()
-            model = jg.gamlss(formula="y ~ x", family=NO(), data=data)
+            model = gamlss(formula="y ~ x", family=NO(), data=data)
             times_py.append(time.time() - start)
         
         results.append({
@@ -510,8 +512,8 @@ print(results)
 | 公式语法 | `y ~ x` | `"y ~ x"` (字符串) |
 | 参数名 | `sigma.formula` | `sigma_formula` |
 | 分布对象 | `NO()` | `NO()` |
-| 结果访问 | `coef(model)` | `model.coef_mu` |
-| 预测 | `predict(model)` | `model.predict()` |
+| 结果访问 | `coef(model)` | `model.coefficients["mu"]` |
+| 预测 | `predict(model)` | `model.predict_params(new_data)["mu"]` |
 
 #### 步骤 2: 代码转换示例
 
@@ -543,15 +545,16 @@ plot(model)
 **等价 Python 代码**:
 ```python
 # 完整的 Python 工作流
+import numpy as np
 import pandas as pd
-import omnilss as om
+from omnilss import gamlss
 from omnilss import NO
 
 # 读取数据
 data = pd.read_csv("mydata.csv")
 
 # 拟合模型
-model = jg.gamlss(
+model = gamlss(
     formula="y ~ x1 + x2",
     sigma_formula="~ x1",
     family=NO(),
@@ -559,17 +562,17 @@ model = jg.gamlss(
 )
 
 # 查看结果
-print(model.summary())
+print(f"Global deviance: {model.g_dev:.4f}")
 
 # 预测
-new_data = pd.DataFrame({
-    'x1': [1, 2, 3],
-    'x2': [4, 5, 6]
-})
-predictions = model.predict(new_data, what='mu')
+new_data = {
+    "x1": np.array([1, 2, 3]),
+    "x2": np.array([4, 5, 6]),
+}
+predictions = model.predict_params(new_data)["mu"]
 
-# 绘图
-model.plot()
+# 诊断信息
+print(model.additional_slots["aic"])
 ```
 
 #### 步骤 3: 验证结果
@@ -594,7 +597,7 @@ def compare_results(r_coef, py_coef, tolerance=1e-4):
 
 # 使用示例
 # r_coef = np.array([2.01, 0.50])  # 从 R 获取
-# py_coef = model.coef_mu
+# py_coef = model.coefficients["mu"]
 # compare_results(r_coef, py_coef)
 ```
 
@@ -613,10 +616,10 @@ model <- gamlss(y ~ x + I(x^2), family = NO(), data = data)
 ```python
 # 方案 1: 预先创建变量
 data['x2'] = data['x'] ** 2
-model = jg.gamlss(formula="y ~ x + x2", family=NO(), data=data)
+model = gamlss(formula="y ~ x + x2", family=NO(), data=data)
 
-# 方案 2: 使用 patsy 的变换功能（如果支持）
-model = jg.gamlss(formula="y ~ x + I(x**2)", family=NO(), data=data)
+# 方案 2: 如需公式内变换，先确认当前公式解析器支持该语法；
+# 推荐在教程和生产脚本中显式创建派生列。
 ```
 
 #### 陷阱 2: 参数访问方式
@@ -632,9 +635,9 @@ fitted_values <- fitted(model)
 
 **Python 代码**:
 ```python
-mu_coef = model.coef_mu
-sigma_coef = model.coef_sigma
-fitted_values = model.fitted_values
+mu_coef = model.coefficients["mu"]
+sigma_coef = model.coefficients["sigma"]
+fitted_values = model.fitted_values["mu"]
 ```
 
 #### 陷阱 3: 数据类型
@@ -705,7 +708,7 @@ print(jax.devices())
 
 # 强制使用 CPU
 with jax.default_device(jax.devices('cpu')[0]):
-    model = jg.gamlss(formula="y ~ x", family=NO(), data=data)
+    model = gamlss(formula="y ~ x", family=NO(), data=data)
 ```
 
 ---
