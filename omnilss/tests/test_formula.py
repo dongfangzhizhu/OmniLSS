@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from omnilss.fitting import _build_design_matrix
+from omnilss._fitting_utils import FormulaEvaluationError
 from omnilss.formula_parser import (
     LinearTerm,
     ParsedFormula,
@@ -315,3 +316,13 @@ def test_formula_expression_rejects_non_allowlisted_calls():
 
     with pytest.raises(ValueError, match="function '__import__' is not allowed"):
         _build_design_matrix("y ~ __import__('os')", data)
+
+
+def test_formula_evaluation_error_exposes_term_and_reason():
+    data = {"y": np.array([1.0, 2.0]), "x": np.array([1.0, 2.0])}
+
+    with pytest.raises(FormulaEvaluationError) as excinfo:
+        _build_design_matrix("y ~ x[0]", data)
+
+    assert excinfo.value.term == "x[0]"
+    assert excinfo.value.reason == "unsupported expression node 'Subscript'"

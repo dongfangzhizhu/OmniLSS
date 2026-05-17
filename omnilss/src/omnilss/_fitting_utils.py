@@ -27,6 +27,17 @@ _ALLOWED_FORMULA_FUNCTIONS = {
     "sqrt": np.sqrt,
 }
 _MAX_FORMULA_AST_DEPTH = 16
+
+
+class FormulaEvaluationError(ValueError):
+    """Structured formula expression evaluation failure."""
+
+    def __init__(self, term: str, reason: str) -> None:
+        self.term = term
+        self.reason = reason
+        super().__init__(f"Unable to evaluate term {term!r}: {reason}")
+
+
 _BANNED_FORMULA_NODES = (
     ast.Attribute,
     ast.Subscript,
@@ -122,13 +133,17 @@ def _safe_eval_formula_expression(
         _validate_formula_ast(parsed)
         value = _eval(parsed)
         arr = np.asarray(value, dtype=np.float64)
+    except FormulaEvaluationError:
+        raise
     except Exception as exc:
-        raise ValueError(f"Unable to evaluate term '{expression}': {exc}") from exc
+        raise FormulaEvaluationError(expression, str(exc)) from exc
 
     if arr.ndim == 0:
         arr = np.full(n, float(arr), dtype=np.float64)
     if len(arr) != n:
-        raise ValueError(f"Term '{expression}' has wrong length")
+        raise FormulaEvaluationError(
+            expression, f"wrong length {len(arr)}; expected {n}"
+        )
     return arr
 
 
@@ -241,6 +256,7 @@ def _apply_method_step(
 
 
 __all__ = [
+    "FormulaEvaluationError",
     "_apply_method_step",
     "_eval_linear_term",
     "_is_intercept_only_formula",
