@@ -28,6 +28,7 @@ from ..fitting import (
 )
 from ..smooth_fitting import compute_smooth_edf
 from ..model import GAMLSSModel
+from ._model_metrics import df_fit_with_smooth_edf
 
 
 def _safe_eta_weighted_least_squares(
@@ -331,29 +332,13 @@ def cg_fit_v2(
         for p in family.parameters
     }
     # Compute df_fit using effective degrees of freedom for smooth terms.
-    df_fit = 0.0
-    smooth_edf: dict[str, float] = {}
-    for p in family.estimable_parameters:
-        n_coef = float(len(np.asarray(coefs.get(p, [0]))))
-        smooth_info = smooth_infos.get(p)
-        smooth_fits = (
-            getattr(smooth_info, "smooth_fits", None)
-            if smooth_info is not None
-            else None
-        )
-        if smooth_fits:
-            n_smooth_cols = float(
-                sum(
-                    end - start
-                    for start, end in (sf.basis_columns for sf in smooth_fits)
-                )
-            )
-            param_edf = float(compute_smooth_edf(design_matrices[p], w, smooth_fits))
-            df_fit += (n_coef - n_smooth_cols) + param_edf
-            smooth_edf[p] = param_edf
-        else:
-            df_fit += n_coef
-            smooth_edf[p] = 0.0
+    df_fit, smooth_edf = df_fit_with_smooth_edf(
+        coefficients=coefs,
+        estimable_parameters=family.estimable_parameters,
+        design_matrices=design_matrices,
+        weights=w,
+        smooth_infos=smooth_infos,
+    )
 
     rqres_callable = _build_rqres_callable(family)
     mu_vals = params["mu"]

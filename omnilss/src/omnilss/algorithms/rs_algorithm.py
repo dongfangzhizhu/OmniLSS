@@ -28,6 +28,7 @@ from ..model import GAMLSSModel
 from ..numerical_stability import sanitize_gradient, step_halving
 from ..tensor_protocol import validate_design_matrix, validate_vector
 from ..diagnostic_warnings import evaluate_numerical_warnings
+from ._model_metrics import df_fit_with_smooth_edf
 
 
 class ConvergenceWarning(UserWarning):
@@ -987,31 +988,13 @@ def rs_fit(
     # Compute df_fit using effective degrees of freedom for smooth terms.
     # Counting all smooth basis coefficients as ordinary parameters overstates
     # model complexity after penalization and corrupts AIC/SBC.
-    df_fit_val = 0.0
-    smooth_edf: dict[str, float] = {}
-    from ..smooth_fitting import compute_smooth_edf
-
-    for p in family.estimable_parameters:
-        n_coef = float(len(np.asarray(coefficients.get(p, [0]))))
-        smooth_info = smooth_infos.get(p)
-        smooth_fits = (
-            getattr(smooth_info, "smooth_fits", None)
-            if smooth_info is not None
-            else None
-        )
-        if smooth_fits:
-            n_smooth_cols = float(
-                sum(
-                    end - start
-                    for start, end in (sf.basis_columns for sf in smooth_fits)
-                )
-            )
-            param_edf = float(compute_smooth_edf(design_matrices[p], w, smooth_fits))
-            df_fit_val += (n_coef - n_smooth_cols) + param_edf
-            smooth_edf[p] = param_edf
-        else:
-            df_fit_val += n_coef
-            smooth_edf[p] = 0.0
+    df_fit_val, smooth_edf = df_fit_with_smooth_edf(
+        coefficients=coefficients,
+        estimable_parameters=family.estimable_parameters,
+        design_matrices=design_matrices,
+        weights=w,
+        smooth_infos=smooth_infos,
+    )
 
     _cond_vals = np.asarray(
         list(rs_last_condition_number_by_param.values()), dtype=np.float64
