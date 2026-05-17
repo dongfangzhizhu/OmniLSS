@@ -14,6 +14,7 @@ import sys
 sys.path.insert(0, "omnilss/src")
 
 from omnilss import gamlss
+from omnilss.prediction import PredictionSchemaError
 
 
 class TestPredictParams:
@@ -442,3 +443,24 @@ class TestPredictionIntegration:
 if __name__ == "__main__":
     # 运行测试
     pytest.main([__file__, "-v", "--tb=short"])
+
+
+def test_predict_params_rejects_missing_prediction_variable():
+    rng = np.random.default_rng(123)
+    x = rng.normal(size=40)
+    y = 1.0 + 0.3 * x + rng.normal(scale=0.2, size=40)
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x})
+
+    with pytest.raises(PredictionSchemaError, match="Failed to evaluate prediction term"):
+        model.predict_params({"z": np.array([0.0, 1.0])})
+
+
+def test_predict_params_rejects_design_schema_mismatch():
+    rng = np.random.default_rng(124)
+    x = rng.normal(size=40)
+    y = 1.0 + 0.3 * x + rng.normal(scale=0.2, size=40)
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x})
+    model.formulas = {**dict(model.formulas), "mu": "y ~ x + z"}
+
+    with pytest.raises(PredictionSchemaError, match="has 3 columns"):
+        model.predict_params({"x": np.array([0.0, 1.0]), "z": np.array([0.0, 1.0])})
