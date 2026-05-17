@@ -7,12 +7,21 @@ link to the other file so readers can switch languages easily.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCS_ROOT = ROOT
-EXCLUDED_PARTS = {".git", ".github", "site", ".venv", "venv", "node_modules", "__pycache__"}
+EXCLUDED_PARTS = {
+    ".git",
+    ".github",
+    "site",
+    ".venv",
+    "venv",
+    "node_modules",
+    "__pycache__",
+}
+_CN_NAV_PATTERN = re.compile(r"[\w./-]+_cn\.md")
 
 
 def iter_english_docs(docs_root: Path = DOCS_ROOT):
@@ -26,6 +35,25 @@ def iter_english_docs(docs_root: Path = DOCS_ROOT):
         yield path
 
 
+def _validate_mkdocs_default_nav(docs_root: Path) -> list[str]:
+    """Ensure the default MkDocs navigation remains English-only."""
+
+    mkdocs_path = docs_root / "mkdocs.yml"
+    if not mkdocs_path.exists():
+        return []
+
+    errors: list[str] = []
+    for line_no, line in enumerate(
+        mkdocs_path.read_text(encoding="utf-8").splitlines(), 1
+    ):
+        for match in _CN_NAV_PATTERN.findall(line):
+            errors.append(
+                "Chinese document listed in default MkDocs nav "
+                f"at mkdocs.yml:{line_no}: {match}; link from the English page instead"
+            )
+    return errors
+
+
 def validate_docs_localization(docs_root: Path = DOCS_ROOT) -> list[str]:
     """Return localization-policy violations for project Markdown docs."""
 
@@ -33,7 +61,9 @@ def validate_docs_localization(docs_root: Path = DOCS_ROOT) -> list[str]:
     for english_path in iter_english_docs(docs_root):
         chinese_path = english_path.with_name(f"{english_path.stem}_cn.md")
         if not chinese_path.exists():
-            errors.append(f"missing Chinese document: {chinese_path.relative_to(docs_root)}")
+            errors.append(
+                f"missing Chinese document: {chinese_path.relative_to(docs_root)}"
+            )
             continue
 
         english_text = english_path.read_text(encoding="utf-8")
@@ -48,6 +78,7 @@ def validate_docs_localization(docs_root: Path = DOCS_ROOT) -> list[str]:
                 "missing English switch link in "
                 f"{chinese_path.relative_to(docs_root)} -> {english_path.name}"
             )
+    errors.extend(_validate_mkdocs_default_nav(docs_root))
     return errors
 
 
