@@ -26,6 +26,34 @@ _ALLOWED_FORMULA_FUNCTIONS = {
     "sin": np.sin,
     "sqrt": np.sqrt,
 }
+_MAX_FORMULA_AST_DEPTH = 16
+_BANNED_FORMULA_NODES = (
+    ast.Attribute,
+    ast.Subscript,
+    ast.Lambda,
+    ast.ListComp,
+    ast.SetComp,
+    ast.DictComp,
+    ast.GeneratorExp,
+    ast.Compare,
+    ast.BoolOp,
+    ast.IfExp,
+    ast.List,
+    ast.Tuple,
+    ast.Dict,
+    ast.Set,
+)
+
+
+def _validate_formula_ast(node: ast.AST, *, depth: int = 0) -> None:
+    """Reject unsafe or overly complex expression syntax before evaluation."""
+
+    if depth > _MAX_FORMULA_AST_DEPTH:
+        raise ValueError("formula expression is too deeply nested")
+    if isinstance(node, _BANNED_FORMULA_NODES):
+        raise ValueError(f"unsupported expression node '{type(node).__name__}'")
+    for child in ast.iter_child_nodes(node):
+        _validate_formula_ast(child, depth=depth + 1)
 
 
 def _safe_eval_formula_expression(
@@ -75,24 +103,23 @@ def _safe_eval_formula_expression(
         if isinstance(node, ast.Call):
             if isinstance(node.func, ast.Name):
                 func_name = node.func.id
-            elif (
-                isinstance(node.func, ast.Attribute)
-                and isinstance(node.func.value, ast.Name)
-                and node.func.value.id == "np"
-            ):
-                func_name = node.func.attr
             else:
-                raise ValueError("only direct calls to allowlisted functions are allowed")
+                raise ValueError(
+                    "only direct calls to allowlisted functions are allowed"
+                )
             if func_name not in _ALLOWED_FORMULA_FUNCTIONS:
                 raise ValueError(f"function '{func_name}' is not allowed")
             if node.keywords:
-                raise ValueError("keyword arguments are not allowed in formula expressions")
+                raise ValueError(
+                    "keyword arguments are not allowed in formula expressions"
+                )
             args = [_eval(arg) for arg in node.args]
             return _ALLOWED_FORMULA_FUNCTIONS[func_name](*args)
         raise ValueError(f"unsupported expression node '{type(node).__name__}'")
 
     try:
         parsed = ast.parse(expression, mode="eval")
+        _validate_formula_ast(parsed)
         value = _eval(parsed)
         arr = np.asarray(value, dtype=np.float64)
     except Exception as exc:
@@ -115,7 +142,9 @@ def _eval_linear_term(term: str, data: Mapping[str, Any], n: int) -> np.ndarray:
     if ":" in term and "(" not in term:
         parts = [p.strip() for p in term.split(":") if p.strip()]
         if len(parts) == 2:
-            return _eval_linear_term(parts[0], data, n) * _eval_linear_term(parts[1], data, n)
+            return _eval_linear_term(parts[0], data, n) * _eval_linear_term(
+                parts[1], data, n
+            )
 
     return _safe_eval_formula_expression(term, data, n)
 
@@ -154,11 +183,15 @@ def _resolve_parameter_formulas(
     for parameter, formula_text in parameter_formulas.items():
         key = str(parameter).strip().lower()
         if key in fixed_parameters:
-            raise ValueError(f"family {family.name!r} uses fixed parameter {key!r}; provide it in data instead")
+            raise ValueError(
+                f"family {family.name!r} uses fixed parameter {key!r}; provide it in data instead"
+            )
         if key not in {"mu", "sigma", "nu", "tau"}:
             raise ValueError(f"unknown parameter formula {parameter!r}")
         if key not in family.parameters:
-            raise ValueError(f"family {family.name!r} does not support parameter {key!r}")
+            raise ValueError(
+                f"family {family.name!r} does not support parameter {key!r}"
+            )
         resolved[key] = _normalize_parameter_formula(response, str(formula_text))
     return resolved
 
@@ -197,7 +230,9 @@ def _weighted_least_squares(
     return coef.astype(np.float64, copy=False)
 
 
-def _apply_method_step(previous_beta: np.ndarray, proposed_beta: np.ndarray, method_name: str) -> np.ndarray:
+def _apply_method_step(
+    previous_beta: np.ndarray, proposed_beta: np.ndarray, method_name: str
+) -> np.ndarray:
     if method_name == "CG":
         return previous_beta + 0.5 * (proposed_beta - previous_beta)
     if method_name == "MIXED":
