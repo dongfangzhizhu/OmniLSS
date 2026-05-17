@@ -138,6 +138,236 @@ def _family_capability_snapshot(model: Any) -> dict[str, Any]:
     return get_family_capability(str(family_name)).as_dict()
 
 
+
+def _artifact_issue(code: str, path: str, message: str) -> dict[str, str]:
+    return {"code": code, "path": path, "message": message}
+
+
+def validate_model_json(path: str | Path) -> dict[str, Any]:
+    """Validate a JSON model artifact without loading executable model state.
+
+    The validator is intentionally schema-focused: it checks archive structure,
+    metadata versions, parameter/schema consistency, coefficient dimensions, and
+    smooth metadata availability for schema-safe prediction.
+    """
+
+    errors: list[dict[str, str]] = []
+    warnings: list[dict[str, str]] = []
+    p = Path(path)
+    if not p.exists():
+        return {
+            "ok": False,
+            "errors": [
+                _artifact_issue(
+                    "artifact_missing", str(p), f"Artifact does not exist: {p}"
+                )
+            ],
+            "warnings": [],
+        }
+
+    try:
+        with zipfile.ZipFile(p, "r") as zf:
+            names = set(zf.namelist())
+            if "meta.json" not in names:
+                errors.append(
+                    _artifact_issue("missing_meta", "meta.json", "Missing meta.json")
+                )
+                meta: dict[str, Any] = {}
+            else:
+                try:
+                    meta = json.loads(zf.read("meta.json").decode("utf-8"))
+                except Exception as exc:
+                    errors.append(
+                        _artifact_issue(
+                            "invalid_meta", "meta.json", f"Invalid meta.json: {exc}"
+                        )
+                    )
+                    meta = {}
+
+            arrays: dict[str, Any] = {}
+            if "arrays.npz" not in names:
+                errors.append(
+                    _artifact_issue(
+                        "missing_arrays", "arrays.npz", "Missing arrays.npz"
+                    )
+                )
+            else:
+                try:
+                    import io
+
+                    npz = np.load(io.BytesIO(zf.read("arrays.npz")))
+                    arrays = {name: npz[name] for name in npz.files}
+                except Exception as exc:
+                    errors.append(
+                        _artifact_issue(
+                            "invalid_arrays", "arrays.npz", f"Invalid arrays.npz: {exc}"
+                        )
+                    )
+    except zipfile.BadZipFile as exc:
+        return {
+            "ok": False,
+            "errors": [
+                _artifact_issue("invalid_zip", str(p), f"Invalid zip artifact: {exc}")
+            ],
+            "warnings": [],
+        }
+
+    if not errors or meta:
+        version = str(meta.get("omnilss_version", ""))
+        if not version.startswith("0.3."):
+            errors.append(
+                _artifact_issue(
+                    "unsupported_version",
+                    "meta.omnilss_version",
+                    f"Unsupported model version: {version!r}",
+                )
+            )
+
+        parameters = [str(param) for param in meta.get("parameters", [])]
+        if not parameters:
+            errors.append(
+                _artifact_issue(
+                    "missing_parameters",
+                    "meta.parameters",
+                    "Artifact must list model parameters",
+                )
+            )
+
+        schema = meta.get("design_matrix_schema", {})
+        if not isinstance(schema, dict):
+            errors.append(
+                _artifact_issue(
+                    "invalid_design_schema",
+                    "meta.design_matrix_schema",
+                    "Design matrix schema must be an object",
+                )
+            )
+            schema_parameters: dict[str, Any] = {}
+        else:
+            if schema.get("version") != 2:
+                errors.append(
+                    _artifact_issue(
+                        "unsupported_schema_version",
+                        "meta.design_matrix_schema.version",
+                        "Design matrix schema version must be 2",
+                    )
+                )
+            if schema.get("artifact_version") != 2:
+                errors.append(
+                    _artifact_issue(
+                        "unsupported_artifact_schema_version",
+                        "meta.design_matrix_schema.artifact_version",
+                        "Artifact schema version must be 2",
+                    )
+                )
+            schema_parameters = schema.get("parameters", {}) or {}
+            if not isinstance(schema_parameters, dict):
+                errors.append(
+                    _artifact_issue(
+                        "invalid_schema_parameters",
+                        "meta.design_matrix_schema.parameters",
+                        "Schema parameters must be an object",
+                    )
+                )
+                schema_parameters = {}
+
+        smooth_infos = meta.get("smooth_infos", {}) or {}
+        if not isinstance(smooth_infos, dict):
+            errors.append(
+                _artifact_issue(
+                    "invalid_smooth_infos",
+                    "meta.smooth_infos",
+                    "Smooth metadata must be an object",
+                )
+            )
+            smooth_infos = {}
+
+        for parameter in parameters:
+            coef_key = f"coef__{parameter}"
+            param_path = f"meta.design_matrix_schema.parameters.{parameter}"
+            param_schema = schema_parameters.get(parameter)
+            if not isinstance(param_schema, dict):
+                errors.append(
+                    _artifact_issue(
+                        "missing_parameter_schema",
+                        param_path,
+                        f"Missing design schema for parameter {parameter!r}",
+                    )
+                )
+                continue
+
+            if not param_schema.get("formula"):
+                errors.append(
+                    _artifact_issue(
+                        "missing_parameter_formula",
+                        f"{param_path}.formula",
+                        f"Missing formula for parameter {parameter!r}",
+                    )
+                )
+            if not isinstance(param_schema.get("term_order", []), list):
+                errors.append(
+                    _artifact_issue(
+                        "invalid_term_order",
+                        f"{param_path}.term_order",
+                        "term_order must be a list",
+                    )
+                )
+
+            expected_columns = param_schema.get("n_columns")
+            if coef_key in arrays and expected_columns is not None:
+                coef_count = int(np.asarray(arrays[coef_key]).size)
+                if coef_count != int(expected_columns):
+                    errors.append(
+                        _artifact_issue(
+                            "coefficient_schema_mismatch",
+                            f"arrays.{coef_key}",
+                            f"Coefficient count {coef_count} does not match schema n_columns {expected_columns}",
+                        )
+                    )
+
+            if param_schema.get("smooth_metadata_required"):
+                schema_smooth = param_schema.get("smooth_basis_metadata") or []
+                artifact_smooth = smooth_infos.get(parameter) or []
+                if not schema_smooth and not artifact_smooth:
+                    errors.append(
+                        _artifact_issue(
+                            "missing_smooth_metadata",
+                            f"{param_path}.smooth_basis_metadata",
+                            f"Parameter {parameter!r} requires smooth metadata",
+                        )
+                    )
+                for idx, smooth in enumerate(artifact_smooth):
+                    if not isinstance(smooth, dict):
+                        errors.append(
+                            _artifact_issue(
+                                "invalid_smooth_metadata_entry",
+                                f"meta.smooth_infos.{parameter}.{idx}",
+                                "Smooth metadata entries must be objects",
+                            )
+                        )
+                        continue
+                    if smooth.get("smoother") in {"pb", "ps", "s"} and not smooth.get(
+                        "knots"
+                    ):
+                        errors.append(
+                            _artifact_issue(
+                                "missing_smooth_knots",
+                                f"meta.smooth_infos.{parameter}.{idx}.knots",
+                                "B-spline smooth metadata requires knots",
+                            )
+                        )
+
+        if bool(meta.get("training_data_included", False)):
+            warnings.append(
+                _artifact_issue(
+                    "training_data_included",
+                    "meta.training_data_included",
+                    "Artifact includes training data; use only when intentional",
+                )
+            )
+
+    return {"ok": not errors, "errors": errors, "warnings": warnings}
+
 def save_model_pickle(model: Any, path: str | Path) -> None:
     try:
         import cloudpickle  # type: ignore

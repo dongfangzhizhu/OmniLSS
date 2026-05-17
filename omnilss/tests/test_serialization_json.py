@@ -2,7 +2,7 @@ import json
 import zipfile
 import numpy as np
 
-from omnilss import gamlss
+from omnilss import gamlss, validate_model_json as top_level_validate_model_json
 from omnilss.serialization import load_model_json, save_model_json
 
 
@@ -196,3 +196,63 @@ def test_json_artifact_preserves_smooth_metadata_and_prediction(tmp_path):
     loaded = load_model_json(path)
     restored = loaded.predict_params(newdata)["mu"]
     np.testing.assert_allclose(restored, original, rtol=1e-7, atol=1e-7)
+
+
+def test_validate_model_json_accepts_schema_safe_artifact(tmp_path):
+    rng = np.random.default_rng(32)
+    n = 50
+    x = rng.normal(size=n)
+    y = 1.5 + 0.4 * x + rng.normal(scale=0.2, size=n)
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x})
+
+    path = tmp_path / "valid.omnilss"
+    save_model_json(model, path)
+
+    from omnilss.serialization import validate_model_json
+
+    result = validate_model_json(path)
+    assert top_level_validate_model_json(path)["ok"] is True
+    assert result["ok"] is True
+    assert result["errors"] == []
+
+
+def test_validate_model_json_reports_schema_mismatch(tmp_path):
+    rng = np.random.default_rng(33)
+    n = 50
+    x = rng.normal(size=n)
+    y = 1.5 + 0.4 * x + rng.normal(scale=0.2, size=n)
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x})
+
+    path = tmp_path / "invalid.omnilss"
+    save_model_json(model, path)
+
+    with zipfile.ZipFile(path, "r") as zf:
+        meta = json.loads(zf.read("meta.json").decode("utf-8"))
+        arrays_payload = zf.read("arrays.npz")
+    meta["design_matrix_schema"]["parameters"]["mu"]["n_columns"] = 99
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("meta.json", json.dumps(meta))
+        zf.writestr("arrays.npz", arrays_payload)
+
+    from omnilss.serialization import validate_model_json
+
+    result = validate_model_json(path)
+    assert result["ok"] is False
+    assert any(error["code"] == "coefficient_schema_mismatch" for error in result["errors"])
+
+
+def test_validate_model_json_warns_when_training_data_included(tmp_path):
+    rng = np.random.default_rng(34)
+    n = 30
+    x = rng.normal(size=n)
+    y = 1.5 + 0.4 * x + rng.normal(scale=0.2, size=n)
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x})
+
+    path = tmp_path / "with_training.omnilss"
+    save_model_json(model, path, include_training_data=True)
+
+    from omnilss.serialization import validate_model_json
+
+    result = validate_model_json(path)
+    assert result["ok"] is True
+    assert any(warning["code"] == "training_data_included" for warning in result["warnings"])
