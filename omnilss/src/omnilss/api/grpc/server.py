@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import time
 import uuid
 from concurrent import futures
 from pathlib import Path
@@ -22,21 +23,56 @@ MODEL_STORE.mkdir(parents=True, exist_ok=True)
 
 
 class _ModelRegistry:
+    """Bounded local model registry for the gRPC service.
+
+    The server stores fitted model artifacts on disk and keeps an in-memory
+    index for lookup.  The index is intentionally bounded to avoid unbounded
+    memory and /tmp growth in long-running processes.
+    """
+
+    MAX_MODELS = 200
+    TTL_SECONDS = 3600
+
     def __init__(self) -> None:
-        self._paths: dict[str, Path] = {}
+        self._paths: dict[str, tuple[Path, float]] = {}
 
     def save(self, model: Any) -> str:
+        self._evict_expired()
+        if len(self._paths) >= self.MAX_MODELS:
+            oldest_id = min(self._paths, key=lambda key: self._paths[key][1])
+            self._remove(oldest_id)
+
         model_id = str(uuid.uuid4())
         path = MODEL_STORE / f"{model_id}.omnilss"
         save_model_json(model, path)
-        self._paths[model_id] = path
+        self._paths[model_id] = (path, time.time())
         return model_id
 
     def load(self, model_id: str):
-        path = self._paths.get(model_id)
-        if path is None or not path.exists():
+        self._evict_expired()
+        entry = self._paths.get(model_id)
+        if entry is None:
+            raise KeyError(model_id)
+        path, _created_at = entry
+        if not path.exists():
+            self._paths.pop(model_id, None)
             raise KeyError(model_id)
         return load_model_json(path)
+
+    def _evict_expired(self) -> None:
+        now = time.time()
+        expired = [
+            model_id
+            for model_id, (_path, created_at) in self._paths.items()
+            if now - created_at > self.TTL_SECONDS
+        ]
+        for model_id in expired:
+            self._remove(model_id)
+
+    def _remove(self, model_id: str) -> None:
+        path, _created_at = self._paths.pop(model_id, (None, 0.0))
+        if path is not None:
+            path.unlink(missing_ok=True)
 
 
 REGISTRY = _ModelRegistry()

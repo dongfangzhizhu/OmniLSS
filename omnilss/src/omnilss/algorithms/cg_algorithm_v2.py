@@ -20,10 +20,13 @@ from ..cg_derivatives import EtaDerivativeBundle, eta_score_hessian
 from ..distributions import resolve_family
 from ..fitting import (
     _build_design_matrix_with_smooths,
+    _build_rqres_callable,
+    _compute_residuals,
     _fixed_parameter_term,
     _parse_formula,
     _resolve_fixed_parameter_values,
 )
+from ..smooth_fitting import compute_smooth_edf
 from ..model import GAMLSSModel
 
 
@@ -327,9 +330,38 @@ def cg_fit_v2(
         )
         for p in family.parameters
     }
-    df_fit = float(
-        sum(len(np.asarray(coefs.get(p, [0]))) for p in family.estimable_parameters)
-    )
+    # Compute df_fit using effective degrees of freedom for smooth terms.
+    df_fit = 0.0
+    smooth_edf: dict[str, float] = {}
+    for p in family.estimable_parameters:
+        n_coef = float(len(np.asarray(coefs.get(p, [0]))))
+        smooth_info = smooth_infos.get(p)
+        smooth_fits = (
+            getattr(smooth_info, "smooth_fits", None)
+            if smooth_info is not None
+            else None
+        )
+        if smooth_fits:
+            n_smooth_cols = float(
+                sum(
+                    end - start
+                    for start, end in (sf.basis_columns for sf in smooth_fits)
+                )
+            )
+            param_edf = float(compute_smooth_edf(design_matrices[p], w, smooth_fits))
+            df_fit += (n_coef - n_smooth_cols) + param_edf
+            smooth_edf[p] = param_edf
+        else:
+            df_fit += n_coef
+            smooth_edf[p] = 0.0
+
+    rqres_callable = _build_rqres_callable(family)
+    mu_vals = params["mu"]
+    sigma_vals = params.get("sigma")
+    if rqres_callable is not None:
+        residual_values = rqres_callable(y=y, mu=mu_vals, sigma=sigma_vals)
+    else:
+        residual_values = _compute_residuals(family, y, mu_vals, sigma_vals)
     hessian_shape = (
         None
         if last_bundle is None
@@ -355,8 +387,8 @@ def cg_fit_v2(
         terms=terms,
         design_matrices=design_matrices_jax,
         weights=jnp.asarray(w, dtype=jnp.float64),
-        residuals=jnp.asarray(y - params["mu"], dtype=jnp.float64),
-        rqres=None,
+        residuals=jnp.asarray(residual_values, dtype=jnp.float64),
+        rqres=rqres_callable,
         iter=it,
         type=family.type,
         parameters=family.parameters,
@@ -376,6 +408,11 @@ def cg_fit_v2(
             "cg_final_deviance": float(g_dev),
             "cg_line_search_steps": tuple(line_search_steps),
             "cg_eta_hessian_shape": hessian_shape,
+            "smooth_edf": smooth_edf,
+            "aic": float(g_dev + 2.0 * df_fit),
+            "sbc": float(g_dev + np.log(max(n, 1)) * df_fit),
+            "df.residual": float(n - df_fit),
+            "df_residual": float(n - df_fit),
             "deviance_history": tuple(float(v) for v in history),
         },
     )
