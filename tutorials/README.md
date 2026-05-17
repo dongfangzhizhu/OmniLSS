@@ -232,8 +232,8 @@ End-to-end tutorials for practical use cases.
 ### Code Repository
 
 All tutorial code and data:
-- Phase 1 code: `tutorials/phase1/code/`
-- Phase 2 code: `tutorials/phase2/code/`
+- Phase 1 code: `tutorials/code/phase1/`
+- Phase 2 code: `tutorials/code/phase2/`
 - Datasets: `tutorials/datasets/`
 
 ---
