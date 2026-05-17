@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import time
 import uuid
 from concurrent import futures
 from pathlib import Path
@@ -22,21 +23,56 @@ MODEL_STORE.mkdir(parents=True, exist_ok=True)
 
 
 class _ModelRegistry:
+    """Bounded local model registry for the gRPC service.
+
+    The server stores fitted model artifacts on disk and keeps an in-memory
+    index for lookup.  The index is intentionally bounded to avoid unbounded
+    memory and /tmp growth in long-running processes.
+    """
+
+    MAX_MODELS = 200
+    TTL_SECONDS = 3600
+
     def __init__(self) -> None:
-        self._paths: dict[str, Path] = {}
+        self._paths: dict[str, tuple[Path, float]] = {}
 
     def save(self, model: Any) -> str:
+        self._evict_expired()
+        if len(self._paths) >= self.MAX_MODELS:
+            oldest_id = min(self._paths, key=lambda key: self._paths[key][1])
+            self._remove(oldest_id)
+
         model_id = str(uuid.uuid4())
         path = MODEL_STORE / f"{model_id}.omnilss"
         save_model_json(model, path)
-        self._paths[model_id] = path
+        self._paths[model_id] = (path, time.time())
         return model_id
 
     def load(self, model_id: str):
-        path = self._paths.get(model_id)
-        if path is None or not path.exists():
+        self._evict_expired()
+        entry = self._paths.get(model_id)
+        if entry is None:
+            raise KeyError(model_id)
+        path, _created_at = entry
+        if not path.exists():
+            self._paths.pop(model_id, None)
             raise KeyError(model_id)
         return load_model_json(path)
+
+    def _evict_expired(self) -> None:
+        now = time.time()
+        expired = [
+            model_id
+            for model_id, (_path, created_at) in self._paths.items()
+            if now - created_at > self.TTL_SECONDS
+        ]
+        for model_id in expired:
+            self._remove(model_id)
+
+    def _remove(self, model_id: str) -> None:
+        path, _created_at = self._paths.pop(model_id, (None, 0.0))
+        if path is not None:
+            path.unlink(missing_ok=True)
 
 
 REGISTRY = _ModelRegistry()
@@ -63,6 +99,8 @@ def _grpc_runtime_gaps() -> list[str]:
     elif importlib.util.find_spec("google.protobuf") is None:
         gaps.append("protobuf")
     for module in (
+        "omnilss.api.grpc.generated.capability_pb2",
+        "omnilss.api.grpc.generated.capability_pb2_grpc",
         "omnilss.api.grpc.generated.fit_pb2",
         "omnilss.api.grpc.generated.fit_pb2_grpc",
         "omnilss.api.grpc.generated.predict_pb2",
@@ -87,6 +125,8 @@ def create_service():
         )
 
     from .generated import (
+        capability_pb2,
+        capability_pb2_grpc,
         fit_pb2,
         fit_pb2_grpc,
         predict_pb2,
@@ -99,7 +139,22 @@ def create_service():
         fit_pb2_grpc.FitServiceServicer,
         predict_pb2_grpc.PredictServiceServicer,
         sample_pb2_grpc.SampleServiceServicer,
+        capability_pb2_grpc.CapabilityServiceServicer,
     ):
+        def CapabilityMatrix(self, request, context):  # noqa: N802, ARG002
+            try:
+                from ...family_capabilities import capability_matrix
+
+                return capability_pb2.CapabilityMatrixResponse(
+                    matrix_json=_to_json(capability_matrix()),
+                    success=True,
+                    error="",
+                )
+            except Exception as exc:
+                return capability_pb2.CapabilityMatrixResponse(
+                    matrix_json="{}", success=False, error=str(exc)
+                )
+
         def Fit(self, request, context):  # noqa: N802
             try:
                 data = _from_json(request.data_json)
@@ -197,7 +252,13 @@ def create_service():
                     samples_json="{}", success=False, error=str(exc)
                 )
 
-    return OmniLSSService(), fit_pb2_grpc, predict_pb2_grpc, sample_pb2_grpc
+    return (
+        OmniLSSService(),
+        fit_pb2_grpc,
+        predict_pb2_grpc,
+        sample_pb2_grpc,
+        capability_pb2_grpc,
+    )
 
 
 def serve(host: str = "0.0.0.0", port: int = 50051):
@@ -206,11 +267,18 @@ def serve(host: str = "0.0.0.0", port: int = 50051):
     except Exception as exc:  # pragma: no cover
         raise RuntimeError("grpcio is required to run OmniLSS gRPC server") from exc
 
-    service, fit_pb2_grpc, predict_pb2_grpc, sample_pb2_grpc = create_service()
+    (
+        service,
+        fit_pb2_grpc,
+        predict_pb2_grpc,
+        sample_pb2_grpc,
+        capability_pb2_grpc,
+    ) = create_service()
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=8))
     fit_pb2_grpc.add_FitServiceServicer_to_server(service, server)
     predict_pb2_grpc.add_PredictServiceServicer_to_server(service, server)
     sample_pb2_grpc.add_SampleServiceServicer_to_server(service, server)
+    capability_pb2_grpc.add_CapabilityServiceServicer_to_server(service, server)
     server.add_insecure_port(f"{host}:{port}")
     server.start()
     return server
