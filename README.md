@@ -222,11 +222,11 @@ GNU General Public License v3 or later (GPL-3.0+)
 
 ## CG Algorithm（Cole-Green）
 
-- ✅ **完整实现**：基于完整观测信息矩阵（`jax.hessian`），包含跨参数 Hessian 块
-- ✅ 同步更新所有分布参数（非坐标下降）
-- ✅ 适用于参数高度相关的场景
-- ⚠️ 比 RS 更慢（每次迭代需计算完整 Hessian）
-- 🔧 大规模数据集（n > 5000）建议使用 RS
+- ✅ **默认后端 `CG_FULL_HESSIAN`**：`method="CG"` 使用完整观测信息矩阵（`jax.hessian`），保留跨参数 Hessian 块。
+- ✅ 模型诊断会记录 `cg_backend`、`cg_cross_derivatives`、`cg_line_search_steps`、`cg_condition_number`，避免静默退化为 RS。
+- ✅ **实验后端 `CG_IRLS_CROSS`**：可通过 `gamlss(..., method="CG", cg_backend="irls_cross")` 使用 eta 尺度交叉导数修正的 IRLS 外循环。
+- ✅ 适用于参数高度相关、RS 收敛困难或需要审计 cross-derivative 更新的场景。
+- ⚠️ 默认 full-Hessian 后端比 RS 更慢（每次迭代需计算完整 Hessian）；大规模数据集应先评估 RS 或实验性 IRLS-cross 后端。
 
 ## 性能说明
 

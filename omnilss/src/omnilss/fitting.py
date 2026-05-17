@@ -49,17 +49,17 @@ _STANDARD_NORMAL = NormalDist()
 
 def _has_smooth_terms(formula: str) -> bool:
     """Check if formula contains smooth terms.
-    
+
     Parameters
     ----------
     formula : str
         Formula string
-    
+
     Returns
     -------
     has_smooths : bool
         True if formula contains smooth terms like pb(), ps(), cs(), etc.
-    
+
     Examples
     --------
     >>> _has_smooth_terms("y ~ x1 + x2")
@@ -70,8 +70,9 @@ def _has_smooth_terms(formula: str) -> bool:
     True
     """
     import re
+
     # Pattern to match smooth terms: pb(...), ps(...), cs(...), random(...), re(...), lo(...)
-    smooth_pattern = r'\b(pb|ps|cs|random|re|lo)\s*\('
+    smooth_pattern = r"\b(pb|ps|cs|random|re|lo)\s*\("
     return bool(re.search(smooth_pattern, formula))
 
 
@@ -92,10 +93,10 @@ def _parse_formula_core(formula: str):
     return parse_full_formula(formula)
 
 
-
-
 def _eval_linear_term(term: str, data: Mapping[str, Any], n: int) -> np.ndarray:
     return _eval_linear_term_shared(term, data, n)
+
+
 def _build_design_matrix(
     formula: str,
     data: Mapping[str, Any],
@@ -119,10 +120,10 @@ def _build_design_matrix_with_smooths(
     weights: np.ndarray | None = None,
 ) -> tuple[str, np.ndarray, list[str], Any]:
     """Build design matrix, detecting and handling smooth terms.
-    
+
     This function checks if the formula contains smooth terms and uses
     the appropriate method to build the design matrix.
-    
+
     Parameters
     ----------
     formula : str
@@ -131,7 +132,7 @@ def _build_design_matrix_with_smooths(
         Data dictionary
     weights : np.ndarray, optional
         Observation weights
-    
+
     Returns
     -------
     response : str
@@ -142,7 +143,7 @@ def _build_design_matrix_with_smooths(
         Predictor labels
     smooth_info : SmoothDesignInfo or None
         Smooth term information if present, None otherwise
-    
+
     Examples
     --------
     >>> response, X, labels, smooth_info = _build_design_matrix_with_smooths(
@@ -152,6 +153,7 @@ def _build_design_matrix_with_smooths(
     if _has_smooth_terms(formula):
         # Use smooth design builder
         from .smooth_fitting import build_smooth_design
+
         smooth_info = build_smooth_design(formula, data, weights)
         response = formula.split("~")[0].strip()
         return response, smooth_info.X, [], smooth_info
@@ -222,7 +224,7 @@ def _resolve_fixed_parameter_values(
             if family.name == "BI" and parameter == "bd":
                 resolved[parameter] = np.ones(n_obs, dtype=np.float64)
                 continue
-            
+
             raise ValueError(
                 f"family {family.name!r} requires fixed parameter {parameter!r} in data"
             )
@@ -270,7 +272,7 @@ def _weighted_least_squares(
     smooth_info: Any = None,
 ) -> np.ndarray:
     """Weighted least squares with optional penalty for smooth terms.
-    
+
     Parameters
     ----------
     x : np.ndarray
@@ -281,7 +283,7 @@ def _weighted_least_squares(
         Weights
     smooth_info : SmoothDesignInfo, optional
         Smooth term information for penalized fitting
-    
+
     Returns
     -------
     coef : np.ndarray
@@ -392,20 +394,28 @@ def _discrete_midpoint_rqres(
             lower = _poisson_cdf_scalar(observed - 1, mu_value)
             upper = _poisson_cdf_scalar(observed, mu_value)
         elif family.name == "BI":
-            prob = min(max(mu_value, np.finfo(np.float64).eps), 1.0 - np.finfo(np.float64).eps)
+            prob = min(
+                max(mu_value, np.finfo(np.float64).eps), 1.0 - np.finfo(np.float64).eps
+            )
             lower = 0.0 if observed <= 0 else 1.0 - prob
             upper = 1.0 - prob if observed <= 0 else 1.0
         elif family.name == "GEOM":
             lower = _geometric_cdf_scalar(observed - 1, mu_value)
             upper = _geometric_cdf_scalar(observed, mu_value)
         elif family.name == "NBI":
-            lower = _negative_binomial_cdf_scalar(observed - 1, mu_value, float(sigma_value))
-            upper = _negative_binomial_cdf_scalar(observed, mu_value, float(sigma_value))
+            lower = _negative_binomial_cdf_scalar(
+                observed - 1, mu_value, float(sigma_value)
+            )
+            upper = _negative_binomial_cdf_scalar(
+                observed, mu_value, float(sigma_value)
+            )
         elif family.name == "ZIP":
             lower = _zip_cdf_scalar(observed - 1, mu_value, float(sigma_value))
             upper = _zip_cdf_scalar(observed, mu_value, float(sigma_value))
         else:
-            raise NotImplementedError(f"rqres is not implemented for family {family.name!r}")
+            raise NotImplementedError(
+                f"rqres is not implemented for family {family.name!r}"
+            )
 
         midpoint[index] = 0.5 * (lower + upper)
 
@@ -466,19 +476,19 @@ def gamlss_ml(
         sigma_formula=sigma_formula,
         parameter_formulas=parameter_formulas,
     )
-    
+
     # Build design matrix with smooth support
     _, mu_x, predictor_labels, mu_smooth_info = _build_design_matrix_with_smooths(
         resolved_formulas["mu"], data, weights=weights
     )
-    
+
     y = np.asarray(data[response_name], dtype=np.float64)
     fixed_parameter_values = _resolve_fixed_parameter_values(family, data, len(y))
     if weights is None:
         w = np.ones_like(y, dtype=np.float64)
     else:
         w = np.asarray(weights, dtype=np.float64)
-    
+
     # Use penalized WLS if there are smooth terms
     if mu_smooth_info is not None:
         beta_mu = _weighted_least_squares(mu_x, y, w, smooth_info=mu_smooth_info)
@@ -498,7 +508,10 @@ def gamlss_ml(
     fitted_values = {"mu": jnp.asarray(mu, dtype=jnp.float64)}
     coefficients = {"mu": jnp.asarray(beta_mu, dtype=jnp.float64)}
     linear_predictors = {
-        "mu": jnp.asarray(family.link_functions["mu"](jnp.asarray(mu, dtype=jnp.float64)), dtype=jnp.float64)
+        "mu": jnp.asarray(
+            family.link_functions["mu"](jnp.asarray(mu, dtype=jnp.float64)),
+            dtype=jnp.float64,
+        )
     }
     formulas = {"mu": resolved_formulas["mu"]}
     terms = {
@@ -511,7 +524,7 @@ def gamlss_ml(
     }
     design_matrices = {"mu": jnp.asarray(mu_x, dtype=jnp.float64)}
     parameter_values: dict[str, np.ndarray] = {"mu": mu, **fixed_parameter_values}
-    
+
     # Store smooth information for all parameters
     smooth_infos = {"mu": mu_smooth_info}
 
@@ -519,13 +532,13 @@ def gamlss_ml(
         if parameter == "mu":
             continue
         parameter_formula = resolved_formulas[parameter]
-        
+
         # Build design matrix with smooth support
-        _, parameter_design, parameter_labels, param_smooth_info = _build_design_matrix_with_smooths(
-            parameter_formula, data, weights=weights
+        _, parameter_design, parameter_labels, param_smooth_info = (
+            _build_design_matrix_with_smooths(parameter_formula, data, weights=weights)
         )
         smooth_infos[parameter] = param_smooth_info
-        
+
         initial_value = _initial_parameter_value(family, parameter, y, mu, w)
         if parameter == "sigma":
             initial_value = _initial_sigma(
@@ -539,23 +552,31 @@ def gamlss_ml(
             y.shape[0],
             float(
                 np.asarray(
-                    family.link_functions[parameter](jnp.asarray([initial_value], dtype=jnp.float64)),
+                    family.link_functions[parameter](
+                        jnp.asarray([initial_value], dtype=jnp.float64)
+                    ),
                     dtype=np.float64,
                 )[0]
             ),
             dtype=np.float64,
         )
-        
+
         # Use penalized WLS if there are smooth terms
         if param_smooth_info is not None:
-            beta_parameter = _weighted_least_squares(parameter_design, eta_init, w, smooth_info=param_smooth_info)
+            beta_parameter = _weighted_least_squares(
+                parameter_design, eta_init, w, smooth_info=param_smooth_info
+            )
             _, _, _, _ = None, None, None, None  # Dummy for compatibility
         else:
-            beta_parameter, _, _, _ = np.linalg.lstsq(parameter_design, eta_init, rcond=None)
-        
+            beta_parameter, _, _, _ = np.linalg.lstsq(
+                parameter_design, eta_init, rcond=None
+            )
+
         eta_parameter = parameter_design @ beta_parameter
         parameter_vector = np.asarray(
-            family.link_inverses[parameter](jnp.asarray(eta_parameter, dtype=jnp.float64)),
+            family.link_inverses[parameter](
+                jnp.asarray(eta_parameter, dtype=jnp.float64)
+            ),
             dtype=np.float64,
         )
         parameter_values[parameter] = parameter_vector
@@ -594,23 +615,25 @@ def gamlss_ml(
     # Compute df_fit including smooth terms
     df_fit = 0.0
     smooth_edf = {}
-    
+
     for parameter in family.estimable_parameters:
         # Add linear parameters
         df_fit += float(np.asarray(coefficients[parameter], dtype=np.float64).size)
-        
+
         # Adjust for smooth terms
-        if smooth_infos.get(parameter) is not None and len(smooth_infos[parameter].smooth_fits) > 0:
+        if (
+            smooth_infos.get(parameter) is not None
+            and len(smooth_infos[parameter].smooth_fits) > 0
+        ):
             from .smooth_fitting import compute_smooth_edf
+
             # Subtract nominal basis columns
             for smooth in smooth_infos[parameter].smooth_fits:
                 start, end = smooth.basis_columns
                 df_fit -= float(end - start)
             # Add effective df
             param_edf = compute_smooth_edf(
-                design_matrices[parameter], 
-                w, 
-                smooth_infos[parameter].smooth_fits
+                design_matrices[parameter], w, smooth_infos[parameter].smooth_fits
             )
             df_fit += param_edf
             smooth_edf[parameter] = param_edf
@@ -643,10 +666,17 @@ def gamlss_ml(
             "converged": True,
             "cycles": int(control.iter),
             "deviance_history": deviance_history,
-            "smooth_fits": {p: smooth_infos[p].smooth_fits if smooth_infos.get(p) else [] for p in par},
+            "smooth_fits": {
+                p: smooth_infos[p].smooth_fits if smooth_infos.get(p) else []
+                for p in par
+            },
             "smooth_edf": smooth_edf,
         },
-        call={"data": data, "formula": resolved_formulas["mu"], "parameter_formulas": dict(resolved_formulas)},
+        call={
+            "data": data,
+            "formula": resolved_formulas["mu"],
+            "parameter_formulas": dict(resolved_formulas),
+        },
         control={"n.cyc": control.n_cyc, **asdict(control)},
         iter=control.iter,
         weights=jnp.asarray(w, dtype=jnp.float64),
@@ -673,7 +703,7 @@ def gamlss(
     learning_rate: float = 0.01,
     max_iter: int | None = None,
     history_size: int = 10,
-    **optimizer_kwargs
+    **optimizer_kwargs,
 ) -> GAMLSSModel:
     """Fit a GAMLSS model.
 
@@ -799,6 +829,7 @@ def gamlss(
     # When method='auto', choose RS vs RS_JAX based on device and n.
     if method_name == "AUTO":
         from . import config as _cfg
+
         # Determine n_obs from data (need response variable name)
         try:
             _resp, _ = _parse_formula(formula)
@@ -813,9 +844,7 @@ def gamlss(
         else:
             _table = None
         _threshold = (
-            _cfg._get_crossover(_table, family.name)
-            if _table is not None
-            else math.inf
+            _cfg._get_crossover(_table, family.name) if _table is not None else math.inf
         )
         method_name = _cfg.auto_select_method(family.name, _n_obs).upper()
         if verbose:
@@ -834,18 +863,18 @@ def gamlss(
                     f'  提示：运行基准测试后通过 cfg.set_crossover("{_backend}", n=...) '
                     "启用自动 JAX 加速"
                 )
-    
+
     # Handle new optimizer methods
     if method_name in {"JOINT", "LBFGS"}:
         # Import integration functions
         from .core.gamlss_integration import fit_with_joint_optimizer, fit_with_lbfgs
-        
+
         # Get initial model using RS/ML
         if verbose:
             print(f"\n{'='*70}")
             print("Step 1: Getting initial estimates with RS/ML")
             print(f"{'='*70}")
-        
+
         initial_model = gamlss_ml(
             formula=formula,
             sigma_formula=sigma_formula,
@@ -856,13 +885,13 @@ def gamlss(
             control=control,
             i_control=i_control,
         )
-        
+
         if verbose:
             print(f"Initial deviance: {initial_model.g_dev:.6f}")
             print(f"\n{'='*70}")
             print(f"Step 2: Refining with {method_name} optimizer")
             print(f"{'='*70}")
-        
+
         # Prepare design matrices
         response_name, _ = _parse_formula(formula)
         resolved_formulas = _resolve_parameter_formulas(
@@ -872,28 +901,27 @@ def gamlss(
             sigma_formula=sigma_formula,
             parameter_formulas=parameter_formulas,
         )
-        
+
         design_matrices = {}
         for param in family.estimable_parameters:
             if param in initial_model.design_matrices:
                 design_matrices[param] = np.asarray(
-                    initial_model.design_matrices[param],
-                    dtype=np.float64
+                    initial_model.design_matrices[param], dtype=np.float64
                 )
-        
+
         y = np.asarray(data[response_name], dtype=np.float64)
         n = len(y)
         fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n)
-        
+
         if weights is None:
             w = np.ones(n, dtype=np.float64)
         else:
             w = np.asarray(weights, dtype=np.float64)
-        
+
         # Determine max_iter
         if max_iter is None:
             max_iter = control.n_cyc if control is not None else 1000
-        
+
         # Fit with appropriate optimizer
         if method_name == "JOINT":
             return fit_with_joint_optimizer(
@@ -907,7 +935,7 @@ def gamlss(
                 learning_rate=learning_rate,
                 max_iter=max_iter,
                 verbose=verbose,
-                **optimizer_kwargs
+                **optimizer_kwargs,
             )
         else:  # LBFGS
             return fit_with_lbfgs(
@@ -921,9 +949,9 @@ def gamlss(
                 history_size=history_size,
                 learning_rate=learning_rate,
                 verbose=verbose,
-                **optimizer_kwargs
+                **optimizer_kwargs,
             )
-    
+
     # Traditional RS/CG/MIXED methods
     if method_name not in {"RS", "RS_JAX", "CG", "MIXED"}:
         raise ValueError(
@@ -934,6 +962,7 @@ def gamlss(
     # RS_JAX: fully JAX-traced RS loop (GPU/TPU ready, no smooth terms)
     if method_name == "RS_JAX":
         from .algorithms.jax_rs_integration import gamlss_rs_jax
+
         return gamlss_rs_jax(
             formula=formula,
             family=family,
@@ -949,6 +978,7 @@ def gamlss(
     # For RS method, use the dedicated rs_fit function which implements the correct algorithm
     if method_name == "RS":
         from .algorithms.rs_algorithm import rs_fit
+
         return rs_fit(
             formula=formula,
             family=family,
@@ -958,22 +988,60 @@ def gamlss(
             weights=weights,
             max_iter=control.n_cyc if control is not None else 20,
             tol=control.c_crit if control is not None else 1e-4,
-            verbose=verbose
+            verbose=verbose,
         )
-    
+
+    if method_name == "CG":
+        cg_backend_name = str(
+            optimizer_kwargs.pop("cg_backend", "full_hessian")
+        ).upper()
+        if cg_backend_name in {
+            "IRLS",
+            "IRLS_CROSS",
+            "CG_IRLS_CROSS",
+            "ETA",
+            "ETA_CROSS",
+        }:
+            from .algorithms.cg_algorithm_v2 import cg_fit_v2
+
+            return cg_fit_v2(
+                formula=formula,
+                sigma_formula=sigma_formula,
+                parameter_formulas=(
+                    dict(parameter_formulas) if parameter_formulas is not None else None
+                ),
+                family=family,
+                data=dict(data),
+                weights=weights,
+                max_iter=control.n_cyc if control is not None else 20,
+                tol=control.c_crit if control is not None else 1e-4,
+                verbose=verbose,
+            )
+        if cg_backend_name not in {
+            "FULL_HESSIAN",
+            "CG_FULL_HESSIAN",
+            "FULL",
+            "HESSIAN",
+        }:
+            raise ValueError(
+                "cg_backend must be one of 'full_hessian' or 'irls_cross' when method='CG', "
+                f"got {cg_backend_name!r}"
+            )
+
     # CG and MIXED methods use the inline implementation below
     rqres_callable = _build_rqres_callable(family)
 
     control = gamlss_control() if control is None else control
     i_control = glim_control() if i_control is None else i_control
-    
+
     # Initialize performance monitoring if verbose
     if verbose:
         from .performance import PerformanceMonitor
+
         monitor = PerformanceMonitor(
             use_jit=False,
             n_observations=len(data[list(data.keys())[0]]),
-            family_name=family.name if hasattr(family, 'name') else str(family)
+            family_name=family.name if hasattr(family, "name") else str(family),
         )
         monitor.start()
         print(f"\n{'='*70}")
@@ -994,24 +1062,29 @@ def gamlss(
         sigma_formula=sigma_formula,
         parameter_formulas=parameter_formulas,
     )
-    
+
     # Build design matrix with smooth support
     _, mu_x, predictor_labels, mu_smooth_info = _build_design_matrix_with_smooths(
         resolved_formulas["mu"], data, weights=weights
     )
-    
+
     y = np.asarray(data[response_name], dtype=np.float64)
     n = len(y)
     fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n)
     parameter_designs: dict[str, np.ndarray] = {}
     parameter_labels: dict[str, list[str]] = {}
     smooth_infos: dict[str, Any] = {"mu": mu_smooth_info}
-    
+
     for parameter in family.estimable_parameters:
         if parameter == "mu":
             continue
         # Build design matrix with smooth support
-        _, parameter_designs[parameter], parameter_labels[parameter], param_smooth_info = _build_design_matrix_with_smooths(
+        (
+            _,
+            parameter_designs[parameter],
+            parameter_labels[parameter],
+            param_smooth_info,
+        ) = _build_design_matrix_with_smooths(
             resolved_formulas[parameter],
             data,
             weights=weights,
@@ -1043,7 +1116,9 @@ def gamlss(
             if parameter != "mu"
         }
         parameter_eta = {
-            parameter: np.asarray(initial.linear_predictors[parameter], dtype=np.float64)
+            parameter: np.asarray(
+                initial.linear_predictors[parameter], dtype=np.float64
+            )
             for parameter in family.estimable_parameters
             if parameter != "mu"
         }
@@ -1073,11 +1148,11 @@ def gamlss(
     iteration = 0  # Start from 0, not control.iter
     working_vectors_extra: dict[str, np.ndarray] = {}
     iterative_weights_extra: dict[str, np.ndarray] = {}
-    
+
     # Initialize z_mu and w_mu in case loop doesn't execute
     z_mu = eta_mu.copy()
     w_mu = np.ones_like(eta_mu, dtype=np.float64)
-    
+
     # Print initial status if verbose
     if verbose:
         print(f"\n{'='*70}")
@@ -1113,6 +1188,7 @@ def gamlss(
             max_iter=control.n_cyc,
             tol=control.c_crit,
             verbose=verbose,
+            return_fisher=True,
         )
 
         beta_mu = np.asarray(cg_result.params["beta_mu"], dtype=np.float64)
@@ -1124,19 +1200,25 @@ def gamlss(
         for parameter in family.estimable_parameters:
             if parameter == "mu" or f"beta_{parameter}" not in cg_result.params:
                 continue
-            beta_param = np.asarray(cg_result.params[f"beta_{parameter}"], dtype=np.float64)
+            beta_param = np.asarray(
+                cg_result.params[f"beta_{parameter}"], dtype=np.float64
+            )
             x_param = parameter_designs.get(parameter)
             if x_param is None:
                 continue
             eta_param = x_param @ beta_param
-            value_param = np.asarray(cg_result.fitted_values[parameter], dtype=np.float64)
+            value_param = np.asarray(
+                cg_result.fitted_values[parameter], dtype=np.float64
+            )
             parameter_beta[parameter] = beta_param
             parameter_eta[parameter] = eta_param
             parameter_values[parameter] = value_param
             if parameter not in {"mu", "sigma"}:
                 extra_parameter_values[parameter] = value_param
             working_vectors_extra[parameter] = eta_param.copy()
-            iterative_weights_extra[parameter] = np.ones_like(eta_param, dtype=np.float64)
+            iterative_weights_extra[parameter] = np.ones_like(
+                eta_param, dtype=np.float64
+            )
 
         g_dev = float(cg_result.final_deviance)
         old_g_dev = deviance_history[-1] if deviance_history else g_dev
@@ -1144,7 +1226,11 @@ def gamlss(
         deviance_history = [float(value) for value in cg_result.deviance_history]
         converged = bool(cg_result.converged)
 
-    while method_name != "CG" and abs(old_g_dev - g_dev) > control.c_crit and iteration < control.n_cyc:
+    while (
+        method_name != "CG"
+        and abs(old_g_dev - g_dev) > control.c_crit
+        and iteration < control.n_cyc
+    ):
         if verbose:
             monitor.start_iteration()
         old_g_dev = g_dev
@@ -1153,54 +1239,58 @@ def gamlss(
         if "sigma" in parameter_values:
             mu_kwargs["sigma"] = parameter_values["sigma"]
         dldm = np.asarray(family.score_functions["mu"](**mu_kwargs), dtype=np.float64)
-        d2ldm2 = np.asarray(family.hessian_functions["mu"](**mu_kwargs), dtype=np.float64)
-        
+        d2ldm2 = np.asarray(
+            family.hessian_functions["mu"](**mu_kwargs), dtype=np.float64
+        )
+
         # Enhanced numerical stability for mixed distributions (zero-inflated/altered)
         # These distributions can have zero or near-zero hessians at y=0
         eps = np.finfo(np.float64).eps
-        
+
         # Replace non-finite values
         dldm = np.where(np.isfinite(dldm), dldm, 0.0)
         d2ldm2 = np.where(np.isfinite(d2ldm2), d2ldm2, -1e-10)
-        
+
         # Add floor to prevent division by zero in IWLS
         # For mixed distributions, use a more conservative floor
-        is_mixed = getattr(family, 'type_', None) == "Mixed"
+        is_mixed = getattr(family, "type_", None) == "Mixed"
         if is_mixed:
             d2ldm2 = np.where(np.abs(d2ldm2) < 1e-8, -1e-8, d2ldm2)
         else:
             d2ldm2 = np.where(np.abs(d2ldm2) < 1e-10, -1e-10, d2ldm2)
-        
+
         # Compute link derivative with safety checks
         dr_mu = np.asarray(family.link_derivatives["mu"](eta_mu), dtype=np.float64)
         dr_mu = np.where(np.isfinite(dr_mu), dr_mu, eps)
         dr_mu = np.where(np.abs(dr_mu) < eps, eps, dr_mu)
-        
+
         # Compute deta/dmu with safety
         deta_dmu = 1.0 / dr_mu
         deta_dmu = np.where(np.isfinite(deta_dmu), deta_dmu, 1.0)
-        
+
         # Compute weights with enhanced safety for mixed distributions
         deta_dmu_sq = np.square(deta_dmu)
         deta_dmu_sq = np.where(deta_dmu_sq < eps, eps, deta_dmu_sq)
-        
+
         w_mu = -(d2ldm2 / deta_dmu_sq)
         w_mu = np.where(np.isfinite(w_mu), w_mu, 1e-10)
-        
+
         # More conservative clipping for mixed distributions
         if is_mixed:
             w_mu = np.clip(w_mu, 1e-8, 1e8)
         else:
             w_mu = np.clip(w_mu, 1e-10, 1e10)
             w_mu = np.clip(w_mu, 1e-10, 1e10)
-        
+
         # Compute working response with safety
         denominator = deta_dmu * w_mu
         denominator = np.where(np.abs(denominator) < eps, eps, denominator)
         z_mu = eta_mu + dldm / denominator
         z_mu = np.where(np.isfinite(z_mu), z_mu, eta_mu)
-        
-        beta_mu_proposed = _weighted_least_squares(mu_x, z_mu, w_mu * w, smooth_info=mu_smooth_info)
+
+        beta_mu_proposed = _weighted_least_squares(
+            mu_x, z_mu, w_mu * w, smooth_info=mu_smooth_info
+        )
         beta_mu = _apply_method_step(beta_mu, beta_mu_proposed, method_name)
         eta_mu = mu_x @ beta_mu
         mu = np.asarray(family.link_inverses["mu"](eta_mu), dtype=np.float64)
@@ -1210,39 +1300,81 @@ def gamlss(
             sigma_x = parameter_designs.get("sigma")
             eta_sigma = parameter_eta.get("sigma")
             beta_sigma = parameter_beta.get("sigma")
-            if sigma is not None and sigma_x is not None and eta_sigma is not None and beta_sigma is not None and family.name == "NBI":
+            if (
+                sigma is not None
+                and sigma_x is not None
+                and eta_sigma is not None
+                and beta_sigma is not None
+                and family.name == "NBI"
+            ):
                 eps = np.finfo(np.float64).eps
                 mean_component = np.maximum(mu, eps)
-                sigma_moment = np.maximum((np.square(y - mu) - mean_component) / np.maximum(np.square(mean_component), eps), eps)
+                sigma_moment = np.maximum(
+                    (np.square(y - mu) - mean_component)
+                    / np.maximum(np.square(mean_component), eps),
+                    eps,
+                )
                 sigma_value = np.maximum(np.sum(w * sigma_moment) / np.sum(w), eps)
                 beta_sigma_proposed = np.array([np.log(sigma_value)], dtype=np.float64)
-                beta_sigma = _apply_method_step(beta_sigma, beta_sigma_proposed, method_name)
+                beta_sigma = _apply_method_step(
+                    beta_sigma, beta_sigma_proposed, method_name
+                )
                 eta_sigma = sigma_x @ beta_sigma
-                parameter_values["sigma"] = np.asarray(family.link_inverses["sigma"](eta_sigma), dtype=np.float64)
+                parameter_values["sigma"] = np.asarray(
+                    family.link_inverses["sigma"](eta_sigma), dtype=np.float64
+                )
                 parameter_eta["sigma"] = eta_sigma
                 parameter_beta["sigma"] = beta_sigma
                 working_vectors_extra["sigma"] = eta_sigma.copy()
-                iterative_weights_extra["sigma"] = np.ones_like(eta_sigma, dtype=np.float64)
-            elif sigma is not None and sigma_x is not None and eta_sigma is not None and beta_sigma is not None:
-                sigma_kwargs: dict[str, Any] = {"y": y, "mu": mu, "sigma": sigma, **extra_parameter_values}
-                dldsigma = np.asarray(family.score_functions["sigma"](**sigma_kwargs), dtype=np.float64)
+                iterative_weights_extra["sigma"] = np.ones_like(
+                    eta_sigma, dtype=np.float64
+                )
+            elif (
+                sigma is not None
+                and sigma_x is not None
+                and eta_sigma is not None
+                and beta_sigma is not None
+            ):
+                sigma_kwargs: dict[str, Any] = {
+                    "y": y,
+                    "mu": mu,
+                    "sigma": sigma,
+                    **extra_parameter_values,
+                }
+                dldsigma = np.asarray(
+                    family.score_functions["sigma"](**sigma_kwargs), dtype=np.float64
+                )
                 d2ldsigma2 = np.asarray(
                     family.hessian_functions["sigma"](**sigma_kwargs), dtype=np.float64
                 )
                 # For mixed distributions, hessian can be zero at y=0
                 d2ldsigma2 = np.where(np.abs(d2ldsigma2) < 1e-10, -1e-10, d2ldsigma2)
-                dr_sigma = np.asarray(family.link_derivatives["sigma"](eta_sigma), dtype=np.float64)
-                dr_sigma = np.where(np.isfinite(dr_sigma), dr_sigma, np.finfo(np.float64).eps)
-                dr_sigma = np.where(np.abs(dr_sigma) < np.finfo(np.float64).eps, np.finfo(np.float64).eps, dr_sigma)
+                dr_sigma = np.asarray(
+                    family.link_derivatives["sigma"](eta_sigma), dtype=np.float64
+                )
+                dr_sigma = np.where(
+                    np.isfinite(dr_sigma), dr_sigma, np.finfo(np.float64).eps
+                )
+                dr_sigma = np.where(
+                    np.abs(dr_sigma) < np.finfo(np.float64).eps,
+                    np.finfo(np.float64).eps,
+                    dr_sigma,
+                )
                 deta_dsigma = 1.0 / dr_sigma
                 w_sigma = -(d2ldsigma2 / np.square(deta_dsigma))
                 w_sigma = np.clip(w_sigma, 1e-10, 1e10)
                 z_sigma = eta_sigma + dldsigma / (deta_dsigma * w_sigma)
                 z_sigma = np.where(np.isfinite(z_sigma), z_sigma, eta_sigma)
-                beta_sigma_proposed = _weighted_least_squares(sigma_x, z_sigma, w_sigma * w, smooth_info=smooth_infos.get("sigma"))
-                beta_sigma = _apply_method_step(beta_sigma, beta_sigma_proposed, method_name)
+                beta_sigma_proposed = _weighted_least_squares(
+                    sigma_x, z_sigma, w_sigma * w, smooth_info=smooth_infos.get("sigma")
+                )
+                beta_sigma = _apply_method_step(
+                    beta_sigma, beta_sigma_proposed, method_name
+                )
                 eta_sigma = sigma_x @ beta_sigma
-                sigma = np.asarray(family.link_inverses["sigma"](eta_sigma), dtype=np.float64)
+                sigma = np.asarray(
+                    family.link_inverses["sigma"](eta_sigma), dtype=np.float64
+                )
                 sigma = np.where(np.isfinite(sigma), sigma, np.finfo(np.float64).eps)
                 sigma = np.maximum(sigma, np.finfo(np.float64).eps)
                 parameter_values["sigma"] = sigma
@@ -1258,29 +1390,55 @@ def gamlss(
             eta_param = parameter_eta.get(parameter)
             beta_param = parameter_beta.get(parameter)
             value_param = parameter_values.get(parameter)
-            if x_param is None or eta_param is None or beta_param is None or value_param is None:
+            if (
+                x_param is None
+                or eta_param is None
+                or beta_param is None
+                or value_param is None
+            ):
                 continue
-            parameter_kwargs: dict[str, Any] = {"y": y, "mu": mu, **extra_parameter_values}
+            parameter_kwargs: dict[str, Any] = {
+                "y": y,
+                "mu": mu,
+                **extra_parameter_values,
+            }
             if "sigma" in parameter_values:
                 parameter_kwargs["sigma"] = parameter_values["sigma"]
             parameter_kwargs[parameter] = value_param
-            score = np.asarray(family.score_functions[parameter](**parameter_kwargs), dtype=np.float64)
-            hessian = np.asarray(family.hessian_functions[parameter](**parameter_kwargs), dtype=np.float64)
+            score = np.asarray(
+                family.score_functions[parameter](**parameter_kwargs), dtype=np.float64
+            )
+            hessian = np.asarray(
+                family.hessian_functions[parameter](**parameter_kwargs),
+                dtype=np.float64,
+            )
             # For mixed distributions, hessian can be zero at y=0
             hessian = np.where(np.abs(hessian) < 1e-10, -1e-10, hessian)
-            dr_param = np.asarray(family.link_derivatives[parameter](eta_param), dtype=np.float64)
-            dr_param = np.where(np.isfinite(dr_param), dr_param, np.finfo(np.float64).eps)
-            dr_param = np.where(np.abs(dr_param) < np.finfo(np.float64).eps, np.finfo(np.float64).eps, dr_param)
+            dr_param = np.asarray(
+                family.link_derivatives[parameter](eta_param), dtype=np.float64
+            )
+            dr_param = np.where(
+                np.isfinite(dr_param), dr_param, np.finfo(np.float64).eps
+            )
+            dr_param = np.where(
+                np.abs(dr_param) < np.finfo(np.float64).eps,
+                np.finfo(np.float64).eps,
+                dr_param,
+            )
             deta_dparam = 1.0 / dr_param
             w_param = -(hessian / np.square(deta_dparam))
             w_param = np.clip(w_param, 1e-10, 1e10)
             z_param = eta_param + score / (deta_dparam * w_param)
             z_param = np.where(np.isfinite(z_param), z_param, eta_param)
-            beta_proposed = _weighted_least_squares(x_param, z_param, w_param * w, smooth_info=smooth_infos.get(parameter))
+            beta_proposed = _weighted_least_squares(
+                x_param, z_param, w_param * w, smooth_info=smooth_infos.get(parameter)
+            )
             beta_param = _apply_method_step(beta_param, beta_proposed, method_name)
             eta_param = x_param @ beta_param
             value_param = np.asarray(
-                family.link_inverses[parameter](jnp.asarray(eta_param, dtype=jnp.float64)),
+                family.link_inverses[parameter](
+                    jnp.asarray(eta_param, dtype=jnp.float64)
+                ),
                 dtype=np.float64,
             )
             parameter_values[parameter] = value_param
@@ -1290,13 +1448,18 @@ def gamlss(
             working_vectors_extra[parameter] = z_param
             iterative_weights_extra[parameter] = w_param
 
-        dev_kwargs: dict[str, Any] = {"y": y, "mu": mu, **extra_parameter_values, **fixed_parameter_values}
+        dev_kwargs: dict[str, Any] = {
+            "y": y,
+            "mu": mu,
+            **extra_parameter_values,
+            **fixed_parameter_values,
+        }
         if "sigma" in parameter_values:
             dev_kwargs["sigma"] = parameter_values["sigma"]
         g_dev = float(np.sum(np.asarray(family.g_dev_inc(**dev_kwargs)) * w))
         iteration += 1
         deviance_history.append(g_dev)
-        
+
         # Print iteration progress if verbose
         if verbose:
             monitor.finish_iteration()
@@ -1304,7 +1467,7 @@ def gamlss(
 
     if method_name != "CG":
         converged = abs(old_g_dev - g_dev) <= control.c_crit
-    
+
     # Print final status if verbose
     if verbose:
         monitor.finish()
@@ -1342,8 +1505,12 @@ def gamlss(
         coefficients["sigma"] = jnp.asarray(beta_sigma, dtype=jnp.float64)
         linear_predictors["sigma"] = jnp.asarray(eta_sigma, dtype=jnp.float64)
         if "sigma" in working_vectors_extra and "sigma" in iterative_weights_extra:
-            working_vectors["sigma"] = jnp.asarray(working_vectors_extra["sigma"], dtype=jnp.float64)
-            iterative_weights["sigma"] = jnp.asarray(iterative_weights_extra["sigma"], dtype=jnp.float64)
+            working_vectors["sigma"] = jnp.asarray(
+                working_vectors_extra["sigma"], dtype=jnp.float64
+            )
+            iterative_weights["sigma"] = jnp.asarray(
+                iterative_weights_extra["sigma"], dtype=jnp.float64
+            )
         offsets["sigma"] = jnp.zeros(n, dtype=jnp.float64)
         formulas["sigma"] = resolved_formulas["sigma"]
         term_map["sigma"] = {
@@ -1352,17 +1519,29 @@ def gamlss(
             "intercept": True,
             "formula": resolved_formulas["sigma"],
         }
-        design_matrices["sigma"] = jnp.asarray(parameter_designs["sigma"], dtype=jnp.float64)
+        design_matrices["sigma"] = jnp.asarray(
+            parameter_designs["sigma"], dtype=jnp.float64
+        )
 
     for parameter in family.estimable_parameters:
         if parameter in {"mu", "sigma"}:
             continue
-        fitted_values[parameter] = jnp.asarray(parameter_values[parameter], dtype=jnp.float64)
-        coefficients[parameter] = jnp.asarray(parameter_beta[parameter], dtype=jnp.float64)
-        linear_predictors[parameter] = jnp.asarray(parameter_eta[parameter], dtype=jnp.float64)
+        fitted_values[parameter] = jnp.asarray(
+            parameter_values[parameter], dtype=jnp.float64
+        )
+        coefficients[parameter] = jnp.asarray(
+            parameter_beta[parameter], dtype=jnp.float64
+        )
+        linear_predictors[parameter] = jnp.asarray(
+            parameter_eta[parameter], dtype=jnp.float64
+        )
         if parameter in working_vectors_extra and parameter in iterative_weights_extra:
-            working_vectors[parameter] = jnp.asarray(working_vectors_extra[parameter], dtype=jnp.float64)
-            iterative_weights[parameter] = jnp.asarray(iterative_weights_extra[parameter], dtype=jnp.float64)
+            working_vectors[parameter] = jnp.asarray(
+                working_vectors_extra[parameter], dtype=jnp.float64
+            )
+            iterative_weights[parameter] = jnp.asarray(
+                iterative_weights_extra[parameter], dtype=jnp.float64
+            )
         offsets[parameter] = jnp.zeros(n, dtype=jnp.float64)
         formulas[parameter] = resolved_formulas[parameter]
         term_labels = parameter_labels.get(parameter, [])
@@ -1373,7 +1552,9 @@ def gamlss(
             "formula": resolved_formulas[parameter],
         }
         if parameter in parameter_designs:
-            design_matrices[parameter] = jnp.asarray(parameter_designs[parameter], dtype=jnp.float64)
+            design_matrices[parameter] = jnp.asarray(
+                parameter_designs[parameter], dtype=jnp.float64
+            )
 
     for parameter, value in fixed_parameter_values.items():
         fitted_values[parameter] = jnp.asarray(value, dtype=jnp.float64)
@@ -1389,6 +1570,13 @@ def gamlss(
             "cg_converged": bool(converged),
             "cg_iterations": int(iteration),
             "cg_final_deviance": float(g_dev),
+            "cg_backend": getattr(cg_result, "cg_backend", "CG_FULL_HESSIAN"),
+            "cg_cross_derivatives": getattr(
+                cg_result, "cross_derivatives", "full_hessian"
+            ),
+            "cg_line_search_steps": tuple(getattr(cg_result, "line_search_steps", ())),
+            "cg_condition_number": getattr(cg_result, "condition_number", None),
+            "cg_param_slices": getattr(cg_result, "param_slices", None),
         }
     elif method_name == "MIXED":
         method_slots = {
@@ -1406,23 +1594,25 @@ def gamlss(
     # Compute df_fit including smooth terms
     df_fit = 0.0
     smooth_edf = {}
-    
+
     for parameter in family.estimable_parameters:
         # Add linear parameters
         df_fit += float(np.asarray(coefficients[parameter], dtype=np.float64).size)
-        
+
         # Adjust for smooth terms
-        if smooth_infos.get(parameter) is not None and len(smooth_infos[parameter].smooth_fits) > 0:
+        if (
+            smooth_infos.get(parameter) is not None
+            and len(smooth_infos[parameter].smooth_fits) > 0
+        ):
             from .smooth_fitting import compute_smooth_edf
+
             # Subtract nominal basis columns
             for smooth in smooth_infos[parameter].smooth_fits:
                 start, end = smooth.basis_columns
                 df_fit -= float(end - start)
             # Add effective df
             param_edf = compute_smooth_edf(
-                design_matrices[parameter], 
-                w, 
-                smooth_infos[parameter].smooth_fits
+                design_matrices[parameter], w, smooth_infos[parameter].smooth_fits
             )
             df_fit += param_edf
             smooth_edf[parameter] = param_edf
@@ -1458,7 +1648,10 @@ def gamlss(
             "converged": bool(converged),
             "cycles": int(iteration),
             "deviance_history": tuple(float(value) for value in deviance_history),
-            "smooth_fits": {p: smooth_infos[p].smooth_fits if smooth_infos.get(p) else [] for p in family.parameters},
+            "smooth_fits": {
+                p: smooth_infos[p].smooth_fits if smooth_infos.get(p) else []
+                for p in family.parameters
+            },
             "smooth_edf": smooth_edf,
             **method_slots,
         },
@@ -1468,7 +1661,11 @@ def gamlss(
             "parameter_formulas": dict(resolved_formulas),
             "method": method_name,
         },
-        control={"n.cyc": control.n_cyc, **asdict(control), **{"glim.cyc": i_control.cyc}},
+        control={
+            "n.cyc": control.n_cyc,
+            **asdict(control),
+            **{"glim.cyc": i_control.cyc},
+        },
         iter=iteration,
         weights=jnp.asarray(w, dtype=jnp.float64),
         residuals=residual_values,
