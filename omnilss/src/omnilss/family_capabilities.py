@@ -39,6 +39,44 @@ FEATURES: tuple[str, ...] = (
     "production_safe",
 )
 
+METHOD_ROUTE_FEATURES: dict[str, str] = {
+    "RS": "rs_fit",
+    "RS_JAX": "rs_jax_fit",
+    "CG": "cg_fit",
+    "MIXED": "cg_fit",
+    "JOINT": "cg_fit",
+    "LBFGS": "cg_fit",
+}
+
+
+def method_route_feature(method: str) -> str | None:
+    """Return the capability feature that gates a fitting method route."""
+
+    return METHOD_ROUTE_FEATURES.get(str(method).upper())
+
+
+def require_method_route(
+    family_name: str,
+    method: str,
+    *,
+    allow_experimental: bool = False,
+) -> FamilyCapability:
+    """Require that ``family_name`` supports the requested fitting ``method``.
+
+    Unknown methods are deliberately left to the caller's method parser; this
+    helper only maps recognized runtime method routes to capability features.
+    """
+
+    feature = method_route_feature(method)
+    if feature is None:
+        return get_family_capability(family_name)
+    return require_family_capability(
+        family_name,
+        feature,
+        allow_experimental=allow_experimental,
+    )
+
+
 # Families with explicit R-consistency test modules or batch consistency suites in
 # the repository.  These are marked as evidence-backed for the *R consistency*
 # feature only; they are not automatically production-safe.
@@ -154,13 +192,24 @@ def _build_capability(name: str) -> FamilyCapability:
 
     notes: list[str] = []
     if key in _PRODUCTION_SAFE:
-        notes.append("production-safe baseline family with the strongest current evidence")
+        for validated_feature in (
+            "rs_fit",
+            "prediction",
+            "r_consistency",
+            "production_safe",
+        ):
+            features[validated_feature] = CapabilityStatus.VALIDATED
+        notes.append(
+            "production-safe baseline family with the strongest current evidence"
+        )
     elif key in _R_CONSISTENCY_EVIDENCE:
         notes.append(
             "has repository R-consistency test coverage; still requires feature-specific gates"
         )
     else:
-        notes.append("registered family without enough validation evidence for production use")
+        notes.append(
+            "registered family without enough validation evidence for production use"
+        )
     if features["rs_jax_fit"] is CapabilityStatus.UNSUPPORTED:
         notes.append("RS_JAX route is not advertised for this family")
 
@@ -178,6 +227,18 @@ def list_family_capabilities() -> tuple[FamilyCapability, ...]:
     return tuple(_DEFAULT_CAPABILITIES[name] for name in sorted(_DEFAULT_CAPABILITIES))
 
 
+def capability_matrix() -> dict[str, object]:
+    """Return a machine-readable snapshot of the runtime capability matrix."""
+
+    capabilities = [capability.as_dict() for capability in list_family_capabilities()]
+    return {
+        "version": 1,
+        "features": list(FEATURES),
+        "method_routes": dict(METHOD_ROUTE_FEATURES),
+        "families": {item["name"]: item for item in capabilities},
+    }
+
+
 def family_capability_names() -> tuple[str, ...]:
     """Return registered family names covered by the capability registry."""
 
@@ -191,7 +252,9 @@ def get_family_capability(name: str) -> FamilyCapability:
     try:
         return _DEFAULT_CAPABILITIES[key]
     except KeyError as exc:
-        raise KeyError(f"family {name!r} is not present in the capability registry") from exc
+        raise KeyError(
+            f"family {name!r} is not present in the capability registry"
+        ) from exc
 
 
 def family_supports(
@@ -248,11 +311,15 @@ def require_family_capability(
 __all__ = [
     "CapabilityStatus",
     "FEATURES",
+    "METHOD_ROUTE_FEATURES",
+    "capability_matrix",
     "FamilyCapability",
     "FamilyCapabilityError",
     "family_capability_names",
     "family_supports",
     "get_family_capability",
     "list_family_capabilities",
+    "method_route_feature",
     "require_family_capability",
+    "require_method_route",
 ]

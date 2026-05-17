@@ -292,28 +292,26 @@ def _weighted_least_squares(
     return _weighted_least_squares_shared(x, z, w, smooth_info)
 
 
-def _require_method_family_capability(family_name: str, method_name: str) -> None:
+def _require_method_family_capability(
+    family_name: str, method_name: str, *, allow_experimental: bool = True
+) -> None:
     """Validate method/family support before starting an expensive fit."""
 
-    feature_by_method = {
-        "RS": "rs_fit",
-        "RS_JAX": "rs_jax_fit",
-        "CG": "cg_fit",
-        "MIXED": "cg_fit",
-        "JOINT": "cg_fit",
-        "LBFGS": "cg_fit",
-    }
-    feature = feature_by_method.get(method_name)
+    from .family_capabilities import (
+        FamilyCapabilityError,
+        method_route_feature,
+        require_method_route,
+    )
+
+    feature = method_route_feature(method_name)
     if feature is None:
         return
 
-    from .family_capabilities import FamilyCapabilityError, require_family_capability
-
     try:
-        require_family_capability(
+        require_method_route(
             family_name,
-            feature,
-            allow_experimental=True,
+            method_name,
+            allow_experimental=allow_experimental,
         )
     except FamilyCapabilityError as exc:
         if method_name == "RS_JAX":
@@ -323,7 +321,7 @@ def _require_method_family_capability(family_name: str, method_name: str) -> Non
             ) from exc
         raise FamilyCapabilityError(
             f"Family '{family_name}' cannot use method='{method_name}' "
-            f"because capability feature '{feature}' is unavailable."
+            f"because capability feature '{feature}' is unavailable at the requested evidence tier."
         ) from exc
 
 
@@ -733,6 +731,7 @@ def gamlss(
     control: GAMLSSControl | None = None,
     i_control: GLIMControl | None = None,
     verbose: bool = False,
+    strict_capabilities: bool = False,
     # New optimizer parameters
     optimizer: str = "adam",
     learning_rate: float = 0.01,
@@ -810,6 +809,9 @@ def gamlss(
         Control parameters for the inner GLIM loop.
     verbose : bool, default False
         Print detailed fitting progress.
+    strict_capabilities : bool, default False
+        If True, reject experimental family/method routes and allow only
+        validated capability features.
     optimizer : str, default ``"adam"``
         Optimizer type for ``method="joint"``.
     learning_rate : float, default 0.01
@@ -906,7 +908,9 @@ def gamlss(
             f"'joint', or 'lbfgs', got {method!r}"
         )
 
-    _require_method_family_capability(family.name, method_name)
+    _require_method_family_capability(
+        family.name, method_name, allow_experimental=not strict_capabilities
+    )
 
     # Handle new optimizer methods
     if method_name in {"JOINT", "LBFGS"}:

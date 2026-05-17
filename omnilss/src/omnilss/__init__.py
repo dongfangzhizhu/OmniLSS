@@ -101,11 +101,14 @@ from .family_capabilities import (
     FEATURES as FAMILY_CAPABILITY_FEATURES,
     FamilyCapability,
     FamilyCapabilityError,
+    capability_matrix,
     family_capability_names,
     family_supports,
     get_family_capability,
+    method_route_feature,
     list_family_capabilities,
     require_family_capability,
+    require_method_route,
 )
 from .fitDist import fitDist
 from .fitDistPred import fitDistPred, gamlssMLpred
@@ -321,6 +324,18 @@ __all__ = [
     "GAMLSSControl",
     "GAMLSSModel",
     "GLIMControl",
+    "CapabilityStatus",
+    "FAMILY_CAPABILITY_FEATURES",
+    "FamilyCapability",
+    "FamilyCapabilityError",
+    "capability_matrix",
+    "family_capability_names",
+    "family_supports",
+    "get_family_capability",
+    "list_family_capabilities",
+    "method_route_feature",
+    "require_family_capability",
+    "require_method_route",
     "ExtractAICResult",
     "ExtractTGDResult",
     "FitDistResult",
@@ -693,6 +708,7 @@ __all__ = [
     "load_model",
     "save_model_json",
     "load_model_json",
+    "validate_model_json",
     "save_model_pickle",
     "load_model_pickle",
 ]
@@ -830,6 +846,7 @@ try:
         save_model,
         load_model_json,
         save_model_json,
+        validate_model_json,
         load_model_pickle,
         save_model_pickle,
     )
@@ -845,6 +862,7 @@ except ImportError as _e:
     save_model = None
     load_model_json = None
     save_model_json = None
+    validate_model_json = None
     load_model_pickle = None
     save_model_pickle = None
 

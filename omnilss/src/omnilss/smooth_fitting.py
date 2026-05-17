@@ -11,14 +11,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping, Optional
 
-import jax
 import jax.numpy as jnp
 import numpy as np
 
-from .families import FamilyDefinition
-from .formula_parser import ParsedFormula, build_design_matrix, parse_formula
+from .formula_parser import build_design_matrix, parse_formula
 from .smoothers.pb import fit_pspline
-from .smoothers.penalties import effective_df, penalty_matrix
+from .smoothers.penalties import effective_df
 
 
 @dataclass
@@ -41,6 +39,8 @@ class SmoothFitInfo:
         Penalty matrix D^T D
     basis_columns : tuple[int, int]
         (start, end) column indices in design matrix
+    basis_smoother : str, optional
+        Concrete basis smoother used for prediction when the formula alias is s().
     selection_method : str, optional
         Method used for lambda selection (e.g., "GCV", "REML", "AIC")
     criterion_value : float, optional
@@ -54,8 +54,12 @@ class SmoothFitInfo:
     edf: float
     penalty: jnp.ndarray
     basis_columns: tuple[int, int]
+    basis_smoother: Optional[str] = None
     selection_method: Optional[str] = None
     criterion_value: Optional[float] = None
+    knots: Optional[np.ndarray] = None
+    degree: Optional[int] = None
+    order: Optional[int] = None
 
 
 @dataclass
@@ -310,7 +314,8 @@ def build_smooth_design(
             # 未知的平滑器类型
             raise NotImplementedError(f"Smoother '{smoother_type}' not implemented")
 
-        # Store smooth fit info (pb / ps path)
+        # Store smooth fit info (pb / ps path), including basis metadata
+        # required for schema-safe prediction after JSON load.
         smooth_fits.append(
             SmoothFitInfo(
                 term_index=i,
@@ -320,12 +325,20 @@ def build_smooth_design(
                 edf=result.edf,
                 penalty=result.penalty,
                 basis_columns=(current_col, current_col + n_basis),
-                selection_method=result.selection_method
-                if hasattr(result, "selection_method")
-                else None,
-                criterion_value=result.criterion_value
-                if hasattr(result, "criterion_value")
-                else None,
+                basis_smoother=smoother_type,
+                selection_method=(
+                    result.selection_method
+                    if hasattr(result, "selection_method")
+                    else None
+                ),
+                criterion_value=(
+                    result.criterion_value
+                    if hasattr(result, "criterion_value")
+                    else None
+                ),
+                knots=np.asarray(getattr(result, "knots", []), dtype=np.float64),
+                degree=int(getattr(result, "degree", info.get("degree", 3))),
+                order=int(getattr(result, "order", info.get("order", 2))),
             )
         )
 
@@ -538,7 +551,6 @@ def update_smooth_lambdas(
 
         if method == "ML":
             # ML update: lambda = sigma^2 / tau^2
-            n = len(y)
             N = np.sum(w > 0)
 
             # Residual variance
@@ -571,7 +583,7 @@ def update_smooth_lambdas(
                 )
                 if not np.isfinite(edf_new):
                     edf_new = smooth.edf
-            except:
+            except Exception:
                 edf_new = smooth.edf
 
             updated_fits.append(
@@ -583,8 +595,12 @@ def update_smooth_lambdas(
                     edf=edf_new,
                     penalty=smooth.penalty,
                     basis_columns=smooth.basis_columns,
+                    basis_smoother=smooth.basis_smoother,
                     selection_method=smooth.selection_method,  # Preserve selection method
                     criterion_value=smooth.criterion_value,  # Preserve criterion value
+                    knots=smooth.knots,
+                    degree=smooth.degree,
+                    order=smooth.order,
                 )
             )
         elif method == "GCV":
@@ -617,7 +633,7 @@ def update_smooth_lambdas(
                     edf_new = smooth.edf
                     gcv_score = 0.0  # Default value
 
-            except Exception as e:
+            except Exception:
                 # If optimization fails, keep current lambda
                 lambda_new = smooth.lambda_
                 edf_new = smooth.edf
@@ -632,8 +648,12 @@ def update_smooth_lambdas(
                     edf=edf_new,
                     penalty=smooth.penalty,
                     basis_columns=smooth.basis_columns,
+                    basis_smoother=smooth.basis_smoother,
                     selection_method="GCV",
                     criterion_value=gcv_score,
+                    knots=smooth.knots,
+                    degree=smooth.degree,
+                    order=smooth.order,
                 )
             )
 
@@ -667,7 +687,7 @@ def update_smooth_lambdas(
                     edf_new = smooth.edf
                     reml_score = 0.0  # Default value
 
-            except Exception as e:
+            except Exception:
                 # If optimization fails, keep current lambda
                 lambda_new = smooth.lambda_
                 edf_new = smooth.edf
@@ -682,8 +702,12 @@ def update_smooth_lambdas(
                     edf=edf_new,
                     penalty=smooth.penalty,
                     basis_columns=smooth.basis_columns,
+                    basis_smoother=smooth.basis_smoother,
                     selection_method="REML",
                     criterion_value=reml_score,
+                    knots=smooth.knots,
+                    degree=smooth.degree,
+                    order=smooth.order,
                 )
             )
 
@@ -692,7 +716,6 @@ def update_smooth_lambdas(
             # where k is typically 2 (AIC) or log(n) (BIC)
             from scipy.optimize import minimize_scalar
 
-            n = len(y)
             k = 2.0  # AIC penalty (can be adjusted to log(n) for BIC)
 
             def gaic_objective(log_lambda):
@@ -726,7 +749,7 @@ def update_smooth_lambdas(
 
                     return gaic if np.isfinite(gaic) else 1e10
 
-                except:
+                except Exception:
                     return 1e10
 
             try:
@@ -758,7 +781,7 @@ def update_smooth_lambdas(
                     edf_new = smooth.edf
                     gaic_score = 0.0  # Default value
 
-            except Exception as e:
+            except Exception:
                 # If optimization fails, keep current lambda
                 lambda_new = smooth.lambda_
                 edf_new = smooth.edf
@@ -773,8 +796,12 @@ def update_smooth_lambdas(
                     edf=edf_new,
                     penalty=smooth.penalty,
                     basis_columns=smooth.basis_columns,
+                    basis_smoother=smooth.basis_smoother,
                     selection_method="GAIC",
                     criterion_value=gaic_score,
+                    knots=smooth.knots,
+                    degree=smooth.degree,
+                    order=smooth.order,
                 )
             )
 

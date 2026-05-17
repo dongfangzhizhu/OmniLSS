@@ -9,3 +9,14 @@ Endpoints:
 
 SLO target:
 - P95 latency tracking enabled in benchmark telemetry
+
+
+Metadata endpoints implemented in the lightweight stdlib HTTP boundary:
+
+- `GET /health` / `GET /healthz`: service liveness check.
+- `GET /capabilities` / `GET /capability-matrix`: runtime family capability matrix.
+- `GET /metrics`: Prometheus-style counters for metadata endpoint requests.
+
+All HTTP metadata responses include `X-Request-ID`; inbound request IDs are propagated when provided.
+
+These endpoints are prototype-safe metadata endpoints only; fit/predict HTTP endpoints still require authentication, request IDs, limits, and structured logging before production exposure.
