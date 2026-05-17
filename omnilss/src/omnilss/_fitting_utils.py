@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import ast
 import math
 from statistics import NormalDist
 from typing import Any
@@ -14,6 +15,94 @@ from .families import FamilyDefinition
 from .formula_parser import parse_formula as parse_full_formula
 
 _STANDARD_NORMAL = NormalDist()
+
+
+_ALLOWED_FORMULA_FUNCTIONS = {
+    "abs": np.abs,
+    "cos": np.cos,
+    "exp": np.exp,
+    "I": lambda x: x,
+    "log": np.log,
+    "sin": np.sin,
+    "sqrt": np.sqrt,
+}
+
+
+def _safe_eval_formula_expression(
+    expression: str,
+    data: Mapping[str, Any],
+    n: int,
+) -> np.ndarray:
+    """Evaluate a numeric formula expression with a strict AST whitelist."""
+
+    arrays = {k: np.asarray(v, dtype=np.float64) for k, v in data.items()}
+
+    def _eval(node: ast.AST) -> Any:
+        if isinstance(node, ast.Expression):
+            return _eval(node.body)
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, (int, float)):
+                return float(node.value)
+            raise ValueError("only numeric constants are allowed")
+        if isinstance(node, ast.Name):
+            if node.id in arrays:
+                value = arrays[node.id]
+                if len(value) != n:
+                    raise ValueError(f"Variable '{node.id}' has wrong length")
+                return value
+            raise ValueError(f"unknown variable or function '{node.id}'")
+        if isinstance(node, ast.UnaryOp):
+            operand = _eval(node.operand)
+            if isinstance(node.op, ast.UAdd):
+                return operand
+            if isinstance(node.op, ast.USub):
+                return -operand
+            raise ValueError("unsupported unary operator")
+        if isinstance(node, ast.BinOp):
+            left = _eval(node.left)
+            right = _eval(node.right)
+            if isinstance(node.op, ast.Add):
+                return left + right
+            if isinstance(node.op, ast.Sub):
+                return left - right
+            if isinstance(node.op, ast.Mult):
+                return left * right
+            if isinstance(node.op, ast.Div):
+                return left / right
+            if isinstance(node.op, ast.Pow):
+                return left**right
+            raise ValueError("unsupported binary operator")
+        if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name):
+                func_name = node.func.id
+            elif (
+                isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "np"
+            ):
+                func_name = node.func.attr
+            else:
+                raise ValueError("only direct calls to allowlisted functions are allowed")
+            if func_name not in _ALLOWED_FORMULA_FUNCTIONS:
+                raise ValueError(f"function '{func_name}' is not allowed")
+            if node.keywords:
+                raise ValueError("keyword arguments are not allowed in formula expressions")
+            args = [_eval(arg) for arg in node.args]
+            return _ALLOWED_FORMULA_FUNCTIONS[func_name](*args)
+        raise ValueError(f"unsupported expression node '{type(node).__name__}'")
+
+    try:
+        parsed = ast.parse(expression, mode="eval")
+        value = _eval(parsed)
+        arr = np.asarray(value, dtype=np.float64)
+    except Exception as exc:
+        raise ValueError(f"Unable to evaluate term '{expression}': {exc}") from exc
+
+    if arr.ndim == 0:
+        arr = np.full(n, float(arr), dtype=np.float64)
+    if len(arr) != n:
+        raise ValueError(f"Term '{expression}' has wrong length")
+    return arr
 
 
 def _eval_linear_term(term: str, data: Mapping[str, Any], n: int) -> np.ndarray:
@@ -28,17 +117,7 @@ def _eval_linear_term(term: str, data: Mapping[str, Any], n: int) -> np.ndarray:
         if len(parts) == 2:
             return _eval_linear_term(parts[0], data, n) * _eval_linear_term(parts[1], data, n)
 
-    safe_env = {k: np.asarray(v, dtype=np.float64) for k, v in data.items()}
-    safe_env.update({"np": np, "log": np.log, "exp": np.exp, "sqrt": np.sqrt, "I": lambda x: x})
-    try:
-        arr = np.asarray(eval(term, {"__builtins__": {}}, safe_env), dtype=np.float64)
-    except Exception as exc:
-        raise ValueError(f"Unable to evaluate term '{term}'") from exc
-    if arr.ndim == 0:
-        arr = np.full(n, float(arr), dtype=np.float64)
-    if len(arr) != n:
-        raise ValueError(f"Term '{term}' has wrong length")
-    return arr
+    return _safe_eval_formula_expression(term, data, n)
 
 
 def _normalize_parameter_formula(response: str, formula: str) -> str:
