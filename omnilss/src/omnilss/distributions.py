@@ -1996,14 +1996,8 @@ def BCPE() -> BoxCoxPowerExponentialFamily:
     )
 
 
-def resolve_family(family: str | FamilyDefinition | None) -> FamilyDefinition:
-    """Resolve a family name/object into the staged Python family protocol."""
-
-    if family is None:
-        return NO()
-    if isinstance(family, FamilyDefinition):
-        return family
-    family_name = str(family).upper()
+def _resolve_family_legacy(family_name: str) -> FamilyDefinition:
+    """Legacy distribution-name resolver retained for backward compatibility."""
     if family_name == "NO":
         return NO()
     if family_name == "PO":
@@ -2186,4 +2180,43 @@ def resolve_family(family: str | FamilyDefinition | None) -> FamilyDefinition:
         from .distributions_b8 import LNO
         return LNO()
 
+    # Batch 14: Shape-tail extension families
+    if family_name == "SHASHO2":
+        from .distributions_b14 import SHASHo2
+        return SHASHo2()
+    if family_name == "JSUO":
+        from .distributions_b14 import JSUo
+        return JSUo()
+    if family_name == "ST5":
+        from .distributions_b14 import ST5
+        return ST5()
+    if family_name == "BCPEO":
+        from .distributions_b14 import BCPEo
+        return BCPEo()
+    if family_name == "BCTO":
+        from .distributions_b14 import BCTo
+        return BCTo()
+
     raise NotImplementedError(f"family {family_name!r} is not implemented yet")
+
+
+def resolve_family(family: str | FamilyDefinition | None) -> FamilyDefinition:
+    """Resolve a family name/object into a FamilyDefinition instance."""
+
+    if family is None:
+        return NO()
+    if isinstance(family, FamilyDefinition):
+        return family
+
+    family_name = str(family).upper()
+
+    # Preferred path: registry-based lookup
+    try:
+        from .distribution_registry import get_default_registry
+
+        return get_default_registry().get(family_name)
+    except KeyError:
+        pass
+
+    # Fallback path: legacy if/elif resolver
+    return _resolve_family_legacy(family_name)

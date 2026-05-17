@@ -13,7 +13,7 @@ from typing import Dict, Optional, Literal
 import numpy as np
 
 from .rs_algorithm import rs_fit
-from .cg_algorithm_v2 import cg_fit_v2 as cg_fit
+from .cg_algorithm import joint_lbfgs_fit as cg_fit
 from ..model import GAMLSSModel
 
 

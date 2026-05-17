@@ -29,6 +29,13 @@ class FamilyDefinition:
     - p: cumulative distribution function (CDF)
     - q: quantile function (inverse CDF)
     - r: random number generation
+
+    Architecture note
+    -----------------
+    Runtime fitting currently consumes ``FamilyDefinition`` directly. During
+    the architecture-freeze migration, this dataclass is adapted to
+    ``core.distributions.protocol.DistributionProtocol`` via
+    ``FamilyDistributionAdapter`` rather than subclassing Protocol at runtime.
     """
 
     name: str

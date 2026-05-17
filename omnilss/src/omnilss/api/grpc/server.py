@@ -56,7 +56,14 @@ def create_service():
     """Create gRPC service class instance from generated stubs."""
     try:
         import grpc  # noqa: F401
-        from .generated import fit_pb2, fit_pb2_grpc, predict_pb2, sample_pb2
+        from .generated import (
+            fit_pb2,
+            fit_pb2_grpc,
+            predict_pb2,
+            predict_pb2_grpc,
+            sample_pb2,
+            sample_pb2_grpc,
+        )
     except Exception as exc:  # pragma: no cover
         raise RuntimeError(
             "Generated gRPC stubs not found. Run protoc to generate under "
@@ -65,8 +72,8 @@ def create_service():
 
     class OmniLSSService(
         fit_pb2_grpc.FitServiceServicer,
-        fit_pb2_grpc.PredictServiceServicer,
-        fit_pb2_grpc.SampleServiceServicer,
+        predict_pb2_grpc.PredictServiceServicer,
+        sample_pb2_grpc.SampleServiceServicer,
     ):
         def Fit(self, request, context):  # noqa: N802
             try:
@@ -97,7 +104,7 @@ def create_service():
             except Exception as exc:
                 return sample_pb2.SampleResponse(samples_json="{}", success=False, error=str(exc))
 
-    return OmniLSSService(), fit_pb2_grpc
+    return OmniLSSService(), fit_pb2_grpc, predict_pb2_grpc, sample_pb2_grpc
 
 
 def serve(host: str = "0.0.0.0", port: int = 50051):
@@ -106,11 +113,11 @@ def serve(host: str = "0.0.0.0", port: int = 50051):
     except Exception as exc:  # pragma: no cover
         raise RuntimeError("grpcio is required to run OmniLSS gRPC server") from exc
 
-    service, fit_pb2_grpc = create_service()
+    service, fit_pb2_grpc, predict_pb2_grpc, sample_pb2_grpc = create_service()
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=8))
     fit_pb2_grpc.add_FitServiceServicer_to_server(service, server)
-    fit_pb2_grpc.add_PredictServiceServicer_to_server(service, server)
-    fit_pb2_grpc.add_SampleServiceServicer_to_server(service, server)
+    predict_pb2_grpc.add_PredictServiceServicer_to_server(service, server)
+    sample_pb2_grpc.add_SampleServiceServicer_to_server(service, server)
     server.add_insecure_port(f"{host}:{port}")
     server.start()
     return server

@@ -5,7 +5,7 @@ from importlib.metadata import PackageNotFoundError, version
 try:
     __version__ = version("omnilss")
 except PackageNotFoundError:
-    __version__ = "0.2.0"
+    __version__ = "0.3.0"
 
 from . import config as _config
 from . import config  # public: omnilss.config.GPU_CROSSOVER_N etc.
@@ -729,8 +729,18 @@ try:
         select_best_distribution,
         stepwise_distribution_selection,
     )
-except ImportError:
-    pass
+except ImportError as _e:
+    import warnings as _warnings
+
+    _warnings.warn(
+        f"omnilss.model_selection not available: {_e}. Install optional dependencies or check installation.",
+        ImportWarning,
+        stacklevel=2,
+    )
+    compare_distributions = None
+    quick_distribution_search = None
+    select_best_distribution = None
+    stepwise_distribution_selection = None
 
 # Prediction API
 try:
@@ -740,8 +750,18 @@ try:
         predict_quantiles,
         predict_response,
     )
-except ImportError:
-    pass
+except ImportError as _e:
+    import warnings as _warnings
+
+    _warnings.warn(
+        f"omnilss.prediction not available: {_e}. Install optional dependencies or check installation.",
+        ImportWarning,
+        stacklevel=2,
+    )
+    centiles = None
+    predict_params = None
+    predict_quantiles = None
+    predict_response = None
 
 # Diagnostics API
 try:
@@ -752,8 +772,19 @@ try:
         cooks_distance,
         quantile_residuals,
     )
-except ImportError:
-    pass
+except ImportError as _e:
+    import warnings as _warnings
+
+    _warnings.warn(
+        f"omnilss.diagnostics not available: {_e}. Install optional dependencies or check installation.",
+        ImportWarning,
+        stacklevel=2,
+    )
+    ComprehensiveDiagnostics = None
+    calibration_check = None
+    comprehensive_diagnostics = None
+    cooks_distance = None
+    quantile_residuals = None
 
 # ── Links 注册表及辅助函数（新增）──
 try:
@@ -770,8 +801,25 @@ try:
         sqrt_inverse,
         sqrt_link,
     )
-except ImportError:
-    pass
+except ImportError as _e:
+    import warnings as _warnings
+
+    _warnings.warn(
+        f"omnilss.links not available: {_e}. Install optional dependencies or check installation.",
+        ImportWarning,
+        stacklevel=2,
+    )
+    LINK_REGISTRY = None
+    cloglog_derivative = None
+    cloglog_inverse = None
+    cloglog_link = None
+    get_inverse_link_fn = None
+    get_link = None
+    get_link_derivative_fn = None
+    get_link_fn = None
+    sqrt_derivative = None
+    sqrt_inverse = None
+    sqrt_link = None
 
 
 # Serialization API
@@ -784,5 +832,45 @@ try:
         load_model_pickle,
         save_model_pickle,
     )
-except ImportError:
-    pass
+except ImportError as _e:
+    import warnings as _warnings
+
+    _warnings.warn(
+        f"omnilss.serialization not available: {_e}. Install optional dependencies or check installation.",
+        ImportWarning,
+        stacklevel=2,
+    )
+    load_model = None
+    save_model = None
+    load_model_json = None
+    save_model_json = None
+    load_model_pickle = None
+    save_model_pickle = None
+
+
+def check_installation() -> dict:
+    """Return module availability diagnostics for OmniLSS installation."""
+    import importlib
+
+    status: dict[str, str] = {}
+    modules = {
+        "core": ("omnilss.fitting", "gamlss"),
+        "distributions": ("omnilss.distributions", "NO"),
+        "smoothers": ("omnilss.smoothers.pb", "pb_smoother"),
+        "diagnostics": ("omnilss.diagnostics", "quantile_residuals"),
+        "prediction": ("omnilss.prediction", "predict_params"),
+        "serialization": ("omnilss.serialization", "save_model_json"),
+        "deep": ("omnilss.deep.deep_gamlss", "fit_deep_gamlss"),
+        "sklearn": ("omnilss.sklearn_compat", "GAMLSSRegressor"),
+        "grpc": ("omnilss.api.grpc.server", "serve"),
+    }
+    for name, (mod, attr) in modules.items():
+        try:
+            m = importlib.import_module(mod)
+            getattr(m, attr)
+            status[name] = "ok"
+        except ImportError as e:
+            status[name] = f"missing: {e}"
+        except Exception as e:  # pragma: no cover - diagnostic path
+            status[name] = f"error: {e}"
+    return status
