@@ -27,7 +27,7 @@ jobs:
 
       - name: Install build tools
         run: |
-          pip install build twine grpcio-tools
+          pip install build twine protobuf grpcio-tools
 
       - name: Generate gRPC stubs
         run: |

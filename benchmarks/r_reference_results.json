@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-05-17",
   "status": "pending_external_r_run",
-  "note": "Rscript/gamlss was unavailable in the execution environment used for this development pass. Replace placeholder values by running the companion R reference generation workflow on a machine with R gamlss installed.",
+  "note": "Rscript/gamlss was unavailable in the execution environment used for this development pass. Replace placeholder values by running `Rscript benchmarks/generate_r_reference_results.R` on a machine with R gamlss/jsonlite installed.",
   "r_version": null,
   "gamlss_version": null,
   "test_cases": [
