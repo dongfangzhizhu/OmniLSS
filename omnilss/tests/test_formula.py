@@ -7,13 +7,7 @@ import pytest
 
 from omnilss.fitting import _build_design_matrix
 from omnilss._fitting_utils import FormulaEvaluationError
-from omnilss.formula_parser import (
-    LinearTerm,
-    ParsedFormula,
-    SmoothTerm,
-    build_design_matrix,
-    parse_formula,
-)
+from omnilss.formula_parser import build_design_matrix, parse_formula
 
 
 class TestFormulaParser(unittest.TestCase):
@@ -326,3 +320,27 @@ def test_formula_evaluation_error_exposes_term_and_reason():
 
     assert excinfo.value.term == "x[0]"
     assert excinfo.value.reason == "unsupported expression node 'Subscript'"
+
+
+def test_parse_tensor_args_with_nested_k_list():
+    parsed = parse_formula("y ~ te(x1, x2, k_list=[5, 8], bs='ps')")
+
+    tensor = parsed.tensor_terms[0]
+    assert tensor.variables == ["x1", "x2"]
+    assert tensor.k_list == [5, 8]
+    assert tensor.bs == "ps"
+
+
+def test_parse_smooth_args_with_quoted_comma():
+    parsed = parse_formula("y ~ s(x, method='REML', smoother='ps', label='age, centered')")
+
+    smooth = parsed.smooth_terms[0]
+    assert smooth.variable == "x"
+    assert smooth.smoother == "ps"
+    assert smooth.method == "REML"
+    assert smooth.kwargs["label"] == "age, centered"
+
+
+def test_parse_formula_rejects_unbalanced_nested_args():
+    with pytest.raises(ValueError, match="unbalanced"):
+        parse_formula("y ~ te(x1, x2, k_list=[5, 8)")
