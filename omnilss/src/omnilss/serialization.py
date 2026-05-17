@@ -48,37 +48,34 @@ def _to_numpy_safe(value: Any) -> Any:
     return value
 
 
+def _model_call_metadata(model: Any, include_training_data: bool) -> dict[str, Any]:
+    """Return JSON-safe call metadata without training arrays by default."""
 
-def _design_matrix_schema(model: Any) -> dict[str, Any]:
-    """Build a minimal serializable design-matrix schema for prediction audits."""
+    call = dict(getattr(model, "call", {}) or {})
+    if not include_training_data:
+        call.pop("data", None)
+        call["training_data_omitted"] = True
+    return _json_safe(call)
 
-    schema: dict[str, Any] = {"version": 1, "parameters": {}}
-    formulas = dict(getattr(model, "formulas", {}) or {})
-    terms = dict(getattr(model, "terms", {}) or {})
-    design_matrices = dict(getattr(model, "design_matrices", {}) or {})
-    coefficients = dict(getattr(model, "coefficients", {}) or {})
 
-    for parameter in getattr(model, "parameters", ()):  # tuple/list on GAMLSSModel
-        term_info = terms.get(parameter, {}) or {}
-        design = design_matrices.get(parameter)
-        coef = coefficients.get(parameter)
-        n_columns = None
-        if design is not None:
-            arr = np.asarray(design)
-            if arr.ndim == 2:
-                n_columns = int(arr.shape[1])
-        coefficient_count = None
-        if coef is not None:
-            coefficient_count = int(np.asarray(coef).size)
+def _artifact_diagnostics(model: Any) -> dict[str, Any]:
+    """Return stable scalar diagnostics for JSON artifacts."""
 
-        schema["parameters"][parameter] = {
-            "formula": str(formulas.get(parameter, "")),
-            "term_labels": list(term_info.get("term_labels", []) or []),
-            "has_intercept": bool(term_info.get("intercept", True)),
-            "n_columns": n_columns,
-            "coefficient_count": coefficient_count,
-        }
-    return schema
+    slots = dict(getattr(model, "additional_slots", {}) or {})
+    keys = (
+        "method",
+        "cg_backend",
+        "rs_converged",
+        "cg_converged",
+        "converged",
+        "aic",
+        "sbc",
+        "df.residual",
+        "df_residual",
+        "smooth_edf",
+        "family_capability",
+    )
+    return _json_safe({key: slots[key] for key in keys if key in slots})
 
 
 def _family_capability_snapshot(model: Any) -> dict[str, Any]:
@@ -118,7 +115,9 @@ def load_model_pickle(path: str | Path) -> Any:
         return cloudpickle.load(f)
 
 
-def save_model_json(model: Any, path: str | Path) -> None:
+def save_model_json(
+    model: Any, path: str | Path, *, include_training_data: bool = False
+) -> None:
     from .design_schema import ensure_model_design_schema
     from .model import GAMLSSModel
 
@@ -130,7 +129,8 @@ def save_model_json(model: Any, path: str | Path) -> None:
 
     with zipfile.ZipFile(p, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         arrays: dict[str, np.ndarray] = {}
-        arrays["y"] = np.asarray(model.y)
+        if include_training_data:
+            arrays["y"] = np.asarray(model.y)
         for k, v in model.coefficients.items():
             arrays[f"coef__{k}"] = np.asarray(v)
         for k, v in model.linear_predictors.items():
@@ -150,12 +150,15 @@ def save_model_json(model: Any, path: str | Path) -> None:
             "parameters": list(model.parameters),
             "formulas": {k: str(v) for k, v in dict(model.formulas).items()},
             "n": int(model.n),
+            "df_fit": float(model.df_fit),
             "g_dev": float(model.g_dev),
             "iter": int(model.iter),
             "type": str(model.type),
-            "call": _json_safe(dict(model.call or {})),
+            "call": _model_call_metadata(model, include_training_data),
+            "training_data_included": bool(include_training_data),
             "design_matrix_schema": _json_safe(ensure_model_design_schema(model)),
             "family_capability": _json_safe(_family_capability_snapshot(model)),
+            "diagnostics": _artifact_diagnostics(model),
         }
         zf.writestr("meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
 
@@ -179,7 +182,7 @@ def load_model_json(path: str | Path):
         fitted = {p: npz[f"fit__{p}"] for p in params if f"fit__{p}" in npz}
         coeffs = {p: npz[f"coef__{p}"] for p in params if f"coef__{p}" in npz}
         etas = {p: npz[f"eta__{p}"] for p in params if f"eta__{p}" in npz}
-        y = npz["y"]
+        y = npz["y"] if "y" in npz.files else np.array([], dtype=np.float64)
 
     fam = resolve_family(meta["family"])
     n = int(meta["n"])
@@ -187,7 +190,10 @@ def load_model_json(path: str | Path):
         par=params,
         family=fam,
         df_fit=float(
-            sum(len(np.ravel(coeffs.get(p, np.array([0.0])))) for p in params)
+            meta.get(
+                "df_fit",
+                sum(len(np.ravel(coeffs.get(p, np.array([0.0])))) for p in params),
+            )
         ),
         g_dev=float(meta["g_dev"]),
         n=n,
@@ -207,8 +213,10 @@ def load_model_json(path: str | Path):
         additional_slots={
             "loaded_from_json": True,
             "omnilss_version": version,
+            "training_data_included": bool(meta.get("training_data_included", True)),
             "design_matrix_schema": design_matrix_schema,
             "family_capability": family_capability,
+            "artifact_diagnostics": meta.get("diagnostics", {}),
         },
     )
 

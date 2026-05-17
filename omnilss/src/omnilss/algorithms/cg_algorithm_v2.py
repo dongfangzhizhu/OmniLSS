@@ -20,11 +20,14 @@ from ..cg_derivatives import EtaDerivativeBundle, eta_score_hessian
 from ..distributions import resolve_family
 from ..fitting import (
     _build_design_matrix_with_smooths,
+    _build_rqres_callable,
+    _compute_residuals,
     _fixed_parameter_term,
     _parse_formula,
     _resolve_fixed_parameter_values,
 )
 from ..model import GAMLSSModel
+from ._model_metrics import df_fit_with_smooth_edf
 
 
 def _safe_eta_weighted_least_squares(
@@ -327,9 +330,22 @@ def cg_fit_v2(
         )
         for p in family.parameters
     }
-    df_fit = float(
-        sum(len(np.asarray(coefs.get(p, [0]))) for p in family.estimable_parameters)
+    # Compute df_fit using effective degrees of freedom for smooth terms.
+    df_fit, smooth_edf = df_fit_with_smooth_edf(
+        coefficients=coefs,
+        estimable_parameters=family.estimable_parameters,
+        design_matrices=design_matrices,
+        weights=w,
+        smooth_infos=smooth_infos,
     )
+
+    rqres_callable = _build_rqres_callable(family)
+    mu_vals = params["mu"]
+    sigma_vals = params.get("sigma")
+    if rqres_callable is not None:
+        residual_values = rqres_callable(y=y, mu=mu_vals, sigma=sigma_vals)
+    else:
+        residual_values = _compute_residuals(family, y, mu_vals, sigma_vals)
     hessian_shape = (
         None
         if last_bundle is None
@@ -355,8 +371,8 @@ def cg_fit_v2(
         terms=terms,
         design_matrices=design_matrices_jax,
         weights=jnp.asarray(w, dtype=jnp.float64),
-        residuals=jnp.asarray(y - params["mu"], dtype=jnp.float64),
-        rqres=None,
+        residuals=jnp.asarray(residual_values, dtype=jnp.float64),
+        rqres=rqres_callable,
         iter=it,
         type=family.type,
         parameters=family.parameters,
@@ -376,6 +392,11 @@ def cg_fit_v2(
             "cg_final_deviance": float(g_dev),
             "cg_line_search_steps": tuple(line_search_steps),
             "cg_eta_hessian_shape": hessian_shape,
+            "smooth_edf": smooth_edf,
+            "aic": float(g_dev + 2.0 * df_fit),
+            "sbc": float(g_dev + np.log(max(n, 1)) * df_fit),
+            "df.residual": float(n - df_fit),
+            "df_residual": float(n - df_fit),
             "deviance_history": tuple(float(v) for v in history),
         },
     )
