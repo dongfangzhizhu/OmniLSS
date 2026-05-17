@@ -21,6 +21,70 @@ class PredictionSchemaError(ValueError):
     """Raised when prediction data cannot reproduce the training design schema."""
 
 
+def _jsonish_smooth_entry(smooth: Any) -> dict[str, Any]:
+    """Normalize fitted or serialized smooth metadata to a dict."""
+
+    if isinstance(smooth, dict):
+        return dict(smooth)
+    knots = getattr(smooth, "knots", None)
+    return {
+        "term_index": getattr(smooth, "term_index", None),
+        "variable": getattr(smooth, "variable", getattr(smooth, "var", None)),
+        "smoother": getattr(smooth, "smoother", None),
+        "basis_smoother": getattr(smooth, "basis_smoother", None),
+        "lambda_": getattr(smooth, "lambda_", None),
+        "edf": getattr(smooth, "edf", None),
+        "basis_columns": getattr(smooth, "basis_columns", None),
+        "knots": np.asarray(knots, dtype=np.float64) if knots is not None else None,
+        "degree": getattr(smooth, "degree", None),
+        "order": getattr(smooth, "order", None),
+    }
+
+
+def _smooth_entries_for_parameter(smooth_infos: Any, param: str) -> list[dict[str, Any]]:
+    """Return smooth entries for live SmoothDesignInfo or JSON metadata."""
+
+    if not isinstance(smooth_infos, dict):
+        return []
+    param_info = smooth_infos.get(param)
+    if param_info is None:
+        return []
+    if isinstance(param_info, list):
+        return [_jsonish_smooth_entry(item) for item in param_info]
+    smooth_fits = getattr(param_info, "smooth_fits", None)
+    if smooth_fits is not None:
+        return [_jsonish_smooth_entry(item) for item in smooth_fits]
+    if isinstance(param_info, dict):
+        if any(key in param_info for key in ("variable", "var", "knots")):
+            return [_jsonish_smooth_entry(param_info)]
+        return [_jsonish_smooth_entry(item) for item in param_info.values()]
+    return []
+
+
+def _split_top_level_csv(text: str) -> list[str]:
+    """Split comma-separated arguments without splitting nested calls."""
+
+    parts: list[str] = []
+    current: list[str] = []
+    depth = 0
+    for ch in text:
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        if ch == "," and depth == 0:
+            part = "".join(current).strip()
+            if part:
+                parts.append(part)
+            current = []
+        else:
+            current.append(ch)
+    part = "".join(current).strip()
+    if part:
+        parts.append(part)
+    return parts
+
+
 def predict_params(
     model: Any, newdata: Dict[str, np.ndarray], which: Optional[List[str]] = None
 ) -> Dict[str, np.ndarray]:
@@ -111,7 +175,7 @@ def _build_design_matrix_for_prediction(
 
     additional_slots = getattr(model, "additional_slots", {}) or {}
     smooth_infos = additional_slots.get("smooth_infos", {})
-    param_smooth_info = smooth_infos.get(param)
+    param_smooth_entries = _smooth_entries_for_parameter(smooth_infos, param)
     schema = ensure_model_design_schema(model)
     design_schema = (schema.get("parameters", {}) or {}).get(param, {})
     formula = design_schema.get("formula") or model.formulas.get(param, "")
@@ -157,15 +221,13 @@ def _build_design_matrix_for_prediction(
         smooth_match = re.match(r"^(\w+)\((.+)\)$", term_str, re.DOTALL)
         if smooth_match and smooth_match.group(1) in smooth_funcs:
             inner = smooth_match.group(2)
-            var_name = inner.split(",")[0].strip()
+            args = _split_top_level_csv(inner)
+            var_name = args[0].strip() if args else ""
             smooth_info_for_var = None
-            if param_smooth_info and isinstance(param_smooth_info, list):
-                for si in param_smooth_info:
-                    if si.get("variable") == var_name or si.get("var") == var_name:
-                        smooth_info_for_var = si
-                        break
-            elif param_smooth_info and isinstance(param_smooth_info, dict):
-                smooth_info_for_var = param_smooth_info.get(var_name)
+            for si in param_smooth_entries:
+                if si.get("variable") == var_name or si.get("var") == var_name:
+                    smooth_info_for_var = si
+                    break
 
             if smooth_info_for_var is None:
                 raise PredictionSchemaError(
@@ -176,7 +238,13 @@ def _build_design_matrix_for_prediction(
                     f"Missing variable {var_name!r} required by smooth term {term_str!r}"
                 )
 
-            smoother_type = smooth_info_for_var.get("smoother", "pb")
+            smoother_type = (
+                smooth_info_for_var.get("basis_smoother")
+                or smooth_info_for_var.get("smoother")
+                or "pb"
+            )
+            if smoother_type == "s":
+                smoother_type = "pb"
             if smoother_type not in {"pb", "ps"}:
                 raise PredictionSchemaError(
                     f"Prediction for smoother {smoother_type!r} is not schema-safe yet"
@@ -185,8 +253,10 @@ def _build_design_matrix_for_prediction(
                 from .smoothers.bsplines import bspline_basis
 
                 x_new = np.asarray(newdata[var_name], dtype=np.float64)
-                knots = np.asarray(smooth_info_for_var["knots"])
-                degree = int(smooth_info_for_var.get("degree", 3))
+                if smooth_info_for_var.get("knots") is None:
+                    raise ValueError("smooth metadata does not include knots")
+                knots = np.asarray(smooth_info_for_var["knots"], dtype=np.float64)
+                degree = int(smooth_info_for_var.get("degree") or 3)
                 basis_new = np.array(
                     bspline_basis(jnp.array(x_new), jnp.array(knots), degree=degree)
                 )

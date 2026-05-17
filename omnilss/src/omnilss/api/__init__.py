@@ -1,3 +1,5 @@
 """Public API adapters kept separate from core numerical infrastructure."""
 
-__all__: list[str] = []
+from .http import serve as serve_http
+
+__all__ = ["serve_http"]

@@ -28,6 +28,7 @@ from ..model import GAMLSSModel
 from ..numerical_stability import sanitize_gradient, step_halving
 from ..tensor_protocol import validate_design_matrix, validate_vector
 from ..diagnostic_warnings import evaluate_numerical_warnings
+from ._model_metrics import df_fit_with_smooth_edf
 
 
 class ConvergenceWarning(UserWarning):
@@ -266,7 +267,10 @@ def rs_step(
     param_dict = {"y": y, parameter: fitted_values}
     param_dict.update(other_parameters)
 
-    first_deriv = np.asarray(sanitize_gradient(jnp.asarray(dldp(**param_dict), dtype=jnp.float64)), dtype=np.float64)
+    first_deriv = np.asarray(
+        sanitize_gradient(jnp.asarray(dldp(**param_dict), dtype=jnp.float64)),
+        dtype=np.float64,
+    )
     second_deriv = np.asarray(d2ldp2(**param_dict), dtype=np.float64)
 
     # Compute link derivative (dη/dμ) using analytical formula
@@ -337,7 +341,9 @@ def rs_step(
             sqrt_W = np.sqrt(W)
             WX_np = X * sqrt_W[:, None]
             gram = WX_np.T @ WX_np
-            last_condition_number = float(np.linalg.cond(gram)) if gram.size else float("nan")
+            last_condition_number = (
+                float(np.linalg.cond(gram)) if gram.size else float("nan")
+            )
             WX = jnp.asarray(WX_np, dtype=jnp.float64)
             Wy = jnp.asarray(working_response * sqrt_W, dtype=jnp.float64)
 
@@ -370,7 +376,10 @@ def rs_step(
         # Auto step-halving if deviance increases
         if auto_step and deviance > old_deviance and iteration >= 1:
             for _ in range(5):
-                eta = np.asarray(step_halving(jnp.asarray(eta_old), jnp.asarray(eta), factor=0.5), dtype=np.float64)
+                eta = np.asarray(
+                    step_halving(jnp.asarray(eta_old), jnp.asarray(eta), factor=0.5),
+                    dtype=np.float64,
+                )
                 step_halving_count += 1
                 fitted_values = np.asarray(
                     link_inv(jnp.asarray(eta, dtype=jnp.float64)), dtype=np.float64
@@ -399,7 +408,10 @@ def rs_step(
         param_dict = {"y": y, parameter: fitted_values}
         param_dict.update(other_parameters)
 
-        first_deriv = np.asarray(sanitize_gradient(jnp.asarray(dldp(**param_dict), dtype=jnp.float64)), dtype=np.float64)
+        first_deriv = np.asarray(
+            sanitize_gradient(jnp.asarray(dldp(**param_dict), dtype=jnp.float64)),
+            dtype=np.float64,
+        )
         second_deriv = np.asarray(d2ldp2(**param_dict), dtype=np.float64)
 
         # Recompute link derivative
@@ -750,10 +762,15 @@ def rs_fit(
     deviance_history = [float(g_dev)]
     lambda_update_warnings: list[str] = []
     lambda_update_failed_params: set[str] = set()
-    rs_step_halving_by_param: dict[str, int] = {p: 0 for p in family.estimable_parameters}
-    rs_last_condition_number_by_param: dict[str, float] = {p: float("nan") for p in family.estimable_parameters}
-    rs_last_gradient_norm_by_param: dict[str, float] = {p: float("nan") for p in family.estimable_parameters}
-
+    rs_step_halving_by_param: dict[str, int] = {
+        p: 0 for p in family.estimable_parameters
+    }
+    rs_last_condition_number_by_param: dict[str, float] = {
+        p: float("nan") for p in family.estimable_parameters
+    }
+    rs_last_gradient_norm_by_param: dict[str, float] = {
+        p: float("nan") for p in family.estimable_parameters
+    }
 
     while abs(g_dev_old - g_dev) > tol and iteration < max_iter:
         iteration += 1
@@ -795,8 +812,12 @@ def rs_fit(
             last_working_weights[parameter] = result.working_weights
             last_working_response[parameter] = result.working_response
 
-            rs_step_halving_by_param[parameter] = rs_step_halving_by_param.get(parameter, 0) + int(result.step_halving_count)
-            rs_last_condition_number_by_param[parameter] = float(result.last_condition_number)
+            rs_step_halving_by_param[parameter] = rs_step_halving_by_param.get(
+                parameter, 0
+            ) + int(result.step_halving_count)
+            rs_last_condition_number_by_param[parameter] = float(
+                result.last_condition_number
+            )
             rs_last_gradient_norm_by_param[parameter] = float(result.last_gradient_norm)
 
             # Update parameter values
@@ -849,7 +870,9 @@ def rs_fit(
                 z_k = last_working_response.get(param_k, np.zeros(n))
 
                 try:
-                    old_lambdas = [float(sf.lambda_) for sf in smooth_design.smooth_fits]
+                    old_lambdas = [
+                        float(sf.lambda_) for sf in smooth_design.smooth_fits
+                    ]
                     updated_fits = update_smooth_lambdas(
                         X=X_k,
                         y=z_k,  # IRLS 工作响应
@@ -867,7 +890,9 @@ def rs_fit(
                     )
                     if verbose:
                         new_lambdas = [float(sf.lambda_) for sf in updated_fits]
-                        print(f"  lambda update ({param_k}): {old_lambdas} -> {new_lambdas}")
+                        print(
+                            f"  lambda update ({param_k}): {old_lambdas} -> {new_lambdas}"
+                        )
                 except Exception as e:
                     msg = (
                         f"Lambda update failed for parameter '{param_k}': {e}. "
@@ -960,19 +985,35 @@ def rs_fit(
         iterative_weights_jax[parameter] = jnp.ones(n, dtype=jnp.float64)
         offsets_jax[parameter] = jnp.zeros(n, dtype=jnp.float64)
 
-    df_fit_val = float(
-        sum(
-            len(np.asarray(coefficients.get(p, [0])))
-            for p in family.estimable_parameters
-        )
+    # Compute df_fit using effective degrees of freedom for smooth terms.
+    # Counting all smooth basis coefficients as ordinary parameters overstates
+    # model complexity after penalization and corrupts AIC/SBC.
+    df_fit_val, smooth_edf = df_fit_with_smooth_edf(
+        coefficients=coefficients,
+        estimable_parameters=family.estimable_parameters,
+        design_matrices=design_matrices,
+        weights=w,
+        smooth_infos=smooth_infos,
     )
 
-    _cond_vals = np.asarray(list(rs_last_condition_number_by_param.values()), dtype=np.float64)
-    _grad_vals = np.asarray(list(rs_last_gradient_norm_by_param.values()), dtype=np.float64)
+    _cond_vals = np.asarray(
+        list(rs_last_condition_number_by_param.values()), dtype=np.float64
+    )
+    _grad_vals = np.asarray(
+        list(rs_last_gradient_norm_by_param.values()), dtype=np.float64
+    )
 
     _phase1_slots_seed = {
-        "gradient_norm": (float(np.nanmax(_grad_vals)) if (_grad_vals.size and np.isfinite(_grad_vals).any()) else float("nan")),
-        "condition_number": (float(np.nanmax(_cond_vals)) if (_cond_vals.size and np.isfinite(_cond_vals).any()) else float("nan")),
+        "gradient_norm": (
+            float(np.nanmax(_grad_vals))
+            if (_grad_vals.size and np.isfinite(_grad_vals).any())
+            else float("nan")
+        ),
+        "condition_number": (
+            float(np.nanmax(_cond_vals))
+            if (_cond_vals.size and np.isfinite(_cond_vals).any())
+            else float("nan")
+        ),
         "step_size_by_param": dict(step_sizes),
         "lambda_update_failed_params": tuple(sorted(lambda_update_failed_params)),
     }
@@ -1011,6 +1052,7 @@ def rs_fit(
             "method": "RS",
             # 存储平滑项信息（knots/degree 等），供预测时重建基矩阵使用
             "smooth_infos": smooth_infos,
+            "smooth_edf": smooth_edf,
             "rs_iterations": iteration,
             "rs_converged": converged,
             "step_sizes": step_sizes,
@@ -1028,12 +1070,16 @@ def rs_fit(
             "lambda_update_warnings": tuple(lambda_update_warnings),
             "lambda_update_failed_params": tuple(sorted(lambda_update_failed_params)),
             "rs_step_halving_by_param": dict(rs_step_halving_by_param),
-            "rs_last_condition_number_by_param": dict(rs_last_condition_number_by_param),
+            "rs_last_condition_number_by_param": dict(
+                rs_last_condition_number_by_param
+            ),
             "rs_last_gradient_norm_by_param": dict(rs_last_gradient_norm_by_param),
             "step_size_by_param": dict(step_sizes),
             "condition_number": _phase1_slots_seed["condition_number"],
             "gradient_norm": _phase1_slots_seed["gradient_norm"],
-            "phase1_warning_events": tuple((e.code, e.level, e.message) for e in _warning_events),
+            "phase1_warning_events": tuple(
+                (e.code, e.level, e.message) for e in _warning_events
+            ),
         },
     )
 

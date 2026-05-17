@@ -129,6 +129,46 @@ def _factor_levels(
     return levels
 
 
+def _smooth_basis_metadata(
+    parameter: str, smooth_infos: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    """Return compact smooth basis metadata for a schema parameter."""
+
+    info = smooth_infos.get(parameter) if isinstance(smooth_infos, Mapping) else None
+    smooth_fits = getattr(info, "smooth_fits", None)
+    if smooth_fits is None and isinstance(info, list):
+        smooth_fits = info
+    if not smooth_fits:
+        return []
+
+    entries: list[dict[str, Any]] = []
+    for smooth in smooth_fits:
+        if isinstance(smooth, Mapping):
+            entries.append(dict(smooth))
+            continue
+        knots = getattr(smooth, "knots", None)
+        entries.append(
+            {
+                "term_index": int(getattr(smooth, "term_index", -1)),
+                "variable": str(getattr(smooth, "variable", "")),
+                "smoother": str(getattr(smooth, "smoother", "")),
+                "basis_smoother": str(
+                    getattr(smooth, "basis_smoother", None)
+                    or getattr(smooth, "smoother", "")
+                ),
+                "basis_columns": list(getattr(smooth, "basis_columns", (0, 0))),
+                "knots": (
+                    np.asarray(knots, dtype=np.float64).tolist()
+                    if knots is not None and np.asarray(knots).size > 0
+                    else None
+                ),
+                "degree": getattr(smooth, "degree", None),
+                "order": getattr(smooth, "order", None),
+            }
+        )
+    return entries
+
+
 def build_design_matrix_schema(model: Any) -> dict[str, Any]:
     """Build a serializable schema for every model parameter design matrix."""
 
@@ -142,6 +182,9 @@ def build_design_matrix_schema(model: Any) -> dict[str, Any]:
     design_matrices = dict(getattr(model, "design_matrices", {}) or {})
     coefficients = dict(getattr(model, "coefficients", {}) or {})
     data = _training_data(model)
+    smooth_infos = dict(getattr(model, "additional_slots", {}) or {}).get(
+        "smooth_infos", {}
+    )
 
     for parameter in getattr(model, "parameters", ()):
         term_info = terms.get(parameter, {}) or {}
@@ -179,6 +222,7 @@ def build_design_matrix_schema(model: Any) -> dict[str, Any]:
                 and term.split("(", 1)[0] in {"pb", "ps", "cs", "s", "lo", "te", "ti"}
                 for term in term_order
             ),
+            "smooth_basis_metadata": _smooth_basis_metadata(parameter, smooth_infos),
             "n_columns": n_columns,
             "coefficient_count": coefficient_count,
             "training_column_checksum": _checksum(column_names),
@@ -192,7 +236,15 @@ def ensure_model_design_schema(model: Any) -> dict[str, Any]:
     slots = dict(getattr(model, "additional_slots", {}) or {})
     existing = slots.get("design_matrix_schema")
     if isinstance(existing, Mapping) and existing.get("parameters"):
-        return dict(existing)
+        parameters = existing.get("parameters", {}) or {}
+        needs_smooth_enrichment = any(
+            param_schema.get("smooth_metadata_required")
+            and "smooth_basis_metadata" not in param_schema
+            for param_schema in parameters.values()
+            if isinstance(param_schema, Mapping)
+        )
+        if not needs_smooth_enrichment:
+            return dict(existing)
     schema = build_design_matrix_schema(model)
     try:
         model.additional_slots = {**slots, "design_matrix_schema": schema}
