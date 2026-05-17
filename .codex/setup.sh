@@ -120,7 +120,7 @@ def has_module(name):
     except ModuleNotFoundError:
         return False
 
-for mod in ["grpc", "google.protobuf", "grpc_tools", "build", "jax", "flax", "sklearn", "scoringrules"]:
+for mod in ["grpc", "google.protobuf", "grpc_tools", "build", "twine", "jax", "flax", "optax", "sklearn", "scoringrules", "mkdocs"]:
     print(f"{mod}: {'ok' if has_module(mod) else 'missing'}")
 PY
 

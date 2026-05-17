@@ -58,6 +58,31 @@ RUN mkdir -p "${OMNILSS_WHEELHOUSE}" && \
 RUN mkdir -p "${RENV_PATHS_CACHE}" && \
     R -e "options(repos=c(CRAN='https://cloud.r-project.org')); install.packages(c('renv','gamlss','gamlss.dist','jsonlite','languageserver'), Ncpus=max(1, parallel::detectCores()-1))"
 
+# Fail the image build if a required offline-development dependency was not
+# installed into the venv or R library during the online build phase.
+RUN python - <<'PY'
+import importlib.util
+required = [
+    "build",
+    "twine",
+    "jax",
+    "flax",
+    "optax",
+    "sklearn",
+    "scoringrules",
+    "grpc",
+    "grpc_tools",
+    "google.protobuf",
+    "mkdocs",
+]
+missing = [name for name in required if importlib.util.find_spec(name) is None]
+if missing:
+    raise SystemExit(f"missing Python modules in offline image: {missing}")
+print("Python offline dependency inventory: ok")
+PY
+
+RUN Rscript -e "missing <- setdiff(c('renv','gamlss','gamlss.dist','jsonlite','languageserver'), rownames(installed.packages())); if (length(missing)) stop(paste('missing R packages in offline image:', paste(missing, collapse=', '))); cat('R offline dependency inventory: ok\n')"
+
 WORKDIR /workspace/OmniLSS
 
 CMD ["bash"]

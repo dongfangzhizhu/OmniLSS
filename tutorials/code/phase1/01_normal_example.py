@@ -5,20 +5,57 @@ Tutorial 01: Normal Distributions (NO, NO2, LOGNO, LOGNO2)
 这个脚本包含了教程中所有的示例代码，可以直接运行。
 """
 
+import sys
+from pathlib import Path
+
+import jax
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import jax.numpy as jnp
-import sys
-sys.path.insert(0, '../../../omnilss/src')
 
-import omnilss as om
-from omnilss import NO, LOGNO
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "omnilss" / "src"))
+jax.config.update("jax_enable_x64", True)
+
+from omnilss import LOGNO, NO, gamlss  # noqa: E402
 
 # 设置绘图样式
 plt.style.use('seaborn-v0_8-darkgrid')
 plt.rcParams['figure.figsize'] = (10, 6)
 plt.rcParams['font.size'] = 10
+
+
+def _data_dict(df: pd.DataFrame) -> dict[str, np.ndarray]:
+    """Convert tutorial DataFrames to the dict format used by current OmniLSS."""
+    return {column: df[column].to_numpy() for column in df.columns}
+
+
+def _fitted(model, parameter: str = "mu") -> np.ndarray:
+    """Return fitted values for one distribution parameter."""
+    return np.asarray(model.fitted_values[parameter], dtype=np.float64)
+
+
+def _coef(model, parameter: str = "mu") -> np.ndarray:
+    """Return coefficient vector for one distribution parameter."""
+    return np.asarray(model.coefficients[parameter], dtype=np.float64)
+
+
+def _aic(model) -> float:
+    """Return AIC from the current model diagnostics slot."""
+    return float(model.additional_slots["aic"])
+
+
+def _print_model(model) -> None:
+    """Print a compact summary using current GAMLSSModel fields."""
+    print(f"Family: {model.family.name}")
+    print(f"Global deviance: {model.g_dev:.4f}")
+    print(f"AIC: {_aic(model):.2f}")
+    for parameter, beta in model.coefficients.items():
+        print(f"{parameter} coefficients: {np.asarray(beta)}")
+
+
+def _predict_param(model, newdata: pd.DataFrame, parameter: str) -> np.ndarray:
+    """Predict one distribution parameter for new data."""
+    return np.asarray(model.predict_params(_data_dict(newdata))[parameter])
 
 
 def example1_simple_linear():
@@ -46,20 +83,20 @@ def example1_simple_linear():
     
     # 拟合模型
     print("\n拟合模型...")
-    model = jg.gamlss(
+    model = gamlss(
         formula="y ~ x",
         sigma_formula="~ x",
         family=NO(),
-        data=data
+        data=_data_dict(data)
     )
     
     # 查看结果
     print("\n模型摘要:")
-    print(model.summary())
+    _print_model(model)
     
-    print(f"\nMu 系数: {model.coef_mu}")
-    print(f"Sigma 系数: {model.coef_sigma}")
-    print(f"AIC: {model.aic:.2f}")
+    print(f"\nMu 系数: {_coef(model, 'mu')}")
+    print(f"Sigma 系数: {_coef(model, 'sigma')}")
+    print(f"AIC: {_aic(model):.2f}")
     
     # 可视化
     plt.figure(figsize=(12, 5))
@@ -67,7 +104,7 @@ def example1_simple_linear():
     # 左图：数据和拟合线
     plt.subplot(1, 2, 1)
     plt.scatter(data['x'], data['y'], alpha=0.5, label='Observed')
-    plt.plot(data['x'], model.fitted_values, 'r-', linewidth=2, label='Fitted')
+    plt.plot(data['x'], _fitted(model), 'r-', linewidth=2, label='Fitted')
     plt.xlabel('x')
     plt.ylabel('y')
     plt.title('Data and Fitted Values')
@@ -76,8 +113,8 @@ def example1_simple_linear():
     
     # 右图：残差
     plt.subplot(1, 2, 2)
-    residuals = data['y'] - model.fitted_values
-    plt.scatter(model.fitted_values, residuals, alpha=0.5)
+    residuals = data['y'] - _fitted(model)
+    plt.scatter(_fitted(model), residuals, alpha=0.5)
     plt.axhline(y=0, color='r', linestyle='--')
     plt.xlabel('Fitted values')
     plt.ylabel('Residuals')
@@ -117,18 +154,18 @@ def example2_lognormal():
     
     # 拟合模型
     print("\n拟合 LOGNO 模型...")
-    model = jg.gamlss(
+    model = gamlss(
         formula="y ~ x",
         family=LOGNO(),
-        data=data
+        data=_data_dict(data)
     )
     
     print("\n模型摘要:")
-    print(model.summary())
+    _print_model(model)
     
-    print(f"\nMu 系数: {model.coef_mu}")
-    print(f"Sigma 系数: {model.coef_sigma}")
-    print(f"AIC: {model.aic:.2f}")
+    print(f"\nMu 系数: {_coef(model, 'mu')}")
+    print(f"Sigma 系数: {_coef(model, 'sigma')}")
+    print(f"AIC: {_aic(model):.2f}")
     
     # 可视化
     plt.figure(figsize=(12, 5))
@@ -140,7 +177,7 @@ def example2_lognormal():
     # 预测曲线
     x_pred = np.linspace(0, 5, 100)
     data_pred = pd.DataFrame({'x': x_pred})
-    y_pred = model.predict(data_pred, what='mu')
+    y_pred = _predict_param(model, data_pred, "mu")
     plt.plot(x_pred, y_pred, 'r-', linewidth=2, label='Fitted')
     
     plt.xlabel('x')
@@ -197,27 +234,27 @@ def example3_height_data():
     
     # 模型 1: 简单线性模型
     print("\n拟合模型 1: 线性模型...")
-    model1 = jg.gamlss(
+    model1 = gamlss(
         formula="height ~ age",
         family=NO(),
-        data=data
+        data=_data_dict(data)
     )
     
-    print(f"模型 1 AIC: {model1.aic:.2f}")
+    print(f"模型 1 AIC: {_aic(model1):.2f}")
     
     # 模型 2: 二次模型
     print("\n拟合模型 2: 二次模型...")
     data['age2'] = data['age'] ** 2
     
-    model2 = jg.gamlss(
+    model2 = gamlss(
         formula="height ~ age + age2",
         sigma_formula="~ age",
         family=NO(),
-        data=data
+        data=_data_dict(data)
     )
     
-    print(f"模型 2 AIC: {model2.aic:.2f}")
-    print(f"\nAIC 改进: {model1.aic - model2.aic:.2f}")
+    print(f"模型 2 AIC: {_aic(model2):.2f}")
+    print(f"\nAIC 改进: {_aic(model1) - _aic(model2):.2f}")
     
     # 可视化
     plt.figure(figsize=(14, 6))
@@ -235,11 +272,11 @@ def example3_height_data():
     
     # 模型 1 预测
     data_pred1 = pd.DataFrame({'age': age_pred})
-    pred1 = model1.predict(data_pred1, what='mu')
+    pred1 = _predict_param(model1, data_pred1, "mu")
     plt.plot(age_pred, pred1, 'g--', linewidth=2, label='Model 1 (Linear)')
     
     # 模型 2 预测
-    pred2_mu = model2.predict(data_pred, what='mu')
+    pred2_mu = _predict_param(model2, data_pred, "mu")
     plt.plot(age_pred, pred2_mu, 'r-', linewidth=2, label='Model 2 (Quadratic)')
     
     plt.xlabel('Age (years)', fontsize=12)
@@ -252,7 +289,7 @@ def example3_height_data():
     plt.subplot(1, 2, 2)
     plt.scatter(data['age'], data['height'], alpha=0.3, s=20, label='Observed')
     
-    pred2_sigma = model2.predict(data_pred, what='sigma')
+    pred2_sigma = _predict_param(model2, data_pred, "sigma")
     
     plt.plot(age_pred, pred2_mu, 'r-', linewidth=2, label='Predicted mean')
     plt.fill_between(age_pred,
@@ -300,7 +337,7 @@ def benchmark_performance():
         times = []
         for _ in range(3):  # 重复 3 次
             start = time.time()
-            model = jg.gamlss(formula="y ~ x", family=NO(), data=data)
+            _ = gamlss(formula="y ~ x", family=NO(), data=_data_dict(data))
             times.append(time.time() - start)
         
         mean_time = np.mean(times)
@@ -357,7 +394,7 @@ def main():
         model1, data1 = example1_simple_linear()
         model2, data2 = example2_lognormal()
         model_h1, model_h2, data_h = example3_height_data()
-        results = benchmark_performance()
+        _results = benchmark_performance()
         
         print("\n" + "=" * 60)
         print("所有示例运行完成！")
