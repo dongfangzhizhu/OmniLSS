@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- 完成 CG full-Hessian correctness backend 的交叉导数实现闭环，并将 `CG_IRLS_CROSS` 推进为显式可选实验后端：新增 eta-scale derivative kernel、observed-information block extraction helpers、CG backend diagnostics、IRLS-cross global line search 与回归测试，确保 `method="CG"` 可审计地使用 cross-derivative 信息而不是静默退化为 RS。
+- 完成 CG full-Hessian correctness backend 的交叉导数实现闭环，并将 `CG_IRLS_CROSS` 推进为显式可选实验后端：新增 eta-scale derivative kernel、observed-information block extraction helpers、CG backend diagnostics、IRLS-cross global line search 与回归测试、验证矩阵与 smoke/reference artifact，确保 `method="CG"` 可审计地使用 cross-derivative 信息而不是静默退化为 RS。
 
 ### Changed
 - 离线开发环境构建文档与 devcontainer bootstrap 补充一次性 build-time 依赖清单、镜像构建期依赖校验、发布/架构/R/gRPC 验证命令和维护规则，避免后续离线会话因缺少 `optax`、`build`、`twine`、R 包或 protobuf tooling 阻塞开发。

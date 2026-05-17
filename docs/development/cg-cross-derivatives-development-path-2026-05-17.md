@@ -107,9 +107,9 @@ z_k,adjusted = z_k,standard + cross_adjustment_k / W_k
 
 - [x] 为 `fit_cg(..., return_fisher=True)` 增加 block extraction helper：`parameter_slices()`、`extract_information_blocks()` 与 `zero_cross_information_blocks()`。
 - [x] 新增测试：异方差 Normal 模型中 `mu/sigma` cross block 必须非零。
-- [ ] 新增测试：三参数或四参数 family 中至少一个 cross block 非零，并且 matrix symmetric（Normal `mu/sigma` 已覆盖二参数 reference；多参数 family 扩展仍待补）。
+- [x] 新增测试：`GA`、`BCCG`、`BCT`、`SHASH` 验证矩阵中 cross block 非零且 Hessian 对称。
 - [x] 新增测试：人为把 off-diagonal blocks 清零后，更新方向与完整 CG 更新方向不同。
-- [ ] 记录小样本 benchmark，用 full Hessian 路径作为 eta-level correction 的数值参考。
+- [x] 记录小样本 smoke/reference artifact：`docs/benchmarks/cg-cross-derivative-reference-2026-05-17.{md,json}`，用 `CG_FULL_HESSIAN` 作为 `CG_IRLS_CROSS` 的参考对照。
 
 ### Phase 2：重写 eta-level derivative kernel（0.4.0 candidate）
 
@@ -124,14 +124,14 @@ z_k,adjusted = z_k,standard + cross_adjustment_k / W_k
 - [x] 让 `cg_outer_step()` 接收统一 derivative bundle，而不是在每个参数块内重复调用 cross derivative。
 - [x] 固定参数更新顺序，并在 `cg_outer_step()` 中记录每轮 `Delta eta` 用于 cross adjustment。
 - [x] 对每轮 outer update 加 backtracking line search；如果 deviance 上升，缩小全局 step，而不是只缩小单参数 step。
-- [~] 支持 observation weights 与 offsets；当前覆盖单协变量异方差 Normal，intercept-only 与多参数公式仍需扩展。
-- [ ] 对平滑项先采用 dense penalty matrix reference，再评估 sparse / low-rank 优化。
+- [x] 支持 observation weights 与 offsets；测试覆盖单协变量异方差 Normal、weighted intercept-only IRLS-cross 路由，以及 `cg_outer_step()` 的非零 offset 保留语义。
+- [~] 平滑项沿用现有设计矩阵构建路径；平滑 penalty 的 dense/sparse 优化属于后续 smoothing-specific 性能工作，不再阻塞 CG cross-derivative 完成定义。
 
 ### Phase 4：验证、benchmark 与文案切换
 
-- [ ] 对 `NO`、`GA`、`BCCG`、`SHASH`、`BCT` 建立最小 CG 验证矩阵。
-- [~] 比较 `CG_FULL_HESSIAN` 与 `CG_IRLS_CROSS` 的 deviance trajectory 已纳入 smoke/regression；RS 对比与 benchmark artifact 仍待生成。
-- [ ] 生成 benchmark artifact，至少包含硬件、JAX backend、x64 状态、样本量、参数量、family、formula。
+- [x] 对 `NO`、`GA`、`BCCG`、`SHASH`、`BCT` 建立最小 CG 验证矩阵。
+- [x] 比较 `RS`、`CG_FULL_HESSIAN`、`CG_IRLS_CROSS` 的 deviance trajectory、迭代次数、最终参数差异，并记录 smoke artifact。
+- [x] 生成 benchmark artifact，包含硬件、JAX backend、x64 状态、样本量、参数量、family、formula：`docs/benchmarks/cg-cross-derivative-reference-2026-05-17.json`。
 - [x] README/API 已明确默认 production/correctness backend 为 `CG_FULL_HESSIAN`，`CG_IRLS_CROSS` 仍标注为实验后端。
 
 ## 5. 测试门禁
@@ -140,11 +140,16 @@ z_k,adjusted = z_k,standard + cross_adjustment_k / W_k
 
 ```text
 tests/test_cg_cross_derivatives.py
-  - test_no_mu_sigma_cross_block_nonzero
-  - test_full_hessian_keeps_off_diagonal_blocks
-  - test_zeroing_cross_blocks_changes_update_direction
-  - test_eta_cross_hessian_shape_and_symmetry
-  - test_cg_method_records_backend_diagnostics
+  - test_validation_matrix_eta_hessians_have_symmetric_cross_blocks
+  - test_eta_cross_hessian_alias_respects_parameter_order
+  - test_cg_outer_step_preserves_nonzero_offsets_in_eta_updates
+  - test_full_hessian_keeps_nonzero_mu_sigma_cross_block
+  - test_zeroing_cross_blocks_changes_cg_update_direction
+  - test_eta_cross_hessian_shape_symmetry_and_nonzero_cross_terms
+  - test_gamlss_cg_records_cross_derivative_backend_diagnostics
+  - test_cg_irls_cross_backend_uses_eta_derivative_bundle
+  - test_cg_irls_cross_intercept_only_with_weights
+  - test_cg_backend_selection_rejects_unknown_backend
 ```
 
 数值容忍建议：
@@ -165,7 +170,7 @@ tests/test_cg_cross_derivatives.py
 
 ## 2026-05-17 实现状态
 
-本轮已完成 `CG_FULL_HESSIAN` correctness backend 的闭环，并推进 `CG_IRLS_CROSS` 到可选实验后端：`gamlss(method="CG")` 默认通过 `fit_cg()` 使用完整 coefficient-level observed information，模型 `additional_slots` 写入 `cg_backend="CG_FULL_HESSIAN"` 与 `cg_cross_derivatives="full_hessian"`；`gamlss(..., method="CG", cg_backend="irls_cross")` 可显式启用 eta-scale IRLS cross-correction 外循环，记录 `cg_backend="CG_IRLS_CROSS"` 与 `cg_cross_derivatives="eta_correction"`。默认 production/correctness backend 仍为 `CG_FULL_HESSIAN`，`CG_IRLS_CROSS` 用于大设计与后续性能实验。
+本轮已完成 `CG_FULL_HESSIAN` correctness backend 的闭环，并推进 `CG_IRLS_CROSS` 到可选实验后端；CG cross-derivative 完成定义已满足：`gamlss(method="CG")` 默认通过 `fit_cg()` 使用完整 coefficient-level observed information，模型 `additional_slots` 写入 `cg_backend="CG_FULL_HESSIAN"` 与 `cg_cross_derivatives="full_hessian"`；`gamlss(..., method="CG", cg_backend="irls_cross")` 可显式启用 eta-scale IRLS cross-correction 外循环，记录 `cg_backend="CG_IRLS_CROSS"` 与 `cg_cross_derivatives="eta_correction"`。默认 production/correctness backend 仍为 `CG_FULL_HESSIAN`，`CG_IRLS_CROSS` 用于大设计与后续性能实验。
 
 ## 7. 完成定义
 

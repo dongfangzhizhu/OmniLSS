@@ -1,0 +1,85 @@
+{
+  "artifact": "cg-cross-derivative-reference-2026-05-17",
+  "purpose": "small deterministic smoke/reference comparison; not a performance claim",
+  "environment": {
+    "python": "3.14.4",
+    "platform": "Linux-6.12.47-x86_64-with-glibc2.39",
+    "jax_version": "0.10.0",
+    "jax_enable_x64": true,
+    "jax_devices": [
+      "cpu:0"
+    ]
+  },
+  "dataset": {
+    "family": "NO",
+    "n": 30,
+    "formula": "y ~ x",
+    "sigma_formula": "~ x",
+    "seed": "deterministic sin grid"
+  },
+  "control": {
+    "n_cyc": 8,
+    "c_crit": 0.0001
+  },
+  "results": [
+    {
+      "backend": "RS",
+      "elapsed_seconds": 1.2975281569997605,
+      "final_deviance": -56.81503040145987,
+      "iterations": 8,
+      "converged": false,
+      "deviance_history": [
+        -0.2796643640632235,
+        -1.654099230928518,
+        -4.819895012828224,
+        -8.73578596970391,
+        -13.726871346779557,
+        -20.314494629251325,
+        -29.24470023064332,
+        -41.3139676143317,
+        -56.81503040145987
+      ],
+      "cg_backend": null,
+      "cg_cross_derivatives": null
+    },
+    {
+      "backend": "CG_FULL_HESSIAN",
+      "elapsed_seconds": 7.897905580000042,
+      "final_deviance": -31.99417472344868,
+      "iterations": 8,
+      "converged": false,
+      "deviance_history": [
+        59.115754413219165,
+        4.610400350081207,
+        -15.782566919736615,
+        -22.976729767507308,
+        -26.36083190938045,
+        -28.568883889115018,
+        -30.403916637395444,
+        -31.99417472344868
+      ],
+      "cg_backend": "CG_FULL_HESSIAN",
+      "cg_cross_derivatives": "full_hessian"
+    },
+    {
+      "backend": "CG_IRLS_CROSS",
+      "elapsed_seconds": 4.1091254150005625,
+      "final_deviance": -49.176225786223014,
+      "iterations": 8,
+      "converged": false,
+      "deviance_history": [
+        -0.2796643640632235,
+        -1.6143278409455388,
+        -4.9532158871404945,
+        -8.645393640509395,
+        -13.299034479031679,
+        -19.25733939732093,
+        -27.011330061509177,
+        -36.98011251918726,
+        -49.176225786223014
+      ],
+      "cg_backend": "CG_IRLS_CROSS",
+      "cg_cross_derivatives": "eta_correction"
+    }
+  ]
+}
