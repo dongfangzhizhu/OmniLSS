@@ -20,4 +20,5 @@ This note records progress against Month 1 / Workstream D3: **RS/CG/JAX Capabili
 ## Remaining D3 Work
 
 - Expose the matrix through service endpoints for API clients.
+- Add a generated JSON artifact to release bundles and documentation builds.
 - Expand validation evidence until more core families can move from experimental to validated for specific routes.
