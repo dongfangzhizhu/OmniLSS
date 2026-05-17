@@ -18,7 +18,99 @@ import pandas as pd
 
 
 class PredictionSchemaError(ValueError):
-    """Raised when prediction data cannot reproduce the training design schema."""
+    """Structured failure when prediction data cannot reproduce saved schema."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        parameter: str | None = None,
+        term: str | None = None,
+        reason: str | None = None,
+        code: str = "prediction_schema_error",
+    ) -> None:
+        self.parameter = parameter
+        self.term = term
+        self.reason = reason or message
+        self.code = code
+        super().__init__(message)
+
+
+def _prediction_schema_error(
+    message: str,
+    *,
+    parameter: str | None = None,
+    term: str | None = None,
+    reason: str | None = None,
+    code: str = "prediction_schema_error",
+) -> PredictionSchemaError:
+    return PredictionSchemaError(
+        message, parameter=parameter, term=term, reason=reason, code=code
+    )
+
+
+def _jsonish_smooth_entry(smooth: Any) -> dict[str, Any]:
+    """Normalize fitted or serialized smooth metadata to a dict."""
+
+    if isinstance(smooth, dict):
+        return dict(smooth)
+    knots = getattr(smooth, "knots", None)
+    return {
+        "term_index": getattr(smooth, "term_index", None),
+        "variable": getattr(smooth, "variable", getattr(smooth, "var", None)),
+        "smoother": getattr(smooth, "smoother", None),
+        "basis_smoother": getattr(smooth, "basis_smoother", None),
+        "lambda_": getattr(smooth, "lambda_", None),
+        "edf": getattr(smooth, "edf", None),
+        "basis_columns": getattr(smooth, "basis_columns", None),
+        "knots": np.asarray(knots, dtype=np.float64) if knots is not None else None,
+        "degree": getattr(smooth, "degree", None),
+        "order": getattr(smooth, "order", None),
+    }
+
+
+def _smooth_entries_for_parameter(smooth_infos: Any, param: str) -> list[dict[str, Any]]:
+    """Return smooth entries for live SmoothDesignInfo or JSON metadata."""
+
+    if not isinstance(smooth_infos, dict):
+        return []
+    param_info = smooth_infos.get(param)
+    if param_info is None:
+        return []
+    if isinstance(param_info, list):
+        return [_jsonish_smooth_entry(item) for item in param_info]
+    smooth_fits = getattr(param_info, "smooth_fits", None)
+    if smooth_fits is not None:
+        return [_jsonish_smooth_entry(item) for item in smooth_fits]
+    if isinstance(param_info, dict):
+        if any(key in param_info for key in ("variable", "var", "knots")):
+            return [_jsonish_smooth_entry(param_info)]
+        return [_jsonish_smooth_entry(item) for item in param_info.values()]
+    return []
+
+
+def _split_top_level_csv(text: str) -> list[str]:
+    """Split comma-separated arguments without splitting nested calls."""
+
+    parts: list[str] = []
+    current: list[str] = []
+    depth = 0
+    for ch in text:
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        if ch == "," and depth == 0:
+            part = "".join(current).strip()
+            if part:
+                parts.append(part)
+            current = []
+        else:
+            current.append(ch)
+    part = "".join(current).strip()
+    if part:
+        parts.append(part)
+    return parts
 
 
 def predict_params(
@@ -105,19 +197,25 @@ def _build_design_matrix_for_prediction(
     else:
         n = int(getattr(model, "n", 0))
         if n <= 0:
-            raise PredictionSchemaError(
-                f"Cannot infer prediction row count for parameter {param!r}"
+            raise _prediction_schema_error(
+                f"Cannot infer prediction row count for parameter {param!r}",
+                parameter=param,
+                reason="row count cannot be inferred",
+                code="missing_prediction_row_count",
             )
 
     additional_slots = getattr(model, "additional_slots", {}) or {}
     smooth_infos = additional_slots.get("smooth_infos", {})
-    param_smooth_info = smooth_infos.get(param)
+    param_smooth_entries = _smooth_entries_for_parameter(smooth_infos, param)
     schema = ensure_model_design_schema(model)
     design_schema = (schema.get("parameters", {}) or {}).get(param, {})
     formula = design_schema.get("formula") or model.formulas.get(param, "")
     if not formula or "~" not in formula:
-        raise PredictionSchemaError(
-            f"Missing formula schema for parameter {param!r}; cannot build prediction matrix"
+        raise _prediction_schema_error(
+            f"Missing formula schema for parameter {param!r}; cannot build prediction matrix",
+            parameter=param,
+            reason="missing formula schema",
+            code="missing_formula_schema",
         )
 
     rhs = formula.split("~", 1)[1].strip()
@@ -157,42 +255,64 @@ def _build_design_matrix_for_prediction(
         smooth_match = re.match(r"^(\w+)\((.+)\)$", term_str, re.DOTALL)
         if smooth_match and smooth_match.group(1) in smooth_funcs:
             inner = smooth_match.group(2)
-            var_name = inner.split(",")[0].strip()
+            args = _split_top_level_csv(inner)
+            var_name = args[0].strip() if args else ""
             smooth_info_for_var = None
-            if param_smooth_info and isinstance(param_smooth_info, list):
-                for si in param_smooth_info:
-                    if si.get("variable") == var_name or si.get("var") == var_name:
-                        smooth_info_for_var = si
-                        break
-            elif param_smooth_info and isinstance(param_smooth_info, dict):
-                smooth_info_for_var = param_smooth_info.get(var_name)
+            for si in param_smooth_entries:
+                if si.get("variable") == var_name or si.get("var") == var_name:
+                    smooth_info_for_var = si
+                    break
 
             if smooth_info_for_var is None:
-                raise PredictionSchemaError(
-                    f"Missing smooth metadata for term {term_str!r} in parameter {param!r}"
+                raise _prediction_schema_error(
+                    f"Missing smooth metadata for term {term_str!r} in parameter {param!r}",
+                    parameter=param,
+                    term=term_str,
+                    reason="missing smooth metadata",
+                    code="missing_smooth_metadata",
                 )
             if var_name not in newdata:
-                raise PredictionSchemaError(
-                    f"Missing variable {var_name!r} required by smooth term {term_str!r}"
+                raise _prediction_schema_error(
+                    f"Missing variable {var_name!r} required by smooth term {term_str!r}",
+                    parameter=param,
+                    term=term_str,
+                    reason=f"missing variable {var_name!r}",
+                    code="missing_variable",
                 )
 
-            smoother_type = smooth_info_for_var.get("smoother", "pb")
+            smoother_type = (
+                smooth_info_for_var.get("basis_smoother")
+                or smooth_info_for_var.get("smoother")
+                or "pb"
+            )
+            if smoother_type == "s":
+                smoother_type = "pb"
             if smoother_type not in {"pb", "ps"}:
-                raise PredictionSchemaError(
-                    f"Prediction for smoother {smoother_type!r} is not schema-safe yet"
+                raise _prediction_schema_error(
+                    f"Prediction for smoother {smoother_type!r} is not schema-safe yet",
+                    parameter=param,
+                    term=term_str,
+                    reason="unsupported smoother",
+                    code="unsupported_smoother",
                 )
             try:
                 from .smoothers.bsplines import bspline_basis
 
                 x_new = np.asarray(newdata[var_name], dtype=np.float64)
-                knots = np.asarray(smooth_info_for_var["knots"])
-                degree = int(smooth_info_for_var.get("degree", 3))
+                if smooth_info_for_var.get("knots") is None:
+                    raise ValueError("smooth metadata does not include knots")
+                knots = np.asarray(smooth_info_for_var["knots"], dtype=np.float64)
+                degree = int(smooth_info_for_var.get("degree") or 3)
                 basis_new = np.array(
                     bspline_basis(jnp.array(x_new), jnp.array(knots), degree=degree)
                 )
             except Exception as exc:
-                raise PredictionSchemaError(
-                    f"Failed to rebuild smooth term {term_str!r}: {exc}"
+                raise _prediction_schema_error(
+                    f"Failed to rebuild smooth term {term_str!r}: {exc}",
+                    parameter=param,
+                    term=term_str,
+                    reason=str(exc),
+                    code="smooth_rebuild_failed",
                 ) from exc
             columns.append(basis_new)
         else:
@@ -201,22 +321,38 @@ def _build_design_matrix_for_prediction(
                 var_name = factor_match.group(1).strip()
                 factor_levels = design_schema.get("factor_levels", {}).get(var_name)
                 if not factor_levels:
-                    raise PredictionSchemaError(
-                        f"Missing factor levels for term {term_str!r} in parameter {param!r}"
+                    raise _prediction_schema_error(
+                        f"Missing factor levels for term {term_str!r} in parameter {param!r}",
+                        parameter=param,
+                        term=term_str,
+                        reason="missing factor levels",
+                        code="missing_factor_levels",
                     )
                 if var_name not in newdata:
-                    raise PredictionSchemaError(
-                        f"Missing variable {var_name!r} required by factor term {term_str!r}"
+                    raise _prediction_schema_error(
+                        f"Missing variable {var_name!r} required by factor term {term_str!r}",
+                        parameter=param,
+                        term=term_str,
+                        reason=f"missing variable {var_name!r}",
+                        code="missing_variable",
                     )
                 values = np.asarray(newdata[var_name])
                 if len(values) != n:
-                    raise PredictionSchemaError(
-                        f"Variable {var_name!r} has length {len(values)}, expected {n}"
+                    raise _prediction_schema_error(
+                        f"Variable {var_name!r} has length {len(values)}, expected {n}",
+                        parameter=param,
+                        term=term_str,
+                        reason="wrong variable length",
+                        code="wrong_variable_length",
                     )
                 unknown = sorted(set(values.tolist()) - set(factor_levels))
                 if unknown:
-                    raise PredictionSchemaError(
-                        f"Factor term {term_str!r} contains unseen levels {unknown!r}"
+                    raise _prediction_schema_error(
+                        f"Factor term {term_str!r} contains unseen levels {unknown!r}",
+                        parameter=param,
+                        term=term_str,
+                        reason=f"unseen factor levels {unknown!r}",
+                        code="unseen_factor_levels",
                     )
                 for level in factor_levels[1:]:
                     columns.append((values == level).astype(np.float64))
@@ -225,13 +361,20 @@ def _build_design_matrix_for_prediction(
             try:
                 columns.append(_eval_linear_term(term_str, newdata, n).reshape(-1))
             except Exception as exc:
-                raise PredictionSchemaError(
-                    f"Failed to evaluate prediction term {term_str!r}: {exc}"
+                raise _prediction_schema_error(
+                    f"Failed to evaluate prediction term {term_str!r}: {exc}",
+                    parameter=param,
+                    term=term_str,
+                    reason=str(exc),
+                    code="term_evaluation_failed",
                 ) from exc
 
     if not columns:
-        raise PredictionSchemaError(
-            f"Formula for parameter {param!r} produced no prediction columns"
+        raise _prediction_schema_error(
+            f"Formula for parameter {param!r} produced no prediction columns",
+            parameter=param,
+            reason="no prediction columns",
+            code="empty_prediction_design",
         )
 
     result_cols = []
@@ -239,37 +382,52 @@ def _build_design_matrix_for_prediction(
         arr = np.asarray(col, dtype=np.float64)
         if arr.ndim == 1:
             if len(arr) != n:
-                raise PredictionSchemaError(
-                    f"Prediction column for parameter {param!r} has length {len(arr)}, expected {n}"
+                raise _prediction_schema_error(
+                    f"Prediction column for parameter {param!r} has length {len(arr)}, expected {n}",
+                    parameter=param,
+                    reason="wrong prediction column length",
+                    code="wrong_prediction_column_length",
                 )
             result_cols.append(arr.reshape(n, 1))
         else:
             if arr.shape[0] != n:
-                raise PredictionSchemaError(
-                    f"Prediction matrix block for parameter {param!r} has {arr.shape[0]} rows, expected {n}"
+                raise _prediction_schema_error(
+                    f"Prediction matrix block for parameter {param!r} has {arr.shape[0]} rows, expected {n}",
+                    parameter=param,
+                    reason="wrong prediction block row count",
+                    code="wrong_prediction_block_rows",
                 )
             result_cols.append(arr)
 
     try:
         X_new = np.hstack(result_cols)
     except Exception as exc:
-        raise PredictionSchemaError(
-            f"Failed to assemble prediction matrix for parameter {param!r}: {exc}"
+        raise _prediction_schema_error(
+            f"Failed to assemble prediction matrix for parameter {param!r}: {exc}",
+            parameter=param,
+            reason=str(exc),
+            code="prediction_matrix_assembly_failed",
         ) from exc
 
     expected_columns = design_schema.get("n_columns")
     if expected_columns is not None and X_new.shape[1] != int(expected_columns):
-        raise PredictionSchemaError(
+        raise _prediction_schema_error(
             f"Prediction design for parameter {param!r} has {X_new.shape[1]} columns, "
-            f"but saved schema expects {int(expected_columns)} columns"
+            f"but saved schema expects {int(expected_columns)} columns",
+            parameter=param,
+            reason="prediction column count does not match saved schema",
+            code="schema_column_mismatch",
         )
 
     if param in model.coefficients:
         n_coefs = len(np.asarray(model.coefficients[param]))
         if X_new.shape[1] != n_coefs:
-            raise PredictionSchemaError(
+            raise _prediction_schema_error(
                 f"Prediction design for parameter {param!r} has {X_new.shape[1]} columns, "
-                f"but model has {n_coefs} coefficients"
+                f"but model has {n_coefs} coefficients",
+                parameter=param,
+                reason="prediction column count does not match coefficients",
+                code="coefficient_column_mismatch",
             )
 
     return X_new

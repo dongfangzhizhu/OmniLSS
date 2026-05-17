@@ -1,0 +1,13 @@
+syntax = "proto3";
+package omnilss;
+
+message CapabilityMatrixRequest {}
+message CapabilityMatrixResponse {
+  string matrix_json = 1;
+  bool success = 2;
+  string error = 3;
+}
+
+service CapabilityService {
+  rpc CapabilityMatrix(CapabilityMatrixRequest) returns (CapabilityMatrixResponse);
+}

@@ -102,3 +102,54 @@ def test_grpc_fit_request() -> None:
         assert resp.iterations >= 0
     finally:
         server.stop(grace=0)
+
+
+@pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
+def test_grpc_capability_matrix_service_direct() -> None:
+    """CapabilityMatrix should expose the runtime capability matrix."""
+    import json
+
+    from omnilss.family_capabilities import capability_matrix
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import capability_pb2
+
+    try:
+        service, *_ = grpc_server.create_service()
+    except RuntimeError as exc:
+        pytest.skip(f"gRPC stubs/runtime unavailable in environment: {exc}")
+
+    resp = service.CapabilityMatrix(capability_pb2.CapabilityMatrixRequest(), None)
+
+    assert resp.success, resp.error
+    assert json.loads(resp.matrix_json) == capability_matrix()
+
+
+@pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
+def test_grpc_capability_matrix_request() -> None:
+    """CapabilityMatrix request should work over the gRPC boundary."""
+    import json
+
+    from omnilss.family_capabilities import capability_matrix
+    from omnilss.api.grpc.server import serve
+
+    try:
+        from omnilss.api.grpc.generated import capability_pb2, capability_pb2_grpc
+    except Exception as exc:
+        pytest.skip(f"Generated protobuf stubs unavailable: {exc}")
+
+    try:
+        server = serve(host="127.0.0.1", port=59053)
+    except RuntimeError as exc:
+        pytest.skip(f"gRPC stubs/runtime unavailable in environment: {exc}")
+
+    time.sleep(0.2)
+    try:
+        channel = grpc.insecure_channel("127.0.0.1:59053")
+        stub = capability_pb2_grpc.CapabilityServiceStub(channel)
+        resp = stub.CapabilityMatrix(
+            capability_pb2.CapabilityMatrixRequest(), timeout=10
+        )
+        assert resp.success, resp.error
+        assert json.loads(resp.matrix_json) == capability_matrix()
+    finally:
+        server.stop(grace=0)

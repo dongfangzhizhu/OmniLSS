@@ -68,8 +68,11 @@ scoring = [
 ]
 grpc = [
   "grpcio>=1.50.0",
-  "protobuf>=3.20.0",
+  "protobuf>=4.21.0",
   "grpcio-tools>=1.50.0",
+]
+server = [
+  "omnilss[grpc]",
 ]
 dev = [
   "pytest>=7.0.0",
