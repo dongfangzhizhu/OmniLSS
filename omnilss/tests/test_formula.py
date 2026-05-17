@@ -238,7 +238,9 @@ if __name__ == "__main__":
 
 
 import numpy as np
+import pytest
 
+from omnilss.fitting import _build_design_matrix
 from omnilss.formula_parser import parse_formula, build_design_matrix
 
 
@@ -271,3 +273,27 @@ def test_build_design_matrix_factor_term():
     # treatment coding (baseline=a): columns are [b, c]
     np.testing.assert_array_equal(X[:, 1], np.array([0.0, 1.0, 0.0, 0.0]))
     np.testing.assert_array_equal(X[:, 2], np.array([0.0, 0.0, 0.0, 1.0]))
+
+
+def test_formula_expression_uses_safe_ast_evaluator():
+    data = {"y": np.array([1.0, 2.0, 3.0]), "x": np.array([1.0, 4.0, 9.0])}
+    _, design, labels = _build_design_matrix("y ~ log(x) + sqrt(x) + I(x**2)", data)
+
+    assert labels == ["log(x)", "sqrt(x)", "I(x**2)"]
+    np.testing.assert_allclose(design[:, 1], np.log(data["x"]))
+    np.testing.assert_allclose(design[:, 2], np.sqrt(data["x"]))
+    np.testing.assert_allclose(design[:, 3], data["x"] ** 2)
+
+
+def test_formula_expression_rejects_attribute_access():
+    data = {"y": np.array([1.0, 2.0]), "x": np.array([1.0, 2.0])}
+
+    with pytest.raises(ValueError, match="Unable to evaluate term"):
+        _build_design_matrix("y ~ x.__class__", data)
+
+
+def test_formula_expression_rejects_non_allowlisted_calls():
+    data = {"y": np.array([1.0, 2.0]), "x": np.array([1.0, 2.0])}
+
+    with pytest.raises(ValueError, match="function '__import__' is not allowed"):
+        _build_design_matrix("y ~ __import__('os')", data)
