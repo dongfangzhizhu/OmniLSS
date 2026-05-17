@@ -1,5 +1,7 @@
 # CG 交叉导数完整实现开发路径（2026-05-17）
 
+[中文版本](cg-cross-derivatives-development-path-2026-05-17_cn.md)
+
 本文档用于解决 OmniLSS 中 CG（Cole-Green）算法“名实不符”的技术债：公开 API 与文案必须对应一个可验证的交叉导数实现，而不是仅把 RS 或普通 joint optimizer 包装成 CG。
 
 ## 1. 问题定义

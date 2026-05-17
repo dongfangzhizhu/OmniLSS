@@ -1,5 +1,7 @@
 # CG Algorithm Integrity Validation
 
+[中文版本](cg-algorithm-integrity_cn.md)
+
 ## Status
 
 CG is implemented as a complete observed-information update path for the

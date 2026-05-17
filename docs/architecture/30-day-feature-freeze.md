@@ -1,5 +1,7 @@
 # 30-Day Architecture Freeze
 
+[中文版本](30-day-feature-freeze_cn.md)
+
 ## Objective
 
 OmniLSS is in a complexity-control phase. For the next 30 days, the project goal
