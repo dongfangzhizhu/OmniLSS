@@ -21,8 +21,14 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 PROTO_DIR = ROOT / "src" / "omnilss" / "api" / "grpc" / "proto"
 OUT_DIR = ROOT / "src" / "omnilss" / "api" / "grpc" / "generated"
-PROTOS = ["fit.proto", "predict.proto", "sample.proto"]
+PROTOS = ["capability.proto", "fit.proto", "predict.proto", "sample.proto"]
 SERVICE_SPECS = {
+    "capability": (
+        "CapabilityService",
+        "CapabilityMatrix",
+        "CapabilityMatrixRequest",
+        "CapabilityMatrixResponse",
+    ),
     "fit": ("FitService", "Fit", "FitRequest", "FitResponse"),
     "predict": ("PredictService", "Predict", "PredictRequest", "PredictResponse"),
     "sample": ("SampleService", "Sample", "SampleRequest", "SampleResponse"),
