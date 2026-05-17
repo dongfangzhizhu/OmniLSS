@@ -80,6 +80,7 @@ def _design_matrix_schema(model: Any) -> dict[str, Any]:
         }
     return schema
 
+
 def save_model_pickle(model: Any, path: str | Path) -> None:
     try:
         import cloudpickle  # type: ignore
