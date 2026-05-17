@@ -162,6 +162,8 @@ python benchmarks/run_local_validation.py --quick --allow-python-only --no-fit -
 
 See [`benchmarks/README.md`](benchmarks/README.md) for methodology and reporting rules.
 
+- Run release packaging checks with `cd omnilss && python tools/release_check.py` (requires `build` and `twine`).
+
 ## Testing
 
 ```bash

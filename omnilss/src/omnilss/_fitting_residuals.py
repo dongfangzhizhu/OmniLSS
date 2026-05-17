@@ -1,10 +1,9 @@
-"""Residual-related helpers extracted from :mod:`omnilss.fitting`."""
+"""Residual and randomized quantile residual helpers extracted from fitting.py."""
 
 from __future__ import annotations
 
 import math
 from statistics import NormalDist
-from typing import Any
 
 import jax.numpy as jnp
 import numpy as np
@@ -12,23 +11,6 @@ import numpy as np
 from .families import FamilyDefinition
 
 _STANDARD_NORMAL = NormalDist()
-
-
-def _compute_residuals(
-    family: FamilyDefinition,
-    y: np.ndarray,
-    mu: np.ndarray,
-    sigma: np.ndarray | None,
-) -> jnp.ndarray:
-    if family.name == "LOGNO" and sigma is not None:
-        log_y = np.log(np.maximum(y, np.finfo(np.float64).eps))
-        return jnp.asarray((log_y - mu) / sigma, dtype=jnp.float64)
-    if family.name == "GA" and sigma is not None and family.p is not None:
-        probabilities = np.asarray(family.p(y, mu, sigma), dtype=np.float64)
-        return jnp.asarray(_normal_quantile(probabilities), dtype=jnp.float64)
-    if sigma is not None:
-        return jnp.asarray((y - mu) / sigma, dtype=jnp.float64)
-    return jnp.asarray((y - mu) / np.sqrt(np.maximum(mu, 1e-12)), dtype=jnp.float64)
 
 
 def _normal_quantile(probabilities: np.ndarray) -> np.ndarray:
@@ -42,6 +24,8 @@ def _normal_quantile(probabilities: np.ndarray) -> np.ndarray:
     return quantiles.reshape(probs.shape)
 
 
+
+
 def _poisson_cdf_scalar(k: int, mu: float) -> float:
     if k < 0:
         return 0.0
@@ -52,6 +36,8 @@ def _poisson_cdf_scalar(k: int, mu: float) -> float:
         pmf *= mu / index
         total += pmf
     return float(min(max(total, 0.0), 1.0))
+
+
 
 
 def _negative_binomial_cdf_scalar(k: int, mu: float, sigma: float) -> float:
@@ -69,12 +55,16 @@ def _negative_binomial_cdf_scalar(k: int, mu: float, sigma: float) -> float:
     return float(min(max(total, 0.0), 1.0))
 
 
+
+
 def _geometric_cdf_scalar(k: int, mu: float) -> float:
     if k < 0:
         return 0.0
     mu = max(float(mu), np.finfo(np.float64).eps)
     ratio = mu / (1.0 + mu)
     return float(min(max(1.0 - ratio ** (k + 1), 0.0), 1.0))
+
+
 
 
 def _zip_cdf_scalar(k: int, mu: float, sigma: float) -> float:
@@ -84,6 +74,8 @@ def _zip_cdf_scalar(k: int, mu: float, sigma: float) -> float:
     sigma = min(max(float(sigma), eps), 1.0 - eps)
     poisson_cdf = _poisson_cdf_scalar(k, mu)
     return float(min(max(sigma + (1.0 - sigma) * poisson_cdf, 0.0), 1.0))
+
+
 
 
 def _discrete_midpoint_rqres(
@@ -126,6 +118,8 @@ def _discrete_midpoint_rqres(
     return _normal_quantile(midpoint)
 
 
+
+
 def _build_rqres_callable(family: FamilyDefinition) -> Any | None:
     if family.name not in {"PO", "BI", "GEOM", "NBI", "ZIP"}:
         return None
@@ -141,13 +135,25 @@ def _build_rqres_callable(family: FamilyDefinition) -> Any | None:
     return rqres
 
 
-__all__ = [
-    "_build_rqres_callable",
-    "_compute_residuals",
-    "_discrete_midpoint_rqres",
-    "_geometric_cdf_scalar",
-    "_negative_binomial_cdf_scalar",
-    "_normal_quantile",
-    "_poisson_cdf_scalar",
-    "_zip_cdf_scalar",
-]
+
+
+def _compute_residuals(
+    family: FamilyDefinition,
+    y: np.ndarray,
+    mu: np.ndarray,
+    sigma: np.ndarray | None,
+) -> jnp.ndarray:
+    if family.name == "LOGNO" and sigma is not None:
+        log_y = np.log(np.maximum(y, np.finfo(np.float64).eps))
+        return jnp.asarray((log_y - mu) / sigma, dtype=jnp.float64)
+    if family.name == "GA" and sigma is not None and family.p is not None:
+        probabilities = np.asarray(family.p(y, mu, sigma), dtype=np.float64)
+        return jnp.asarray(_normal_quantile(probabilities), dtype=jnp.float64)
+    if sigma is not None:
+        return jnp.asarray((y - mu) / sigma, dtype=jnp.float64)
+    return jnp.asarray((y - mu) / np.sqrt(np.maximum(mu, 1e-12)), dtype=jnp.float64)
+
+
+
+
+__all__ = ["_build_rqres_callable", "_compute_residuals", "_discrete_midpoint_rqres", "_geometric_cdf_scalar", "_negative_binomial_cdf_scalar", "_normal_quantile", "_poisson_cdf_scalar", "_zip_cdf_scalar"]

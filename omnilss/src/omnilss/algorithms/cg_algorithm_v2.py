@@ -11,14 +11,11 @@ from ..distributions import resolve_family
 from ..fitting import (
     _build_design_matrix_with_smooths,
     _fixed_parameter_term,
-    _initial_mu_beta,
-    _initial_parameter_value,
-    _initial_sigma,
-    _is_intercept_only_formula,
     _parse_formula,
     _resolve_fixed_parameter_values,
-    _resolve_parameter_formulas,
 )
+from .._fitting_init import _initial_mu_beta, _initial_parameter_value, _initial_sigma
+from .._fitting_utils import _is_intercept_only_formula, _resolve_parameter_formulas
 from ..model import GAMLSSModel
 from .cg_algorithm import _compute_cross_derivatives, _irls_step_with_adjustment
 
