@@ -1,0 +1,5 @@
+syntax = "proto3";
+package omnilss;
+message PredictRequest { string model_id = 1; string newdata_json = 2; }
+message PredictResponse { string params_json = 1; bool success = 2; string error = 3; }
+service PredictService { rpc Predict(PredictRequest) returns (PredictResponse); }
