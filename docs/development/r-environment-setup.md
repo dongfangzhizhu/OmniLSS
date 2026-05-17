@@ -1,5 +1,7 @@
 # R 运行环境安装与测试指南（OmniLSS）
 
+[中文版本](r-environment-setup_cn.md)
+
 更新时间：2026-05-17
 
 ## 目标

@@ -1,5 +1,7 @@
 # Technical Note 1 — Differentiable RS Algorithm in JAX
 
+[中文版本](note-01-differentiable-rs-jax_cn.md)
+
 ## Scope
 This note documents the differentiable RS implementation strategy in OmniLSS Phase 0.
 

@@ -1,5 +1,7 @@
 # OmniLSS Phase 1 执行计划（2026H2）
 
+[中文版本](phase1-execution-plan-2026H2_cn.md)
+
 ## 目标
 
 Phase 1 从 Phase 0 的“止血与冻结”进入“技术可信度建设”：

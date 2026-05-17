@@ -1,5 +1,7 @@
 # CG cross-derivative reference smoke artifact (2026-05-17)
 
+[中文版本](cg-cross-derivative-reference-2026-05-17_cn.md)
+
 This artifact records a small deterministic smoke comparison for the CG roadmap.
 It is **not** a performance claim and must not be used as evidence that one
 backend is faster in general.  Its purpose is to keep a checked-in reference for

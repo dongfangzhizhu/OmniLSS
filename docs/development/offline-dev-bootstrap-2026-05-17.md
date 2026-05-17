@@ -1,5 +1,7 @@
 # Offline-capable development bootstrap (2026-05-17)
 
+[中文版本](offline-dev-bootstrap-2026-05-17_cn.md)
+
 This note documents the `.codex/` and `.devcontainer/` environment bootstrap used for subsequent OmniLSS development passes. It is the checklist for building an offline-capable development image that already contains the Python, R, protobuf, package-build, documentation, benchmark, and service dependencies needed by the repository.
 
 ## Non-negotiable requirement

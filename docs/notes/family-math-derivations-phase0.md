@@ -1,5 +1,7 @@
 # Phase 0 Family Math Derivations Index
 
+[中文版本](family-math-derivations-phase0_cn.md)
+
 This index records the minimum derivation set required for Phase 0 review:
 
 - NO: likelihood / score / Hessian / constraints
