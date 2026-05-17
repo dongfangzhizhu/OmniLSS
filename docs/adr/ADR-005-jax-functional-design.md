@@ -1,5 +1,7 @@
 # ADR-005: JAX Functional Design
 
+[中文版本](ADR-005-jax-functional-design_cn.md)
+
 # Context
 
 The long-term direction is a JAX-native distributional modeling framework, not a

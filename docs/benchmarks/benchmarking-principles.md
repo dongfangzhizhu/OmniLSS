@@ -1,5 +1,7 @@
 # Benchmarking Principles
 
+[中文版本](benchmarking-principles_cn.md)
+
 OmniLSS benchmarks must be transparent scientific measurements, not marketing
 claims.
 

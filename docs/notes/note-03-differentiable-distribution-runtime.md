@@ -1,5 +1,7 @@
 # Technical Note 3 — Designing a Differentiable Distribution Runtime
 
+[中文版本](note-03-differentiable-distribution-runtime_cn.md)
+
 ## Phase 0 protocol baseline
 - Distribution protocol with stateless interfaces
 - Optimizer protocol with initialize/step/converged contract

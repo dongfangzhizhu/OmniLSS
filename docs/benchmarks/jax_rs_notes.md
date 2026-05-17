@@ -1,5 +1,7 @@
 # JAX RS Core — Benchmark Notes
 
+[中文版本](jax_rs_notes_cn.md)
+
 ## CPU Performance Interpretation
 
 The smoke benchmark (`--smoke`) runs on CPU only.  On CPU, the JAX RS path

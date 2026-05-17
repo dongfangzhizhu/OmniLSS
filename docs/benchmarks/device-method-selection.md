@@ -1,5 +1,7 @@
 # 设备感知方法路由指南
 
+[中文版本](device-method-selection_cn.md)
+
 OmniLSS 有两条 RS 拟合路径：
 
 - `method="RS"`：NumPy IRLS，当前默认路径。

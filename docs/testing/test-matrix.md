@@ -1,5 +1,7 @@
 # OmniLSS Test Matrix
 
+[中文版本](test-matrix_cn.md)
+
 ## Layers
 
 1. **Numerical consistency**: compare Python results with R `gamlss` references

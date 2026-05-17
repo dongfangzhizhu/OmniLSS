@@ -1,5 +1,7 @@
 # Core / Pro Boundary (Phase 0)
 
+[中文版本](core-pro-boundary_cn.md)
+
 ## core (GPL)
 - distributions
 - optimizers
