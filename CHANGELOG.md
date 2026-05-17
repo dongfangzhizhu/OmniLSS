@@ -31,6 +31,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0] - 2026-05-17
 
+### Added
+- R 运行环境安装与验证文档：`docs/development/r-environment-setup.md`（包含 apt/conda 安装路径与 R 侧最小验证命令）。
+- `fitting.py` 拆分辅助模块：`_fitting_utils.py`、`_fitting_init.py`、`_fitting_residuals.py`，用于承载公式工具、初始化与残差/rqres 逻辑。
+
+### Changed
+- `fitting.py` 改为委托共享辅助实现，减少内联重复逻辑并收敛架构边界。
+- `FamilyDefinition` 文档补充与 `core.distributions.DistributionProtocol` 的迁移关系说明。
+- `core/likelihood` 与 `core/losses` 包级文档补充迁移期用途说明。
+
 ### Fixed
 - CG 算法命名和描述修正：`_apply_method_step` 中的 CG 分支明确标注为“阻尼步”。
 - 版本号统一：`omnilss/pyproject.toml` 与 `omnilss/src/omnilss/__init__.py` 对齐为 0.3.0。

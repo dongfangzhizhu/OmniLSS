@@ -29,6 +29,15 @@ class FamilyDefinition:
     - p: cumulative distribution function (CDF)
     - q: quantile function (inverse CDF)
     - r: random number generation
+
+    Architecture note
+    -----------------
+    ``FamilyDefinition`` is the legacy/runtime-facing family contract used by
+    existing fitting paths (``fitting.py``, ``operations.py`` and most
+    distribution implementations). During the architecture-freeze transition,
+    ``core.distributions.DistributionProtocol`` defines the canonical protocol
+    boundary, and ``core.distributions.FamilyDistributionAdapter`` provides the
+    bridge from ``FamilyDefinition`` to that protocol.
     """
 
     name: str
