@@ -892,7 +892,7 @@ def check_installation() -> dict:
         "serialization": ("omnilss.serialization", "save_model_json"),
         "deep": ("omnilss.deep.deep_gamlss", "fit_deep_gamlss"),
         "sklearn": ("omnilss.sklearn_compat", "GAMLSSRegressor"),
-        "grpc": ("omnilss.api.grpc.server", "serve"),
+        "grpc": ("omnilss.api.grpc.generated.fit_pb2_grpc", "FitServiceStub"),
     }
     for name, (mod, attr) in modules.items():
         try:

@@ -1,0 +1,119 @@
+name: Environment Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      enable_gpu:
+        description: "Run optional self-hosted GPU smoke job"
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    - cron: "17 6 * * 1"
+
+jobs:
+  grpc-and-build:
+    name: gRPC and package build validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install validation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r .devcontainer/requirements-dev.txt
+          python -m pip install -e omnilss
+
+      - name: Regenerate gRPC stubs
+        run: |
+          cd omnilss
+          python tools/generate_grpc_stubs.py
+
+      - name: Run gRPC smoke tests
+        run: |
+          cd omnilss
+          python -m pytest tests/test_grpc_server.py -q -rs
+
+      - name: Build and check package
+        run: |
+          cd omnilss
+          python -m build
+          twine check dist/*
+
+  r-reference:
+    name: R reference fixture validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "release"
+
+      - name: Install Python package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e omnilss
+
+      - name: Install R reference packages
+        run: |
+          Rscript -e "options(repos=c(CRAN='https://cloud.r-project.org')); install.packages(c('gamlss','gamlss.dist','jsonlite'), Ncpus=max(1, parallel::detectCores()-1))"
+
+      - name: Generate R reference fixture
+        run: |
+          Rscript benchmarks/generate_r_reference_results.R /tmp/r_reference_results.json
+          cp /tmp/r_reference_results.json benchmarks/r_reference_results.json
+
+      - name: Validate against generated R fixture
+        run: |
+          PYTHONPATH=omnilss/src python benchmarks/validate_against_r.py
+
+      - name: Upload generated R reference fixture
+        uses: actions/upload-artifact@v4
+        with:
+          name: r-reference-results
+          path: /tmp/r_reference_results.json
+
+  gpu-smoke:
+    name: GPU smoke validation (self-hosted optional)
+    runs-on: [self-hosted, linux, gpu]
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_gpu }}
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install CUDA JAX environment
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r .devcontainer/requirements-dev.txt
+          python -m pip install --upgrade 'jax[cuda12]'
+          python -m pip install -e omnilss
+
+      - name: Run GPU conditional test
+        env:
+          JAX_PLATFORMS: cuda
+          JAX_ENABLE_X64: "true"
+        run: |
+          PYTHONPATH=omnilss/src python -m pytest omnilss/tests/test_device_gpu.py -q -rs

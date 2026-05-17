@@ -68,6 +68,7 @@ scoring = [
 ]
 grpc = [
   "grpcio>=1.50.0",
+  "protobuf>=3.20.0",
   "grpcio-tools>=1.50.0",
 ]
 dev = [

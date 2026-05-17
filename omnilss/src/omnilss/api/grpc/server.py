@@ -7,6 +7,7 @@ while `serve()` will raise a clear runtime error.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import uuid
 from concurrent import futures
@@ -52,23 +53,47 @@ def _from_json(text: str) -> dict[str, Any]:
     return parsed
 
 
+def _grpc_runtime_gaps() -> list[str]:
+    """Return missing runtime pieces required by generated gRPC stubs."""
+    gaps: list[str] = []
+    if importlib.util.find_spec("grpc") is None:
+        gaps.append("grpcio")
+    if importlib.util.find_spec("google") is None:
+        gaps.append("protobuf")
+    elif importlib.util.find_spec("google.protobuf") is None:
+        gaps.append("protobuf")
+    for module in (
+        "omnilss.api.grpc.generated.fit_pb2",
+        "omnilss.api.grpc.generated.fit_pb2_grpc",
+        "omnilss.api.grpc.generated.predict_pb2",
+        "omnilss.api.grpc.generated.predict_pb2_grpc",
+        "omnilss.api.grpc.generated.sample_pb2",
+        "omnilss.api.grpc.generated.sample_pb2_grpc",
+    ):
+        if importlib.util.find_spec(module) is None:
+            gaps.append(module)
+    return gaps
+
+
 def create_service():
     """Create gRPC service class instance from generated stubs."""
-    try:
-        import grpc  # noqa: F401
-        from .generated import (
-            fit_pb2,
-            fit_pb2_grpc,
-            predict_pb2,
-            predict_pb2_grpc,
-            sample_pb2,
-            sample_pb2_grpc,
-        )
-    except Exception as exc:  # pragma: no cover
+    gaps = _grpc_runtime_gaps()
+    if gaps:
         raise RuntimeError(
-            "Generated gRPC stubs not found. Run protoc to generate under "
-            "omnilss.api.grpc.generated."
-        ) from exc
+            "OmniLSS gRPC runtime is incomplete. Missing: "
+            + ", ".join(gaps)
+            + ". Install the grpc extra (`pip install 'omnilss[grpc]'`) and "
+            "ensure generated stubs exist under omnilss.api.grpc.generated."
+        )
+
+    from .generated import (
+        fit_pb2,
+        fit_pb2_grpc,
+        predict_pb2,
+        predict_pb2_grpc,
+        sample_pb2,
+        sample_pb2_grpc,
+    )
 
     class OmniLSSService(
         fit_pb2_grpc.FitServiceServicer,

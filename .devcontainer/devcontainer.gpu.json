@@ -1,14 +1,18 @@
 {
-  "name": "OmniLSS R/Python Dev",
+  "name": "OmniLSS R/Python GPU Dev",
   "build": {
     "dockerfile": "Dockerfile",
     "context": ".."
   },
+  "runArgs": [
+    "--gpus",
+    "all"
+  ],
   "remoteEnv": {
     "VIRTUAL_ENV": "/opt/omnilss-venv",
     "PATH": "/opt/omnilss-venv/bin:${containerEnv:PATH}",
     "OMNILSS_WHEELHOUSE": "/opt/omnilss-wheelhouse",
-    "JAX_PLATFORMS": "cpu",
+    "JAX_PLATFORMS": "cuda",
     "JAX_ENABLE_X64": "true",
     "RENV_PATHS_CACHE": "/opt/renv/cache",
     "OMNILSS_REFRESH_R_REFERENCE": "0"
@@ -26,12 +30,12 @@
         "python.defaultInterpreterPath": "/opt/omnilss-venv/bin/python",
         "python.testing.pytestEnabled": true,
         "python.testing.pytestArgs": [
-          "omnilss/tests"
+          "omnilss/tests/test_device_gpu.py"
         ],
         "terminal.integrated.defaultProfile.linux": "bash"
       }
     }
   },
-  "postCreateCommand": "bash .codex/setup.sh",
-  "postStartCommand": "python --version && R --version | head -1"
+  "postCreateCommand": "JAX_PLATFORMS=cpu bash .codex/setup.sh && python -m pip install --upgrade 'jax[cuda12]' && JAX_PLATFORMS=cuda python -m pytest omnilss/tests/test_device_gpu.py -q -rs",
+  "postStartCommand": "python - <<'PY'\nimport jax\nprint('JAX backend:', jax.default_backend())\nprint('JAX devices:', jax.devices())\nPY"
 }

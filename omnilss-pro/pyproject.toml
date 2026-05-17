@@ -9,6 +9,7 @@ description = "Professional extensions for OmniLSS (commercial boundary prototyp
 requires-python = ">=3.10"
 dependencies = [
   "grpcio>=1.50.0",
+  "protobuf>=3.20.0",
   "numpy>=1.24.0",
 ]
 

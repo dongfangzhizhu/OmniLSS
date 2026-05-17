@@ -29,3 +29,13 @@ bash .codex/setup.sh
 ## Environment-limited checks
 
 If network access is blocked, dependency refresh may warn and continue only when `/opt/omnilss-wheelhouse/.complete` exists from a previous online build. R-backed checks still require the R package cache to have been populated during the online build.
+
+## Follow-up hardening (same day)
+
+- `.codex/setup.sh` now supports an explicit `OMNILSS_OFFLINE=1` mode that skips pip/R network refreshes and requires the prebuilt wheelhouse marker before installing dependencies.
+- pip bootstrap upgrades are best-effort, so a reused offline container is not blocked by a transient package-index failure.
+- gRPC stub generation now falls back to the committed generated files when regeneration fails but the checked-in `fit/predict/sample` stubs are complete; setup still fails if neither regeneration nor committed stubs are available.
+
+- `.codex/setup.sh` now reports `google.protobuf` and `build` availability in the health summary and supports `OMNILSS_REFRESH_R_REFERENCE=1` to regenerate `benchmarks/r_reference_results.json` during a fully provisioned R build.
+- `.devcontainer/devcontainer.gpu.json` is an optional NVIDIA/CUDA variant for future GPU validation; it installs `jax[cuda12]`, sets `JAX_PLATFORMS=cuda`, and runs the GPU conditional test configuration when host GPU runtime is available.
+- `.github/workflows/environment-validation.yml` provides a networked follow-up path for gRPC/package build, R reference, and optional self-hosted GPU validation after constrained local runs.

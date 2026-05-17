@@ -15,6 +15,16 @@ import numpy as np
 from omnilss import gamlss
 
 
+def _case_data(case: dict) -> dict[str, np.ndarray]:
+    """Return deterministic data matching the R reference generator."""
+    n = case["n"]
+    x = np.linspace(0, 5, n)
+    if case["id"] == "normal_linear":
+        y = 2 + 3 * x + np.sin(x)
+        return {"y": y, "x": x}
+    raise ValueError(f"Unknown R reference case id: {case['id']}")
+
+
 def test_r_consistency(
     r_results_path: str = "benchmarks/r_reference_results.json",
 ) -> bool:
@@ -30,13 +40,10 @@ def test_r_consistency(
             skipped.append(f"{case['id']}: missing R reference deviance")
             continue
 
-        np.random.seed(case["seed"])
-        n = case["n"]
-        x = np.linspace(0, 5, n)
-        y = 2 + 3 * x + np.random.randn(n)
-
-        model = gamlss(case["formula"], family=case["family"], data={"y": y, "x": x})
-        deviance_diff = abs(model.g_dev - case["r_deviance"]) / case["r_deviance"]
+        data = _case_data(case)
+        model = gamlss(case["formula"], family=case["family"], data=data)
+        denominator = max(abs(float(case["r_deviance"])), 1e-12)
+        deviance_diff = abs(float(model.g_dev) - float(case["r_deviance"])) / denominator
         if deviance_diff > 0.01:
             failures.append(f"{case['id']}: deviance diff {deviance_diff:.2%}")
 
