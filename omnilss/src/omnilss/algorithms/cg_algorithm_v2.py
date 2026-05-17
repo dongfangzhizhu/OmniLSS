@@ -393,6 +393,7 @@ def cg_fit_v2(
             "cg_final_deviance": float(g_dev),
             "cg_line_search_steps": tuple(line_search_steps),
             "cg_eta_hessian_shape": hessian_shape,
+            "smooth_infos": smooth_infos,
             "smooth_edf": smooth_edf,
             "aic": float(g_dev + 2.0 * df_fit),
             "sbc": float(g_dev + np.log(max(n, 1)) * df_fit),

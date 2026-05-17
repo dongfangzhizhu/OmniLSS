@@ -78,6 +78,56 @@ def _artifact_diagnostics(model: Any) -> dict[str, Any]:
     return _json_safe({key: slots[key] for key in keys if key in slots})
 
 
+def _smooth_metadata_snapshot(model: Any) -> dict[str, list[dict[str, Any]]]:
+    """Return JSON-safe smooth basis metadata needed for prediction."""
+
+    slots = dict(getattr(model, "additional_slots", {}) or {})
+    smooth_infos = slots.get("smooth_infos", {})
+    if not isinstance(smooth_infos, dict):
+        return {}
+
+    snapshot: dict[str, list[dict[str, Any]]] = {}
+    for parameter, info in smooth_infos.items():
+        smooth_fits = getattr(info, "smooth_fits", None)
+        if smooth_fits is None and isinstance(info, list):
+            smooth_fits = info
+        if smooth_fits is None and isinstance(info, dict):
+            smooth_fits = [info] if "variable" in info else list(info.values())
+        if not smooth_fits:
+            continue
+        entries: list[dict[str, Any]] = []
+        for smooth in smooth_fits:
+            if isinstance(smooth, dict):
+                entries.append(dict(smooth))
+                continue
+            knots = getattr(smooth, "knots", None)
+            entries.append(
+                {
+                    "term_index": int(getattr(smooth, "term_index", -1)),
+                    "variable": str(getattr(smooth, "variable", "")),
+                    "smoother": str(getattr(smooth, "smoother", "")),
+                    "basis_smoother": str(
+                        getattr(smooth, "basis_smoother", None)
+                        or getattr(smooth, "smoother", "")
+                    ),
+                    "lambda_": float(getattr(smooth, "lambda_", 0.0)),
+                    "edf": float(getattr(smooth, "edf", 0.0)),
+                    "basis_columns": list(getattr(smooth, "basis_columns", (0, 0))),
+                    "selection_method": getattr(smooth, "selection_method", None),
+                    "criterion_value": getattr(smooth, "criterion_value", None),
+                    "knots": (
+                        np.asarray(knots, dtype=np.float64).tolist()
+                        if knots is not None and np.asarray(knots).size > 0
+                        else None
+                    ),
+                    "degree": getattr(smooth, "degree", None),
+                    "order": getattr(smooth, "order", None),
+                }
+            )
+        snapshot[str(parameter)] = entries
+    return snapshot
+
+
 def _family_capability_snapshot(model: Any) -> dict[str, Any]:
     """Build a JSON-safe capability snapshot for the model family."""
 
@@ -158,6 +208,7 @@ def save_model_json(
             "training_data_included": bool(include_training_data),
             "design_matrix_schema": _json_safe(ensure_model_design_schema(model)),
             "family_capability": _json_safe(_family_capability_snapshot(model)),
+            "smooth_infos": _json_safe(_smooth_metadata_snapshot(model)),
             "diagnostics": _artifact_diagnostics(model),
         }
         zf.writestr("meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
@@ -171,6 +222,7 @@ def load_model_json(path: str | Path):
         meta = json.loads(zf.read("meta.json").decode("utf-8"))
         design_matrix_schema = meta.get("design_matrix_schema", {})
         family_capability = meta.get("family_capability", {})
+        smooth_infos = meta.get("smooth_infos", {})
         version = meta.get("omnilss_version", "")
         if not str(version).startswith("0.3."):
             raise ValueError(f"Incompatible model version: {version}")
@@ -216,6 +268,7 @@ def load_model_json(path: str | Path):
             "training_data_included": bool(meta.get("training_data_included", True)),
             "design_matrix_schema": design_matrix_schema,
             "family_capability": family_capability,
+            "smooth_infos": smooth_infos,
             "artifact_diagnostics": meta.get("diagnostics", {}),
         },
     )

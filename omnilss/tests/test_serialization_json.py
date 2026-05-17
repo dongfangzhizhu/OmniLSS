@@ -166,3 +166,33 @@ def test_json_artifact_preserves_df_fit(tmp_path):
     loaded = load_model_json(path)
 
     assert loaded.df_fit == 1.25
+
+
+def test_json_artifact_preserves_smooth_metadata_and_prediction(tmp_path):
+    rng = np.random.default_rng(29)
+    n = 70
+    x = np.linspace(0.0, 1.0, n)
+    y = 0.2 + np.sin(2 * np.pi * x) + rng.normal(scale=0.05, size=n)
+    model = gamlss("y ~ pb(x)", family="NO", data={"y": y, "x": x}, max_iter=3)
+
+    path = tmp_path / "m_smooth.omnilss"
+    save_model_json(model, path)
+
+    with zipfile.ZipFile(path, "r") as zf:
+        meta = json.loads(zf.read("meta.json").decode("utf-8"))
+
+    smooth_meta = meta["smooth_infos"]["mu"][0]
+    assert smooth_meta["variable"] == "x"
+    assert smooth_meta["smoother"] == "pb"
+    assert smooth_meta["basis_smoother"] == "pb"
+    assert smooth_meta["knots"]
+
+    schema_meta = meta["design_matrix_schema"]["parameters"]["mu"]
+    assert schema_meta["smooth_metadata_required"] is True
+    assert schema_meta["smooth_basis_metadata"][0]["variable"] == "x"
+
+    newdata = {"x": np.array([0.1, 0.3, 0.7])}
+    original = model.predict_params(newdata)["mu"]
+    loaded = load_model_json(path)
+    restored = loaded.predict_params(newdata)["mu"]
+    np.testing.assert_allclose(restored, original, rtol=1e-7, atol=1e-7)
