@@ -66,6 +66,28 @@ def test_json_artifact_contains_design_matrix_schema(tmp_path):
     assert loaded.additional_slots["design_matrix_schema"]["parameters"]["mu"] == schema
 
 
+def test_json_artifact_contains_family_capability_snapshot(tmp_path):
+    rng = np.random.default_rng(25)
+    n = 50
+    x = rng.normal(size=n)
+    y = 1.5 + 0.4 * x + rng.normal(scale=0.2, size=n)
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x})
+
+    path = tmp_path / "m_capability.omnilss"
+    save_model_json(model, path)
+
+    with zipfile.ZipFile(path, "r") as zf:
+        meta = json.loads(zf.read("meta.json").decode("utf-8"))
+
+    capability = meta["family_capability"]
+    assert capability["name"] == "NO"
+    assert capability["features"]["production_safe"] == "validated"
+    assert capability["features"]["r_consistency"] == "validated"
+
+    loaded = load_model_json(path)
+    assert loaded.additional_slots["family_capability"] == capability
+
+
 def test_fit_attaches_design_matrix_schema_before_serialization():
     rng = np.random.default_rng(24)
     n = 40

@@ -68,7 +68,7 @@ except FamilyCapabilityError:
 ## Follow-up work
 
 1. Completed in [Method Routing Capability Gates](method-routing-capability-gates-2026-05-17.md): `gamlss()` checks method/family capabilities before backend fitting starts.
-2. Attach capability snapshots to serialized model metadata.
+2. Completed in [Model Artifact Capability Snapshots](model-artifact-capability-snapshots-2026-05-17.md): JSON model artifacts save and restore capability snapshots.
 3. Generate a machine-readable capability matrix artifact for documentation and service APIs.
 4. Promote family features from `experimental` to `validated` only through documented validation reports.
 5. Add service endpoints that expose capability data for UI and AutoML candidate filtering.

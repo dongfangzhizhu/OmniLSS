@@ -68,7 +68,7 @@ except FamilyCapabilityError:
 ## 后续工作
 
 1. 已在 [Method Routing Capability Gates](method-routing-capability-gates-2026-05-17_cn.md) 中完成：`gamlss()` 会在 backend 拟合开始前检查 method/family capability。
-2. 将 capability snapshot 写入序列化模型 metadata。
+2. 已在 [模型 Artifact Capability Snapshot](model-artifact-capability-snapshots-2026-05-17_cn.md) 中完成：JSON 模型 artifact 会保存并恢复 capability snapshot。
 3. 生成机器可读 capability matrix artifact，用于文档和服务 API。
 4. 只有通过文档化 validation report 的 family feature 才能从 `experimental` 提升为 `validated`。
 5. 增加服务端 endpoint，将 capability 数据暴露给 UI 和 AutoML 候选 family 过滤。
