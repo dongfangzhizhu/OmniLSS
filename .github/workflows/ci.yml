@@ -17,11 +17,11 @@ jobs:
         python-version: ["3.10"]
         group:
           - name: Group A Core Algorithms
-            pattern: "tests/test_rs*.py tests/test_cg*.py tests/test_mixed*.py tests/test_fitting_jit*.py"
+            pattern: "tests/test_rs*.py tests/test_cg*.py tests/test_mixed*.py tests/test_fitting_jit*.py tests/test_smooth_outer_loop.py tests/test_distribution_registry_complete.py"
           - name: Group B R Consistency
             pattern: "tests/test_*r_consistency*.py tests/test_consistency_families.py tests/test_dpqr_r_consistency.py"
           - name: Group C Smooth Diagnostics Prediction
-            pattern: "tests/test_smooth*.py tests/test_diagnostics*.py tests/test_prediction*.py tests/test_serialization*.py"
+            pattern: "tests/test_smooth*.py tests/test_diagnostics*.py tests/test_prediction*.py tests/test_serialization*.py tests/test_grpc_server.py"
 
     steps:
       - uses: actions/checkout@v4
@@ -64,11 +64,9 @@ jobs:
       - run: |
           cd omnilss
           black --check src/omnilss/
-        continue-on-error: true
       - run: |
           cd omnilss
-          ruff check src/omnilss/
-        continue-on-error: true
+          ruff check src/omnilss/ --select E,W,F --ignore E501
       - run: |
           cd omnilss
           mypy src/omnilss/ --ignore-missing-imports

@@ -218,12 +218,29 @@ or speed claims.
 GNU General Public License v3 or later (GPL-3.0+)
 
 
+## CG Algorithm（Cole-Green）
+
+- ✅ **完整实现**：基于完整观测信息矩阵（`jax.hessian`），包含跨参数 Hessian 块
+- ✅ 同步更新所有分布参数（非坐标下降）
+- ✅ 适用于参数高度相关的场景
+- ⚠️ 比 RS 更慢（每次迭代需计算完整 Hessian）
+- 🔧 大规模数据集（n > 5000）建议使用 RS
+
 ## 性能说明
-- 手写解析梯度（vs R 数值差分）通常带来显著加速（依分布与样本规模而异）。
-- `rs_jax.py` 当前提供 JAX WLS 与惩罚 WLS 数值核心；完整 `rs_fit_jax` 主循环仍在开发中。
-- `omnilss.algorithms.cg_fit` 现为 CG v2 显式外循环实现（含跨导数修正）；`method="CG"` 的后端路径仍可用于对照与回归验证。
+
+| Distribution | Speedup vs R | Test conditions |
+|---|---|---|
+| NO, LOGNO | ~30-100x | n=200, intercept-only, JAX JIT warm |
+| GA, WEI | ~20-50x | n=200, single predictor |
+| BE | ~2x | n=200（见注1） |
+| ZAGA | ~15x | n=200, hand-optimized derivatives |
+
+> **注1**：BE 分布使用了手写导数，加速比相对较低是因为 R 侧 BE 本身有高度优化的 C 实现。  
+> **注2**：以上数据基于单次 JIT warm-up 后的测量，首次调用含编译开销（通常 2-5x 更慢）。  
+> **注3**：性能基准脚本位于 `benchmarks/comprehensive_performance_test.py`，可本地复现。
 
 
 ## Service APIs
 - REST scaffold: `omnilss-server/` (FastAPI) with `/fit`, `/predict`, `/diagnostics/{model_id}`, `/distributions/select`.
 - gRPC boundary: protobuf files under `omnilss/src/omnilss/api/grpc/proto/` and runtime server wiring in `omnilss.api.grpc.serve`.
+- Generate gRPC stubs locally with `cd omnilss && python tools/generate_grpc_stubs.py` (requires `omnilss[grpc]`).

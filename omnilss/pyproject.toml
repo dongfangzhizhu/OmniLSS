@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "omnilss"
-version = "0.2.0"
+version = "0.3.0"
 description = "Differentiable Distributional Modeling in JAX - A high-performance Python implementation of GAMLSS"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -66,6 +66,10 @@ sklearn = [
 scoring = [
   "scoringrules>=0.6.0",
 ]
+grpc = [
+  "grpcio>=1.50.0",
+  "grpcio-tools>=1.50.0",
+]
 dev = [
   "pytest>=7.0.0",
   "pytest-cov>=4.0.0",
@@ -84,7 +88,7 @@ benchmarks = [
   "matplotlib>=3.5.0",
 ]
 all = [
-  "omnilss[deep,serialization,sklearn,scoring,dev,docs,benchmarks]",
+  "omnilss[deep,serialization,sklearn,scoring,grpc,dev,docs,benchmarks]",
 ]
 
 [tool.setuptools]
