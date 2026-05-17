@@ -19,8 +19,14 @@ being dropped by a block-diagonal approximation.
 
 ## Regression coverage
 
-- `omnilss/tests/test_fitting_cg.py` checks that a heteroscedastic Normal model
-  has a non-zero `beta_mu`/`beta_sigma` cross block in the CG information matrix.
+- `omnilss/tests/test_fitting_cg.py` checks CG deviance behavior and direct
+  lower-level fitting invariants.
+- `omnilss/tests/test_cg_cross_derivatives.py` checks that a heteroscedastic
+  Normal model has a non-zero `beta_mu`/`beta_sigma` cross block, verifies block
+  symmetry, proves that zeroing off-diagonal information changes the CG update
+  direction, validates the eta-scale Hessian tensor, asserts that
+  `gamlss(method="CG")` records `CG_FULL_HESSIAN` backend diagnostics, and
+  checks the opt-in `CG_IRLS_CROSS` backend records eta-correction diagnostics.
 - `omnilss/tests/test_cg_algorithm.py` exercises the public `cg_fit()` wrapper,
   which now delegates to the complete formula-level CG backend rather than to an
   RS-only placeholder.

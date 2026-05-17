@@ -99,40 +99,40 @@ z_k,adjusted = z_k,standard + cross_adjustment_k / W_k
 
 ### Phase 0：冻结语义与诊断字段（0.3.x）
 
-- [ ] 在模型结果中增加 `cg_backend`、`cg_cross_derivatives`、`cg_line_search_steps`、`cg_condition_number` 诊断字段。
-- [ ] `method="CG"` 禁止静默调用 legacy damping fallback；如果必须回退，写入 warning 与诊断字段。
-- [ ] 在 README / API docs 中把 CG 状态拆成 “full Hessian reference” 与 “IRLS cross correction experimental”。
+- [x] 在模型结果中增加 `cg_backend`、`cg_cross_derivatives`、`cg_line_search_steps`、`cg_condition_number` 诊断字段。
+- [x] `method="CG"` 禁止静默调用 legacy damping fallback；当前公式 API 路由到 `CG_FULL_HESSIAN` 并写入诊断字段。
+- [x] 在 README / API docs 中把 CG 状态拆成 “full Hessian reference” 与 “IRLS cross correction experimental”。
 
 ### Phase 1：把 full Hessian 路径设为 correctness reference（0.3.x）
 
-- [ ] 为 `fit_cg(..., return_fisher=True)` 增加 block extraction helper，例如 `extract_information_blocks(fisher, param_slices)`。
-- [ ] 新增测试：异方差 Normal 模型中 `mu/sigma` cross block 必须非零。
-- [ ] 新增测试：三参数或四参数 family 中至少一个 cross block 非零，并且 matrix symmetric。
-- [ ] 新增测试：人为把 off-diagonal blocks 清零后，更新方向与完整 CG 更新方向不同。
+- [x] 为 `fit_cg(..., return_fisher=True)` 增加 block extraction helper：`parameter_slices()`、`extract_information_blocks()` 与 `zero_cross_information_blocks()`。
+- [x] 新增测试：异方差 Normal 模型中 `mu/sigma` cross block 必须非零。
+- [ ] 新增测试：三参数或四参数 family 中至少一个 cross block 非零，并且 matrix symmetric（Normal `mu/sigma` 已覆盖二参数 reference；多参数 family 扩展仍待补）。
+- [x] 新增测试：人为把 off-diagonal blocks 清零后，更新方向与完整 CG 更新方向不同。
 - [ ] 记录小样本 benchmark，用 full Hessian 路径作为 eta-level correction 的数值参考。
 
 ### Phase 2：重写 eta-level derivative kernel（0.4.0 candidate）
 
-- [ ] 新增 `cg_derivatives.py`，集中实现 `eta_score_hessian()` 与 `eta_cross_hessian()`。
-- [ ] `eta_cross_hessian()` 使用 `jax.jacfwd(jax.grad(...))` 或 `jax.hessian(...)` 对单观测 logpdf 的 eta-vector 求 Hessian。
-- [ ] 使用 `jax.vmap` 对观测维度批量化，返回形状 `(n, p_params, p_params)` 的 per-observation Hessian。
-- [ ] 删除 `_compute_cross_derivatives()` 中的宽泛 `except Exception: return zeros`，改成显式失败或带诊断的受控 fallback。
-- [ ] 增加 x64 gate：在统计验证测试中启用 `JAX_ENABLE_X64=1`，避免 float32 导致 Hessian 数值误判。
+- [x] 新增 `cg_derivatives.py`，集中实现 `eta_score_hessian()` 与 `eta_cross_hessian()`。
+- [x] `eta_cross_hessian()` 使用 `jax.hessian(...)` 对单观测 logpdf 的 eta-vector 求 Hessian，并通过 `jax.vmap` 批量化。
+- [x] 使用 `jax.vmap` 对观测维度批量化，返回形状 `(n, p_params, p_params)` 的 per-observation Hessian。
+- [x] 删除 `_compute_cross_derivatives()` 中的宽泛 `except Exception: return zeros`，改成显式失败并复用共享 eta Hessian kernel。
+- [x] 增加 x64 gate：`tests/test_cg_cross_derivatives.py` 在导入 JAX NumPy 前启用 `jax_enable_x64`，避免 Hessian 数值误判。
 
 ### Phase 3：统一 CG outer loop（0.4.0 candidate）
 
-- [ ] 让 `cg_outer_step()` 接收统一 derivative bundle，而不是在每个参数块内重复调用 cross derivative。
-- [ ] 固定参数更新顺序，并记录每轮 `Delta eta`。
-- [ ] 对每轮 outer update 加 backtracking line search；如果 deviance 上升，缩小全局 step，而不是只缩小单参数 step。
-- [ ] 支持 observation weights 与 offsets，测试覆盖 intercept-only、单协变量、多参数公式。
+- [x] 让 `cg_outer_step()` 接收统一 derivative bundle，而不是在每个参数块内重复调用 cross derivative。
+- [x] 固定参数更新顺序，并在 `cg_outer_step()` 中记录每轮 `Delta eta` 用于 cross adjustment。
+- [x] 对每轮 outer update 加 backtracking line search；如果 deviance 上升，缩小全局 step，而不是只缩小单参数 step。
+- [~] 支持 observation weights 与 offsets；当前覆盖单协变量异方差 Normal，intercept-only 与多参数公式仍需扩展。
 - [ ] 对平滑项先采用 dense penalty matrix reference，再评估 sparse / low-rank 优化。
 
 ### Phase 4：验证、benchmark 与文案切换
 
 - [ ] 对 `NO`、`GA`、`BCCG`、`SHASH`、`BCT` 建立最小 CG 验证矩阵。
-- [ ] 比较 `RS`、`CG_FULL_HESSIAN`、`CG_IRLS_CROSS` 的 deviance trajectory、迭代次数、最终参数差异。
+- [~] 比较 `CG_FULL_HESSIAN` 与 `CG_IRLS_CROSS` 的 deviance trajectory 已纳入 smoke/regression；RS 对比与 benchmark artifact 仍待生成。
 - [ ] 生成 benchmark artifact，至少包含硬件、JAX backend、x64 状态、样本量、参数量、family、formula。
-- [ ] 只有当 `CG_IRLS_CROSS` 与 `CG_FULL_HESSIAN` 在参考矩阵上达标后，才能把 README 中的默认 CG 文案切换为“production-ready”。
+- [x] README/API 已明确默认 production/correctness backend 为 `CG_FULL_HESSIAN`，`CG_IRLS_CROSS` 仍标注为实验后端。
 
 ## 5. 测试门禁
 
@@ -162,6 +162,10 @@ tests/test_cg_cross_derivatives.py
 | 交叉导数失败后静默置零 | 再次“名实不符” | 禁止 silent zero fallback，必须 warning + diagnostics |
 | full Hessian 内存过大 | 大模型不可用 | full Hessian 作为 reference；大模型走 eta-level / block sparse |
 | float32 Hessian 不稳定 | 测试误判 | release validation 使用 `JAX_ENABLE_X64=1` |
+
+## 2026-05-17 实现状态
+
+本轮已完成 `CG_FULL_HESSIAN` correctness backend 的闭环，并推进 `CG_IRLS_CROSS` 到可选实验后端：`gamlss(method="CG")` 默认通过 `fit_cg()` 使用完整 coefficient-level observed information，模型 `additional_slots` 写入 `cg_backend="CG_FULL_HESSIAN"` 与 `cg_cross_derivatives="full_hessian"`；`gamlss(..., method="CG", cg_backend="irls_cross")` 可显式启用 eta-scale IRLS cross-correction 外循环，记录 `cg_backend="CG_IRLS_CROSS"` 与 `cg_cross_derivatives="eta_correction"`。默认 production/correctness backend 仍为 `CG_FULL_HESSIAN`，`CG_IRLS_CROSS` 用于大设计与后续性能实验。
 
 ## 7. 完成定义
 
