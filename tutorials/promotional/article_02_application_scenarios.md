@@ -1,3 +1,5 @@
+
+[中文版本](article_02_application_scenarios_cn.md)
 ﻿# GAMLSS 能做什么？5 个真实案例告诉你
 
 **作者**: OmniLSS 团队  

@@ -1,3 +1,5 @@
+
+[中文版本](article_03_jax_tech_stack_cn.md)
 ﻿# JAX + GAMLSS：现代统计建模的最佳实践
 
 **作者**: OmniLSS 团队  

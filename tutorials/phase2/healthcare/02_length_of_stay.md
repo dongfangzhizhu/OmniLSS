@@ -1,5 +1,7 @@
 # Length of Stay Modeling
 
+[中文版本](02_length_of_stay_cn.md)
+
 > Status: scenario scaffold aligned with the current OmniLSS API. Expand with a
 > full dataset walkthrough, business interpretation, and deployment notes.
 

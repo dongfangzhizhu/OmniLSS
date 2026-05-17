@@ -1,5 +1,7 @@
 # Disease Risk Prediction
 
+[中文版本](01_disease_risk_cn.md)
+
 > Status: scenario scaffold aligned with the current OmniLSS API. Expand with a
 > full dataset walkthrough, business interpretation, and deployment notes.
 

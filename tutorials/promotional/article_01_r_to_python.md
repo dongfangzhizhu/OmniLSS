@@ -1,3 +1,5 @@
+
+[中文版本](article_01_r_to_python_cn.md)
 ﻿# 从 R 到 Python：为什么我们用 JAX 重写了 GAMLSS
 
 **作者**: OmniLSS 团队  

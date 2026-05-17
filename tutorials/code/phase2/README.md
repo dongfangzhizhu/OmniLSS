@@ -1,5 +1,7 @@
 # Phase 2 scenario code
 
+[中文版本](README_cn.md)
+
 This directory is reserved for runnable code that accompanies the Phase 2
 end-to-end scenario tutorials listed in `tutorials/README.md`.
 

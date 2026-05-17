@@ -1,5 +1,7 @@
 # 指数和 Weibull 分布族 - 文章大纲
 
+[中文版本](03_exponential_weibull_OUTLINE_cn.md)
+
 **文章编号**: 03  
 **预计字数**: 5,500 字  
 **预计阅读时间**: 28 分钟  

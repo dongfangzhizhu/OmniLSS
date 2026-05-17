@@ -1,5 +1,7 @@
 # Multi-Parameter Modeling
 
+[中文版本](21_multiparameter_modeling_cn.md)
+
 > Status: scaffold aligned with the current OmniLSS API. Expand this page with
 > distribution-specific derivations, R comparisons, and exercises as content is
 > authored.

@@ -1,5 +1,7 @@
 # OmniLSS
 
+[中文版本](README_cn.md)
+
 **Differentiable Distributional Regression in JAX** — a Python implementation of GAMLSS (Generalized Additive Models for Location, Scale and Shape) with GPU/TPU acceleration and neural network integration.
 
 ## Key Features

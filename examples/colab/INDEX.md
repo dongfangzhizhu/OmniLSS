@@ -1,5 +1,7 @@
 # Google Colab Notebooks 索引
 
+[中文版本](INDEX_cn.md)
+
 快速导航到所有文档和 notebooks。
 
 ---

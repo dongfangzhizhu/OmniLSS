@@ -1,5 +1,7 @@
 # 正态分布族 - NO, NO2, LOGNO, LOGNO2
 
+[中文版本](01_normal_distributions_cn.md)
+
 > **系列**: OmniLSS 教程 - 第一阶段  
 > **难度**: ⭐⭐☆☆☆  
 > **预计阅读时间**: 25 分钟  

@@ -1,5 +1,7 @@
 # Algorithms API
 
+[中文版本](algorithms_cn.md)
+
 ## Method routing
 
 `gamlss()` accepts a `method` argument that selects the fitting backend.

@@ -1,5 +1,7 @@
 # JAX GAMLSS 宣传文章规划
 
+[中文版本](PROMOTIONAL_ARTICLES_PLAN_cn.md)
+
 **目标**: 项目冷启动，吸引 GAMLSS 用户和潜在用户  
 **策略**: 突出优势，展示实力，避免学术论文冲突  
 **发布平台**: 知乎、CSDN、掘金、Medium、个人博客

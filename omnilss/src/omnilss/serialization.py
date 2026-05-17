@@ -76,6 +76,7 @@ def load_model_pickle(path: str | Path) -> Any:
 
 
 def save_model_json(model: Any, path: str | Path) -> None:
+    from .design_schema import ensure_model_design_schema
     from .model import GAMLSSModel
 
     if not isinstance(model, GAMLSSModel):
@@ -110,6 +111,7 @@ def save_model_json(model: Any, path: str | Path) -> None:
             "iter": int(model.iter),
             "type": str(model.type),
             "call": _json_safe(dict(model.call or {})),
+            "design_matrix_schema": _json_safe(ensure_model_design_schema(model)),
         }
         zf.writestr("meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
 
@@ -120,6 +122,7 @@ def load_model_json(path: str | Path):
 
     with zipfile.ZipFile(Path(path), "r") as zf:
         meta = json.loads(zf.read("meta.json").decode("utf-8"))
+        design_matrix_schema = meta.get("design_matrix_schema", {})
         version = meta.get("omnilss_version", "")
         if not str(version).startswith("0.3."):
             raise ValueError(f"Incompatible model version: {version}")
@@ -149,17 +152,18 @@ def load_model_json(path: str | Path):
         linear_predictors=etas,
         formulas=meta.get("formulas", {}),
         terms={},
-        design_matrices={
-            p: np.zeros((n, max(int(np.size(coeffs.get(p, np.array([0.0])))), 1)))
-            for p in params
-        },
+        design_matrices={},
         weights=np.ones(n),
         residuals=np.zeros(n),
         iter=int(meta.get("iter", 0)),
         type=meta.get("type", "Continuous"),
         parameters=params,
         call=meta.get("call", {}),
-        additional_slots={"loaded_from_json": True, "omnilss_version": version},
+        additional_slots={
+            "loaded_from_json": True,
+            "omnilss_version": version,
+            "design_matrix_schema": design_matrix_schema,
+        },
     )
 
 

@@ -1,5 +1,7 @@
 # Google Colab Notebooks 创建计划
 
+[中文版本](NOTEBOOKS_CREATION_PLAN_cn.md)
+
 **日期**: 2026-05-08  
 **状态**: 部分完成  
 **目标**: 创建完整的 Colab notebooks 套件用于测试和演示

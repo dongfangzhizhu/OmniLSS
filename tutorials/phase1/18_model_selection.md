@@ -1,5 +1,7 @@
 # Model Selection - AIC, BIC, GAIC
 
+[中文版本](18_model_selection_cn.md)
+
 > Status: scaffold aligned with the current OmniLSS API. Expand this page with
 > distribution-specific derivations, R comparisons, and exercises as content is
 > authored.

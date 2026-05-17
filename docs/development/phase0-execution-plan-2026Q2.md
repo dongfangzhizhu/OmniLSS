@@ -1,5 +1,7 @@
 # OmniLSS Phase 0 执行计划（2026Q2）
 
+[中文版本](phase0-execution-plan-2026Q2_cn.md)
+
 ## 目标
 
 Phase 0 的目标是把 OmniLSS 从“实验项目”升级为“可验证、可维护、可审计”的统计运行时基础设施：

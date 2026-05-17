@@ -24,6 +24,7 @@ def test_release_check_reports_missing_build_module(monkeypatch) -> None:
         return 0
 
     monkeypatch.setattr(release_check, "_run", fake_run)
+    monkeypatch.setattr(release_check, "validate_docs_localization", lambda: [])
     monkeypatch.setattr(release_check.shutil, "which", lambda _: "/usr/bin/python")
 
     stderr = io.StringIO()
@@ -32,3 +33,29 @@ def test_release_check_reports_missing_build_module(monkeypatch) -> None:
 
     assert code == 1
     assert "install with: pip install build" in stderr.getvalue()
+
+
+def test_release_check_fails_on_docs_localization_errors(monkeypatch) -> None:
+    """release_check should stop before packaging when docs localization is invalid."""
+
+    calls = []
+
+    def fake_run(cmd):
+        calls.append(cmd)
+        return 0
+
+    monkeypatch.setattr(release_check, "_run", fake_run)
+    monkeypatch.setattr(release_check.shutil, "which", lambda _: "/usr/bin/python")
+    monkeypatch.setattr(
+        release_check,
+        "validate_docs_localization",
+        lambda: ["missing Chinese document: api/example_cn.md"],
+    )
+
+    stderr = io.StringIO()
+    with contextlib.redirect_stderr(stderr):
+        code = release_check.main()
+
+    assert code == 1
+    assert calls == []
+    assert "missing Chinese document" in stderr.getvalue()

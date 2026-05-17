@@ -1,5 +1,7 @@
 # Distribution Selection and Comparison
 
+[中文版本](22_distribution_selection_cn.md)
+
 > Status: scaffold aligned with the current OmniLSS API. Expand this page with
 > distribution-specific derivations, R comparisons, and exercises as content is
 > authored.

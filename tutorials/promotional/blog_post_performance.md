@@ -1,5 +1,7 @@
 # Why OmniLSS Runs 30–120× Faster Than R GAMLSS
 
+[中文版本](blog_post_performance_cn.md)
+
 *A technical deep-dive into JAX-accelerated distributional regression*
 
 ---

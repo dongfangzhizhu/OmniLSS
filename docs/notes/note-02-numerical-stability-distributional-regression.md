@@ -1,5 +1,7 @@
 # Technical Note 2 — Numerical Stability in Distributional Regression
 
+[中文版本](note-02-numerical-stability-distributional-regression_cn.md)
+
 ## Scope
 Phase 0 numerical-stability baseline for OmniLSS runtime.
 
