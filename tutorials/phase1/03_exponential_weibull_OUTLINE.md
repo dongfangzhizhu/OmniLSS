@@ -97,7 +97,7 @@ library(gamlss)
 
 **Python 代码**:
 ```python
-import omnilss as om
+from omnilss import gamlss
 from omnilss import EXP, WEI, LO
 ```
 
@@ -182,7 +182,7 @@ from omnilss import EXP, WEI, LO
 
 **模型 1: 简单 Weibull 模型**
 ```python
-model1 = jg.gamlss(
+model1 = gamlss(
     formula="failure_time ~ 1",
     family=WEI(),
     data=data
@@ -191,7 +191,7 @@ model1 = jg.gamlss(
 
 **模型 2: 考虑协变量**
 ```python
-model2 = jg.gamlss(
+model2 = gamlss(
     formula="failure_time ~ temperature + load",
     family=WEI(),
     data=data
@@ -200,7 +200,7 @@ model2 = jg.gamlss(
 
 **模型 3: 建模形状参数**
 ```python
-model3 = jg.gamlss(
+model3 = gamlss(
     formula="failure_time ~ temperature + load",
     sigma_formula="~ temperature",
     family=WEI(),
@@ -279,16 +279,16 @@ summary(model)
 **Python 代码**:
 ```python
 # 等价的 Python 代码
-import omnilss as om
+from omnilss import gamlss
 from omnilss import WEI
 
-model = om.gamlss(
+model = gamlss(
     formula="failure_time ~ temperature",
     family=WEI(),
     data=data
 )
 
-print(model.summary())
+print(f"Global deviance: {model.g_dev:.4f}")
 ```
 
 #### 6.2 常见陷阱

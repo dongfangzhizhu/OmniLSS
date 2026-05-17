@@ -5,19 +5,67 @@ Tutorial 02: Gamma Distributions (GA, GG, IGAMMA, IG)
 这个脚本包含了教程中所有的示例代码，可以直接运行。
 """
 
+import sys
+from pathlib import Path
+
+import jax
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import sys
-sys.path.insert(0, '../../../omnilss/src')
 
-import omnilss as om
-from omnilss import GA, IG
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "omnilss" / "src"))
+jax.config.update("jax_enable_x64", True)
+
+from omnilss import GA, IG, gamlss  # noqa: E402
 
 # 设置绘图样式
 plt.style.use('seaborn-v0_8-darkgrid')
 plt.rcParams['figure.figsize'] = (10, 6)
 plt.rcParams['font.size'] = 10
+
+
+def _data_dict(df: pd.DataFrame) -> dict[str, np.ndarray]:
+    """Convert tutorial DataFrames to the dict format used by current OmniLSS."""
+    return {column: df[column].to_numpy() for column in df.columns}
+
+
+def _fitted(model, parameter: str = "mu") -> np.ndarray:
+    """Return fitted values for one distribution parameter."""
+    return np.asarray(model.fitted_values[parameter], dtype=np.float64)
+
+
+def _coef(model, parameter: str = "mu") -> np.ndarray:
+    """Return coefficient vector for one distribution parameter."""
+    return np.asarray(model.coefficients[parameter], dtype=np.float64)
+
+
+def _aic(model) -> float:
+    """Return AIC from the current model diagnostics slot."""
+    return float(model.additional_slots["aic"])
+
+
+def _bic(model) -> float:
+    """Return BIC/SBC from the current model diagnostics slot."""
+    return float(model.additional_slots["sbc"])
+
+
+def _print_model(model) -> None:
+    """Print a compact summary using current GAMLSSModel fields."""
+    print(f"Family: {model.family.name}")
+    print(f"Global deviance: {model.g_dev:.4f}")
+    print(f"AIC: {_aic(model):.2f}")
+    for parameter, beta in model.coefficients.items():
+        print(f"{parameter} coefficients: {np.asarray(beta)}")
+
+
+def _predict_param(model, newdata: pd.DataFrame, parameter: str) -> np.ndarray:
+    """Predict one distribution parameter for new data."""
+    return np.asarray(model.predict_params(_data_dict(newdata))[parameter])
+
+
+def _predict_quantile(model, newdata: pd.DataFrame, quantile: float) -> np.ndarray:
+    """Predict one response quantile for new data."""
+    return np.asarray(model.predict_quantiles(_data_dict(newdata), [quantile])[quantile])
 
 
 def example1_simple_gamma():
@@ -48,19 +96,19 @@ def example1_simple_gamma():
     
     # 拟合模型
     print("\n拟合 Gamma 模型...")
-    model = jg.gamlss(
+    model = gamlss(
         formula="y ~ x",
         family=GA(),
-        data=data
+        data=_data_dict(data)
     )
     
     # 查看结果
     print("\n模型摘要:")
-    print(model.summary())
+    _print_model(model)
     
-    print(f"\nMu 系数: {model.coef_mu}")
-    print(f"Sigma 系数: {model.coef_sigma}")
-    print(f"AIC: {model.aic:.2f}")
+    print(f"\nMu 系数: {_coef(model, 'mu')}")
+    print(f"Sigma 系数: {_coef(model, 'sigma')}")
+    print(f"AIC: {_aic(model):.2f}")
     
     # 可视化
     plt.figure(figsize=(12, 5))
@@ -68,7 +116,7 @@ def example1_simple_gamma():
     # 左图：原始数据和拟合均值
     plt.subplot(1, 2, 1)
     plt.scatter(data['x'], data['y'], alpha=0.5, s=20, label='Observed')
-    plt.plot(data['x'], model.fitted_values, 'r-', linewidth=2, label='Fitted mean')
+    plt.plot(data['x'], _fitted(model), 'r-', linewidth=2, label='Fitted mean')
     plt.xlabel('x', fontsize=12)
     plt.ylabel('y', fontsize=12)
     plt.title('Gamma Regression: Data and Fitted Mean', fontsize=14)
@@ -77,8 +125,8 @@ def example1_simple_gamma():
     
     # 右图：残差
     plt.subplot(1, 2, 2)
-    residuals = data['y'] - model.fitted_values
-    plt.scatter(model.fitted_values, residuals, alpha=0.5, s=20)
+    residuals = data['y'] - _fitted(model)
+    plt.scatter(_fitted(model), residuals, alpha=0.5, s=20)
     plt.axhline(y=0, color='r', linestyle='--', linewidth=2)
     plt.xlabel('Fitted values', fontsize=12)
     plt.ylabel('Residuals', fontsize=12)
@@ -119,15 +167,15 @@ def example2_inverse_gaussian():
     
     # 拟合模型
     print("\n拟合 IG 模型...")
-    model = jg.gamlss(
+    model = gamlss(
         formula="y ~ x",
         family=IG(),
-        data=data
+        data=_data_dict(data)
     )
     
     print("\n模型摘要:")
-    print(model.summary())
-    print(f"AIC: {model.aic:.2f}")
+    _print_model(model)
+    print(f"AIC: {_aic(model):.2f}")
     
     # 可视化
     plt.figure(figsize=(12, 5))
@@ -135,7 +183,7 @@ def example2_inverse_gaussian():
     # 左图：数据和拟合
     plt.subplot(1, 2, 1)
     plt.scatter(data['x'], data['y'], alpha=0.5, s=20, label='Observed')
-    plt.plot(data['x'], model.fitted_values, 'r-', linewidth=2, label='Fitted')
+    plt.plot(data['x'], _fitted(model), 'r-', linewidth=2, label='Fitted')
     plt.xlabel('x', fontsize=12)
     plt.ylabel('y', fontsize=12)
     plt.title('Inverse Gaussian Regression', fontsize=14)
@@ -145,7 +193,7 @@ def example2_inverse_gaussian():
     # 右图：Q-Q 图
     plt.subplot(1, 2, 2)
     from scipy import stats
-    stats.probplot(residuals := (data['y'] - model.fitted_values), dist="norm", plot=plt)
+    stats.probplot(data['y'] - _fitted(model), dist="norm", plot=plt)
     plt.title('Q-Q Plot', fontsize=14)
     plt.grid(True, alpha=0.3)
     
@@ -190,9 +238,9 @@ def example3_insurance_claims():
     })
     
     print(f"\n数据维度: {data.shape}")
-    print(f"\n索赔金额统计:")
+    print("\n索赔金额统计:")
     print(data['claim_amount'].describe())
-    print(f"\n按地区统计:")
+    print("\n按地区统计:")
     print(data.groupby('region')['claim_amount'].describe())
     
     # 数据可视化
@@ -237,36 +285,36 @@ def example3_insurance_claims():
     
     # 模型 1: 简单模型
     print("\n模型 1: 基础模型")
-    model1 = jg.gamlss(
+    model1 = gamlss(
         formula="claim_amount ~ age + vehicle_age",
         family=GA(),
-        data=data
+        data=_data_dict(data)
     )
-    print(f"Model 1 AIC: {model1.aic:.2f}")
+    print(f"Model 1 AIC: {_aic(model1):.2f}")
     
     # 模型 2: 添加地区因素
     print("\n模型 2: 添加地区因素")
     data['region_Urban'] = (data['region'] == 'Urban').astype(int)
     data['region_Suburban'] = (data['region'] == 'Suburban').astype(int)
     
-    model2 = jg.gamlss(
+    model2 = gamlss(
         formula="claim_amount ~ age + vehicle_age + region_Urban + region_Suburban",
         family=GA(),
-        data=data
+        data=_data_dict(data)
     )
-    print(f"Model 2 AIC: {model2.aic:.2f}")
-    print(f"AIC improvement: {model1.aic - model2.aic:.2f}")
+    print(f"Model 2 AIC: {_aic(model2):.2f}")
+    print(f"AIC improvement: {_aic(model1) - _aic(model2):.2f}")
     
     # 模型 3: 建模方差
     print("\n模型 3: 建模方差")
-    model3 = jg.gamlss(
+    model3 = gamlss(
         formula="claim_amount ~ age + vehicle_age + region_Urban + region_Suburban",
         sigma_formula="~ age",
         family=GA(),
-        data=data
+        data=_data_dict(data)
     )
-    print(f"Model 3 AIC: {model3.aic:.2f}")
-    print(f"AIC improvement: {model2.aic - model3.aic:.2f}")
+    print(f"Model 3 AIC: {_aic(model3):.2f}")
+    print(f"AIC improvement: {_aic(model2) - _aic(model3):.2f}")
     
     # 模型比较
     models = {
@@ -277,8 +325,8 @@ def example3_insurance_claims():
     
     comparison = pd.DataFrame({
         'Model': list(models.keys()),
-        'AIC': [m.aic for m in models.values()],
-        'BIC': [m.bic for m in models.values()],
+        'AIC': [_aic(m) for m in models.values()],
+        'BIC': [_bic(m) for m in models.values()],
         'Deviance': [m.deviance for m in models.values()]
     })
     
@@ -307,22 +355,22 @@ def example3_insurance_claims():
     # 结果解释
     print("\n最终模型系数解释:")
     print("\nMu 参数（均值模型）:")
-    print(f"  截距: {model3.coef_mu[0]:.4f}")
-    print(f"  年龄效应: {model3.coef_mu[1]:.4f}")
-    print(f"  车龄效应: {model3.coef_mu[2]:.4f}")
-    print(f"  城市地区效应: {model3.coef_mu[3]:.4f}")
-    print(f"  郊区效应: {model3.coef_mu[4]:.4f}")
+    print(f"  截距: {_coef(model3, "mu")[0]:.4f}")
+    print(f"  年龄效应: {_coef(model3, "mu")[1]:.4f}")
+    print(f"  车龄效应: {_coef(model3, "mu")[2]:.4f}")
+    print(f"  城市地区效应: {_coef(model3, "mu")[3]:.4f}")
+    print(f"  郊区效应: {_coef(model3, "mu")[4]:.4f}")
     
     print("\nSigma 参数（方差模型）:")
-    print(f"  截距: {model3.coef_sigma[0]:.4f}")
-    print(f"  年龄效应: {model3.coef_sigma[1]:.4f}")
+    print(f"  截距: {_coef(model3, "sigma")[0]:.4f}")
+    print(f"  年龄效应: {_coef(model3, "sigma")[1]:.4f}")
     
     # 业务解释
     print("\n业务解释:")
     print("1. 车龄每增加1年，索赔金额平均增加约 {:.1f}%".format(
-        (np.exp(model3.coef_mu[2]) - 1) * 100))
+        (np.exp(_coef(model3, "mu")[2]) - 1) * 100))
     print("2. 城市地区的索赔金额比农村地区高约 {:.1f}%".format(
-        (np.exp(model3.coef_mu[3]) - 1) * 100))
+        (np.exp(_coef(model3, "mu")[3]) - 1) * 100))
     print("3. 年龄越大，索赔金额的变异性越大")
     
     # 预测应用
@@ -334,10 +382,10 @@ def example3_insurance_claims():
         'region_Suburban': [0, 0, 1, 1]
     })
     
-    pred_mu = model3.predict(new_data, what='mu')
-    pred_sigma = model3.predict(new_data, what='sigma')
-    pred_lower = model3.predict(new_data, what='quantile', quantile=0.05)
-    pred_upper = model3.predict(new_data, what='quantile', quantile=0.95)
+    pred_mu = _predict_param(model3, new_data, "mu")
+    pred_sigma = _predict_param(model3, new_data, "sigma")
+    pred_lower = _predict_quantile(model3, new_data, 0.05)
+    pred_upper = _predict_quantile(model3, new_data, 0.95)
     
     pred_results = pd.DataFrame({
         'Age': new_data['age'],
@@ -381,7 +429,7 @@ def benchmark_performance():
         times = []
         for _ in range(3):  # 重复 3 次
             start = time.time()
-            model = jg.gamlss(formula="y ~ x", family=GA(), data=data)
+            _ = gamlss(formula="y ~ x", family=GA(), data=_data_dict(data))
             times.append(time.time() - start)
         
         mean_time = np.mean(times)
@@ -438,7 +486,7 @@ def main():
         model1, data1 = example1_simple_gamma()
         model2, data2 = example2_inverse_gaussian()
         m1, m2, m3, data3 = example3_insurance_claims()
-        results = benchmark_performance()
+        _results = benchmark_performance()
         
         print("\n" + "=" * 60)
         print("所有示例运行完成！")

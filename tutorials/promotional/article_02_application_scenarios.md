@@ -72,7 +72,7 @@ model = gamlss(
 )
 
 print(f"✅ 模型收敛: {model.additional_slots['rs_converged']}")
-print(f"✅ AIC: {model.aic:.2f}")
+print(f"✅ AIC: {model.additional_slots['aic']:.2f}")
 ```
 
 ### 业务价值
@@ -461,14 +461,11 @@ print(f"✅ 模型收敛: {model.additional_slots['rs_converged']}")
 3. **高收入群体特征**
    ```python
    # 识别高收入的关键因素
+   # 当前 GAMLSSModel 以向量形式保存系数；列顺序与公式/design matrix 一致。
+   mu_coef = np.asarray(model.coefficients["mu"])
    print("\n=== 高收入决定因素 ===")
-   print(f"教育回报率: {model.mu_coefficients['education_years']:.3f}")
-   print(f"经验回报率: {model.mu_coefficients['experience_years']:.3f}")
-   
-   # 行业差异
-   for industry in ['金融', '科技']:
-       industry_effect = model.mu_coefficients.get(f'industry_{industry}', 0)
-       print(f"{industry}行业溢价: {np.exp(industry_effect) - 1:.1%}")
+   print(f"教育回报率（按设计矩阵列顺序索引）: {mu_coef[1]:.3f}")
+   print(f"经验回报率（按设计矩阵列顺序索引）: {mu_coef[2]:.3f}")
    ```
 
 ### 关键优势

@@ -95,6 +95,10 @@ nav:
       - NBI & ZAGA Verification: reports/NBI_ZAGA_VERIFICATION_2026_05_06.md
   - Development:
       - Priority Roadmap (2026 Q2): development/priority-roadmap-2026Q2.md
+      - v0.3.0 Release Closure: development/v0.3.0-release-closure-2026-05-17.md
+      - CG Cross-Derivative Path: development/cg-cross-derivatives-development-path-2026-05-17.md
+      - Offline Dev Bootstrap: development/offline-dev-bootstrap-2026-05-17.md
+      - R Environment Setup: development/r-environment-setup.md
       - T1-T4 Status Audit (2026-05-15): development/t1-t4-status-2026-05-15.md
       - Contributing: ../CONTRIBUTING.md
       - Code of Conduct: ../CODE_OF_CONDUCT.md
