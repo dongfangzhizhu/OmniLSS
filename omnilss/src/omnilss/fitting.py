@@ -24,6 +24,23 @@ import numpy as np
 from .controls import GAMLSSControl, GLIMControl, gamlss_control, glim_control
 from .distributions import resolve_family
 from .families import FamilyDefinition
+from ._fitting_utils import (
+    _apply_method_step as _apply_method_step_shared,
+    _eval_linear_term as _eval_linear_term_shared,
+    _is_intercept_only_formula as _is_intercept_only_formula_shared,
+    _normalize_parameter_formula as _normalize_parameter_formula_shared,
+    _resolve_parameter_formulas as _resolve_parameter_formulas_shared,
+    _weighted_least_squares as _weighted_least_squares_shared,
+)
+from ._fitting_init import (
+    _initial_mu_beta as _initial_mu_beta_shared,
+    _initial_parameter_value as _initial_parameter_value_shared,
+    _initial_sigma as _initial_sigma_shared,
+)
+from ._fitting_residuals import (
+    _build_rqres_callable as _build_rqres_callable_shared,
+    _compute_residuals as _compute_residuals_shared,
+)
 from .formula_parser import parse_formula as parse_full_formula
 from .model import GAMLSSModel
 
@@ -78,28 +95,7 @@ def _parse_formula_core(formula: str):
 
 
 def _eval_linear_term(term: str, data: Mapping[str, Any], n: int) -> np.ndarray:
-    if term in data:
-        arr = np.asarray(data[term], dtype=np.float64)
-        if len(arr) != n:
-            raise ValueError(f"Variable '{term}' has wrong length")
-        return arr
-
-    if ":" in term and "(" not in term:
-        parts=[p.strip() for p in term.split(":") if p.strip()]
-        if len(parts)==2:
-            return _eval_linear_term(parts[0], data, n) * _eval_linear_term(parts[1], data, n)
-
-    safe_env = {k: np.asarray(v, dtype=np.float64) for k, v in data.items()}
-    safe_env.update({"np": np, "log": np.log, "exp": np.exp, "sqrt": np.sqrt, "I": lambda x: x})
-    try:
-        arr = np.asarray(eval(term, {"__builtins__": {}}, safe_env), dtype=np.float64)
-    except Exception as exc:
-        raise ValueError(f"Unable to evaluate term '{term}'") from exc
-    if arr.ndim == 0:
-        arr = np.full(n, float(arr), dtype=np.float64)
-    if len(arr) != n:
-        raise ValueError(f"Term '{term}' has wrong length")
-    return arr
+    return _eval_linear_term_shared(term, data, n)
 def _build_design_matrix(
     formula: str,
     data: Mapping[str, Any],
@@ -166,12 +162,7 @@ def _build_design_matrix_with_smooths(
 
 
 def _normalize_parameter_formula(response: str, formula: str) -> str:
-    text = str(formula).strip()
-    if text.startswith("~"):
-        return f"{response} {text}"
-    if "~" in text:
-        return text
-    return f"{response} {text}".strip()
+    return _normalize_parameter_formula_shared(response, formula)
 
 
 def _resolve_parameter_formulas(
@@ -192,31 +183,13 @@ def _resolve_parameter_formulas(
     - Rejects parameters that are unknown or unsupported by the current family.
     """
 
-    fixed_parameters = set(family.fixed_parameters or ())
-    resolved = {"mu": _normalize_parameter_formula(response, mu_formula)}
-    for parameter in family.parameters:
-        if parameter == "mu":
-            continue
-        if parameter in fixed_parameters:
-            continue
-        if parameter == "sigma":
-            resolved["sigma"] = _normalize_parameter_formula(response, sigma_formula)
-            continue
-        resolved[parameter] = _normalize_parameter_formula(response, "~1")
-
-    if parameter_formulas is None:
-        return resolved
-
-    for parameter, formula_text in parameter_formulas.items():
-        key = str(parameter).strip().lower()
-        if key in fixed_parameters:
-            raise ValueError(f"family {family.name!r} uses fixed parameter {key!r}; provide it in data instead")
-        if key not in {"mu", "sigma", "nu", "tau"}:
-            raise ValueError(f"unknown parameter formula {parameter!r}")
-        if key not in family.parameters:
-            raise ValueError(f"family {family.name!r} does not support parameter {key!r}")
-        resolved[key] = _normalize_parameter_formula(response, str(formula_text))
-    return resolved
+    return _resolve_parameter_formulas_shared(
+        response,
+        family,
+        mu_formula,
+        sigma_formula,
+        parameter_formulas,
+    )
 
 
 def _prepare_fixed_parameter_array(
@@ -283,73 +256,11 @@ def _initial_parameter_value(
     w: np.ndarray,
 ) -> float:
     """Construct staged starting values for non-mu parameters."""
-
-    if parameter == "sigma":
-        return _initial_sigma(family, y, mu, w)
-    if parameter == "nu":
-        if family.name == "PE":
-            return 1.8
-        if family.name == "TF":
-            return 10.0
-        if family.name == "JSU":
-            return 0.0
-        if family.name == "BCCG":
-            return 1.0
-        if family.name == "BCT":
-            return 1.0
-        if family.name == "BCPE":
-            return 1.0
-        if family.name == "GG":
-            return 2.0  # Shape parameter, 2.0 is reasonable for gamma-like data
-        if family.name == "GB2":
-            return 1.0  # Shape parameter 1, start from symmetric case for stability
-        if family.name == "DEL":
-            return 0.5  # Poisson component, small starting value
-        if family.name == "NET":
-            return 1.0  # Threshold k1, 1.0 is reasonable starting value
-        if family.name == "GT":
-            return 5.0  # Degrees of freedom, reasonable starting value
-        if family.name == "SHASH":
-            return 1.0  # Skewness parameter
-        if family.name == "SHASHo":
-            return 0.0  # Skewness parameter (original parameterization)
-        if family.name == "SN1":
-            return 0.0  # Skewness parameter
-        if family.name == "SN2":
-            return 1.0  # Scale ratio parameter
-        # Zero-inflated/altered distributions: nu is zero-inflation probability
-        # Use logit link, so initial value should be small but positive
-        if family.name in ("ZAGA", "ZAIG", "ZAP", "ZINBI", "ZIP2", "BEZI", "BEOI"):
-            return 0.2  # 20% zero-inflation, reasonable starting point
-        if family.name in ("BEINF", "BEINF0", "BEINF1"):
-            return 0.1  # 10% inflation at boundary, conservative estimate
-        return 1.0
-    if parameter == "tau":
-        if family.name == "JSU":
-            return 1.0
-        if family.name == "BCT":
-            return 10.0  # Degrees of freedom, higher starting value for stability
-        if family.name == "GB2":
-            return 1.0  # Shape parameter 2, start from symmetric case for stability
-        if family.name == "BCPE":
-            return 2.0
-        if family.name == "NET":
-            return 2.0  # Threshold k2, must be >= nu, 2.0 > 1.0
-        if family.name == "GT":
-            return 2.0  # Shape exponent, 2.0 is close to normal
-        if family.name == "SHASH":
-            return 1.0  # Kurtosis parameter
-        if family.name == "SHASHo":
-            return 1.0  # Kurtosis parameter
-        if family.name == "BEINF":
-            return 0.1  # Inflation at 1, conservative estimate
-        return 1.0
-    return 1.0
+    return _initial_parameter_value_shared(family, parameter, y, mu, w)
 
 
 def _is_intercept_only_formula(formula: str) -> bool:
-    response, predictors = _parse_formula(formula)
-    return bool(response) and len(predictors) == 0
+    return _is_intercept_only_formula_shared(formula)
 
 
 def _weighted_least_squares(
@@ -376,28 +287,7 @@ def _weighted_least_squares(
     coef : np.ndarray
         Fitted coefficients
     """
-    x_array = np.asarray(x, dtype=np.float64)
-    z_array = np.asarray(z, dtype=np.float64)
-    w_array = np.asarray(w, dtype=np.float64)
-    safe_w = np.nan_to_num(w_array, nan=1.0, posinf=1e10, neginf=1e-10)
-    safe_w = np.clip(safe_w, 1e-10, 1e10)
-    safe_x = np.nan_to_num(x_array, nan=0.0, posinf=1e10, neginf=-1e10)
-    safe_z = np.nan_to_num(z_array, nan=0.0, posinf=1e10, neginf=-1e10)
-    
-    # If we have smooth terms, use penalized WLS
-    if smooth_info is not None and len(smooth_info.smooth_fits) > 0:
-        from .smooth_fitting import fit_penalized_wls
-        return fit_penalized_wls(safe_x, safe_z, safe_w, smooth_info.smooth_fits)
-    
-    # Otherwise use standard WLS
-    sqrt_w = np.sqrt(safe_w)
-    wx = safe_x * sqrt_w[:, None]
-    wz = safe_z * sqrt_w
-    try:
-        coef, _, _, _ = np.linalg.lstsq(wx, wz, rcond=None)
-    except np.linalg.LinAlgError:
-        coef = np.linalg.pinv(wx, rcond=1e-10) @ wz
-    return coef.astype(np.float64, copy=False)
+    return _weighted_least_squares_shared(x, z, w, smooth_info)
 
 
 def _apply_method_step(
@@ -415,13 +305,7 @@ def _apply_method_step(
       this branch applies a 50% damped fallback for the legacy inline path only.
     """
 
-    if method_name == "CG":
-        # NOTE: The full Cole-Green algorithm is implemented in fitting_cg.fit_cg().
-        # This legacy inline path is only a compatibility damping step.
-        return previous_beta + 0.5 * (proposed_beta - previous_beta)
-    if method_name == "MIXED":
-        return previous_beta + 0.75 * (proposed_beta - previous_beta)
-    return proposed_beta
+    return _apply_method_step_shared(previous_beta, proposed_beta, method_name)
 
 
 def _compute_residuals(
@@ -430,15 +314,7 @@ def _compute_residuals(
     mu: np.ndarray,
     sigma: np.ndarray | None,
 ) -> jnp.ndarray:
-    if family.name == "LOGNO" and sigma is not None:
-        log_y = np.log(np.maximum(y, np.finfo(np.float64).eps))
-        return jnp.asarray((log_y - mu) / sigma, dtype=jnp.float64)
-    if family.name == "GA" and sigma is not None and family.p is not None:
-        probabilities = np.asarray(family.p(y, mu, sigma), dtype=np.float64)
-        return jnp.asarray(_normal_quantile(probabilities), dtype=jnp.float64)
-    if sigma is not None:
-        return jnp.asarray((y - mu) / sigma, dtype=jnp.float64)
-    return jnp.asarray((y - mu) / np.sqrt(np.maximum(mu, 1e-12)), dtype=jnp.float64)
+    return _compute_residuals_shared(family, y, mu, sigma)
 
 
 def _normal_quantile(probabilities: np.ndarray) -> np.ndarray:
@@ -537,18 +413,7 @@ def _discrete_midpoint_rqres(
 
 
 def _build_rqres_callable(family: FamilyDefinition) -> Any | None:
-    if family.name not in {"PO", "BI", "GEOM", "NBI", "ZIP"}:
-        return None
-
-    def rqres(**kwargs: Any) -> jnp.ndarray:
-        y = np.asarray(kwargs["y"], dtype=np.float64)
-        mu = np.asarray(kwargs["mu"], dtype=np.float64)
-        sigma_value = kwargs.get("sigma")
-        sigma = None if sigma_value is None else np.asarray(sigma_value, dtype=np.float64)
-        values = _discrete_midpoint_rqres(family, y=y, mu=mu, sigma=sigma)
-        return jnp.asarray(values, dtype=jnp.float64)
-
-    return rqres
+    return _build_rqres_callable_shared(family)
 
 
 def _initial_mu_beta(
@@ -559,74 +424,7 @@ def _initial_mu_beta(
     fixed_parameter_values: Mapping[str, np.ndarray] | None = None,
 ) -> np.ndarray:
     """Construct a family-aware starting point for the mu predictor."""
-
-    sqrt_w = np.sqrt(w)
-    if family.name == "NO":
-        target = y
-    elif family.name == "PO":
-        target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
-    elif family.name == "GEOM":
-        target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
-    elif family.name == "ZIP":
-        target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
-    elif family.name in ("YULE", "WARING"):
-        target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
-    elif family.name in ("ZAGA", "ZAIG", "ZAP", "ZINBI", "ZIP2"):
-        # Zero-altered/inflated: use log link, exclude zeros from initialization
-        # For zeros, use small positive value
-        target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
-    elif family.name == "BI":
-        clipped = np.clip(y, 1e-6, 1.0 - 1e-6)
-        target = np.log(clipped / (1.0 - clipped))
-    elif family.name == "BB":
-        if fixed_parameter_values is None or "bd" not in fixed_parameter_values:
-            raise ValueError("BB initialization requires fixed parameter 'bd'")
-        bd = np.maximum(np.asarray(fixed_parameter_values["bd"], dtype=np.float64), 1.0)
-        clipped = np.clip(y / bd, 1e-6, 1.0 - 1e-6)
-        target = np.log(clipped / (1.0 - clipped))
-    elif family.name == "BE":
-        clipped = np.clip(y, 1e-6, 1.0 - 1e-6)
-        target = np.log(clipped / (1.0 - clipped))
-    elif family.name == "WEI":
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
-    elif family.name == "BCCG":
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
-    elif family.name == "BCT":
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
-    elif family.name == "BCPE":
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
-    elif family.name == "GA":
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
-    elif family.name == "GG":
-        # Generalized Gamma: similar to GA
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
-    elif family.name == "GB2":
-        # Generalized Beta Type 2: similar to GA
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
-    elif family.name == "EXP":
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
-    elif family.name == "LOGNO":
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
-    elif family.name == "LNO":
-        # LNO is alias for LOGNO (identity link for mu)
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
-    elif family.name == "NBI":
-        target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
-    elif family.name == "IG":
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
-    elif family.name == "IGAMMA":
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
-    elif family.name == "LO":
-        target = y
-    elif family.name == "NET":
-        # NET: mu uses identity link
-        target = y
-    else:
-        target = y
-    wx = x * sqrt_w[:, None]
-    wy = target * sqrt_w
-    beta_mu, _, _, _ = np.linalg.lstsq(wx, wy, rcond=None)
-    return beta_mu
+    return _initial_mu_beta_shared(family, x, y, w, fixed_parameter_values)
 
 
 def _initial_sigma(
@@ -637,107 +435,7 @@ def _initial_sigma(
     fixed_parameter_values: Mapping[str, np.ndarray] | None = None,
 ) -> float:
     """Construct a family-aware starting point for the sigma parameter."""
-
-    eps = np.finfo(np.float64).eps
-    if family.name == "LOGNO":
-        log_y = np.log(np.maximum(y, eps))
-        sigma = np.sqrt(np.sum(w * np.square(log_y - mu)) / np.sum(w))
-    elif family.name == "LNO":
-        # LNO is alias for LOGNO
-        log_y = np.log(np.maximum(y, eps))
-        sigma = np.sqrt(np.sum(w * np.square(log_y - mu)) / np.sum(w))
-    elif family.name == "GA":
-        centered = (y - mu) / np.maximum(mu, eps)
-        sigma = np.sqrt(np.sum(w * np.square(centered)) / np.sum(w))
-    elif family.name == "NBI":
-        mean_component = np.maximum(mu, eps)
-        variance_component = np.sum(w * np.square(y - mu)) / np.sum(w)
-        mean_level = np.sum(w * mean_component) / np.sum(w)
-        sigma = np.maximum((variance_component - mean_level) / np.maximum(mean_level**2, eps), eps)
-    elif family.name == "IG":
-        centered = (y - mu) / np.maximum(np.power(mu, 1.5), eps)
-        sigma = np.sqrt(np.sum(w * np.square(centered)) / np.sum(w))
-    elif family.name == "BE":
-        clipped_y = np.clip(y, eps, 1.0 - eps)
-        clipped_mu = np.clip(mu, eps, 1.0 - eps)
-        variance_component = np.sum(w * np.square(clipped_y - clipped_mu)) / np.sum(w)
-        mean_level = np.sum(w * clipped_mu) / np.sum(w)
-        denom = np.maximum(mean_level * (1.0 - mean_level), eps)
-        sigma = np.maximum(variance_component / denom, eps)
-    elif family.name == "BB":
-        sigma = 1.0
-    elif family.name == "WEI":
-        log_y = np.log(np.maximum(y, eps))
-        log_mu = np.log(np.maximum(mu, eps))
-        sigma = np.sqrt(np.sum(w * np.square(log_y - log_mu)) / np.sum(w))
-    elif family.name == "ZIP":
-        # R uses: sigma <- rep(0.1, length(y))
-        # Simple constant starting value
-        sigma = 0.1
-    elif family.name in ("ZAGA", "ZAIG"):
-        # Zero-altered gamma/IG: sigma is scale parameter of underlying distribution
-        # Use only non-zero observations for initialization
-        y_nonzero = y[y > 0]
-        mu_nonzero = mu[y > 0]
-        w_nonzero = w[y > 0]
-        if len(y_nonzero) > 0:
-            if family.name == "ZAGA":
-                # For gamma: sigma = sqrt(Var(Y)/mu^2)
-                centered = (y_nonzero - mu_nonzero) / np.maximum(mu_nonzero, eps)
-                sigma = np.sqrt(np.sum(w_nonzero * np.square(centered)) / np.sum(w_nonzero))
-            else:  # ZAIG
-                # For IG: similar to gamma
-                centered = (y_nonzero - mu_nonzero) / np.maximum(np.power(mu_nonzero, 1.5), eps)
-                sigma = np.sqrt(np.sum(w_nonzero * np.square(centered)) / np.sum(w_nonzero))
-        else:
-            sigma = 0.5  # Fallback if all zeros
-    elif family.name in ("ZIP2", "ZINBI", "ZAP"):
-        # Zero-inflated/altered discrete: use simple starting value
-        sigma = 0.1
-    elif family.name == "NBII":
-        # NBII: size = mu/sigma, Var(Y) = mu(1 + sigma)
-        # Therefore: sigma = Var(Y)/mu - 1
-        mean_component = np.maximum(mu, eps)
-        variance_component = np.sum(w * np.square(y - mu)) / np.sum(w)
-        mean_level = np.sum(w * mean_component) / np.sum(w)
-        # sigma = (variance - mean) / mean
-        sigma = np.maximum((variance_component - mean_level) / np.maximum(mean_level, eps), eps)
-    elif family.name == "PARETO2":
-        # PARETO2: shape = 1/sigma, need sigma < 1 for finite mean
-        # Use coefficient of variation as a guide
-        mean_component = np.maximum(mu, eps)
-        variance_component = np.sum(w * np.square(y - mu)) / np.sum(w)
-        mean_level = np.sum(w * mean_component) / np.sum(w)
-        # CV = sqrt(variance) / mean, for Pareto2: CV = sqrt(sigma/(1-sigma))
-        # Start with a conservative value
-        cv = np.sqrt(variance_component) / np.maximum(mean_level, eps)
-        # sigma = CV^2 / (1 + CV^2), ensure sigma < 1
-        sigma = np.clip(cv**2 / (1.0 + cv**2), eps, 0.9)
-    elif family.name == "IGAMMA":
-        # IGAMMA: Use a simple fixed starting value
-        # R's formula gives values that are too large and unstable
-        # Start with a conservative small value
-        sigma = 0.5
-    elif family.name == "GG":
-        # Generalized Gamma: Use conservative starting value
-        # Similar to Gamma but more stable
-        sigma = 0.5
-    elif family.name == "NET":
-        # NET: Use conservative starting value
-        sigma = 1.0
-    elif family.name == "PE":
-        mean_y = np.sum(w * y) / np.sum(w)
-        sigma = (np.sum(w * np.abs(y - mean_y)) / np.sum(w) + np.sqrt(np.sum(w * np.square(y - mean_y)) / np.sum(w))) / 2.0
-    elif family.name in ("YULE", "WARING"):
-        # R initializes WARING at sigma = 1; using a much smaller value sends
-        # the fit too close to the boundary before the first update.
-        if family.name == "WARING":
-            sigma = 1.0
-        else:
-            sigma = 2.0  # YULE
-    else:
-        sigma = np.sqrt(np.sum(w * np.square(y - mu)) / np.sum(w))
-    return max(float(sigma), eps)
+    return _initial_sigma_shared(family, y, mu, w, fixed_parameter_values)
 
 
 def gamlss_ml(
