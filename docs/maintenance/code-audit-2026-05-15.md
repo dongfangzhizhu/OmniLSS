@@ -1,5 +1,7 @@
 # Architecture Stabilization Code Audit — 2026-05-15
 
+[中文版本](code-audit-2026-05-15_cn.md)
+
 This audit records the code-level issues found while continuing the 30-day
 architecture stabilization plan. It is intentionally scoped to architecture,
 testing, and documentation hygiene; it does not authorize new feature work during

@@ -1,5 +1,7 @@
 # ADR-001: Distribution Protocol
 
+[中文版本](ADR-001-distribution-protocol_cn.md)
+
 # Context
 
 OmniLSS contains many distribution families whose interfaces are currently

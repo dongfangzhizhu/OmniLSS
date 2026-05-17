@@ -89,6 +89,8 @@ nav:
       - Phase 0 Methodology: benchmarks/phase0-benchmark-methodology.md
       - JAX RS Notes: benchmarks/jax_rs_notes.md
   - Development:
+      - Academic & Commercial Maximization Plan: development/academic-commercial-maximization-plan-2026-05-17.md
+      - Academic & Commercial Maximization Plan (中文): development/academic-commercial-maximization-plan-2026-05-17_cn.md
       - Priority Roadmap (2026 Q2): development/priority-roadmap-2026Q2.md
       - Phase 0 Execution Plan: development/phase0-execution-plan-2026Q2.md
       - Phase 1 Execution Plan: development/phase1-execution-plan-2026H2.md

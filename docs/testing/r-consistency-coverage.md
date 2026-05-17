@@ -1,5 +1,7 @@
 # R Consistency Coverage
 
+[中文版本](r-consistency-coverage_cn.md)
+
 This document tracks the R-backed checks that protect compatibility with the
 reference `gamlss`/`gamlss.dist` implementation. It is a coverage map, not a
 claim that OmniLSS is fully equivalent to R for every family.

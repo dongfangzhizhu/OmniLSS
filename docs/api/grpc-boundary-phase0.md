@@ -1,5 +1,7 @@
 # gRPC Runtime Boundary (Phase 0)
 
+[中文版本](grpc-boundary-phase0_cn.md)
+
 ## Service surface
 - `Fit` request/response
 - `Predict` request/response

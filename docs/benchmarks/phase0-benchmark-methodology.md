@@ -1,5 +1,7 @@
 # Phase 0 Benchmark Methodology
 
+[中文版本](phase0-benchmark-methodology_cn.md)
+
 ## Fixed scenarios
 - small / medium / pathological datasets
 - RS baseline + optional joint optimizer comparison
