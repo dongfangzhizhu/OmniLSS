@@ -455,12 +455,27 @@ def test_predict_params_rejects_missing_prediction_variable():
         model.predict_params({"z": np.array([0.0, 1.0])})
 
 
-def test_predict_params_rejects_design_schema_mismatch():
+def test_predict_params_uses_saved_schema_when_formula_slot_drifts():
     rng = np.random.default_rng(124)
     x = rng.normal(size=40)
     y = 1.0 + 0.3 * x + rng.normal(scale=0.2, size=40)
     model = gamlss("y ~ x", family="NO", data={"y": y, "x": x})
+    expected = model.predict_params({"x": np.array([0.0, 1.0])})["mu"]
     model.formulas = {**dict(model.formulas), "mu": "y ~ x + z"}
 
-    with pytest.raises(PredictionSchemaError, match="has 3 columns"):
-        model.predict_params({"x": np.array([0.0, 1.0]), "z": np.array([0.0, 1.0])})
+    observed = model.predict_params({"x": np.array([0.0, 1.0]), "z": np.array([5.0, 6.0])})["mu"]
+    np.testing.assert_allclose(observed, expected)
+
+
+def test_predict_params_rejects_design_schema_mismatch():
+    rng = np.random.default_rng(125)
+    x = rng.normal(size=40)
+    y = 1.0 + 0.3 * x + rng.normal(scale=0.2, size=40)
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x})
+    schema = dict(model.additional_slots["design_matrix_schema"])
+    schema["parameters"] = dict(schema["parameters"])
+    schema["parameters"]["mu"] = {**schema["parameters"]["mu"], "n_columns": 3}
+    model.additional_slots = {**dict(model.additional_slots), "design_matrix_schema": schema}
+
+    with pytest.raises(PredictionSchemaError, match="has 2 columns"):
+        model.predict_params({"x": np.array([0.0, 1.0])})

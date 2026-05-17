@@ -52,11 +52,28 @@ def test_json_artifact_contains_design_matrix_schema(tmp_path):
 
     with zipfile.ZipFile(path, "r") as zf:
         meta = json.loads(zf.read("meta.json").decode("utf-8"))
+    assert meta["design_matrix_schema"]["version"] == 2
+    assert meta["design_matrix_schema"]["artifact_version"] == 2
     schema = meta["design_matrix_schema"]["parameters"]["mu"]
     assert schema["formula"] == "y ~ x"
     assert schema["term_labels"] == ["x"]
+    assert schema["term_order"] == ["x"]
+    assert schema["column_names"] == ["(Intercept)", "x"]
     assert schema["n_columns"] == 2
     assert schema["coefficient_count"] == 2
 
     loaded = load_model_json(path)
     assert loaded.additional_slots["design_matrix_schema"]["parameters"]["mu"] == schema
+
+
+def test_fit_attaches_design_matrix_schema_before_serialization():
+    rng = np.random.default_rng(24)
+    n = 40
+    x = rng.normal(size=n)
+    y = 1.5 + 0.4 * x + rng.normal(scale=0.2, size=n)
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x})
+
+    schema = model.additional_slots["design_matrix_schema"]["parameters"]["mu"]
+    assert schema["raw_formula"] == "y ~ x"
+    assert schema["term_order"] == ["x"]
+    assert schema["training_column_checksum"]

@@ -48,6 +48,25 @@ class GAMLSSModel:
     class_name: str = "gamlss"
     lambda_selection_info: Mapping[str, Any] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        """Attach a design-matrix schema when enough fit metadata is available."""
+
+        if not self.formulas or not self.design_matrices:
+            return
+        if isinstance(self.additional_slots, Mapping) and self.additional_slots.get("design_matrix_schema"):
+            return
+        try:
+            from .design_schema import build_design_matrix_schema
+
+            self.additional_slots = {
+                **dict(self.additional_slots or {}),
+                "design_matrix_schema": build_design_matrix_schema(self),
+            }
+        except Exception:
+            # Model construction should not fail for legacy or partial objects;
+            # prediction/serialization will raise structured schema errors later.
+            return
+
     def has_parameter(self, what: str) -> bool:
         """Mirror the R object check `what %in% object$par`."""
 

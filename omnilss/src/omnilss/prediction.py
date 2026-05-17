@@ -98,6 +98,7 @@ def _build_design_matrix_for_prediction(
     import jax.numpy as jnp
 
     from ._fitting_utils import _eval_linear_term
+    from .design_schema import ensure_model_design_schema
 
     if newdata:
         n = len(next(iter(newdata.values())))
@@ -111,10 +112,9 @@ def _build_design_matrix_for_prediction(
     additional_slots = getattr(model, "additional_slots", {}) or {}
     smooth_infos = additional_slots.get("smooth_infos", {})
     param_smooth_info = smooth_infos.get(param)
-    design_schema = (additional_slots.get("design_matrix_schema", {}) or {}).get(
-        "parameters", {}
-    ).get(param, {})
-    formula = model.formulas.get(param, "")
+    schema = ensure_model_design_schema(model)
+    design_schema = (schema.get("parameters", {}) or {}).get(param, {})
+    formula = design_schema.get("formula") or model.formulas.get(param, "")
     if not formula or "~" not in formula:
         raise PredictionSchemaError(
             f"Missing formula schema for parameter {param!r}; cannot build prediction matrix"
@@ -122,7 +122,7 @@ def _build_design_matrix_for_prediction(
 
     rhs = formula.split("~", 1)[1].strip()
     columns: list[np.ndarray] = []
-    has_intercept = not ("-1" in rhs or rhs == "0")
+    has_intercept = bool(design_schema.get("has_intercept", not ("-1" in rhs or rhs == "0")))
     if has_intercept:
         columns.append(np.ones(n, dtype=np.float64))
 
@@ -150,7 +150,10 @@ def _build_design_matrix_for_prediction(
         return terms
 
     smooth_funcs = {"pb", "ps", "cs", "s", "lo", "te", "ti"}
-    for term_str in split_terms(rhs):
+    schema_terms = list(design_schema.get("term_order") or [])
+    prediction_terms = schema_terms or split_terms(rhs)
+
+    for term_str in prediction_terms:
         smooth_match = re.match(r"^(\w+)\((.+)\)$", term_str, re.DOTALL)
         if smooth_match and smooth_match.group(1) in smooth_funcs:
             inner = smooth_match.group(2)
@@ -193,6 +196,32 @@ def _build_design_matrix_for_prediction(
                 ) from exc
             columns.append(basis_new)
         else:
+            factor_match = re.fullmatch(r"factor\(([^)]+)\)", term_str)
+            if factor_match:
+                var_name = factor_match.group(1).strip()
+                factor_levels = design_schema.get("factor_levels", {}).get(var_name)
+                if not factor_levels:
+                    raise PredictionSchemaError(
+                        f"Missing factor levels for term {term_str!r} in parameter {param!r}"
+                    )
+                if var_name not in newdata:
+                    raise PredictionSchemaError(
+                        f"Missing variable {var_name!r} required by factor term {term_str!r}"
+                    )
+                values = np.asarray(newdata[var_name])
+                if len(values) != n:
+                    raise PredictionSchemaError(
+                        f"Variable {var_name!r} has length {len(values)}, expected {n}"
+                    )
+                unknown = sorted(set(values.tolist()) - set(factor_levels))
+                if unknown:
+                    raise PredictionSchemaError(
+                        f"Factor term {term_str!r} contains unseen levels {unknown!r}"
+                    )
+                for level in factor_levels[1:]:
+                    columns.append((values == level).astype(np.float64))
+                continue
+
             try:
                 columns.append(_eval_linear_term(term_str, newdata, n).reshape(-1))
             except Exception as exc:
