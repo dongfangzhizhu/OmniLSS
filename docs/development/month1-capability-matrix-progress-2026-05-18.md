@@ -11,6 +11,7 @@ This note records progress against Month 1 / Workstream D3: **RS/CG/JAX Capabili
 ## Implemented Progress
 
 - The runtime capability registry now exposes a machine-readable `capability_matrix()` snapshot containing the feature list and per-family evidence statuses.
+- `tools/generate_capability_matrix.py` now generates `family-capability-matrix-2026-05-18.json` for reuse by documentation, release bundles, and API clients.
 - Production-safe families can mark core routes as validated; the current baseline validates `NO` for `rs_fit`, `prediction`, `r_consistency`, and `production_safe`.
 - `gamlss(..., strict_capabilities=True)` now rejects experimental method/family routes and admits only validated capability features.
 - Default development behavior remains unchanged: experimental routes are still allowed unless strict capability mode is requested.

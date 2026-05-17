@@ -11,6 +11,7 @@
 ## 已实现进展
 
 - 运行时能力注册表现在提供机器可读的 `capability_matrix()` 快照，包含 feature 列表和每个分布族的证据状态。
+- 新增 `tools/generate_capability_matrix.py`，并生成 `family-capability-matrix-2026-05-18.json`，供文档、发布包和 API 客户端复用。
 - production-safe 分布族可以将核心路径标记为 validated；当前基线将 `NO` 的 `rs_fit`、`prediction`、`r_consistency` 和 `production_safe` 标记为 validated。
 - `gamlss(..., strict_capabilities=True)` 现在会拒绝实验性 method/family 路径，只允许 validated capability feature。
 - 默认开发行为保持不变：除非显式请求 strict capability mode，否则实验性路径仍允许运行。
@@ -19,5 +20,4 @@
 ## D3 剩余工作
 
 - 通过服务端点暴露能力矩阵，供 API 客户端使用。
-- 在发布包和文档构建中增加生成的 JSON 工件。
 - 扩展验证证据，让更多核心分布族可以针对特定路径从 experimental 升级为 validated。
