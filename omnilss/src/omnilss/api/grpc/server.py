@@ -99,6 +99,8 @@ def _grpc_runtime_gaps() -> list[str]:
     elif importlib.util.find_spec("google.protobuf") is None:
         gaps.append("protobuf")
     for module in (
+        "omnilss.api.grpc.generated.capability_pb2",
+        "omnilss.api.grpc.generated.capability_pb2_grpc",
         "omnilss.api.grpc.generated.fit_pb2",
         "omnilss.api.grpc.generated.fit_pb2_grpc",
         "omnilss.api.grpc.generated.predict_pb2",
@@ -123,6 +125,8 @@ def create_service():
         )
 
     from .generated import (
+        capability_pb2,
+        capability_pb2_grpc,
         fit_pb2,
         fit_pb2_grpc,
         predict_pb2,
@@ -135,7 +139,22 @@ def create_service():
         fit_pb2_grpc.FitServiceServicer,
         predict_pb2_grpc.PredictServiceServicer,
         sample_pb2_grpc.SampleServiceServicer,
+        capability_pb2_grpc.CapabilityServiceServicer,
     ):
+        def CapabilityMatrix(self, request, context):  # noqa: N802, ARG002
+            try:
+                from ...family_capabilities import capability_matrix
+
+                return capability_pb2.CapabilityMatrixResponse(
+                    matrix_json=_to_json(capability_matrix()),
+                    success=True,
+                    error="",
+                )
+            except Exception as exc:
+                return capability_pb2.CapabilityMatrixResponse(
+                    matrix_json="{}", success=False, error=str(exc)
+                )
+
         def Fit(self, request, context):  # noqa: N802
             try:
                 data = _from_json(request.data_json)
@@ -233,7 +252,13 @@ def create_service():
                     samples_json="{}", success=False, error=str(exc)
                 )
 
-    return OmniLSSService(), fit_pb2_grpc, predict_pb2_grpc, sample_pb2_grpc
+    return (
+        OmniLSSService(),
+        fit_pb2_grpc,
+        predict_pb2_grpc,
+        sample_pb2_grpc,
+        capability_pb2_grpc,
+    )
 
 
 def serve(host: str = "0.0.0.0", port: int = 50051):
@@ -242,11 +267,18 @@ def serve(host: str = "0.0.0.0", port: int = 50051):
     except Exception as exc:  # pragma: no cover
         raise RuntimeError("grpcio is required to run OmniLSS gRPC server") from exc
 
-    service, fit_pb2_grpc, predict_pb2_grpc, sample_pb2_grpc = create_service()
+    (
+        service,
+        fit_pb2_grpc,
+        predict_pb2_grpc,
+        sample_pb2_grpc,
+        capability_pb2_grpc,
+    ) = create_service()
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=8))
     fit_pb2_grpc.add_FitServiceServicer_to_server(service, server)
     predict_pb2_grpc.add_PredictServiceServicer_to_server(service, server)
     sample_pb2_grpc.add_SampleServiceServicer_to_server(service, server)
+    capability_pb2_grpc.add_CapabilityServiceServicer_to_server(service, server)
     server.add_insecure_port(f"{host}:{port}")
     server.start()
     return server
