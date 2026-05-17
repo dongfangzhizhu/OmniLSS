@@ -302,18 +302,8 @@ from .stepTGD import add1TGD, add1TGDP, drop1TGD, drop1TGDP, extractTGD, stepTGD
 from .update import update
 from .worm_plot import MultiPanelWormPlotData, WormPlotData, wp, wp_data, wp_interactive
 
-# New modules: scoring rules and sklearn compatibility
-from . import scoring
-from .scoring import (
-    crps,
-    log_score,
-    dss,
-    interval_score,
-    coverage,
-    pit_histogram,
-    scoring_summary,
-)
-from .sklearn_compat import GAMLSSRegressor
+# Optional modules are resolved lazily via __getattr__ below so missing optional
+# dependencies do not make ``import omnilss`` fail.
 
 __all__ = [
     "FamilyDefinition",
@@ -848,6 +838,46 @@ except ImportError as _e:
     save_model_pickle = None
 
 
+_OPTIONAL_EXPORTS = {
+    "crps": ("omnilss.scoring", "crps", "scoring"),
+    "log_score": ("omnilss.scoring", "log_score", "scoring"),
+    "dss": ("omnilss.scoring", "dss", "scoring"),
+    "interval_score": ("omnilss.scoring", "interval_score", "scoring"),
+    "coverage": ("omnilss.scoring", "coverage", "scoring"),
+    "pit_histogram": ("omnilss.scoring", "pit_histogram", "scoring"),
+    "scoring_summary": ("omnilss.scoring", "scoring_summary", "scoring"),
+    "GAMLSSRegressor": ("omnilss.sklearn_compat", "GAMLSSRegressor", "sklearn"),
+}
+
+
+def __getattr__(name: str):
+    """Lazily load optional top-level exports.
+
+    This keeps the core package importable when optional extras such as
+    scikit-learn or future scoring-rule backends are not installed.
+    """
+    if name not in _OPTIONAL_EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    import importlib
+    import warnings
+
+    module_name, attr_name, extra = _OPTIONAL_EXPORTS[name]
+    try:
+        module = importlib.import_module(module_name)
+        value = getattr(module, attr_name)
+    except ImportError as exc:
+        warnings.warn(
+            f"Optional OmniLSS export {name!r} requires the {extra!r} extra: "
+            f"pip install 'omnilss[{extra}]'. Error: {exc}",
+            ImportWarning,
+            stacklevel=2,
+        )
+        value = None
+    globals()[name] = value
+    return value
+
+
 def check_installation() -> dict:
     """Return module availability diagnostics for OmniLSS installation."""
     import importlib
@@ -856,7 +886,7 @@ def check_installation() -> dict:
     modules = {
         "core": ("omnilss.fitting", "gamlss"),
         "distributions": ("omnilss.distributions", "NO"),
-        "smoothers": ("omnilss.smoothers.pb", "pb_smoother"),
+        "smoothers": ("omnilss.smoothers.pb", "fit_pspline"),
         "diagnostics": ("omnilss.diagnostics", "quantile_residuals"),
         "prediction": ("omnilss.prediction", "predict_params"),
         "serialization": ("omnilss.serialization", "save_model_json"),

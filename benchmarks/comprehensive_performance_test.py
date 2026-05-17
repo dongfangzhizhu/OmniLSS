@@ -5,10 +5,10 @@ against a live R process, then auto-generates a Markdown report.
 
 Timing methodology
 ------------------
-- Python: JAX JIT warm-up (1 call) before timing; `jax.block_until_ready()`
-  ensures async computation completes before stopping the clock.
-  Both cold-start (first call including JIT compilation) and warm times
-  (steady-state after compilation) are reported.
+- Python: cold-start time is reported separately. Warm timings use multiple
+  JAX warm-up runs before timing; `jax.block_until_ready()` ensures async
+  computation completes before stopping the clock. Warm performance is reported
+  as the median of timed runs rather than the fastest value.
 - R: one Rscript subprocess per benchmark case. CSV loading and package startup
   are excluded from reported timings; the R script performs one untimed warm-up
   fit, then reports in-process elapsed time for the requested timed repeats.
@@ -58,26 +58,42 @@ from omnilss.distributions import resolve_family  # noqa: E402
 # All distributions with confirmed working d/p/q/r and fitting support
 DISTRIBUTIONS = [
     # Core continuous
-    "NO", "GA", "LOGNO", "WEI", "EXP", "IG", "LO", "TF",
+    "NO",
+    "GA",
+    "LOGNO",
+    "WEI",
+    "EXP",
+    "IG",
+    "LO",
+    "TF",
     # Core discrete
-    "PO", "BI", "NBI", "NBII", "ZIP",
+    "PO",
+    "BI",
+    "NBI",
+    "NBII",
+    "ZIP",
     # Beta / bounded
     "BE",
     # Zero-altered
     "ZAGA",
     # Batch 1
-    "GU", "RG", "PE",
+    "GU",
+    "RG",
+    "PE",
     # Batch 3 heavy-tail / skewed
-    "SHASH", "JSU",
+    "SHASH",
+    "JSU",
     # Box-Cox
-    "BCCG", "BCT", "BCPE",
+    "BCCG",
+    "BCT",
+    "BCPE",
 ]
 QUICK_DISTRIBUTIONS = ["NO", "GA", "PO"]
 DATA_SIZES = [100, 500, 5000]
 LARGE_DATA_SIZES = [100, 500, 5000, 50_000, 500_000, 5_000_000]
 FORMULAS = ["y ~ 1", "y ~ x1", "y ~ x1 + x2"]
 N_REPEATS = 3
-WARMUP = 1
+WARMUP = 3
 DEFAULT_DEVIANCE_ABS_TOL = 1e-5
 DEFAULT_DEVIANCE_REL_TOL = 1e-5
 
@@ -114,6 +130,7 @@ cat(toJSON(list(mean_time=mean(times), min_time=min(times),
 
 
 # ── data generation ───────────────────────────────────────────────────────────
+
 
 def _generate_data(dist: str, n: int, seed: int = 42) -> dict[str, np.ndarray]:
     """Generate reproducible test data for a given distribution."""
@@ -185,6 +202,7 @@ def _generate_data(dist: str, n: int, seed: int = 42) -> dict[str, np.ndarray]:
 
 # ── Python timing ─────────────────────────────────────────────────────────────
 
+
 def _time_python(
     dist: str,
     formula: str,
@@ -192,11 +210,12 @@ def _time_python(
     n_repeats: int,
     warmup: int,
 ) -> dict:
-    """Time gamlss() with proper JAX synchronization.
+    """Time gamlss() with honest JAX synchronization and warm-up.
 
-    Uses jax.block_until_ready() to ensure async JAX computation completes
-    before stopping the clock. Reports both cold-start (first call including
-    JIT compilation) and warm (steady-state) times.
+    The first fit is reported separately as cold-start latency because it may
+    include JIT compilation. Subsequent warm-up fits are excluded from reported
+    performance. Timed warm runs report median/min/max so benchmark reports do
+    not accidentally present first-run or fastest-run numbers as steady-state.
     """
     family = resolve_family(dist)
 
@@ -224,8 +243,8 @@ def _time_python(
     finally:
         tracemalloc.stop()
 
-    # Additional warm-up calls (if warmup > 1)
-    for _ in range(warmup - 1):
+    # Additional warm-up calls excluded from timed performance.
+    for _ in range(max(warmup - 1, 0)):
         try:
             _fit()
         except Exception:
@@ -247,20 +266,76 @@ def _time_python(
         "success": True,
         "cold_time": cold_time,
         "mean_time": float(np.mean(times)),
+        "median_time": float(np.median(times)),
         "min_time": float(np.min(times)),
+        "max_time": float(np.max(times)),
         "deviance": deviance,
         "python_peak_memory_mb": float(peak_bytes / (1024 * 1024)),
     }
 
 
+def honest_benchmark(
+    family_name: str,
+    n: int,
+    n_warmup: int = 3,
+    n_runs: int = 10,
+) -> dict[str, object]:
+    """Small standalone benchmark helper using the documented JAX method.
+
+    This is intended for README/performance-table refreshes where a compact,
+    reproducible measurement is preferable to the full R comparison matrix.
+    """
+    rng = np.random.default_rng(42)
+    x = np.linspace(0, 5, n)
+    y = 2 + 0.5 * x + rng.normal(size=n)
+    data = {"y": y, "x": x}
+
+    def _fit_once():
+        model = gamlss("y ~ x", family=family_name, data=data)
+        try:
+            jax.block_until_ready(model.fitted_values.get("mu"))
+        except Exception:
+            pass
+        return model
+
+    for _ in range(n_warmup):
+        _fit_once()
+
+    times: list[float] = []
+    deviance = None
+    for _ in range(n_runs):
+        t0 = time.perf_counter()
+        model = _fit_once()
+        times.append(time.perf_counter() - t0)
+        deviance = float(model.g_dev)
+
+    return {
+        "family": family_name,
+        "n": n,
+        "median_s": float(np.median(times)),
+        "min_s": float(np.min(times)),
+        "max_s": float(np.max(times)),
+        "runs": n_runs,
+        "warmup_runs": n_warmup,
+        "deviance": deviance,
+        "note": f"JIT warm-up ({n_warmup} runs) excluded",
+    }
+
+
 # ── R timing ──────────────────────────────────────────────────────────────────
+
 
 def _check_r_available() -> bool:
     try:
         result = subprocess.run(
-            ["Rscript", "-e",
-             "suppressMessages({library(gamlss); library(jsonlite)}); cat('ok')"],
-            capture_output=True, text=True, timeout=30,
+            [
+                "Rscript",
+                "-e",
+                "suppressMessages({library(gamlss); library(jsonlite)}); cat('ok')",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         return result.returncode == 0 and "ok" in result.stdout
     except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -271,7 +346,9 @@ def _time_r(dist: str, formula: str, data: dict, n_repeats: int) -> dict:
     """Time R gamlss() using in-process elapsed time from one Rscript run."""
     import csv
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, newline="") as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".csv", delete=False, newline=""
+    ) as f:
         csv_path = f.name
         writer = csv.writer(f)
         keys = list(data.keys())
@@ -286,7 +363,9 @@ def _time_r(dist: str, formula: str, data: dict, n_repeats: int) -> dict:
     try:
         result = subprocess.run(
             ["Rscript", r_path, csv_path, dist, formula, str(n_repeats)],
-            capture_output=True, text=True, timeout=120,
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
 
         if result.returncode != 0:
@@ -320,6 +399,7 @@ def _time_r(dist: str, formula: str, data: dict, n_repeats: int) -> dict:
 
 # ── result dataclass ──────────────────────────────────────────────────────────
 
+
 @dataclass
 class ComparisonResult:
     distribution: str
@@ -328,7 +408,7 @@ class ComparisonResult:
     python_success: bool = False
     r_success: bool = False
     python_cold_time: float | None = None  # includes JIT compilation
-    python_time: float | None = None       # steady-state (warm)
+    python_time: float | None = None  # median steady-state (warm)
     r_time: float | None = None
     speedup: float | None = None
     python_deviance: float | None = None
@@ -347,6 +427,7 @@ class ComparisonResult:
 
 
 # ── report generation ─────────────────────────────────────────────────────────
+
 
 def _generate_report(
     results: list[ComparisonResult],
@@ -370,20 +451,28 @@ def _generate_report(
     a("")
     a("## Timing Methodology")
     a("")
-    a("- **Python warm time**: steady-state after JAX JIT compilation; "
-      "`jax.block_until_ready()` ensures async computation completes.")
+    a(
+        "- **Python warm time**: median steady-state runtime after JAX warm-up; "
+        "`jax.block_until_ready()` ensures async computation completes."
+    )
     a("- **Python cold time**: first call including JIT compilation overhead.")
-    a("- **Python memory**: peak Python heap during cold fit via `tracemalloc`; "
-      "JAX device allocator memory is not included.")
-    a("- **R time**: in-process elapsed time reported by one Rscript run after "
-      "CSV/package setup, with one untimed warm-up fit before timed repeats.")
+    a(
+        "- **Python memory**: peak Python heap during cold fit via `tracemalloc`; "
+        "JAX device allocator memory is not included."
+    )
+    a(
+        "- **R time**: in-process elapsed time reported by one Rscript run after "
+        "CSV/package setup, with one untimed warm-up fit before timed repeats."
+    )
     a("")
     a("---")
     a("")
     a("## Executive Summary")
     a("")
     a(f"- **Total tests**: {len(results)}")
-    a(f"- **Both succeeded**: {len(successful)} ({100*len(successful)/max(len(results),1):.1f}%)")
+    a(
+        f"- **Both succeeded**: {len(successful)} ({100*len(successful)/max(len(results),1):.1f}%)"
+    )
     a(f"- **Python only**: {len(python_only)}")
     a(f"- **R only**: {len(r_only)}")
     a(f"- **Both failed**: {len(both_failed)}")
@@ -426,30 +515,54 @@ def _generate_report(
             a(f"- Passed: {len(ok)}/{len(dist_results)}")
             a(f"- Deviance consistent: {consistent_count}/{len(ok)}")
             if speedups:
-                a(f"- Mean speedup: **{np.mean(speedups):.1f}×** "
-                  f"(range {np.min(speedups):.1f}–{np.max(speedups):.1f}×)")
+                a(
+                    f"- Mean speedup: **{np.mean(speedups):.1f}×** "
+                    f"(range {np.min(speedups):.1f}–{np.max(speedups):.1f}×)"
+                )
             a("")
-            a("| n | Formula | Python warm (s) | Python cold (s) | Python peak MB | R (s) | Speedup | Dev diff | Consistent |")
-            a("|---|---------|----------------|----------------|----------------|-------|---------|----------|------------|")
+            a(
+                "| n | Formula | Python warm (s) | Python cold (s) | Python peak MB | R (s) | Speedup | Dev diff | Consistent |"
+            )
+            a(
+                "|---|---------|----------------|----------------|----------------|-------|---------|----------|------------|"
+            )
             for r in sorted(ok, key=lambda x: (x.data_size, x.model_config)):
                 dev = f"{r.deviance_diff:.2e}" if r.deviance_diff is not None else "—"
                 sp = f"{r.speedup:.1f}×" if r.speedup else "—"
                 cold = f"{r.python_cold_time:.4f}" if r.python_cold_time else "—"
-                mem = f"{r.python_peak_memory_mb:.2f}" if r.python_peak_memory_mb is not None else "—"
+                mem = (
+                    f"{r.python_peak_memory_mb:.2f}"
+                    if r.python_peak_memory_mb is not None
+                    else "—"
+                )
                 consistent = "✅" if r.deviance_consistent else "❌"
-                a(f"| {r.data_size} | `{r.model_config}` | "
-                  f"{r.python_time:.4f} | {cold} | {mem} | {r.r_time:.4f} | {sp} | {dev} | {consistent} |")
+                a(
+                    f"| {r.data_size} | `{r.model_config}` | "
+                    f"{r.python_time:.4f} | {cold} | {mem} | {r.r_time:.4f} | {sp} | {dev} | {consistent} |"
+                )
         else:
-            a(f"- Passed: {sum(1 for r in dist_results if r.python_success)}/{len(dist_results)}")
+            a(
+                f"- Passed: {sum(1 for r in dist_results if r.python_success)}/{len(dist_results)}"
+            )
             a("")
-            a("| n | Formula | Python warm (s) | Python cold (s) | Python peak MB | Status |")
-            a("|---|---------|----------------|----------------|----------------|--------|")
+            a(
+                "| n | Formula | Python warm (s) | Python cold (s) | Python peak MB | Status |"
+            )
+            a(
+                "|---|---------|----------------|----------------|----------------|--------|"
+            )
             for r in sorted(dist_results, key=lambda x: (x.data_size, x.model_config)):
                 status = "✅" if r.python_success else f"❌ {r.python_error or ''}"
                 pt = f"{r.python_time:.4f}" if r.python_time else "—"
                 cold = f"{r.python_cold_time:.4f}" if r.python_cold_time else "—"
-                mem = f"{r.python_peak_memory_mb:.2f}" if r.python_peak_memory_mb is not None else "—"
-                a(f"| {r.data_size} | `{r.model_config}` | {pt} | {cold} | {mem} | {status} |")
+                mem = (
+                    f"{r.python_peak_memory_mb:.2f}"
+                    if r.python_peak_memory_mb is not None
+                    else "—"
+                )
+                a(
+                    f"| {r.data_size} | `{r.model_config}` | {pt} | {cold} | {mem} | {status} |"
+                )
         a("")
 
     if r_only or both_failed:
@@ -475,8 +588,12 @@ def _generate_report(
         by_size: dict[int, list] = {}
         for r in successful:
             by_size.setdefault(r.data_size, []).append(r)
-        a("| n | Tests | Mean speedup | Mean Python warm (s) | Mean Python cold (s) | Mean R (s) |")
-        a("|---|-------|-------------|---------------------|---------------------|-----------|")
+        a(
+            "| n | Tests | Mean speedup | Mean Python warm (s) | Mean Python cold (s) | Mean R (s) |"
+        )
+        a(
+            "|---|-------|-------------|---------------------|---------------------|-----------|"
+        )
         for size in sorted(by_size):
             rs = by_size[size]
             speedups = [r.speedup for r in rs if r.speedup]
@@ -501,22 +618,43 @@ def _generate_report(
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="OmniLSS vs R GAMLSS benchmark")
-    parser.add_argument("--quick", action="store_true",
-                        help="Run only 3 distributions (NO, GA, PO)")
-    parser.add_argument("--no-r", action="store_true",
-                        help="Skip R comparison (Python timing only)")
-    parser.add_argument("--large", action="store_true",
-                        help="Include large data sizes (50k, 500k, 5M) — Python only for n>=50k")
-    parser.add_argument("--n-repeats", type=int, default=N_REPEATS,
-                        help=f"Timing repetitions (default {N_REPEATS})")
-    parser.add_argument("--require-r", action="store_true",
-                        help="Fail immediately if Rscript with gamlss/jsonlite is unavailable")
-    parser.add_argument("--deviance-abs-tol", type=float, default=DEFAULT_DEVIANCE_ABS_TOL,
-                        help=f"Absolute tolerance for OmniLSS/R deviance checks (default {DEFAULT_DEVIANCE_ABS_TOL:g})")
-    parser.add_argument("--deviance-rel-tol", type=float, default=DEFAULT_DEVIANCE_REL_TOL,
-                        help=f"Relative tolerance for OmniLSS/R deviance checks (default {DEFAULT_DEVIANCE_REL_TOL:g})")
+    parser.add_argument(
+        "--quick", action="store_true", help="Run only 3 distributions (NO, GA, PO)"
+    )
+    parser.add_argument(
+        "--no-r", action="store_true", help="Skip R comparison (Python timing only)"
+    )
+    parser.add_argument(
+        "--large",
+        action="store_true",
+        help="Include large data sizes (50k, 500k, 5M) — Python only for n>=50k",
+    )
+    parser.add_argument(
+        "--n-repeats",
+        type=int,
+        default=N_REPEATS,
+        help=f"Timing repetitions (default {N_REPEATS})",
+    )
+    parser.add_argument(
+        "--require-r",
+        action="store_true",
+        help="Fail immediately if Rscript with gamlss/jsonlite is unavailable",
+    )
+    parser.add_argument(
+        "--deviance-abs-tol",
+        type=float,
+        default=DEFAULT_DEVIANCE_ABS_TOL,
+        help=f"Absolute tolerance for OmniLSS/R deviance checks (default {DEFAULT_DEVIANCE_ABS_TOL:g})",
+    )
+    parser.add_argument(
+        "--deviance-rel-tol",
+        type=float,
+        default=DEFAULT_DEVIANCE_REL_TOL,
+        help=f"Relative tolerance for OmniLSS/R deviance checks (default {DEFAULT_DEVIANCE_REL_TOL:g})",
+    )
     args = parser.parse_args()
 
     distributions = QUICK_DISTRIBUTIONS if args.quick else DISTRIBUTIONS
@@ -536,10 +674,14 @@ def main() -> int:
         r_available = _check_r_available()
         print("✓ found" if r_available else "✗ not found")
         if args.require_r and not r_available:
-            print("R comparison is required but Rscript with gamlss/jsonlite is unavailable.")
+            print(
+                "R comparison is required but Rscript with gamlss/jsonlite is unavailable."
+            )
             return 2
         if not r_available:
-            print("Continuing in Python-only mode; performance against R is not measured.")
+            print(
+                "Continuing in Python-only mode; performance against R is not measured."
+            )
     print()
 
     total = len(distributions) * len(data_sizes) * len(FORMULAS)
@@ -550,7 +692,9 @@ def main() -> int:
     print(f"  Formulas      : {FORMULAS}")
     print(f"  Total tests   : {total}")
     print(f"  R comparison  : {'yes' if r_available else 'no'}")
-    print(f"  Deviance tol  : abs={args.deviance_abs_tol:.1e}, rel={args.deviance_rel_tol:.1e}")
+    print(
+        f"  Deviance tol  : abs={args.deviance_abs_tol:.1e}, rel={args.deviance_rel_tol:.1e}"
+    )
     print("  Timing        : warm (steady-state) + cold (first call / JIT)")
     print(f"{'='*70}")
     print()
@@ -577,7 +721,7 @@ def main() -> int:
                 py = _time_python(dist, formula, data, n_repeats, WARMUP)
                 if py["success"]:
                     cr.python_success = True
-                    cr.python_time = py["mean_time"]
+                    cr.python_time = py.get("median_time", py["mean_time"])
                     cr.python_cold_time = py.get("cold_time")
                     cr.python_deviance = py.get("deviance")
                     cr.python_peak_memory_mb = py.get("python_peak_memory_mb")
@@ -610,10 +754,16 @@ def main() -> int:
 
                 # One-line summary
                 if cr.python_success:
-                    cold_str = f" cold={cr.python_cold_time:.3f}s" if cr.python_cold_time else ""
+                    cold_str = (
+                        f" cold={cr.python_cold_time:.3f}s"
+                        if cr.python_cold_time
+                        else ""
+                    )
                     if r_available and cr.r_success and cr.r_time is not None:
                         sp = f"{cr.speedup:.1f}×" if cr.speedup else "—"
-                        print(f"  warm={cr.python_time:.4f}s{cold_str}  R={cr.r_time:.4f}s  → {sp}")
+                        print(
+                            f"  warm={cr.python_time:.4f}s{cold_str}  R={cr.r_time:.4f}s  → {sp}"
+                        )
                     elif r_available and not cr.r_success:
                         print(f"  warm={cr.python_time:.4f}s{cold_str}  R FAIL")
                     else:
@@ -644,11 +794,15 @@ def main() -> int:
         if speedups:
             print(f"  Mean speedup (warm) : {np.mean(speedups):.1f}×")
             print(f"  Median speedup      : {np.median(speedups):.1f}×")
-            print(f"  Min / Max           : {np.min(speedups):.1f}× / {np.max(speedups):.1f}×")
+            print(
+                f"  Min / Max           : {np.min(speedups):.1f}× / {np.max(speedups):.1f}×"
+            )
     cold_times = [r.python_cold_time for r in results if r.python_cold_time]
     warm_times = [r.python_time for r in results if r.python_time]
     if cold_times and warm_times:
-        print(f"  Mean cold-start : {np.mean(cold_times):.3f}s (includes JIT compilation)")
+        print(
+            f"  Mean cold-start : {np.mean(cold_times):.3f}s (includes JIT compilation)"
+        )
         print(f"  Mean warm time  : {np.mean(warm_times):.4f}s (steady-state)")
     print()
 
@@ -667,7 +821,7 @@ def main() -> int:
             "formulas": FORMULAS,
             "n_repeats": n_repeats,
             "warmup_runs": WARMUP,
-            "timing_method": "Python jax.block_until_ready() + cold/warm separation; R in-process elapsed timing after setup",
+            "timing_method": "Python median warm runtime after JAX warm-up with block_until_ready plus separate cold time; R in-process elapsed timing after setup",
             "deviance_tolerances": {
                 "abs": args.deviance_abs_tol,
                 "rel": args.deviance_rel_tol,
@@ -691,5 +845,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
-

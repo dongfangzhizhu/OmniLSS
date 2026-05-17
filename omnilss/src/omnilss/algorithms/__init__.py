@@ -3,7 +3,8 @@
 
 This module contains various algorithms for fitting GAMLSS models:
 - RS (Rigby-Stasinopoulos): The original GAMLSS algorithm (fully implemented)
-- CG (Cole-Green): Alternative algorithm with complete JAX Hessian cross-derivative adjustments
+- joint_lbfgs_fit: Historical CG-named entrypoint backed by an L-BFGS joint optimizer
+- cole_green_fit: True Cole-Green full-Hessian implementation from omnilss.fitting_cg.fit_cg
 - Mixed: Intelligent algorithm selection combining RS and CG
 - RS_JAX: JAX-native RS with jax.lax.while_loop + jnp.linalg.lstsq (GPU/TPU ready)
 
@@ -11,8 +12,13 @@ The RS algorithm is the default and most commonly used.
 """
 
 from .rs_algorithm import rs_fit, rs_step
+from .cg_algorithm import joint_lbfgs_fit
 from .cg_algorithm import joint_lbfgs_fit as cg_fit_lbfgs
 from .cg_algorithm_v2 import cg_fit_v2
+from ..fitting_cg import fit_cg
+
+cole_green_fit = fit_cg
+
 
 def cg_fit(
     formula: str,
@@ -49,6 +55,8 @@ def cg_fit(
         outer_tol=outer_tol,
         verbose=verbose,
     )
+
+
 from .mixed_algorithm import mixed_fit, compare_algorithms
 
 # JAX-native RS core (GPU/TPU ready)
@@ -74,6 +82,8 @@ __all__ = [
     "cg_fit",
     "cg_fit_lbfgs",
     "joint_lbfgs_fit",
+    "cole_green_fit",
+    "fit_cg",
     "cg_fit_v2",
     "mixed_fit",
     "compare_algorithms",

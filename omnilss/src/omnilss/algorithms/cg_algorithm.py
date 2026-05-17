@@ -1,9 +1,7 @@
 """Joint L-BFGS optimizer wrapper (historical CG module).
 
-The CG algorithm is one of the three core GAMLSS fitting algorithms.
-Unlike RS which updates each parameter using only the diagonal Hessian block,
-CG incorporates cross-derivative corrections between parameters, which can
-improve convergence when parameters are correlated.
+NAMING NOTE: Despite the "CG" name, this module wraps an L-BFGS joint optimizer.
+The true Cole-Green algorithm (full Hessian) is in omnilss.fitting_cg.fit_cg().
 
 References
 ----------
@@ -297,18 +295,28 @@ def joint_lbfgs_fit(
 
     # Attach cross-derivative diagnostics so CG path explicitly uses the helper.
     try:
-        params = {p: np.asarray(model.fitted_values[p], dtype=np.float64) for p in fam.parameters if p in model.fitted_values}
-        y = np.asarray(data[formula.split('~', 1)[0].strip()], dtype=np.float64)
+        params = {
+            p: np.asarray(model.fitted_values[p], dtype=np.float64)
+            for p in fam.parameters
+            if p in model.fitted_values
+        }
+        y = np.asarray(data[formula.split("~", 1)[0].strip()], dtype=np.float64)
         cross_summary = {}
-        if "mu" in params and "sigma" in params and "mu" in fam.parameters and "sigma" in fam.parameters:
-            cs = _compute_cross_derivatives(y=y, param_values=params, family=fam, param_k="mu", param_j="sigma")
+        if (
+            "mu" in params
+            and "sigma" in params
+            and "mu" in fam.parameters
+            and "sigma" in fam.parameters
+        ):
+            cs = _compute_cross_derivatives(
+                y=y, param_values=params, family=fam, param_k="mu", param_j="sigma"
+            )
             cross_summary["mu_sigma_mean_abs"] = float(np.mean(np.abs(cs)))
         model.additional_slots["cg_cross_derivative_summary"] = cross_summary
     except Exception:
         model.additional_slots["cg_cross_derivative_summary"] = {}
 
     return model
-
 
 
 def cg_fit(*args, **kwargs):
@@ -320,5 +328,10 @@ def cg_fit(*args, **kwargs):
     It currently delegates to the same joint optimization backend.
     """
     import warnings
-    warnings.warn("cg_fit is deprecated; use joint_lbfgs_fit for accurate naming.", DeprecationWarning, stacklevel=2)
+
+    warnings.warn(
+        "cg_fit is deprecated; use joint_lbfgs_fit for accurate naming.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return joint_lbfgs_fit(*args, **kwargs)
