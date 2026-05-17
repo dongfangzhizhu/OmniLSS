@@ -8,31 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- JIT optimization framework for performance improvement (`fitting_jit.py`)
-- Comprehensive DPQR function tests (`test_dpqr_comprehensive.py`)
-- Performance testing framework in `performance/` directory
-- Documentation structure in `docs/` directory
-
-### Fixed
-- GU (Gumbel) distribution d function formula (was using RG formula)
-- RG (Reverse Gumbel) distribution d function formula and parameter order
-- PowerShell test script module loading warning
-- `test_dpqr_comprehensive.py` AttributeError during test collection
+- 完成 CG full-Hessian correctness backend 的交叉导数实现闭环，并将 `CG_IRLS_CROSS` 推进为显式可选实验后端：新增 eta-scale derivative kernel、observed-information block extraction helpers、CG backend diagnostics、IRLS-cross global line search 与回归测试，确保 `method="CG"` 可审计地使用 cross-derivative 信息而不是静默退化为 RS。
 
 ### Changed
-- Reorganized project documentation into `docs/` directory
-- Improved test script organization
-- Enhanced performance testing capabilities
+- 离线开发环境构建文档与 devcontainer bootstrap 补充一次性 build-time 依赖清单、镜像构建期依赖校验、发布/架构/R/gRPC 验证命令和维护规则，避免后续离线会话因缺少 `optax`、`build`、`twine`、R 包或 protobuf tooling 阻塞开发。
 
-### Performance
-- ZAGA IWLS step: 275x faster with JIT compilation
-- BE IWLS step: 202x faster with JIT compilation
-- Overall expected improvement: 5-10x for ZAGA, 3-8x for BE
 
 ## [0.3.0] - 2026-05-17
 
 ### Added
 - R 运行环境安装与验证文档：`docs/development/r-environment-setup.md`（包含 apt/conda 安装路径与 R 侧最小验证命令）。
+- v0.3.0 发布前阶段性收尾文档：`docs/development/v0.3.0-release-closure-2026-05-17.md`，集中记录发布门禁、环境限制与剩余非阻塞项。
+- CG 交叉导数开发路径文档：`docs/development/cg-cross-derivatives-development-path-2026-05-17.md`，用于后续统一 eta-level correction 与 coefficient-level Hessian 路径。
 - `fitting.py` 拆分辅助模块：`_fitting_utils.py`、`_fitting_init.py`、`_fitting_residuals.py`，用于承载公式工具、初始化与残差/rqres 逻辑。
 
 ### Changed
@@ -46,7 +33,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `__init__.py` 中 5 处静默 `except ImportError: pass` 改为 `ImportWarning` 诊断。
 - README 性能声明补充测试条件并移除无条件绝对性能表述。
 
-### Added
+### Validation
+- 新增发布检查工具 `omnilss/tools/release_check.py`，用于本地构建、twine 检查与 wheel 安装 smoke check。
+- 明确 R-backed consistency tests 是发布与 benchmark claims 的必要门禁；Python-only 模式只能作为 smoke check。
+
+### Known limitations
+- 当前开发容器缺少 `build` / `twine` / `optax` / R `gamlss` 相关依赖，因此打包检查、架构 smoke test 与 R 一致性门禁需要在依赖齐全的发布环境中复跑。
+- CG 路径仍需在后续版本中统一 full coefficient Hessian 与 eta-level cross-derivative correction 的实现、测试和 benchmark artifact。
+
+### Installation diagnostics
 - `omnilss.check_installation()` 安装健康检查函数。
 
 ## [0.1.0] - 2024-XX-XX
