@@ -67,7 +67,7 @@ except FamilyCapabilityError:
 
 ## 后续工作
 
-1. 将 capability checks 接入 `gamlss()` method routing，让不支持的 method/family 组合在昂贵拟合开始前失败。
+1. 已在 [Method Routing Capability Gates](method-routing-capability-gates-2026-05-17_cn.md) 中完成：`gamlss()` 会在 backend 拟合开始前检查 method/family capability。
 2. 将 capability snapshot 写入序列化模型 metadata。
 3. 生成机器可读 capability matrix artifact，用于文档和服务 API。
 4. 只有通过文档化 validation report 的 family feature 才能从 `experimental` 提升为 `validated`。

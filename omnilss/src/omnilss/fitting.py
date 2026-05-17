@@ -292,6 +292,41 @@ def _weighted_least_squares(
     return _weighted_least_squares_shared(x, z, w, smooth_info)
 
 
+def _require_method_family_capability(family_name: str, method_name: str) -> None:
+    """Validate method/family support before starting an expensive fit."""
+
+    feature_by_method = {
+        "RS": "rs_fit",
+        "RS_JAX": "rs_jax_fit",
+        "CG": "cg_fit",
+        "MIXED": "cg_fit",
+        "JOINT": "cg_fit",
+        "LBFGS": "cg_fit",
+    }
+    feature = feature_by_method.get(method_name)
+    if feature is None:
+        return
+
+    from .family_capabilities import FamilyCapabilityError, require_family_capability
+
+    try:
+        require_family_capability(
+            family_name,
+            feature,
+            allow_experimental=True,
+        )
+    except FamilyCapabilityError as exc:
+        if method_name == "RS_JAX":
+            raise FamilyCapabilityError(
+                f"Family '{family_name}' is not supported by method='RS_JAX'. "
+                "Use method='RS' instead."
+            ) from exc
+        raise FamilyCapabilityError(
+            f"Family '{family_name}' cannot use method='{method_name}' "
+            f"because capability feature '{feature}' is unavailable."
+        ) from exc
+
+
 def _apply_method_step(
     previous_beta: np.ndarray,
     proposed_beta: np.ndarray,
@@ -864,6 +899,15 @@ def gamlss(
                     "启用自动 JAX 加速"
                 )
 
+    supported_methods = {"RS", "RS_JAX", "CG", "MIXED", "JOINT", "LBFGS"}
+    if method_name not in supported_methods:
+        raise ValueError(
+            "method must be one of 'RS', 'RS_JAX', 'auto', 'CG', 'MIXED', "
+            f"'joint', or 'lbfgs', got {method!r}"
+        )
+
+    _require_method_family_capability(family.name, method_name)
+
     # Handle new optimizer methods
     if method_name in {"JOINT", "LBFGS"}:
         # Import integration functions
@@ -953,11 +997,6 @@ def gamlss(
             )
 
     # Traditional RS/CG/MIXED methods
-    if method_name not in {"RS", "RS_JAX", "CG", "MIXED"}:
-        raise ValueError(
-            f"method must be one of 'RS', 'RS_JAX', 'auto', 'CG', 'MIXED', 'joint', or 'lbfgs', "
-            f"got {method!r}"
-        )
 
     # RS_JAX: fully JAX-traced RS loop (GPU/TPU ready, no smooth terms)
     if method_name == "RS_JAX":

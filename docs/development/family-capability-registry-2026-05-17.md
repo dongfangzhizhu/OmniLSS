@@ -67,7 +67,7 @@ except FamilyCapabilityError:
 
 ## Follow-up work
 
-1. Wire capability checks into `gamlss()` method routing so unsupported method/family combinations fail before expensive fitting starts.
+1. Completed in [Method Routing Capability Gates](method-routing-capability-gates-2026-05-17.md): `gamlss()` checks method/family capabilities before backend fitting starts.
 2. Attach capability snapshots to serialized model metadata.
 3. Generate a machine-readable capability matrix artifact for documentation and service APIs.
 4. Promote family features from `experimental` to `validated` only through documented validation reports.

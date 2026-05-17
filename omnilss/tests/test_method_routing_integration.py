@@ -10,6 +10,7 @@ import pytest
 
 import omnilss.config as cfg
 from omnilss import NBI, NO, gamlss
+from omnilss.family_capabilities import FamilyCapabilityError
 from omnilss.algorithms import jax_rs_integration, rs_algorithm
 
 
@@ -65,9 +66,22 @@ def test_manual_rs_works_on_gpu_env(monkeypatch):
 
 
 def test_rs_jax_raises_for_unsupported_family():
-    """method='RS_JAX' with an unsupported family raises a clear error."""
+    """method='RS_JAX' with an unsupported family raises a clear capability error."""
     data = _make_no_data()
-    with pytest.raises(ValueError, match="not supported by method='RS_JAX'"):
+    with pytest.raises(FamilyCapabilityError, match="not supported by method='RS_JAX'"):
+        gamlss("y ~ x", family=NBI(), data=data, method="RS_JAX")
+
+
+def test_rs_jax_capability_error_happens_before_backend(monkeypatch):
+    """Unsupported RS_JAX routes fail before importing/calling the JAX backend."""
+    data = _make_no_data()
+
+    def fail_backend(**kwargs):  # pragma: no cover - should not be reached
+        raise AssertionError("JAX backend should not be called for unsupported family")
+
+    monkeypatch.setattr(jax_rs_integration, "gamlss_rs_jax", fail_backend)
+
+    with pytest.raises(FamilyCapabilityError, match="Use method='RS' instead"):
         gamlss("y ~ x", family=NBI(), data=data, method="RS_JAX")
 
 
