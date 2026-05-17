@@ -73,9 +73,16 @@ def _safe_eval_formula_expression(
                 return left**right
             raise ValueError("unsupported binary operator")
         if isinstance(node, ast.Call):
-            if not isinstance(node.func, ast.Name):
+            if isinstance(node.func, ast.Name):
+                func_name = node.func.id
+            elif (
+                isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "np"
+            ):
+                func_name = node.func.attr
+            else:
                 raise ValueError("only direct calls to allowlisted functions are allowed")
-            func_name = node.func.id
             if func_name not in _ALLOWED_FORMULA_FUNCTIONS:
                 raise ValueError(f"function '{func_name}' is not allowed")
             if node.keywords:

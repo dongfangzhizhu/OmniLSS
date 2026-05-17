@@ -3,7 +3,9 @@
 import unittest
 
 import numpy as np
+import pytest
 
+from omnilss.fitting import _build_design_matrix
 from omnilss.formula_parser import (
     LinearTerm,
     ParsedFormula,
@@ -237,13 +239,6 @@ if __name__ == "__main__":
     unittest.main()
 
 
-import numpy as np
-import pytest
-
-from omnilss.fitting import _build_design_matrix
-from omnilss.formula_parser import parse_formula, build_design_matrix
-
-
 def test_parse_interaction_and_star_expansion():
     parsed = parse_formula("y ~ x1 * x2")
     names = [t.variable for t in parsed.linear_terms]
@@ -277,9 +272,9 @@ def test_build_design_matrix_factor_term():
 
 def test_formula_expression_uses_safe_ast_evaluator():
     data = {"y": np.array([1.0, 2.0, 3.0]), "x": np.array([1.0, 4.0, 9.0])}
-    _, design, labels = _build_design_matrix("y ~ log(x) + sqrt(x) + I(x**2)", data)
+    _, design, labels = _build_design_matrix("y ~ log(x) + np.sqrt(x) + I(x**2)", data)
 
-    assert labels == ["log(x)", "sqrt(x)", "I(x**2)"]
+    assert labels == ["log(x)", "np.sqrt(x)", "I(x**2)"]
     np.testing.assert_allclose(design[:, 1], np.log(data["x"]))
     np.testing.assert_allclose(design[:, 2], np.sqrt(data["x"]))
     np.testing.assert_allclose(design[:, 3], data["x"] ** 2)
