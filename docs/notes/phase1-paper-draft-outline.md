@@ -1,5 +1,7 @@
 # Phase 1 Paper Draft Outline
 
+[中文版本](phase1-paper-draft-outline_cn.md)
+
 Working title: **Differentiable Distributional Regression with JAX**
 
 Sections:

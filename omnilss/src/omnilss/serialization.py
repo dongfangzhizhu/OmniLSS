@@ -48,6 +48,39 @@ def _to_numpy_safe(value: Any) -> Any:
     return value
 
 
+
+def _design_matrix_schema(model: Any) -> dict[str, Any]:
+    """Build a minimal serializable design-matrix schema for prediction audits."""
+
+    schema: dict[str, Any] = {"version": 1, "parameters": {}}
+    formulas = dict(getattr(model, "formulas", {}) or {})
+    terms = dict(getattr(model, "terms", {}) or {})
+    design_matrices = dict(getattr(model, "design_matrices", {}) or {})
+    coefficients = dict(getattr(model, "coefficients", {}) or {})
+
+    for parameter in getattr(model, "parameters", ()):  # tuple/list on GAMLSSModel
+        term_info = terms.get(parameter, {}) or {}
+        design = design_matrices.get(parameter)
+        coef = coefficients.get(parameter)
+        n_columns = None
+        if design is not None:
+            arr = np.asarray(design)
+            if arr.ndim == 2:
+                n_columns = int(arr.shape[1])
+        coefficient_count = None
+        if coef is not None:
+            coefficient_count = int(np.asarray(coef).size)
+
+        schema["parameters"][parameter] = {
+            "formula": str(formulas.get(parameter, "")),
+            "term_labels": list(term_info.get("term_labels", []) or []),
+            "has_intercept": bool(term_info.get("intercept", True)),
+            "n_columns": n_columns,
+            "coefficient_count": coefficient_count,
+        }
+    return schema
+
+
 def save_model_pickle(model: Any, path: str | Path) -> None:
     try:
         import cloudpickle  # type: ignore
@@ -110,6 +143,7 @@ def save_model_json(model: Any, path: str | Path) -> None:
             "iter": int(model.iter),
             "type": str(model.type),
             "call": _json_safe(dict(model.call or {})),
+            "design_matrix_schema": _json_safe(_design_matrix_schema(model)),
         }
         zf.writestr("meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
 
@@ -120,6 +154,7 @@ def load_model_json(path: str | Path):
 
     with zipfile.ZipFile(Path(path), "r") as zf:
         meta = json.loads(zf.read("meta.json").decode("utf-8"))
+        design_matrix_schema = meta.get("design_matrix_schema", {})
         version = meta.get("omnilss_version", "")
         if not str(version).startswith("0.3."):
             raise ValueError(f"Incompatible model version: {version}")
@@ -159,7 +194,11 @@ def load_model_json(path: str | Path):
         type=meta.get("type", "Continuous"),
         parameters=params,
         call=meta.get("call", {}),
-        additional_slots={"loaded_from_json": True, "omnilss_version": version},
+        additional_slots={
+            "loaded_from_json": True,
+            "omnilss_version": version,
+            "design_matrix_schema": design_matrix_schema,
+        },
     )
 
 

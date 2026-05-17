@@ -1,5 +1,7 @@
 # Performance Optimization and GPU Acceleration
 
+[中文版本](23_performance_gpu_cn.md)
+
 > Status: scaffold aligned with the current OmniLSS API. Expand this page with
 > distribution-specific derivations, R comparisons, and exercises as content is
 > authored.

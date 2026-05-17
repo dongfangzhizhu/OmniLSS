@@ -1,5 +1,7 @@
 # P-splines (pb) - Penalized B-splines
 
+[中文版本](15_psplines_cn.md)
+
 > Status: scaffold aligned with the current OmniLSS API. Expand this page with
 > distribution-specific derivations, R comparisons, and exercises as content is
 > authored.

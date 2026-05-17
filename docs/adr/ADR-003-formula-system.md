@@ -1,5 +1,7 @@
 # ADR-003: Formula System Freeze
 
+[中文版本](ADR-003-formula-system_cn.md)
+
 # Context
 
 Formula DSLs tend to become hard-to-maintain parser projects. OmniLSS already

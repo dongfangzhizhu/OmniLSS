@@ -1,5 +1,7 @@
 # Skewed Normal - SN1, SN2, SHASH, SHASHo
 
+[中文版本](09_skewed_normal_cn.md)
+
 > Status: scaffold aligned with the current OmniLSS API. Expand this page with
 > distribution-specific derivations, R comparisons, and exercises as content is
 > authored.

@@ -1,5 +1,7 @@
 # Educational Achievement
 
+[中文版本](02_educational_achievement_cn.md)
+
 > Status: scenario scaffold aligned with the current OmniLSS API. Expand with a
 > full dataset walkthrough, business interpretation, and deployment notes.
 

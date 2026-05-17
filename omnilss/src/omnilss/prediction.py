@@ -17,6 +17,10 @@ import numpy as np
 import pandas as pd
 
 
+class PredictionSchemaError(ValueError):
+    """Raised when prediction data cannot reproduce the training design schema."""
+
+
 def predict_params(
     model: Any, newdata: Dict[str, np.ndarray], which: Optional[List[str]] = None
 ) -> Dict[str, np.ndarray]:
@@ -87,56 +91,42 @@ def predict_params(
 def _build_design_matrix_for_prediction(
     model: Any, param: str, newdata: Dict[str, np.ndarray]
 ) -> np.ndarray:
-    """为预测构建设计矩阵，正确处理平滑项。
+    """Build a prediction design matrix without silent schema fallbacks."""
 
-    支持：
-    - 线性项（直接 X@β）
-    - 平滑项 pb/ps/cs（用存储的 knots/degree 重建基矩阵）
-    - 截距项
+    import re
 
-    Parameters
-    ----------
-    model : GAMLSSModel
-        拟合的模型（须包含 additional_slots["smooth_infos"]）
-    param : str
-        参数名（"mu", "sigma", etc.）
-    newdata : dict
-        新数据 {变量名: 数组}
-
-    Returns
-    -------
-    X_new : np.ndarray
-        新数据的设计矩阵，列顺序与训练时相同
-    """
     import jax.numpy as jnp
 
-    n = len(next(iter(newdata.values())))
+    from ._fitting_utils import _eval_linear_term
 
-    # ── 尝试使用存储的平滑项信息重建设计矩阵 ──
-    smooth_infos = model.additional_slots.get("smooth_infos", {})
-    param_smooth_info = smooth_infos.get(param)  # 该参数的平滑项列表（可能为 None）
+    if newdata:
+        n = len(next(iter(newdata.values())))
+    else:
+        n = int(getattr(model, "n", 0))
+        if n <= 0:
+            raise PredictionSchemaError(
+                f"Cannot infer prediction row count for parameter {param!r}"
+            )
 
+    additional_slots = getattr(model, "additional_slots", {}) or {}
+    smooth_infos = additional_slots.get("smooth_infos", {})
+    param_smooth_info = smooth_infos.get(param)
+    design_schema = (additional_slots.get("design_matrix_schema", {}) or {}).get(
+        "parameters", {}
+    ).get(param, {})
     formula = model.formulas.get(param, "")
-
     if not formula or "~" not in formula:
-        return np.ones((n, 1))
+        raise PredictionSchemaError(
+            f"Missing formula schema for parameter {param!r}; cannot build prediction matrix"
+        )
 
     rhs = formula.split("~", 1)[1].strip()
-
-    # ── 解析公式右侧，识别各项 ──
-    columns = []
-    has_intercept = True
-
-    # 检查是否有 -1 或 0（无截距）
-    if "-1" in rhs or "~ 0" in formula:
-        has_intercept = False
-
+    columns: list[np.ndarray] = []
+    has_intercept = not ("-1" in rhs or rhs == "0")
     if has_intercept:
         columns.append(np.ones(n, dtype=np.float64))
 
-    # ── 解析各项 ──
     def split_terms(rhs_str: str):
-        """按 + 分割，但不拆括号内的逗号/加号。"""
         terms = []
         depth = 0
         current = []
@@ -149,112 +139,109 @@ def _build_design_matrix_for_prediction(
                 current.append(ch)
             elif ch == "+" and depth == 0:
                 term = "".join(current).strip()
-                if term and term != "1":
+                if term and term not in {"1", "-1", "0"}:
                     terms.append(term)
                 current = []
             else:
                 current.append(ch)
         term = "".join(current).strip()
-        if term and term != "1":
+        if term and term not in {"1", "-1", "0"}:
             terms.append(term)
         return terms
 
-    raw_terms = split_terms(rhs)
-
-    # ── 平滑函数名识别 ──
-    SMOOTH_FUNCS = {"pb", "ps", "cs", "s", "lo", "te", "ti"}
-    import re
-
-    for term_str in raw_terms:
-        term_str = term_str.strip()
-        if not term_str or term_str in ("1", "-1", "0"):
-            continue
-
-        # 检查是否是平滑函数调用：pb(x), ps(x, ...), s(x), etc.
+    smooth_funcs = {"pb", "ps", "cs", "s", "lo", "te", "ti"}
+    for term_str in split_terms(rhs):
         smooth_match = re.match(r"^(\w+)\((.+)\)$", term_str, re.DOTALL)
-
-        if smooth_match and smooth_match.group(1) in SMOOTH_FUNCS:
-            # ── 平滑项 ──
-            # 提取第一个变量名（逗号前的部分）
+        if smooth_match and smooth_match.group(1) in smooth_funcs:
             inner = smooth_match.group(2)
             var_name = inner.split(",")[0].strip()
-
-            # 从模型的 smooth_infos 中找到该平滑项的信息
             smooth_info_for_var = None
             if param_smooth_info and isinstance(param_smooth_info, list):
-                # 列表格式：每个元素是一个平滑项 dict
                 for si in param_smooth_info:
                     if si.get("variable") == var_name or si.get("var") == var_name:
                         smooth_info_for_var = si
                         break
             elif param_smooth_info and isinstance(param_smooth_info, dict):
-                # dict 格式：以变量名为键
                 smooth_info_for_var = param_smooth_info.get(var_name)
 
-            if smooth_info_for_var is not None and var_name in newdata:
-                # 用存储的 knots/degree 重建基矩阵
+            if smooth_info_for_var is None:
+                raise PredictionSchemaError(
+                    f"Missing smooth metadata for term {term_str!r} in parameter {param!r}"
+                )
+            if var_name not in newdata:
+                raise PredictionSchemaError(
+                    f"Missing variable {var_name!r} required by smooth term {term_str!r}"
+                )
+
+            smoother_type = smooth_info_for_var.get("smoother", "pb")
+            if smoother_type not in {"pb", "ps"}:
+                raise PredictionSchemaError(
+                    f"Prediction for smoother {smoother_type!r} is not schema-safe yet"
+                )
+            try:
+                from .smoothers.bsplines import bspline_basis
+
                 x_new = np.asarray(newdata[var_name], dtype=np.float64)
-
-                try:
-                    smoother_type = smooth_info_for_var.get("smoother", "pb")
-
-                    if smoother_type in ("pb", "ps"):
-                        # 用训练时保存的 knots/degree 重建 B 样条基矩阵
-                        from .smoothers.bsplines import bspline_basis
-
-                        knots = np.asarray(smooth_info_for_var["knots"])
-                        degree = int(smooth_info_for_var.get("degree", 3))
-                        basis_new = np.array(
-                            bspline_basis(
-                                jnp.array(x_new),
-                                jnp.array(knots),
-                                degree=degree,
-                            )
-                        )
-                        columns.append(basis_new)
-                        continue
-                except Exception:
-                    # 重建失败时回退到线性项
-                    pass
-
-            # 回退：如果没有平滑信息，用变量本身作为线性项
-            if var_name in newdata:
-                columns.append(
-                    np.asarray(newdata[var_name], dtype=np.float64).reshape(-1)
+                knots = np.asarray(smooth_info_for_var["knots"])
+                degree = int(smooth_info_for_var.get("degree", 3))
+                basis_new = np.array(
+                    bspline_basis(jnp.array(x_new), jnp.array(knots), degree=degree)
                 )
-
+            except Exception as exc:
+                raise PredictionSchemaError(
+                    f"Failed to rebuild smooth term {term_str!r}: {exc}"
+                ) from exc
+            columns.append(basis_new)
         else:
-            # ── 线性项 ──
-            var_name = term_str.strip()
-            if var_name in newdata:
-                columns.append(
-                    np.asarray(newdata[var_name], dtype=np.float64).reshape(-1)
-                )
+            try:
+                columns.append(_eval_linear_term(term_str, newdata, n).reshape(-1))
+            except Exception as exc:
+                raise PredictionSchemaError(
+                    f"Failed to evaluate prediction term {term_str!r}: {exc}"
+                ) from exc
 
     if not columns:
-        return np.ones((n, 1))
+        raise PredictionSchemaError(
+            f"Formula for parameter {param!r} produced no prediction columns"
+        )
 
-    # 将所有列堆叠为矩阵
     result_cols = []
     for col in columns:
-        if col.ndim == 1:
-            # 一维列向量化
-            result_cols.append(
-                col.reshape(n, -1) if len(col) == n else col.reshape(-1, 1)
-            )
+        arr = np.asarray(col, dtype=np.float64)
+        if arr.ndim == 1:
+            if len(arr) != n:
+                raise PredictionSchemaError(
+                    f"Prediction column for parameter {param!r} has length {len(arr)}, expected {n}"
+                )
+            result_cols.append(arr.reshape(n, 1))
         else:
-            result_cols.append(col)
+            if arr.shape[0] != n:
+                raise PredictionSchemaError(
+                    f"Prediction matrix block for parameter {param!r} has {arr.shape[0]} rows, expected {n}"
+                )
+            result_cols.append(arr)
 
     try:
         X_new = np.hstack(result_cols)
-    except Exception:
-        X_new = np.ones((n, 1))
+    except Exception as exc:
+        raise PredictionSchemaError(
+            f"Failed to assemble prediction matrix for parameter {param!r}: {exc}"
+        ) from exc
 
-    # 维度匹配检查：与模型系数的维度对比，不匹配则回退到截距-only
+    expected_columns = design_schema.get("n_columns")
+    if expected_columns is not None and X_new.shape[1] != int(expected_columns):
+        raise PredictionSchemaError(
+            f"Prediction design for parameter {param!r} has {X_new.shape[1]} columns, "
+            f"but saved schema expects {int(expected_columns)} columns"
+        )
+
     if param in model.coefficients:
         n_coefs = len(np.asarray(model.coefficients[param]))
         if X_new.shape[1] != n_coefs:
-            return np.ones((n, 1))
+            raise PredictionSchemaError(
+                f"Prediction design for parameter {param!r} has {X_new.shape[1]} columns, "
+                f"but model has {n_coefs} coefficients"
+            )
 
     return X_new
 
