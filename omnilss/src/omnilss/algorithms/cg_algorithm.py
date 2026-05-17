@@ -230,12 +230,18 @@ def joint_lbfgs_fit(
     inner_tol: float = 1e-4,
     verbose: bool = False,
 ) -> GAMLSSModel:
-    """Fit a GAMLSS model using the current joint optimizer backend (L-BFGS path).
+    """Joint L-BFGS optimizer wrapper.
 
-    CG extends RS by incorporating cross-derivative corrections between
-    distribution parameters, which can improve convergence when parameters
-    are correlated.  This wrapper delegates to ``gamlss(method="CG")``, whose
-    backend computes the full observed-information matrix with ``jax.hessian``.
+    IMPORTANT
+    ---------
+    Despite historical naming around "CG" (Cole-Green), this wrapper delegates
+    to ``fitting.gamlss(method="CG")``. The true full-Hessian Cole-Green path
+    is implemented in ``omnilss.fitting_cg.fit_cg()`` using
+    ``jax.hessian`` observed-information blocks.
+
+    Prefer direct use:
+        from omnilss.fitting import gamlss
+        model = gamlss(formula, family=family, data=data, method="CG")
 
     Parameters
     ----------

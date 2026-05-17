@@ -29,6 +29,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - BE IWLS step: 202x faster with JIT compilation
 - Overall expected improvement: 5-10x for ZAGA, 3-8x for BE
 
+## [0.3.0] - 2026-05-17
+
+### Fixed
+- CG 算法命名和描述修正：`_apply_method_step` 中的 CG 分支明确标注为“阻尼步”。
+- 版本号统一：`omnilss/pyproject.toml` 与 `omnilss/src/omnilss/__init__.py` 对齐为 0.3.0。
+- `__init__.py` 中 5 处静默 `except ImportError: pass` 改为 `ImportWarning` 诊断。
+- README 性能声明补充测试条件并移除无条件绝对性能表述。
+
+### Added
+- `omnilss.check_installation()` 安装健康检查函数。
+
 ## [0.1.0] - 2024-XX-XX
 
 ### Added

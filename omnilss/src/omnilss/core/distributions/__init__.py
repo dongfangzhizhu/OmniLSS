@@ -1,4 +1,12 @@
-"""Distribution protocol boundary for OmniLSS core."""
+"""Distribution protocol boundary for OmniLSS core.
+
+Current compatibility note
+--------------------------
+Runtime fitting still centers on ``FamilyDefinition`` from ``omnilss.families``.
+The helpers exported here define the architecture-freeze protocol surface and
+allow adapting ``FamilyDefinition`` via ``FamilyDistributionAdapter`` while the
+codebase incrementally converges on a single canonical interface.
+"""
 
 from .adapters import FamilyDistributionAdapter, as_distribution_protocol
 from .protocol import (

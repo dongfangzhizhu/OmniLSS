@@ -405,19 +405,19 @@ def _apply_method_step(
     proposed_beta: np.ndarray,
     method_name: str,
 ) -> np.ndarray:
-    """Apply staged method-specific coefficient updates.
+    """Apply method-specific coefficient damping.
 
-    R reference:
-    - `gamlss/R/gamlss-5.R`
-    - `method` supports `RS`, `CG`, `mixed`
-
-    Current staged behavior:
-    - `RS`: full weighted least squares step
-    - `CG`: damped correction step
-    - `MIXED`: midpoint step between `RS` and `CG`
+    Notes
+    -----
+    - RS: full step (no damping)
+    - MIXED: 75% step (damped RS, experimental)
+    - CG path: handled separately via ``fitting_cg.fit_cg()``;
+      this branch applies a 50% damped fallback for the legacy inline path only.
     """
 
     if method_name == "CG":
+        # NOTE: The full Cole-Green algorithm is implemented in fitting_cg.fit_cg().
+        # This legacy inline path is only a compatibility damping step.
         return previous_beta + 0.5 * (proposed_beta - previous_beta)
     if method_name == "MIXED":
         return previous_beta + 0.75 * (proposed_beta - previous_beta)
