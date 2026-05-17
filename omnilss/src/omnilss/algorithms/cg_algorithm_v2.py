@@ -26,6 +26,7 @@ from ..fitting import (
     _parse_formula,
     _resolve_fixed_parameter_values,
 )
+from ..smooth_fitting import compute_smooth_edf
 from ..model import GAMLSSModel
 from ._model_metrics import df_fit_with_smooth_edf
 
