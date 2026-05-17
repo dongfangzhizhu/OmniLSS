@@ -8,3 +8,11 @@
 
 - [ ] 完成全文中文翻译
 - [ ] 与英文版本保持同步
+
+
+轻量标准库 HTTP 边界已实现的元数据端点：
+
+- `GET /health` / `GET /healthz`：服务存活检查。
+- `GET /capabilities` / `GET /capability-matrix`：运行时分布族能力矩阵。
+
+这些端点目前只是 prototype-safe 的元数据端点；fit/predict HTTP 端点在生产暴露前仍需要认证、request ID、限制和结构化日志。

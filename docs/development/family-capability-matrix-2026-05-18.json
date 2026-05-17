@@ -1,0 +1,1198 @@
+{
+  "version": 1,
+  "features": [
+    "rs_fit",
+    "rs_jax_fit",
+    "cg_fit",
+    "prediction",
+    "sampling",
+    "smooth_terms",
+    "r_consistency",
+    "ad_hessian",
+    "production_safe"
+  ],
+  "families": {
+    "BB": {
+      "name": "BB",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BCCG": {
+      "name": "BCCG",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BCPE": {
+      "name": "BCPE",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BCPEO": {
+      "name": "BCPEO",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BCT": {
+      "name": "BCT",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BCTO": {
+      "name": "BCTO",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BE": {
+      "name": "BE",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BEINF": {
+      "name": "BEINF",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BEINF0": {
+      "name": "BEINF0",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BEINF1": {
+      "name": "BEINF1",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BEOI": {
+      "name": "BEOI",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BEZI": {
+      "name": "BEZI",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BI": {
+      "name": "BI",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "experimental",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "experimental",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates"
+      ]
+    },
+    "BNB": {
+      "name": "BNB",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "DEL": {
+      "name": "DEL",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "DPO": {
+      "name": "DPO",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "EXGAUS": {
+      "name": "EXGAUS",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "EXP": {
+      "name": "EXP",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "GA": {
+      "name": "GA",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "experimental",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "experimental",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates"
+      ]
+    },
+    "GB2": {
+      "name": "GB2",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "GEOM": {
+      "name": "GEOM",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "GG": {
+      "name": "GG",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "GT": {
+      "name": "GT",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "GU": {
+      "name": "GU",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "IG": {
+      "name": "IG",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "IGAMMA": {
+      "name": "IGAMMA",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "JSU": {
+      "name": "JSU",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "JSUO": {
+      "name": "JSUO",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "LNO": {
+      "name": "LNO",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "LO": {
+      "name": "LO",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "LOGNO": {
+      "name": "LOGNO",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "LOGNO2": {
+      "name": "LOGNO2",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "MN3": {
+      "name": "MN3",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "MN4": {
+      "name": "MN4",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "MN5": {
+      "name": "MN5",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "NBI": {
+      "name": "NBI",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "NBII": {
+      "name": "NBII",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "NET": {
+      "name": "NET",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "NO": {
+      "name": "NO",
+      "features": {
+        "rs_fit": "validated",
+        "rs_jax_fit": "experimental",
+        "cg_fit": "experimental",
+        "prediction": "validated",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "experimental",
+        "production_safe": "validated"
+      },
+      "notes": [
+        "production-safe baseline family with the strongest current evidence"
+      ]
+    },
+    "NO2": {
+      "name": "NO2",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "PARETO": {
+      "name": "PARETO",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "PARETO2": {
+      "name": "PARETO2",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "PE": {
+      "name": "PE",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "PIG": {
+      "name": "PIG",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "PO": {
+      "name": "PO",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "experimental",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "experimental",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates"
+      ]
+    },
+    "RG": {
+      "name": "RG",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SHASH": {
+      "name": "SHASH",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SHASHO": {
+      "name": "SHASHO",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SHASHO2": {
+      "name": "SHASHO2",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SI": {
+      "name": "SI",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SICHEL": {
+      "name": "SICHEL",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SIMPLEX": {
+      "name": "SIMPLEX",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SN1": {
+      "name": "SN1",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SN2": {
+      "name": "SN2",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ST5": {
+      "name": "ST5",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "TF": {
+      "name": "TF",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "experimental",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "experimental",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates"
+      ]
+    },
+    "WARING": {
+      "name": "WARING",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "WEI": {
+      "name": "WEI",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "experimental",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "experimental",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates"
+      ]
+    },
+    "YULE": {
+      "name": "YULE",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZAGA": {
+      "name": "ZAGA",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZAIG": {
+      "name": "ZAIG",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZAP": {
+      "name": "ZAP",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZIBI": {
+      "name": "ZIBI",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZINBI": {
+      "name": "ZINBI",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZIP": {
+      "name": "ZIP",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZIP2": {
+      "name": "ZIP2",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    }
+  }
+}

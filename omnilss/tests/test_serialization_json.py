@@ -99,3 +99,70 @@ def test_fit_attaches_design_matrix_schema_before_serialization():
     assert schema["raw_formula"] == "y ~ x"
     assert schema["term_order"] == ["x"]
     assert schema["training_column_checksum"]
+
+
+def test_json_artifact_omits_training_data_by_default(tmp_path):
+    rng = np.random.default_rng(26)
+    n = 40
+    x = rng.normal(size=n)
+    y = 1.5 + 0.4 * x + rng.normal(scale=0.2, size=n)
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x})
+
+    path = tmp_path / "m_no_training_data.omnilss"
+    save_model_json(model, path)
+
+    with zipfile.ZipFile(path, "r") as zf:
+        meta = json.loads(zf.read("meta.json").decode("utf-8"))
+        import io
+
+        arrays = np.load(io.BytesIO(zf.read("arrays.npz")))
+        array_names = set(arrays.files)
+
+    assert meta["training_data_included"] is False
+    assert meta["call"]["training_data_omitted"] is True
+    assert "data" not in meta["call"]
+    assert "y" not in array_names
+
+    loaded = load_model_json(path)
+    assert loaded.additional_slots["training_data_included"] is False
+    assert len(np.asarray(loaded.y)) == 0
+
+
+def test_json_artifact_can_include_training_response_explicitly(tmp_path):
+    rng = np.random.default_rng(27)
+    n = 30
+    x = rng.normal(size=n)
+    y = 1.5 + 0.4 * x + rng.normal(scale=0.2, size=n)
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x})
+
+    path = tmp_path / "m_with_training_data.omnilss"
+    save_model_json(model, path, include_training_data=True)
+
+    with zipfile.ZipFile(path, "r") as zf:
+        meta = json.loads(zf.read("meta.json").decode("utf-8"))
+        import io
+
+        arrays = np.load(io.BytesIO(zf.read("arrays.npz")))
+        array_names = set(arrays.files)
+
+    assert meta["training_data_included"] is True
+    assert "data" in meta["call"]
+    assert "y" in array_names
+
+    loaded = load_model_json(path)
+    np.testing.assert_allclose(np.asarray(loaded.y), y)
+
+
+def test_json_artifact_preserves_df_fit(tmp_path):
+    rng = np.random.default_rng(28)
+    n = 40
+    x = rng.normal(size=n)
+    y = 1.5 + 0.4 * x + rng.normal(scale=0.2, size=n)
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x})
+    model.df_fit = 1.25
+
+    path = tmp_path / "m_df_fit.omnilss"
+    save_model_json(model, path)
+    loaded = load_model_json(path)
+
+    assert loaded.df_fit == 1.25
