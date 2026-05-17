@@ -10,7 +10,7 @@ R/
 # Virtual environments
 # ============================================================================
 .venv/
-linuxenv/
+debianjaxgpu/
 env/
 venv/
 ENV/

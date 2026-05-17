@@ -1,0 +1,19 @@
+{
+  "name": "codex-r-python",
+
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "REditorSupport.r",
+        "reditorsupport.r-lsp",
+        "ms-python.python"
+      ]
+    }
+  },
+
+  "postCreateCommand": "bash .codex/setup.sh"
+}
