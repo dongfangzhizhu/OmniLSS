@@ -1,5 +1,7 @@
 # Configuration API
 
+[中文版本](config_cn.md)
+
 `omnilss.config` controls device-aware method routing for `gamlss(..., method="auto")`.
 
 ## Runtime switches

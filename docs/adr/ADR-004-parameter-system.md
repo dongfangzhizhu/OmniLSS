@@ -1,5 +1,7 @@
 # ADR-004: Parameter System
 
+[中文版本](ADR-004-parameter-system_cn.md)
+
 # Context
 
 Parameters such as `mu`, `sigma`, `nu`, and `tau` require links, constraints,

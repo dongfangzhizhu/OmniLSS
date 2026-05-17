@@ -1,5 +1,7 @@
 # ADR-006: Device-Aware Automatic Method Selection
 
+[中文版本](ADR-006-device-aware-method-selection_cn.md)
+
 **Status**: Accepted  
 **Date**: 2026-05-16  
 **Deciders**: OmniLSS maintainers

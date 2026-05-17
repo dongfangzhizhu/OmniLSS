@@ -1,5 +1,7 @@
 # 30-Day Refactor Status and Documentation Maintenance Tasks
 
+[中文版本](30-day-refactor-status_cn.md)
+
 Current status is scoped to the architecture-freeze work merged into `main` as of
 May 15, 2026. The project remains in **Architecture > Features** mode.
 
