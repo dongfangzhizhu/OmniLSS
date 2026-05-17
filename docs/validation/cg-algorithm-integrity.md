@@ -41,6 +41,13 @@ being dropped by a block-diagonal approximation.
   `CG_IRLS_CROSS`. This is not a performance claim; it is a reproducible
   backend/trajectory reference.
 
+## Checked-in reference artifact
+
+- `docs/benchmarks/cg-cross-derivative-reference-2026-05-17.md` and `.json`
+  record a deterministic smoke comparison for `RS`, `CG_FULL_HESSIAN`, and
+  `CG_IRLS_CROSS`. This is not a performance claim; it is a reproducible
+  backend/trajectory reference.
+
 ## Benchmark scripts reviewed
 
 - `benchmarks/comprehensive_r_consistency_test.py` now times Python fitting after
