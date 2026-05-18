@@ -46,33 +46,40 @@ def cg_fit(
     outer_tol: float = 1e-4,
     verbose: bool = False,
 ):
-    """Deprecated compatibility entrypoint for historical ``cg_fit`` calls.
+    """Formula-based entry point for the true Cole-Green backend.
 
-    The true Cole-Green implementation is ``omnilss.fitting_cg.fit_cg`` and is
-    exported here as ``fit_cg``/``cole_green_fit``.  This wrapper keeps the
-    legacy formula-based public API working while warning that the old name was
-    historically associated with the L-BFGS backend.
+    ``cg_fit`` now points at ``fitting.gamlss(method="CG")``, which uses the
+    full-Hessian Cole-Green implementation in :mod:`omnilss.fitting_cg`.  The
+    historical L-BFGS compatibility path remains available as
+    :func:`cg_fit_lbfgs`, :func:`joint_lbfgs_fit`, or :func:`lbfgs_fit`.
+
+    Legacy step-size arguments are accepted for API compatibility but ignored
+    by the full-Hessian CG backend, which controls damping through its own line
+    search.
     """
-    warnings.warn(
-        "omnilss.algorithms.cg_fit is deprecated as a formula-based L-BFGS "
-        "compatibility alias; use joint_lbfgs_fit/lbfgs_fit for L-BFGS or "
-        "fit_cg/cole_green_fit for the true Cole-Green algorithm.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return joint_lbfgs_fit(
+    if data is None:
+        raise ValueError("data must be provided")
+
+    from ..distributions import resolve_family
+    from ..fitting import gamlss, gamlss_control
+
+    parameter_formulas: dict[str, str] | None = None
+    if nu_formula is not None or tau_formula is not None:
+        parameter_formulas = {}
+        if nu_formula is not None:
+            parameter_formulas["nu"] = nu_formula
+        if tau_formula is not None:
+            parameter_formulas["tau"] = tau_formula
+
+    _ = (mu_step, sigma_step, nu_step, tau_step)
+    return gamlss(
         formula=formula,
         sigma_formula=sigma_formula,
-        nu_formula=nu_formula,
-        tau_formula=tau_formula,
-        family=family,
+        parameter_formulas=parameter_formulas,
+        family=resolve_family(family),
         data=data,
-        mu_step=mu_step,
-        sigma_step=sigma_step,
-        nu_step=nu_step,
-        tau_step=tau_step,
-        max_outer_iter=max_outer_iter,
-        outer_tol=outer_tol,
+        method="CG",
+        control=gamlss_control(n_cyc=max_outer_iter, c_crit=outer_tol),
         verbose=verbose,
     )
 

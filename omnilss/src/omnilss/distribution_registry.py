@@ -2,40 +2,103 @@
 
 The registry is the single public lookup surface for distribution families.
 Factories are stored by uppercase family name and instantiate a fresh
-``FamilyDefinition`` when resolved.  The initial registry is populated from the
-legacy resolver table to avoid changing individual distribution modules all at
-once; new families should call :func:`register` directly after defining their
-factory.
+``FamilyDefinition`` when resolved.  The initial registry is populated from a
+single built-in dictionary that maps family names to zero-argument factory
+locations; new families should call :func:`register` directly after defining
+their factory.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from importlib import import_module
 from .families import FamilyDefinition
 
 Resolver = Callable[[], FamilyDefinition]
 
 
-_REGISTERED_FAMILIES: tuple[str, ...] = (
-    "BB", "BCCG", "BCPE", "BCPEO", "BCT", "BCTO", "BE", "BEINF", "BEINF0",
-    "BEINF1", "BEOI", "BEZI", "BI", "BNB", "DEL", "DPO", "EXGAUS", "EXP",
-    "GA", "GB2", "GEOM", "GG", "GT", "GU", "IG", "IGAMMA", "JSU", "JSUO",
-    "LNO", "LO", "LOGNO", "LOGNO2", "MN3", "MN4", "MN5", "NBI", "NBII",
-    "NET", "NO", "NO2", "PARETO", "PARETO2", "PE", "PIG", "PO", "RG",
-    "SHASH", "SHASHO", "SHASHO2", "SI", "SICHEL", "SIMPLEX", "SN1", "SN2",
-    "ST5", "TF", "WARING", "WEI", "YULE", "ZAGA", "ZAIG", "ZAP", "ZIBI",
-    "ZINBI", "ZIP", "ZIP2",
-)
+_BUILTIN_FAMILY_FACTORIES: dict[str, tuple[str, str]] = {
+    # Core families from distributions.py
+    "NO": ("omnilss.distributions", "NO"),
+    "PO": ("omnilss.distributions", "PO"),
+    "BI": ("omnilss.distributions", "BI"),
+    "GA": ("omnilss.distributions", "GA"),
+    "EXP": ("omnilss.distributions", "EXP"),
+    "LOGNO": ("omnilss.distributions", "LOGNO"),
+    "NBI": ("omnilss.distributions", "NBI"),
+    "IG": ("omnilss.distributions", "IG"),
+    "LO": ("omnilss.distributions", "LO"),
+    "BE": ("omnilss.distributions", "BE"),
+    "WEI": ("omnilss.distributions", "WEI"),
+    "GEOM": ("omnilss.distributions", "GEOM"),
+    "ZIP": ("omnilss.distributions", "ZIP"),
+    "TF": ("omnilss.distributions", "TF"),
+    "JSU": ("omnilss.distributions", "JSU"),
+    "BCCG": ("omnilss.distributions", "BCCG"),
+    "BCT": ("omnilss.distributions", "BCT"),
+    "BCPE": ("omnilss.distributions", "BCPE"),
+    # AD/batch extension families.
+    "GU": ("omnilss.distributions_b1", "GU"),
+    "RG": ("omnilss.distributions_b1", "RG"),
+    "IGAMMA": ("omnilss.distributions_b1", "IGAMMA"),
+    "PARETO2": ("omnilss.distributions_b1", "PARETO2"),
+    "NBII": ("omnilss.distributions_b1", "NBII"),
+    "NO2": ("omnilss.distributions_b2", "NO2"),
+    "LOGNO2": ("omnilss.distributions_b2", "LOGNO2"),
+    "PE": ("omnilss.distributions_b2", "PE"),
+    "SIMPLEX": ("omnilss.distributions_b2", "SIMPLEX"),
+    "EXGAUS": ("omnilss.distributions_b2", "exGAUS"),
+    "SHASH": ("omnilss.distributions_b3", "SHASH"),
+    "SHASHO": ("omnilss.distributions_b3", "SHASHo"),
+    "SN1": ("omnilss.distributions_b3", "SN1"),
+    "SN2": ("omnilss.distributions_b3", "SN2"),
+    "GT": ("omnilss.distributions_b3", "GT"),
+    "BEINF": ("omnilss.distributions_b4", "BEINF"),
+    "BEINF0": ("omnilss.distributions_b4", "BEINF0"),
+    "BEINF1": ("omnilss.distributions_b4", "BEINF1"),
+    "BEZI": ("omnilss.distributions_b4", "BEZI"),
+    "BEOI": ("omnilss.distributions_b4", "BEOI"),
+    "ZAGA": ("omnilss.distributions_b5", "ZAGA"),
+    "ZAIG": ("omnilss.distributions_b5", "ZAIG"),
+    "ZIP2": ("omnilss.distributions_b5", "ZIP2"),
+    "ZINBI": ("omnilss.distributions_b5", "ZINBI"),
+    "ZAP": ("omnilss.distributions_b5", "ZAP"),
+    "ZIBI": ("omnilss.distributions_b10_zero_variants", "ZIBI"),
+    "PIG": ("omnilss.distributions_b6", "PIG"),
+    "SICHEL": ("omnilss.distributions_b6", "SICHEL"),
+    "SI": ("omnilss.distributions_b6", "SI"),
+    "DPO": ("omnilss.distributions_b6", "DPO"),
+    "DEL": ("omnilss.distributions_b6", "DEL"),
+    "YULE": ("omnilss.distributions_b6", "YULE"),
+    "WARING": ("omnilss.distributions_b6", "WARING"),
+    "BB": ("omnilss.distributions_b7", "BB"),
+    "BNB": ("omnilss.distributions_b7", "BNB"),
+    "MN3": ("omnilss.distributions_b7", "MN3"),
+    "MN4": ("omnilss.distributions_b7", "MN4"),
+    "MN5": ("omnilss.distributions_b7", "MN5"),
+    "GG": ("omnilss.distributions_b8", "GG"),
+    "GB2": ("omnilss.distributions_b8", "GB2"),
+    "PARETO": ("omnilss.distributions_b8", "PARETO"),
+    "NET": ("omnilss.distributions_b8", "NET"),
+    "LNO": ("omnilss.distributions_b8", "LNO"),
+    "SHASHO2": ("omnilss.distributions_b14", "SHASHo2"),
+    "JSUO": ("omnilss.distributions_b14", "JSUo"),
+    "ST5": ("omnilss.distributions_b14", "ST5"),
+    "BCPEO": ("omnilss.distributions_b14", "BCPEo"),
+    "BCTO": ("omnilss.distributions_b14", "BCTo"),
+}
+
+_REGISTERED_FAMILIES: tuple[str, ...] = tuple(sorted(_BUILTIN_FAMILY_FACTORIES))
 
 _REGISTRY: dict[str, Resolver] = {}
 _BOOTSTRAPPED = False
 
 
-def _build_from_legacy(name: str) -> FamilyDefinition:
-    """Instantiate a family through the legacy resolver implementation."""
-    from .distributions import _resolve_family_legacy
-
-    return _resolve_family_legacy(name)
+def _build_builtin(name: str) -> FamilyDefinition:
+    """Instantiate a built-in family from the authoritative registry table."""
+    module_name, attr_name = _BUILTIN_FAMILY_FACTORIES[name]
+    factory = getattr(import_module(module_name), attr_name)
+    return factory()
 
 
 def register(name: str, factory: Resolver) -> None:
@@ -54,14 +117,14 @@ def register(name: str, factory: Resolver) -> None:
 
 
 def _ensure_bootstrapped() -> None:
-    """Populate the registry with the built-in legacy families once."""
+    """Populate the registry with the built-in family dictionary once."""
     global _BOOTSTRAPPED
     if _BOOTSTRAPPED:
         return
     for family_name in _REGISTERED_FAMILIES:
         register(
             family_name,
-            lambda family_name=family_name: _build_from_legacy(family_name),
+            lambda family_name=family_name: _build_builtin(family_name),
         )
     _BOOTSTRAPPED = True
 
@@ -128,6 +191,7 @@ def get_default_registry() -> DistributionRegistry:
 
 __all__ = [
     "DistributionRegistry",
+    "_BUILTIN_FAMILY_FACTORIES",
     "_REGISTERED_FAMILIES",
     "create_default_registry",
     "get_default_registry",

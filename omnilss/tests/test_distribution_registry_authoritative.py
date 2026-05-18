@@ -3,7 +3,13 @@
 
 import pytest
 
-from omnilss.distribution_registry import list_families, register, resolve
+from omnilss.distribution_registry import (
+    _BUILTIN_FAMILY_FACTORIES,
+    _REGISTERED_FAMILIES,
+    list_families,
+    register,
+    resolve,
+)
 from omnilss.distributions import NO, resolve_family
 from omnilss.families import FamilyDefinition
 
@@ -43,3 +49,9 @@ def test_register_adds_new_family_factory():
 def test_resolve_unknown_family_reports_available_names():
     with pytest.raises(ValueError, match="Unknown family"):
         resolve("UNKNOWN_TEST_FAMILY")
+
+
+def test_builtin_registry_uses_single_dictionary_table():
+    assert tuple(sorted(_BUILTIN_FAMILY_FACTORIES)) == _REGISTERED_FAMILIES
+    assert _BUILTIN_FAMILY_FACTORIES["NO"] == ("omnilss.distributions", "NO")
+    assert _BUILTIN_FAMILY_FACTORIES["EXGAUS"] == ("omnilss.distributions_b2", "exGAUS")
