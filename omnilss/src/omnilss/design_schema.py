@@ -189,6 +189,13 @@ def build_design_matrix_schema(model: Any) -> dict[str, Any]:
     for parameter in getattr(model, "parameters", ()):
         term_info = terms.get(parameter, {}) or {}
         formula = str(formulas.get(parameter, term_info.get("formula", "")))
+        term_formula = str(term_info.get("formula", ""))
+        if _formula_rhs(formula) == "." and term_formula:
+            # Prefer expanded term metadata over an unevaluated dot formula for
+            # portable prediction artifacts.  A literal ``.`` depends on the
+            # original training frame and cannot be rebuilt safely after
+            # serialization without recording the expanded term order.
+            formula = term_formula
         raw_labels = list(term_info.get("term_labels", []) or [])
         has_intercept = bool(term_info.get("intercept", True))
         design = design_matrices.get(parameter)
