@@ -13,8 +13,10 @@ from omnilss.family_capabilities import (
     family_capability_names,
     family_supports,
     get_family_capability,
+    method_route_feature,
     list_family_capabilities,
     require_family_capability,
+    require_method_route,
 )
 
 
@@ -128,3 +130,19 @@ def test_production_safe_family_has_validated_core_route():
     assert capability.status("rs_fit") is CapabilityStatus.VALIDATED
     assert capability.status("prediction") is CapabilityStatus.VALIDATED
     assert require_family_capability("NO", "rs_fit").name == "NO"
+
+
+def test_capability_matrix_exposes_method_route_feature_map():
+    matrix = capability_matrix()
+    assert matrix["method_routes"]["RS"] == "rs_fit"
+    assert matrix["method_routes"]["RS_JAX"] == "rs_jax_fit"
+    assert method_route_feature("lbfgs") == "cg_fit"
+
+
+def test_require_method_route_uses_family_capability_tiers():
+    assert require_method_route("NO", "RS").name == "NO"
+    with pytest.raises(FamilyCapabilityError, match="experimental"):
+        require_method_route("GA", "RS")
+    assert require_method_route("GA", "RS", allow_experimental=True).name == "GA"
+    with pytest.raises(FamilyCapabilityError, match="does not support"):
+        require_method_route("GB2", "RS_JAX", allow_experimental=True)
