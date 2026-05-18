@@ -14,6 +14,41 @@ grpc = (
 )
 
 
+def test_grpc_error_text_preserves_prediction_schema_envelope() -> None:
+    """Prediction schema errors should stay machine-readable over gRPC."""
+    import json
+
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.prediction import PredictionSchemaError
+
+    error = PredictionSchemaError(
+        "Factor term 'factor(grp)' contains unseen levels ['c']",
+        parameter="mu",
+        term="factor(grp)",
+        reason="unseen factor levels ['c']",
+        code="unseen_factor_levels",
+    )
+
+    payload = json.loads(grpc_server._error_text(error))
+
+    assert payload == {
+        "type": "prediction_schema_error",
+        "code": "unseen_factor_levels",
+        "parameter": "mu",
+        "term": "factor(grp)",
+        "reason": "unseen factor levels ['c']",
+        "message": "Factor term 'factor(grp)' contains unseen levels ['c']",
+    }
+
+
+def test_top_level_prediction_schema_exports() -> None:
+    """The schema-safe prediction API should be importable from omnilss."""
+    import omnilss
+
+    assert omnilss.PredictionSchemaError is not None
+    assert callable(omnilss.build_prediction_design_matrix)
+
+
 def test_grpc_runtime_gaps_reflect_optional_dependencies() -> None:
     """Runtime diagnostics should expose missing protobuf/grpc pieces."""
     from omnilss.api.grpc import server as grpc_server
