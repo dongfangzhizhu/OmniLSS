@@ -36,11 +36,13 @@ Public API
 from __future__ import annotations
 
 from typing import NamedTuple
+import math
 
 import jax
 import jax.numpy as jnp
 
 from .jax_family_specs import FamilyJAXSpec
+from ..links import log_link, logit_link
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +85,7 @@ def _irls_step_inline(
     score_fn, hessian_fn, link_fn, link_inv, link_deriv,
     param_idx, n_params, max_inner,
     eta_lo=-10.0, eta_hi=10.0,
+    eta_clip_scale=3.0,
 ):
     """Run ``max_inner`` IRLS iterations for parameter ``param_idx``.
 
@@ -132,6 +135,12 @@ def _irls_step_inline(
         z_w = z * sqrt_W              # [n]
 
         beta, _, _, _ = jnp.linalg.lstsq(X_w, z_w, rcond=None)
+        beta = jax.lax.cond(
+            i == 0,
+            lambda b: jnp.clip(b, -eta_clip_scale, eta_clip_scale),
+            lambda b: b,
+            beta,
+        )
 
         # Update eta and the parameter value in params
         eta_new = X_k @ beta
@@ -154,6 +163,40 @@ def _irls_step_inline(
     return eta_final, params_final
 
 
+
+
+def _safe_log_value(value):
+    eps = jnp.finfo(jnp.float64).eps
+    return jnp.log(jnp.maximum(value, eps))
+
+
+def _default_init_etas(y: jnp.ndarray, spec: FamilyJAXSpec) -> jnp.ndarray:
+    """Build data-aware cold-start etas when callers do not provide them."""
+    eps = jnp.finfo(jnp.float64).eps
+    y_mean = jnp.mean(y)
+    y_pos_mean = jnp.mean(jnp.maximum(y, eps))
+    y_std = jnp.maximum(jnp.std(y), eps)
+    etas = []
+    for k, param in enumerate(spec.param_names):
+        configured = spec.init_etas[k] if k < len(spec.init_etas) else jnp.nan
+        if math.isnan(float(configured)):
+            if param == "mu":
+                if spec.link_fns[k] is log_link:
+                    eta0 = _safe_log_value(y_pos_mean)
+                elif spec.link_fns[k] is logit_link:
+                    eta0 = jnp.asarray(0.0, dtype=jnp.float64)
+                else:
+                    eta0 = y_mean
+            elif param == "sigma":
+                eta0 = _safe_log_value(y_std)
+            else:
+                lo, hi = spec.eta_bounds[k] if k < len(spec.eta_bounds) else (-10.0, 10.0)
+                eta0 = jnp.asarray((lo + hi) / 2.0, dtype=jnp.float64)
+        else:
+            eta0 = jnp.asarray(configured, dtype=jnp.float64)
+        etas.append(jnp.full(y.shape, eta0, dtype=jnp.float64))
+    return jnp.stack(etas, axis=0)
+
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
@@ -161,13 +204,14 @@ def _irls_step_inline(
 def jax_rs_fit_core(
     y: jnp.ndarray,
     Xs: tuple,
-    init_params: jnp.ndarray,
-    init_etas: jnp.ndarray,
-    obs_weights: jnp.ndarray,
-    spec: FamilyJAXSpec,
+    init_params: jnp.ndarray | None = None,
+    init_etas: jnp.ndarray | None = None,
+    obs_weights: jnp.ndarray | None = None,
+    spec: FamilyJAXSpec | None = None,
     max_outer: int = 20,
-    max_inner: int = 5,
+    max_inner: int = 1,
     tol: float = 1e-4,
+    eta_clip_scale: float = 3.0,
 ) -> JaxRSResult:
     """Fit a GAMLSS model using the JAX-native RS algorithm.
 
@@ -192,9 +236,10 @@ def jax_rs_fit_core(
         Family specification from ``jax_family_specs.get_jax_spec``.
     max_outer : int, default 20
         Maximum outer RS iterations.
-    max_inner : int, default 5
+    max_inner : int, default 1
         Fixed inner IRLS iterations per parameter per outer step.
-        Larger values improve accuracy at the cost of compile time.
+        The default intentionally matches the stable RS update cadence;
+        larger values can oscillate for some families.
     tol : float, default 1e-4
         Convergence tolerance on absolute change in global deviance.
 
@@ -232,7 +277,29 @@ def jax_rs_fit_core(
     ...                          jnp.ones(n), spec)
     >>> print(result.g_dev)
     """
+    if spec is None:
+        raise ValueError("spec must be provided.")
+
+    y = jnp.asarray(y, dtype=jnp.float64)
     n_params = len(spec.param_names)
+    n_obs = y.shape[0]
+
+    if obs_weights is None:
+        obs_weights = jnp.ones(n_obs, dtype=jnp.float64)
+    else:
+        obs_weights = jnp.asarray(obs_weights, dtype=jnp.float64)
+
+    if init_etas is None:
+        init_etas = _default_init_etas(y, spec)
+    else:
+        init_etas = jnp.asarray(init_etas, dtype=jnp.float64)
+
+    if init_params is None:
+        init_params = jnp.stack([
+            spec.link_inv_fns[k](init_etas[k]) for k in range(n_params)
+        ])
+    else:
+        init_params = jnp.asarray(init_params, dtype=jnp.float64)
 
     if len(Xs) != n_params:
         raise ValueError(
@@ -309,6 +376,7 @@ def jax_rs_fit_core(
                     max_inner=max_inner,
                     eta_lo=eta_lo,
                     eta_hi=eta_hi,
+                    eta_clip_scale=jnp.where(it == 0, eta_clip_scale, 1e12),
                 )
                 new_etas = new_etas.at[k].set(eta_k_new)
 

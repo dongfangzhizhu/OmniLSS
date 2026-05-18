@@ -48,7 +48,7 @@ def gamlss_rs_jax(
     weights: Any | None = None,
     control: GAMLSSControl | None = None,
     i_control: GLIMControl | None = None,
-    max_inner: int = 5,
+    max_inner: int = 1,
     verbose: bool = False,
 ) -> GAMLSSModel:
     """Fit a GAMLSS model using the JAX-native RS algorithm.
@@ -76,7 +76,7 @@ def gamlss_rs_jax(
         Fitting control parameters (``n_cyc``, ``c_crit``).
     i_control : GLIMControl, optional
         Inner GLIM control (currently unused in JAX path).
-    max_inner : int, default 5
+    max_inner : int, default 1
         Fixed number of inner IRLS iterations per parameter per outer step.
     verbose : bool, default False
         Print convergence information.
@@ -203,25 +203,7 @@ def gamlss_rs_jax(
             spec_kwargs["bd"] = float(bd_arr[0])
     spec = get_jax_spec(family.name, **spec_kwargs)
 
-    # ── Warm-start: run NumPy RS to convergence for better initial values ────
-    # This avoids the large first-step instability in JAX IRLS when starting
-    # from constant initial values.  The JAX core then refines from this point.
-    from ..algorithms.rs_algorithm import rs_fit as _rs_fit_numpy
-    _warm_model = _rs_fit_numpy(
-        formula=formula,
-        family=family,
-        data=data,
-        sigma_formula=sigma_formula,
-        parameter_formulas=parameter_formulas,
-        weights=weights,
-        max_iter=control.n_cyc,   # full convergence
-        tol=control.c_crit,
-        verbose=False,
-    )
-    # Use warm-start fitted values as initial params
-    for k, param in enumerate(family.estimable_parameters):
-        init_params_list[k] = np.asarray(_warm_model.fitted_values[param], dtype=np.float64)
-        init_etas_list[k]   = np.asarray(_warm_model.linear_predictors[param], dtype=np.float64)
+    # ── Cold-start only: do not run NumPy RS for initialization. ──────────────
 
     # ── Convert to JAX arrays ─────────────────────────────────────────────────
     y_jax   = jnp.asarray(y, dtype=jnp.float64)
@@ -249,7 +231,8 @@ def gamlss_rs_jax(
         obs_weights=w_jax,
         spec=spec,
         max_outer=control.n_cyc,
-        max_inner=1,   # 1 IRLS step per outer iteration (matches R gamlss glim.fit)
+        max_inner=max_inner,   # default 1 IRLS step per outer iteration
+        eta_clip_scale=3.0,
         tol=control.c_crit,
     )
 
