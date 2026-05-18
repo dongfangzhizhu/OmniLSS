@@ -18,8 +18,9 @@
 - 默认开发行为保持不变：除非显式请求 strict capability mode，否则实验性路径仍允许运行。
 - 方法路由测试覆盖了 strict 模式下 validated 的 `NO` RS 路径可运行，以及实验性的 GA RS 路径被拒绝。
 - 生成的 JSON artifact、HTTP metadata response 和 gRPC capability response 现在携带与 `gamlss()` 相同的 method-to-feature routing contract。
+- `method_route_capability_report()` 现在为 service boundary 提供 JSON 友好的 route-admission report，可在未来 async fit job 调度前使用；`gamlss()` 也使用同一个 helper 进行 runtime gate。
 
 ## D3 剩余工作
 
 - 扩展验证证据，让更多核心分布族可以针对特定路径从 experimental 升级为 validated。
-- 增加专用 service-side route-admission helper，在未来 async fit job 被调度前复用矩阵进行检查。
+- 当 service job runtime 引入后，将 `method_route_capability_report()` 接入未来 async job admission。

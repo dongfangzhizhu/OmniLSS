@@ -18,7 +18,7 @@
 | `lbfgs` / `LBFGS` | `cg_fit` | 是 | 在初始化/精修前抛出 `FamilyCapabilityError` |
 | `auto` | 先解析为 `RS` 或 `RS_JAX`，再检查解析后的 route | 是 | 不支持的 `RS_JAX` route 无法继续 |
 
-当前策略仍允许 experimental feature，因为项目现有默认定位偏研究/开发。关键变化是：`unsupported` route 现在会在 backend 执行前通过 capability registry 快速失败。
+当前策略仍允许 experimental feature，因为项目现有默认定位偏研究/开发。关键变化是：`unsupported` route 现在会在 backend 执行前通过 capability registry 快速失败。service boundary 可以调用 `method_route_capability_report()`，以 JSON 友好的 admission report 获得同一决策，其中包含 `ok`、`feature`、`status`、`code` 和 `message` 字段。
 
 ## 为什么重要
 
@@ -33,3 +33,4 @@
 2. 已完成：JSON artifact 会附加 family capability snapshot 与 compatibility report。
 3. 已完成：HTTP/gRPC service endpoint 会暴露 runtime capability matrix。
 4. 已完成：生成的机器可读 capability matrix artifact 包含 runtime method-routing map。
+5. 已完成：`method_route_capability_report()` 为未来 service job scheduling 暴露 route-admission decision。

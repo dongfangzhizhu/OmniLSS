@@ -222,6 +222,99 @@ def capability_matrix() -> dict[str, object]:
     }
 
 
+def method_route_capability_report(
+    family_name: str,
+    method_name: str,
+    *,
+    strict: bool = False,
+) -> dict[str, object]:
+    """Return a JSON-friendly route-admission report for fitting methods.
+
+    The report is intended for service boundaries that need to decide whether a
+    fit job can be admitted before scheduling backend work.  Runtime fitting
+    uses the same helper so public services, generated capability matrices, and
+    ``gamlss()`` share one method/family routing contract.
+    """
+
+    method = str(method_name).upper()
+    feature = method_capability_features().get(method)
+    allow_experimental = not strict
+    if feature is None:
+        return {
+            "ok": False,
+            "family": str(family_name).upper(),
+            "method": method,
+            "feature": None,
+            "status": None,
+            "strict": bool(strict),
+            "allow_experimental": allow_experimental,
+            "code": "unknown_method",
+            "message": (
+                f"method {method_name!r} is not present in the capability "
+                "routing map"
+            ),
+        }
+
+    family = str(family_name).upper()
+    if family not in _DEFAULT_CAPABILITIES:
+        return {
+            "ok": False,
+            "family": family,
+            "method": method,
+            "feature": feature,
+            "status": None,
+            "strict": bool(strict),
+            "allow_experimental": allow_experimental,
+            "code": "unknown_family",
+            "message": (
+                f"family {family_name!r} is not present in the capability "
+                "registry"
+            ),
+        }
+
+    capability = get_family_capability(family)
+    status = capability.status(feature)
+    if status is CapabilityStatus.VALIDATED:
+        ok = True
+        code = "validated"
+        message = (
+            f"family {capability.name!r} method {method!r} is validated "
+            f"through capability feature {feature!r}"
+        )
+    elif status is CapabilityStatus.EXPERIMENTAL and allow_experimental:
+        ok = True
+        code = "experimental_allowed"
+        message = (
+            f"family {capability.name!r} method {method!r} is experimental "
+            "and allowed by the current policy"
+        )
+    elif status is CapabilityStatus.EXPERIMENTAL:
+        ok = False
+        code = "experimental_requires_opt_in"
+        message = (
+            f"family {capability.name!r} method {method!r} is experimental; "
+            "disable strict capability mode or explicitly opt in before using it"
+        )
+    else:
+        ok = False
+        code = "unsupported_route"
+        message = (
+            f"family {capability.name!r} method {method!r} is not supported "
+            f"because capability feature {feature!r} is unsupported"
+        )
+
+    return {
+        "ok": ok,
+        "family": capability.name,
+        "method": method,
+        "feature": feature,
+        "status": status.value,
+        "strict": bool(strict),
+        "allow_experimental": allow_experimental,
+        "code": code,
+        "message": message,
+    }
+
 def family_capability_names() -> tuple[str, ...]:
     """Return registered family names covered by the capability registry."""
 
@@ -303,6 +396,7 @@ __all__ = [
     "get_family_capability",
     "list_family_capabilities",
     "method_capability_features",
+    "method_route_capability_report",
     "METHOD_CAPABILITY_FEATURES",
     "require_family_capability",
     "require_method_route",

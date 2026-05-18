@@ -109,6 +109,7 @@ from .family_capabilities import (
     method_route_feature,
     list_family_capabilities,
     method_capability_features,
+    method_route_capability_report,
     require_family_capability,
     require_method_route,
 )
@@ -337,6 +338,7 @@ __all__ = [
     "get_family_capability",
     "list_family_capabilities",
     "method_capability_features",
+    "method_route_capability_report",
     "require_family_capability",
     "require_method_route",
     "ExtractAICResult",

@@ -22,6 +22,8 @@ This note records the first concrete development step from the [six-month execut
   - `get_family_capability()`;
   - `list_family_capabilities()`;
   - `family_supports()`;
+  - `method_capability_features()`;
+  - `method_route_capability_report()`;
   - `require_family_capability()`.
 - Added tests that verify full registry coverage, feature completeness, unsupported-route errors, experimental opt-in behavior, and clear unknown-family/unknown-feature failures.
 - Generated capability matrices include the fitting-method routing map (`method_capability_features`) and strict-mode policy flags so docs, service responses, and runtime gates share the same contract.

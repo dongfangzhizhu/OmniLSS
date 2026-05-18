@@ -48,3 +48,4 @@ def test_capability_matrix_is_public_top_level_api():
 
     assert omnilss.capability_matrix() == capability_matrix()
     assert omnilss.method_capability_features()["CG"] == "cg_fit"
+    assert omnilss.method_route_capability_report("NO", "RS", strict=True)["ok"] is True

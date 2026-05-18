@@ -297,28 +297,29 @@ def _require_method_family_capability(
 ) -> None:
     """Validate method/family support before starting an expensive fit."""
 
-    from .family_capabilities import method_capability_features
+    from .family_capabilities import (
+        FamilyCapabilityError,
+        method_route_capability_report,
+    )
 
-    feature = method_capability_features().get(method_name)
-    if feature is None:
+    report = method_route_capability_report(
+        family_name, method_name, strict=not allow_experimental
+    )
+    if report["code"] == "unknown_method":
+        return
+    if report["ok"]:
         return
 
-    try:
-        require_method_route(
-            family_name,
-            method_name,
-            allow_experimental=allow_experimental,
-        )
-    except FamilyCapabilityError as exc:
-        if method_name == "RS_JAX":
-            raise FamilyCapabilityError(
-                f"Family '{family_name}' is not supported by method='RS_JAX'. "
-                "Use method='RS' instead."
-            ) from exc
+    if method_name == "RS_JAX":
         raise FamilyCapabilityError(
-            f"Family '{family_name}' cannot use method='{method_name}' "
-            f"because capability feature '{feature}' is unavailable at the requested evidence tier."
-        ) from exc
+            f"Family '{family_name}' is not supported by method='RS_JAX'. "
+            "Use method='RS' instead."
+        )
+    raise FamilyCapabilityError(
+        f"Family '{family_name}' cannot use method='{method_name}' "
+        f"because capability feature '{report['feature']}' is unavailable "
+        "at the requested evidence tier."
+    )
 
 
 def _apply_method_step(

@@ -8,7 +8,7 @@ This checklist operationalizes the [six-month execution plan](six-month-executio
 |---|---|---|---|---|
 | 1 | 2026-05-17 to 2026-05-23 | D1/D2 trustworthy artifacts and parser safety | Schema v2 present, default training-data redaction, structured prediction errors, robust smooth/tensor argument parsing, artifact validator | Complete for core production path; monitor inline review fixes |
 | 2 | 2026-05-24 to 2026-05-30 | D1/D2 prediction hardening | Legacy prediction entry points audited; public artifact-schema examples added | In progress; artifact-schema docs, validator CLI, legacy/indirect prediction entry-point schema audit, plot/report wrapper propagation tests, public error-envelope example, and gRPC prediction error envelope added; HTTP metadata error envelope, POST payload-limit gate, and prototype structured event hook added |
-| 3 | 2026-05-31 to 2026-06-06 | D3 capability gates | Runtime capability matrix fully aligned with docs and strict routing | Started; matrix artifact, HTTP/gRPC responses, and `gamlss()` strict routing now share the method-routing contract |
+| 3 | 2026-05-31 to 2026-06-06 | D3 capability gates | Runtime capability matrix fully aligned with docs and strict routing | Started; matrix artifact, HTTP/gRPC responses, `gamlss()` strict routing, and service route-admission reports now share the method-routing contract |
 | 4 | 2026-06-07 to 2026-06-16 | Month 1 release gate | Core trust checkpoint with reproducible test evidence | Pending |
 | 5 | 2026-06-17 to 2026-06-23 | D4 validation matrix | Prioritized family validation schema and first JSON outputs | Pending |
 | 6 | 2026-06-24 to 2026-06-30 | D4 validation matrix | Density/CDF/quantile checks for first core family batch | Pending |

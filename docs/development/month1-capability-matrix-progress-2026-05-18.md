@@ -18,8 +18,9 @@ This note records progress against Month 1 / Workstream D3: **RS/CG/JAX Capabili
 - Default development behavior remains unchanged: experimental routes are still allowed unless strict capability mode is requested.
 - Method-routing tests cover both strict acceptance for the validated `NO` RS route and strict rejection for an experimental GA RS route.
 - Generated JSON artifacts, HTTP metadata responses, and gRPC capability responses now carry the same method-to-feature routing contract as `gamlss()`.
+- `method_route_capability_report()` now provides a JSON-friendly route-admission report for service boundaries before future async fit jobs are scheduled, and `gamlss()` uses the same helper for runtime gating.
 
 ## Remaining D3 Work
 
 - Expand validation evidence until more core families can move from experimental to validated for specific routes.
-- Add a dedicated service-side route-admission helper that reuses the matrix before future async fit jobs are scheduled.
+- Wire `method_route_capability_report()` into future async job admission once the service job runtime is introduced.

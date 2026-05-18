@@ -18,7 +18,7 @@ This note advances Workstream D3 from the [six-month execution plan](six-month-e
 | `lbfgs` / `LBFGS` | `cg_fit` | Yes | Raises `FamilyCapabilityError` before initialization/refinement |
 | `auto` | Resolves to `RS` or `RS_JAX`, then checks that resolved route | Yes | Unsupported `RS_JAX` routes cannot proceed |
 
-The current policy still permits experimental features because the existing project defaults are research/development oriented. The important change is that `unsupported` routes now fail through the capability registry before backend work begins.
+The current policy still permits experimental features because the existing project defaults are research/development oriented. The important change is that `unsupported` routes now fail through the capability registry before backend work begins. Service boundaries can call `method_route_capability_report()` to receive the same decision as a JSON-friendly admission report with `ok`, `feature`, `status`, `code`, and `message` fields.
 
 ## Why this matters
 
@@ -33,3 +33,4 @@ The current policy still permits experimental features because the existing proj
 2. Completed: JSON artifacts attach family capability snapshots and compatibility reports.
 3. Completed: HTTP/gRPC service endpoints expose the runtime capability matrix.
 4. Completed: generated machine-readable capability matrix artifacts include the runtime method-routing map.
+5. Completed: `method_route_capability_report()` exposes the route-admission decision for future service job scheduling.
