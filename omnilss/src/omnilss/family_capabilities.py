@@ -27,6 +27,9 @@ class FamilyCapabilityError(ValueError):
     """Raised when a requested family feature is not available at the requested tier."""
 
 
+CAPABILITY_MATRIX_VERSION = 3
+CAPABILITY_MATRIX_SCHEMA_NAME = "omnilss.family_capability_matrix"
+
 FEATURES: tuple[str, ...] = (
     "rs_fit",
     "rs_jax_fit",
@@ -48,6 +51,10 @@ METHOD_CAPABILITY_FEATURES: tuple[tuple[str, str], ...] = (
     ("LBFGS", "cg_fit"),
 )
 
+# Backward-compatible public alias used by earlier Month 1 capability-gate
+# tests and documents.  Keep this bound to the same tuple so generated
+# matrices, top-level APIs, and service route admission cannot drift.
+METHOD_ROUTE_FEATURES = METHOD_CAPABILITY_FEATURES
 
 # Families with explicit R-consistency test modules or batch consistency suites in
 # the repository.  These are marked as evidence-backed for the *R consistency*
@@ -205,14 +212,39 @@ def method_capability_features() -> dict[str, str]:
     return dict(METHOD_CAPABILITY_FEATURES)
 
 
+def method_route_feature(method_name: str) -> str:
+    """Return the capability feature used to gate a fitting method.
+
+    Method names are case-insensitive.  A clear :class:`KeyError` is raised for
+    unknown methods so callers do not silently bypass the shared route map.
+    """
+
+    method = str(method_name).upper()
+    try:
+        return method_capability_features()[method]
+    except KeyError as exc:
+        raise KeyError(
+            f"method {method_name!r} is not present in the capability routing map"
+        ) from exc
+
+
 def capability_matrix() -> dict[str, object]:
     """Return a machine-readable snapshot of the runtime capability matrix."""
 
     capabilities = [capability.as_dict() for capability in list_family_capabilities()]
     return {
-        "version": 2,
+        "version": CAPABILITY_MATRIX_VERSION,
+        "schema": {
+            "name": CAPABILITY_MATRIX_SCHEMA_NAME,
+            "version": CAPABILITY_MATRIX_VERSION,
+            "canonical_method_route_field": "method_capability_features",
+            "compatibility_method_route_fields": ["method_routes"],
+        },
         "features": list(FEATURES),
         "method_capability_features": method_capability_features(),
+        # ``method_routes`` is retained as a compatibility alias for clients and
+        # documents created during the first capability-gate iteration.
+        "method_routes": method_capability_features(),
         "strict_capability_policy": {
             "default_allow_experimental": True,
             "strict_capabilities_allow_experimental": False,
@@ -315,6 +347,27 @@ def method_route_capability_report(
         "message": message,
     }
 
+
+def require_method_route(
+    family_name: str,
+    method_name: str,
+    *,
+    allow_experimental: bool = False,
+) -> FamilyCapability:
+    """Return capability metadata or raise for a blocked method/family route.
+
+    This helper is the Python API counterpart to
+    :func:`method_route_capability_report`; it uses the same method-to-feature
+    map that is emitted in capability matrices and exposed through service
+    metadata endpoints.
+    """
+
+    feature = method_route_feature(method_name)
+    return require_family_capability(
+        family_name, feature, allow_experimental=allow_experimental
+    )
+
+
 def family_capability_names() -> tuple[str, ...]:
     """Return registered family names covered by the capability registry."""
 
@@ -386,6 +439,8 @@ def require_family_capability(
 
 __all__ = [
     "CapabilityStatus",
+    "CAPABILITY_MATRIX_SCHEMA_NAME",
+    "CAPABILITY_MATRIX_VERSION",
     "FEATURES",
     "METHOD_ROUTE_FEATURES",
     "capability_matrix",
@@ -397,6 +452,7 @@ __all__ = [
     "list_family_capabilities",
     "method_capability_features",
     "method_route_capability_report",
+    "method_route_feature",
     "METHOD_CAPABILITY_FEATURES",
     "require_family_capability",
     "require_method_route",
