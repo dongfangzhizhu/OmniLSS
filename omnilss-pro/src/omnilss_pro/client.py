@@ -79,11 +79,34 @@ class OmniLSSCoreClient:
             "converged": response.converged,
         }
 
+    def list_models(self) -> list[str]:
+        """List model ids currently registered by the Core server."""
+        response = self._fit_stub.ListModels(
+            fit_pb2.ListModelsRequest(), timeout=self._timeout
+        )
+        if not response.success:
+            raise RuntimeError(f"Model listing failed: {response.error}")
+        return list(response.model_ids)
+
+    def delete_model(self, model_id: str) -> bool:
+        """Delete a fitted model artifact from the Core server registry."""
+        request = fit_pb2.DeleteModelRequest(model_id=model_id)
+        response = self._fit_stub.DeleteModel(request, timeout=self._timeout)
+        if not response.success:
+            raise RuntimeError(f"Model deletion failed: {response.error}")
+        return bool(response.deleted)
+
     def predict(self, model_id: str, newdata: dict[str, Any]) -> dict[str, list[float]]:
         """Predict distribution parameters for new data."""
+        jsonable = _jsonable_mapping(newdata)
+        columns = [
+            predict_pb2.ColumnVector(name=name, values=list(map(float, values)))
+            for name, values in jsonable.items()
+        ]
         request = predict_pb2.PredictRequest(
             model_id=model_id,
-            newdata_json=json.dumps(_jsonable_mapping(newdata)),
+            newdata_json=json.dumps(jsonable),
+            newdata_columns=columns,
         )
         response = self._predict_stub.Predict(request, timeout=self._timeout)
         if not response.success:

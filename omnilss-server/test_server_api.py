@@ -25,3 +25,14 @@ def test_fit_predict_diagnostics_flow():
     diag_resp = client.get(f'/diagnostics/{model_id}')
     assert diag_resp.status_code == 200
     assert "deviance" in diag_resp.json()
+
+    list_resp = client.get('/models')
+    assert list_resp.status_code == 200
+    assert model_id in list_resp.json()["model_ids"]
+
+    delete_resp = client.delete(f'/models/{model_id}')
+    assert delete_resp.status_code == 200
+    assert delete_resp.json()["deleted"] is True
+
+    missing_pred_resp = client.post('/predict', json={"model_id": model_id, "newdata": {"x": [0.0]}})
+    assert missing_pred_resp.status_code == 404
