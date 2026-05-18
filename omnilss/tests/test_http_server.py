@@ -152,3 +152,40 @@ def test_http_post_payload_limit_returns_structured_error():
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_http_structured_event_sink_records_success_and_errors():
+    events: list[dict[str, object]] = []
+    server = serve(host="127.0.0.1", port=0, event_sink=events.append)
+    try:
+        host, port = server.server_address
+        _get_json(f"http://{host}:{port}/health", request_id="event-ok")
+        req = Request(
+            f"http://{host}:{port}/predict",
+            data=b"{}",
+            method="POST",
+            headers={"X-Request-ID": "event-blocked"},
+        )
+        try:
+            urlopen(req, timeout=5)  # noqa: S310 - local test server
+            raise AssertionError("expected HTTPError")
+        except HTTPError as exc:
+            assert exc.code == 405
+
+        assert len(events) == 2
+        assert events[0]["event"] == "http_request"
+        assert events[0]["method"] == "GET"
+        assert events[0]["path"] == "/health"
+        assert events[0]["status"] == 200
+        assert events[0]["request_id"] == "event-ok"
+        assert "duration_seconds" in events[0]
+        assert "error_code" not in events[0]
+
+        assert events[1]["method"] == "POST"
+        assert events[1]["path"] == "/predict"
+        assert events[1]["status"] == 405
+        assert events[1]["request_id"] == "event-blocked"
+        assert events[1]["error_code"] == "method_not_allowed"
+    finally:
+        server.shutdown()
+        server.server_close()

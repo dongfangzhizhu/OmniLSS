@@ -17,7 +17,25 @@ Metadata endpoints implemented in the lightweight stdlib HTTP boundary:
 - `GET /capabilities` / `GET /capability-matrix`: runtime family capability matrix.
 - `GET /metrics`: Prometheus-style counters for metadata endpoint requests.
 
-All HTTP metadata responses include `X-Request-ID`; inbound request IDs are propagated when provided.
+All HTTP metadata responses include `X-Request-ID`; inbound request IDs are propagated when provided. Embedded deployments can also pass `serve(..., event_sink=...)` to receive structured request events for prototype-safe logging or test observability.
+
+## HTTP error envelope
+
+Unsupported or unknown HTTP metadata requests return a structured JSON envelope while preserving `X-Request-ID`:
+
+```json
+{
+  "success": false,
+  "error": {
+    "type": "http_error",
+    "code": "method_not_allowed",
+    "message": "HTTP POST is not enabled for '/predict'; fit/predict endpoints require authn, limits, and structured logging before exposure"
+  },
+  "request_id": "example-request-id"
+}
+```
+
+Prototype HTTP POST handling first applies the `Content-Length` payload-limit gate and returns `413 payload_too_large` for oversized requests. POST routes that pass the size gate intentionally return `405 method_not_allowed` until authentication, payload limits, and structured logging are implemented.
 
 ## HTTP error envelope
 

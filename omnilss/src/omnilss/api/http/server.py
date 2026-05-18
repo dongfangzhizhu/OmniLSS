@@ -13,6 +13,7 @@ import threading
 import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from collections.abc import Callable
 from typing import Any
 from urllib.parse import urlparse
 
@@ -25,7 +26,10 @@ def _json_bytes(payload: Any) -> bytes:
     return json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
 
 
-def create_handler(max_request_bytes: int = DEFAULT_MAX_REQUEST_BYTES):
+def create_handler(
+    max_request_bytes: int = DEFAULT_MAX_REQUEST_BYTES,
+    event_sink: Callable[[dict[str, Any]], None] | None = None,
+):
     """Return a request handler class serving OmniLSS metadata endpoints."""
 
     max_body_bytes = max(0, int(max_request_bytes))
@@ -48,6 +52,33 @@ def create_handler(max_request_bytes: int = DEFAULT_MAX_REQUEST_BYTES):
             metrics[name] += 1
             if duration is not None:
                 metrics["request_duration_seconds_sum"] += duration
+
+    def emit_event(
+        *,
+        method: str,
+        path: str,
+        status: int,
+        request_id: str,
+        duration: float,
+        error_code: str | None = None,
+    ) -> None:
+        if event_sink is None:
+            return
+        event = {
+            "event": "http_request",
+            "method": method,
+            "path": path,
+            "status": status,
+            "request_id": request_id,
+            "duration_seconds": float(duration),
+        }
+        if error_code is not None:
+            event["error_code"] = error_code
+        try:
+            event_sink(event)
+        except Exception:
+            # Observability hooks must not break prototype metadata responses.
+            return
 
     def metrics_text() -> str:
         with metrics_lock:
@@ -173,6 +204,13 @@ def create_handler(max_request_bytes: int = DEFAULT_MAX_REQUEST_BYTES):
                     {"status": "ok", "service": "omnilss", "request_id": request_id},
                     request_id=request_id,
                 )
+                emit_event(
+                    method="GET",
+                    path=parsed.path,
+                    status=200,
+                    request_id=request_id,
+                    duration=time.perf_counter() - started,
+                )
                 return
             if parsed.path in {"/capabilities", "/capability-matrix"}:
                 record_metric(
@@ -180,6 +218,13 @@ def create_handler(max_request_bytes: int = DEFAULT_MAX_REQUEST_BYTES):
                     duration=time.perf_counter() - started,
                 )
                 self._send_json(200, capability_matrix(), request_id=request_id)
+                emit_event(
+                    method="GET",
+                    path=parsed.path,
+                    status=200,
+                    request_id=request_id,
+                    duration=time.perf_counter() - started,
+                )
                 return
             if parsed.path == "/metrics":
                 body = metrics_text().encode("utf-8")
@@ -189,6 +234,13 @@ def create_handler(max_request_bytes: int = DEFAULT_MAX_REQUEST_BYTES):
                     content_type="text/plain; version=0.0.4; charset=utf-8",
                     request_id=request_id,
                 )
+                emit_event(
+                    method="GET",
+                    path=parsed.path,
+                    status=200,
+                    request_id=request_id,
+                    duration=time.perf_counter() - started,
+                )
                 return
             record_metric("not_found_total", duration=time.perf_counter() - started)
             self._send_error(
@@ -196,6 +248,14 @@ def create_handler(max_request_bytes: int = DEFAULT_MAX_REQUEST_BYTES):
                 code="not_found",
                 message=f"No OmniLSS HTTP endpoint for {parsed.path!r}",
                 request_id=request_id,
+            )
+            emit_event(
+                method="GET",
+                path=parsed.path,
+                status=404,
+                request_id=request_id,
+                duration=time.perf_counter() - started,
+                error_code="not_found",
             )
 
         def do_POST(self) -> None:  # noqa: N802
@@ -214,6 +274,14 @@ def create_handler(max_request_bytes: int = DEFAULT_MAX_REQUEST_BYTES):
                     message=str(exc),
                     request_id=request_id,
                 )
+                emit_event(
+                    method="POST",
+                    path=parsed.path,
+                    status=400,
+                    request_id=request_id,
+                    duration=time.perf_counter() - started,
+                    error_code="invalid_content_length",
+                )
                 return
             if content_length > max_body_bytes:
                 record_metric(
@@ -227,6 +295,16 @@ def create_handler(max_request_bytes: int = DEFAULT_MAX_REQUEST_BYTES):
                         f"maximum allowed is {max_body_bytes} bytes"
                     ),
                     request_id=request_id,
+                    extra_headers={"Connection": "close"},
+                )
+                self.close_connection = True
+                emit_event(
+                    method="POST",
+                    path=parsed.path,
+                    status=413,
+                    request_id=request_id,
+                    duration=time.perf_counter() - started,
+                    error_code="payload_too_large",
                 )
                 return
             record_metric(
@@ -239,6 +317,14 @@ def create_handler(max_request_bytes: int = DEFAULT_MAX_REQUEST_BYTES):
                 request_id=request_id,
                 extra_headers={"Allow": "GET"},
             )
+            emit_event(
+                method="POST",
+                path=parsed.path,
+                status=405,
+                request_id=request_id,
+                duration=time.perf_counter() - started,
+                error_code="method_not_allowed",
+            )
 
     return OmniLSSHTTPRequestHandler
 
@@ -248,6 +334,7 @@ def serve(
     port: int = 8000,
     *,
     max_request_bytes: int = DEFAULT_MAX_REQUEST_BYTES,
+    event_sink: Callable[[dict[str, Any]], None] | None = None,
 ) -> ThreadingHTTPServer:
     """Start the minimal OmniLSS HTTP metadata server.
 
@@ -256,7 +343,8 @@ def serve(
     """
 
     server = ThreadingHTTPServer(
-        (host, port), create_handler(max_request_bytes=max_request_bytes)
+        (host, port),
+        create_handler(max_request_bytes=max_request_bytes, event_sink=event_sink),
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
