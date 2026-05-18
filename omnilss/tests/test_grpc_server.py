@@ -393,3 +393,80 @@ def test_grpc_predict_supports_column_vectors(monkeypatch) -> None:
     by_name = {p.name: list(p.values) for p in response.params}
     assert by_name["mu"] == [1.0, 2.0]
     assert by_name["sigma"] == [1.0, 1.0]
+
+
+@pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
+def test_grpc_predict_is_restart_safe_with_persistent_registry(tmp_path, monkeypatch) -> None:
+    """A model fitted before restart should remain predictable after restart."""
+    import importlib
+    import json
+    import numpy as np
+
+    monkeypatch.setenv("OMNILSS_MODEL_STORE_DIR", str(tmp_path / "models"))
+    monkeypatch.setenv(
+        "OMNILSS_MODEL_DB_PATH", str(tmp_path / "models" / "registry.sqlite3")
+    )
+
+    import omnilss.api.grpc.server as grpc_server
+
+    grpc_server = importlib.reload(grpc_server)
+
+    try:
+        from omnilss.api.grpc.generated import fit_pb2, fit_pb2_grpc, predict_pb2, predict_pb2_grpc
+    except Exception as exc:
+        pytest.skip(f"Generated protobuf stubs unavailable: {exc}")
+
+    server1 = grpc_server.serve(host="127.0.0.1", port=59056)
+    time.sleep(0.2)
+    try:
+        channel = grpc.insecure_channel("127.0.0.1:59056")
+        fit_stub = fit_pb2_grpc.FitServiceStub(channel)
+        predict_stub = predict_pb2_grpc.PredictServiceStub(channel)
+
+        n = 40
+        data = {"y": np.random.randn(n).tolist(), "x": np.linspace(0, 1, n).tolist()}
+        fit_resp = fit_stub.Fit(
+            fit_pb2.FitRequest(
+                formula="y ~ x",
+                family="NO",
+                data_json=json.dumps(data),
+                sigma_formula="~ 1",
+                method="RS",
+                max_iter=10,
+            ),
+            timeout=10,
+        )
+        assert fit_resp.success, f"Fit failed: {fit_resp.error}"
+        model_id = fit_resp.model_id
+
+        pred_resp = predict_stub.Predict(
+            predict_pb2.PredictRequest(
+                model_id=model_id,
+                newdata_json=json.dumps({"x": [0.1, 0.5, 0.9]}),
+            ),
+            timeout=10,
+        )
+        assert pred_resp.success, f"Predict before restart failed: {pred_resp.error}"
+    finally:
+        server1.stop(grace=0)
+
+    grpc_server = importlib.reload(grpc_server)
+    server2 = grpc_server.serve(host="127.0.0.1", port=59057)
+    time.sleep(0.2)
+    try:
+        channel = grpc.insecure_channel("127.0.0.1:59057")
+        predict_stub = predict_pb2_grpc.PredictServiceStub(channel)
+
+        pred_resp = predict_stub.Predict(
+            predict_pb2.PredictRequest(
+                model_id=model_id,
+                newdata_json=json.dumps({"x": [0.2, 0.4]}),
+            ),
+            timeout=10,
+        )
+        assert pred_resp.success, f"Predict after restart failed: {pred_resp.error}"
+        payload = json.loads(pred_resp.params_json)
+        assert "mu" in payload
+        assert len(payload["mu"]) == 2
+    finally:
+        server2.stop(grace=0)
