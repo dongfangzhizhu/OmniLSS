@@ -15,9 +15,10 @@ Metadata endpoints implemented in the lightweight stdlib HTTP boundary:
 
 - `GET /health` / `GET /healthz`: service liveness check.
 - `GET /capabilities` / `GET /capability-matrix`: runtime family capability matrix, including `features`, `method_capability_features`, `strict_capability_policy`, and per-family evidence statuses.
-- `GET /metrics`: Prometheus-style counters for metadata endpoint requests.
+- `GET /route-capability` / `GET /method-route-capability`: method/family route-admission report using `family`, `method`, and optional `strict=true` query parameters.
+- `GET /metrics`: Prometheus-style counters for metadata endpoint requests, including route-admission checks.
 
-All HTTP metadata responses include `X-Request-ID`; inbound request IDs are propagated when provided. Embedded deployments can also pass `serve(..., event_sink=...)` to receive structured request events for prototype-safe logging or test observability; event-sink exceptions are isolated and do not break metadata responses.
+Route-admission checks return the same JSON-friendly payload as `method_route_capability_report()`, allowing clients to preflight a future fit request before asynchronous job scheduling exists. All HTTP metadata responses include `X-Request-ID`; inbound request IDs are propagated when provided. Embedded deployments can also pass `serve(..., event_sink=...)` to receive structured request events for prototype-safe logging or test observability; event-sink exceptions are isolated and do not break metadata responses.
 
 ## HTTP error envelope
 

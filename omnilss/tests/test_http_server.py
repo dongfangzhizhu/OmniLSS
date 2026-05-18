@@ -6,7 +6,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from omnilss.api.http.server import serve
-from omnilss.family_capabilities import capability_matrix
+from omnilss.family_capabilities import capability_matrix, method_route_capability_report
 
 
 def _get_response(url: str, *, request_id: str | None = None):
@@ -46,6 +46,60 @@ def test_http_capability_matrix_endpoint():
         payload, headers = _get_json(f"http://{host}:{port}/capabilities")
         assert payload == capability_matrix()
         assert headers["X-Request-ID"]
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_http_route_capability_endpoint_reports_admission_decision():
+    server = serve(host="127.0.0.1", port=0)
+    try:
+        host, port = server.server_address
+        payload, headers = _get_json(
+            f"http://{host}:{port}/route-capability?family=GA&method=RS&strict=true",
+            request_id="route-1",
+        )
+
+        assert payload == method_route_capability_report("GA", "RS", strict=True)
+        assert payload["ok"] is False
+        assert payload["code"] == "experimental_requires_opt_in"
+        assert headers["X-Request-ID"] == "route-1"
+
+        with _get_response(f"http://{host}:{port}/metrics") as response:
+            body = response.read().decode("utf-8")
+        assert "omnilss_http_route_admission_requests_total 1" in body
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_http_route_capability_requires_family_and_method():
+    server = serve(host="127.0.0.1", port=0)
+    try:
+        host, port = server.server_address
+        req = Request(
+            f"http://{host}:{port}/route-capability?family=NO",
+            headers={"X-Request-ID": "route-missing"},
+        )
+        try:
+            urlopen(req, timeout=5)  # noqa: S310 - local test server
+            raise AssertionError("expected HTTPError")
+        except HTTPError as exc:
+            assert exc.code == 400
+            payload = json.loads(exc.read().decode("utf-8"))
+            assert payload == {
+                "success": False,
+                "error": {
+                    "type": "http_error",
+                    "code": "invalid_route_query",
+                    "message": (
+                        "route capability checks require non-empty 'family' "
+                        "and 'method' query parameters"
+                    ),
+                },
+                "request_id": "route-missing",
+            }
+            assert exc.headers["X-Request-ID"] == "route-missing"
     finally:
         server.shutdown()
         server.server_close()

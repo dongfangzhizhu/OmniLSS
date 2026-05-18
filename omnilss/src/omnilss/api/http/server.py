@@ -15,9 +15,11 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from collections.abc import Callable
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
-from ...family_capabilities import capability_matrix
+from ...family_capabilities import capability_matrix, method_route_capability_report
+
+DEFAULT_MAX_REQUEST_BYTES = 1_048_576
 
 DEFAULT_MAX_REQUEST_BYTES = 1_048_576
 
@@ -38,6 +40,7 @@ def create_handler(
         "requests_total": 0,
         "capability_requests_total": 0,
         "health_requests_total": 0,
+        "route_admission_requests_total": 0,
         "not_found_total": 0,
         "method_not_allowed_total": 0,
         "payload_too_large_total": 0,
@@ -93,6 +96,11 @@ def create_handler(
             "# HELP omnilss_http_health_requests_total Health check requests.",
             "# TYPE omnilss_http_health_requests_total counter",
             f"omnilss_http_health_requests_total {snapshot['health_requests_total']}",
+            "# HELP omnilss_http_route_admission_requests_total "
+            "Method route-admission report requests.",
+            "# TYPE omnilss_http_route_admission_requests_total counter",
+            "omnilss_http_route_admission_requests_total "
+            f"{snapshot['route_admission_requests_total']}",
             "# HELP omnilss_http_not_found_total Unknown endpoint requests.",
             "# TYPE omnilss_http_not_found_total counter",
             f"omnilss_http_not_found_total {snapshot['not_found_total']}",
@@ -218,6 +226,53 @@ def create_handler(
                     duration=time.perf_counter() - started,
                 )
                 self._send_json(200, capability_matrix(), request_id=request_id)
+                emit_event(
+                    method="GET",
+                    path=parsed.path,
+                    status=200,
+                    request_id=request_id,
+                    duration=time.perf_counter() - started,
+                )
+                return
+
+            if parsed.path in {"/route-capability", "/method-route-capability"}:
+                query = parse_qs(parsed.query, keep_blank_values=True)
+                family = (query.get("family") or [""])[0].strip()
+                method = (query.get("method") or [""])[0].strip()
+                strict_raw = (query.get("strict") or ["false"])[0].strip().lower()
+                strict = strict_raw in {"1", "true", "yes", "y", "on"}
+                if not family or not method:
+                    record_metric(
+                        "bad_request_total",
+                        duration=time.perf_counter() - started,
+                    )
+                    self._send_error(
+                        400,
+                        code="invalid_route_query",
+                        message=(
+                            "route capability checks require non-empty 'family' "
+                            "and 'method' query parameters"
+                        ),
+                        request_id=request_id,
+                    )
+                    emit_event(
+                        method="GET",
+                        path=parsed.path,
+                        status=400,
+                        request_id=request_id,
+                        duration=time.perf_counter() - started,
+                        error_code="invalid_route_query",
+                    )
+                    return
+                record_metric(
+                    "route_admission_requests_total",
+                    duration=time.perf_counter() - started,
+                )
+                self._send_json(
+                    200,
+                    method_route_capability_report(family, method, strict=strict),
+                    request_id=request_id,
+                )
                 emit_event(
                     method="GET",
                     path=parsed.path,

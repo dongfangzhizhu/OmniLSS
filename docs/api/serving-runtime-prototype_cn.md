@@ -16,9 +16,10 @@ SLO 目标：
 
 - `GET /health` / `GET /healthz`：service liveness check。
 - `GET /capabilities` / `GET /capability-matrix`：runtime family capability matrix，包含 `features`、`method_capability_features`、`strict_capability_policy` 和每个 family 的证据状态。
-- `GET /metrics`：以 Prometheus 风格 counter 暴露 metadata endpoint request 计数。
+- `GET /route-capability` / `GET /method-route-capability`：method/family route-admission report，使用 `family`、`method` 和可选 `strict=true` query parameter。
+- `GET /metrics`：以 Prometheus 风格 counter 暴露 metadata endpoint request 计数，包括 route-admission check。
 
-所有 HTTP metadata response 都包含 `X-Request-ID`；如果入站 request 提供 request ID，则会透传。嵌入式 deployment 也可以通过 `serve(..., event_sink=...)` 接收结构化 request event，用于 prototype-safe logging 或测试观测；event sink exception 会被隔离，不会破坏 metadata response。
+Route-admission check 返回与 `method_route_capability_report()` 相同的 JSON 友好 payload，使 client 可以在异步 job scheduling 尚未存在前预检未来 fit request。所有 HTTP metadata response 都包含 `X-Request-ID`；如果入站 request 提供 request ID，则会透传。嵌入式 deployment 也可以通过 `serve(..., event_sink=...)` 接收结构化 request event，用于 prototype-safe logging 或测试观测；event sink exception 会被隔离，不会破坏 metadata response。
 
 ## HTTP 错误 envelope
 
