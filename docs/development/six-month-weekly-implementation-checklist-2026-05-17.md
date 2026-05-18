@@ -7,7 +7,7 @@ This checklist operationalizes the [six-month execution plan](six-month-executio
 | Week | Dates | Primary workstream | Implementation gate | Status |
 |---|---|---|---|---|
 | 1 | 2026-05-17 to 2026-05-23 | D1/D2 trustworthy artifacts and parser safety | Schema v2 present, default training-data redaction, structured prediction errors, robust smooth/tensor argument parsing, artifact validator | Complete for core production path; monitor inline review fixes |
-| 2 | 2026-05-24 to 2026-05-30 | D1/D2 prediction hardening | Legacy prediction entry points audited; public artifact-schema examples added | In progress; artifact-schema docs and validator CLI added, legacy audit pending |
+| 2 | 2026-05-24 to 2026-05-30 | D1/D2 prediction hardening | Legacy prediction entry points audited; public artifact-schema examples added | In progress; artifact-schema docs, validator CLI, legacy/indirect prediction entry-point schema audit, public error-envelope example, and gRPC prediction error envelope added; plot/report wrapper audit pending; HTTP metadata error envelope and POST payload-limit gate added |
 | 3 | 2026-05-31 to 2026-06-06 | D3 capability gates | Runtime capability matrix fully aligned with docs and strict routing | Pending |
 | 4 | 2026-06-07 to 2026-06-16 | Month 1 release gate | Core trust checkpoint with reproducible test evidence | Pending |
 | 5 | 2026-06-17 to 2026-06-23 | D4 validation matrix | Prioritized family validation schema and first JSON outputs | Pending |
@@ -38,4 +38,4 @@ This checklist operationalizes the [six-month execution plan](six-month-executio
 - JSON artifacts now expose a validator that checks archive structure, schema versions, parameter schema coverage, coefficient/schema consistency, smooth metadata availability, and training-data inclusion warnings.
 - Structured prediction errors expose stable machine-readable fields for client routing.
 - Formula parser hardening covers nested bracket arguments and quoted comma strings.
-- Week 2 has started only after the core Week 1 gate: public artifact-schema examples and a validator CLI are now available; legacy prediction entry-point audit remains pending.
+- Week 2 has started only after the core Week 1 gate: public artifact-schema examples and a validator CLI are now available; legacy and selected indirect prediction entry points now reuse or propagate schema-safe prediction errors, and gRPC prediction failures preserve the structured error envelope; see the [legacy prediction entry-point audit progress note](month1-legacy-prediction-entrypoint-audit-2026-05-18.md) and the [service prediction error envelope progress note](month1-service-prediction-error-envelope-2026-05-18.md).

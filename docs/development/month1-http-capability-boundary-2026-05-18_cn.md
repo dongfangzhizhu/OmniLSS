@@ -15,10 +15,11 @@
 - 新增 `GET /capabilities` 和 `GET /capability-matrix`，返回与 package API、生成 JSON 工件和 gRPC 服务一致的运行时 `capability_matrix()` 负载。
 - HTTP 响应新增 `X-Request-ID` 透传/生成能力，便于请求追踪。
 - 新增 `GET /metrics`，以 Prometheus 风格 counter 暴露元数据请求计数。
-- 新增测试：在本地临时端口启动 HTTP 服务，并验证 health、capability matrix、request ID 和 metrics 响应。
+- 未知 endpoint、暂不开放的 POST route 和超过 payload limit 的 POST request 现在返回结构化 HTTP error envelope，并继续透传 `X-Request-ID`。
+- 新增测试：在本地临时端口启动 HTTP 服务，并验证 health、capability matrix、request ID、metrics、payload-limit 和结构化 error envelope 响应。
 
 ## 剩余工作
 
-- 在暴露 fit/predict HTTP 端点前增加认证、结构化日志、负载限制和速率限制。
+- 在暴露 fit/predict HTTP 端点前增加认证、结构化日志和速率限制；现有 POST payload limit gate 会保留，在此之前未超限 POST route 保持 `405 method_not_allowed`。
 - 当服务边界不再只是 prototype 时，在 `docs/api/` 中记录公开 HTTP 响应 schema。
 - 每当 registry schema 变化时，通过测试保持 HTTP 与 gRPC capability 响应同步。
