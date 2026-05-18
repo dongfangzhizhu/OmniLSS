@@ -26,4 +26,4 @@ The audit covers the legacy R-aligned prediction entry points that remained outs
 ## Remaining Week 2 Follow-Up
 
 - Extend the audit to high-level convenience wrappers that indirectly call prediction, especially plotting/report helpers that accept `newdata`.
-- Add a short public artifact-schema example that demonstrates the legacy-entrypoint error envelope alongside the validator CLI output.
+- A public example has been added to [Model Artifact Schema and Validation](../api/model-artifact-schema.md#artifact-and-prediction-error-example) showing the legacy-entrypoint error envelope alongside validator CLI output.

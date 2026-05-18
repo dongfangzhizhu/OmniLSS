@@ -26,4 +26,4 @@
 ## 第 2 周剩余跟进
 
 - 将审计扩展到间接调用 prediction 且接受 `newdata` 的高级便捷 wrapper，尤其是绘图和报告 helper。
-- 补充一个公开 artifact-schema 示例，展示 legacy 入口 error envelope 与 validator CLI 输出。
+- 已在 [模型 Artifact Schema 与验证](../api/model-artifact-schema_cn.md#artifact-与预测错误示例) 中补充公开示例，展示 legacy 入口 error envelope 与 validator CLI 输出。

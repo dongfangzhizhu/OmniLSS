@@ -90,6 +90,24 @@ def test_prediction_schema_error_for_column_count_mismatch(tmp_path):
     assert "column count" in err.reason
 
 
+def test_prediction_schema_error_to_dict_envelope():
+    err = PredictionSchemaError(
+        "bad prediction schema",
+        parameter="mu",
+        term="factor(grp)",
+        reason="unseen factor levels ['c']",
+        code="unseen_factor_levels",
+    )
+
+    assert err.to_dict() == {
+        "code": "unseen_factor_levels",
+        "parameter": "mu",
+        "term": "factor(grp)",
+        "reason": "unseen factor levels ['c']",
+        "message": "bad prediction schema",
+    }
+
+
 def test_legacy_predict_reuses_schema_safe_factor_validation():
     from omnilss.predict_gamlss_23_12_21 import predict
 
