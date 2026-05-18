@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import http.client
 import json
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -171,6 +172,7 @@ def test_http_structured_event_sink_records_success_and_errors():
             raise AssertionError("expected HTTPError")
         except HTTPError as exc:
             assert exc.code == 405
+            exc.read()
 
         assert len(events) == 2
         assert events[0]["event"] == "http_request"
@@ -186,6 +188,57 @@ def test_http_structured_event_sink_records_success_and_errors():
         assert events[1]["status"] == 405
         assert events[1]["request_id"] == "event-blocked"
         assert events[1]["error_code"] == "method_not_allowed"
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_http_event_sink_failure_does_not_break_response():
+    def broken_sink(event: dict[str, object]) -> None:  # noqa: ARG001
+        raise RuntimeError("sink failed")
+
+    server = serve(host="127.0.0.1", port=0, event_sink=broken_sink)
+    try:
+        host, port = server.server_address
+        payload, headers = _get_json(
+            f"http://{host}:{port}/health", request_id="sink-failure"
+        )
+        assert payload["status"] == "ok"
+        assert headers["X-Request-ID"] == "sink-failure"
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_http_invalid_content_length_returns_structured_error_and_metric():
+    server = serve(host="127.0.0.1", port=0)
+    try:
+        host, port = server.server_address
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.putrequest("POST", "/predict")
+        conn.putheader("X-Request-ID", "bad-length-1")
+        conn.putheader("Content-Length", "not-an-integer")
+        conn.endheaders()
+        response = conn.getresponse()
+        try:
+            assert response.status == 400
+            payload = json.loads(response.read().decode("utf-8"))
+            assert payload == {
+                "success": False,
+                "error": {
+                    "type": "http_error",
+                    "code": "invalid_content_length",
+                    "message": "Content-Length must be an integer",
+                },
+                "request_id": "bad-length-1",
+            }
+            assert response.getheader("X-Request-ID") == "bad-length-1"
+        finally:
+            conn.close()
+
+        with _get_response(f"http://{host}:{port}/metrics") as metrics_response:
+            body = metrics_response.read().decode("utf-8")
+        assert "omnilss_http_bad_request_total 1" in body
     finally:
         server.shutdown()
         server.server_close()

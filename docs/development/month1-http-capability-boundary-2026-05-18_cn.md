@@ -14,10 +14,10 @@
 - 新增 `GET /health` 和 `GET /healthz`，用于编排系统的冒烟检查。
 - 新增 `GET /capabilities` 和 `GET /capability-matrix`，返回与 package API、生成 JSON 工件和 gRPC 服务一致的运行时 `capability_matrix()` 负载。
 - HTTP 响应新增 `X-Request-ID` 透传/生成能力，便于请求追踪。
-- 新增可选 `event_sink` structured request event hook，用于 prototype-safe logging 和测试观测。
+- 新增可选 `event_sink` structured request event hook，用于 prototype-safe logging 和测试观测；sink exception 会被隔离。
 - 新增 `GET /metrics`，以 Prometheus 风格 counter 暴露元数据请求计数。
-- 未知 endpoint、暂不开放的 POST route 和超过 payload limit 的 POST request 现在返回结构化 HTTP error envelope，并继续透传 `X-Request-ID`。
-- 新增测试：在本地临时端口启动 HTTP 服务，并验证 health、capability matrix、request ID、metrics、payload-limit、structured event hook 和结构化 error envelope 响应。
+- 未知 endpoint、暂不开放的 POST route、非法 `Content-Length` 和超过 payload limit 的 POST request 现在返回结构化 HTTP error envelope，并继续透传 `X-Request-ID`。
+- 新增测试：在本地临时端口启动 HTTP 服务，并验证 health、capability matrix、request ID、metrics、payload-limit、invalid content length、structured event hook 和结构化 error envelope 响应。
 
 ## 剩余工作
 
