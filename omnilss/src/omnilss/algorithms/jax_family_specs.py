@@ -82,6 +82,7 @@ class FamilyJAXSpec(NamedTuple):
     hessian_fns: tuple[Callable, ...]
     loglik_fn: Callable
     eta_bounds: tuple = ((-10.0, 10.0),)  # overridden per family
+    init_etas: tuple[float, ...] = ()  # cold-start eta defaults; NaN means data-derived
 
 
 # ---------------------------------------------------------------------------
@@ -172,6 +173,7 @@ def make_no_spec() -> FamilyJAXSpec:
         loglik_fn=loglik,
         # eta bounds: identity mu (wide); log sigma: exp(-6)≈0.002, exp(6)≈400
         eta_bounds=((-1e6, 1e6), (-6.0, 6.0)),
+        init_etas=(math.nan, math.nan),
     )
 
 
@@ -236,6 +238,7 @@ def make_ga_spec() -> FamilyJAXSpec:
         loglik_fn=loglik,
         # eta bounds: log mu: exp(-6)≈0.002, exp(10)≈22000; log sigma: exp(-6)..exp(3)≈20
         eta_bounds=((-6.0, 10.0), (-6.0, 3.0)),
+        init_etas=(math.nan, 0.0),
     )
 
 
@@ -275,6 +278,7 @@ def make_po_spec() -> FamilyJAXSpec:
         loglik_fn=loglik,
         # eta bounds: log mu: exp(-6)≈0.002, exp(8)≈3000
         eta_bounds=((-6.0, 8.0),),
+        init_etas=(math.nan,),
     )
 
 
@@ -337,6 +341,7 @@ def make_bi_spec(bd: float = 1.0) -> FamilyJAXSpec:
         loglik_fn=loglik,
         # eta bounds: logit mu: sigmoid(-8)≈0.0003, sigmoid(8)≈0.9997
         eta_bounds=((-8.0, 8.0),),
+        init_etas=(0.0,),
     )
 
 
@@ -419,6 +424,7 @@ def make_wei_spec() -> FamilyJAXSpec:
         loglik_fn=loglik,
         # eta bounds: log mu: exp(-6)..exp(10); log sigma (shape): exp(-3)..exp(4)≈55
         eta_bounds=((-6.0, 10.0), (-3.0, 4.0)),
+        init_etas=(math.nan, 0.0),
     )
 
 
@@ -516,6 +522,7 @@ def make_tf_spec() -> FamilyJAXSpec:
         loglik_fn=loglik,
         # eta bounds: identity mu (wide); log sigma: exp(-6)..exp(6); log nu: exp(-1)..exp(6)
         eta_bounds=((-1e6, 1e6), (-6.0, 6.0), (-1.0, 6.0)),
+        init_etas=(math.nan, math.nan, math.log(7.0)),
     )
 
 
