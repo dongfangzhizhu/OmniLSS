@@ -99,6 +99,7 @@ from .families import FamilyDefinition
 from .family_capabilities import (
     CapabilityStatus,
     FEATURES as FAMILY_CAPABILITY_FEATURES,
+    METHOD_CAPABILITY_FEATURES,
     FamilyCapability,
     FamilyCapabilityError,
     capability_matrix,
@@ -106,6 +107,8 @@ from .family_capabilities import (
     family_supports,
     get_family_capability,
     list_family_capabilities,
+    method_capability_features,
+    method_route_capability_report,
     require_family_capability,
 )
 from .fitDist import fitDist
@@ -324,6 +327,7 @@ __all__ = [
     "GLIMControl",
     "CapabilityStatus",
     "FAMILY_CAPABILITY_FEATURES",
+    "METHOD_CAPABILITY_FEATURES",
     "FamilyCapability",
     "FamilyCapabilityError",
     "capability_matrix",
@@ -331,6 +335,8 @@ __all__ = [
     "family_supports",
     "get_family_capability",
     "list_family_capabilities",
+    "method_capability_features",
+    "method_route_capability_report",
     "require_family_capability",
     "ExtractAICResult",
     "ExtractTGDResult",
@@ -686,6 +692,8 @@ __all__ = [
     "stepwise_distribution_selection",
     "quick_distribution_search",
     # ── Prediction API ──
+    "PredictionSchemaError",
+    "build_prediction_design_matrix",
     "predict_params",
     "predict_quantiles",
     "centiles",
@@ -705,6 +713,7 @@ __all__ = [
     "save_model_json",
     "load_model_json",
     "validate_model_json",
+    "compare_model_capability_snapshot",
     "save_model_pickle",
     "load_model_pickle",
 ]
@@ -758,6 +767,8 @@ except ImportError as _e:
 # Prediction API
 try:
     from .prediction import (
+        PredictionSchemaError,
+        build_prediction_design_matrix,
         centiles,
         predict_params,
         predict_quantiles,
@@ -771,6 +782,8 @@ except ImportError as _e:
         ImportWarning,
         stacklevel=2,
     )
+    PredictionSchemaError = None
+    build_prediction_design_matrix = None
     centiles = None
     predict_params = None
     predict_quantiles = None
@@ -843,6 +856,7 @@ try:
         load_model_json,
         save_model_json,
         validate_model_json,
+        compare_model_capability_snapshot,
         load_model_pickle,
         save_model_pickle,
     )
@@ -859,6 +873,7 @@ except ImportError as _e:
     load_model_json = None
     save_model_json = None
     validate_model_json = None
+    compare_model_capability_snapshot = None
     load_model_pickle = None
     save_model_pickle = None
 

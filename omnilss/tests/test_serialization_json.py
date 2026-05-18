@@ -2,7 +2,11 @@ import json
 import zipfile
 import numpy as np
 
-from omnilss import gamlss, validate_model_json as top_level_validate_model_json
+from omnilss import (
+    compare_model_capability_snapshot as top_level_compare_model_capability_snapshot,
+    gamlss,
+    validate_model_json as top_level_validate_model_json,
+)
 from omnilss.serialization import load_model_json, save_model_json
 
 
@@ -212,7 +216,10 @@ def test_validate_model_json_accepts_schema_safe_artifact(tmp_path):
 
     result = validate_model_json(path)
     assert top_level_validate_model_json(path)["ok"] is True
+    assert result["type"] == "artifact_validation_report"
+    assert result["version"] == 1
     assert result["ok"] is True
+    assert result["error_count"] == 0
     assert result["errors"] == []
 
 
@@ -238,7 +245,14 @@ def test_validate_model_json_reports_schema_mismatch(tmp_path):
 
     result = validate_model_json(path)
     assert result["ok"] is False
-    assert any(error["code"] == "coefficient_schema_mismatch" for error in result["errors"])
+    assert result["error_count"] == 1
+    mismatch = next(
+        error
+        for error in result["errors"]
+        if error["code"] == "coefficient_schema_mismatch"
+    )
+    assert mismatch["type"] == "artifact_validation_issue"
+    assert mismatch["severity"] == "error"
 
 
 def test_validate_model_json_warns_when_training_data_included(tmp_path):
@@ -255,4 +269,75 @@ def test_validate_model_json_warns_when_training_data_included(tmp_path):
 
     result = validate_model_json(path)
     assert result["ok"] is True
-    assert any(warning["code"] == "training_data_included" for warning in result["warnings"])
+    assert result["warning_count"] == 1
+    warning = next(
+        warning
+        for warning in result["warnings"]
+        if warning["code"] == "training_data_included"
+    )
+    assert warning["type"] == "artifact_validation_issue"
+    assert warning["severity"] == "warning"
+
+
+def test_json_artifact_preserves_terms_for_validation_wrappers(tmp_path):
+    rng = np.random.default_rng(39)
+    x = np.linspace(0.0, 1.0, 40)
+    y = 1.0 + x + rng.normal(scale=0.05, size=len(x))
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x}, max_iter=2)
+
+    path = tmp_path / "terms.omnilss"
+    save_model_json(model, path)
+    loaded = load_model_json(path)
+
+    assert loaded.terms["mu"]["response"] == "y"
+    assert loaded.terms["mu"]["term_labels"] == ["x"]
+
+
+def test_model_capability_snapshot_report_matches_runtime_registry(tmp_path):
+    from omnilss.serialization import compare_model_capability_snapshot
+
+    rng = np.random.default_rng(40)
+    x = np.linspace(0.0, 1.0, 40)
+    y = 0.5 + x + rng.normal(scale=0.05, size=len(x))
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x}, max_iter=2)
+
+    path = tmp_path / "capability.omnilss"
+    save_model_json(model, path)
+
+    report_from_path = compare_model_capability_snapshot(path)
+    loaded = load_model_json(path)
+    report_from_model = compare_model_capability_snapshot(loaded)
+
+    assert report_from_path["ok"] is True
+    assert top_level_compare_model_capability_snapshot(path) == report_from_path
+    assert report_from_path["family"] == "NO"
+    assert report_from_path["changes"] == []
+    assert report_from_model == report_from_path
+
+
+def test_model_capability_snapshot_report_detects_drift(tmp_path):
+    from omnilss.serialization import compare_model_capability_snapshot
+
+    rng = np.random.default_rng(41)
+    x = np.linspace(0.0, 1.0, 40)
+    y = 0.5 + x + rng.normal(scale=0.05, size=len(x))
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x}, max_iter=2)
+
+    path = tmp_path / "capability-drift.omnilss"
+    save_model_json(model, path)
+    loaded = load_model_json(path)
+    saved = dict(loaded.additional_slots["family_capability"])
+    features = dict(saved["features"])
+    features["prediction"] = "experimental"
+    saved["features"] = features
+    loaded.additional_slots = {**loaded.additional_slots, "family_capability": saved}
+
+    report = compare_model_capability_snapshot(loaded)
+
+    assert report["ok"] is False
+    assert {
+        "code": "capability_status_changed",
+        "feature": "prediction",
+        "artifact_status": "experimental",
+        "runtime_status": "validated",
+    } in report["changes"]

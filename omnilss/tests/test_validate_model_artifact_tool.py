@@ -46,7 +46,10 @@ def test_validate_artifact_tool_reports_valid_artifact(tmp_path):
 
     report = validate_model_artifact.validate_artifact(artifact)
 
+    assert report["type"] == "artifact_validation_report"
+    assert report["version"] == 1
     assert report["ok"] is True
+    assert report["error_count"] == 0
     assert report["errors"] == []
 
 
@@ -57,6 +60,9 @@ def test_validate_artifact_tool_main_exit_codes(tmp_path, capsys):
     assert validate_model_artifact.main([str(artifact)]) == 0
     output = json.loads(capsys.readouterr().out)
     assert output["ok"] is True
+    assert output["warning_count"] == 1
+    assert output["warnings"][0]["type"] == "artifact_validation_issue"
+    assert output["warnings"][0]["severity"] == "warning"
     assert output["warnings"][0]["code"] == "training_data_included"
 
     assert validate_model_artifact.main([str(artifact), "--fail-on-warning"]) == 2
@@ -68,4 +74,8 @@ def test_validate_artifact_tool_main_fails_invalid_artifact(tmp_path, capsys):
 
     assert validate_model_artifact.main([str(artifact)]) == 1
     output = json.loads(capsys.readouterr().out)
+    assert output["type"] == "artifact_validation_report"
+    assert output["error_count"] == 1
+    assert output["errors"][0]["type"] == "artifact_validation_issue"
+    assert output["errors"][0]["severity"] == "error"
     assert output["errors"][0]["code"] == "invalid_zip"

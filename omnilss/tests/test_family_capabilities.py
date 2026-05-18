@@ -8,6 +8,8 @@ from omnilss.family_capabilities import (
     FEATURES,
     FamilyCapabilityError,
     capability_matrix,
+    method_capability_features,
+    method_route_capability_report,
     family_capability_names,
     family_supports,
     get_family_capability,
@@ -61,10 +63,62 @@ def test_unknown_feature_and_family_fail_clearly():
         get_family_capability("NOT_A_FAMILY")
 
 
+def test_method_capability_features_match_runtime_routing_contract():
+    assert method_capability_features() == {
+        "RS": "rs_fit",
+        "RS_JAX": "rs_jax_fit",
+        "CG": "cg_fit",
+        "MIXED": "cg_fit",
+        "JOINT": "cg_fit",
+        "LBFGS": "cg_fit",
+    }
+
+def test_method_route_capability_report_supports_service_admission():
+    validated = method_route_capability_report("NO", "RS", strict=True)
+    assert validated == {
+        "ok": True,
+        "family": "NO",
+        "method": "RS",
+        "feature": "rs_fit",
+        "status": "validated",
+        "strict": True,
+        "allow_experimental": False,
+        "code": "validated",
+        "message": "family 'NO' method 'RS' is validated through capability feature 'rs_fit'",
+    }
+
+    experimental = method_route_capability_report("GA", "RS", strict=True)
+    assert experimental["ok"] is False
+    assert experimental["code"] == "experimental_requires_opt_in"
+    assert experimental["status"] == "experimental"
+
+    unsupported = method_route_capability_report("GB2", "RS_JAX")
+    assert unsupported["ok"] is False
+    assert unsupported["code"] == "unsupported_route"
+    assert unsupported["feature"] == "rs_jax_fit"
+
+    unknown = method_route_capability_report("NO", "NOT_A_METHOD")
+    assert unknown["ok"] is False
+    assert unknown["code"] == "unknown_method"
+    assert unknown["feature"] is None
+
+    unknown_family = method_route_capability_report("NOT_A_FAMILY", "RS")
+    assert unknown_family["ok"] is False
+    assert unknown_family["code"] == "unknown_family"
+    assert unknown_family["feature"] == "rs_fit"
+
+
 def test_capability_matrix_is_machine_readable():
     matrix = capability_matrix()
-    assert matrix["version"] == 1
+    assert matrix["version"] == 2
     assert matrix["features"] == list(FEATURES)
+    assert matrix["method_capability_features"] == method_capability_features()
+    assert matrix["method_capability_features"]["RS_JAX"] == "rs_jax_fit"
+    assert matrix["strict_capability_policy"] == {
+        "default_allow_experimental": True,
+        "strict_capabilities_allow_experimental": False,
+        "unsupported_routes_fail_fast": True,
+    }
     assert "NO" in matrix["families"]
     assert matrix["families"]["NO"]["features"]["production_safe"] == "validated"
 
