@@ -3,7 +3,7 @@
 
 This module contains various algorithms for fitting GAMLSS models:
 - RS (Rigby-Stasinopoulos): The original GAMLSS algorithm (fully implemented)
-- joint_lbfgs_fit: Historical CG-named entrypoint backed by an L-BFGS joint optimizer
+- joint_lbfgs_fit/lbfgs_fit: L-BFGS joint optimizer
 - cole_green_fit: True Cole-Green full-Hessian implementation from omnilss.fitting_cg.fit_cg
 - Mixed: Intelligent algorithm selection combining RS and CG
 - RS_JAX: JAX-native RS with jax.lax.while_loop + jnp.linalg.lstsq (GPU/TPU ready)
@@ -12,12 +12,23 @@ The RS algorithm is the default and most commonly used.
 """
 
 from .rs_algorithm import rs_fit, rs_step
-from .cg_algorithm import joint_lbfgs_fit
-from .cg_algorithm import joint_lbfgs_fit as cg_fit_lbfgs
+import warnings
+
+from .lbfgs_algorithm import joint_lbfgs_fit, lbfgs_fit
 from .cg_algorithm_v2 import cg_fit_v2
 from ..fitting_cg import fit_cg
 
 cole_green_fit = fit_cg
+
+
+def cg_fit_lbfgs(*args, **kwargs):
+    """Deprecated public alias for the historical L-BFGS optimizer."""
+    warnings.warn(
+        "cg_fit_lbfgs is deprecated; use joint_lbfgs_fit or lbfgs_fit.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return joint_lbfgs_fit(*args, **kwargs)
 
 
 def cg_fit(
@@ -35,12 +46,21 @@ def cg_fit(
     outer_tol: float = 1e-4,
     verbose: bool = False,
 ):
-    """Backward-compatible CG entrypoint.
+    """Deprecated compatibility entrypoint for historical ``cg_fit`` calls.
 
-    Accepts legacy keyword arguments used by existing tests/callers and routes
-    them into ``cg_fit_v2``.
+    The true Cole-Green implementation is ``omnilss.fitting_cg.fit_cg`` and is
+    exported here as ``fit_cg``/``cole_green_fit``.  This wrapper keeps the
+    legacy formula-based public API working while warning that the old name was
+    historically associated with the L-BFGS backend.
     """
-    return cg_fit_lbfgs(
+    warnings.warn(
+        "omnilss.algorithms.cg_fit is deprecated as a formula-based L-BFGS "
+        "compatibility alias; use joint_lbfgs_fit/lbfgs_fit for L-BFGS or "
+        "fit_cg/cole_green_fit for the true Cole-Green algorithm.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return joint_lbfgs_fit(
         formula=formula,
         sigma_formula=sigma_formula,
         nu_formula=nu_formula,
@@ -72,7 +92,8 @@ from .jax_family_specs import (
     supported_families,
 )
 from .jax_rs_core import JaxRSResult, jax_rs_fit_core
-from .jax_rs_integration import gamlss_rs_jax
+from .jax_rs_batch import batch_jax_rs_fit
+from .jax_rs_integration import gamlss_rs_jax, gamlss_rs_jax_batch
 
 __all__ = [
     # NumPy RS
@@ -82,6 +103,7 @@ __all__ = [
     "cg_fit",
     "cg_fit_lbfgs",
     "joint_lbfgs_fit",
+    "lbfgs_fit",
     "cole_green_fit",
     "fit_cg",
     "cg_fit_v2",
@@ -90,7 +112,9 @@ __all__ = [
     # JAX-native RS
     "FamilyJAXSpec",
     "JaxRSResult",
+    "batch_jax_rs_fit",
     "gamlss_rs_jax",
+    "gamlss_rs_jax_batch",
     "get_jax_spec",
     "jax_rs_fit_core",
     "make_no_spec",
