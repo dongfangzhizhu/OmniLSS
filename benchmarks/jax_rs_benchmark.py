@@ -14,14 +14,14 @@ Design principles
 
 Usage
 -----
-    # Full benchmark with R (recommended)
-    python benchmarks/jax_rs_benchmark.py
+    # Full optional-R benchmark (recommended where R is installed)
+    python benchmarks/jax_rs_benchmark.py --suite optional-r
 
-    # Smoke test (fast, n=1000 only, 3 reps)
-    python benchmarks/jax_rs_benchmark.py --smoke
+    # CI-safe Python-only smoke benchmark (no R/GPU required)
+    python benchmarks/jax_rs_benchmark.py --suite no-r --smoke --families NO --n-values 100
 
-    # Skip R comparison
-    python benchmarks/jax_rs_benchmark.py --no-r
+    # Optional GPU benchmark; exits successfully with a skipped artifact when no GPU is available
+    python benchmarks/jax_rs_benchmark.py --suite optional-gpu --smoke
 
     # Custom n values
     python benchmarks/jax_rs_benchmark.py --n-values 1000 10000 100000 500000
@@ -60,9 +60,12 @@ import numpy as np
 def _parse_args():
     p = argparse.ArgumentParser(description="JAX RS benchmark")
     p.add_argument("--smoke",     action="store_true",
-                   help="Fast smoke test: n=1000 only, 3 reps")
+                   help="Fast smoke test: default n=1000,5000 and at most 3 reps; --n-values may override")
+    p.add_argument("--suite", choices=["no-r", "optional-r", "optional-gpu"],
+                   default="optional-r",
+                   help="Benchmark suite: Python-only, R-when-available, or GPU-when-available")
     p.add_argument("--no-r",      action="store_true",
-                   help="Skip R comparison")
+                   help="Deprecated alias for --suite no-r; skip R comparison")
     p.add_argument("--n-values",  type=int, nargs="+",
                    default=None,
                    help="Override n values (default: 1k 5k 10k 50k 100k 500k)")
@@ -175,6 +178,32 @@ def _warm_times(fn, args, kwargs, n_reps: int) -> list[float]:
     return [_time_call(fn, *args, **kwargs)[0] for _ in range(n_reps)]
 
 
+def _timing_summary(times_ms: list[float]) -> dict[str, Any]:
+    """Return median/min/mean and a conservative normal-approximation 95% CI."""
+    if not times_ms:
+        return {
+            "median_ms": None,
+            "min_ms": None,
+            "mean_ms": None,
+            "ci95_ms": None,
+            "samples_ms": [],
+        }
+    rounded = [round(float(t), 2) for t in times_ms]
+    mean = float(statistics.mean(times_ms))
+    if len(times_ms) > 1:
+        margin = 1.96 * float(statistics.stdev(times_ms)) / math.sqrt(len(times_ms))
+        ci95 = [round(max(0.0, mean - margin), 2), round(mean + margin, 2)]
+    else:
+        ci95 = None
+    return {
+        "median_ms": round(float(statistics.median(times_ms)), 2),
+        "min_ms": round(float(min(times_ms)), 2),
+        "mean_ms": round(mean, 2),
+        "ci95_ms": ci95,
+        "samples_ms": rounded,
+    }
+
+
 # ---------------------------------------------------------------------------
 # R timing (single Rscript call, all reps inside R)
 # ---------------------------------------------------------------------------
@@ -233,11 +262,14 @@ def _run_r_timing(
         if not times_ms:
             return None
 
+        summary = _timing_summary(times_ms)
         return {
-            "median_ms": round(statistics.median(times_ms), 2),
-            "min_ms":    round(min(times_ms), 2),
+            "median_ms": summary["median_ms"],
+            "min_ms": summary["min_ms"],
+            "mean_ms": summary["mean_ms"],
+            "ci95_ms": summary["ci95_ms"],
             "deviance":  round(statistics.median(deviances), 6),
-            "times_ms":  [round(t, 2) for t in times_ms],
+            "times_ms": summary["samples_ms"],
             "deviances": [round(d, 6) for d in deviances],
         }
     except subprocess.TimeoutExpired:
@@ -285,8 +317,12 @@ def _run_one(
         n_reps=n_reps,
     )
     row["numpy_cold_ms"]        = round(numpy_cold_ms, 2)
-    row["numpy_warm_ms_median"] = round(statistics.median(numpy_warm), 2)
-    row["numpy_warm_ms_min"]    = round(min(numpy_warm), 2)
+    numpy_summary = _timing_summary(numpy_warm)
+    row["numpy_warm_ms_median"] = numpy_summary["median_ms"]
+    row["numpy_warm_ms_min"]    = numpy_summary["min_ms"]
+    row["numpy_warm_ms_mean"]   = numpy_summary["mean_ms"]
+    row["numpy_warm_ms_ci95"]   = numpy_summary["ci95_ms"]
+    row["numpy_warm_ms_samples"] = numpy_summary["samples_ms"]
     row["numpy_deviance"]       = round(float(model_np.g_dev), 6)
 
     # ── JAX RS cold (first call = JIT compilation) ───────────────────────────
@@ -301,8 +337,12 @@ def _run_one(
         gamlss, (formula,), {"family": family, "data": data, "method": "RS_JAX"},
         n_reps=n_reps,
     )
-    row["jax_warm_ms_median"] = round(statistics.median(jax_warm), 2)
-    row["jax_warm_ms_min"]    = round(min(jax_warm), 2)
+    jax_summary = _timing_summary(jax_warm)
+    row["jax_warm_ms_median"] = jax_summary["median_ms"]
+    row["jax_warm_ms_min"]    = jax_summary["min_ms"]
+    row["jax_warm_ms_mean"]   = jax_summary["mean_ms"]
+    row["jax_warm_ms_ci95"]   = jax_summary["ci95_ms"]
+    row["jax_warm_ms_samples"] = jax_summary["samples_ms"]
 
     # ── Deviance diff vs NumPy ────────────────────────────────────────────────
     row["deviance_diff_vs_numpy"] = round(
@@ -325,6 +365,8 @@ def _run_one(
             row["r_min_ms"]             = r_result["min_ms"]
             row["r_deviance"]           = r_result["deviance"]
             row["r_times_ms"]           = r_result["times_ms"]
+            row["r_mean_ms"]            = r_result["mean_ms"]
+            row["r_ms_ci95"]            = r_result["ci95_ms"]
             row["deviance_diff_vs_r"]   = round(
                 abs(row["jax_deviance"] - r_result["deviance"]), 8
             )
@@ -351,6 +393,12 @@ def _run_one(
 # Markdown report
 # ---------------------------------------------------------------------------
 
+def _format_ci(ci: Any) -> str:
+    if not ci:
+        return "N/A"
+    return f"[{ci[0]:.1f}, {ci[1]:.1f}]"
+
+
 def _make_markdown(env: dict, rows: list[dict]) -> str:
     has_r = any("r_median_ms" in r and r["r_median_ms"] is not None for r in rows)
     backend = env.get("jax_backend", "cpu").upper()
@@ -374,14 +422,15 @@ def _make_markdown(env: dict, rows: list[dict]) -> str:
         "## Methodology",
         "",
         "- `jax_cold_ms`: wall time of the **first** JAX call (JIT compilation included)",
-        "- `jax_warm_ms`: median of calls 2-7 (compiled XLA graph, no recompilation)",
-        "- `numpy_warm_ms`: median of 6 calls to `method='RS'` (NumPy IRLS path)",
+        "- `jax_warm_ms`: median of repeated cold-start JAX RS calls after the first compilation",
+        "- `numpy_warm_ms`: median of repeated calls to `method='RS'` (NumPy IRLS path)",
+        "- `*_ci95`: normal-approximation 95% confidence interval for repeated warm timings",
         "- `r_median_ms`: median of R-internal repetitions via `proc.time()` "
         "(single Rscript process, startup overhead excluded)",
         "- `speedup_vs_numpy`: `numpy_warm_ms / jax_warm_ms`",
         "- `speedup_vs_r`: `r_median_ms / jax_warm_ms`",
         "- Formula: `y ~ x` (linear predictor, no smooth terms)",
-        "- JAX path uses NumPy RS warm-start (full convergence) + JAX `while_loop` refinement",
+        "- JAX RS uses data-aware cold-start initialization; no NumPy RS warm-start is included",
         "",
     ]
 
@@ -392,30 +441,36 @@ def _make_markdown(env: dict, rows: list[dict]) -> str:
         lines += [f"## {fam}", ""]
         if has_r:
             lines += [
-                "| n | jax_cold_ms | jax_warm_ms | numpy_warm_ms | r_median_ms "
-                "| speedup_vs_numpy | speedup_vs_r | dev_diff_r |",
-                "|---|------------:|------------:|--------------:|------------:"
-                "|-----------------:|-------------:|-----------:|",
+                "| n | jax_cold_ms | jax_warm_ms | jax_ci95_ms | numpy_warm_ms | numpy_ci95_ms | r_median_ms "
+                "| r_ci95_ms | speedup_vs_numpy | speedup_vs_r | dev_diff_r |",
+                "|---|------------:|------------:|------------:|--------------:|--------------:|------------:"
+                "|----------:|-----------------:|-------------:|-----------:|",
             ]
             for r in fam_rows:
                 r_ms    = f"{r.get('r_median_ms', 'N/A'):.1f}" if r.get("r_median_ms") else "N/A"
                 sp_r    = f"{r.get('speedup_jax_vs_r', 'N/A'):.2f}x" if r.get("speedup_jax_vs_r") else "N/A"
                 dd_r    = f"{r.get('deviance_diff_vs_r', 'N/A'):.2e}" if r.get("deviance_diff_vs_r") is not None else "N/A"
                 sp_np   = f"{r.get('speedup_jax_vs_numpy', 'N/A'):.2f}x" if r.get("speedup_jax_vs_numpy") else "N/A"
+                jax_ci = _format_ci(r.get("jax_warm_ms_ci95"))
+                numpy_ci = _format_ci(r.get("numpy_warm_ms_ci95"))
+                r_ci = _format_ci(r.get("r_ms_ci95"))
                 lines.append(
                     f"| {r['n']:,} "
                     f"| {r['jax_cold_ms']:.1f} "
                     f"| {r['jax_warm_ms_median']:.1f} "
+                    f"| {jax_ci} "
                     f"| {r['numpy_warm_ms_median']:.1f} "
+                    f"| {numpy_ci} "
                     f"| {r_ms} "
+                    f"| {r_ci} "
                     f"| {sp_np} "
                     f"| {sp_r} "
                     f"| {dd_r} |"
                 )
         else:
             lines += [
-                "| n | jax_cold_ms | jax_warm_ms | numpy_warm_ms | speedup_vs_numpy | dev_diff_numpy |",
-                "|---|------------:|------------:|--------------:|-----------------:|---------------:|",
+                "| n | jax_cold_ms | jax_warm_ms | jax_ci95_ms | numpy_warm_ms | numpy_ci95_ms | speedup_vs_numpy | dev_diff_numpy |",
+                "|---|------------:|------------:|------------:|--------------:|--------------:|-----------------:|---------------:|",
             ]
             for r in fam_rows:
                 sp_np = f"{r.get('speedup_jax_vs_numpy', 'N/A'):.2f}x" if r.get("speedup_jax_vs_numpy") else "N/A"
@@ -423,7 +478,9 @@ def _make_markdown(env: dict, rows: list[dict]) -> str:
                     f"| {r['n']:,} "
                     f"| {r['jax_cold_ms']:.1f} "
                     f"| {r['jax_warm_ms_median']:.1f} "
+                    f"| {_format_ci(r.get('jax_warm_ms_ci95'))} "
                     f"| {r['numpy_warm_ms_median']:.1f} "
+                    f"| {_format_ci(r.get('numpy_warm_ms_ci95'))} "
                     f"| {sp_np} "
                     f"| {r['deviance_diff_vs_numpy']:.2e} |"
                 )
@@ -453,8 +510,8 @@ def _make_markdown(env: dict, rows: list[dict]) -> str:
         "",
         "## Notes",
         "",
-        "- JAX warm time includes NumPy RS warm-start overhead on CPU.",
-        "  On GPU, the warm-start runs on CPU while the JAX `while_loop` runs on GPU.",
+        "- JAX cold-start initialization is data-aware and JAX-native; NumPy RS warm-starts are intentionally excluded.",
+        "- Cold and warm timings must be reported separately; use the confidence intervals above for repeated warm claims.",
         "- The crossover point (JAX warm < NumPy warm) depends on n and family complexity.",
         "- TF (Student-t) uses JAX autodiff for score/Hessian; cold time is higher.",
         "",
@@ -474,20 +531,45 @@ def main():
     jax.config.update("jax_enable_x64", True)
 
     if args.smoke:
-        n_values = [1_000, 5_000]
-        n_reps   = 3
-        r_reps   = 3
-        print("[smoke mode] n=1000,5000 only, 3 reps")
+        n_values = args.n_values or [1_000, 5_000]
+        n_reps = min(args.n_reps, 3)
+        r_reps = min(args.r_reps, 3)
+        print(f"[smoke mode] n={n_values}, reps={n_reps}, r_reps={r_reps}")
     else:
         n_values = args.n_values or [1_000, 5_000, 10_000, 50_000, 100_000, 500_000]
         n_reps   = args.n_reps
         r_reps   = args.r_reps
 
     families = args.families
-    skip_r   = args.no_r
+    suite = "no-r" if args.no_r else args.suite
+    skip_r = suite in {"no-r", "optional-gpu"}
 
     env  = _collect_env()
     rows = []
+
+    if suite == "optional-gpu" and not env.get("has_gpu"):
+        out_dir = Path(args.out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        artifact = {
+            "environment": env,
+            "suite": suite,
+            "skipped": True,
+            "skip_reason": "No JAX GPU device was available.",
+            "results": [],
+            "correctness_vs_numpy": None,
+        }
+        json_path = out_dir / f"jax_rs_{suite}_{ts}.json"
+        md_path = out_dir / f"jax_rs_{suite}_{ts}.md"
+        json_path.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
+        md_path.write_text(
+            "# Optional GPU JAX RS Benchmark\n\n"
+            "Skipped: no JAX GPU device was available.\n",
+            encoding="utf-8",
+        )
+        print("[optional-gpu] skipped: no JAX GPU device was available")
+        print(f"Artifacts:\n  JSON: {json_path}\n  MD:   {md_path}")
+        return 0
 
     print(f"\nJAX RS Benchmark — {env['timestamp_utc']}")
     print(f"CPU: {env.get('cpu_model', '?')}")
@@ -571,6 +653,7 @@ def main():
 
     artifact = {
         "environment":   env,
+        "suite": suite,
         "methodology": {
             "n_python_reps": n_reps,
             "n_r_reps":      r_reps,
@@ -579,9 +662,9 @@ def main():
             "python_timing": "time.perf_counter",
             "r_timing":      "proc.time() inside single Rscript process",
             "jax_path_note": (
-                "JAX warm time includes NumPy RS warm-start (full convergence). "
-                "On CPU this dominates for small n. "
-                "On GPU the warm-start runs on CPU while JAX while_loop runs on GPU."
+                "JAX RS uses data-aware cold-start initialization and excludes "
+                "NumPy RS warm-starts. Cold compilation and repeated warm timings "
+                "are reported separately."
             ),
         },
         "results":              rows,
@@ -598,7 +681,7 @@ def main():
     with open(md_path, "w", encoding="utf-8") as f:
         f.write(md_content)
 
-    print(f"\nArtifacts:")
+    print("\nArtifacts:")
     print(f"  JSON: {json_path}")
     print(f"  MD:   {md_path}")
 

@@ -70,6 +70,23 @@ Do not summarize results with static marketing claims. Cite the generated report
 hardware, backend, dtype, data size, formula, repetitions, and whether R was
 available.
 
+
+## Phase 5 Benchmark Suites
+
+The v1.0 benchmark workflow is split into three suites so publication claims can
+be reproduced without hiding optional dependencies:
+
+| Suite | Command | Dependency expectation | Intended use |
+|-------|---------|------------------------|--------------|
+| No-R smoke | `python benchmarks/jax_rs_benchmark.py --suite no-r --smoke --families NO --n-values 100 --n-reps 2` | Python/JAX only; no R or GPU | CI smoke and quick local health checks |
+| Optional-R | `python benchmarks/jax_rs_benchmark.py --suite optional-r` | Uses R when `Rscript` and packages are available; records unavailable R as missing comparison data | Release and paper validation |
+| Optional-GPU | `python benchmarks/jax_rs_benchmark.py --suite optional-gpu --smoke` | Requires a JAX GPU device for measurements; otherwise writes a skipped artifact and exits successfully | GPU crossover exploration |
+
+`jax_rs_benchmark.py` now records repeated warm timing samples plus a 95%
+confidence interval (`*_ci95`) in the JSON and Markdown artifacts. Cold JAX
+compilation time is reported separately and is never combined with warm steady
+state timing.
+
 ## Requirements
 
 - Python with this repository importable (`PYTHONPATH=omnilss/src` or editable install).
