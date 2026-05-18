@@ -22,8 +22,11 @@
   - `get_family_capability()`；
   - `list_family_capabilities()`；
   - `family_supports()`；
+  - `method_capability_features()`；
+  - `method_route_capability_report()`；
   - `require_family_capability()`。
 - 新增测试，验证 registry 覆盖率、feature 完整性、不支持路径报错、experimental 显式 opt-in 行为，以及未知 family/未知 feature 的清晰失败。
+- 生成的 capability matrix 现在包含拟合方法路由映射（`method_capability_features`）和 strict-mode policy flag，使文档、服务响应和运行时 gate 共享同一份 contract。
 
 ## 证据等级
 
@@ -69,6 +72,6 @@ except FamilyCapabilityError:
 
 1. 已在 [Method Routing Capability Gates](method-routing-capability-gates-2026-05-17_cn.md) 中完成：`gamlss()` 会在 backend 拟合开始前检查 method/family capability。
 2. 已在 [模型 Artifact Capability Snapshot](model-artifact-capability-snapshots-2026-05-17_cn.md) 中完成：JSON 模型 artifact 会保存并恢复 capability snapshot。
-3. 生成机器可读 capability matrix artifact，用于文档和服务 API。
+3. 已在 [第 1 月 Capability Matrix 进展](month1-capability-matrix-progress-2026-05-18_cn.md) 中完成：为文档和服务 API 生成机器可读 capability matrix artifact，并包含 method-routing contract。
 4. 只有通过文档化 validation report 的 family feature 才能从 `experimental` 提升为 `validated`。
-5. 增加服务端 endpoint，将 capability 数据暴露给 UI 和 AutoML 候选 family 过滤。
+5. 增加 service endpoint，为 UI 和 AutoML candidate filtering 暴露 capability data。
