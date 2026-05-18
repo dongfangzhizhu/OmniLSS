@@ -22,6 +22,7 @@ This note records progress against Month 1 / Workstream D3: **RS/CG/JAX Capabili
 - The capability matrix schema version is now exposed as `CAPABILITY_MATRIX_VERSION = 3`, so adding the `method_routes` compatibility key is visible to clients instead of silently changing the version-2 payload.
 - The public `method_route_feature()` and `require_method_route()` helpers are now restored, and `capability_matrix()` again includes the backward-compatible `method_routes` alias so generated artifacts, tests, service metadata, and documented strict routing share one importable contract.
 - Added `tools/validate_capability_matrix.py` and `validate_capability_matrix_payload()` so generated matrix artifacts can be checked for schema version, method-route alias drift, policy drift, family coverage, and feature-status validity before release bundles or service metadata reuse them.
+- The matrix validator now returns structured reports for unreadable files and malformed JSON as well as schema drift, so release checks receive one machine-readable failure envelope instead of uncaught file/parse exceptions.
 - `method_route_capability_report()` now provides a JSON-friendly route-admission report for service boundaries before future async fit jobs are scheduled, `gamlss()` uses the same helper for runtime gating, and the HTTP metadata boundary exposes the report for client preflight checks.
 
 ## Remaining D3 Work

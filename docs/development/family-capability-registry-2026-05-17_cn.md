@@ -30,6 +30,7 @@
 - 新增测试，验证 registry 覆盖率、feature 完整性、不支持路径报错、experimental 显式 opt-in 行为、未知 family/未知 feature 的清晰失败、top-level route-helper 导出，以及生成的 `method_routes` 兼容 alias。
 - Capability matrix schema version 通过 `CAPABILITY_MATRIX_VERSION` 导出；当前值为 `3`，因为矩阵现在同时发布 `method_capability_features` 和兼容用的 `method_routes` alias。
 - 新增 `validate_capability_matrix_payload()` 以及 CLI wrapper `tools/validate_capability_matrix.py`，当生成 artifact 的 schema version、method routing alias、policy flag、family 覆盖率或 feature status 偏离 runtime truth 时可快速失败。
+- Validator 会用与 schema drift 相同的结构化 issue envelope 报告不可读文件和 malformed JSON，因此自动化流程可以基于稳定 issue code 路由。
 - 生成的 capability matrix 现在包含拟合方法路由映射（`method_capability_features` 以及向后兼容的 `method_routes` alias）和 strict-mode policy flag，使文档、服务响应和运行时 gate 共享同一份 contract。
 
 ## 证据等级

@@ -99,3 +99,24 @@ def test_validate_capability_matrix_file_reports_drift(tmp_path):
         "version_mismatch",
         "method_routes_mismatch",
     }
+
+
+def test_validate_capability_matrix_file_reports_invalid_json(tmp_path):
+    output = tmp_path / "matrix-invalid.json"
+    output.write_text("{not-json", encoding="utf-8")
+
+    report = validate_capability_matrix.validate_capability_matrix_file(output)
+
+    assert report["ok"] is False
+    assert report["path"] == str(output)
+    assert report["issues"][0]["code"] == "capability_matrix_json_error"
+
+
+def test_validate_capability_matrix_file_reports_read_errors(tmp_path):
+    missing = tmp_path / "missing.json"
+
+    report = validate_capability_matrix.validate_capability_matrix_file(missing)
+
+    assert report["ok"] is False
+    assert report["path"] == str(missing)
+    assert report["issues"][0]["code"] == "capability_matrix_read_error"

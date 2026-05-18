@@ -2,14 +2,15 @@
 
 Usage
 -----
-PYTHONPATH=src python tools/validate_capability_matrix.py \
-    ../docs/development/family-capability-matrix-2026-05-18.json
+PYTHONPATH=omnilss/src python omnilss/tools/validate_capability_matrix.py \
+    docs/development/family-capability-matrix-2026-05-18.json
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+from json import JSONDecodeError
 from pathlib import Path
 from typing import Sequence
 
@@ -21,13 +22,59 @@ DEFAULT_INPUT = (
 )
 
 
+def _file_error_report(
+    input_path: Path,
+    *,
+    code: str,
+    message: str,
+) -> dict[str, object]:
+    """Return a JSON-friendly validation report for file-level failures."""
+
+    return {
+        "path": str(input_path),
+        "ok": False,
+        "version": None,
+        "expected_version": None,
+        "issues": [
+            {
+                "severity": "error",
+                "code": code,
+                "path": "$",
+                "message": message,
+            }
+        ],
+    }
+
+
 def validate_capability_matrix_file(
     path: str | Path = DEFAULT_INPUT,
 ) -> dict[str, object]:
-    """Validate a capability matrix JSON file and return a report."""
+    """Validate a capability matrix JSON file and return a report.
+
+    File-level failures are returned as structured reports instead of escaping
+    as exceptions so CLI callers and release checks get the same machine-readable
+    envelope as schema-drift validation failures.
+    """
 
     input_path = Path(path)
-    payload = json.loads(input_path.read_text(encoding="utf-8"))
+    try:
+        text = input_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return _file_error_report(
+            input_path,
+            code="capability_matrix_read_error",
+            message=str(exc),
+        )
+
+    try:
+        payload = json.loads(text)
+    except JSONDecodeError as exc:
+        return _file_error_report(
+            input_path,
+            code="capability_matrix_json_error",
+            message=str(exc),
+        )
+
     report = validate_capability_matrix_payload(payload)
     return {"path": str(input_path), **report}
 
