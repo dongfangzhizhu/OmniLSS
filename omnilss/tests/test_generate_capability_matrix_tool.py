@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from omnilss.family_capabilities import (
+    CAPABILITY_MATRIX_SCHEMA_NAME,
     CAPABILITY_MATRIX_VERSION,
     FEATURES,
     capability_matrix,
@@ -30,6 +31,11 @@ def test_generate_capability_matrix_writes_runtime_snapshot(tmp_path):
     assert written == output
     assert payload == capability_matrix()
     assert payload["version"] == CAPABILITY_MATRIX_VERSION
+    assert payload["schema"]["name"] == CAPABILITY_MATRIX_SCHEMA_NAME
+    assert (
+        payload["schema"]["canonical_method_route_field"]
+        == "method_capability_features"
+    )
     assert payload["features"] == list(FEATURES)
     assert payload["method_capability_features"]["RS"] == "rs_fit"
     assert payload["families"]["NO"]["features"]["production_safe"] == "validated"
@@ -51,6 +57,7 @@ def test_generated_development_artifact_is_current():
 def test_capability_matrix_is_public_top_level_api():
     import omnilss
 
+    assert omnilss.CAPABILITY_MATRIX_SCHEMA_NAME == CAPABILITY_MATRIX_SCHEMA_NAME
     assert omnilss.CAPABILITY_MATRIX_VERSION == CAPABILITY_MATRIX_VERSION
     assert omnilss.capability_matrix() == capability_matrix()
     assert dict(omnilss.METHOD_ROUTE_FEATURES) == omnilss.method_capability_features()

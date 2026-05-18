@@ -28,6 +28,7 @@ class FamilyCapabilityError(ValueError):
 
 
 CAPABILITY_MATRIX_VERSION = 3
+CAPABILITY_MATRIX_SCHEMA_NAME = "omnilss.family_capability_matrix"
 
 FEATURES: tuple[str, ...] = (
     "rs_fit",
@@ -233,6 +234,12 @@ def capability_matrix() -> dict[str, object]:
     capabilities = [capability.as_dict() for capability in list_family_capabilities()]
     return {
         "version": CAPABILITY_MATRIX_VERSION,
+        "schema": {
+            "name": CAPABILITY_MATRIX_SCHEMA_NAME,
+            "version": CAPABILITY_MATRIX_VERSION,
+            "canonical_method_route_field": "method_capability_features",
+            "compatibility_method_route_fields": ["method_routes"],
+        },
         "features": list(FEATURES),
         "method_capability_features": method_capability_features(),
         # ``method_routes`` is retained as a compatibility alias for clients and
@@ -432,6 +439,7 @@ def require_family_capability(
 
 __all__ = [
     "CapabilityStatus",
+    "CAPABILITY_MATRIX_SCHEMA_NAME",
     "CAPABILITY_MATRIX_VERSION",
     "FEATURES",
     "METHOD_ROUTE_FEATURES",

@@ -98,6 +98,7 @@ from .distributions_b16 import DPO1, PARETO1, SEP, BCCGo, LOGSHASHo, PARETO1o
 from .families import FamilyDefinition
 from .family_capabilities import (
     CapabilityStatus,
+    CAPABILITY_MATRIX_SCHEMA_NAME,
     CAPABILITY_MATRIX_VERSION,
     FEATURES as FAMILY_CAPABILITY_FEATURES,
     METHOD_CAPABILITY_FEATURES,
@@ -330,6 +331,7 @@ __all__ = [
     "GAMLSSModel",
     "GLIMControl",
     "CapabilityStatus",
+    "CAPABILITY_MATRIX_SCHEMA_NAME",
     "CAPABILITY_MATRIX_VERSION",
     "FAMILY_CAPABILITY_FEATURES",
     "METHOD_CAPABILITY_FEATURES",
