@@ -20,6 +20,7 @@ EXCLUDED_PARTS = {
     "venv",
     "node_modules",
     "__pycache__",
+    ".pytest_cache",
 }
 _CN_NAV_PATTERN = re.compile(r"[\w./-]+_cn\.md")
 
