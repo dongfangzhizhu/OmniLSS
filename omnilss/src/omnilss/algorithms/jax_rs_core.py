@@ -36,11 +36,13 @@ Public API
 from __future__ import annotations
 
 from typing import NamedTuple
+import math
 
 import jax
 import jax.numpy as jnp
 
 from .jax_family_specs import FamilyJAXSpec
+from ..links import log_link, logit_link
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +85,7 @@ def _irls_step_inline(
     score_fn, hessian_fn, link_fn, link_inv, link_deriv,
     param_idx, n_params, max_inner,
     eta_lo=-10.0, eta_hi=10.0,
+    eta_clip_scale=3.0,
 ):
     """Run ``max_inner`` IRLS iterations for parameter ``param_idx``.
 
@@ -113,14 +116,15 @@ def _irls_step_inline(
         # dtheta/deta (inverse link derivative)
         dtheta_deta = link_deriv(eta_c)
         dtheta_deta = jnp.where(jnp.abs(dtheta_deta) < eps, eps, dtheta_deta)
+        deta_dtheta = 1.0 / dtheta_deta
 
-        # Working weights: w = -hess / (dtheta/deta)^2
-        ww = -hess / jnp.square(dtheta_deta)
+        # Working weights: w = -hess * (dtheta/deta)^2
+        ww = -hess * jnp.square(dtheta_deta)
         ww = jnp.clip(ww, 1e-10, 1e10)
         ww = jnp.where(jnp.isfinite(ww), ww, 1e-10)
 
-        # Working response: z = eta + score / (dtheta/deta * ww)
-        denom = dtheta_deta * ww
+        # Working response: z = eta + score / (deta/dtheta * ww)
+        denom = deta_dtheta * ww
         denom = jnp.where(jnp.abs(denom) < eps, eps, denom)
         z = eta_c + score / denom
         z = jnp.where(jnp.isfinite(z), z, eta_c)
@@ -132,6 +136,12 @@ def _irls_step_inline(
         z_w = z * sqrt_W              # [n]
 
         beta, _, _, _ = jnp.linalg.lstsq(X_w, z_w, rcond=None)
+        beta = jax.lax.cond(
+            i == 0,
+            lambda b: jnp.clip(b, -eta_clip_scale, eta_clip_scale),
+            lambda b: b,
+            beta,
+        )
 
         # Update eta and the parameter value in params
         eta_new = X_k @ beta
@@ -154,6 +164,40 @@ def _irls_step_inline(
     return eta_final, params_final
 
 
+
+
+def _safe_log_value(value):
+    eps = jnp.finfo(jnp.float64).eps
+    return jnp.log(jnp.maximum(value, eps))
+
+
+def _default_init_etas(y: jnp.ndarray, spec: FamilyJAXSpec) -> jnp.ndarray:
+    """Build data-aware cold-start etas when callers do not provide them."""
+    eps = jnp.finfo(jnp.float64).eps
+    y_mean = jnp.mean(y)
+    y_pos_mean = jnp.mean(jnp.maximum(y, eps))
+    y_std = jnp.maximum(jnp.std(y), eps)
+    etas = []
+    for k, param in enumerate(spec.param_names):
+        configured = spec.init_etas[k] if k < len(spec.init_etas) else jnp.nan
+        if math.isnan(float(configured)):
+            if param == "mu":
+                if spec.link_fns[k] is log_link:
+                    eta0 = _safe_log_value(y_pos_mean)
+                elif spec.link_fns[k] is logit_link:
+                    eta0 = jnp.asarray(0.0, dtype=jnp.float64)
+                else:
+                    eta0 = y_mean
+            elif param == "sigma":
+                eta0 = _safe_log_value(y_std)
+            else:
+                lo, hi = spec.eta_bounds[k] if k < len(spec.eta_bounds) else (-10.0, 10.0)
+                eta0 = jnp.asarray((lo + hi) / 2.0, dtype=jnp.float64)
+        else:
+            eta0 = jnp.asarray(configured, dtype=jnp.float64)
+        etas.append(jnp.full(y.shape, eta0, dtype=jnp.float64))
+    return jnp.stack(etas, axis=0)
+
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
@@ -161,13 +205,14 @@ def _irls_step_inline(
 def jax_rs_fit_core(
     y: jnp.ndarray,
     Xs: tuple,
-    init_params: jnp.ndarray,
-    init_etas: jnp.ndarray,
-    obs_weights: jnp.ndarray,
-    spec: FamilyJAXSpec,
+    init_params: jnp.ndarray | None = None,
+    init_etas: jnp.ndarray | None = None,
+    obs_weights: jnp.ndarray | None = None,
+    spec: FamilyJAXSpec | None = None,
     max_outer: int = 20,
-    max_inner: int = 5,
+    max_inner: int = 1,
     tol: float = 1e-4,
+    eta_clip_scale: float = 3.0,
 ) -> JaxRSResult:
     """Fit a GAMLSS model using the JAX-native RS algorithm.
 
@@ -192,9 +237,10 @@ def jax_rs_fit_core(
         Family specification from ``jax_family_specs.get_jax_spec``.
     max_outer : int, default 20
         Maximum outer RS iterations.
-    max_inner : int, default 5
+    max_inner : int, default 1
         Fixed inner IRLS iterations per parameter per outer step.
-        Larger values improve accuracy at the cost of compile time.
+        The default intentionally matches the stable RS update cadence;
+        larger values can oscillate for some families.
     tol : float, default 1e-4
         Convergence tolerance on absolute change in global deviance.
 
@@ -232,7 +278,29 @@ def jax_rs_fit_core(
     ...                          jnp.ones(n), spec)
     >>> print(result.g_dev)
     """
+    if spec is None:
+        raise ValueError("spec must be provided.")
+
+    y = jnp.asarray(y, dtype=jnp.float64)
     n_params = len(spec.param_names)
+    n_obs = y.shape[0]
+
+    if obs_weights is None:
+        obs_weights = jnp.ones(n_obs, dtype=jnp.float64)
+    else:
+        obs_weights = jnp.asarray(obs_weights, dtype=jnp.float64)
+
+    if init_etas is None:
+        init_etas = _default_init_etas(y, spec)
+    else:
+        init_etas = jnp.asarray(init_etas, dtype=jnp.float64)
+
+    if init_params is None:
+        init_params = jnp.stack([
+            spec.link_inv_fns[k](init_etas[k]) for k in range(n_params)
+        ])
+    else:
+        init_params = jnp.asarray(init_params, dtype=jnp.float64)
 
     if len(Xs) != n_params:
         raise ValueError(
@@ -293,11 +361,15 @@ def jax_rs_fit_core(
                 else:
                     eta_lo, eta_hi = -10.0, 10.0
 
-                eta_k_new, new_params = _irls_step_inline(
+                old_params_k = new_params
+                old_etas_k = new_etas
+                old_gdev_k = compute_gdev(old_params_k)
+
+                eta_k_new, candidate_params = _irls_step_inline(
                     y=y,
                     X_k=Xs[k],
-                    eta_k=new_etas[k],
-                    params=new_params,
+                    eta_k=old_etas_k[k],
+                    params=old_params_k,
                     obs_weights=obs_weights,
                     score_fn=score_fns[k],
                     hessian_fn=hessian_fns[k],
@@ -309,8 +381,51 @@ def jax_rs_fit_core(
                     max_inner=max_inner,
                     eta_lo=eta_lo,
                     eta_hi=eta_hi,
+                    eta_clip_scale=jnp.where(it == 0, eta_clip_scale, 1e12),
                 )
-                new_etas = new_etas.at[k].set(eta_k_new)
+
+                # Per-parameter step-halving mirrors the NumPy RS path: a
+                # single cold-start update can be too aggressive even when the
+                # overall direction is useful.  Halve only this parameter's eta
+                # until the global deviance no longer increases; otherwise keep
+                # the previous parameter value.
+                candidate_gdev = compute_gdev(candidate_params)
+
+                def halve_cond(carry):
+                    eta_try, params_try, gdev_try, count = carry
+                    return jnp.logical_and(gdev_try > old_gdev_k + 1e-6, count < 8)
+
+                def halve_body(carry):
+                    eta_try, _params_try, _gdev_try, count = carry
+                    eta_halved = 0.5 * (old_etas_k[k] + eta_try)
+                    theta_halved = link_inv_fns[k](eta_halved)
+                    params_halved = old_params_k.at[k].set(theta_halved)
+                    gdev_halved = compute_gdev(params_halved)
+                    return eta_halved, params_halved, gdev_halved, count + 1
+
+                eta_accept, params_accept, gdev_accept, _ = jax.lax.while_loop(
+                    halve_cond,
+                    halve_body,
+                    (
+                        eta_k_new,
+                        candidate_params,
+                        candidate_gdev,
+                        jnp.array(0, dtype=jnp.int32),
+                    ),
+                )
+
+                def keep_old_param(_):
+                    return old_params_k, old_etas_k
+
+                def use_new_param(_):
+                    return params_accept, old_etas_k.at[k].set(eta_accept)
+
+                new_params, new_etas = jax.lax.cond(
+                    gdev_accept > old_gdev_k + 1e-6,
+                    keep_old_param,
+                    use_new_param,
+                    operand=None,
+                )
 
             new_gdev = compute_gdev(new_params)
 

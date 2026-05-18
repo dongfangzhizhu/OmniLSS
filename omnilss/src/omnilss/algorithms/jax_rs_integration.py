@@ -48,7 +48,7 @@ def gamlss_rs_jax(
     weights: Any | None = None,
     control: GAMLSSControl | None = None,
     i_control: GLIMControl | None = None,
-    max_inner: int = 5,
+    max_inner: int = 1,
     verbose: bool = False,
 ) -> GAMLSSModel:
     """Fit a GAMLSS model using the JAX-native RS algorithm.
@@ -76,7 +76,7 @@ def gamlss_rs_jax(
         Fitting control parameters (``n_cyc``, ``c_crit``).
     i_control : GLIMControl, optional
         Inner GLIM control (currently unused in JAX path).
-    max_inner : int, default 5
+    max_inner : int, default 1
         Fixed number of inner IRLS iterations per parameter per outer step.
     verbose : bool, default False
         Print convergence information.
@@ -165,11 +165,47 @@ def gamlss_rs_jax(
         predictor_labels[param]   = labels_param
 
     # ── Initialise parameters ─────────────────────────────────────────────────
-    beta_mu = _initial_mu_beta(
-        family, design_matrices_np["mu"], y, w,
-        fixed_parameter_values=fixed_parameter_values,
-    )
-    eta_mu = design_matrices_np["mu"] @ beta_mu
+    X_mu = design_matrices_np["mu"]
+    eps = np.finfo(np.float64).eps
+
+    if family.name == "BI":
+        # Standard Bernoulli/logistic GLM IRLS cold-start.  This is deliberately
+        # not a NumPy RS warm-start: it only initializes the single mu predictor
+        # from the canonical GLM equations and avoids the unstable linear-y
+        # initialization for binary responses.
+        beta_mu = np.zeros(X_mu.shape[1], dtype=np.float64)
+        if X_mu.shape[1] > 0:
+            p0 = np.clip(np.average(y, weights=w), 1e-6, 1.0 - 1e-6)
+            beta_mu[0] = float(np.log(p0 / (1.0 - p0)))
+        for _ in range(8):
+            eta_work = X_mu @ beta_mu
+            p_work = np.clip(1.0 / (1.0 + np.exp(-eta_work)), 1e-6, 1.0 - 1e-6)
+            ww = np.clip(p_work * (1.0 - p_work) * w, 1e-10, 1e10)
+            z = eta_work + (y - p_work) / np.clip(
+                p_work * (1.0 - p_work), 1e-10, None
+            )
+            sqrt_ww = np.sqrt(ww)
+            beta_next, _, _, _ = np.linalg.lstsq(
+                X_mu * sqrt_ww[:, None], z * sqrt_ww, rcond=None
+            )
+            if np.max(np.abs(beta_next - beta_mu)) < 1e-8:
+                beta_mu = beta_next
+                break
+            beta_mu = beta_next
+    elif family.name == "WEI":
+        # Weibull uses a log link for mu; log-y least squares gives a stable
+        # shape-independent slope cold-start and lets subsequent RS updates
+        # refine the scale and shape jointly.
+        beta_mu, _, _, _ = np.linalg.lstsq(
+            X_mu, np.log(np.maximum(y, eps)), rcond=None
+        )
+    else:
+        beta_mu = _initial_mu_beta(
+            family, X_mu, y, w,
+            fixed_parameter_values=fixed_parameter_values,
+        )
+
+    eta_mu = X_mu @ beta_mu
     mu     = np.asarray(family.link_inverses["mu"](jnp.asarray(eta_mu)), dtype=np.float64)
 
     init_params_list: list[np.ndarray] = [mu]
@@ -203,25 +239,7 @@ def gamlss_rs_jax(
             spec_kwargs["bd"] = float(bd_arr[0])
     spec = get_jax_spec(family.name, **spec_kwargs)
 
-    # ── Warm-start: run NumPy RS to convergence for better initial values ────
-    # This avoids the large first-step instability in JAX IRLS when starting
-    # from constant initial values.  The JAX core then refines from this point.
-    from ..algorithms.rs_algorithm import rs_fit as _rs_fit_numpy
-    _warm_model = _rs_fit_numpy(
-        formula=formula,
-        family=family,
-        data=data,
-        sigma_formula=sigma_formula,
-        parameter_formulas=parameter_formulas,
-        weights=weights,
-        max_iter=control.n_cyc,   # full convergence
-        tol=control.c_crit,
-        verbose=False,
-    )
-    # Use warm-start fitted values as initial params
-    for k, param in enumerate(family.estimable_parameters):
-        init_params_list[k] = np.asarray(_warm_model.fitted_values[param], dtype=np.float64)
-        init_etas_list[k]   = np.asarray(_warm_model.linear_predictors[param], dtype=np.float64)
+    # ── Cold-start only: do not run NumPy RS for initialization. ──────────────
 
     # ── Convert to JAX arrays ─────────────────────────────────────────────────
     y_jax   = jnp.asarray(y, dtype=jnp.float64)
@@ -249,7 +267,8 @@ def gamlss_rs_jax(
         obs_weights=w_jax,
         spec=spec,
         max_outer=control.n_cyc,
-        max_inner=1,   # 1 IRLS step per outer iteration (matches R gamlss glim.fit)
+        max_inner=max_inner,   # default 1 IRLS step per outer iteration
+        eta_clip_scale=3.0,
         tol=control.c_crit,
     )
 
@@ -373,4 +392,74 @@ def gamlss_rs_jax(
     )
 
 
-__all__ = ["gamlss_rs_jax"]
+def gamlss_rs_jax_batch(
+    formula: str,
+    families: Any,
+    datasets: Mapping[str, Any] | list[Mapping[str, Any]],
+    sigma_formula: str = "~1",
+    parameter_formulas: Mapping[str, str] | None = None,
+    weights: Any | list[Any] | None = None,
+    control: GAMLSSControl | None = None,
+    i_control: GLIMControl | None = None,
+    max_inner: int = 1,
+    verbose: bool = False,
+) -> list[GAMLSSModel]:
+    """Fit multiple JAX RS models through the formula integration layer.
+
+    This is the formula-level companion to ``batch_jax_rs_fit``.  It preserves
+    exactly the same cold-start-only semantics as ``gamlss_rs_jax`` and accepts
+    either one dataset/family broadcast to all models or one dataset/family per
+    model.
+
+    Parameters
+    ----------
+    formula : str
+        Formula for the mu parameter.
+    families : family object, string, or list
+        One family broadcast to all datasets, or one family per dataset.
+    datasets : mapping or list[mapping]
+        One dataset or a list of datasets.
+    weights : array-like, list[array-like], optional
+        One weight vector broadcast to all models, or one weight vector per
+        dataset.
+
+    Returns
+    -------
+    list[GAMLSSModel]
+        Fitted models in input order.
+    """
+    dataset_list = list(datasets) if isinstance(datasets, list) else [datasets]
+    k_models = len(dataset_list)
+
+    if isinstance(families, list):
+        if len(families) != k_models:
+            raise ValueError("families must be one value or one family per dataset.")
+        family_list = families
+    else:
+        family_list = [families for _ in range(k_models)]
+
+    if isinstance(weights, list):
+        if len(weights) != k_models:
+            raise ValueError("weights must be one value or one weight vector per dataset.")
+        weights_list = weights
+    else:
+        weights_list = [weights for _ in range(k_models)]
+
+    return [
+        gamlss_rs_jax(
+            formula=formula,
+            family=family_list[idx],
+            data=dataset_list[idx],
+            sigma_formula=sigma_formula,
+            parameter_formulas=parameter_formulas,
+            weights=weights_list[idx],
+            control=control,
+            i_control=i_control,
+            max_inner=max_inner,
+            verbose=verbose,
+        )
+        for idx in range(k_models)
+    ]
+
+
+__all__ = ["gamlss_rs_jax", "gamlss_rs_jax_batch"]
