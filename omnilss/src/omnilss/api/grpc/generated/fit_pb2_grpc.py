@@ -13,10 +13,28 @@ class FitServiceStub(object):
             request_serializer=fit__pb2.FitRequest.SerializeToString,
             response_deserializer=fit__pb2.FitResponse.FromString,
         )
+        self.ListModels = channel.unary_unary(
+            "/omnilss.FitService/ListModels",
+            request_serializer=fit__pb2.ListModelsRequest.SerializeToString,
+            response_deserializer=fit__pb2.ListModelsResponse.FromString,
+        )
+        self.DeleteModel = channel.unary_unary(
+            "/omnilss.FitService/DeleteModel",
+            request_serializer=fit__pb2.DeleteModelRequest.SerializeToString,
+            response_deserializer=fit__pb2.DeleteModelResponse.FromString,
+        )
 
 
 class FitServiceServicer(object):
     def Fit(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
+    def ListModels(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
+    def DeleteModel(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("Method not implemented!")
         raise NotImplementedError("Method not implemented!")
@@ -28,6 +46,16 @@ def add_FitServiceServicer_to_server(servicer, server):
             servicer.Fit,
             request_deserializer=fit__pb2.FitRequest.FromString,
             response_serializer=fit__pb2.FitResponse.SerializeToString,
+        ),
+        "ListModels": grpc.unary_unary_rpc_method_handler(
+            servicer.ListModels,
+            request_deserializer=fit__pb2.ListModelsRequest.FromString,
+            response_serializer=fit__pb2.ListModelsResponse.SerializeToString,
+        ),
+        "DeleteModel": grpc.unary_unary_rpc_method_handler(
+            servicer.DeleteModel,
+            request_deserializer=fit__pb2.DeleteModelRequest.FromString,
+            response_serializer=fit__pb2.DeleteModelResponse.SerializeToString,
         ),
     }
     generic_handler = grpc.method_handlers_generic_handler(

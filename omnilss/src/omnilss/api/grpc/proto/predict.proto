@@ -1,5 +1,27 @@
 syntax = "proto3";
 package omnilss;
-message PredictRequest { string model_id = 1; string newdata_json = 2; }
-message PredictResponse { string params_json = 1; bool success = 2; string error = 3; }
+
+message ColumnVector {
+  string name = 1;
+  repeated double values = 2;
+}
+
+message ParamVector {
+  string name = 1;
+  repeated double values = 2;
+}
+
+message PredictRequest {
+  string model_id = 1;
+  string newdata_json = 2;
+  repeated ColumnVector newdata_columns = 3;
+}
+
+message PredictResponse {
+  string params_json = 1;
+  bool success = 2;
+  string error = 3;
+  repeated ParamVector params = 4;
+}
+
 service PredictService { rpc Predict(PredictRequest) returns (PredictResponse); }

@@ -3,7 +3,7 @@
 
 This module contains various algorithms for fitting GAMLSS models:
 - RS (Rigby-Stasinopoulos): The original GAMLSS algorithm (fully implemented)
-- joint_lbfgs_fit: Historical CG-named entrypoint backed by an L-BFGS joint optimizer
+- joint_lbfgs_fit/lbfgs_fit: L-BFGS joint optimizer
 - cole_green_fit: True Cole-Green full-Hessian implementation from omnilss.fitting_cg.fit_cg
 - Mixed: Intelligent algorithm selection combining RS and CG
 - RS_JAX: JAX-native RS with jax.lax.while_loop + jnp.linalg.lstsq (GPU/TPU ready)
@@ -12,12 +12,23 @@ The RS algorithm is the default and most commonly used.
 """
 
 from .rs_algorithm import rs_fit, rs_step
-from .cg_algorithm import joint_lbfgs_fit
-from .cg_algorithm import joint_lbfgs_fit as cg_fit_lbfgs
+import warnings
+
+from .lbfgs_algorithm import joint_lbfgs_fit, lbfgs_fit
 from .cg_algorithm_v2 import cg_fit_v2
 from ..fitting_cg import fit_cg
 
 cole_green_fit = fit_cg
+
+
+def cg_fit_lbfgs(*args, **kwargs):
+    """Deprecated public alias for the historical L-BFGS optimizer."""
+    warnings.warn(
+        "cg_fit_lbfgs is deprecated; use joint_lbfgs_fit or lbfgs_fit.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return joint_lbfgs_fit(*args, **kwargs)
 
 
 def cg_fit(
@@ -35,24 +46,40 @@ def cg_fit(
     outer_tol: float = 1e-4,
     verbose: bool = False,
 ):
-    """Backward-compatible CG entrypoint.
+    """Formula-based entry point for the true Cole-Green backend.
 
-    Accepts legacy keyword arguments used by existing tests/callers and routes
-    them into ``cg_fit_v2``.
+    ``cg_fit`` now points at ``fitting.gamlss(method="CG")``, which uses the
+    full-Hessian Cole-Green implementation in :mod:`omnilss.fitting_cg`.  The
+    historical L-BFGS compatibility path remains available as
+    :func:`cg_fit_lbfgs`, :func:`joint_lbfgs_fit`, or :func:`lbfgs_fit`.
+
+    Legacy step-size arguments are accepted for API compatibility but ignored
+    by the full-Hessian CG backend, which controls damping through its own line
+    search.
     """
-    return cg_fit_lbfgs(
+    if data is None:
+        raise ValueError("data must be provided")
+
+    from ..distributions import resolve_family
+    from ..fitting import gamlss, gamlss_control
+
+    parameter_formulas: dict[str, str] | None = None
+    if nu_formula is not None or tau_formula is not None:
+        parameter_formulas = {}
+        if nu_formula is not None:
+            parameter_formulas["nu"] = nu_formula
+        if tau_formula is not None:
+            parameter_formulas["tau"] = tau_formula
+
+    _ = (mu_step, sigma_step, nu_step, tau_step)
+    return gamlss(
         formula=formula,
         sigma_formula=sigma_formula,
-        nu_formula=nu_formula,
-        tau_formula=tau_formula,
-        family=family,
+        parameter_formulas=parameter_formulas,
+        family=resolve_family(family),
         data=data,
-        mu_step=mu_step,
-        sigma_step=sigma_step,
-        nu_step=nu_step,
-        tau_step=tau_step,
-        max_outer_iter=max_outer_iter,
-        outer_tol=outer_tol,
+        method="CG",
+        control=gamlss_control(n_cyc=max_outer_iter, c_crit=outer_tol),
         verbose=verbose,
     )
 
@@ -72,7 +99,8 @@ from .jax_family_specs import (
     supported_families,
 )
 from .jax_rs_core import JaxRSResult, jax_rs_fit_core
-from .jax_rs_integration import gamlss_rs_jax
+from .jax_rs_batch import batch_jax_rs_fit
+from .jax_rs_integration import gamlss_rs_jax, gamlss_rs_jax_batch
 
 __all__ = [
     # NumPy RS
@@ -82,6 +110,7 @@ __all__ = [
     "cg_fit",
     "cg_fit_lbfgs",
     "joint_lbfgs_fit",
+    "lbfgs_fit",
     "cole_green_fit",
     "fit_cg",
     "cg_fit_v2",
@@ -90,7 +119,9 @@ __all__ = [
     # JAX-native RS
     "FamilyJAXSpec",
     "JaxRSResult",
+    "batch_jax_rs_fit",
     "gamlss_rs_jax",
+    "gamlss_rs_jax_batch",
     "get_jax_spec",
     "jax_rs_fit_core",
     "make_no_spec",
