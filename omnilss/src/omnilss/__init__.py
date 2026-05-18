@@ -106,10 +106,12 @@ from .family_capabilities import (
     family_capability_names,
     family_supports,
     get_family_capability,
+    method_route_feature,
     list_family_capabilities,
     method_capability_features,
     method_route_capability_report,
     require_family_capability,
+    require_method_route,
 )
 from .fitDist import fitDist
 from .fitDistPred import fitDistPred, gamlssMLpred
@@ -338,6 +340,7 @@ __all__ = [
     "method_capability_features",
     "method_route_capability_report",
     "require_family_capability",
+    "require_method_route",
     "ExtractAICResult",
     "ExtractTGDResult",
     "FitDistResult",
