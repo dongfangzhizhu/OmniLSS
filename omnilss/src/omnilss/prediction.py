@@ -159,7 +159,7 @@ def predict_params(
         beta = np.asarray(model.coefficients[param], dtype=np.float64)
 
         # 构建设计矩阵
-        X_new = _build_design_matrix_for_prediction(model, param, newdata)
+        X_new = build_prediction_design_matrix(model, param, newdata)
 
         # 线性预测: η = X @ β
         eta = X_new @ beta
@@ -220,7 +220,9 @@ def _build_design_matrix_for_prediction(
 
     rhs = formula.split("~", 1)[1].strip()
     columns: list[np.ndarray] = []
-    has_intercept = bool(design_schema.get("has_intercept", not ("-1" in rhs or rhs == "0")))
+    has_intercept = bool(
+        design_schema.get("has_intercept", not ("-1" in rhs or rhs == "0"))
+    )
     if has_intercept:
         columns.append(np.ones(n, dtype=np.float64))
 
@@ -659,7 +661,7 @@ def predict_response(
     elif type == "link":
         # 预测 η_μ
         beta = np.asarray(model.coefficients["mu"], dtype=np.float64)
-        X_new = _build_design_matrix_for_prediction(model, "mu", newdata)
+        X_new = build_prediction_design_matrix(model, "mu", newdata)
         return X_new @ beta
 
     elif type == "terms":
