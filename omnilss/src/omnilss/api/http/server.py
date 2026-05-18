@@ -21,6 +21,8 @@ from ...family_capabilities import capability_matrix, method_route_capability_re
 
 DEFAULT_MAX_REQUEST_BYTES = 1_048_576
 
+DEFAULT_MAX_REQUEST_BYTES = 1_048_576
+
 
 def _json_bytes(payload: Any) -> bytes:
     return json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
