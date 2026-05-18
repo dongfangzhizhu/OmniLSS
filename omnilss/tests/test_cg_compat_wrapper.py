@@ -53,3 +53,27 @@ def test_cg_wrapper_accepts_nu_tau_formulas() -> None:
             outer_tol=1e-2,
             verbose=False,
         )
+
+
+def test_public_cg_fit_is_not_l_bfgs_deprecated_alias() -> None:
+    """Package-level cg_fit should be the true CG formula wrapper, not old L-BFGS alias."""
+    from omnilss.algorithms import cg_fit
+    import warnings
+
+    x = np.linspace(0.0, 1.0, 30)
+    y = 1.0 + x + np.linspace(-0.02, 0.02, 30)
+
+    with warnings.catch_warnings(record=True) as records:
+        warnings.simplefilter("always", DeprecationWarning)
+        model = cg_fit(
+            formula="y ~ x",
+            sigma_formula="~ 1",
+            family="NO",
+            data={"y": y, "x": x},
+            max_outer_iter=10,
+            outer_tol=1e-3,
+            verbose=False,
+        )
+
+    assert model.additional_slots.get("method") == "CG"
+    assert not any("L-BFGS" in str(record.message) for record in records)

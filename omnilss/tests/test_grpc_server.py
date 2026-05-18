@@ -275,3 +275,47 @@ def test_grpc_route_capability_requires_family_and_method() -> None:
     assert response.success is False
     assert response.report_json == "{}"
     assert "non-empty family and method" in response.error
+
+
+def test_model_registry_list_and_delete(tmp_path, monkeypatch) -> None:
+    """Registry should expose list/delete helpers for service management."""
+    from omnilss.api.grpc import server as grpc_server
+
+    monkeypatch.setattr(grpc_server, "MODEL_STORE", tmp_path / "models")
+    grpc_server.MODEL_STORE.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(
+        grpc_server, "MODEL_DB", tmp_path / "models" / "registry.sqlite3"
+    )
+
+    monkeypatch.setattr(grpc_server, "save_model_json", lambda model, path: path.write_text("{}"))
+    registry = grpc_server._ModelRegistry()
+
+    class Dummy:
+        g_dev = 1.0
+
+    model_id = registry.save(Dummy())
+    assert model_id in registry.list_ids()
+    assert registry.delete(model_id) is True
+    assert model_id not in registry.list_ids()
+    assert registry.delete(model_id) is False
+
+
+def test_model_registry_recovers_index_from_sqlite(tmp_path, monkeypatch) -> None:
+    """Registry should restore saved model ids after process restart."""
+    from omnilss.api.grpc import server as grpc_server
+
+    monkeypatch.setattr(grpc_server, "MODEL_STORE", tmp_path / "models")
+    grpc_server.MODEL_STORE.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(
+        grpc_server, "MODEL_DB", tmp_path / "models" / "registry.sqlite3"
+    )
+
+    class Dummy:
+        g_dev = 1.0
+
+    monkeypatch.setattr(grpc_server, "save_model_json", lambda model, path: path.write_text("{}"))
+    first = grpc_server._ModelRegistry()
+    model_id = first.save(Dummy())
+
+    second = grpc_server._ModelRegistry()
+    assert model_id in second.list_ids()
