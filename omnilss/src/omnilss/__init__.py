@@ -99,6 +99,7 @@ from .families import FamilyDefinition
 from .family_capabilities import (
     CapabilityStatus,
     FEATURES as FAMILY_CAPABILITY_FEATURES,
+    METHOD_CAPABILITY_FEATURES,
     FamilyCapability,
     FamilyCapabilityError,
     capability_matrix,
@@ -107,6 +108,7 @@ from .family_capabilities import (
     get_family_capability,
     method_route_feature,
     list_family_capabilities,
+    method_capability_features,
     require_family_capability,
     require_method_route,
 )
@@ -326,6 +328,7 @@ __all__ = [
     "GLIMControl",
     "CapabilityStatus",
     "FAMILY_CAPABILITY_FEATURES",
+    "METHOD_CAPABILITY_FEATURES",
     "FamilyCapability",
     "FamilyCapabilityError",
     "capability_matrix",
@@ -333,7 +336,7 @@ __all__ = [
     "family_supports",
     "get_family_capability",
     "list_family_capabilities",
-    "method_route_feature",
+    "method_capability_features",
     "require_family_capability",
     "require_method_route",
     "ExtractAICResult",
@@ -711,6 +714,7 @@ __all__ = [
     "save_model_json",
     "load_model_json",
     "validate_model_json",
+    "compare_model_capability_snapshot",
     "save_model_pickle",
     "load_model_pickle",
 ]
@@ -853,6 +857,7 @@ try:
         load_model_json,
         save_model_json,
         validate_model_json,
+        compare_model_capability_snapshot,
         load_model_pickle,
         save_model_pickle,
     )
@@ -869,6 +874,7 @@ except ImportError as _e:
     load_model_json = None
     save_model_json = None
     validate_model_json = None
+    compare_model_capability_snapshot = None
     load_model_pickle = None
     save_model_pickle = None
 

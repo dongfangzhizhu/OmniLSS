@@ -2,7 +2,11 @@ import json
 import zipfile
 import numpy as np
 
-from omnilss import gamlss, validate_model_json as top_level_validate_model_json
+from omnilss import (
+    compare_model_capability_snapshot as top_level_compare_model_capability_snapshot,
+    gamlss,
+    validate_model_json as top_level_validate_model_json,
+)
 from omnilss.serialization import load_model_json, save_model_json
 
 
@@ -270,3 +274,53 @@ def test_json_artifact_preserves_terms_for_validation_wrappers(tmp_path):
 
     assert loaded.terms["mu"]["response"] == "y"
     assert loaded.terms["mu"]["term_labels"] == ["x"]
+
+
+def test_model_capability_snapshot_report_matches_runtime_registry(tmp_path):
+    from omnilss.serialization import compare_model_capability_snapshot
+
+    rng = np.random.default_rng(40)
+    x = np.linspace(0.0, 1.0, 40)
+    y = 0.5 + x + rng.normal(scale=0.05, size=len(x))
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x}, max_iter=2)
+
+    path = tmp_path / "capability.omnilss"
+    save_model_json(model, path)
+
+    report_from_path = compare_model_capability_snapshot(path)
+    loaded = load_model_json(path)
+    report_from_model = compare_model_capability_snapshot(loaded)
+
+    assert report_from_path["ok"] is True
+    assert top_level_compare_model_capability_snapshot(path) == report_from_path
+    assert report_from_path["family"] == "NO"
+    assert report_from_path["changes"] == []
+    assert report_from_model == report_from_path
+
+
+def test_model_capability_snapshot_report_detects_drift(tmp_path):
+    from omnilss.serialization import compare_model_capability_snapshot
+
+    rng = np.random.default_rng(41)
+    x = np.linspace(0.0, 1.0, 40)
+    y = 0.5 + x + rng.normal(scale=0.05, size=len(x))
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x}, max_iter=2)
+
+    path = tmp_path / "capability-drift.omnilss"
+    save_model_json(model, path)
+    loaded = load_model_json(path)
+    saved = dict(loaded.additional_slots["family_capability"])
+    features = dict(saved["features"])
+    features["prediction"] = "experimental"
+    saved["features"] = features
+    loaded.additional_slots = {**loaded.additional_slots, "family_capability": saved}
+
+    report = compare_model_capability_snapshot(loaded)
+
+    assert report["ok"] is False
+    assert {
+        "code": "capability_status_changed",
+        "feature": "prediction",
+        "artifact_status": "experimental",
+        "runtime_status": "validated",
+    } in report["changes"]

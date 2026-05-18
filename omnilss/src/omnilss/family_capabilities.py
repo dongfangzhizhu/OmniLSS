@@ -39,42 +39,14 @@ FEATURES: tuple[str, ...] = (
     "production_safe",
 )
 
-METHOD_ROUTE_FEATURES: dict[str, str] = {
-    "RS": "rs_fit",
-    "RS_JAX": "rs_jax_fit",
-    "CG": "cg_fit",
-    "MIXED": "cg_fit",
-    "JOINT": "cg_fit",
-    "LBFGS": "cg_fit",
-}
-
-
-def method_route_feature(method: str) -> str | None:
-    """Return the capability feature that gates a fitting method route."""
-
-    return METHOD_ROUTE_FEATURES.get(str(method).upper())
-
-
-def require_method_route(
-    family_name: str,
-    method: str,
-    *,
-    allow_experimental: bool = False,
-) -> FamilyCapability:
-    """Require that ``family_name`` supports the requested fitting ``method``.
-
-    Unknown methods are deliberately left to the caller's method parser; this
-    helper only maps recognized runtime method routes to capability features.
-    """
-
-    feature = method_route_feature(method)
-    if feature is None:
-        return get_family_capability(family_name)
-    return require_family_capability(
-        family_name,
-        feature,
-        allow_experimental=allow_experimental,
-    )
+METHOD_CAPABILITY_FEATURES: tuple[tuple[str, str], ...] = (
+    ("RS", "rs_fit"),
+    ("RS_JAX", "rs_jax_fit"),
+    ("CG", "cg_fit"),
+    ("MIXED", "cg_fit"),
+    ("JOINT", "cg_fit"),
+    ("LBFGS", "cg_fit"),
+)
 
 
 # Families with explicit R-consistency test modules or batch consistency suites in
@@ -227,14 +199,25 @@ def list_family_capabilities() -> tuple[FamilyCapability, ...]:
     return tuple(_DEFAULT_CAPABILITIES[name] for name in sorted(_DEFAULT_CAPABILITIES))
 
 
+def method_capability_features() -> dict[str, str]:
+    """Return the public fitting-method to family-capability feature map."""
+
+    return dict(METHOD_CAPABILITY_FEATURES)
+
+
 def capability_matrix() -> dict[str, object]:
     """Return a machine-readable snapshot of the runtime capability matrix."""
 
     capabilities = [capability.as_dict() for capability in list_family_capabilities()]
     return {
-        "version": 1,
+        "version": 2,
         "features": list(FEATURES),
-        "method_routes": dict(METHOD_ROUTE_FEATURES),
+        "method_capability_features": method_capability_features(),
+        "strict_capability_policy": {
+            "default_allow_experimental": True,
+            "strict_capabilities_allow_experimental": False,
+            "unsupported_routes_fail_fast": True,
+        },
         "families": {item["name"]: item for item in capabilities},
     }
 
@@ -319,7 +302,8 @@ __all__ = [
     "family_supports",
     "get_family_capability",
     "list_family_capabilities",
-    "method_route_feature",
+    "method_capability_features",
+    "METHOD_CAPABILITY_FEATURES",
     "require_family_capability",
     "require_method_route",
 ]

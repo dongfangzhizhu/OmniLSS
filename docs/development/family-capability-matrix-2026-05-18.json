@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "features": [
     "rs_fit",
     "rs_jax_fit",
@@ -11,13 +11,18 @@
     "ad_hessian",
     "production_safe"
   ],
-  "method_routes": {
+  "method_capability_features": {
     "RS": "rs_fit",
     "RS_JAX": "rs_jax_fit",
     "CG": "cg_fit",
     "MIXED": "cg_fit",
     "JOINT": "cg_fit",
     "LBFGS": "cg_fit"
+  },
+  "strict_capability_policy": {
+    "default_allow_experimental": true,
+    "strict_capabilities_allow_experimental": false,
+    "unsupported_routes_fail_fast": true
   },
   "families": {
     "BB": {

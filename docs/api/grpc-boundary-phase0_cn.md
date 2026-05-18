@@ -7,6 +7,7 @@
 - `Fit` request/response
 - `Predict` request/response
 - `Sample` request/response
+- `CapabilityMatrix` request/response，与 package 和 HTTP metadata API 暴露同一份 runtime capability matrix。payload 包含 family feature evidence、`method_capability_features` 和 `strict_capability_policy`。
 
 ## 边界原则
 

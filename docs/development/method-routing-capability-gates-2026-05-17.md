@@ -6,7 +6,7 @@ This note advances Workstream D3 from the [six-month execution plan](six-month-e
 
 ## Runtime behavior
 
-`gamlss()` validates the resolved method and family before starting expensive fitting work:
+`gamlss()` validates the resolved method and family before starting expensive fitting work. The same mapping is exported by `method_capability_features()` and embedded in `capability_matrix()["method_capability_features"]`:
 
 | Method | Capability feature checked | Experimental allowed? | Unsupported behavior |
 |---|---|---:|---|
@@ -23,13 +23,13 @@ The current policy still permits experimental features because the existing proj
 ## Why this matters
 
 - Unsupported method/family combinations fail fast.
-- The routing layer now uses the same capability source of truth as documentation and tests.
+- The routing layer now uses the same capability source of truth as documentation, tests, generated JSON artifacts, gRPC responses, and HTTP metadata responses.
 - `RS_JAX` no longer relies solely on backend-local support checks; unsupported families are rejected at the public `gamlss()` boundary.
 - Future service APIs can reuse the same gate before scheduling asynchronous jobs.
 
 ## Follow-up work
 
-1. Add an optional strict production mode where `experimental` features are rejected unless explicitly enabled.
-2. Attach capability snapshots to serialized model metadata.
-3. Expose the capability matrix through HTTP/gRPC service endpoints.
-4. Generate a machine-readable capability matrix artifact from the runtime registry.
+1. Completed: `strict_capabilities=True` rejects `experimental` features unless callers explicitly use the default research/development mode.
+2. Completed: JSON artifacts attach family capability snapshots and compatibility reports.
+3. Completed: HTTP/gRPC service endpoints expose the runtime capability matrix.
+4. Completed: generated machine-readable capability matrix artifacts include the runtime method-routing map.

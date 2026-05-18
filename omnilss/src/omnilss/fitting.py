@@ -297,13 +297,9 @@ def _require_method_family_capability(
 ) -> None:
     """Validate method/family support before starting an expensive fit."""
 
-    from .family_capabilities import (
-        FamilyCapabilityError,
-        method_route_feature,
-        require_method_route,
-    )
+    from .family_capabilities import method_capability_features
 
-    feature = method_route_feature(method_name)
+    feature = method_capability_features().get(method_name)
     if feature is None:
         return
 

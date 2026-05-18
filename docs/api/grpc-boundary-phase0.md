@@ -6,6 +6,7 @@
 - `Fit` request/response
 - `Predict` request/response
 - `Sample` request/response
+- `CapabilityMatrix` request/response for the same runtime capability matrix exposed by package and HTTP metadata APIs. The payload includes family feature evidence, `method_capability_features`, and `strict_capability_policy`.
 
 ## Boundary principle
 Client-facing services call into core runtime through a narrow RPC contract.

@@ -14,7 +14,7 @@ SLO target:
 Metadata endpoints implemented in the lightweight stdlib HTTP boundary:
 
 - `GET /health` / `GET /healthz`: service liveness check.
-- `GET /capabilities` / `GET /capability-matrix`: runtime family capability matrix.
+- `GET /capabilities` / `GET /capability-matrix`: runtime family capability matrix, including `features`, `method_capability_features`, `strict_capability_policy`, and per-family evidence statuses.
 - `GET /metrics`: Prometheus-style counters for metadata endpoint requests.
 
 All HTTP metadata responses include `X-Request-ID`; inbound request IDs are propagated when provided. Embedded deployments can also pass `serve(..., event_sink=...)` to receive structured request events for prototype-safe logging or test observability; event-sink exceptions are isolated and do not break metadata responses.
