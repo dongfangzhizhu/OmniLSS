@@ -35,6 +35,6 @@ Unsupported or unknown HTTP metadata requests return a structured JSON envelope 
 }
 ```
 
-Prototype HTTP POST routes intentionally return `405 method_not_allowed` until authentication, payload limits, and structured logging are implemented.
+Prototype HTTP POST handling first applies the `Content-Length` payload-limit gate and returns `413 payload_too_large` for oversized requests. POST routes that pass the size gate intentionally return `405 method_not_allowed` until authentication, payload limits, and structured logging are implemented.
 
 These endpoints are prototype-safe metadata endpoints only; fit/predict HTTP endpoints still require authentication, request IDs, limits, and structured logging before production exposure.

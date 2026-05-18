@@ -36,6 +36,6 @@ SLO 目标：
 }
 ```
 
-在 authentication、payload limits 和 structured logging 完成之前，prototype HTTP POST routes 会有意返回 `405 method_not_allowed`。
+当前 prototype 在处理 POST 时会先执行 `Content-Length` payload limit gate；超过配置上限会返回 `413 payload_too_large`。在 authentication、payload limits 和 structured logging 完成之前，未超限的 prototype HTTP POST routes 会有意返回 `405 method_not_allowed`。
 
 这些 endpoints 目前只是 prototype-safe metadata endpoints；fit/predict HTTP endpoints 在生产暴露前仍需要 authentication、request IDs、limits 和 structured logging。

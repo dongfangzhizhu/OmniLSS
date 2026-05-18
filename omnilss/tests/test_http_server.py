@@ -121,3 +121,34 @@ def test_http_post_is_blocked_with_structured_error_envelope():
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_http_post_payload_limit_returns_structured_error():
+    server = serve(host="127.0.0.1", port=0, max_request_bytes=4)
+    try:
+        host, port = server.server_address
+        req = Request(
+            f"http://{host}:{port}/predict",
+            data=b"12345",
+            method="POST",
+            headers={"X-Request-ID": "large-1"},
+        )
+        try:
+            urlopen(req, timeout=5)  # noqa: S310 - local test server
+            raise AssertionError("expected HTTPError")
+        except HTTPError as exc:
+            assert exc.code == 413
+            payload = json.loads(exc.read().decode("utf-8"))
+            assert payload["success"] is False
+            assert payload["error"]["type"] == "http_error"
+            assert payload["error"]["code"] == "payload_too_large"
+            assert "maximum allowed is 4 bytes" in payload["error"]["message"]
+            assert payload["request_id"] == "large-1"
+            assert exc.headers["X-Request-ID"] == "large-1"
+
+        with _get_response(f"http://{host}:{port}/metrics") as response:
+            body = response.read().decode("utf-8")
+        assert "omnilss_http_payload_too_large_total 1" in body
+    finally:
+        server.shutdown()
+        server.server_close()
