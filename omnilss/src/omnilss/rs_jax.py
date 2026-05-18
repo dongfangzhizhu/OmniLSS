@@ -7,6 +7,9 @@ point without changing existing rs_algorithm.py behavior.
 from __future__ import annotations
 
 import jax
+
+jax.config.update("jax_enable_x64", True)
+
 import jax.numpy as jnp
 
 

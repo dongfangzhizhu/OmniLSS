@@ -2,4 +2,6 @@
 
 from .server import create_handler, serve
 
-__all__ = ["create_handler", "serve"]
+from .fastapi_server import create_app
+
+__all__ = ["create_handler", "serve", "create_app"]
