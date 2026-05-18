@@ -88,3 +88,28 @@ def test_gamlss_rs_jax_batch_formula_layer_returns_models():
     assert len(models) == 2
     assert all(model.family.name == "NO" for model in models)
     assert all(np.isfinite(model.g_dev) for model in models)
+
+
+def test_same_family_same_shape_batch_uses_vmap_path(monkeypatch):
+    """The accelerated batch path should not call the per-model fallback."""
+    from omnilss.algorithms import jax_rs_batch
+
+    ys, designs, _ = _make_batch_no_data(k_models=2, n_obs=40)
+    spec = get_jax_spec("NO")
+
+    def fail_fallback(*args, **kwargs):  # pragma: no cover - should not be called
+        raise AssertionError("per-model fallback should not run for same-shape NO batch")
+
+    monkeypatch.setattr(jax_rs_batch, "jax_rs_fit_core", fail_fallback)
+
+    results = batch_jax_rs_fit(
+        ys=ys,
+        Xs_per_model=designs,
+        family_specs=spec,
+        max_outer=8,
+        max_inner=1,
+        tol=1e-4,
+    )
+
+    assert len(results) == 2
+    assert all(np.isfinite(result.g_dev) for result in results)
