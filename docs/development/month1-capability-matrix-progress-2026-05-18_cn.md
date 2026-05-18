@@ -14,7 +14,7 @@
 - 新增 `tools/generate_capability_matrix.py`，并生成 `family-capability-matrix-2026-05-18.json`，供文档、发布包和 API 客户端复用。
 - gRPC 服务新增 `CapabilityService.CapabilityMatrix`，使服务客户端可以通过 API 获取同一份运行时能力矩阵。
 - production-safe 分布族可以将核心路径标记为 validated；当前基线将 `NO` 的 `rs_fit`、`prediction`、`r_consistency` 和 `production_safe` 标记为 validated。
-- `gamlss(..., strict_capabilities=True)` 现在会拒绝实验性 method/family 路径，只允许 validated capability feature。
+- `gamlss(..., strict_capabilities=True)` 现在会拒绝实验性 method/family 路径，只允许 validated capability feature。拟合代码使用与矩阵输出相同的 `require_method_route()` 映射。
 - 默认开发行为保持不变：除非显式请求 strict capability mode，否则实验性路径仍允许运行。
 - 方法路由测试覆盖了 strict 模式下 validated 的 `NO` RS 路径可运行，以及实验性的 GA RS 路径被拒绝。
 - 生成的 JSON artifact、HTTP metadata response 和 gRPC capability response 现在携带与 `gamlss()` 相同的 method-to-feature routing contract。
