@@ -6,11 +6,13 @@ when optional tooling is missing in constrained environments.
 
 from __future__ import annotations
 
+import argparse
 import importlib.util
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Sequence
 
 _LOCALIZATION_TOOL = Path(__file__).with_name("check_docs_localization.py")
 _CAPABILITY_MATRIX_TOOL = Path(__file__).with_name("validate_capability_matrix.py")
@@ -45,11 +47,8 @@ def _run(cmd: list[str]) -> int:
     return proc.returncode
 
 
-def main() -> int:
-    for tool in ("python",):
-        if shutil.which(tool) is None:
-            print(f"Missing required executable: {tool}", file=sys.stderr)
-            return 2
+def _run_preflight_checks() -> int:
+    """Run offline release-gate checks that do not require packaging tools."""
 
     localization_errors = validate_docs_localization()
     if localization_errors:
@@ -68,6 +67,33 @@ def main() -> int:
                 file=sys.stderr,
             )
         return 1
+
+    return 0
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--preflight-only",
+        action="store_true",
+        help=(
+            "Run offline release-gate checks only: documentation localization "
+            "and generated capability matrix validation."
+        ),
+    )
+    args = parser.parse_args(argv)
+
+    for tool in ("python",):
+        if shutil.which(tool) is None:
+            print(f"Missing required executable: {tool}", file=sys.stderr)
+            return 2
+
+    preflight_status = _run_preflight_checks()
+    if preflight_status != 0:
+        return preflight_status
+    if args.preflight_only:
+        print("Offline release preflight checks completed successfully.")
+        return 0
 
     if _run([sys.executable, "-m", "build"]) != 0:
         print(
