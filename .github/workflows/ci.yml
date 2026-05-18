@@ -71,3 +71,25 @@ jobs:
           cd omnilss
           mypy src/omnilss/ --ignore-missing-imports
         continue-on-error: true
+
+  benchmark-smoke:
+    name: Benchmark Smoke (no R/GPU)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install uv
+      - name: Install dependencies
+        run: |
+          cd omnilss
+          uv pip install --system -e ".[dev]"
+      - name: Run Python-only benchmark smoke
+        env:
+          MPLBACKEND: Agg
+          JAX_PLATFORMS: cpu
+          JAX_ENABLE_X64: "true"
+          PYTHONPATH: omnilss/src
+        run: |
+          python benchmarks/jax_rs_benchmark.py --suite no-r --smoke --families NO --n-values 100 --n-reps 2 --out-dir benchmarks/results/smoke
