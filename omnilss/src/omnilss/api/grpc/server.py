@@ -278,11 +278,18 @@ def create_service():
         def Predict(self, request, context):  # noqa: N802
             try:
                 model = REGISTRY.load(request.model_id)
-                newdata = _from_json(request.newdata_json)
+                if request.newdata_json:
+                    newdata = _from_json(request.newdata_json)
+                else:
+                    newdata = {col.name: list(map(float, col.values)) for col in request.newdata_columns}
                 params = model.predict_params(newdata)
                 as_json = {k: list(map(float, v)) for k, v in params.items()}
+                param_vectors = [
+                    predict_pb2.ParamVector(name=name, values=values)
+                    for name, values in as_json.items()
+                ]
                 return predict_pb2.PredictResponse(
-                    params_json=_to_json(as_json), success=True, error=""
+                    params_json=_to_json(as_json), params=param_vectors, success=True, error=""
                 )
             except Exception as exc:
                 return predict_pb2.PredictResponse(

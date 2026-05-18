@@ -360,3 +360,36 @@ def test_grpc_list_models_and_delete_model_service_direct(monkeypatch) -> None:
     )
     assert missing.success is True
     assert missing.deleted is False
+
+
+def test_grpc_predict_supports_column_vectors(monkeypatch) -> None:
+    """Predict should accept structured column vectors without JSON payload."""
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import predict_pb2
+
+    class DummyModel:
+        def predict_params(self, newdata):
+            x = newdata["x"]
+            return {"mu": x, "sigma": [1.0 for _ in x]}
+
+    try:
+        service, *_ = grpc_server.create_service()
+    except RuntimeError as exc:
+        pytest.skip(f"gRPC stubs/runtime unavailable in environment: {exc}")
+
+    monkeypatch.setattr(grpc_server.REGISTRY, "load", lambda _model_id: DummyModel())
+
+    response = service.Predict(
+        predict_pb2.PredictRequest(
+            model_id="dummy",
+            newdata_columns=[predict_pb2.ColumnVector(name="x", values=[1.0, 2.0])],
+        ),
+        None,
+    )
+
+    assert response.success is True
+    assert response.error == ""
+    assert len(response.params) == 2
+    by_name = {p.name: list(p.values) for p in response.params}
+    assert by_name["mu"] == [1.0, 2.0]
+    assert by_name["sigma"] == [1.0, 1.0]
