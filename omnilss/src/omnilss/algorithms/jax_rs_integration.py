@@ -165,11 +165,47 @@ def gamlss_rs_jax(
         predictor_labels[param]   = labels_param
 
     # ── Initialise parameters ─────────────────────────────────────────────────
-    beta_mu = _initial_mu_beta(
-        family, design_matrices_np["mu"], y, w,
-        fixed_parameter_values=fixed_parameter_values,
-    )
-    eta_mu = design_matrices_np["mu"] @ beta_mu
+    X_mu = design_matrices_np["mu"]
+    eps = np.finfo(np.float64).eps
+
+    if family.name == "BI":
+        # Standard Bernoulli/logistic GLM IRLS cold-start.  This is deliberately
+        # not a NumPy RS warm-start: it only initializes the single mu predictor
+        # from the canonical GLM equations and avoids the unstable linear-y
+        # initialization for binary responses.
+        beta_mu = np.zeros(X_mu.shape[1], dtype=np.float64)
+        if X_mu.shape[1] > 0:
+            p0 = np.clip(np.average(y, weights=w), 1e-6, 1.0 - 1e-6)
+            beta_mu[0] = float(np.log(p0 / (1.0 - p0)))
+        for _ in range(8):
+            eta_work = X_mu @ beta_mu
+            p_work = np.clip(1.0 / (1.0 + np.exp(-eta_work)), 1e-6, 1.0 - 1e-6)
+            ww = np.clip(p_work * (1.0 - p_work) * w, 1e-10, 1e10)
+            z = eta_work + (y - p_work) / np.clip(
+                p_work * (1.0 - p_work), 1e-10, None
+            )
+            sqrt_ww = np.sqrt(ww)
+            beta_next, _, _, _ = np.linalg.lstsq(
+                X_mu * sqrt_ww[:, None], z * sqrt_ww, rcond=None
+            )
+            if np.max(np.abs(beta_next - beta_mu)) < 1e-8:
+                beta_mu = beta_next
+                break
+            beta_mu = beta_next
+    elif family.name == "WEI":
+        # Weibull uses a log link for mu; log-y least squares gives a stable
+        # shape-independent slope cold-start and lets subsequent RS updates
+        # refine the scale and shape jointly.
+        beta_mu, _, _, _ = np.linalg.lstsq(
+            X_mu, np.log(np.maximum(y, eps)), rcond=None
+        )
+    else:
+        beta_mu = _initial_mu_beta(
+            family, X_mu, y, w,
+            fixed_parameter_values=fixed_parameter_values,
+        )
+
+    eta_mu = X_mu @ beta_mu
     mu     = np.asarray(family.link_inverses["mu"](jnp.asarray(eta_mu)), dtype=np.float64)
 
     init_params_list: list[np.ndarray] = [mu]

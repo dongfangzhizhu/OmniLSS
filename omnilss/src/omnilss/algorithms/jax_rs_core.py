@@ -116,14 +116,15 @@ def _irls_step_inline(
         # dtheta/deta (inverse link derivative)
         dtheta_deta = link_deriv(eta_c)
         dtheta_deta = jnp.where(jnp.abs(dtheta_deta) < eps, eps, dtheta_deta)
+        deta_dtheta = 1.0 / dtheta_deta
 
-        # Working weights: w = -hess / (dtheta/deta)^2
-        ww = -hess / jnp.square(dtheta_deta)
+        # Working weights: w = -hess * (dtheta/deta)^2
+        ww = -hess * jnp.square(dtheta_deta)
         ww = jnp.clip(ww, 1e-10, 1e10)
         ww = jnp.where(jnp.isfinite(ww), ww, 1e-10)
 
-        # Working response: z = eta + score / (dtheta/deta * ww)
-        denom = dtheta_deta * ww
+        # Working response: z = eta + score / (deta/dtheta * ww)
+        denom = deta_dtheta * ww
         denom = jnp.where(jnp.abs(denom) < eps, eps, denom)
         z = eta_c + score / denom
         z = jnp.where(jnp.isfinite(z), z, eta_c)
@@ -360,11 +361,15 @@ def jax_rs_fit_core(
                 else:
                     eta_lo, eta_hi = -10.0, 10.0
 
-                eta_k_new, new_params = _irls_step_inline(
+                old_params_k = new_params
+                old_etas_k = new_etas
+                old_gdev_k = compute_gdev(old_params_k)
+
+                eta_k_new, candidate_params = _irls_step_inline(
                     y=y,
                     X_k=Xs[k],
-                    eta_k=new_etas[k],
-                    params=new_params,
+                    eta_k=old_etas_k[k],
+                    params=old_params_k,
                     obs_weights=obs_weights,
                     score_fn=score_fns[k],
                     hessian_fn=hessian_fns[k],
@@ -378,7 +383,49 @@ def jax_rs_fit_core(
                     eta_hi=eta_hi,
                     eta_clip_scale=jnp.where(it == 0, eta_clip_scale, 1e12),
                 )
-                new_etas = new_etas.at[k].set(eta_k_new)
+
+                # Per-parameter step-halving mirrors the NumPy RS path: a
+                # single cold-start update can be too aggressive even when the
+                # overall direction is useful.  Halve only this parameter's eta
+                # until the global deviance no longer increases; otherwise keep
+                # the previous parameter value.
+                candidate_gdev = compute_gdev(candidate_params)
+
+                def halve_cond(carry):
+                    eta_try, params_try, gdev_try, count = carry
+                    return jnp.logical_and(gdev_try > old_gdev_k + 1e-6, count < 8)
+
+                def halve_body(carry):
+                    eta_try, _params_try, _gdev_try, count = carry
+                    eta_halved = 0.5 * (old_etas_k[k] + eta_try)
+                    theta_halved = link_inv_fns[k](eta_halved)
+                    params_halved = old_params_k.at[k].set(theta_halved)
+                    gdev_halved = compute_gdev(params_halved)
+                    return eta_halved, params_halved, gdev_halved, count + 1
+
+                eta_accept, params_accept, gdev_accept, _ = jax.lax.while_loop(
+                    halve_cond,
+                    halve_body,
+                    (
+                        eta_k_new,
+                        candidate_params,
+                        candidate_gdev,
+                        jnp.array(0, dtype=jnp.int32),
+                    ),
+                )
+
+                def keep_old_param(_):
+                    return old_params_k, old_etas_k
+
+                def use_new_param(_):
+                    return params_accept, old_etas_k.at[k].set(eta_accept)
+
+                new_params, new_etas = jax.lax.cond(
+                    gdev_accept > old_gdev_k + 1e-6,
+                    keep_old_param,
+                    use_new_param,
+                    operand=None,
+                )
 
             new_gdev = compute_gdev(new_params)
 
