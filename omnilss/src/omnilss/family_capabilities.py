@@ -27,6 +27,8 @@ class FamilyCapabilityError(ValueError):
     """Raised when a requested family feature is not available at the requested tier."""
 
 
+CAPABILITY_MATRIX_VERSION = 3
+
 FEATURES: tuple[str, ...] = (
     "rs_fit",
     "rs_jax_fit",
@@ -230,7 +232,7 @@ def capability_matrix() -> dict[str, object]:
 
     capabilities = [capability.as_dict() for capability in list_family_capabilities()]
     return {
-        "version": 2,
+        "version": CAPABILITY_MATRIX_VERSION,
         "features": list(FEATURES),
         "method_capability_features": method_capability_features(),
         # ``method_routes`` is retained as a compatibility alias for clients and
@@ -430,6 +432,7 @@ def require_family_capability(
 
 __all__ = [
     "CapabilityStatus",
+    "CAPABILITY_MATRIX_VERSION",
     "FEATURES",
     "METHOD_ROUTE_FEATURES",
     "capability_matrix",

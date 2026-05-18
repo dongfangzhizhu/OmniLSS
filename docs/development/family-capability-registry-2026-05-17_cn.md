@@ -28,6 +28,7 @@
   - `require_family_capability()`；
   - `require_method_route()`。
 - 新增测试，验证 registry 覆盖率、feature 完整性、不支持路径报错、experimental 显式 opt-in 行为、未知 family/未知 feature 的清晰失败、top-level route-helper 导出，以及生成的 `method_routes` 兼容 alias。
+- Capability matrix schema version 通过 `CAPABILITY_MATRIX_VERSION` 导出；当前值为 `3`，因为矩阵现在同时发布 `method_capability_features` 和兼容用的 `method_routes` alias。
 - 生成的 capability matrix 现在包含拟合方法路由映射（`method_capability_features` 以及向后兼容的 `method_routes` alias）和 strict-mode policy flag，使文档、服务响应和运行时 gate 共享同一份 contract。
 
 ## 证据等级

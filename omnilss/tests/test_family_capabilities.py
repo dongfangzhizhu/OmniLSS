@@ -5,6 +5,7 @@ import pytest
 from omnilss.distribution_registry import _REGISTERED_FAMILIES
 from omnilss.family_capabilities import (
     CapabilityStatus,
+    CAPABILITY_MATRIX_VERSION,
     FEATURES,
     METHOD_ROUTE_FEATURES,
     FamilyCapabilityError,
@@ -116,7 +117,8 @@ def test_method_route_capability_report_supports_service_admission():
 
 def test_capability_matrix_is_machine_readable():
     matrix = capability_matrix()
-    assert matrix["version"] == 2
+    assert matrix["version"] == CAPABILITY_MATRIX_VERSION
+    assert matrix["version"] == 3
     assert matrix["features"] == list(FEATURES)
     assert matrix["method_capability_features"] == method_capability_features()
     assert matrix["method_capability_features"]["RS_JAX"] == "rs_jax_fit"

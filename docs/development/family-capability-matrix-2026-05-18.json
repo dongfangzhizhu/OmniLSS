@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "features": [
     "rs_fit",
     "rs_jax_fit",
