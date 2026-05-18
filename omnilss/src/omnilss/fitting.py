@@ -858,13 +858,17 @@ def gamlss(
         # Backward-compatible alias used by examples and benchmark scripts.
         method = optimizer_kwargs.pop("algorithm")
     method_name = str(method).upper()
+    requested_method_name = method_name
 
-    # ── Auto method selection ────────────────────────────────────────────────
-    # When method='auto', choose RS vs RS_JAX based on device and n.
-    if method_name == "AUTO":
+    # ── Device-aware RS routing ──────────────────────────────────────────────
+    # ``method="RS"`` is the public default and now participates in the same
+    # device-aware route selection as the forward-compatible ``method="auto"``
+    # alias.  CPU and placeholder infinite thresholds still resolve to NumPy RS,
+    # while configured GPU/TPU crossovers route supported families to RS_JAX.
+    if method_name in {"AUTO", "RS"}:
         from . import config as _cfg
 
-        # Determine n_obs from data (need response variable name)
+        requested_method = method_name
         try:
             _resp, _ = _parse_formula(formula)
             _n_obs = len(data[_resp])
@@ -882,21 +886,34 @@ def gamlss(
         )
         method_name = _cfg.auto_select_method(family.name, _n_obs).upper()
         if verbose:
-            print("OmniLSS 方法路由")
-            print(f"  设备：{_backend.upper()} · n={_n_obs} · 族：{family.name}")
+            print("OmniLSS method routing")
+            print(
+                f"  Requested: {requested_method} · Device: {_backend.upper()} "
+                f"· n={_n_obs} · Family: {family.name}"
+            )
             if _backend in {"gpu", "tpu"}:
                 _threshold_text = "inf" if _threshold == math.inf else f"{_threshold:g}"
                 print(
-                    f"  {_backend.upper()} 切换阈值（{family.name}）："
-                    f"{_threshold_text} → 选择 {method_name}"
+                    f"  {_backend.upper()} crossover threshold ({family.name}): "
+                    f"{_threshold_text} -> selected {method_name}"
                 )
             else:
-                print(f"  CPU/未知后端默认选择 {method_name}（NumPy）")
+                print(f"  CPU/unknown backend selected {method_name} (NumPy RS)")
             if method_name == "RS" and _backend in {"gpu", "tpu"}:
                 print(
-                    f'  提示：运行基准测试后通过 cfg.set_crossover("{_backend}", n=...) '
-                    "启用自动 JAX 加速"
+                    f'  Tip: run benchmarks and call cfg.set_crossover("{_backend}", n=...) '
+                    "to enable automatic JAX acceleration"
                 )
+
+    if requested_method_name == "RS_JAX":
+        import warnings
+
+        warnings.warn(
+            "method='RS_JAX' is deprecated as a user-facing route; use "
+            "method='RS' and configure device-aware crossover thresholds instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     supported_methods = {"RS", "RS_JAX", "CG", "MIXED", "JOINT", "LBFGS"}
     if method_name not in supported_methods:

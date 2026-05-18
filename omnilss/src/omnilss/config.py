@@ -397,22 +397,22 @@ def crossover_summary(verbose: bool = False) -> None:
     device_label = backend.upper() if backend != "unknown" else "unknown"
     device_detail = f" ({devices[0]})" if verbose and devices else ""
 
-    print("OmniLSS 方法路由配置")
-    print("═" * 34)
-    print(f"当前设备：{device_label}{device_detail}")
-    print(f"自动切换：{'已启用' if AUTO_METHOD_ENABLED else '已禁用'}")
-    print(f"强制 JAX：{'是' if FORCE_JAX else '否'}")
+    print("OmniLSS method-routing configuration")
+    print("=" * 38)
+    print(f"Current device: {device_label}{device_detail}")
+    print(f"Automatic routing: {'enabled' if AUTO_METHOD_ENABLED else 'disabled'}")
+    print(f"Force JAX: {'yes' if FORCE_JAX else 'no'}")
     print()
-    print("GPU 切换阈值（n ≥ 阈值时使用 RS_JAX）：")
+    print("GPU crossover thresholds (use RS_JAX when n >= threshold):")
     for family, threshold in GPU_CROSSOVER_N.items():
-        suffix = "  （永不切换）" if threshold == math.inf else ""
+        suffix = "  (never auto-switch)" if threshold == math.inf else ""
         print(f"  {family:<7}: {_format_threshold(threshold)}{suffix}")
     if all(value == math.inf for value in GPU_CROSSOVER_N.values()):
-        print("  [注：所有 GPU 阈值均为占位符，运行 benchmarks/gpu_crossover_sweep.py 后更新]")
+        print("  [note: all GPU thresholds are placeholders; update after benchmarks/gpu_crossover_sweep.py]")
     print()
-    print("TPU 切换阈值（n ≥ 阈值时使用 RS_JAX）：")
+    print("TPU crossover thresholds (use RS_JAX when n >= threshold):")
     for family, threshold in TPU_CROSSOVER_N.items():
-        suffix = "  （未测试）" if threshold == math.inf else ""
+        suffix = "  (untested)" if threshold == math.inf else ""
         print(f"  {family:<7}: {_format_threshold(threshold)}{suffix}")
 
 
