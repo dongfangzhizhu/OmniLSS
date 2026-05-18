@@ -319,3 +319,44 @@ def test_model_registry_recovers_index_from_sqlite(tmp_path, monkeypatch) -> Non
 
     second = grpc_server._ModelRegistry()
     assert model_id in second.list_ids()
+
+
+def test_grpc_list_models_and_delete_model_service_direct(monkeypatch) -> None:
+    """Fit service management RPCs should expose list/delete semantics."""
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import fit_pb2
+
+    class DummyRegistry:
+        def __init__(self):
+            self.ids = ["m1", "m2"]
+
+        def list_ids(self):
+            return list(self.ids)
+
+        def delete(self, model_id: str):
+            if model_id in self.ids:
+                self.ids.remove(model_id)
+                return True
+            return False
+
+    try:
+        service, *_ = grpc_server.create_service()
+    except RuntimeError as exc:
+        pytest.skip(f"gRPC stubs/runtime unavailable in environment: {exc}")
+
+    dummy = DummyRegistry()
+    monkeypatch.setattr(grpc_server, "REGISTRY", dummy)
+
+    listed = service.ListModels(fit_pb2.ListModelsRequest(), None)
+    assert listed.success is True
+    assert sorted(listed.model_ids) == ["m1", "m2"]
+
+    deleted = service.DeleteModel(fit_pb2.DeleteModelRequest(model_id="m1"), None)
+    assert deleted.success is True
+    assert deleted.deleted is True
+
+    missing = service.DeleteModel(
+        fit_pb2.DeleteModelRequest(model_id="missing"), None
+    )
+    assert missing.success is True
+    assert missing.deleted is False

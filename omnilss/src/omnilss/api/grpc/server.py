@@ -213,6 +213,27 @@ def create_service():
                     report_json="{}", success=False, error=_error_text(exc)
                 )
 
+        def ListModels(self, request, context):  # noqa: N802, ARG002
+            try:
+                return fit_pb2.ListModelsResponse(
+                    model_ids=REGISTRY.list_ids(), success=True, error=""
+                )
+            except Exception as exc:
+                return fit_pb2.ListModelsResponse(
+                    model_ids=[], success=False, error=_error_text(exc)
+                )
+
+        def DeleteModel(self, request, context):  # noqa: N802
+            try:
+                deleted = REGISTRY.delete(str(request.model_id))
+                return fit_pb2.DeleteModelResponse(
+                    deleted=bool(deleted), success=True, error=""
+                )
+            except Exception as exc:
+                return fit_pb2.DeleteModelResponse(
+                    deleted=False, success=False, error=_error_text(exc)
+                )
+
         def Fit(self, request, context):  # noqa: N802
             try:
                 data = _from_json(request.data_json)
