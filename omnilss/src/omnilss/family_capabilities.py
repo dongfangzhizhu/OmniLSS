@@ -39,6 +39,44 @@ FEATURES: tuple[str, ...] = (
     "production_safe",
 )
 
+METHOD_ROUTE_FEATURES: dict[str, str] = {
+    "RS": "rs_fit",
+    "RS_JAX": "rs_jax_fit",
+    "CG": "cg_fit",
+    "MIXED": "cg_fit",
+    "JOINT": "cg_fit",
+    "LBFGS": "cg_fit",
+}
+
+
+def method_route_feature(method: str) -> str | None:
+    """Return the capability feature that gates a fitting method route."""
+
+    return METHOD_ROUTE_FEATURES.get(str(method).upper())
+
+
+def require_method_route(
+    family_name: str,
+    method: str,
+    *,
+    allow_experimental: bool = False,
+) -> FamilyCapability:
+    """Require that ``family_name`` supports the requested fitting ``method``.
+
+    Unknown methods are deliberately left to the caller's method parser; this
+    helper only maps recognized runtime method routes to capability features.
+    """
+
+    feature = method_route_feature(method)
+    if feature is None:
+        return get_family_capability(family_name)
+    return require_family_capability(
+        family_name,
+        feature,
+        allow_experimental=allow_experimental,
+    )
+
+
 # Families with explicit R-consistency test modules or batch consistency suites in
 # the repository.  These are marked as evidence-backed for the *R consistency*
 # feature only; they are not automatically production-safe.
@@ -196,6 +234,7 @@ def capability_matrix() -> dict[str, object]:
     return {
         "version": 1,
         "features": list(FEATURES),
+        "method_routes": dict(METHOD_ROUTE_FEATURES),
         "families": {item["name"]: item for item in capabilities},
     }
 
@@ -272,6 +311,7 @@ def require_family_capability(
 __all__ = [
     "CapabilityStatus",
     "FEATURES",
+    "METHOD_ROUTE_FEATURES",
     "capability_matrix",
     "FamilyCapability",
     "FamilyCapabilityError",
@@ -279,5 +319,7 @@ __all__ = [
     "family_supports",
     "get_family_capability",
     "list_family_capabilities",
+    "method_route_feature",
     "require_family_capability",
+    "require_method_route",
 ]

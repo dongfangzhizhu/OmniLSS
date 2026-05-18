@@ -161,7 +161,7 @@ def create_service():
                 )
             except Exception as exc:
                 return capability_pb2.CapabilityMatrixResponse(
-                    matrix_json="{}", success=False, error=_error_text(exc)
+                    matrix_json="{}", success=False, error=str(exc)
                 )
 
         def Fit(self, request, context):  # noqa: N802
