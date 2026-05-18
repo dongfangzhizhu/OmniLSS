@@ -39,6 +39,16 @@ FEATURES: tuple[str, ...] = (
     "production_safe",
 )
 
+METHOD_CAPABILITY_FEATURES: tuple[tuple[str, str], ...] = (
+    ("RS", "rs_fit"),
+    ("RS_JAX", "rs_jax_fit"),
+    ("CG", "cg_fit"),
+    ("MIXED", "cg_fit"),
+    ("JOINT", "cg_fit"),
+    ("LBFGS", "cg_fit"),
+)
+
+
 # Families with explicit R-consistency test modules or batch consistency suites in
 # the repository.  These are marked as evidence-backed for the *R consistency*
 # feature only; they are not automatically production-safe.
@@ -189,13 +199,25 @@ def list_family_capabilities() -> tuple[FamilyCapability, ...]:
     return tuple(_DEFAULT_CAPABILITIES[name] for name in sorted(_DEFAULT_CAPABILITIES))
 
 
+def method_capability_features() -> dict[str, str]:
+    """Return the public fitting-method to family-capability feature map."""
+
+    return dict(METHOD_CAPABILITY_FEATURES)
+
+
 def capability_matrix() -> dict[str, object]:
     """Return a machine-readable snapshot of the runtime capability matrix."""
 
     capabilities = [capability.as_dict() for capability in list_family_capabilities()]
     return {
-        "version": 1,
+        "version": 2,
         "features": list(FEATURES),
+        "method_capability_features": method_capability_features(),
+        "strict_capability_policy": {
+            "default_allow_experimental": True,
+            "strict_capabilities_allow_experimental": False,
+            "unsupported_routes_fail_fast": True,
+        },
         "families": {item["name"]: item for item in capabilities},
     }
 
@@ -279,5 +301,7 @@ __all__ = [
     "family_supports",
     "get_family_capability",
     "list_family_capabilities",
+    "method_capability_features",
+    "METHOD_CAPABILITY_FEATURES",
     "require_family_capability",
 ]

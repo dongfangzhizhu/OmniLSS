@@ -26,6 +26,7 @@ def test_generate_capability_matrix_writes_runtime_snapshot(tmp_path):
     assert written == output
     assert payload == capability_matrix()
     assert payload["features"] == list(FEATURES)
+    assert payload["method_capability_features"]["RS"] == "rs_fit"
     assert payload["families"]["NO"]["features"]["production_safe"] == "validated"
 
 
@@ -46,3 +47,4 @@ def test_capability_matrix_is_public_top_level_api():
     import omnilss
 
     assert omnilss.capability_matrix() == capability_matrix()
+    assert omnilss.method_capability_features()["CG"] == "cg_fit"

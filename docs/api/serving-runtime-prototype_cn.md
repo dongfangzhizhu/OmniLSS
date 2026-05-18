@@ -1,21 +1,41 @@
-# 中文版本：Phase 1 Serving Runtime Prototype
+# Phase 1 Serving Runtime Prototype（中文）
 
 [English version](serving-runtime-prototype.md)
 
-> 该页面是英文原文的中文入口。完整中文翻译将在后续文档本地化工作中补齐；在此之前，请以英文版本为准。
+计划中的服务端能力：
 
-## 翻译状态
+- Quantile inference API
+- Interval prediction API
+- Uncertainty API
 
-- [ ] 完成全文中文翻译
-- [ ] 与英文版本保持同步
+SLO 目标：
 
+- 在 benchmark telemetry 中启用 P95 latency tracking。
 
-轻量标准库 HTTP 边界已实现的元数据端点：
+轻量标准库 HTTP 边界已实现的 metadata endpoints：
 
-- `GET /health` / `GET /healthz`：服务存活检查。
-- `GET /capabilities` / `GET /capability-matrix`：运行时分布族能力矩阵。
-- `GET /metrics`：以 Prometheus 风格 counter 暴露元数据端点请求计数。
+- `GET /health` / `GET /healthz`：service liveness check。
+- `GET /capabilities` / `GET /capability-matrix`：runtime family capability matrix，包含 `features`、`method_capability_features`、`strict_capability_policy` 和每个 family 的证据状态。
+- `GET /metrics`：以 Prometheus 风格 counter 暴露 metadata endpoint request 计数。
 
-所有 HTTP 元数据响应都会包含 `X-Request-ID`；如果入站请求提供 request ID，则会透传。
+所有 HTTP metadata response 都包含 `X-Request-ID`；如果入站 request 提供 request ID，则会透传。嵌入式 deployment 也可以通过 `serve(..., event_sink=...)` 接收结构化 request event，用于 prototype-safe logging 或测试观测；event sink exception 会被隔离，不会破坏 metadata response。
 
-这些端点目前只是 prototype-safe 的元数据端点；fit/predict HTTP 端点在生产暴露前仍需要认证、request ID、限制和结构化日志。
+## HTTP 错误 envelope
+
+不支持或未知的 HTTP metadata request 会返回结构化 JSON envelope，并保留 `X-Request-ID`：
+
+```json
+{
+  "success": false,
+  "error": {
+    "type": "http_error",
+    "code": "method_not_allowed",
+    "message": "HTTP POST is not enabled for '/predict'; fit/predict endpoints require authn, limits, and structured logging before exposure"
+  },
+  "request_id": "example-request-id"
+}
+```
+
+当前 prototype 在处理 POST 时会先执行 `Content-Length` validation 与 payload limit gate；非法 `Content-Length` 会返回 `400 invalid_content_length`，超过配置上限会返回 `413 payload_too_large`。在 authentication、payload limits 和 structured logging 完成之前，未超限的 prototype HTTP POST routes 会有意返回 `405 method_not_allowed`。
+
+这些 endpoints 目前只是 prototype-safe metadata endpoints；fit/predict HTTP endpoints 在生产暴露前仍需要 authentication、request IDs、limits 和 structured logging。

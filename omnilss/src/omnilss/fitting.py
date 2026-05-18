@@ -297,15 +297,9 @@ def _require_method_family_capability(
 ) -> None:
     """Validate method/family support before starting an expensive fit."""
 
-    feature_by_method = {
-        "RS": "rs_fit",
-        "RS_JAX": "rs_jax_fit",
-        "CG": "cg_fit",
-        "MIXED": "cg_fit",
-        "JOINT": "cg_fit",
-        "LBFGS": "cg_fit",
-    }
-    feature = feature_by_method.get(method_name)
+    from .family_capabilities import method_capability_features
+
+    feature = method_capability_features().get(method_name)
     if feature is None:
         return
 
