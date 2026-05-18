@@ -23,10 +23,12 @@ This note records the first concrete development step from the [six-month execut
   - `list_family_capabilities()`;
   - `family_supports()`;
   - `method_capability_features()`;
+  - `method_route_feature()`;
   - `method_route_capability_report()`;
-  - `require_family_capability()`.
-- Added tests that verify full registry coverage, feature completeness, unsupported-route errors, experimental opt-in behavior, and clear unknown-family/unknown-feature failures.
-- Generated capability matrices include the fitting-method routing map (`method_capability_features`) and strict-mode policy flags so docs, service responses, and runtime gates share the same contract.
+  - `require_family_capability()`;
+  - `require_method_route()`.
+- Added tests that verify full registry coverage, feature completeness, unsupported-route errors, experimental opt-in behavior, clear unknown-family/unknown-feature failures, top-level route-helper exports, and the generated `method_routes` compatibility alias.
+- Generated capability matrices include the fitting-method routing map (`method_capability_features` plus the backward-compatible `method_routes` alias) and strict-mode policy flags so docs, service responses, and runtime gates share the same contract.
 
 ## Evidence tiers
 
@@ -51,7 +53,9 @@ from omnilss.family_capabilities import (
     FamilyCapabilityError,
     family_supports,
     get_family_capability,
+    method_route_feature,
     require_family_capability,
+    require_method_route,
 )
 
 capability = get_family_capability("NO")
@@ -60,6 +64,10 @@ assert capability.is_production_safe
 if family_supports("GA", "rs_fit"):
     # Includes experimental support by default.
     ...
+
+assert method_route_feature("RS") == "rs_fit"
+validated_route = require_method_route("NO", "RS")
+assert validated_route.name == "NO"
 
 try:
     require_family_capability("GB2", "rs_jax_fit", allow_experimental=True)
