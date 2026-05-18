@@ -73,13 +73,18 @@ Validation reports use a versioned envelope so clients can route on stable issue
 Important issue codes include:
 
 - `missing_meta`, `invalid_meta`, `missing_arrays`, `invalid_arrays`, `invalid_zip`.
-- `unsupported_version`, `unsupported_schema_version`, `unsupported_artifact_schema_version`.
+- `unsupported_version`, `invalid_design_matrix_schema_version`, `design_matrix_schema_migration_required`, `unsupported_future_design_matrix_schema_version`, `invalid_artifact_schema_version`, `artifact_schema_migration_required`, `unsupported_future_artifact_schema_version`.
 - `missing_parameter_schema`, `missing_parameter_formula`, `invalid_term_order`.
 - `missing_factor_levels`, `invalid_factor_levels`.
 - `missing_numeric_transform_ast`, `invalid_numeric_transform_ast`, `invalid_numeric_transform_term`, `numeric_transform_ast_mismatch`.
 - `coefficient_schema_mismatch`.
 - `missing_smooth_metadata`, `invalid_smooth_metadata_entry`, `missing_smooth_knots`.
 - `training_data_included` as a warning with `severity == "warning"`.
+
+
+## Artifact Schema Migration Policy
+
+`artifact_schema_policy()` exposes the runtime compatibility contract for JSON artifacts. The current runtime supports design-matrix schema version `2` and artifact schema version `2`. Older schema versions are rejected with `*_schema_migration_required` issue codes and should be re-saved from a compatible OmniLSS runtime before production use. Newer schema versions are rejected with `unsupported_future_*_schema_version` issue codes until the serving runtime is upgraded.
 
 ## Artifact and Prediction Error Example
 

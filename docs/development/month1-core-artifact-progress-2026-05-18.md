@@ -17,6 +17,7 @@ This note records the next implementation step against Month 1 / Workstream D1: 
 - Stable scalar diagnostics are captured in artifact metadata for downstream audit/reporting paths.
 - Artifact validation reports now use a versioned `artifact_validation_report` envelope with typed `artifact_validation_issue` entries, explicit severity, and error/warning counts.
 - Artifact validation now checks categorical factor-level metadata and numeric-transform AST metadata required for schema-safe prediction.
+- `artifact_schema_policy()` now documents supported schema versions and validation/load behavior for legacy or future artifacts.
 - Smooth-aware fit degrees of freedom are now computed through a shared algorithm helper to keep RS and CG accounting consistent.
 
 ## Remaining D1 Work
@@ -24,4 +25,4 @@ This note records the next implementation step against Month 1 / Workstream D1: 
 - Persist enough smooth-basis metadata for schema-safe smooth prediction roundtrips where supported.
 - Continue expanding structured prediction/artifact error coverage into future service fit/sample boundaries.
 - Expand schema validation to cover remaining interaction and unsupported smoother boundaries more comprehensively.
-- Add explicit artifact migration policy for future schema versions.
+- Keep migration policy aligned with future schema revisions as they are introduced.

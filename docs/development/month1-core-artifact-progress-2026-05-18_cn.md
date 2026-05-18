@@ -17,6 +17,7 @@
 - 稳定的标量诊断信息会写入工件元数据，供后续审计和报告路径使用。
 - Artifact validation report 现在使用 versioned `artifact_validation_report` envelope，并包含 typed `artifact_validation_issue` 条目、明确 severity 与 error/warning 计数。
 - Artifact validation 现在会检查 schema-safe prediction 所需的 categorical factor-level metadata 和 numeric-transform AST metadata。
+- `artifact_schema_policy()` 现在记录受支持的 schema version，以及 legacy 或 future artifact 的 validation/load 行为。
 - 平滑项相关的拟合自由度通过共享算法 helper 计算，保证 RS 与 CG 的自由度统计一致。
 
 ## D1 剩余工作
@@ -24,4 +25,4 @@
 - 为支持的平滑项持久化足够的 smooth-basis 元数据，实现 schema-safe 的平滑预测 roundtrip。
 - 继续把结构化预测/工件错误覆盖扩展到未来的 service fit/sample 边界。
 - 扩展 schema 校验，更完整覆盖剩余 interaction 和不支持 smoother 边界。
-- 为后续 schema 版本增加明确的工件迁移策略。
+- 在未来 schema revision 引入时持续同步 migration policy。

@@ -35,7 +35,7 @@
 
 ## 当前第 1 周证据
 
-- JSON artifact 现在提供带 typed issue severity 的 versioned validator report，可检查 archive 结构、schema 版本、参数 schema 覆盖、系数/schema 一致性、smooth metadata 可用性、categorical level、numeric-transform AST metadata，以及训练数据包含 warning；同时提供 capability snapshot compatibility report，用于对比保存时证据等级与当前 runtime registry。
+- JSON artifact 现在提供带 typed issue severity 的 versioned validator report，可检查 archive 结构、schema 版本、参数 schema 覆盖、系数/schema 一致性、smooth metadata 可用性、categorical level、numeric-transform AST metadata，以及训练数据包含 warning 与 schema migration policy；同时提供 capability snapshot compatibility report，用于对比保存时证据等级与当前 runtime registry。
 - 结构化预测错误提供稳定的机器可读字段，便于客户端路由。
 - 公式 parser 加固已覆盖嵌套括号参数和带逗号的引号字符串。
 - 第 2 周工作仅在第 1 周核心门禁完成后启动：公开 artifact-schema 示例和 validator CLI 已可用；legacy、间接 prediction、scoring 与 validation-wrapper 入口现在会复用或传播 schema-safe 预测错误，gRPC prediction failure 也会保留结构化 error envelope；详见 [legacy prediction 入口审计进展](month1-legacy-prediction-entrypoint-audit-2026-05-18_cn.md) 与 [服务端 prediction 错误 envelope 进展](month1-service-prediction-error-envelope-2026-05-18_cn.md)。

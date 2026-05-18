@@ -12,6 +12,10 @@ import numpy as np
 
 OMNILSS_MODEL_VERSION = "0.3.0"
 ARTIFACT_VALIDATION_REPORT_VERSION = 1
+SUPPORTED_DESIGN_SCHEMA_VERSIONS = (2,)
+SUPPORTED_ARTIFACT_SCHEMA_VERSIONS = (2,)
+CURRENT_DESIGN_SCHEMA_VERSION = max(SUPPORTED_DESIGN_SCHEMA_VERSIONS)
+CURRENT_ARTIFACT_SCHEMA_VERSION = max(SUPPORTED_ARTIFACT_SCHEMA_VERSIONS)
 
 
 def _json_safe(value: Any) -> Any:
@@ -166,9 +170,65 @@ def _artifact_report(
         "ok": not errors,
         "error_count": len(errors),
         "warning_count": len(warnings),
+        "schema_policy": artifact_schema_policy(),
         "errors": errors,
         "warnings": warnings,
     }
+
+
+
+def artifact_schema_policy() -> dict[str, Any]:
+    """Return the JSON artifact schema compatibility and migration policy."""
+
+    return {
+        "type": "artifact_schema_policy",
+        "omnilss_model_version": OMNILSS_MODEL_VERSION,
+        "validation_report_version": ARTIFACT_VALIDATION_REPORT_VERSION,
+        "current_design_schema_version": CURRENT_DESIGN_SCHEMA_VERSION,
+        "current_artifact_schema_version": CURRENT_ARTIFACT_SCHEMA_VERSION,
+        "supported_design_schema_versions": list(SUPPORTED_DESIGN_SCHEMA_VERSIONS),
+        "supported_artifact_schema_versions": list(SUPPORTED_ARTIFACT_SCHEMA_VERSIONS),
+        "migration_policy": {
+            "older_schema": (
+                "Artifacts with schema versions older than the supported set must "
+                "be re-saved from a compatible OmniLSS runtime before production use."
+            ),
+            "newer_schema": (
+                "Artifacts with schema versions newer than this runtime are rejected "
+                "until the runtime is upgraded."
+            ),
+            "training_data": (
+                "Training arrays remain omitted by default; validators warn when "
+                "they are intentionally embedded."
+            ),
+        },
+    }
+
+
+def _schema_version_issue(
+    *, schema_name: str, version: Any, path: str, expected: int
+) -> dict[str, str] | None:
+    try:
+        parsed = int(version)
+    except (TypeError, ValueError):
+        return _artifact_issue(
+            f"invalid_{schema_name}_schema_version",
+            path,
+            f"{schema_name.replace('_', ' ').title()} schema version must be an integer",
+        )
+    if parsed == expected:
+        return None
+    if parsed < expected:
+        return _artifact_issue(
+            f"{schema_name}_schema_migration_required",
+            path,
+            f"{schema_name.replace('_', ' ').title()} schema version {parsed} is older than supported version {expected}; re-save the artifact with a compatible OmniLSS runtime",
+        )
+    return _artifact_issue(
+        f"unsupported_future_{schema_name}_schema_version",
+        path,
+        f"{schema_name.replace('_', ' ').title()} schema version {parsed} is newer than this runtime supports ({expected}); upgrade OmniLSS before loading",
+    )
 
 
 def _factor_variable(term: str) -> str | None:
@@ -295,22 +355,22 @@ def validate_model_json(path: str | Path) -> dict[str, Any]:
             )
             schema_parameters: dict[str, Any] = {}
         else:
-            if schema.get("version") != 2:
-                errors.append(
-                    _artifact_issue(
-                        "unsupported_schema_version",
-                        "meta.design_matrix_schema.version",
-                        "Design matrix schema version must be 2",
-                    )
-                )
-            if schema.get("artifact_version") != 2:
-                errors.append(
-                    _artifact_issue(
-                        "unsupported_artifact_schema_version",
-                        "meta.design_matrix_schema.artifact_version",
-                        "Artifact schema version must be 2",
-                    )
-                )
+            design_version_issue = _schema_version_issue(
+                schema_name="design_matrix",
+                version=schema.get("version"),
+                path="meta.design_matrix_schema.version",
+                expected=CURRENT_DESIGN_SCHEMA_VERSION,
+            )
+            if design_version_issue is not None:
+                errors.append(design_version_issue)
+            artifact_version_issue = _schema_version_issue(
+                schema_name="artifact",
+                version=schema.get("artifact_version"),
+                path="meta.design_matrix_schema.artifact_version",
+                expected=CURRENT_ARTIFACT_SCHEMA_VERSION,
+            )
+            if artifact_version_issue is not None:
+                errors.append(artifact_version_issue)
             schema_parameters = schema.get("parameters", {}) or {}
             if not isinstance(schema_parameters, dict):
                 errors.append(
@@ -650,6 +710,24 @@ def load_model_json(path: str | Path):
     with zipfile.ZipFile(Path(path), "r") as zf:
         meta = json.loads(zf.read("meta.json").decode("utf-8"))
         design_matrix_schema = meta.get("design_matrix_schema", {})
+        if not isinstance(design_matrix_schema, dict):
+            raise ValueError("Artifact is missing a valid design_matrix_schema object")
+        for issue in (
+            _schema_version_issue(
+                schema_name="design_matrix",
+                version=design_matrix_schema.get("version"),
+                path="meta.design_matrix_schema.version",
+                expected=CURRENT_DESIGN_SCHEMA_VERSION,
+            ),
+            _schema_version_issue(
+                schema_name="artifact",
+                version=design_matrix_schema.get("artifact_version"),
+                path="meta.design_matrix_schema.artifact_version",
+                expected=CURRENT_ARTIFACT_SCHEMA_VERSION,
+            ),
+        ):
+            if issue is not None:
+                raise ValueError(issue["message"])
         family_capability = meta.get("family_capability", {})
         smooth_infos = meta.get("smooth_infos", {})
         version = meta.get("omnilss_version", "")

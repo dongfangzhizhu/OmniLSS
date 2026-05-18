@@ -35,7 +35,7 @@ This checklist operationalizes the [six-month execution plan](six-month-executio
 
 ## Current Week 1 Evidence
 
-- JSON artifacts now expose a versioned validator report with typed issue severity that checks archive structure, schema versions, parameter schema coverage, coefficient/schema consistency, smooth metadata availability, categorical levels, numeric-transform AST metadata, and training-data inclusion warnings; they also expose a capability-snapshot compatibility report for comparing saved evidence tiers against the current runtime registry.
+- JSON artifacts now expose a versioned validator report with typed issue severity that checks archive structure, schema versions, parameter schema coverage, coefficient/schema consistency, smooth metadata availability, categorical levels, numeric-transform AST metadata, and training-data inclusion warnings, plus schema migration policy; they also expose a capability-snapshot compatibility report for comparing saved evidence tiers against the current runtime registry.
 - Structured prediction errors expose stable machine-readable fields for client routing.
 - Formula parser hardening covers nested bracket arguments and quoted comma strings.
 - Week 2 has started only after the core Week 1 gate: public artifact-schema examples and a validator CLI are now available; legacy, indirect prediction, scoring, and validation-wrapper entry points now reuse or propagate schema-safe prediction errors, and gRPC prediction failures preserve the structured error envelope; see the [legacy prediction entry-point audit progress note](month1-legacy-prediction-entrypoint-audit-2026-05-18.md) and the [service prediction error envelope progress note](month1-service-prediction-error-envelope-2026-05-18.md).

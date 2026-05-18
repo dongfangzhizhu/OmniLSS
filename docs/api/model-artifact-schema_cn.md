@@ -73,13 +73,18 @@ PYTHONPATH=src python tools/validate_model_artifact.py model.omnilss --fail-on-w
 重要 issue code 包括：
 
 - `missing_meta`、`invalid_meta`、`missing_arrays`、`invalid_arrays`、`invalid_zip`。
-- `unsupported_version`、`unsupported_schema_version`、`unsupported_artifact_schema_version`。
+- `unsupported_version`、`invalid_design_matrix_schema_version`、`design_matrix_schema_migration_required`、`unsupported_future_design_matrix_schema_version`、`invalid_artifact_schema_version`、`artifact_schema_migration_required`、`unsupported_future_artifact_schema_version`。
 - `missing_parameter_schema`、`missing_parameter_formula`、`invalid_term_order`。
 - `missing_factor_levels`、`invalid_factor_levels`。
 - `missing_numeric_transform_ast`、`invalid_numeric_transform_ast`、`invalid_numeric_transform_term`、`numeric_transform_ast_mismatch`。
 - `coefficient_schema_mismatch`。
 - `missing_smooth_metadata`、`invalid_smooth_metadata_entry`、`missing_smooth_knots`。
 - `training_data_included`，作为 `severity == "warning"` 的 warning。
+
+
+## Artifact Schema 迁移策略
+
+`artifact_schema_policy()` 会暴露 JSON artifact 的 runtime compatibility contract。当前 runtime 支持 design-matrix schema version `2` 和 artifact schema version `2`。更旧的 schema version 会以 `*_schema_migration_required` issue code 被拒绝，应先使用兼容的 OmniLSS runtime 重新保存后再进入生产使用。更新的 schema version 会以 `unsupported_future_*_schema_version` issue code 被拒绝，直到 serving runtime 升级。
 
 ## Artifact 与预测错误示例
 

@@ -1,8 +1,10 @@
 import json
 import zipfile
 import numpy as np
+import pytest
 
 from omnilss import (
+    artifact_schema_policy as top_level_artifact_schema_policy,
     compare_model_capability_snapshot as top_level_compare_model_capability_snapshot,
     gamlss,
     validate_model_json as top_level_validate_model_json,
@@ -202,6 +204,18 @@ def test_json_artifact_preserves_smooth_metadata_and_prediction(tmp_path):
     np.testing.assert_allclose(restored, original, rtol=1e-7, atol=1e-7)
 
 
+
+
+def test_artifact_schema_policy_is_public() -> None:
+    from omnilss.serialization import artifact_schema_policy
+
+    policy = artifact_schema_policy()
+
+    assert top_level_artifact_schema_policy() == policy
+    assert policy["type"] == "artifact_schema_policy"
+    assert policy["current_design_schema_version"] == 2
+    assert policy["supported_artifact_schema_versions"] == [2]
+
 def test_validate_model_json_accepts_schema_safe_artifact(tmp_path):
     rng = np.random.default_rng(32)
     n = 50
@@ -341,3 +355,25 @@ def test_model_capability_snapshot_report_detects_drift(tmp_path):
         "artifact_status": "experimental",
         "runtime_status": "validated",
     } in report["changes"]
+
+
+def test_load_model_json_rejects_future_artifact_schema(tmp_path):
+    rng = np.random.default_rng(47)
+    n = 30
+    x = rng.normal(size=n)
+    y = 1.5 + 0.4 * x + rng.normal(scale=0.2, size=n)
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x})
+
+    path = tmp_path / "future-schema.omnilss"
+    save_model_json(model, path)
+
+    with zipfile.ZipFile(path, "r") as zf:
+        meta = json.loads(zf.read("meta.json").decode("utf-8"))
+        arrays_payload = zf.read("arrays.npz")
+    meta["design_matrix_schema"]["artifact_version"] = 99
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("meta.json", json.dumps(meta))
+        zf.writestr("arrays.npz", arrays_payload)
+
+    with pytest.raises(ValueError, match="newer than this runtime supports"):
+        load_model_json(path)

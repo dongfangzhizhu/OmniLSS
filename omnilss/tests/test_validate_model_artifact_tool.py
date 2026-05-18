@@ -74,6 +74,8 @@ def test_validate_artifact_tool_reports_valid_artifact(tmp_path):
     assert report["version"] == 1
     assert report["ok"] is True
     assert report["error_count"] == 0
+    assert report["schema_policy"]["type"] == "artifact_schema_policy"
+    assert report["schema_policy"]["current_artifact_schema_version"] == 2
     assert report["errors"] == []
 
 
@@ -181,3 +183,58 @@ def test_validate_artifact_tool_accepts_numeric_transform_ast(tmp_path):
 
     assert report["ok"] is True
     assert report["errors"] == []
+
+
+def test_validate_artifact_tool_reports_legacy_schema_migration_policy(tmp_path):
+    artifact = tmp_path / "legacy-schema.omnilss"
+    _write_schema_artifact(
+        artifact,
+        {
+            "formula": "y ~ x",
+            "term_order": ["x"],
+            "n_columns": 2,
+        },
+    )
+    with zipfile.ZipFile(artifact, "r") as zf:
+        meta = json.loads(zf.read("meta.json").decode("utf-8"))
+        arrays_payload = zf.read("arrays.npz")
+    meta["design_matrix_schema"]["artifact_version"] = 1
+    with zipfile.ZipFile(artifact, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("meta.json", json.dumps(meta))
+        zf.writestr("arrays.npz", arrays_payload)
+
+    report = validate_model_artifact.validate_artifact(artifact)
+
+    assert report["ok"] is False
+    assert report["schema_policy"]["supported_artifact_schema_versions"] == [2]
+    assert any(
+        error["code"] == "artifact_schema_migration_required"
+        for error in report["errors"]
+    )
+
+
+def test_validate_artifact_tool_reports_future_schema_upgrade_policy(tmp_path):
+    artifact = tmp_path / "future-schema.omnilss"
+    _write_schema_artifact(
+        artifact,
+        {
+            "formula": "y ~ x",
+            "term_order": ["x"],
+            "n_columns": 2,
+        },
+    )
+    with zipfile.ZipFile(artifact, "r") as zf:
+        meta = json.loads(zf.read("meta.json").decode("utf-8"))
+        arrays_payload = zf.read("arrays.npz")
+    meta["design_matrix_schema"]["version"] = 99
+    with zipfile.ZipFile(artifact, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("meta.json", json.dumps(meta))
+        zf.writestr("arrays.npz", arrays_payload)
+
+    report = validate_model_artifact.validate_artifact(artifact)
+
+    assert report["ok"] is False
+    assert any(
+        error["code"] == "unsupported_future_design_matrix_schema_version"
+        for error in report["errors"]
+    )

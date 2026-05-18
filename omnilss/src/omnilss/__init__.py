@@ -716,6 +716,7 @@ __all__ = [
     "save_model_json",
     "load_model_json",
     "validate_model_json",
+    "artifact_schema_policy",
     "compare_model_capability_snapshot",
     "save_model_pickle",
     "load_model_pickle",
@@ -859,6 +860,7 @@ try:
         load_model_json,
         save_model_json,
         validate_model_json,
+        artifact_schema_policy,
         compare_model_capability_snapshot,
         load_model_pickle,
         save_model_pickle,
@@ -876,6 +878,7 @@ except ImportError as _e:
     load_model_json = None
     save_model_json = None
     validate_model_json = None
+    artifact_schema_policy = None
     compare_model_capability_snapshot = None
     load_model_pickle = None
     save_model_pickle = None
