@@ -6,7 +6,7 @@
 
 ## 运行时行为
 
-`gamlss()` 会在开始昂贵拟合工作前校验解析后的 method 和 family：
+`gamlss()` 会在开始昂贵拟合工作前校验解析后的 method 和 family。同一个映射由 `method_capability_features()` 导出，并嵌入 `capability_matrix()["method_capability_features"]`：
 
 | Method | 检查的 capability feature | 是否允许 experimental | 不支持时行为 |
 |---|---|---:|---|
@@ -18,18 +18,19 @@
 | `lbfgs` / `LBFGS` | `cg_fit` | 是 | 在初始化/精修前抛出 `FamilyCapabilityError` |
 | `auto` | 先解析为 `RS` 或 `RS_JAX`，再检查解析后的 route | 是 | 不支持的 `RS_JAX` route 无法继续 |
 
-当前策略仍允许 experimental feature，因为项目现有默认定位偏研究/开发。关键变化是：`unsupported` route 现在会在 backend 执行前通过 capability registry 快速失败。
+当前策略仍允许 experimental feature，因为项目现有默认定位偏研究/开发。关键变化是：`unsupported` route 现在会在 backend 执行前通过 capability registry 快速失败。service boundary 可以调用 `method_route_capability_report()`，以 JSON 友好的 admission report 获得同一决策，其中包含 `ok`、`feature`、`status`、`code` 和 `message` 字段。
 
 ## 为什么重要
 
 - 不支持的 method/family 组合会快速失败。
-- routing 层现在与文档、测试使用同一个 capability source of truth。
+- routing 层现在与文档、测试、生成 JSON artifact、gRPC response 和 HTTP metadata response 使用同一个 capability source of truth。
 - `RS_JAX` 不再只依赖 backend 内部的支持检查；不支持的 family 会在公开 `gamlss()` 边界被拒绝。
 - 未来服务 API 可以在调度异步 job 前复用同一个 gate。
 
 ## 后续工作
 
-1. 增加可选 strict production mode：除非显式启用，否则拒绝 `experimental` feature。
-2. 将 capability snapshot 写入序列化模型 metadata。
-3. 通过 HTTP/gRPC service endpoint 暴露 capability matrix。
-4. 从运行时 registry 生成机器可读 capability matrix artifact。
+1. 已完成：`strict_capabilities=True` 会拒绝 `experimental` feature，除非调用者使用默认 research/development 模式。
+2. 已完成：JSON artifact 会附加 family capability snapshot 与 compatibility report。
+3. 已完成：HTTP/gRPC service endpoint 会暴露 runtime capability matrix。
+4. 已完成：生成的机器可读 capability matrix artifact 包含 runtime method-routing map。
+5. 已完成：`method_route_capability_report()` 为未来 service job scheduling 暴露 route-admission decision。
