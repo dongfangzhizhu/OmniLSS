@@ -14,6 +14,41 @@ grpc = (
 )
 
 
+def test_grpc_error_text_preserves_prediction_schema_envelope() -> None:
+    """Prediction schema errors should stay machine-readable over gRPC."""
+    import json
+
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.prediction import PredictionSchemaError
+
+    error = PredictionSchemaError(
+        "Factor term 'factor(grp)' contains unseen levels ['c']",
+        parameter="mu",
+        term="factor(grp)",
+        reason="unseen factor levels ['c']",
+        code="unseen_factor_levels",
+    )
+
+    payload = json.loads(grpc_server._error_text(error))
+
+    assert payload == {
+        "type": "prediction_schema_error",
+        "code": "unseen_factor_levels",
+        "parameter": "mu",
+        "term": "factor(grp)",
+        "reason": "unseen factor levels ['c']",
+        "message": "Factor term 'factor(grp)' contains unseen levels ['c']",
+    }
+
+
+def test_top_level_prediction_schema_exports() -> None:
+    """The schema-safe prediction API should be importable from omnilss."""
+    import omnilss
+
+    assert omnilss.PredictionSchemaError is not None
+    assert callable(omnilss.build_prediction_design_matrix)
+
+
 def test_grpc_runtime_gaps_reflect_optional_dependencies() -> None:
     """Runtime diagnostics should expose missing protobuf/grpc pieces."""
     from omnilss.api.grpc import server as grpc_server
@@ -46,6 +81,47 @@ def test_create_service_reports_actionable_runtime_gap(monkeypatch) -> None:
     assert "Missing: protobuf" in message
     assert "pip install 'omnilss[grpc]'" in message
     assert "omnilss.api.grpc.generated" in message
+
+
+@pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
+def test_grpc_predict_response_preserves_prediction_schema_error(monkeypatch) -> None:
+    """The direct Predict service should return schema errors as JSON text."""
+    import json
+
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import predict_pb2
+    from omnilss.prediction import PredictionSchemaError
+
+    class BrokenModel:
+        def predict_params(self, newdata):  # noqa: ANN001, ARG002
+            raise PredictionSchemaError(
+                "Factor term 'factor(grp)' contains unseen levels ['c']",
+                parameter="mu",
+                term="factor(grp)",
+                reason="unseen factor levels ['c']",
+                code="unseen_factor_levels",
+            )
+
+    try:
+        service, *_ = grpc_server.create_service()
+    except RuntimeError as exc:
+        pytest.skip(f"gRPC stubs/runtime unavailable in environment: {exc}")
+
+    monkeypatch.setattr(grpc_server.REGISTRY, "load", lambda model_id: BrokenModel())
+
+    response = service.Predict(
+        predict_pb2.PredictRequest(
+            model_id="broken", newdata_json=json.dumps({"grp": ["c"]})
+        ),
+        None,
+    )
+
+    assert response.success is False
+    assert json.loads(response.params_json) == {}
+    payload = json.loads(response.error)
+    assert payload["type"] == "prediction_schema_error"
+    assert payload["code"] == "unseen_factor_levels"
+    assert payload["parameter"] == "mu"
 
 
 @pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
@@ -153,3 +229,49 @@ def test_grpc_capability_matrix_request() -> None:
         assert json.loads(resp.matrix_json) == capability_matrix()
     finally:
         server.stop(grace=0)
+
+@pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
+def test_grpc_route_capability_response_matches_runtime_report() -> None:
+    """Capability RPC should expose method-route preflight decisions."""
+    import json
+
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import capability_pb2
+    from omnilss.family_capabilities import method_route_capability_report
+
+    try:
+        service, *_ = grpc_server.create_service()
+    except RuntimeError as exc:
+        pytest.skip(f"gRPC stubs/runtime unavailable in environment: {exc}")
+
+    response = service.RouteCapability(
+        capability_pb2.RouteCapabilityRequest(family="GA", method="RS", strict=True),
+        None,
+    )
+
+    assert response.success is True
+    assert response.error == ""
+    assert json.loads(response.report_json) == method_route_capability_report(
+        "GA", "RS", strict=True
+    )
+
+
+@pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
+def test_grpc_route_capability_requires_family_and_method() -> None:
+    """Capability RPC should reject empty method-route preflight keys."""
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import capability_pb2
+
+    try:
+        service, *_ = grpc_server.create_service()
+    except RuntimeError as exc:
+        pytest.skip(f"gRPC stubs/runtime unavailable in environment: {exc}")
+
+    response = service.RouteCapability(
+        capability_pb2.RouteCapabilityRequest(family="NO", method="", strict=False),
+        None,
+    )
+
+    assert response.success is False
+    assert response.report_json == "{}"
+    assert "non-empty family and method" in response.error

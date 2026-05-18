@@ -13,10 +13,19 @@ class CapabilityServiceStub(object):
             request_serializer=capability__pb2.CapabilityMatrixRequest.SerializeToString,
             response_deserializer=capability__pb2.CapabilityMatrixResponse.FromString,
         )
+        self.RouteCapability = channel.unary_unary(
+            "/omnilss.CapabilityService/RouteCapability",
+            request_serializer=capability__pb2.RouteCapabilityRequest.SerializeToString,
+            response_deserializer=capability__pb2.RouteCapabilityResponse.FromString,
+        )
 
 
 class CapabilityServiceServicer(object):
     def CapabilityMatrix(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
+    def RouteCapability(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("Method not implemented!")
         raise NotImplementedError("Method not implemented!")
@@ -28,6 +37,11 @@ def add_CapabilityServiceServicer_to_server(servicer, server):
             servicer.CapabilityMatrix,
             request_deserializer=capability__pb2.CapabilityMatrixRequest.FromString,
             response_serializer=capability__pb2.CapabilityMatrixResponse.SerializeToString,
+        ),
+        "RouteCapability": grpc.unary_unary_rpc_method_handler(
+            servicer.RouteCapability,
+            request_deserializer=capability__pb2.RouteCapabilityRequest.FromString,
+            response_serializer=capability__pb2.RouteCapabilityResponse.SerializeToString,
         ),
     }
     generic_handler = grpc.method_handlers_generic_handler(

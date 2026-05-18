@@ -29,3 +29,13 @@ def test_generate_grpc_stubs_reports_missing_compilers(monkeypatch, capsys) -> N
 
     assert code == 2
     assert "pip install 'omnilss[grpc]'" in captured.err
+
+
+def test_fallback_generator_supports_multiple_unary_methods() -> None:
+    """Capability service fallback metadata should include both unary RPCs."""
+
+    service, methods = generate_grpc_stubs.SERVICE_SPECS["capability"]
+
+    assert service == "CapabilityService"
+    assert ("CapabilityMatrix", "CapabilityMatrixRequest", "CapabilityMatrixResponse") in methods
+    assert ("RouteCapability", "RouteCapabilityRequest", "RouteCapabilityResponse") in methods
