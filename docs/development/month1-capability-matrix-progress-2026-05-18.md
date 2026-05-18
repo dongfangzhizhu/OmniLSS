@@ -19,9 +19,17 @@ This note records progress against Month 1 / Workstream D3: **RS/CG/JAX Capabili
 - Default development behavior remains unchanged: experimental routes are still allowed unless strict capability mode is requested.
 - Method-routing tests cover both strict acceptance for the validated `NO` RS route and strict rejection for an experimental GA RS route.
 - Generated JSON artifacts, HTTP metadata responses, gRPC capability matrix responses, and gRPC route-capability reports now carry the same method-to-feature routing contract as `gamlss()`.
+- The capability matrix schema version is now exposed as `CAPABILITY_MATRIX_VERSION = 3`, so adding the `method_routes` compatibility key is visible to clients instead of silently changing the version-2 payload.
+- The public `method_route_feature()` and `require_method_route()` helpers are now restored, and `capability_matrix()` again includes the backward-compatible `method_routes` alias so generated artifacts, tests, service metadata, and documented strict routing share one importable contract.
+- Added `tools/validate_capability_matrix.py` and `validate_capability_matrix_payload()` so generated matrix artifacts can be checked for schema version, method-route alias drift, policy drift, family coverage, and feature-status validity before release bundles or service metadata reuse them.
+- The matrix validator now returns structured reports for unreadable files and malformed JSON as well as schema drift, so release checks receive one machine-readable failure envelope instead of uncaught file/parse exceptions.
 - `method_route_capability_report()` now provides a JSON-friendly route-admission report for service boundaries before future async fit jobs are scheduled, `gamlss()` uses the same helper for runtime gating, and the HTTP metadata boundary exposes the report for client preflight checks.
 
-## Remaining D3 Work
+## D3 Closure and Deferred Work
 
-- Expand validation evidence until more core families can move from experimental to validated for specific routes.
-- Wire `method_route_capability_report()` into future async job admission once the service job runtime is introduced.
+The Week 3 capability-gate implementation is complete for the current Month 1 scope: runtime gates, generated artifacts, HTTP/gRPC metadata, schema versioning, and validator checks share the same method-routing contract.
+
+Deferred work is explicitly assigned to later roadmap items:
+
+- Expanding validation evidence so more core families can move from experimental to validated belongs to Month 2 validation work.
+- Wiring `method_route_capability_report()` into async job admission belongs to Month 3 service job-runtime work.
