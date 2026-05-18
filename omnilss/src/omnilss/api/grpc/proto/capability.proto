@@ -8,6 +8,19 @@ message CapabilityMatrixResponse {
   string error = 3;
 }
 
+message RouteCapabilityRequest {
+  string family = 1;
+  string method = 2;
+  bool strict = 3;
+}
+
+message RouteCapabilityResponse {
+  string report_json = 1;
+  bool success = 2;
+  string error = 3;
+}
+
 service CapabilityService {
   rpc CapabilityMatrix(CapabilityMatrixRequest) returns (CapabilityMatrixResponse);
+  rpc RouteCapability(RouteCapabilityRequest) returns (RouteCapabilityResponse);
 }
