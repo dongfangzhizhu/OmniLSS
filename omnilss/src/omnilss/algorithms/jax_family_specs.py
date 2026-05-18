@@ -82,6 +82,7 @@ class FamilyJAXSpec(NamedTuple):
     hessian_fns: tuple[Callable, ...]
     loglik_fn: Callable
     eta_bounds: tuple = ((-10.0, 10.0),)  # overridden per family
+    init_etas: tuple[float, ...] = ()  # cold-start eta defaults; NaN means data-derived
 
 
 # ---------------------------------------------------------------------------
@@ -104,15 +105,15 @@ def _make_ad_score_hessian(
     _grad = jax.grad(logpdf_fn, argnums=argnums)
     _hess = jax.grad(_grad, argnums=argnums)
 
-    # Vectorise over observations
-    _score_vmap = jax.vmap(
+    # Vectorise over observations and JIT-cache the compiled score/Hessian.
+    _score_vmap = jax.jit(jax.vmap(
         lambda *args: _grad(*args),
         in_axes=(0,) + (0,) * n_params,
-    )
-    _hess_vmap = jax.vmap(
+    ))
+    _hess_vmap = jax.jit(jax.vmap(
         lambda *args: _hess(*args),
         in_axes=(0,) + (0,) * n_params,
-    )
+    ))
 
     def score_fn(y, *params):
         return _score_vmap(y, *params)
@@ -172,6 +173,7 @@ def make_no_spec() -> FamilyJAXSpec:
         loglik_fn=loglik,
         # eta bounds: identity mu (wide); log sigma: exp(-6)≈0.002, exp(6)≈400
         eta_bounds=((-1e6, 1e6), (-6.0, 6.0)),
+        init_etas=(math.nan, math.nan),
     )
 
 
@@ -236,6 +238,7 @@ def make_ga_spec() -> FamilyJAXSpec:
         loglik_fn=loglik,
         # eta bounds: log mu: exp(-6)≈0.002, exp(10)≈22000; log sigma: exp(-6)..exp(3)≈20
         eta_bounds=((-6.0, 10.0), (-6.0, 3.0)),
+        init_etas=(math.nan, 0.0),
     )
 
 
@@ -275,6 +278,7 @@ def make_po_spec() -> FamilyJAXSpec:
         loglik_fn=loglik,
         # eta bounds: log mu: exp(-6)≈0.002, exp(8)≈3000
         eta_bounds=((-6.0, 8.0),),
+        init_etas=(math.nan,),
     )
 
 
@@ -337,6 +341,7 @@ def make_bi_spec(bd: float = 1.0) -> FamilyJAXSpec:
         loglik_fn=loglik,
         # eta bounds: logit mu: sigmoid(-8)≈0.0003, sigmoid(8)≈0.9997
         eta_bounds=((-8.0, 8.0),),
+        init_etas=(0.0,),
     )
 
 
@@ -419,6 +424,7 @@ def make_wei_spec() -> FamilyJAXSpec:
         loglik_fn=loglik,
         # eta bounds: log mu: exp(-6)..exp(10); log sigma (shape): exp(-3)..exp(4)≈55
         eta_bounds=((-6.0, 10.0), (-3.0, 4.0)),
+        init_etas=(math.nan, 0.0),
     )
 
 
@@ -430,37 +436,10 @@ def make_tf_spec() -> FamilyJAXSpec:
     """Build ``FamilyJAXSpec`` for the Student-t (TF) distribution.
 
     Parameters: mu (identity), sigma (log), nu (log, degrees of freedom).
-    Score and Hessian via JAX autodiff (vmap of grad).
+    Scores are handwritten to avoid repeated AD tracing in the RS loop.
+    Hessians use stable diagonal Fisher-information approximations for IRLS.
     """
     eps = jnp.finfo(jnp.float64).eps
-
-    def _loglik_scalar(y_s, mu_s, sigma_s, nu_s):
-        sigma_s = jnp.maximum(sigma_s, eps)
-        nu_s = jnp.maximum(nu_s, eps)
-        z = (y_s - mu_s) / sigma_s
-        return (
-            gammaln((nu_s + 1.0) / 2.0)
-            - gammaln(nu_s / 2.0)
-            - 0.5 * jnp.log(nu_s * math.pi)
-            - jnp.log(sigma_s)
-            - ((nu_s + 1.0) / 2.0) * jnp.log1p(jnp.square(z) / nu_s)
-        )
-
-    def loglik(y, mu, sigma, nu):
-        return jax.vmap(_loglik_scalar)(
-            jnp.asarray(y, dtype=jnp.float64),
-            jnp.asarray(mu, dtype=jnp.float64),
-            jnp.asarray(sigma, dtype=jnp.float64),
-            jnp.asarray(nu, dtype=jnp.float64),
-        )
-
-    # Vectorised score via vmap of grad
-    _grad_mu    = jax.vmap(jax.grad(_loglik_scalar, argnums=1))
-    _grad_sigma = jax.vmap(jax.grad(_loglik_scalar, argnums=2))
-    _grad_nu    = jax.vmap(jax.grad(_loglik_scalar, argnums=3))
-    _hess_mu    = jax.vmap(jax.grad(jax.grad(_loglik_scalar, argnums=1), argnums=1))
-    _hess_sigma = jax.vmap(jax.grad(jax.grad(_loglik_scalar, argnums=2), argnums=2))
-    _hess_nu    = jax.vmap(jax.grad(jax.grad(_loglik_scalar, argnums=3), argnums=3))
 
     def _cast(y, mu, sigma, nu):
         return (
@@ -470,29 +449,54 @@ def make_tf_spec() -> FamilyJAXSpec:
             jnp.maximum(jnp.asarray(nu, dtype=jnp.float64), eps),
         )
 
+    def loglik(y, mu, sigma, nu):
+        y, mu, sigma, nu = _cast(y, mu, sigma, nu)
+        z = (y - mu) / sigma
+        return (
+            gammaln((nu + 1.0) / 2.0)
+            - gammaln(nu / 2.0)
+            - 0.5 * jnp.log(nu * math.pi)
+            - jnp.log(sigma)
+            - ((nu + 1.0) / 2.0) * jnp.log1p(jnp.square(z) / nu)
+        )
+
     def score_mu(y, mu, sigma, nu):
         y, mu, sigma, nu = _cast(y, mu, sigma, nu)
-        return _grad_mu(y, mu, sigma, nu)
+        resid = y - mu
+        denom = nu * jnp.square(sigma) + jnp.square(resid)
+        return resid * (nu + 1.0) / jnp.maximum(denom, eps)
 
     def score_sigma(y, mu, sigma, nu):
         y, mu, sigma, nu = _cast(y, mu, sigma, nu)
-        return _grad_sigma(y, mu, sigma, nu)
+        resid2 = jnp.square(y - mu)
+        denom = nu * jnp.square(sigma) + resid2
+        return -1.0 / sigma + (nu + 1.0) * resid2 / (sigma * jnp.maximum(denom, eps))
 
     def score_nu(y, mu, sigma, nu):
         y, mu, sigma, nu = _cast(y, mu, sigma, nu)
-        return _grad_nu(y, mu, sigma, nu)
+        z2 = jnp.square((y - mu) / sigma)
+        return (
+            0.5 * digamma((nu + 1.0) / 2.0)
+            - 0.5 * digamma(nu / 2.0)
+            - 0.5 / nu
+            - 0.5 * jnp.log1p(z2 / nu)
+            + (nu + 1.0) * z2 / (2.0 * nu * jnp.maximum(nu + z2, eps))
+        )
 
     def hess_mu(y, mu, sigma, nu):
         y, mu, sigma, nu = _cast(y, mu, sigma, nu)
-        return _hess_mu(y, mu, sigma, nu)
+        val = -(nu + 1.0) / ((nu + 3.0) * jnp.square(sigma))
+        return jnp.minimum(val, -eps) * jnp.ones_like(y)
 
     def hess_sigma(y, mu, sigma, nu):
         y, mu, sigma, nu = _cast(y, mu, sigma, nu)
-        return _hess_sigma(y, mu, sigma, nu)
+        val = -(2.0 * nu) / ((nu + 3.0) * jnp.square(sigma))
+        return jnp.minimum(val, -eps) * jnp.ones_like(y)
 
     def hess_nu(y, mu, sigma, nu):
         y, mu, sigma, nu = _cast(y, mu, sigma, nu)
-        return _hess_nu(y, mu, sigma, nu)
+        val = -0.5 / jnp.square(nu + 1.0)
+        return jnp.minimum(val, -eps) * jnp.ones_like(y)
 
     # TF nu link: log with clip to avoid extreme values
     def nu_link(nu):
@@ -516,6 +520,7 @@ def make_tf_spec() -> FamilyJAXSpec:
         loglik_fn=loglik,
         # eta bounds: identity mu (wide); log sigma: exp(-6)..exp(6); log nu: exp(-1)..exp(6)
         eta_bounds=((-1e6, 1e6), (-6.0, 6.0), (-1.0, 6.0)),
+        init_etas=(math.nan, math.nan, math.log(7.0)),
     )
 
 

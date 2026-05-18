@@ -65,6 +65,28 @@ def test_manual_rs_works_on_gpu_env(monkeypatch):
     assert calls == ["rs"]
 
 
+def test_default_rs_routes_to_jax_above_threshold(monkeypatch):
+    """Default method='RS' routes through configured accelerator thresholds."""
+    calls: list[str] = []
+
+    def fake_rs_fit(**kwargs):  # pragma: no cover - should not be called
+        calls.append("rs")
+        return SimpleNamespace(additional_slots={"method": "RS"})
+
+    def fake_jax_fit(**kwargs):
+        calls.append("jax")
+        return SimpleNamespace(additional_slots={"method": "RS_JAX"})
+
+    monkeypatch.setattr(cfg, "_current_backend", lambda: ("gpu", []))
+    monkeypatch.setattr(rs_algorithm, "rs_fit", fake_rs_fit)
+    monkeypatch.setattr(jax_rs_integration, "gamlss_rs_jax", fake_jax_fit)
+
+    with cfg.crossover_config(gpu={"NO": 10}):
+        result = gamlss("y ~ x", family=NO(), data=_make_no_data(n=40), method="RS")
+
+    assert result.additional_slots["method"] == "RS_JAX"
+    assert calls == ["jax"]
+
 def test_rs_jax_raises_for_unsupported_family():
     """method='RS_JAX' with an unsupported family raises a clear capability error."""
     data = _make_no_data()

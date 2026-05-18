@@ -2205,18 +2205,7 @@ def resolve_family(family: str | FamilyDefinition | None) -> FamilyDefinition:
 
     if family is None:
         return NO()
-    if isinstance(family, FamilyDefinition):
-        return family
 
-    family_name = str(family).upper()
+    from .distribution_registry import resolve
 
-    # Preferred path: registry-based lookup
-    try:
-        from .distribution_registry import get_default_registry
-
-        return get_default_registry().get(family_name)
-    except KeyError:
-        pass
-
-    # Fallback path: legacy if/elif resolver
-    return _resolve_family_legacy(family_name)
+    return resolve(family)
