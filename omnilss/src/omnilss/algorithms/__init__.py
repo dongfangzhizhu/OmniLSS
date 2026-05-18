@@ -92,7 +92,8 @@ from .jax_family_specs import (
     supported_families,
 )
 from .jax_rs_core import JaxRSResult, jax_rs_fit_core
-from .jax_rs_integration import gamlss_rs_jax
+from .jax_rs_batch import batch_jax_rs_fit
+from .jax_rs_integration import gamlss_rs_jax, gamlss_rs_jax_batch
 
 __all__ = [
     # NumPy RS
@@ -111,7 +112,9 @@ __all__ = [
     # JAX-native RS
     "FamilyJAXSpec",
     "JaxRSResult",
+    "batch_jax_rs_fit",
     "gamlss_rs_jax",
+    "gamlss_rs_jax_batch",
     "get_jax_spec",
     "jax_rs_fit_core",
     "make_no_spec",

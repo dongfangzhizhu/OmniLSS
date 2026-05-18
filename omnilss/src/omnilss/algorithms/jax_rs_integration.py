@@ -392,4 +392,74 @@ def gamlss_rs_jax(
     )
 
 
-__all__ = ["gamlss_rs_jax"]
+def gamlss_rs_jax_batch(
+    formula: str,
+    families: Any,
+    datasets: Mapping[str, Any] | list[Mapping[str, Any]],
+    sigma_formula: str = "~1",
+    parameter_formulas: Mapping[str, str] | None = None,
+    weights: Any | list[Any] | None = None,
+    control: GAMLSSControl | None = None,
+    i_control: GLIMControl | None = None,
+    max_inner: int = 1,
+    verbose: bool = False,
+) -> list[GAMLSSModel]:
+    """Fit multiple JAX RS models through the formula integration layer.
+
+    This is the formula-level companion to ``batch_jax_rs_fit``.  It preserves
+    exactly the same cold-start-only semantics as ``gamlss_rs_jax`` and accepts
+    either one dataset/family broadcast to all models or one dataset/family per
+    model.
+
+    Parameters
+    ----------
+    formula : str
+        Formula for the mu parameter.
+    families : family object, string, or list
+        One family broadcast to all datasets, or one family per dataset.
+    datasets : mapping or list[mapping]
+        One dataset or a list of datasets.
+    weights : array-like, list[array-like], optional
+        One weight vector broadcast to all models, or one weight vector per
+        dataset.
+
+    Returns
+    -------
+    list[GAMLSSModel]
+        Fitted models in input order.
+    """
+    dataset_list = list(datasets) if isinstance(datasets, list) else [datasets]
+    k_models = len(dataset_list)
+
+    if isinstance(families, list):
+        if len(families) != k_models:
+            raise ValueError("families must be one value or one family per dataset.")
+        family_list = families
+    else:
+        family_list = [families for _ in range(k_models)]
+
+    if isinstance(weights, list):
+        if len(weights) != k_models:
+            raise ValueError("weights must be one value or one weight vector per dataset.")
+        weights_list = weights
+    else:
+        weights_list = [weights for _ in range(k_models)]
+
+    return [
+        gamlss_rs_jax(
+            formula=formula,
+            family=family_list[idx],
+            data=dataset_list[idx],
+            sigma_formula=sigma_formula,
+            parameter_formulas=parameter_formulas,
+            weights=weights_list[idx],
+            control=control,
+            i_control=i_control,
+            max_inner=max_inner,
+            verbose=verbose,
+        )
+        for idx in range(k_models)
+    ]
+
+
+__all__ = ["gamlss_rs_jax", "gamlss_rs_jax_batch"]
