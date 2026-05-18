@@ -84,6 +84,47 @@ def test_create_service_reports_actionable_runtime_gap(monkeypatch) -> None:
 
 
 @pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
+def test_grpc_predict_response_preserves_prediction_schema_error(monkeypatch) -> None:
+    """The direct Predict service should return schema errors as JSON text."""
+    import json
+
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import predict_pb2
+    from omnilss.prediction import PredictionSchemaError
+
+    class BrokenModel:
+        def predict_params(self, newdata):  # noqa: ANN001, ARG002
+            raise PredictionSchemaError(
+                "Factor term 'factor(grp)' contains unseen levels ['c']",
+                parameter="mu",
+                term="factor(grp)",
+                reason="unseen factor levels ['c']",
+                code="unseen_factor_levels",
+            )
+
+    try:
+        service, *_ = grpc_server.create_service()
+    except RuntimeError as exc:
+        pytest.skip(f"gRPC stubs/runtime unavailable in environment: {exc}")
+
+    monkeypatch.setattr(grpc_server.REGISTRY, "load", lambda model_id: BrokenModel())
+
+    response = service.Predict(
+        predict_pb2.PredictRequest(
+            model_id="broken", newdata_json=json.dumps({"grp": ["c"]})
+        ),
+        None,
+    )
+
+    assert response.success is False
+    assert json.loads(response.params_json) == {}
+    payload = json.loads(response.error)
+    assert payload["type"] == "prediction_schema_error"
+    assert payload["code"] == "unseen_factor_levels"
+    assert payload["parameter"] == "mu"
+
+
+@pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
 def test_grpc_server_starts() -> None:
     """Server should start when grpc runtime and stubs are available."""
     from omnilss.api.grpc.server import serve

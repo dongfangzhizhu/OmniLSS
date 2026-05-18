@@ -165,3 +165,37 @@ def test_legacy_predict_all_reuses_schema_safe_smooth_validation(tmp_path):
         predict_all(loaded, newdata={"x": np.array([0.1, 0.2])}, output="data.frame")
 
     assert exc_info.value.code == "missing_smooth_metadata"
+
+
+def test_prodist_reuses_schema_safe_prediction_errors(tmp_path):
+    from omnilss.prodist import prodist_data
+
+    rng = np.random.default_rng(33)
+    x = np.linspace(0.0, 1.0, 50)
+    y = np.cos(2 * np.pi * x) + rng.normal(scale=0.05, size=len(x))
+    model = gamlss("y ~ pb(x)", family="NO", data={"y": y, "x": x}, max_iter=2)
+
+    path = tmp_path / "smooth-prodist.omnilss"
+    save_model_json(model, path)
+    loaded = load_model_json(path)
+    loaded.additional_slots = {**loaded.additional_slots, "smooth_infos": {}}
+
+    with pytest.raises(PredictionSchemaError) as exc_info:
+        prodist_data(loaded, newdata={"x": np.array([0.1, 0.2])})
+
+    assert exc_info.value.code == "missing_smooth_metadata"
+
+
+def test_get_pef_reuses_schema_safe_prediction_errors():
+    from omnilss.getPEF import get_pef_data
+
+    rng = np.random.default_rng(34)
+    x = np.linspace(0.0, 1.0, 50)
+    y = np.sin(2 * np.pi * x) + rng.normal(scale=0.05, size=len(x))
+    model = gamlss("y ~ pb(x)", family="NO", data={"y": y, "x": x}, max_iter=2)
+    model.additional_slots = {**model.additional_slots, "smooth_infos": {}}
+
+    with pytest.raises(PredictionSchemaError) as exc_info:
+        get_pef_data(model, term="x", n_points=5)
+
+    assert exc_info.value.code == "missing_smooth_metadata"

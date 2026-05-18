@@ -22,8 +22,9 @@
 
 - legacy `predict()` 回归测试验证未知 factor level 会从共享 prediction builder 抛出结构化 schema error。
 - legacy `predict_all()` 回归测试验证从 JSON artifact 加载后缺失 smooth metadata 会抛出结构化 schema error。
+- 间接 wrapper 回归测试验证 `prodist_data()` 和 `get_pef_data()` 会继续传播相同的 structured schema error，而不是吞掉或重写 prediction failure。
 
 ## 第 2 周剩余跟进
 
-- 将审计扩展到间接调用 prediction 且接受 `newdata` 的高级便捷 wrapper，尤其是绘图和报告 helper。
+- 继续审计接受 `newdata` 或自行构造 prediction grid 的 plotting/report helper，确保它们保留 `PredictionSchemaError` envelope。
 - 已在 [模型 Artifact Schema 与验证](../api/model-artifact-schema_cn.md#artifact-与预测错误示例) 中补充公开示例，展示 legacy 入口 error envelope 与 validator CLI 输出。

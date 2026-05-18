@@ -7,7 +7,7 @@
 | 周次 | 日期 | 主要工作流 | 实现门禁 | 状态 |
 |---|---|---|---|---|
 | 第 1 周 | 2026-05-17 至 2026-05-23 | D1/D2 可信 artifact 与 parser 安全 | Schema v2、默认训练数据脱敏、结构化预测错误、稳健 smooth/tensor 参数解析、artifact validator | 核心生产路径已完成；继续跟进 inline review 修复 |
-| 第 2 周 | 2026-05-24 至 2026-05-30 | D1/D2 预测加固 | 审计 legacy prediction 入口；补充公开 artifact-schema 示例 | 进行中；已添加 artifact-schema 文档、validator CLI、legacy prediction 入口 schema-safe 审计、公开 error-envelope 示例和 gRPC prediction error envelope，间接 wrapper 审计待完成 |
+| 第 2 周 | 2026-05-24 至 2026-05-30 | D1/D2 预测加固 | 审计 legacy prediction 入口；补充公开 artifact-schema 示例 | 进行中；已添加 artifact-schema 文档、validator CLI、legacy/indirect prediction 入口 schema-safe 审计、公开 error-envelope 示例和 gRPC prediction error envelope，plot/report wrapper 审计待完成 |
 | 第 3 周 | 2026-05-31 至 2026-06-06 | D3 能力门禁 | Runtime capability matrix 与文档和严格路由完全对齐 | 待开始 |
 | 第 4 周 | 2026-06-07 至 2026-06-16 | 第 1 月 release gate | Core trust checkpoint 和可复现实验证据 | 待开始 |
 | 第 5 周 | 2026-06-17 至 2026-06-23 | D4 验证矩阵 | 优先 family validation schema 和首批 JSON 输出 | 待开始 |
@@ -38,4 +38,4 @@
 - JSON artifact 现在提供 validator，可检查 archive 结构、schema 版本、参数 schema 覆盖、系数/schema 一致性、smooth metadata 可用性，以及训练数据包含 warning。
 - 结构化预测错误提供稳定的机器可读字段，便于客户端路由。
 - 公式 parser 加固已覆盖嵌套括号参数和带逗号的引号字符串。
-- 第 2 周工作仅在第 1 周核心门禁完成后启动：公开 artifact-schema 示例和 validator CLI 已可用；legacy prediction 入口已开始复用 schema-safe 预测构建器，gRPC prediction failure 也会保留结构化 error envelope；详见 [legacy prediction 入口审计进展](month1-legacy-prediction-entrypoint-audit-2026-05-18_cn.md) 与 [服务端 prediction 错误 envelope 进展](month1-service-prediction-error-envelope-2026-05-18_cn.md)。
+- 第 2 周工作仅在第 1 周核心门禁完成后启动：公开 artifact-schema 示例和 validator CLI 已可用；legacy 与部分间接 prediction 入口已开始复用或传播 schema-safe 预测错误，gRPC prediction failure 也会保留结构化 error envelope；详见 [legacy prediction 入口审计进展](month1-legacy-prediction-entrypoint-audit-2026-05-18_cn.md) 与 [服务端 prediction 错误 envelope 进展](month1-service-prediction-error-envelope-2026-05-18_cn.md)。

@@ -22,8 +22,9 @@ The audit covers the legacy R-aligned prediction entry points that remained outs
 
 - A legacy `predict()` regression test verifies that unseen factor levels raise the structured schema error from the shared prediction builder.
 - A legacy `predict_all()` regression test verifies that missing smooth metadata raises the structured schema error from a loaded JSON artifact.
+- Indirect-wrapper regression tests verify that `prodist_data()` and `get_pef_data()` continue to propagate the same structured schema error instead of swallowing or rewriting prediction failures.
 
 ## Remaining Week 2 Follow-Up
 
-- Extend the audit to high-level convenience wrappers that indirectly call prediction, especially plotting/report helpers that accept `newdata`.
+- Continue auditing plotting/report helpers that accept `newdata` or build prediction grids to ensure they preserve the `PredictionSchemaError` envelope.
 - A public example has been added to [Model Artifact Schema and Validation](../api/model-artifact-schema.md#artifact-and-prediction-error-example) showing the legacy-entrypoint error envelope alongside validator CLI output.
