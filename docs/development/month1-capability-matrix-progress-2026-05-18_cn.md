@@ -19,6 +19,8 @@
 - 默认开发行为保持不变：除非显式请求 strict capability mode，否则实验性路径仍允许运行。
 - 方法路由测试覆盖了 strict 模式下 validated 的 `NO` RS 路径可运行，以及实验性的 GA RS 路径被拒绝。
 - 生成的 JSON artifact、HTTP metadata response、gRPC capability matrix response 和 gRPC route-capability report 现在携带与 `gamlss()` 相同的 method-to-feature routing contract。
+- Capability matrix schema version 现在通过 `CAPABILITY_MATRIX_VERSION = 3` 暴露，因此新增 `method_routes` 兼容 key 会对 client 可见，而不是静默改变 version-2 payload。
+- 公开的 `method_route_feature()` 和 `require_method_route()` helper 已恢复，`capability_matrix()` 也重新包含向后兼容的 `method_routes` alias，使生成 artifact、测试、service metadata 和文档化 strict routing 共享同一个可导入 contract。
 - `method_route_capability_report()` 现在为 service boundary 提供 JSON 友好的 route-admission report，可在未来 async fit job 调度前使用；`gamlss()` 也使用同一个 helper 进行 runtime gate，并且 HTTP metadata boundary 已暴露该 report 供 client preflight check 使用。
 
 ## D3 剩余工作

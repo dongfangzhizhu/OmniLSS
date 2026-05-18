@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "features": [
     "rs_fit",
     "rs_jax_fit",
@@ -12,6 +12,14 @@
     "production_safe"
   ],
   "method_capability_features": {
+    "RS": "rs_fit",
+    "RS_JAX": "rs_jax_fit",
+    "CG": "cg_fit",
+    "MIXED": "cg_fit",
+    "JOINT": "cg_fit",
+    "LBFGS": "cg_fit"
+  },
+  "method_routes": {
     "RS": "rs_fit",
     "RS_JAX": "rs_jax_fit",
     "CG": "cg_fit",
