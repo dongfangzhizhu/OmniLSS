@@ -229,3 +229,49 @@ def test_grpc_capability_matrix_request() -> None:
         assert json.loads(resp.matrix_json) == capability_matrix()
     finally:
         server.stop(grace=0)
+
+@pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
+def test_grpc_route_capability_response_matches_runtime_report() -> None:
+    """Capability RPC should expose method-route preflight decisions."""
+    import json
+
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import capability_pb2
+    from omnilss.family_capabilities import method_route_capability_report
+
+    try:
+        service, *_ = grpc_server.create_service()
+    except RuntimeError as exc:
+        pytest.skip(f"gRPC stubs/runtime unavailable in environment: {exc}")
+
+    response = service.RouteCapability(
+        capability_pb2.RouteCapabilityRequest(family="GA", method="RS", strict=True),
+        None,
+    )
+
+    assert response.success is True
+    assert response.error == ""
+    assert json.loads(response.report_json) == method_route_capability_report(
+        "GA", "RS", strict=True
+    )
+
+
+@pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
+def test_grpc_route_capability_requires_family_and_method() -> None:
+    """Capability RPC should reject empty method-route preflight keys."""
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import capability_pb2
+
+    try:
+        service, *_ = grpc_server.create_service()
+    except RuntimeError as exc:
+        pytest.skip(f"gRPC stubs/runtime unavailable in environment: {exc}")
+
+    response = service.RouteCapability(
+        capability_pb2.RouteCapabilityRequest(family="NO", method="", strict=False),
+        None,
+    )
+
+    assert response.success is False
+    assert response.report_json == "{}"
+    assert "non-empty family and method" in response.error

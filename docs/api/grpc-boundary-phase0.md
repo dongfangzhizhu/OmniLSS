@@ -7,12 +7,17 @@
 - `Predict` request/response
 - `Sample` request/response
 - `CapabilityMatrix` request/response for the same runtime capability matrix exposed by package and HTTP metadata APIs. The payload includes family feature evidence, `method_capability_features`, and `strict_capability_policy`.
+- `RouteCapability` request/response for method/family preflight checks. The payload is the same JSON report returned by `method_route_capability_report()` and HTTP `/route-capability`, including strict-mode admission decisions before clients submit future fit jobs.
 
 ## Boundary principle
 Client-facing services call into core runtime through a narrow RPC contract.
 
 ## Goal
 Enable remote serving and reduce coupling between product layers.
+
+## Route capability preflight
+
+`RouteCapabilityRequest` accepts `family`, `method`, and `strict`. Successful responses serialize the route-admission report into `RouteCapabilityResponse.report_json`; invalid requests, such as missing family or method, return `success=false` with a plain error string while preserving the same response shape.
 
 ## Prediction error envelope
 

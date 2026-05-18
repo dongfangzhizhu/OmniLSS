@@ -8,6 +8,7 @@
 - `Predict` request/response
 - `Sample` request/response
 - `CapabilityMatrix` request/response，与 package 和 HTTP metadata API 暴露同一份 runtime capability matrix。payload 包含 family feature evidence、`method_capability_features` 和 `strict_capability_policy`。
+- `RouteCapability` request/response，用于 method/family preflight check。payload 与 `method_route_capability_report()` 和 HTTP `/route-capability` 返回的 JSON report 一致，包含 strict 模式 admission decision，方便 client 在未来提交 fit job 前先检查路由。
 
 ## 边界原则
 
@@ -16,6 +17,10 @@
 ## 目标
 
 支持远程 serving，并为后续安全、异步任务、模型 registry 和可观测性工作保留清晰边界。
+
+## Route capability preflight
+
+`RouteCapabilityRequest` 接收 `family`、`method` 和 `strict`。成功响应会把 route-admission report 序列化到 `RouteCapabilityResponse.report_json`；如果请求缺少 family 或 method，则返回 `success=false` 与纯文本 error，同时保持相同的 response shape。
 
 ## Prediction 错误 envelope
 

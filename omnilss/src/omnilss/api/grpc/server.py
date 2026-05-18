@@ -164,6 +164,30 @@ def create_service():
                     matrix_json="{}", success=False, error=_error_text(exc)
                 )
 
+        def RouteCapability(self, request, context):  # noqa: N802, ARG002
+            try:
+                from ...family_capabilities import method_route_capability_report
+
+                family = str(request.family).strip()
+                method = str(request.method).strip()
+                if not family or not method:
+                    raise ValueError(
+                        "route capability checks require non-empty family and method"
+                    )
+                return capability_pb2.RouteCapabilityResponse(
+                    report_json=_to_json(
+                        method_route_capability_report(
+                            family, method, strict=bool(request.strict)
+                        )
+                    ),
+                    success=True,
+                    error="",
+                )
+            except Exception as exc:
+                return capability_pb2.RouteCapabilityResponse(
+                    report_json="{}", success=False, error=_error_text(exc)
+                )
+
         def Fit(self, request, context):  # noqa: N802
             try:
                 data = _from_json(request.data_json)
