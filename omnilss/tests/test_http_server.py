@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from omnilss.api.http.server import serve
@@ -62,6 +63,61 @@ def test_http_metrics_endpoint_tracks_metadata_requests():
         assert "omnilss_http_requests_total 2" in body
         assert "omnilss_http_health_requests_total 1" in body
         assert "omnilss_http_capability_requests_total 1" in body
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_http_unknown_endpoint_uses_structured_error_envelope():
+    server = serve(host="127.0.0.1", port=0)
+    try:
+        host, port = server.server_address
+        req = Request(
+            f"http://{host}:{port}/missing", headers={"X-Request-ID": "missing-1"}
+        )
+        try:
+            urlopen(req, timeout=5)  # noqa: S310 - local test server
+            raise AssertionError("expected HTTPError")
+        except HTTPError as exc:
+            assert exc.code == 404
+            payload = json.loads(exc.read().decode("utf-8"))
+            assert payload == {
+                "success": False,
+                "error": {
+                    "type": "http_error",
+                    "code": "not_found",
+                    "message": "No OmniLSS HTTP endpoint for '/missing'",
+                },
+                "request_id": "missing-1",
+            }
+            assert exc.headers["X-Request-ID"] == "missing-1"
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_http_post_is_blocked_with_structured_error_envelope():
+    server = serve(host="127.0.0.1", port=0)
+    try:
+        host, port = server.server_address
+        req = Request(
+            f"http://{host}:{port}/predict",
+            data=b"{}",
+            method="POST",
+            headers={"X-Request-ID": "post-1"},
+        )
+        try:
+            urlopen(req, timeout=5)  # noqa: S310 - local test server
+            raise AssertionError("expected HTTPError")
+        except HTTPError as exc:
+            assert exc.code == 405
+            payload = json.loads(exc.read().decode("utf-8"))
+            assert payload["success"] is False
+            assert payload["error"]["type"] == "http_error"
+            assert payload["error"]["code"] == "method_not_allowed"
+            assert "fit/predict endpoints require authn" in payload["error"]["message"]
+            assert payload["request_id"] == "post-1"
+            assert exc.headers["X-Request-ID"] == "post-1"
     finally:
         server.shutdown()
         server.server_close()

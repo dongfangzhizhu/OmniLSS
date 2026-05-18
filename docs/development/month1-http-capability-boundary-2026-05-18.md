@@ -15,10 +15,11 @@ This note advances Month 1 / Workstream D3 and prepares Month 3 / Workstream D7 
 - Added `GET /capabilities` and `GET /capability-matrix`, returning the same runtime `capability_matrix()` payload used by the package API, generated JSON artifact, and gRPC service.
 - Added `X-Request-ID` propagation/generation on HTTP responses for traceability.
 - Added `GET /metrics` with Prometheus-style counters for metadata requests.
-- Added tests that start the HTTP server on an ephemeral local port and verify health, capability matrix, request ID, and metrics responses.
+- Added structured HTTP error envelopes for unknown endpoints and disabled POST routes while preserving `X-Request-ID`.
+- Added tests that start the HTTP server on an ephemeral local port and verify health, capability matrix, request ID, metrics, and structured error-envelope responses.
 
 ## Remaining Work
 
-- Add authentication, structured logs, payload limits, and rate limits before exposing fit/predict HTTP endpoints.
+- Add authentication, structured logs, payload limits, and rate limits before exposing fit/predict HTTP endpoints; until then POST routes remain `405 method_not_allowed`.
 - Document the public HTTP response schema in `docs/api/` once the service boundary is no longer prototype-only.
 - Keep the HTTP and gRPC capability responses synchronized through tests whenever the registry schema changes.
