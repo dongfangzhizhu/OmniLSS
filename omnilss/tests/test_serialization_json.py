@@ -216,7 +216,10 @@ def test_validate_model_json_accepts_schema_safe_artifact(tmp_path):
 
     result = validate_model_json(path)
     assert top_level_validate_model_json(path)["ok"] is True
+    assert result["type"] == "artifact_validation_report"
+    assert result["version"] == 1
     assert result["ok"] is True
+    assert result["error_count"] == 0
     assert result["errors"] == []
 
 
@@ -242,7 +245,14 @@ def test_validate_model_json_reports_schema_mismatch(tmp_path):
 
     result = validate_model_json(path)
     assert result["ok"] is False
-    assert any(error["code"] == "coefficient_schema_mismatch" for error in result["errors"])
+    assert result["error_count"] == 1
+    mismatch = next(
+        error
+        for error in result["errors"]
+        if error["code"] == "coefficient_schema_mismatch"
+    )
+    assert mismatch["type"] == "artifact_validation_issue"
+    assert mismatch["severity"] == "error"
 
 
 def test_validate_model_json_warns_when_training_data_included(tmp_path):
@@ -259,7 +269,14 @@ def test_validate_model_json_warns_when_training_data_included(tmp_path):
 
     result = validate_model_json(path)
     assert result["ok"] is True
-    assert any(warning["code"] == "training_data_included" for warning in result["warnings"])
+    assert result["warning_count"] == 1
+    warning = next(
+        warning
+        for warning in result["warnings"]
+        if warning["code"] == "training_data_included"
+    )
+    assert warning["type"] == "artifact_validation_issue"
+    assert warning["severity"] == "warning"
 
 
 def test_json_artifact_preserves_terms_for_validation_wrappers(tmp_path):

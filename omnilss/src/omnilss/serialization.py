@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 
 OMNILSS_MODEL_VERSION = "0.3.0"
+ARTIFACT_VALIDATION_REPORT_VERSION = 1
 
 
 def _json_safe(value: Any) -> Any:
@@ -138,9 +139,35 @@ def _family_capability_snapshot(model: Any) -> dict[str, Any]:
     return get_family_capability(str(family_name)).as_dict()
 
 
+def _artifact_issue(
+    code: str, path: str, message: str, *, severity: str = "error"
+) -> dict[str, str]:
+    """Return a stable machine-readable artifact validation issue."""
 
-def _artifact_issue(code: str, path: str, message: str) -> dict[str, str]:
-    return {"code": code, "path": path, "message": message}
+    return {
+        "type": "artifact_validation_issue",
+        "severity": severity,
+        "code": code,
+        "path": path,
+        "message": message,
+    }
+
+
+def _artifact_report(
+    artifact: Path, errors: list[dict[str, str]], warnings: list[dict[str, str]]
+) -> dict[str, Any]:
+    """Return the versioned artifact validation report envelope."""
+
+    return {
+        "type": "artifact_validation_report",
+        "version": ARTIFACT_VALIDATION_REPORT_VERSION,
+        "artifact": str(artifact),
+        "ok": not errors,
+        "error_count": len(errors),
+        "warning_count": len(warnings),
+        "errors": errors,
+        "warnings": warnings,
+    }
 
 
 def validate_model_json(path: str | Path) -> dict[str, Any]:
@@ -155,15 +182,15 @@ def validate_model_json(path: str | Path) -> dict[str, Any]:
     warnings: list[dict[str, str]] = []
     p = Path(path)
     if not p.exists():
-        return {
-            "ok": False,
-            "errors": [
+        return _artifact_report(
+            p,
+            [
                 _artifact_issue(
                     "artifact_missing", str(p), f"Artifact does not exist: {p}"
                 )
             ],
-            "warnings": [],
-        }
+            [],
+        )
 
     try:
         with zipfile.ZipFile(p, "r") as zf:
@@ -204,13 +231,11 @@ def validate_model_json(path: str | Path) -> dict[str, Any]:
                         )
                     )
     except zipfile.BadZipFile as exc:
-        return {
-            "ok": False,
-            "errors": [
-                _artifact_issue("invalid_zip", str(p), f"Invalid zip artifact: {exc}")
-            ],
-            "warnings": [],
-        }
+        return _artifact_report(
+            p,
+            [_artifact_issue("invalid_zip", str(p), f"Invalid zip artifact: {exc}")],
+            [],
+        )
 
     if not errors or meta:
         version = str(meta.get("omnilss_version", ""))
@@ -363,10 +388,91 @@ def validate_model_json(path: str | Path) -> dict[str, Any]:
                     "training_data_included",
                     "meta.training_data_included",
                     "Artifact includes training data; use only when intentional",
+                    severity="warning",
                 )
             )
 
-    return {"ok": not errors, "errors": errors, "warnings": warnings}
+    return _artifact_report(p, errors, warnings)
+
+
+def _capability_snapshot_from_artifact(path: str | Path) -> dict[str, Any]:
+    """Read the saved family capability snapshot from an artifact metadata file."""
+
+    with zipfile.ZipFile(Path(path), "r") as zf:
+        meta = json.loads(zf.read("meta.json").decode("utf-8"))
+    return dict(meta.get("family_capability", {}) or {})
+
+
+def compare_model_capability_snapshot(model_or_path: Any) -> dict[str, Any]:
+    """Compare a saved model capability snapshot with the current registry.
+
+    Parameters
+    ----------
+    model_or_path:
+        Either a loaded ``GAMLSSModel``-like object or a JSON artifact path.
+
+    Returns
+    -------
+    dict
+        A JSON-friendly compatibility report with ``ok=True`` when the saved
+        snapshot matches the current runtime capability registry.
+    """
+
+    from .family_capabilities import FEATURES, get_family_capability
+
+    if isinstance(model_or_path, (str, Path)):
+        artifact_capability = _capability_snapshot_from_artifact(model_or_path)
+    else:
+        slots = dict(getattr(model_or_path, "additional_slots", {}) or {})
+        artifact_capability = dict(slots.get("family_capability", {}) or {})
+
+    family_name = artifact_capability.get("name")
+    if not family_name and not isinstance(model_or_path, (str, Path)):
+        family_obj = getattr(model_or_path, "family", None)
+        family_name = (
+            getattr(family_obj, "name", str(family_obj))
+            if family_obj is not None
+            else None
+        )
+
+    if not family_name:
+        return {
+            "ok": False,
+            "family": None,
+            "artifact_capability": artifact_capability,
+            "runtime_capability": None,
+            "changes": [
+                {
+                    "code": "missing_artifact_capability",
+                    "message": "Artifact does not contain a family capability snapshot",
+                }
+            ],
+        }
+
+    runtime_capability = get_family_capability(str(family_name)).as_dict()
+    artifact_features = dict(artifact_capability.get("features", {}) or {})
+    runtime_features = dict(runtime_capability.get("features", {}) or {})
+    changes: list[dict[str, Any]] = []
+    for feature in FEATURES:
+        saved_status = artifact_features.get(feature)
+        runtime_status = runtime_features.get(feature)
+        if saved_status != runtime_status:
+            changes.append(
+                {
+                    "code": "capability_status_changed",
+                    "feature": feature,
+                    "artifact_status": saved_status,
+                    "runtime_status": runtime_status,
+                }
+            )
+
+    return {
+        "ok": not changes,
+        "family": str(family_name),
+        "artifact_capability": artifact_capability,
+        "runtime_capability": runtime_capability,
+        "changes": changes,
+    }
 
 
 def _capability_snapshot_from_artifact(path: str | Path) -> dict[str, Any]:
