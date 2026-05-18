@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-05-18",
+  "roadmap_workstream": "D4 validation matrix",
+  "status_vocabulary": [
+    "pending",
+    "pass",
+    "fail",
+    "not_applicable",
+    "blocked"
+  ],
+  "failure_classes": [
+    "implementation_bug",
+    "numerical_tolerance_issue",
+    "unsupported_domain",
+    "reference_mismatch",
+    "environment_unavailable"
+  ],
+  "checks": [
+    "density_or_pmf_values",
+    "cdf_monotonicity",
+    "quantile_cdf_inverse_consistency",
+    "random_sample_moments",
+    "score_vs_finite_difference",
+    "hessian_vs_finite_difference_or_ad",
+    "edge_cases_and_invalid_parameter_handling"
+  ],
+  "families": {
+    "NO": {
+      "priority": 1,
+      "capability_baseline": "production_safe_validated",
+      "checks": {
+        "density_or_pmf_values": "pending",
+        "cdf_monotonicity": "pending",
+        "quantile_cdf_inverse_consistency": "pending",
+        "random_sample_moments": "pending",
+        "score_vs_finite_difference": "pending",
+        "hessian_vs_finite_difference_or_ad": "pending",
+        "edge_cases_and_invalid_parameter_handling": "pending"
+      }
+    },
+    "GA": {
+      "priority": 2,
+      "capability_baseline": "experimental_route",
+      "checks": {
+        "density_or_pmf_values": "pending",
+        "cdf_monotonicity": "pending",
+        "quantile_cdf_inverse_consistency": "pending",
+        "random_sample_moments": "pending",
+        "score_vs_finite_difference": "pending",
+        "hessian_vs_finite_difference_or_ad": "pending",
+        "edge_cases_and_invalid_parameter_handling": "pending"
+      }
+    },
+    "PO": {
+      "priority": 3,
+      "capability_baseline": "experimental_route",
+      "checks": {
+        "density_or_pmf_values": "pending",
+        "cdf_monotonicity": "pending",
+        "quantile_cdf_inverse_consistency": "pending",
+        "random_sample_moments": "pending",
+        "score_vs_finite_difference": "pending",
+        "hessian_vs_finite_difference_or_ad": "pending",
+        "edge_cases_and_invalid_parameter_handling": "pending"
+      }
+    },
+    "BI": {
+      "priority": 4,
+      "capability_baseline": "experimental_route",
+      "checks": {
+        "density_or_pmf_values": "pending",
+        "cdf_monotonicity": "pending",
+        "quantile_cdf_inverse_consistency": "pending",
+        "random_sample_moments": "pending",
+        "score_vs_finite_difference": "pending",
+        "hessian_vs_finite_difference_or_ad": "pending",
+        "edge_cases_and_invalid_parameter_handling": "pending"
+      }
+    },
+    "NBI": {
+      "priority": 5,
+      "capability_baseline": "experimental_route",
+      "checks": {
+        "density_or_pmf_values": "pending",
+        "cdf_monotonicity": "pending",
+        "quantile_cdf_inverse_consistency": "pending",
+        "random_sample_moments": "pending",
+        "score_vs_finite_difference": "pending",
+        "hessian_vs_finite_difference_or_ad": "pending",
+        "edge_cases_and_invalid_parameter_handling": "pending"
+      }
+    },
+    "BE": {
+      "priority": 6,
+      "capability_baseline": "experimental_route",
+      "checks": {
+        "density_or_pmf_values": "pending",
+        "cdf_monotonicity": "pending",
+        "quantile_cdf_inverse_consistency": "pending",
+        "random_sample_moments": "pending",
+        "score_vs_finite_difference": "pending",
+        "hessian_vs_finite_difference_or_ad": "pending",
+        "edge_cases_and_invalid_parameter_handling": "pending"
+      }
+    },
+    "WEI": {
+      "priority": 7,
+      "capability_baseline": "experimental_route",
+      "checks": {
+        "density_or_pmf_values": "pending",
+        "cdf_monotonicity": "pending",
+        "quantile_cdf_inverse_consistency": "pending",
+        "random_sample_moments": "pending",
+        "score_vs_finite_difference": "pending",
+        "hessian_vs_finite_difference_or_ad": "pending",
+        "edge_cases_and_invalid_parameter_handling": "pending"
+      }
+    },
+    "TF": {
+      "priority": 8,
+      "capability_baseline": "experimental_route",
+      "checks": {
+        "density_or_pmf_values": "pending",
+        "cdf_monotonicity": "pending",
+        "quantile_cdf_inverse_consistency": "pending",
+        "random_sample_moments": "pending",
+        "score_vs_finite_difference": "pending",
+        "hessian_vs_finite_difference_or_ad": "pending",
+        "edge_cases_and_invalid_parameter_handling": "pending"
+      }
+    },
+    "LOGNO": {
+      "priority": 9,
+      "capability_baseline": "experimental_route",
+      "checks": {
+        "density_or_pmf_values": "pending",
+        "cdf_monotonicity": "pending",
+        "quantile_cdf_inverse_consistency": "pending",
+        "random_sample_moments": "pending",
+        "score_vs_finite_difference": "pending",
+        "hessian_vs_finite_difference_or_ad": "pending",
+        "edge_cases_and_invalid_parameter_handling": "pending"
+      }
+    },
+    "ZAGA": {
+      "priority": 10,
+      "capability_baseline": "experimental_route",
+      "checks": {
+        "density_or_pmf_values": "pending",
+        "cdf_monotonicity": "pending",
+        "quantile_cdf_inverse_consistency": "pending",
+        "random_sample_moments": "pending",
+        "score_vs_finite_difference": "pending",
+        "hessian_vs_finite_difference_or_ad": "pending",
+        "edge_cases_and_invalid_parameter_handling": "pending"
+      }
+    }
+  }
+}

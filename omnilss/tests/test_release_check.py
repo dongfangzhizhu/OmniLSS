@@ -23,6 +23,11 @@ def test_release_check_preflight_only_skips_packaging(monkeypatch, capsys):
     )
     monkeypatch.setattr(
         release_check,
+        "run_release_gate_smoke",
+        lambda: {"ok": True, "issues": []},
+    )
+    monkeypatch.setattr(
+        release_check,
         "_run",
         lambda cmd: (_ for _ in ()).throw(AssertionError("packaging ran")),
     )
@@ -60,3 +65,39 @@ def test_release_check_preflight_reports_matrix_drift(monkeypatch, capsys):
     err = capsys.readouterr().err
     assert "Capability matrix validation failed" in err
     assert "version_mismatch" in err
+
+
+def test_release_check_preflight_reports_smoke_failures(monkeypatch, capsys):
+    """Core smoke failures should block the offline release preflight."""
+
+    monkeypatch.setattr(release_check, "validate_docs_localization", lambda: [])
+    monkeypatch.setattr(
+        release_check,
+        "validate_capability_matrix_file",
+        lambda: {"ok": True, "issues": []},
+    )
+    monkeypatch.setattr(
+        release_check,
+        "run_release_gate_smoke",
+        lambda: {
+            "ok": False,
+            "issues": [
+                {
+                    "severity": "error",
+                    "code": "linear_roundtrip_prediction_mismatch",
+                    "path": "$.checks.linear_fit_predict_json_roundtrip",
+                    "message": "roundtrip mismatch",
+                }
+            ],
+        },
+    )
+    monkeypatch.setattr(
+        release_check,
+        "_run",
+        lambda cmd: (_ for _ in ()).throw(AssertionError("packaging ran")),
+    )
+
+    assert release_check.main(["--preflight-only"]) == 1
+    err = capsys.readouterr().err
+    assert "Release gate smoke checks failed" in err
+    assert "linear_roundtrip_prediction_mismatch" in err

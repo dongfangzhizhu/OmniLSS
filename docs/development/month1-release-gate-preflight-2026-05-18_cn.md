@@ -23,7 +23,8 @@ PYTHONPATH=omnilss/src python omnilss/tools/release_check.py --preflight-only
 当前 preflight path 会检查：
 
 1. 双语文档 localization 与 cross-link policy；
-2. 通过 `tools/validate_capability_matrix.py` 检查生成的 capability matrix schema/version/route-alias/family coverage。
+2. 通过 `tools/validate_capability_matrix.py` 检查生成的 capability matrix schema/version/route-alias/family coverage；
+3. 通过 `tools/release_gate_smoke.py` 运行确定性的核心 smoke checks，包括 linear fit/predict/serialize/load/predict，以及 schema-safe missing-variable / unseen-factor errors。
 
 如果未提供 `--preflight-only`，完整 release check 仍会在 preflight 之后继续运行 packaging checks。
 
@@ -33,11 +34,15 @@ PYTHONPATH=omnilss/src python omnilss/tools/release_check.py --preflight-only
 |---|---|---|---|
 | Capability matrix validator tests | `PYTHONPATH=omnilss/src pytest -q omnilss/tests/test_generate_capability_matrix_tool.py` | Pass | 是 |
 | Release preflight tests | `PYTHONPATH=omnilss/src pytest -q omnilss/tests/test_release_check.py` | Pass | 是 |
+| Release-gate smoke tests | `PYTHONPATH=omnilss/src pytest -q omnilss/tests/test_release_gate_smoke.py` | Pass | 是 |
+| Release-gate smoke CLI | `PYTHONPATH=omnilss/src python omnilss/tools/release_gate_smoke.py` | Pass；linear prediction roundtrip 最大误差 `0.0` | 是 |
 | Offline release preflight | `PYTHONPATH=omnilss/src python omnilss/tools/release_check.py --preflight-only` | Pass | 是 |
 
-## 第 4 周剩余 Gate 工作
+## 第 4 周收尾与剩余环境相关工作
 
-- 将 fit → predict → serialize → load → predict smoke evidence 加入 preflight 或独立 gate command。
-- 增加 missing variables 与 unseen factor levels 的 schema-safe prediction error smoke check。
+当前环境中的 offline 第 4 周 release gate 已完成：documentation localization、capability matrix validation、artifact validation、linear JSON roundtrip prediction，以及结构化 prediction-error smoke checks 均已覆盖。
+
+标记发布前剩余的环境相关工作：
+
 - 在 `build` 和 `twine` 可用的环境中运行更完整的 package/build checks。
 - 决定第 1 月是否可以在将 JAX float64 environment warning 记录为 non-blocking 的情况下关闭，或是否需要在 release 前调整 warning policy。

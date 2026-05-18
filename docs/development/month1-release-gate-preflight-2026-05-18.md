@@ -23,7 +23,8 @@ PYTHONPATH=omnilss/src python omnilss/tools/release_check.py --preflight-only
 The preflight path currently checks:
 
 1. bilingual documentation localization and cross-link policy;
-2. generated capability matrix schema/version/route-alias/family coverage through `tools/validate_capability_matrix.py`.
+2. generated capability matrix schema/version/route-alias/family coverage through `tools/validate_capability_matrix.py`;
+3. deterministic core smoke checks through `tools/release_gate_smoke.py`, including linear fit/predict/serialize/load/predict and schema-safe missing-variable / unseen-factor errors.
 
 The full release check still runs packaging checks after preflight unless `--preflight-only` is supplied.
 
@@ -33,11 +34,15 @@ The full release check still runs packaging checks after preflight unless `--pre
 |---|---|---|---|
 | Capability matrix validator tests | `PYTHONPATH=omnilss/src pytest -q omnilss/tests/test_generate_capability_matrix_tool.py` | Pass | Yes |
 | Release preflight tests | `PYTHONPATH=omnilss/src pytest -q omnilss/tests/test_release_check.py` | Pass | Yes |
+| Release-gate smoke tests | `PYTHONPATH=omnilss/src pytest -q omnilss/tests/test_release_gate_smoke.py` | Pass | Yes |
+| Release-gate smoke CLI | `PYTHONPATH=omnilss/src python omnilss/tools/release_gate_smoke.py` | Pass; max linear prediction roundtrip error `0.0` | Yes |
 | Offline release preflight | `PYTHONPATH=omnilss/src python omnilss/tools/release_check.py --preflight-only` | Pass | Yes |
 
-## Week 4 Remaining Gate Work
+## Week 4 Closure and Remaining Environment-Specific Work
 
-- Add fit → predict → serialize → load → predict smoke evidence to the preflight or a dedicated gate command.
-- Add schema-safe prediction error smoke checks for missing variables and unseen factor levels.
+The offline Week 4 release gate is complete for the current environment: documentation localization, capability matrix validation, artifact validation, linear JSON roundtrip prediction, and structured prediction-error smoke checks are covered.
+
+Remaining environment-specific work before a tagged release:
+
 - Run broader package/build checks where `build` and `twine` are available.
 - Decide whether Month 1 can close with known JAX float64 environment warnings documented as non-blocking, or whether the warning policy needs to change before release.
