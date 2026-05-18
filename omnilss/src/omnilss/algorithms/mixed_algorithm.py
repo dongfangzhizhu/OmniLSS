@@ -10,11 +10,37 @@ References:
 """
 
 from typing import Dict, Optional, Literal
+import time
 import numpy as np
 
 from .rs_algorithm import rs_fit
-from .cg_algorithm import joint_lbfgs_fit as cg_fit
+from .lbfgs_algorithm import joint_lbfgs_fit as cg_fit
 from ..model import GAMLSSModel
+
+
+def _contains_smooth_terms(*formulas: str | None) -> bool:
+    """Return True when any formula contains a known smooth-term marker."""
+    markers = ("pb(", "ps(", "cs(")
+    return any(
+        formula is not None and any(marker in formula for marker in markers)
+        for formula in formulas
+    )
+
+
+def _auto_select_algorithm(family_name: str, n: int, has_smooth: bool) -> str:
+    """Auto-select the fitting algorithm for mixed fitting.
+
+    Rules:
+    - smooth terms require RS because L-BFGS/CG do not support smooth terms;
+    - numerically unstable high-parameter families stay on RS;
+    - small datasets prefer RS;
+    - larger non-smooth datasets may use the L-BFGS compatibility backend.
+    """
+    unstable_families = {"BCPE", "BCT"}
+    family_key = family_name.upper()
+    if has_smooth or family_key in unstable_families or n < 500:
+        return "rs"
+    return "cg"
 
 
 def mixed_fit(
@@ -73,12 +99,16 @@ def mixed_fit(
         print("Mixed Algorithm")
         print("=" * 70)
     
+    response_name = formula.split("~", 1)[0].strip()
+    n = len(np.asarray(data[response_name])) if response_name in data else 0
+    has_smooth = _contains_smooth_terms(formula, sigma_formula, nu_formula, tau_formula)
+
     # Algorithm selection
     if algorithm == "auto":
-        # Currently, RS algorithm is the best choice for most cases
-        selected_algorithm = "rs"
+        selected_algorithm = _auto_select_algorithm(str(family), n, has_smooth)
         if verbose:
-            print(f"Auto-selection: Using RS algorithm (recommended)")
+            reason = "smooth terms" if has_smooth else f"n={n}, family={family}"
+            print(f"Auto-selection: Using {selected_algorithm.upper()} algorithm ({reason})")
     else:
         selected_algorithm = algorithm
         if verbose:
@@ -142,7 +172,7 @@ def compare_algorithms(
     family: str = "NO",
     data: Optional[Dict[str, np.ndarray]] = None,
     verbose: bool = True
-) -> Dict[str, GAMLSSModel]:
+) -> Dict[str, object]:
     """Compare RS and CG algorithms on the same data.
     
     Args:
@@ -155,7 +185,7 @@ def compare_algorithms(
         verbose: Whether to print comparison results
         
     Returns:
-        Dictionary with fitted models: {"rs": model_rs, "cg": model_cg}
+        Dictionary with fitted models plus metrics: {"rs": model_rs, "cg": model_cg, "metrics": {...}}
         
     Example:
         >>> data = {"y": y, "x": x}
@@ -182,6 +212,7 @@ def compare_algorithms(
     if tau_formula is not None:
         parameter_formulas_rs["tau"] = tau_formula
     
+    rs_start = time.perf_counter()
     model_rs = rs_fit(
         formula=formula,
         sigma_formula=sigma_formula,
@@ -190,10 +221,12 @@ def compare_algorithms(
         data=data,
         verbose=False
     )
-    
-    # Fit with CG
+    rs_runtime = time.perf_counter() - rs_start
+
+    # Fit with CG/L-BFGS compatibility backend
     if verbose:
-        print("Fitting with CG algorithm...")
+        print("Fitting with CG/L-BFGS algorithm...")
+    cg_start = time.perf_counter()
     model_cg = cg_fit(
         formula=formula,
         sigma_formula=sigma_formula,
@@ -203,6 +236,22 @@ def compare_algorithms(
         data=data,
         verbose=False
     )
+    cg_runtime = time.perf_counter() - cg_start
+
+    metrics = {
+        "rs": {
+            "deviance": float(model_rs.g_dev),
+            "iterations": model_rs.additional_slots.get("rs_iterations"),
+            "runtime_seconds": rs_runtime,
+            "converged": bool(model_rs.additional_slots.get("rs_converged", False)),
+        },
+        "cg": {
+            "deviance": float(model_cg.g_dev),
+            "iterations": model_cg.additional_slots.get("cg_iterations"),
+            "runtime_seconds": cg_runtime,
+            "converged": bool(model_cg.additional_slots.get("cg_converged", False)),
+        },
+    }
     
     # Print comparison
     if verbose:
@@ -226,4 +275,4 @@ def compare_algorithms(
         print(f"Deviance difference (RS - CG): {model_rs.g_dev - model_cg.g_dev:+.4f}")
         print("=" * 70)
     
-    return {"rs": model_rs, "cg": model_cg}
+    return {"rs": model_rs, "cg": model_cg, "metrics": metrics}
