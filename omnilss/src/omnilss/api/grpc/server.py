@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from ... import gamlss
+from ...prediction import PredictionSchemaError
 from ...serialization import load_model_json, save_model_json
 
 MODEL_STORE = Path("/tmp/omnilss-grpc-models")
@@ -89,6 +90,14 @@ def _from_json(text: str) -> dict[str, Any]:
     return parsed
 
 
+def _error_text(exc: Exception) -> str:
+    """Return a machine-readable error string for gRPC response fields."""
+
+    if isinstance(exc, PredictionSchemaError):
+        return _to_json({"type": "prediction_schema_error", **exc.to_dict()})
+    return str(exc)
+
+
 def _grpc_runtime_gaps() -> list[str]:
     """Return missing runtime pieces required by generated gRPC stubs."""
     gaps: list[str] = []
@@ -152,7 +161,31 @@ def create_service():
                 )
             except Exception as exc:
                 return capability_pb2.CapabilityMatrixResponse(
-                    matrix_json="{}", success=False, error=str(exc)
+                    matrix_json="{}", success=False, error=_error_text(exc)
+                )
+
+        def RouteCapability(self, request, context):  # noqa: N802, ARG002
+            try:
+                from ...family_capabilities import method_route_capability_report
+
+                family = str(request.family).strip()
+                method = str(request.method).strip()
+                if not family or not method:
+                    raise ValueError(
+                        "route capability checks require non-empty family and method"
+                    )
+                return capability_pb2.RouteCapabilityResponse(
+                    report_json=_to_json(
+                        method_route_capability_report(
+                            family, method, strict=bool(request.strict)
+                        )
+                    ),
+                    success=True,
+                    error="",
+                )
+            except Exception as exc:
+                return capability_pb2.RouteCapabilityResponse(
+                    report_json="{}", success=False, error=_error_text(exc)
                 )
 
         def Fit(self, request, context):  # noqa: N802
@@ -192,7 +225,9 @@ def create_service():
                     converged=bool(converged),
                 )
             except Exception as exc:
-                return fit_pb2.FitResponse(model_id="", success=False, error=str(exc))
+                return fit_pb2.FitResponse(
+                    model_id="", success=False, error=_error_text(exc)
+                )
 
         def Predict(self, request, context):  # noqa: N802
             try:
@@ -205,7 +240,7 @@ def create_service():
                 )
             except Exception as exc:
                 return predict_pb2.PredictResponse(
-                    params_json="{}", success=False, error=str(exc)
+                    params_json="{}", success=False, error=_error_text(exc)
                 )
 
         def Sample(self, request, context):  # noqa: N802
@@ -249,7 +284,7 @@ def create_service():
                 )
             except Exception as exc:
                 return sample_pb2.SampleResponse(
-                    samples_json="{}", success=False, error=str(exc)
+                    samples_json="{}", success=False, error=_error_text(exc)
                 )
 
     return (

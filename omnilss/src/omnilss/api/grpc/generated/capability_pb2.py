@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10\x63\x61pability.proto\x12\x07omnilss\"\x19\n\x17\x43\x61pabilityMatrixRequest\"O\n\x18\x43\x61pabilityMatrixResponse\x12\x13\n\x0bmatrix_json\x18\x01 \x01(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\t2l\n\x11\x43\x61pabilityService\x12W\n\x10\x43\x61pabilityMatrix\x12 .omnilss.CapabilityMatrixRequest\x1a!.omnilss.CapabilityMatrixResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10\x63\x61pability.proto\x12\x07omnilss\"\x19\n\x17\x43\x61pabilityMatrixRequest\"O\n\x18\x43\x61pabilityMatrixResponse\x12\x13\n\x0bmatrix_json\x18\x01 \x01(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\t\"H\n\x16RouteCapabilityRequest\x12\x0e\n\x06\x66\x61mily\x18\x01 \x01(\t\x12\x0e\n\x06method\x18\x02 \x01(\t\x12\x0e\n\x06strict\x18\x03 \x01(\x08\"N\n\x17RouteCapabilityResponse\x12\x13\n\x0breport_json\x18\x01 \x01(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\t2\xc2\x01\n\x11\x43\x61pabilityService\x12W\n\x10\x43\x61pabilityMatrix\x12 .omnilss.CapabilityMatrixRequest\x1a!.omnilss.CapabilityMatrixResponse\x12T\n\x0fRouteCapability\x12\x1f.omnilss.RouteCapabilityRequest\x1a .omnilss.RouteCapabilityResponseb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'capability_pb2', globals())
@@ -24,6 +24,10 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _CAPABILITYMATRIXREQUEST._serialized_end=54
   _CAPABILITYMATRIXRESPONSE._serialized_start=56
   _CAPABILITYMATRIXRESPONSE._serialized_end=135
-  _CAPABILITYSERVICE._serialized_start=137
-  _CAPABILITYSERVICE._serialized_end=245
+  _ROUTECAPABILITYREQUEST._serialized_start=137
+  _ROUTECAPABILITYREQUEST._serialized_end=209
+  _ROUTECAPABILITYRESPONSE._serialized_start=211
+  _ROUTECAPABILITYRESPONSE._serialized_end=289
+  _CAPABILITYSERVICE._serialized_start=292
+  _CAPABILITYSERVICE._serialized_end=486
 # @@protoc_insertion_point(module_scope)

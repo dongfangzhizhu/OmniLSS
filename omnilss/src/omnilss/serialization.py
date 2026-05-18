@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 import zipfile
 from pathlib import Path
@@ -10,6 +11,11 @@ from typing import Any
 import numpy as np
 
 OMNILSS_MODEL_VERSION = "0.3.0"
+ARTIFACT_VALIDATION_REPORT_VERSION = 1
+SUPPORTED_DESIGN_SCHEMA_VERSIONS = (2,)
+SUPPORTED_ARTIFACT_SCHEMA_VERSIONS = (2,)
+CURRENT_DESIGN_SCHEMA_VERSION = max(SUPPORTED_DESIGN_SCHEMA_VERSIONS)
+CURRENT_ARTIFACT_SCHEMA_VERSION = max(SUPPORTED_ARTIFACT_SCHEMA_VERSIONS)
 
 
 def _json_safe(value: Any) -> Any:
@@ -138,9 +144,116 @@ def _family_capability_snapshot(model: Any) -> dict[str, Any]:
     return get_family_capability(str(family_name)).as_dict()
 
 
+def _artifact_issue(
+    code: str, path: str, message: str, *, severity: str = "error"
+) -> dict[str, str]:
+    """Return a stable machine-readable artifact validation issue."""
 
-def _artifact_issue(code: str, path: str, message: str) -> dict[str, str]:
-    return {"code": code, "path": path, "message": message}
+    return {
+        "type": "artifact_validation_issue",
+        "severity": severity,
+        "code": code,
+        "path": path,
+        "message": message,
+    }
+
+
+def _artifact_report(
+    artifact: Path, errors: list[dict[str, str]], warnings: list[dict[str, str]]
+) -> dict[str, Any]:
+    """Return the versioned artifact validation report envelope."""
+
+    return {
+        "type": "artifact_validation_report",
+        "version": ARTIFACT_VALIDATION_REPORT_VERSION,
+        "artifact": str(artifact),
+        "ok": not errors,
+        "error_count": len(errors),
+        "warning_count": len(warnings),
+        "schema_policy": artifact_schema_policy(),
+        "errors": errors,
+        "warnings": warnings,
+    }
+
+
+
+def artifact_schema_policy() -> dict[str, Any]:
+    """Return the JSON artifact schema compatibility and migration policy."""
+
+    return {
+        "type": "artifact_schema_policy",
+        "omnilss_model_version": OMNILSS_MODEL_VERSION,
+        "validation_report_version": ARTIFACT_VALIDATION_REPORT_VERSION,
+        "current_design_schema_version": CURRENT_DESIGN_SCHEMA_VERSION,
+        "current_artifact_schema_version": CURRENT_ARTIFACT_SCHEMA_VERSION,
+        "supported_design_schema_versions": list(SUPPORTED_DESIGN_SCHEMA_VERSIONS),
+        "supported_artifact_schema_versions": list(SUPPORTED_ARTIFACT_SCHEMA_VERSIONS),
+        "migration_policy": {
+            "older_schema": (
+                "Artifacts with schema versions older than the supported set must "
+                "be re-saved from a compatible OmniLSS runtime before production use."
+            ),
+            "newer_schema": (
+                "Artifacts with schema versions newer than this runtime are rejected "
+                "until the runtime is upgraded."
+            ),
+            "training_data": (
+                "Training arrays remain omitted by default; validators warn when "
+                "they are intentionally embedded."
+            ),
+        },
+    }
+
+
+def _schema_version_issue(
+    *, schema_name: str, version: Any, path: str, expected: int
+) -> dict[str, str] | None:
+    try:
+        parsed = int(version)
+    except (TypeError, ValueError):
+        return _artifact_issue(
+            f"invalid_{schema_name}_schema_version",
+            path,
+            f"{schema_name.replace('_', ' ').title()} schema version must be an integer",
+        )
+    if parsed == expected:
+        return None
+    if parsed < expected:
+        return _artifact_issue(
+            f"{schema_name}_schema_migration_required",
+            path,
+            f"{schema_name.replace('_', ' ').title()} schema version {parsed} is older than supported version {expected}; re-save the artifact with a compatible OmniLSS runtime",
+        )
+    return _artifact_issue(
+        f"unsupported_future_{schema_name}_schema_version",
+        path,
+        f"{schema_name.replace('_', ' ').title()} schema version {parsed} is newer than this runtime supports ({expected}); upgrade OmniLSS before loading",
+    )
+
+
+def _factor_variable(term: str) -> str | None:
+    if term.startswith("factor(") and term.endswith(")"):
+        variable = term[len("factor(") : -1].strip()
+        return variable or None
+    return None
+
+
+def _smooth_function(term: str) -> str | None:
+    if "(" not in term or not term.endswith(")"):
+        return None
+    function = term.split("(", 1)[0].strip()
+    return function if function in {"pb", "ps", "cs", "s", "lo", "te", "ti"} else None
+
+
+def _expected_numeric_transform_ast(term: str) -> str | None:
+    if _factor_variable(term) is not None or _smooth_function(term) is not None:
+        return None
+    if not any(ch in term for ch in "()+-*/"):
+        return None
+    try:
+        return ast.dump(ast.parse(term, mode="eval"), include_attributes=False)
+    except SyntaxError:
+        return ""
 
 
 def validate_model_json(path: str | Path) -> dict[str, Any]:
@@ -155,15 +268,15 @@ def validate_model_json(path: str | Path) -> dict[str, Any]:
     warnings: list[dict[str, str]] = []
     p = Path(path)
     if not p.exists():
-        return {
-            "ok": False,
-            "errors": [
+        return _artifact_report(
+            p,
+            [
                 _artifact_issue(
                     "artifact_missing", str(p), f"Artifact does not exist: {p}"
                 )
             ],
-            "warnings": [],
-        }
+            [],
+        )
 
     try:
         with zipfile.ZipFile(p, "r") as zf:
@@ -204,13 +317,11 @@ def validate_model_json(path: str | Path) -> dict[str, Any]:
                         )
                     )
     except zipfile.BadZipFile as exc:
-        return {
-            "ok": False,
-            "errors": [
-                _artifact_issue("invalid_zip", str(p), f"Invalid zip artifact: {exc}")
-            ],
-            "warnings": [],
-        }
+        return _artifact_report(
+            p,
+            [_artifact_issue("invalid_zip", str(p), f"Invalid zip artifact: {exc}")],
+            [],
+        )
 
     if not errors or meta:
         version = str(meta.get("omnilss_version", ""))
@@ -244,22 +355,22 @@ def validate_model_json(path: str | Path) -> dict[str, Any]:
             )
             schema_parameters: dict[str, Any] = {}
         else:
-            if schema.get("version") != 2:
-                errors.append(
-                    _artifact_issue(
-                        "unsupported_schema_version",
-                        "meta.design_matrix_schema.version",
-                        "Design matrix schema version must be 2",
-                    )
-                )
-            if schema.get("artifact_version") != 2:
-                errors.append(
-                    _artifact_issue(
-                        "unsupported_artifact_schema_version",
-                        "meta.design_matrix_schema.artifact_version",
-                        "Artifact schema version must be 2",
-                    )
-                )
+            design_version_issue = _schema_version_issue(
+                schema_name="design_matrix",
+                version=schema.get("version"),
+                path="meta.design_matrix_schema.version",
+                expected=CURRENT_DESIGN_SCHEMA_VERSION,
+            )
+            if design_version_issue is not None:
+                errors.append(design_version_issue)
+            artifact_version_issue = _schema_version_issue(
+                schema_name="artifact",
+                version=schema.get("artifact_version"),
+                path="meta.design_matrix_schema.artifact_version",
+                expected=CURRENT_ARTIFACT_SCHEMA_VERSION,
+            )
+            if artifact_version_issue is not None:
+                errors.append(artifact_version_issue)
             schema_parameters = schema.get("parameters", {}) or {}
             if not isinstance(schema_parameters, dict):
                 errors.append(
@@ -304,7 +415,8 @@ def validate_model_json(path: str | Path) -> dict[str, Any]:
                         f"Missing formula for parameter {parameter!r}",
                     )
                 )
-            if not isinstance(param_schema.get("term_order", []), list):
+            term_order = param_schema.get("term_order", [])
+            if not isinstance(term_order, list):
                 errors.append(
                     _artifact_issue(
                         "invalid_term_order",
@@ -312,6 +424,71 @@ def validate_model_json(path: str | Path) -> dict[str, Any]:
                         "term_order must be a list",
                     )
                 )
+                term_order = []
+
+            factor_levels = param_schema.get("factor_levels", {}) or {}
+            if not isinstance(factor_levels, dict):
+                errors.append(
+                    _artifact_issue(
+                        "invalid_factor_levels",
+                        f"{param_path}.factor_levels",
+                        "factor_levels must be an object keyed by variable name",
+                    )
+                )
+                factor_levels = {}
+            numeric_transform_ast = param_schema.get("numeric_transform_ast", {}) or {}
+            if not isinstance(numeric_transform_ast, dict):
+                errors.append(
+                    _artifact_issue(
+                        "invalid_numeric_transform_ast",
+                        f"{param_path}.numeric_transform_ast",
+                        "numeric_transform_ast must be an object keyed by term",
+                    )
+                )
+                numeric_transform_ast = {}
+
+            for term_index, term in enumerate(term_order):
+                term_text = str(term)
+                factor_variable = _factor_variable(term_text)
+                if factor_variable is not None:
+                    levels = factor_levels.get(factor_variable)
+                    if not isinstance(levels, list) or not levels:
+                        errors.append(
+                            _artifact_issue(
+                                "missing_factor_levels",
+                                f"{param_path}.factor_levels.{factor_variable}",
+                                f"Factor term {term_text!r} requires non-empty factor levels",
+                            )
+                        )
+                    continue
+
+                expected_ast = _expected_numeric_transform_ast(term_text)
+                if expected_ast == "":
+                    errors.append(
+                        _artifact_issue(
+                            "invalid_numeric_transform_term",
+                            f"{param_path}.term_order.{term_index}",
+                            f"Numeric transform term {term_text!r} is not parseable",
+                        )
+                    )
+                elif expected_ast is not None:
+                    stored_ast = numeric_transform_ast.get(term_text)
+                    if not isinstance(stored_ast, str) or not stored_ast:
+                        errors.append(
+                            _artifact_issue(
+                                "missing_numeric_transform_ast",
+                                f"{param_path}.numeric_transform_ast.{term_text}",
+                                f"Numeric transform term {term_text!r} requires AST metadata",
+                            )
+                        )
+                    elif stored_ast != expected_ast:
+                        errors.append(
+                            _artifact_issue(
+                                "numeric_transform_ast_mismatch",
+                                f"{param_path}.numeric_transform_ast.{term_text}",
+                                f"Numeric transform AST for term {term_text!r} does not match the parsed term",
+                            )
+                        )
 
             expected_columns = param_schema.get("n_columns")
             if coef_key in arrays and expected_columns is not None:
@@ -363,10 +540,91 @@ def validate_model_json(path: str | Path) -> dict[str, Any]:
                     "training_data_included",
                     "meta.training_data_included",
                     "Artifact includes training data; use only when intentional",
+                    severity="warning",
                 )
             )
 
-    return {"ok": not errors, "errors": errors, "warnings": warnings}
+    return _artifact_report(p, errors, warnings)
+
+
+def _capability_snapshot_from_artifact(path: str | Path) -> dict[str, Any]:
+    """Read the saved family capability snapshot from an artifact metadata file."""
+
+    with zipfile.ZipFile(Path(path), "r") as zf:
+        meta = json.loads(zf.read("meta.json").decode("utf-8"))
+    return dict(meta.get("family_capability", {}) or {})
+
+
+def compare_model_capability_snapshot(model_or_path: Any) -> dict[str, Any]:
+    """Compare a saved model capability snapshot with the current registry.
+
+    Parameters
+    ----------
+    model_or_path:
+        Either a loaded ``GAMLSSModel``-like object or a JSON artifact path.
+
+    Returns
+    -------
+    dict
+        A JSON-friendly compatibility report with ``ok=True`` when the saved
+        snapshot matches the current runtime capability registry.
+    """
+
+    from .family_capabilities import FEATURES, get_family_capability
+
+    if isinstance(model_or_path, (str, Path)):
+        artifact_capability = _capability_snapshot_from_artifact(model_or_path)
+    else:
+        slots = dict(getattr(model_or_path, "additional_slots", {}) or {})
+        artifact_capability = dict(slots.get("family_capability", {}) or {})
+
+    family_name = artifact_capability.get("name")
+    if not family_name and not isinstance(model_or_path, (str, Path)):
+        family_obj = getattr(model_or_path, "family", None)
+        family_name = (
+            getattr(family_obj, "name", str(family_obj))
+            if family_obj is not None
+            else None
+        )
+
+    if not family_name:
+        return {
+            "ok": False,
+            "family": None,
+            "artifact_capability": artifact_capability,
+            "runtime_capability": None,
+            "changes": [
+                {
+                    "code": "missing_artifact_capability",
+                    "message": "Artifact does not contain a family capability snapshot",
+                }
+            ],
+        }
+
+    runtime_capability = get_family_capability(str(family_name)).as_dict()
+    artifact_features = dict(artifact_capability.get("features", {}) or {})
+    runtime_features = dict(runtime_capability.get("features", {}) or {})
+    changes: list[dict[str, Any]] = []
+    for feature in FEATURES:
+        saved_status = artifact_features.get(feature)
+        runtime_status = runtime_features.get(feature)
+        if saved_status != runtime_status:
+            changes.append(
+                {
+                    "code": "capability_status_changed",
+                    "feature": feature,
+                    "artifact_status": saved_status,
+                    "runtime_status": runtime_status,
+                }
+            )
+
+    return {
+        "ok": not changes,
+        "family": str(family_name),
+        "artifact_capability": artifact_capability,
+        "runtime_capability": runtime_capability,
+        "changes": changes,
+    }
 
 def save_model_pickle(model: Any, path: str | Path) -> None:
     try:
@@ -429,6 +687,7 @@ def save_model_json(
             "family": getattr(model.family, "name", str(model.family)),
             "parameters": list(model.parameters),
             "formulas": {k: str(v) for k, v in dict(model.formulas).items()},
+            "terms": _json_safe(dict(getattr(model, "terms", {}) or {})),
             "n": int(model.n),
             "df_fit": float(model.df_fit),
             "g_dev": float(model.g_dev),
@@ -451,6 +710,24 @@ def load_model_json(path: str | Path):
     with zipfile.ZipFile(Path(path), "r") as zf:
         meta = json.loads(zf.read("meta.json").decode("utf-8"))
         design_matrix_schema = meta.get("design_matrix_schema", {})
+        if not isinstance(design_matrix_schema, dict):
+            raise ValueError("Artifact is missing a valid design_matrix_schema object")
+        for issue in (
+            _schema_version_issue(
+                schema_name="design_matrix",
+                version=design_matrix_schema.get("version"),
+                path="meta.design_matrix_schema.version",
+                expected=CURRENT_DESIGN_SCHEMA_VERSION,
+            ),
+            _schema_version_issue(
+                schema_name="artifact",
+                version=design_matrix_schema.get("artifact_version"),
+                path="meta.design_matrix_schema.artifact_version",
+                expected=CURRENT_ARTIFACT_SCHEMA_VERSION,
+            ),
+        ):
+            if issue is not None:
+                raise ValueError(issue["message"])
         family_capability = meta.get("family_capability", {})
         smooth_infos = meta.get("smooth_infos", {})
         version = meta.get("omnilss_version", "")
@@ -484,7 +761,7 @@ def load_model_json(path: str | Path):
         coefficients=coeffs,
         linear_predictors=etas,
         formulas=meta.get("formulas", {}),
-        terms={},
+        terms=meta.get("terms", {}),
         design_matrices={},
         weights=np.ones(n),
         residuals=np.zeros(n),
