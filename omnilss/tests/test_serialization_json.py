@@ -256,3 +256,17 @@ def test_validate_model_json_warns_when_training_data_included(tmp_path):
     result = validate_model_json(path)
     assert result["ok"] is True
     assert any(warning["code"] == "training_data_included" for warning in result["warnings"])
+
+
+def test_json_artifact_preserves_terms_for_validation_wrappers(tmp_path):
+    rng = np.random.default_rng(39)
+    x = np.linspace(0.0, 1.0, 40)
+    y = 1.0 + x + rng.normal(scale=0.05, size=len(x))
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x}, max_iter=2)
+
+    path = tmp_path / "terms.omnilss"
+    save_model_json(model, path)
+    loaded = load_model_json(path)
+
+    assert loaded.terms["mu"]["response"] == "y"
+    assert loaded.terms["mu"]["term_labels"] == ["x"]

@@ -686,6 +686,8 @@ __all__ = [
     "stepwise_distribution_selection",
     "quick_distribution_search",
     # ── Prediction API ──
+    "PredictionSchemaError",
+    "build_prediction_design_matrix",
     "predict_params",
     "predict_quantiles",
     "centiles",
@@ -758,6 +760,8 @@ except ImportError as _e:
 # Prediction API
 try:
     from .prediction import (
+        PredictionSchemaError,
+        build_prediction_design_matrix,
         centiles,
         predict_params,
         predict_quantiles,
@@ -771,6 +775,8 @@ except ImportError as _e:
         ImportWarning,
         stacklevel=2,
     )
+    PredictionSchemaError = None
+    build_prediction_design_matrix = None
     centiles = None
     predict_params = None
     predict_quantiles = None
