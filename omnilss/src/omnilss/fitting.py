@@ -303,12 +303,10 @@ def _require_method_family_capability(
     if feature is None:
         return
 
-    from .family_capabilities import FamilyCapabilityError, require_family_capability
-
     try:
-        require_family_capability(
+        require_method_route(
             family_name,
-            feature,
+            method_name,
             allow_experimental=allow_experimental,
         )
     except FamilyCapabilityError as exc:

@@ -294,6 +294,7 @@ def require_family_capability(
 __all__ = [
     "CapabilityStatus",
     "FEATURES",
+    "METHOD_ROUTE_FEATURES",
     "capability_matrix",
     "FamilyCapability",
     "FamilyCapabilityError",
@@ -304,4 +305,5 @@ __all__ = [
     "method_capability_features",
     "METHOD_CAPABILITY_FEATURES",
     "require_family_capability",
+    "require_method_route",
 ]
