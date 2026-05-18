@@ -462,3 +462,30 @@ def test_gamlss_algorithm_alias_exercises_cg_backend():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+def test_fit_cg_handles_near_singular_design_with_regularization():
+    """CG should return finite results even when design columns are collinear."""
+    rng = np.random.default_rng(20260518)
+    n = 60
+    x = rng.normal(size=n)
+    # Perfectly collinear second slope column
+    X_mu = jnp.column_stack([jnp.ones(n), jnp.array(x), jnp.array(2.0 * x)])
+    X_sigma = jnp.ones((n, 1))
+    y = jnp.array(1.5 + 0.8 * x + rng.normal(scale=0.3, size=n))
+
+    result = fit_cg(
+        NO(),
+        y,
+        X_mu,
+        X_sigma,
+        max_iter=30,
+        tol=1e-5,
+        regularization=1e-5,
+        return_fisher=True,
+    )
+
+    assert np.isfinite(result.final_deviance)
+    assert result.n_iter >= 1
+    assert result.fisher_matrix is not None
+    assert np.all(np.isfinite(np.asarray(result.fisher_matrix)))

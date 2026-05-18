@@ -275,3 +275,88 @@ def test_grpc_route_capability_requires_family_and_method() -> None:
     assert response.success is False
     assert response.report_json == "{}"
     assert "non-empty family and method" in response.error
+
+
+def test_model_registry_list_and_delete(tmp_path, monkeypatch) -> None:
+    """Registry should expose list/delete helpers for service management."""
+    from omnilss.api.grpc import server as grpc_server
+
+    monkeypatch.setattr(grpc_server, "MODEL_STORE", tmp_path / "models")
+    grpc_server.MODEL_STORE.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(
+        grpc_server, "MODEL_DB", tmp_path / "models" / "registry.sqlite3"
+    )
+
+    monkeypatch.setattr(grpc_server, "save_model_json", lambda model, path: path.write_text("{}"))
+    registry = grpc_server._ModelRegistry()
+
+    class Dummy:
+        g_dev = 1.0
+
+    model_id = registry.save(Dummy())
+    assert model_id in registry.list_ids()
+    assert registry.delete(model_id) is True
+    assert model_id not in registry.list_ids()
+    assert registry.delete(model_id) is False
+
+
+def test_model_registry_recovers_index_from_sqlite(tmp_path, monkeypatch) -> None:
+    """Registry should restore saved model ids after process restart."""
+    from omnilss.api.grpc import server as grpc_server
+
+    monkeypatch.setattr(grpc_server, "MODEL_STORE", tmp_path / "models")
+    grpc_server.MODEL_STORE.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(
+        grpc_server, "MODEL_DB", tmp_path / "models" / "registry.sqlite3"
+    )
+
+    class Dummy:
+        g_dev = 1.0
+
+    monkeypatch.setattr(grpc_server, "save_model_json", lambda model, path: path.write_text("{}"))
+    first = grpc_server._ModelRegistry()
+    model_id = first.save(Dummy())
+
+    second = grpc_server._ModelRegistry()
+    assert model_id in second.list_ids()
+
+
+def test_grpc_list_models_and_delete_model_service_direct(monkeypatch) -> None:
+    """Fit service management RPCs should expose list/delete semantics."""
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import fit_pb2
+
+    class DummyRegistry:
+        def __init__(self):
+            self.ids = ["m1", "m2"]
+
+        def list_ids(self):
+            return list(self.ids)
+
+        def delete(self, model_id: str):
+            if model_id in self.ids:
+                self.ids.remove(model_id)
+                return True
+            return False
+
+    try:
+        service, *_ = grpc_server.create_service()
+    except RuntimeError as exc:
+        pytest.skip(f"gRPC stubs/runtime unavailable in environment: {exc}")
+
+    dummy = DummyRegistry()
+    monkeypatch.setattr(grpc_server, "REGISTRY", dummy)
+
+    listed = service.ListModels(fit_pb2.ListModelsRequest(), None)
+    assert listed.success is True
+    assert sorted(listed.model_ids) == ["m1", "m2"]
+
+    deleted = service.DeleteModel(fit_pb2.DeleteModelRequest(model_id="m1"), None)
+    assert deleted.success is True
+    assert deleted.deleted is True
+
+    missing = service.DeleteModel(
+        fit_pb2.DeleteModelRequest(model_id="missing"), None
+    )
+    assert missing.success is True
+    assert missing.deleted is False

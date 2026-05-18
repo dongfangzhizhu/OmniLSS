@@ -30,7 +30,14 @@ SERVICE_SPECS = {
             ("RouteCapability", "RouteCapabilityRequest", "RouteCapabilityResponse"),
         ),
     ),
-    "fit": ("FitService", (("Fit", "FitRequest", "FitResponse"),)),
+    "fit": (
+        "FitService",
+        (
+            ("Fit", "FitRequest", "FitResponse"),
+            ("ListModels", "ListModelsRequest", "ListModelsResponse"),
+            ("DeleteModel", "DeleteModelRequest", "DeleteModelResponse"),
+        ),
+    ),
     "predict": ("PredictService", (("Predict", "PredictRequest", "PredictResponse"),)),
     "sample": ("SampleService", (("Sample", "SampleRequest", "SampleResponse"),)),
 }
