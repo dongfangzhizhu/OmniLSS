@@ -14,11 +14,13 @@ This note advances Month 1 / Workstream D3 and prepares Month 3 / Workstream D7 
 - Added `GET /health` and `GET /healthz` for orchestration smoke checks.
 - Added `GET /capabilities` and `GET /capability-matrix`, returning the same runtime `capability_matrix()` payload used by the package API, generated JSON artifact, and gRPC service.
 - Added `X-Request-ID` propagation/generation on HTTP responses for traceability.
+- Added an optional `event_sink` structured request-event hook for prototype-safe logging and test observability.
 - Added `GET /metrics` with Prometheus-style counters for metadata requests.
-- Added tests that start the HTTP server on an ephemeral local port and verify health, capability matrix, request ID, and metrics responses.
+- Added structured HTTP error envelopes for unknown endpoints, disabled POST routes, and oversized POST payloads while preserving `X-Request-ID`.
+- Added tests that start the HTTP server on an ephemeral local port and verify health, capability matrix, request ID, metrics, payload-limit, structured event hooks, and structured error-envelope responses.
 
 ## Remaining Work
 
-- Add authentication, structured logs, payload limits, and rate limits before exposing fit/predict HTTP endpoints.
+- Add authentication, production-grade structured log sinks, and rate limits before exposing fit/predict HTTP endpoints; keep the POST payload-limit gate and prototype `event_sink`, and until then size-safe POST routes remain `405 method_not_allowed`.
 - Document the public HTTP response schema in `docs/api/` once the service boundary is no longer prototype-only.
 - Keep the HTTP and gRPC capability responses synchronized through tests whenever the registry schema changes.
