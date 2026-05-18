@@ -28,7 +28,6 @@ class FamilyCapabilityError(ValueError):
 
 
 CAPABILITY_MATRIX_VERSION = 3
-CAPABILITY_MATRIX_SCHEMA_NAME = "omnilss.family_capability_matrix"
 
 FEATURES: tuple[str, ...] = (
     "rs_fit",
@@ -55,6 +54,30 @@ METHOD_CAPABILITY_FEATURES: tuple[tuple[str, str], ...] = (
 # tests and documents.  Keep this bound to the same tuple so generated
 # matrices, top-level APIs, and service route admission cannot drift.
 METHOD_ROUTE_FEATURES = METHOD_CAPABILITY_FEATURES
+
+_CAPABILITY_MATRIX_STRICT_POLICY: dict[str, bool] = {
+    "default_allow_experimental": True,
+    "strict_capabilities_allow_experimental": False,
+    "unsupported_routes_fail_fast": True,
+}
+
+
+def _capability_matrix_issue(
+    code: str,
+    message: str,
+    *,
+    path: str,
+    severity: str = "error",
+) -> dict[str, str]:
+    """Return a JSON-friendly capability matrix validation issue."""
+
+    return {
+        "severity": severity,
+        "code": code,
+        "path": path,
+        "message": message,
+    }
+
 
 # Families with explicit R-consistency test modules or batch consistency suites in
 # the repository.  These are marked as evidence-backed for the *R consistency*
@@ -234,23 +257,218 @@ def capability_matrix() -> dict[str, object]:
     capabilities = [capability.as_dict() for capability in list_family_capabilities()]
     return {
         "version": CAPABILITY_MATRIX_VERSION,
-        "schema": {
-            "name": CAPABILITY_MATRIX_SCHEMA_NAME,
-            "version": CAPABILITY_MATRIX_VERSION,
-            "canonical_method_route_field": "method_capability_features",
-            "compatibility_method_route_fields": ["method_routes"],
-        },
         "features": list(FEATURES),
         "method_capability_features": method_capability_features(),
         # ``method_routes`` is retained as a compatibility alias for clients and
         # documents created during the first capability-gate iteration.
         "method_routes": method_capability_features(),
-        "strict_capability_policy": {
-            "default_allow_experimental": True,
-            "strict_capabilities_allow_experimental": False,
-            "unsupported_routes_fail_fast": True,
-        },
+        "strict_capability_policy": dict(_CAPABILITY_MATRIX_STRICT_POLICY),
         "families": {item["name"]: item for item in capabilities},
+    }
+
+
+def validate_capability_matrix_payload(
+    payload: Mapping[str, object],
+) -> dict[str, object]:
+    """Validate a serialized capability matrix against the current runtime schema.
+
+    The validator is intentionally strict for generated release artifacts: it
+    verifies the schema version, feature list, method routing aliases, policy
+    flags, family coverage, and per-family feature status values.  It returns a
+    stable JSON-friendly report instead of raising so CLI tools and service
+    checks can surface every drift issue in one response.
+    """
+
+    issues: list[dict[str, str]] = []
+    if not isinstance(payload, Mapping):
+        return {
+            "ok": False,
+            "version": None,
+            "expected_version": CAPABILITY_MATRIX_VERSION,
+            "issues": [
+                _capability_matrix_issue(
+                    "matrix_not_mapping",
+                    "capability matrix payload must be a JSON object",
+                    path="$",
+                )
+            ],
+        }
+
+    version = payload.get("version")
+    if version != CAPABILITY_MATRIX_VERSION:
+        issues.append(
+            _capability_matrix_issue(
+                "version_mismatch",
+                (
+                    "expected capability matrix version "
+                    f"{CAPABILITY_MATRIX_VERSION}, got {version!r}"
+                ),
+                path="$.version",
+            )
+        )
+
+    features = payload.get("features")
+    if features != list(FEATURES):
+        issues.append(
+            _capability_matrix_issue(
+                "features_mismatch",
+                "capability matrix features do not match the runtime registry",
+                path="$.features",
+            )
+        )
+
+    expected_method_features = method_capability_features()
+    method_features = payload.get("method_capability_features")
+    if method_features != expected_method_features:
+        issues.append(
+            _capability_matrix_issue(
+                "method_capability_features_mismatch",
+                "method_capability_features does not match runtime routing",
+                path="$.method_capability_features",
+            )
+        )
+
+    method_routes = payload.get("method_routes")
+    if method_routes != expected_method_features:
+        issues.append(
+            _capability_matrix_issue(
+                "method_routes_mismatch",
+                "method_routes compatibility alias must mirror method_capability_features",
+                path="$.method_routes",
+            )
+        )
+
+    policy = payload.get("strict_capability_policy")
+    if policy != _CAPABILITY_MATRIX_STRICT_POLICY:
+        issues.append(
+            _capability_matrix_issue(
+                "strict_policy_mismatch",
+                "strict_capability_policy does not match the runtime policy",
+                path="$.strict_capability_policy",
+            )
+        )
+
+    families = payload.get("families")
+    if not isinstance(families, Mapping):
+        issues.append(
+            _capability_matrix_issue(
+                "families_not_mapping",
+                "families must be a mapping keyed by family name",
+                path="$.families",
+            )
+        )
+    else:
+        expected_names = set(family_capability_names())
+        actual_names = set(map(str, families.keys()))
+        missing_names = sorted(expected_names - actual_names)
+        extra_names = sorted(actual_names - expected_names)
+        if missing_names:
+            issues.append(
+                _capability_matrix_issue(
+                    "missing_families",
+                    (
+                        "capability matrix is missing families: "
+                        f"{', '.join(missing_names)}"
+                    ),
+                    path="$.families",
+                )
+            )
+        if extra_names:
+            issues.append(
+                _capability_matrix_issue(
+                    "unknown_families",
+                    (
+                        "capability matrix contains unknown families: "
+                        f"{', '.join(extra_names)}"
+                    ),
+                    path="$.families",
+                )
+            )
+
+        valid_statuses = {status.value for status in CapabilityStatus}
+        for family_name, family_payload in families.items():
+            family_path = f"$.families.{family_name}"
+            if not isinstance(family_payload, Mapping):
+                issues.append(
+                    _capability_matrix_issue(
+                        "family_not_mapping",
+                        f"family {family_name!r} entry must be an object",
+                        path=family_path,
+                    )
+                )
+                continue
+            if family_payload.get("name") != family_name:
+                issues.append(
+                    _capability_matrix_issue(
+                        "family_name_mismatch",
+                        "family entry name must match its map key",
+                        path=f"{family_path}.name",
+                    )
+                )
+            family_features = family_payload.get("features")
+            if not isinstance(family_features, Mapping):
+                issues.append(
+                    _capability_matrix_issue(
+                        "family_features_not_mapping",
+                        "family features must be a mapping",
+                        path=f"{family_path}.features",
+                    )
+                )
+                continue
+            feature_names = set(map(str, family_features.keys()))
+            missing_features = sorted(set(FEATURES) - feature_names)
+            extra_features = sorted(feature_names - set(FEATURES))
+            if missing_features:
+                issues.append(
+                    _capability_matrix_issue(
+                        "family_missing_features",
+                        (
+                            f"family {family_name!r} is missing features: "
+                            f"{', '.join(missing_features)}"
+                        ),
+                        path=f"{family_path}.features",
+                    )
+                )
+            if extra_features:
+                issues.append(
+                    _capability_matrix_issue(
+                        "family_unknown_features",
+                        (
+                            f"family {family_name!r} has unknown features: "
+                            f"{', '.join(extra_features)}"
+                        ),
+                        path=f"{family_path}.features",
+                    )
+                )
+            for feature, status in family_features.items():
+                if status not in valid_statuses:
+                    issues.append(
+                        _capability_matrix_issue(
+                            "invalid_feature_status",
+                            (
+                                f"family {family_name!r} feature {feature!r} "
+                                f"has invalid status {status!r}"
+                            ),
+                            path=f"{family_path}.features.{feature}",
+                        )
+                    )
+            notes = family_payload.get("notes")
+            if not isinstance(notes, list) or not all(
+                isinstance(note, str) for note in notes
+            ):
+                issues.append(
+                    _capability_matrix_issue(
+                        "family_notes_not_string_list",
+                        "family notes must be a list of strings",
+                        path=f"{family_path}.notes",
+                    )
+                )
+
+    return {
+        "ok": not issues,
+        "version": version,
+        "expected_version": CAPABILITY_MATRIX_VERSION,
+        "issues": issues,
     }
 
 
@@ -439,7 +657,6 @@ def require_family_capability(
 
 __all__ = [
     "CapabilityStatus",
-    "CAPABILITY_MATRIX_SCHEMA_NAME",
     "CAPABILITY_MATRIX_VERSION",
     "FEATURES",
     "METHOD_ROUTE_FEATURES",
@@ -454,6 +671,7 @@ __all__ = [
     "method_route_capability_report",
     "method_route_feature",
     "METHOD_CAPABILITY_FEATURES",
+    "validate_capability_matrix_payload",
     "require_family_capability",
     "require_method_route",
 ]

@@ -98,7 +98,6 @@ from .distributions_b16 import DPO1, PARETO1, SEP, BCCGo, LOGSHASHo, PARETO1o
 from .families import FamilyDefinition
 from .family_capabilities import (
     CapabilityStatus,
-    CAPABILITY_MATRIX_SCHEMA_NAME,
     CAPABILITY_MATRIX_VERSION,
     FEATURES as FAMILY_CAPABILITY_FEATURES,
     METHOD_CAPABILITY_FEATURES,
@@ -115,6 +114,7 @@ from .family_capabilities import (
     method_route_capability_report,
     require_family_capability,
     require_method_route,
+    validate_capability_matrix_payload,
 )
 from .fitDist import fitDist
 from .fitDistPred import fitDistPred, gamlssMLpred
@@ -331,7 +331,6 @@ __all__ = [
     "GAMLSSModel",
     "GLIMControl",
     "CapabilityStatus",
-    "CAPABILITY_MATRIX_SCHEMA_NAME",
     "CAPABILITY_MATRIX_VERSION",
     "FAMILY_CAPABILITY_FEATURES",
     "METHOD_CAPABILITY_FEATURES",
@@ -348,6 +347,7 @@ __all__ = [
     "method_route_feature",
     "require_family_capability",
     "require_method_route",
+    "validate_capability_matrix_payload",
     "ExtractAICResult",
     "ExtractTGDResult",
     "FitDistResult",

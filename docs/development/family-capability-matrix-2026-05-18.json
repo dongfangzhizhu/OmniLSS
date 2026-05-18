@@ -1,13 +1,5 @@
 {
   "version": 3,
-  "schema": {
-    "name": "omnilss.family_capability_matrix",
-    "version": 3,
-    "canonical_method_route_field": "method_capability_features",
-    "compatibility_method_route_fields": [
-      "method_routes"
-    ]
-  },
   "features": [
     "rs_fit",
     "rs_jax_fit",

@@ -29,7 +29,7 @@ This note records the first concrete development step from the [six-month execut
   - `require_method_route()`.
 - Added tests that verify full registry coverage, feature completeness, unsupported-route errors, experimental opt-in behavior, clear unknown-family/unknown-feature failures, top-level route-helper exports, and the generated `method_routes` compatibility alias.
 - The capability matrix schema version is exported as `CAPABILITY_MATRIX_VERSION`; the current value is `3` because the matrix now publishes both `method_capability_features` and the compatibility `method_routes` alias.
-- The matrix `schema` block identifies `method_capability_features` as the canonical route-map field and `method_routes` as a compatibility field so clients do not need to infer alias status from field names alone.
+- Added `validate_capability_matrix_payload()` plus a CLI wrapper, `tools/validate_capability_matrix.py`, so generated artifacts fail fast when schema version, method routing aliases, policy flags, family coverage, or feature statuses drift from runtime truth.
 - Generated capability matrices include the fitting-method routing map (`method_capability_features` plus the backward-compatible `method_routes` alias) and strict-mode policy flags so docs, service responses, and runtime gates share the same contract.
 
 ## Evidence tiers
