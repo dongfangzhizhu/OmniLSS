@@ -297,24 +297,20 @@ def _require_method_family_capability(
 ) -> None:
     """Validate method/family support before starting an expensive fit."""
 
-    feature_by_method = {
-        "RS": "rs_fit",
-        "RS_JAX": "rs_jax_fit",
-        "CG": "cg_fit",
-        "MIXED": "cg_fit",
-        "JOINT": "cg_fit",
-        "LBFGS": "cg_fit",
-    }
-    feature = feature_by_method.get(method_name)
+    from .family_capabilities import (
+        FamilyCapabilityError,
+        method_route_feature,
+        require_method_route,
+    )
+
+    feature = method_route_feature(method_name)
     if feature is None:
         return
 
-    from .family_capabilities import FamilyCapabilityError, require_family_capability
-
     try:
-        require_family_capability(
+        require_method_route(
             family_name,
-            feature,
+            method_name,
             allow_experimental=allow_experimental,
         )
     except FamilyCapabilityError as exc:

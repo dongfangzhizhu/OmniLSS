@@ -10,15 +10,16 @@
 
 ## 已实现进展
 
-- 运行时能力注册表现在提供机器可读的 `capability_matrix()` 快照，包含 feature 列表和每个分布族的证据状态。
+- 运行时能力注册表现在提供机器可读的 `capability_matrix()` 快照，包含 feature 列表、method-route feature map 和每个分布族的证据状态。
 - 新增 `tools/generate_capability_matrix.py`，并生成 `family-capability-matrix-2026-05-18.json`，供文档、发布包和 API 客户端复用。
 - gRPC 服务新增 `CapabilityService.CapabilityMatrix`，使服务客户端可以通过 API 获取同一份运行时能力矩阵。
 - production-safe 分布族可以将核心路径标记为 validated；当前基线将 `NO` 的 `rs_fit`、`prediction`、`r_consistency` 和 `production_safe` 标记为 validated。
-- `gamlss(..., strict_capabilities=True)` 现在会拒绝实验性 method/family 路径，只允许 validated capability feature。
+- `gamlss(..., strict_capabilities=True)` 现在会拒绝实验性 method/family 路径，只允许 validated capability feature。拟合代码使用与矩阵输出相同的 `require_method_route()` 映射。
 - 默认开发行为保持不变：除非显式请求 strict capability mode，否则实验性路径仍允许运行。
-- 方法路由测试覆盖了 strict 模式下 validated 的 `NO` RS 路径可运行，以及实验性的 GA RS 路径被拒绝。
+- 方法路由测试覆盖了 strict 模式下 validated 的 `NO` RS 路径可运行、实验性的 GA RS 路径被拒绝，以及公开 method-route feature map。
+- Legacy prediction runtime wrapper 现在要求 family 具备 `prediction` capability，并在输出 mean、quantile、interval 或 distribution payload 前委托给 schema-safe `predict_params()`。参见 [month1-legacy-prediction-runtime-audit-2026-05-18_cn.md](month1-legacy-prediction-runtime-audit-2026-05-18_cn.md)。
 
 ## D3 剩余工作
 
-- 为 HTTP 服务边界暴露能力矩阵，并在公开 API 文档中记录响应格式。
+- 让 HTTP `/capabilities` response-shape 文档与扩展后的 method-route feature map 保持同步。
 - 扩展验证证据，让更多核心分布族可以针对特定路径从 experimental 升级为 validated。
