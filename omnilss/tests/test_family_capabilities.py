@@ -6,6 +6,7 @@ from omnilss.distribution_registry import _REGISTERED_FAMILIES
 from omnilss.family_capabilities import (
     CapabilityStatus,
     FEATURES,
+    METHOD_ROUTE_FEATURES,
     FamilyCapabilityError,
     capability_matrix,
     method_capability_features,
@@ -66,7 +67,7 @@ def test_unknown_feature_and_family_fail_clearly():
 
 
 def test_method_capability_features_match_runtime_routing_contract():
-    assert method_capability_features() == {
+    expected = {
         "RS": "rs_fit",
         "RS_JAX": "rs_jax_fit",
         "CG": "cg_fit",
@@ -74,6 +75,9 @@ def test_method_capability_features_match_runtime_routing_contract():
         "JOINT": "cg_fit",
         "LBFGS": "cg_fit",
     }
+    assert method_capability_features() == expected
+    assert dict(METHOD_ROUTE_FEATURES) == expected
+
 
 def test_method_route_capability_report_supports_service_admission():
     validated = method_route_capability_report("NO", "RS", strict=True)
@@ -134,9 +138,12 @@ def test_production_safe_family_has_validated_core_route():
 
 def test_capability_matrix_exposes_method_route_feature_map():
     matrix = capability_matrix()
+    assert matrix["method_routes"] == matrix["method_capability_features"]
     assert matrix["method_routes"]["RS"] == "rs_fit"
     assert matrix["method_routes"]["RS_JAX"] == "rs_jax_fit"
     assert method_route_feature("lbfgs") == "cg_fit"
+    with pytest.raises(KeyError, match="capability routing map"):
+        method_route_feature("NOT_A_METHOD")
 
 
 def test_require_method_route_uses_family_capability_tiers():
@@ -146,3 +153,5 @@ def test_require_method_route_uses_family_capability_tiers():
     assert require_method_route("GA", "RS", allow_experimental=True).name == "GA"
     with pytest.raises(FamilyCapabilityError, match="does not support"):
         require_method_route("GB2", "RS_JAX", allow_experimental=True)
+    with pytest.raises(KeyError, match="capability routing map"):
+        require_method_route("NO", "NOT_A_METHOD")
