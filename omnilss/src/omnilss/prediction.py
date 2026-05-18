@@ -35,6 +35,30 @@ class PredictionSchemaError(ValueError):
         self.code = code
         super().__init__(message)
 
+    def to_dict(self) -> dict[str, str | None]:
+        """Return a stable client-facing error envelope."""
+
+        return {
+            "code": self.code,
+            "parameter": self.parameter,
+            "term": self.term,
+            "reason": self.reason,
+            "message": str(self),
+        }
+
+
+def build_prediction_design_matrix(
+    model: Any, param: str, newdata: Dict[str, np.ndarray]
+) -> np.ndarray:
+    """Build a schema-checked prediction design matrix.
+
+    This public wrapper is used by both the default model prediction APIs and
+    R-aligned legacy entry points so callers receive the same structured schema
+    failures regardless of which prediction surface they use.
+    """
+
+    return _build_design_matrix_for_prediction(model, param, newdata)
+
 
 def _prediction_schema_error(
     message: str,
@@ -69,7 +93,9 @@ def _jsonish_smooth_entry(smooth: Any) -> dict[str, Any]:
     }
 
 
-def _smooth_entries_for_parameter(smooth_infos: Any, param: str) -> list[dict[str, Any]]:
+def _smooth_entries_for_parameter(
+    smooth_infos: Any, param: str
+) -> list[dict[str, Any]]:
     """Return smooth entries for live SmoothDesignInfo or JSON metadata."""
 
     if not isinstance(smooth_infos, dict):
