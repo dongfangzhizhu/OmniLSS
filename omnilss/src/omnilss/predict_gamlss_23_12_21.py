@@ -15,11 +15,13 @@ import numpy as np
 from .model import GAMLSSModel
 
 
-def _build_new_design_matrix(
+def _legacy_build_new_design_matrix(
     object: GAMLSSModel,
     what: str,
     newdata: dict[str, Any],
 ) -> np.ndarray:
+    """Build a simple legacy linear prediction matrix for partial R-style models."""
+
     from .operations import coef
 
     term_info = object.terms.get(what)
@@ -39,6 +41,52 @@ def _build_new_design_matrix(
             f"stored design for parameter {what!r} expects {coef_size} columns but newdata produced {len(columns)}"
         )
     return np.column_stack(columns)
+
+
+def _is_partial_legacy_schema_fallback(object: GAMLSSModel, what: str, code: str) -> bool:
+    """Allow old R-slot fixtures only when no complete schema contract exists."""
+
+    slots = getattr(object, "additional_slots", {}) or {}
+    schema = slots.get("design_matrix_schema") if isinstance(slots, dict) else None
+    parameter_schema = {}
+    if isinstance(schema, dict):
+        parameter_schema = (schema.get("parameters", {}) or {}).get(what, {}) or {}
+
+    # A materialized schema with an expected column count is authoritative and
+    # must not silently fall back to term-label reconstruction.  Fallback is only
+    # retained for hand-built, partial legacy objects whose parameter schema lacks
+    # enough shape evidence to define a production-safe prediction contract.
+    if parameter_schema.get("n_columns") is not None:
+        return False
+    return code in {
+        "coefficient_column_mismatch",
+        "term_evaluation_failed",
+        "missing_formula_schema",
+    }
+
+
+def _build_new_design_matrix(
+    object: GAMLSSModel,
+    what: str,
+    newdata: dict[str, Any],
+) -> np.ndarray:
+    """Build a schema-checked prediction design matrix for legacy entry points.
+
+    The public R-aligned ``predict()`` and ``predictAll()`` paths now share the
+    same schema-safe builder as ``GAMLSSModel.predict_params``.  This prevents
+    legacy calls from silently accepting formula drift, unseen factor levels, or
+    missing smooth metadata.  A tightly bounded fallback remains for partial
+    hand-built legacy objects that do not carry a complete schema contract.
+    """
+
+    from .prediction import PredictionSchemaError, _build_design_matrix_for_prediction
+
+    try:
+        return _build_design_matrix_for_prediction(object, what, newdata)
+    except PredictionSchemaError as exc:
+        if not _is_partial_legacy_schema_fallback(object, what, exc.code):
+            raise
+        return _legacy_build_new_design_matrix(object, what, newdata)
 
 
 def _parameter_block_covariance(object: GAMLSSModel, what: str) -> np.ndarray | None:
