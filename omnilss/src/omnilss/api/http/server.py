@@ -31,6 +31,7 @@ def create_handler():
         "capability_requests_total": 0,
         "health_requests_total": 0,
         "not_found_total": 0,
+        "method_not_allowed_total": 0,
         "request_duration_seconds_sum": 0.0,
     }
     metrics_lock = threading.Lock()
@@ -58,6 +59,9 @@ def create_handler():
             "# HELP omnilss_http_not_found_total Unknown endpoint requests.",
             "# TYPE omnilss_http_not_found_total counter",
             f"omnilss_http_not_found_total {snapshot['not_found_total']}",
+            "# HELP omnilss_http_method_not_allowed_total Unsupported method requests.",
+            "# TYPE omnilss_http_method_not_allowed_total counter",
+            f"omnilss_http_method_not_allowed_total {snapshot['method_not_allowed_total']}",
             "# HELP omnilss_http_request_duration_seconds_sum Sum of request durations.",
             "# TYPE omnilss_http_request_duration_seconds_sum counter",
             f"omnilss_http_request_duration_seconds_sum {snapshot['request_duration_seconds_sum']:.12g}",
@@ -97,6 +101,28 @@ def create_handler():
                 request_id=request_id,
             )
 
+        def _send_error(
+            self,
+            status: int,
+            *,
+            code: str,
+            message: str,
+            request_id: str,
+        ) -> None:
+            self._send_json(
+                status,
+                {
+                    "success": False,
+                    "error": {
+                        "type": "http_error",
+                        "code": code,
+                        "message": message,
+                    },
+                    "request_id": request_id,
+                },
+                request_id=request_id,
+            )
+
         def do_GET(self) -> None:  # noqa: N802
             started = time.perf_counter()
             request_id = self._request_id()
@@ -128,13 +154,24 @@ def create_handler():
                 )
                 return
             record_metric("not_found_total", duration=time.perf_counter() - started)
-            self._send_json(
+            self._send_error(
                 404,
-                {
-                    "error": "not_found",
-                    "message": f"No OmniLSS HTTP endpoint for {parsed.path!r}",
-                    "request_id": request_id,
-                },
+                code="not_found",
+                message=f"No OmniLSS HTTP endpoint for {parsed.path!r}",
+                request_id=request_id,
+            )
+
+        def do_POST(self) -> None:  # noqa: N802
+            started = time.perf_counter()
+            request_id = self._request_id()
+            parsed = urlparse(self.path)
+            record_metric(
+                "method_not_allowed_total", duration=time.perf_counter() - started
+            )
+            self._send_error(
+                405,
+                code="method_not_allowed",
+                message=f"HTTP POST is not enabled for {parsed.path!r}; fit/predict endpoints require authn, limits, and structured logging before exposure",
                 request_id=request_id,
             )
 

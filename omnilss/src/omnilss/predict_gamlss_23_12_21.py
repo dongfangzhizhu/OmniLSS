@@ -7,6 +7,7 @@ R source reference:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 import jax.numpy as jnp
@@ -15,11 +16,13 @@ import numpy as np
 from .model import GAMLSSModel
 
 
-def _build_new_design_matrix(
+def _legacy_build_new_design_matrix(
     object: GAMLSSModel,
     what: str,
     newdata: dict[str, Any],
 ) -> np.ndarray:
+    """Build a simple legacy linear prediction matrix for partial R-style models."""
+
     from .operations import coef
 
     term_info = object.terms.get(what)
@@ -39,6 +42,58 @@ def _build_new_design_matrix(
             f"stored design for parameter {what!r} expects {coef_size} columns but newdata produced {len(columns)}"
         )
     return np.column_stack(columns)
+
+
+def _is_partial_legacy_schema_fallback(
+    object: GAMLSSModel, what: str, code: str
+) -> bool:
+    """Allow old R-slot fixtures only when no complete schema contract exists."""
+
+    slots = getattr(object, "additional_slots", {}) or {}
+    schema = slots.get("design_matrix_schema") if isinstance(slots, Mapping) else None
+    parameter_schema: Mapping[str, Any] = {}
+    if isinstance(schema, Mapping):
+        parameters = schema.get("parameters", {})
+        if isinstance(parameters, Mapping):
+            candidate = parameters.get(what, {})
+            if isinstance(candidate, Mapping):
+                parameter_schema = candidate
+
+    # A materialized schema with an expected column count is authoritative and
+    # must not silently fall back to term-label reconstruction.  Fallback is only
+    # retained for hand-built, partial legacy objects whose parameter schema lacks
+    # enough shape evidence to define a production-safe prediction contract.
+    if parameter_schema.get("n_columns") is not None:
+        return False
+    return code in {
+        "coefficient_column_mismatch",
+        "term_evaluation_failed",
+        "missing_formula_schema",
+    }
+
+
+def _build_new_design_matrix(
+    object: GAMLSSModel,
+    what: str,
+    newdata: dict[str, Any],
+) -> np.ndarray:
+    """Build a schema-checked prediction design matrix for legacy entry points.
+
+    The public R-aligned ``predict()`` and ``predictAll()`` paths now share the
+    same schema-safe builder as ``GAMLSSModel.predict_params``.  This prevents
+    legacy calls from silently accepting formula drift, unseen factor levels, or
+    missing smooth metadata.  A tightly bounded fallback remains for partial
+    hand-built legacy objects that do not carry a complete schema contract.
+    """
+
+    from .prediction import PredictionSchemaError, build_prediction_design_matrix
+
+    try:
+        return build_prediction_design_matrix(object, what, newdata)
+    except PredictionSchemaError as exc:
+        if not _is_partial_legacy_schema_fallback(object, what, exc.code):
+            raise
+        return _legacy_build_new_design_matrix(object, what, newdata)
 
 
 def _parameter_block_covariance(object: GAMLSSModel, what: str) -> np.ndarray | None:
@@ -94,7 +149,11 @@ def _predict_single_parameter(
 
         if type == "response":
             family = object.family
-            if hasattr(family, "link_inverses") and family.link_inverses and what in family.link_inverses:
+            if (
+                hasattr(family, "link_inverses")
+                and family.link_inverses
+                and what in family.link_inverses
+            ):
                 pred = np.asarray(
                     family.link_inverses[what](jnp.asarray(pred, dtype=jnp.float64)),
                     dtype=np.float64,
@@ -116,9 +175,15 @@ def _predict_single_parameter(
         if local_cov is not None and design is not None:
             x_design = np.asarray(design, dtype=np.float64)
             if x_design.ndim == 2 and x_design.shape[0] == link_values.shape[0]:
-                se = np.sqrt(np.maximum(np.einsum("ij,jk,ik->i", x_design, local_cov, x_design), 0.0))
+                se = np.sqrt(
+                    np.maximum(
+                        np.einsum("ij,jk,ik->i", x_design, local_cov, x_design), 0.0
+                    )
+                )
         elif local_cov is not None and local_cov.shape == (1, 1):
-            se = np.repeat(np.sqrt(float(local_cov[0, 0])), link_values.shape[0]).astype(np.float64)
+            se = np.repeat(
+                np.sqrt(float(local_cov[0, 0])), link_values.shape[0]
+            ).astype(np.float64)
         return {"fit": link_values, "se.fit": se}
     return lpred(object, what=what, type=type, terms=terms, se_fit=se_fit)
 

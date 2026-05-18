@@ -72,6 +72,70 @@ PYTHONPATH=src python tools/validate_model_artifact.py model.omnilss --fail-on-w
 - `missing_smooth_metadata`、`invalid_smooth_metadata_entry`、`missing_smooth_knots`。
 - `training_data_included`，作为 warning。
 
+## Artifact 与预测错误示例
+
+下面的简化 `meta.json` 片段展示了 categorical predictor 进行 schema-safe prediction 所需的最小 schema 字段：
+
+```json
+{
+  "omnilss_version": "0.3.0",
+  "parameters": ["mu"],
+  "design_matrix_schema": {
+    "version": 2,
+    "artifact_version": 2,
+    "parameters": {
+      "mu": {
+        "formula": "y ~ factor(grp)",
+        "term_order": ["factor(grp)"],
+        "has_intercept": true,
+        "factor_levels": {"grp": ["a", "b"]},
+        "n_columns": 2,
+        "coefficient_count": 2
+      }
+    }
+  }
+}
+```
+
+如果客户端通过默认 `model.predict_params()` 接口或 legacy R 对齐的 `predict()` / `predict_all()` 接口使用未知 level 进行预测，runtime 会抛出同一个结构化 envelope：
+
+```python
+from omnilss.prediction import PredictionSchemaError
+from omnilss.predict_gamlss_23_12_21 import predict
+
+try:
+    predict(model, what="mu", newdata={"grp": ["c", "a"]})
+except PredictionSchemaError as exc:
+    print(exc.to_dict())
+```
+
+示例输出：
+
+```json
+{
+  "code": "unseen_factor_levels",
+  "parameter": "mu",
+  "term": "factor(grp)",
+  "reason": "unseen factor levels ['c']",
+  "message": "Factor term 'factor(grp)' contains unseen levels ['c']"
+}
+```
+
+validator CLI 仍然是 runtime 之前的 artifact gate。有效的 categorical artifact 应无 error：
+
+```bash
+PYTHONPATH=src python tools/validate_model_artifact.py categorical.omnilss
+```
+
+```json
+{
+  "ok": true,
+  "errors": [],
+  "warnings": []
+}
+```
+
+
 ## 预测错误边界
 
 运行时 prediction schema 失败会抛出带有 `code`、`parameter`、`term` 和 `reason` 字段的 `PredictionSchemaError`。客户端应基于 `code` 路由，而不是解析面向人类的异常消息。
