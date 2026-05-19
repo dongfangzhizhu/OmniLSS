@@ -9,7 +9,7 @@
 - The REST distribution-selection endpoint now fits candidate families and reports deviance, AIC, BIC, GAIC, parameter count, and iterations instead of returning the first candidate as a placeholder.
 - The Pro gRPC contract mirror now includes list/delete model RPCs and efficient repeated-double array payloads for prediction while retaining JSON compatibility.
 - The Pro client now exposes `list_models()` and `delete_model()` and sends both JSON and array-column prediction payloads.
-- Pro AutoML now ranks candidate families by deviance, AIC, BIC, and GAIC through Core client calls only, and adds bootstrap deviance confidence intervals through repeated resampled Core fits.
+- Pro AutoML now ranks candidate families by deviance, AIC, BIC, and GAIC through Core `BatchFit` client calls only, and adds bootstrap deviance confidence intervals through batch-fit resampling.
 
 ## Boundary notes
 

@@ -9,7 +9,7 @@ English version: [phase4-phase6-service-pro-progress-2026-05-18.md](phase4-phase
 - REST 分布选择端点现在会拟合候选分布，并报告 deviance、AIC、BIC、GAIC、参数数量和迭代次数，不再只返回第一个候选项作为占位实现。
 - Pro 侧 gRPC 契约镜像现在包含 list/delete model RPC，并为预测加入高效的 repeated-double 数组载荷，同时保留 JSON 兼容性。
 - Pro 客户端现在提供 `list_models()` 与 `delete_model()`，并在预测请求中同时发送 JSON 与数组列载荷。
-- Pro AutoML 现在仅通过 Core 客户端调用按 deviance、AIC、BIC、GAIC 对候选分布排序，并通过重复重采样 Core 拟合提供 bootstrap deviance 置信区间。
+- Pro AutoML 现在仅通过 Core `BatchFit` 客户端调用按 deviance、AIC、BIC、GAIC 对候选分布排序，并通过 batch-fit 重采样提供 bootstrap deviance 置信区间。
 
 ## 边界说明
 

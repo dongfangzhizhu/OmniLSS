@@ -234,45 +234,66 @@ def create_service():
                     deleted=False, success=False, error=_error_text(exc)
                 )
 
-        def Fit(self, request, context):  # noqa: N802
-            try:
-                data = _from_json(request.data_json)
-                kwargs: dict[str, Any] = {
-                    "formula": request.formula,
-                    "family": request.family,
-                    "data": data,
-                }
-                if request.sigma_formula:
-                    kwargs["sigma_formula"] = request.sigma_formula
-                if request.nu_formula:
-                    kwargs.setdefault("parameter_formulas", {})[
-                        "nu"
-                    ] = request.nu_formula
-                if request.tau_formula:
-                    kwargs.setdefault("parameter_formulas", {})[
-                        "tau"
-                    ] = request.tau_formula
-                if request.method:
-                    kwargs["method"] = request.method
-                if request.max_iter > 0:
-                    kwargs["max_iter"] = int(request.max_iter)
-                kwargs["verbose"] = bool(request.verbose)
+        def _fit_one(self, request):
+            data = _from_json(request.data_json)
+            kwargs: dict[str, Any] = {
+                "formula": request.formula,
+                "family": request.family,
+                "data": data,
+            }
+            if request.sigma_formula:
+                kwargs["sigma_formula"] = request.sigma_formula
+            if request.nu_formula:
+                kwargs.setdefault("parameter_formulas", {})["nu"] = request.nu_formula
+            if request.tau_formula:
+                kwargs.setdefault("parameter_formulas", {})["tau"] = request.tau_formula
+            if request.method:
+                kwargs["method"] = request.method
+            if request.max_iter > 0:
+                kwargs["max_iter"] = int(request.max_iter)
+            kwargs["verbose"] = bool(request.verbose)
 
-                model = gamlss(**kwargs)
-                model_id = REGISTRY.save(model)
-                slots = dict(getattr(model, "additional_slots", {}) or {})
-                converged = slots.get("rs_converged", slots.get("cg_converged", True))
-                return fit_pb2.FitResponse(
-                    model_id=model_id,
-                    success=True,
-                    error="",
-                    deviance=float(model.g_dev),
-                    iterations=int(model.iter),
-                    converged=bool(converged),
-                )
+            model = gamlss(**kwargs)
+            model_id = REGISTRY.save(model)
+            slots = dict(getattr(model, "additional_slots", {}) or {})
+            converged = slots.get("rs_converged", slots.get("cg_converged", True))
+            return fit_pb2.FitResponse(
+                model_id=model_id,
+                success=True,
+                error="",
+                deviance=float(model.g_dev),
+                iterations=int(model.iter),
+                converged=bool(converged),
+            )
+
+        def Fit(self, request, context):  # noqa: N802, ARG002
+            try:
+                return self._fit_one(request)
             except Exception as exc:
                 return fit_pb2.FitResponse(
                     model_id="", success=False, error=_error_text(exc)
+                )
+
+        def BatchFit(self, request, context):  # noqa: N802, ARG002
+            try:
+                responses = []
+                for fit_request in request.requests:
+                    try:
+                        responses.append(self._fit_one(fit_request))
+                    except Exception as exc:
+                        responses.append(
+                            fit_pb2.FitResponse(
+                                model_id="", success=False, error=_error_text(exc)
+                            )
+                        )
+                return fit_pb2.BatchFitResponse(
+                    responses=responses,
+                    success=True,
+                    error="",
+                )
+            except Exception as exc:
+                return fit_pb2.BatchFitResponse(
+                    responses=[], success=False, error=_error_text(exc)
                 )
 
         def Predict(self, request, context):  # noqa: N802
