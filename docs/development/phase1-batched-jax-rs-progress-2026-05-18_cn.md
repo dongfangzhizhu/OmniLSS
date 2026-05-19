@@ -14,4 +14,4 @@ English version: [phase1-batched-jax-rs-progress-2026-05-18.md](phase1-batched-j
 
 ## 说明
 
-当前实现优先保证正确性以及 CPU/GPU 上的确定性行为，因此采用按 family 分组的循环。公共 API 和分组结构已经就绪，后续可以在不改变调用方代码的情况下加入同 family 的 GPU `jax.vmap` kernel。
+该 API 现在具备两种执行模式：同 family 且形状一致的批量输入使用 [phase1-jax-vmap-batch-progress-2026-05-18_cn.md](phase1-jax-vmap-batch-progress-2026-05-18_cn.md) 中描述的向量化 `jax.vmap` kernel；混合 family 或形状不一致的输入继续使用确定性的按 family fallback。

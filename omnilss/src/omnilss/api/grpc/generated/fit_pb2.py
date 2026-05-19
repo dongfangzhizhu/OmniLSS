@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tfit.proto\x12\x07omnilss\"\xb3\x01\n\nFitRequest\x12\x0f\n\x07\x66ormula\x18\x01 \x01(\t\x12\x0e\n\x06\x66\x61mily\x18\x02 \x01(\t\x12\x11\n\tdata_json\x18\x03 \x01(\t\x12\x15\n\rsigma_formula\x18\x04 \x01(\t\x12\x12\n\nnu_formula\x18\x05 \x01(\t\x12\x13\n\x0btau_formula\x18\x06 \x01(\t\x12\x0e\n\x06method\x18\x07 \x01(\t\x12\x10\n\x08max_iter\x18\x08 \x01(\x05\x12\x0f\n\x07verbose\x18\t \x01(\x08\"x\n\x0b\x46itResponse\x12\x10\n\x08model_id\x18\x01 \x01(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\t\x12\x10\n\x08\x64\x65viance\x18\x04 \x01(\x01\x12\x12\n\niterations\x18\x05 \x01(\x05\x12\x11\n\tconverged\x18\x06 \x01(\x08\"\x13\n\x11ListModelsRequest\"G\n\x12ListModelsResponse\x12\x11\n\tmodel_ids\x18\x01 \x03(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\t\"&\n\x12\x44\x65leteModelRequest\x12\x10\n\x08model_id\x18\x01 \x01(\t\"F\n\x13\x44\x65leteModelResponse\x12\x0f\n\x07\x64\x65leted\x18\x01 \x01(\x08\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\t2\xcf\x01\n\nFitService\x12\x30\n\x03\x46it\x12\x13.omnilss.FitRequest\x1a\x14.omnilss.FitResponse\x12\x45\n\nListModels\x12\x1a.omnilss.ListModelsRequest\x1a\x1b.omnilss.ListModelsResponse\x12H\n\x0b\x44\x65leteModel\x12\x1b.omnilss.DeleteModelRequest\x1a\x1c.omnilss.DeleteModelResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tfit.proto\x12\x07omnilss\"\xb3\x01\n\nFitRequest\x12\x0f\n\x07\x66ormula\x18\x01 \x01(\t\x12\x0e\n\x06\x66\x61mily\x18\x02 \x01(\t\x12\x11\n\tdata_json\x18\x03 \x01(\t\x12\x15\n\rsigma_formula\x18\x04 \x01(\t\x12\x12\n\nnu_formula\x18\x05 \x01(\t\x12\x13\n\x0btau_formula\x18\x06 \x01(\t\x12\x0e\n\x06method\x18\x07 \x01(\t\x12\x10\n\x08max_iter\x18\x08 \x01(\x05\x12\x0f\n\x07verbose\x18\t \x01(\x08\"x\n\x0b\x46itResponse\x12\x10\n\x08model_id\x18\x01 \x01(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\t\x12\x10\n\x08\x64\x65viance\x18\x04 \x01(\x01\x12\x12\n\niterations\x18\x05 \x01(\x05\x12\x11\n\tconverged\x18\x06 \x01(\x08\"8\n\x0f\x42\x61tchFitRequest\x12%\n\x08requests\x18\x01 \x03(\x0b\x32\x13.omnilss.FitRequest\"[\n\x10\x42\x61tchFitResponse\x12\'\n\tresponses\x18\x01 \x03(\x0b\x32\x14.omnilss.FitResponse\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\t\"\x13\n\x11ListModelsRequest\"G\n\x12ListModelsResponse\x12\x11\n\tmodel_ids\x18\x01 \x03(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\t\"&\n\x12\x44\x65leteModelRequest\x12\x10\n\x08model_id\x18\x01 \x01(\t\"F\n\x13\x44\x65leteModelResponse\x12\x0f\n\x07\x64\x65leted\x18\x01 \x01(\x08\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\t2\x90\x02\n\nFitService\x12\x30\n\x03\x46it\x12\x13.omnilss.FitRequest\x1a\x14.omnilss.FitResponse\x12?\n\x08\x42\x61tchFit\x12\x18.omnilss.BatchFitRequest\x1a\x19.omnilss.BatchFitResponse\x12\x45\n\nListModels\x12\x1a.omnilss.ListModelsRequest\x1a\x1b.omnilss.ListModelsResponse\x12H\n\x0b\x44\x65leteModel\x12\x1b.omnilss.DeleteModelRequest\x1a\x1c.omnilss.DeleteModelResponseb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'fit_pb2', globals())
@@ -24,14 +24,18 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _FITREQUEST._serialized_end=202
   _FITRESPONSE._serialized_start=204
   _FITRESPONSE._serialized_end=324
-  _LISTMODELSREQUEST._serialized_start=326
-  _LISTMODELSREQUEST._serialized_end=345
-  _LISTMODELSRESPONSE._serialized_start=347
-  _LISTMODELSRESPONSE._serialized_end=418
-  _DELETEMODELREQUEST._serialized_start=420
-  _DELETEMODELREQUEST._serialized_end=458
-  _DELETEMODELRESPONSE._serialized_start=460
-  _DELETEMODELRESPONSE._serialized_end=530
-  _FITSERVICE._serialized_start=533
-  _FITSERVICE._serialized_end=740
+  _BATCHFITREQUEST._serialized_start=326
+  _BATCHFITREQUEST._serialized_end=382
+  _BATCHFITRESPONSE._serialized_start=384
+  _BATCHFITRESPONSE._serialized_end=475
+  _LISTMODELSREQUEST._serialized_start=477
+  _LISTMODELSREQUEST._serialized_end=496
+  _LISTMODELSRESPONSE._serialized_start=498
+  _LISTMODELSRESPONSE._serialized_end=569
+  _DELETEMODELREQUEST._serialized_start=571
+  _DELETEMODELREQUEST._serialized_end=609
+  _DELETEMODELRESPONSE._serialized_start=611
+  _DELETEMODELRESPONSE._serialized_end=681
+  _FITSERVICE._serialized_start=684
+  _FITSERVICE._serialized_end=956
 # @@protoc_insertion_point(module_scope)

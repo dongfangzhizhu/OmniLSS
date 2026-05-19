@@ -362,6 +362,126 @@ def test_grpc_list_models_and_delete_model_service_direct(monkeypatch) -> None:
     assert missing.deleted is False
 
 
+def test_grpc_batch_fit_service_direct(monkeypatch) -> None:
+    """BatchFit should fit multiple requests through one Core RPC."""
+    import json
+
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import fit_pb2
+
+    class DummyModel:
+        def __init__(self, deviance: float) -> None:
+            self.g_dev = deviance
+            self.iter = 2
+            self.additional_slots = {"rs_converged": True}
+
+    class DummyRegistry:
+        def __init__(self) -> None:
+            self.saved = 0
+
+        def save(self, model) -> str:
+            self.saved += 1
+            return f"model-{self.saved}"
+
+    calls = []
+
+    def fake_gamlss(**kwargs):
+        calls.append(kwargs)
+        return DummyModel(10.0 + len(calls))
+
+    try:
+        service, *_ = grpc_server.create_service()
+    except RuntimeError as exc:
+        pytest.skip(f"gRPC stubs/runtime unavailable in environment: {exc}")
+
+    monkeypatch.setattr(grpc_server, "gamlss", fake_gamlss)
+    monkeypatch.setattr(grpc_server, "REGISTRY", DummyRegistry())
+
+    request = fit_pb2.BatchFitRequest(
+        requests=[
+            fit_pb2.FitRequest(
+                formula="y ~ x",
+                family="NO",
+                data_json=json.dumps({"y": [1.0, 2.0], "x": [0.0, 1.0]}),
+                sigma_formula="~ 1",
+                method="RS",
+                max_iter=3,
+            ),
+            fit_pb2.FitRequest(
+                formula="y ~ x",
+                family="GA",
+                data_json=json.dumps({"y": [2.0, 3.0], "x": [0.0, 1.0]}),
+                sigma_formula="~ 1",
+                method="RS",
+                max_iter=3,
+            ),
+        ]
+    )
+
+    response = service.BatchFit(request, None)
+
+    assert response.success is True
+    assert [r.model_id for r in response.responses] == ["model-1", "model-2"]
+    assert [r.deviance for r in response.responses] == [11.0, 12.0]
+    assert [call["family"] for call in calls] == ["NO", "GA"]
+
+
+
+def test_grpc_batch_fit_reports_partial_failures(monkeypatch) -> None:
+    """BatchFit should surface partial failures in top-level status."""
+    import json
+
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import fit_pb2
+
+    class DummyModel:
+        def __init__(self, deviance: float) -> None:
+            self.g_dev = deviance
+            self.iter = 1
+            self.additional_slots = {"rs_converged": True}
+
+    class DummyRegistry:
+        def __init__(self) -> None:
+            self.saved = 0
+
+        def save(self, model) -> str:
+            self.saved += 1
+            return f"model-{self.saved}"
+
+    def fake_gamlss(**kwargs):
+        if kwargs.get("family") == "BROKEN":
+            raise ValueError("simulated failure")
+        return DummyModel(8.0)
+
+    try:
+        service, *_ = grpc_server.create_service()
+    except RuntimeError as exc:
+        pytest.skip(f"gRPC stubs/runtime unavailable in environment: {exc}")
+
+    monkeypatch.setattr(grpc_server, "gamlss", fake_gamlss)
+    monkeypatch.setattr(grpc_server, "REGISTRY", DummyRegistry())
+
+    req = fit_pb2.BatchFitRequest(
+        requests=[
+            fit_pb2.FitRequest(
+                formula="y ~ x",
+                family="NO",
+                data_json=json.dumps({"y": [1.0], "x": [0.0]}),
+            ),
+            fit_pb2.FitRequest(
+                formula="y ~ x",
+                family="BROKEN",
+                data_json=json.dumps({"y": [1.0], "x": [0.0]}),
+            ),
+        ]
+    )
+
+    resp = service.BatchFit(req, None)
+
+    assert resp.success is False
+    assert "1 of 2 fits failed" in resp.error
+    assert [r.success for r in resp.responses] == [True, False]
+
 def test_grpc_predict_supports_column_vectors(monkeypatch) -> None:
     """Predict should accept structured column vectors without JSON payload."""
     from omnilss.api.grpc import server as grpc_server

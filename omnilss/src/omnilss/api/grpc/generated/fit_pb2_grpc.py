@@ -13,6 +13,11 @@ class FitServiceStub(object):
             request_serializer=fit__pb2.FitRequest.SerializeToString,
             response_deserializer=fit__pb2.FitResponse.FromString,
         )
+        self.BatchFit = channel.unary_unary(
+            "/omnilss.FitService/BatchFit",
+            request_serializer=fit__pb2.BatchFitRequest.SerializeToString,
+            response_deserializer=fit__pb2.BatchFitResponse.FromString,
+        )
         self.ListModels = channel.unary_unary(
             "/omnilss.FitService/ListModels",
             request_serializer=fit__pb2.ListModelsRequest.SerializeToString,
@@ -27,6 +32,10 @@ class FitServiceStub(object):
 
 class FitServiceServicer(object):
     def Fit(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
+    def BatchFit(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("Method not implemented!")
         raise NotImplementedError("Method not implemented!")
@@ -46,6 +55,11 @@ def add_FitServiceServicer_to_server(servicer, server):
             servicer.Fit,
             request_deserializer=fit__pb2.FitRequest.FromString,
             response_serializer=fit__pb2.FitResponse.SerializeToString,
+        ),
+        "BatchFit": grpc.unary_unary_rpc_method_handler(
+            servicer.BatchFit,
+            request_deserializer=fit__pb2.BatchFitRequest.FromString,
+            response_serializer=fit__pb2.BatchFitResponse.SerializeToString,
         ),
         "ListModels": grpc.unary_unary_rpc_method_handler(
             servicer.ListModels,

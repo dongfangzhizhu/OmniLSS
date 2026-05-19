@@ -12,4 +12,4 @@
 
 ## Notes
 
-The registry is now the public lookup surface. Built-in families are still bootstrapped from the legacy resolver table so this step is non-breaking; future new families should register their factory directly with `register()` after definition.
+The registry is now the public lookup surface. Built-in families are bootstrapped from the single `_BUILTIN_FAMILY_FACTORIES` dictionary, while the historical private `_resolve_family_legacy()` name remains only as a thin registry-backed compatibility shim.

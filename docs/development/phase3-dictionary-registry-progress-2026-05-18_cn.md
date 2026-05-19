@@ -11,4 +11,4 @@ English version: [phase3-dictionary-registry-progress-2026-05-18.md](phase3-dict
 
 ## 说明
 
-`distributions.resolve_family()` 仍保留公共函数名，并委托给权威注册表。旧 legacy resolver 只为任何直接私有导入保留在 `distributions.py` 中；注册表 bootstrap 已不再使用它。
+`distributions.resolve_family()` 仍保留公共函数名，并委托给权威注册表。旧的私有 if/elif resolver 表已被轻量 `_resolve_family_legacy()` 兼容 shim 替代，该 shim 同样委托给基于字典的注册表。

@@ -12,4 +12,4 @@ English version: [phase3-distribution-registry-progress-2026-05-18.md](phase3-di
 
 ## 说明
 
-注册表现在是公共查找入口。内置 family 仍通过旧 resolver 表进行 bootstrap，因此本步骤不破坏兼容性；未来新增 family 应在定义后直接调用 `register()` 注册 factory。
+注册表现在是公共查找入口。内置 family 通过单一 `_BUILTIN_FAMILY_FACTORIES` 字典 bootstrap；历史私有名称 `_resolve_family_legacy()` 仅作为委托到注册表的轻量兼容 shim 保留。
