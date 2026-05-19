@@ -22,7 +22,7 @@
 
 ## 当前限制
 
-- 与 R `gamlss` 的最终 deviance 直接对齐（`< 0.01`）目前为部分接入：已新增 NO/GA/WEI 测试模块，NBI 仍待补齐。
+- 与 R `gamlss` 的最终 deviance 直接对齐（`< 0.01`）目前已接入 NO/GA/WEI/NBI 的完整测试脚手架（是否执行取决于 R bridge 可用性）。
 - 仓库中已有 R 一致性测试体系，但专门面向 Week 2 full-CG vs R bridge 的执行仍待集成。
 
 ## 执行命令

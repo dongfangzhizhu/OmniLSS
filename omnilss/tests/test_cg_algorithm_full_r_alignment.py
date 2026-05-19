@@ -6,7 +6,7 @@ import unittest
 
 import numpy as np
 
-from omnilss.distributions import GA, NO, WEI
+from omnilss.distributions import GA, NBI, NO, WEI
 from omnilss.fitting import gamlss
 from tests._r_bridge_helper import R_AVAILABLE, R_BRIDGE_CLS as RBridge
 
@@ -59,9 +59,16 @@ class TestCGFullRAlignment(unittest.TestCase):
         rng = np.random.default_rng(44)
         n = 80
         x = rng.normal(size=n)
-        # Positive response with modest variation for WEI stability.
         y = rng.weibull(a=1.8, size=n) * np.exp(0.2 * x) + 0.1
         self._run_case(WEI(), "WEI", y=y, x=x)
+
+    def test_nbi_alignment(self):
+        rng = np.random.default_rng(45)
+        n = 100
+        x = rng.normal(size=n)
+        mu = np.exp(0.2 + 0.25 * x)
+        y = rng.negative_binomial(n=3, p=3.0 / (3.0 + mu)).astype(float)
+        self._run_case(NBI(), "NBI", y=y, x=x)
 
 
 if __name__ == "__main__":

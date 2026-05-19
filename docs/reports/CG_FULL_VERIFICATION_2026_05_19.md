@@ -22,7 +22,7 @@ This report documents current Week 2 progress on full CG validation:
 
 ## Current Limitations
 
-- Direct R `gamlss` final deviance alignment (`< 0.01`) for NO/GA/WEI/NBI is partially wired: NO/GA/WEI test module added, NBI pending.
+- Direct R `gamlss` final deviance alignment (`< 0.01`) for NO/GA/WEI/NBI is wired with a full NO/GA/WEI/NBI test scaffold (execution depends on R bridge availability).
 - Existing R consistency coverage remains available in repository test suites, but dedicated Week 2 full-CG vs R bridge execution is pending integration.
 
 ## Commands Executed
