@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
+import jax
+import jax.numpy as jnp
 import numpy as np
+from jax.test_util import check_grads
 
-from omnilss.derivatives.cross_derivatives import cross_hessian_from_family
+from omnilss.derivatives.cross_derivatives import (
+    cross_hessian,
+    cross_hessian_from_family,
+)
 from omnilss.distributions import GA, NO, WEI
+
+
+jax.config.update("jax_enable_x64", True)
 
 
 def _run_family_case(family, y, param_values):
@@ -51,4 +60,46 @@ def test_cross_hessian_wei_shapes_and_symmetry():
         WEI(),
         y=y,
         param_values={"mu": np.full(n, 1.2), "sigma": np.full(n, 1.1)},
+    )
+
+
+def test_cross_hessian_generic_matches_analytic_quadratic():
+    n = 7
+    a = jnp.linspace(-1.0, 1.0, n)
+    b = jnp.linspace(0.5, 2.5, n)
+
+    def ll_fn(params):
+        x = params["x"]
+        y = params["y"]
+        # elementwise ll_i = x_i^2 + 3*x_i*y_i + 2*y_i^2
+        return x * x + 3.0 * x * y + 2.0 * y * y
+
+    out = cross_hessian(ll_fn, {"x": a, "y": b})
+    np.testing.assert_allclose(np.asarray(out[("x", "x")]), 2.0 * np.eye(n), atol=1e-10)
+    np.testing.assert_allclose(np.asarray(out[("y", "y")]), 4.0 * np.eye(n), atol=1e-10)
+    np.testing.assert_allclose(np.asarray(out[("x", "y")]), 3.0 * np.eye(n), atol=1e-10)
+    np.testing.assert_allclose(np.asarray(out[("y", "x")]), 3.0 * np.eye(n), atol=1e-10)
+
+
+def test_cross_hessian_generic_finite_difference_check():
+    n = 5
+    x0 = jnp.linspace(-0.3, 0.4, n)
+    y0 = jnp.linspace(0.6, 1.0, n)
+
+    def ll_fn(params):
+        x = params["x"]
+        y = params["y"]
+        return jnp.sin(x) * jnp.exp(y) - 0.5 * x * y
+
+    def scalar_obj(x, y):
+        return jnp.sum(ll_fn({"x": x, "y": y}))
+
+    check_grads(scalar_obj, (x0, y0), order=2, modes=("fwd", "rev"), atol=1e-5, rtol=1e-5)
+
+    out = cross_hessian(ll_fn, {"x": x0, "y": y0})
+    np.testing.assert_allclose(
+        np.asarray(out[("x", "y")]),
+        np.asarray(out[("y", "x")]).T,
+        rtol=1e-8,
+        atol=1e-8,
     )
