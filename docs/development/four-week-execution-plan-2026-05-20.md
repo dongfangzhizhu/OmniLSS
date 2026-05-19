@@ -14,7 +14,7 @@
 - [x] Complete Week 1 Day 1–2 literature/derivation outputs (draft scaffold completed).
 - [x] Complete Week 1 Day 3–4 cross-derivative infrastructure (initial implementation completed).
 - [x] Complete Week 1 Day 5 numerical verification report (local AD verification report published).
-- [ ] Complete Week 2 CG full-loop implementation and validation (in progress: joint scoring matrix utilities added).
+- [ ] Complete Week 2 CG full-loop implementation and validation (in progress: joint scoring matrix utilities and first outer-step line-search helper added).
 - [ ] Complete Week 3 warm-start decoupling + benchmark repair.
 - [ ] Complete Week 4 integration/release preparation.
 
@@ -32,7 +32,7 @@
 - Added finite structural verification (shape/symmetry/finiteness) for NO/GA/WEI.
 - Published bilingual Week 1 Day 5 cross-derivative verification reports in `docs/reports/`.
 - Started Week 2 Day 6–7 implementation: added `omnilss/src/omnilss/algorithms/cg_algorithm_full.py` with `build_joint_scoring_matrix(...)` and `solve_joint_system(...)`.
-- Added Week 2 tests: `omnilss/tests/test_cg_algorithm_full.py` for block assembly and linear solve consistency.
+- Added Week 2 tests: `omnilss/tests/test_cg_algorithm_full.py` for block assembly, linear solve consistency, and outer-step deviance decrease.
 
 > Note: The active roadmap document defines Week 1–Week 4 only. Work is being advanced strictly in sequence from Week 1 onward; items beyond Week 4 are not yet defined in this plan and therefore cannot be marked complete.
 
