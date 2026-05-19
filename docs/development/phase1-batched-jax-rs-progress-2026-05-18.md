@@ -14,4 +14,4 @@
 
 ## Notes
 
-The current implementation prioritizes correctness and deterministic CPU/GPU behavior through a per-family loop. The public API and grouping structure are now in place for a future same-family GPU `jax.vmap` kernel without changing callers.
+This API now has two execution modes: same-family/same-shape batches use the vectorized `jax.vmap` kernel described in [phase1-jax-vmap-batch-progress-2026-05-18.md](phase1-jax-vmap-batch-progress-2026-05-18.md), while mixed-family or shape-heterogeneous inputs retain the deterministic per-family fallback.

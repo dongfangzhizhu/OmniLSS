@@ -11,4 +11,4 @@ English version: [phase3-dictionary-registry-progress-2026-05-18.md](phase3-dict
 
 ## 说明
 
-`distributions.resolve_family()` 仍保留公共函数名，并委托给权威注册表。旧 legacy resolver 只为任何直接私有导入保留在 `distributions.py` 中；注册表 bootstrap 已不再使用它。
+`distributions.resolve_family()` 仍保留公共函数名，并委托给权威注册表。旧的私有 legacy resolver chain 现已移除，因此分布查找只保留单一的基于字典的实现路径。
