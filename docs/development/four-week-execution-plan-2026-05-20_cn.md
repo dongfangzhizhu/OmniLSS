@@ -15,7 +15,8 @@
 - [x] 完成 Week 1 Day 3–4 交叉导数基础设施（初版实现已完成）。
 - [x] 完成 Week 1 Day 5 数值验证报告（已发布本地 AD 验证报告）。
 - [ ] 完成 Week 2 CG 完整外循环实现与验证（进行中：已新增外循环收敛脚手架与验证报告，R 对齐待完成）。
-- [ ] 完成 Week 3 warm-start 解耦与基准修复。
+- - 已启动 Week 3 Day 13 基准修复：新增可复用 `benchmark_jax(...)`，显式区分 cold/hot，并让 `honest_benchmark(...)` 输出 `cold_s` 与 hot median。
+- [ ] 完成 Week 3 warm-start 解耦与基准修复（进行中：已集成冷/热启动基准辅助函数）。
 - [ ] 完成 Week 4 集成与发布准备。
 
 ---
