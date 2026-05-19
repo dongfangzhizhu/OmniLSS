@@ -11,4 +11,4 @@
 
 ## Notes
 
-`distributions.resolve_family()` still preserves the public function name and delegates to the authoritative registry. The old legacy resolver remains in `distributions.py` only for compatibility with any direct private imports; registry bootstrap no longer uses it.
+`distributions.resolve_family()` still preserves the public function name and delegates to the authoritative registry. The old private legacy resolver chain has now been removed, so distribution lookup has a single dictionary-backed implementation path.
