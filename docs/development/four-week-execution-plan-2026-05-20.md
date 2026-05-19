@@ -16,6 +16,7 @@
 - [x] Complete Week 1 Day 5 numerical verification report (local AD verification report published).
 - [ ] Complete Week 2 CG full-loop implementation and validation (in progress: outer-loop scaffold + validation report added; R-alignment pending).
 - - Started Week 3 Day 13 benchmark repair: added reusable `benchmark_jax(...)` helper with explicit cold/hot separation and wired `honest_benchmark(...)` to report `cold_s` + hot median.
+- Added benchmark helper test coverage: `benchmarks/test_comprehensive_performance_benchmark_helper.py` validates non-negative cold/hot timings and expected cold>=hot behavior for JITed path.
 - [ ] Complete Week 3 warm-start decoupling + benchmark repair (in progress: benchmark cold/hot helper integrated).
 - [ ] Complete Week 4 integration/release preparation.
 
