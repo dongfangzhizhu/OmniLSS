@@ -1996,6 +1996,18 @@ def BCPE() -> BoxCoxPowerExponentialFamily:
     )
 
 
+def _resolve_family_legacy(family_name: str) -> FamilyDefinition:
+    """Deprecated compatibility shim for historical private resolver imports.
+
+    Family lookup remains registry-backed; this private helper no longer owns
+    a separate if/elif resolver table.
+    """
+
+    from .distribution_registry import resolve
+
+    return resolve(family_name)
+
+
 def resolve_family(family: str | FamilyDefinition | None) -> FamilyDefinition:
     """Resolve a family name/object into a FamilyDefinition instance."""
 

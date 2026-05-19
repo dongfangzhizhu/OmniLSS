@@ -12,4 +12,4 @@
 
 ## Notes
 
-The registry is now the public lookup surface. Built-in families are bootstrapped from the single `_BUILTIN_FAMILY_FACTORIES` dictionary, and `distributions.py` no longer keeps the old private legacy resolver chain.
+The registry is now the public lookup surface. Built-in families are bootstrapped from the single `_BUILTIN_FAMILY_FACTORIES` dictionary, while the historical private `_resolve_family_legacy()` name remains only as a thin registry-backed compatibility shim.

@@ -79,6 +79,40 @@ class OmniLSSCoreClient:
             "converged": response.converged,
         }
 
+    def batch_fit(self, requests: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Fit multiple GAMLSS models through Core's BatchFit RPC."""
+        grpc_requests = []
+        for item in requests:
+            grpc_requests.append(
+                fit_pb2.FitRequest(
+                    formula=str(item["formula"]),
+                    family=str(item["family"]),
+                    data_json=json.dumps(_jsonable_mapping(item["data"])),
+                    sigma_formula=str(item.get("sigma_formula", "~ 1")),
+                    nu_formula=str(item.get("nu_formula", "")),
+                    tau_formula=str(item.get("tau_formula", "")),
+                    method=str(item.get("method", "RS")),
+                    max_iter=int(item.get("max_iter", 20)),
+                    verbose=bool(item.get("verbose", False)),
+                )
+            )
+        response = self._fit_stub.BatchFit(
+            fit_pb2.BatchFitRequest(requests=grpc_requests), timeout=self._timeout
+        )
+        if response.error and not response.responses:
+            raise RuntimeError(f"Core server batch fit failed: {response.error}")
+        return [
+            {
+                "model_id": result.model_id,
+                "success": result.success,
+                "error": result.error,
+                "deviance": result.deviance,
+                "iterations": result.iterations,
+                "converged": result.converged,
+            }
+            for result in response.responses
+        ]
+
     def list_models(self) -> list[str]:
         """List model ids currently registered by the Core server."""
         response = self._fit_stub.ListModels(

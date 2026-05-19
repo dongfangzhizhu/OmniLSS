@@ -74,22 +74,28 @@ def rank_candidate_families(
 ) -> dict[str, Any]:
     """Fit candidate families through Core and rank them by model criteria.
 
-    The Pro package never imports OmniLSS Core.  Each candidate fit is executed
-    by the supplied :class:`OmniLSSCoreClient`, preserving the commercial/GPL
-    process boundary while returning deviance, AIC, BIC, and GAIC rankings.
+    The Pro package never imports OmniLSS Core. Candidate fits are executed
+    through the supplied :class:`OmniLSSCoreClient` batch-fit boundary,
+    preserving the commercial/GPL process boundary while returning deviance,
+    AIC, BIC, and GAIC rankings.
     """
 
     counts = {**_DEFAULT_PARAMETER_COUNTS, **(parameter_counts or {})}
     n_obs = _response_length(data)
+    family_list = list(families)
+    batch_requests = [
+        {
+            "formula": formula,
+            "family": family,
+            "data": data,
+            "sigma_formula": sigma_formula,
+        }
+        for family in family_list
+    ]
+    batch_results = client.batch_fit(batch_requests)
     results: list[dict[str, Any]] = []
-    for family in families:
-        try:
-            result = client.fit(
-                formula=formula,
-                family=family,
-                data=data,
-                sigma_formula=sigma_formula,
-            )
+    for family, result in zip(family_list, batch_results, strict=True):
+        if result.get("success", True):
             results.append(
                 _score_candidate(
                     result,
@@ -99,8 +105,10 @@ def rank_candidate_families(
                     gaic_k=gaic_k,
                 )
             )
-        except Exception as exc:  # keep searching other candidate families
-            results.append({"family": family, "error": str(exc)})
+        else:
+            results.append(
+                {"family": family, "error": str(result.get("error", "fit failed"))}
+            )
 
     successful = [r for r in results if rank_by in r]
     if not successful:
@@ -147,9 +155,10 @@ def bootstrap_deviance_intervals(
 ) -> dict[str, Any]:
     """Estimate bootstrap deviance intervals through repeated Core fits.
 
-    Each bootstrap sample is sent to Core via gRPC.  The returned intervals are
-    intentionally based on deviance because the public Core fit response already
-    exposes that stable model-quality metric across all supported families.
+    Bootstrap samples are sent to Core via the batch-fit gRPC boundary. The
+    returned intervals are intentionally based on deviance because the public
+    Core fit response already exposes that stable model-quality metric across
+    all supported families.
     """
 
     if n_bootstrap <= 0:
@@ -165,19 +174,23 @@ def bootstrap_deviance_intervals(
     for family in families:
         deviances: list[float] = []
         errors: list[str] = []
+        batch_requests = []
         for _ in range(n_bootstrap):
             indices = rng.integers(0, n_obs, size=n_obs)
             sample = _take_rows(data, indices)
-            try:
-                result = client.fit(
-                    formula=formula,
-                    family=family,
-                    data=sample,
-                    sigma_formula=sigma_formula,
-                )
+            batch_requests.append(
+                {
+                    "formula": formula,
+                    "family": family,
+                    "data": sample,
+                    "sigma_formula": sigma_formula,
+                }
+            )
+        for result in client.batch_fit(batch_requests):
+            if result.get("success", True):
                 deviances.append(float(result["deviance"]))
-            except Exception as exc:
-                errors.append(str(exc))
+            else:
+                errors.append(str(result.get("error", "fit failed")))
 
         if deviances:
             lo, hi = np.quantile(deviances, [alpha / 2.0, 1.0 - alpha / 2.0])

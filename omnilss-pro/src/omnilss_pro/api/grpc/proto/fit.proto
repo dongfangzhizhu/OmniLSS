@@ -22,6 +22,15 @@ message FitResponse {
   bool converged = 6;
 }
 
+message BatchFitRequest {
+  repeated FitRequest requests = 1;
+}
+
+message BatchFitResponse {
+  repeated FitResponse responses = 1;
+  bool success = 2;
+  string error = 3;
+}
 
 message ListModelsRequest {}
 message ListModelsResponse {
@@ -39,6 +48,7 @@ message DeleteModelResponse {
 
 service FitService {
   rpc Fit(FitRequest) returns (FitResponse);
+  rpc BatchFit(BatchFitRequest) returns (BatchFitResponse);
   rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
   rpc DeleteModel(DeleteModelRequest) returns (DeleteModelResponse);
 }

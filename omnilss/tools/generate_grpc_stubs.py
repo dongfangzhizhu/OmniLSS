@@ -34,6 +34,7 @@ SERVICE_SPECS = {
         "FitService",
         (
             ("Fit", "FitRequest", "FitResponse"),
+            ("BatchFit", "BatchFitRequest", "BatchFitResponse"),
             ("ListModels", "ListModelsRequest", "ListModelsResponse"),
             ("DeleteModel", "DeleteModelRequest", "DeleteModelResponse"),
         ),

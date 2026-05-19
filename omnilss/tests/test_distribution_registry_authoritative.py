@@ -57,8 +57,12 @@ def test_builtin_registry_uses_single_dictionary_table():
     assert _BUILTIN_FAMILY_FACTORIES["EXGAUS"] == ("omnilss.distributions_b2", "exGAUS")
 
 
-def test_resolve_family_has_no_legacy_if_chain():
+def test_legacy_resolver_shim_delegates_to_registry():
+    import inspect
+
     import omnilss.distributions as distributions
 
-    assert not hasattr(distributions, "_resolve_family_legacy")
+    source = inspect.getsource(distributions._resolve_family_legacy)
+    assert "if family_name ==" not in source
+    assert distributions._resolve_family_legacy("EXGAUS").name == "exGAUS"
     assert resolve_family("EXGAUS").name == "exGAUS"

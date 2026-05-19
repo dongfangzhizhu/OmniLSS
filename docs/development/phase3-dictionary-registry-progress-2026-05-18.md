@@ -11,4 +11,4 @@
 
 ## Notes
 
-`distributions.resolve_family()` still preserves the public function name and delegates to the authoritative registry. The old private legacy resolver chain has now been removed, so distribution lookup has a single dictionary-backed implementation path.
+`distributions.resolve_family()` still preserves the public function name and delegates to the authoritative registry. The old private if/elif resolver table has been replaced by a thin `_resolve_family_legacy()` compatibility shim that also delegates to the dictionary-backed registry.
