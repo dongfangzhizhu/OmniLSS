@@ -298,28 +298,58 @@ def honest_benchmark(
             pass
         return model
 
-    for _ in range(n_warmup):
-        _fit_once()
-
-    times: list[float] = []
-    deviance = None
-    for _ in range(n_runs):
-        t0 = time.perf_counter()
-        model = _fit_once()
-        times.append(time.perf_counter() - t0)
-        deviance = float(model.g_dev)
+    cold_s, hot_median_s = benchmark_jax(_fit_once, n_warmup=n_warmup, n_repeat=n_runs)
+    model = _fit_once()
+    deviance = float(model.g_dev)
 
     return {
         "family": family_name,
         "n": n,
-        "median_s": float(np.median(times)),
-        "min_s": float(np.min(times)),
-        "max_s": float(np.max(times)),
+        "cold_s": cold_s,
+        "median_s": hot_median_s,
         "runs": n_runs,
         "warmup_runs": n_warmup,
         "deviance": deviance,
-        "note": f"JIT warm-up ({n_warmup} runs) excluded",
+        "note": f"cold/hot separated; warm-up ({n_warmup}) excluded from hot timing",
     }
+
+
+
+
+def benchmark_jax(fn, *args, n_warmup: int = 3, n_repeat: int = 10):
+    """Benchmark JAX callables with explicit cold/hot separation.
+
+    Returns `(cold_s, hot_median_s)` where:
+    - `cold_s` includes first-call compilation overhead
+    - `hot_median_s` is median runtime after warmup runs
+    """
+
+    t0 = time.perf_counter()
+    out = fn(*args)
+    try:
+        jax.block_until_ready(out)
+    except Exception:
+        pass
+    cold_s = time.perf_counter() - t0
+
+    for _ in range(n_warmup):
+        out = fn(*args)
+        try:
+            jax.block_until_ready(out)
+        except Exception:
+            pass
+
+    times = []
+    for _ in range(n_repeat):
+        t1 = time.perf_counter()
+        out = fn(*args)
+        try:
+            jax.block_until_ready(out)
+        except Exception:
+            pass
+        times.append(time.perf_counter() - t1)
+
+    return float(cold_s), float(np.median(times))
 
 
 # ── R timing ──────────────────────────────────────────────────────────────────
