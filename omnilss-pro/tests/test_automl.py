@@ -87,3 +87,28 @@ def test_bootstrap_deviance_intervals_use_resampled_core_fits() -> None:
     assert len(no_result["deviance_ci"]) == 2
     assert [call[1] for call in client.calls] == [10] * 5
     assert client.batch_sizes == [5]
+
+
+def test_rank_candidate_families_skips_failed_batch_items() -> None:
+    class PartiallyFailingClient(FakeClient):
+        def batch_fit(self, requests):
+            res = super().batch_fit(requests)
+            res[1]["success"] = False
+            res[1]["error"] = "fit failed"
+            return res
+
+    client = PartiallyFailingClient()
+    data = {"y": np.arange(6.0), "x": np.arange(6.0)}
+
+    result = rank_candidate_families(
+        client,
+        "y ~ x",
+        data,
+        families=("NO", "GA", "LOGNO"),
+        rank_by="deviance",
+    )
+
+    assert result["best_family"] in {"NO", "LOGNO"}
+    errors = [c for c in result["candidates"] if c.get("error")]
+    assert len(errors) == 1
+    assert errors[0]["family"] == "GA"

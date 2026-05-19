@@ -6,7 +6,7 @@
 
 - Extended the Core and Pro `fit.proto` contracts with `BatchFitRequest`, `BatchFitResponse`, and the `FitService.BatchFit` RPC while preserving the existing single-model `Fit` RPC.
 - Regenerated the Core and Pro protobuf modules and fallback gRPC service wrappers so non-`grpcio-tools` environments expose the new batch method consistently.
-- Added a Core server `BatchFit` implementation that executes each `FitRequest`, persists each successful model in the existing registry, and returns per-model `FitResponse` records.
+- Added a Core server `BatchFit` implementation that executes each `FitRequest`, persists each successful model in the existing registry, returns per-model `FitResponse` records, and sets top-level batch status/error when any item fails.
 - Added `OmniLSSCoreClient.batch_fit()` on the Pro side and changed Pro AutoML ranking and bootstrap helpers to use Core batch-fit calls instead of per-candidate/per-resample `fit()` loops.
 - Added tests proving the Core service handles multi-request batch fitting and Pro AutoML uses the batch boundary.
 
