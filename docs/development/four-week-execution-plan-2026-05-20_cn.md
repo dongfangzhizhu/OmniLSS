@@ -14,7 +14,7 @@
 - [x] 完成 Week 1 Day 1–2 文献/推导产出（草案骨架已完成）。
 - [x] 完成 Week 1 Day 3–4 交叉导数基础设施（初版实现已完成）。
 - [x] 完成 Week 1 Day 5 数值验证报告（已发布本地 AD 验证报告）。
-- [ ] 完成 Week 2 CG 完整外循环实现与验证（进行中：已新增联合打分矩阵工具与首版外循环线搜索步骤）。
+- [ ] 完成 Week 2 CG 完整外循环实现与验证（进行中：已新增外循环收敛脚手架与验证报告，R 对齐待完成）。
 - [ ] 完成 Week 3 warm-start 解耦与基准修复。
 - [ ] 完成 Week 4 集成与发布准备。
 
@@ -31,6 +31,7 @@
   - `omnilss/tests/test_cross_derivatives.py`
 - 已补充 NO/GA/WEI 的结构性验证（shape/对称性/有限值）。
 - 已在 `docs/reports/` 发布中英文 Week 1 Day 5 交叉导数验证报告。
+- 已发布 Week 2 中英文进展报告：`docs/reports/CG_FULL_VERIFICATION_2026_05_19.md` / `_cn.md`。
 - 已启动 Week 2 Day 6–7：新增 `omnilss/src/omnilss/algorithms/cg_algorithm_full.py`，包含 `build_joint_scoring_matrix(...)` 与 `solve_joint_system(...)`。
 - 已新增 Week 2 测试：`omnilss/tests/test_cg_algorithm_full.py`，覆盖 block 组装、线性求解一致性，以及外循环 deviance 下降校验。
 - 新增 `run_cg_outer_loop(...)` 脚手架：按 `c_crit` 做相对 global deviance 收敛判定，并记录每轮步长历史。
