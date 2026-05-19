@@ -18,14 +18,15 @@
 2. 在凸型 deviance toy 系统上的线搜索单调性。
 3. 按相对 global deviance 收敛准则（`c_crit`）的迭代行为验证。
 4. 针对验收分布标签 NO/GA/WEI/NBI 的 Week 2 验证脚手架测试。
+5. 新增面向 `method="CG"` 的 R 对齐测试模块（`test_cg_algorithm_full_r_alignment.py`），覆盖 NO/GA/WEI；当 R bridge 不可用时自动跳过。
 
 ## 当前限制
 
-- 尚未在该新模块路径完成与 R `gamlss` 的最终 deviance 直接对齐（`< 0.01`）。
+- 与 R `gamlss` 的最终 deviance 直接对齐（`< 0.01`）目前为部分接入：已新增 NO/GA/WEI 测试模块，NBI 仍待补齐。
 - 仓库中已有 R 一致性测试体系，但专门面向 Week 2 full-CG vs R bridge 的执行仍待集成。
 
 ## 执行命令
 
 ```bash
-python -m pytest omnilss/tests/test_cg_algorithm_full.py omnilss/tests/test_cg_algorithm_full_validation.py -q
+python -m pytest omnilss/tests/test_cg_algorithm_full.py omnilss/tests/test_cg_algorithm_full_validation.py omnilss/tests/test_cg_algorithm_full_r_alignment.py -q
 ```
