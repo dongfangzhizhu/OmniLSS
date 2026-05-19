@@ -270,8 +270,8 @@ def create_service():
             try:
                 return self._fit_one(request)
             except Exception as exc:
-                return fit_pb2.FitResponse(
-                    model_id="", success=False, error=_error_text(exc)
+                return fit_pb2.BatchFitResponse(
+                    responses=[], success=False, error=_error_text(exc)
                 )
 
         def BatchFit(self, request, context):  # noqa: N802, ARG002
