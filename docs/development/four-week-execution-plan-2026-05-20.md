@@ -33,6 +33,7 @@
 - Published bilingual Week 1 Day 5 cross-derivative verification reports in `docs/reports/`.
 - Started Week 2 Day 6–7 implementation: added `omnilss/src/omnilss/algorithms/cg_algorithm_full.py` with `build_joint_scoring_matrix(...)` and `solve_joint_system(...)`.
 - Added Week 2 tests: `omnilss/tests/test_cg_algorithm_full.py` for block assembly, linear solve consistency, and outer-step deviance decrease.
+- Added `run_cg_outer_loop(...)` scaffold with relative global deviance convergence (`c_crit`) and per-iteration step-size history.
 
 > Note: The active roadmap document defines Week 1–Week 4 only. Work is being advanced strictly in sequence from Week 1 onward; items beyond Week 4 are not yet defined in this plan and therefore cannot be marked complete.
 

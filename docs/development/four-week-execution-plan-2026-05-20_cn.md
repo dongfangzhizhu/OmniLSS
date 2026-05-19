@@ -33,6 +33,7 @@
 - 已在 `docs/reports/` 发布中英文 Week 1 Day 5 交叉导数验证报告。
 - 已启动 Week 2 Day 6–7：新增 `omnilss/src/omnilss/algorithms/cg_algorithm_full.py`，包含 `build_joint_scoring_matrix(...)` 与 `solve_joint_system(...)`。
 - 已新增 Week 2 测试：`omnilss/tests/test_cg_algorithm_full.py`，覆盖 block 组装、线性求解一致性，以及外循环 deviance 下降校验。
+- 新增 `run_cg_outer_loop(...)` 脚手架：按 `c_crit` 做相对 global deviance 收敛判定，并记录每轮步长历史。
 
 > 说明：当前路线图文档仅定义 Week 1–Week 4。现阶段按顺序从 Week 1 向后推进；Week 4 之后任务在该计划中尚未定义，因此不能标记完成。
 
