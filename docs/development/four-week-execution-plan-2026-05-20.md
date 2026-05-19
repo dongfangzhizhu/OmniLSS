@@ -11,12 +11,27 @@
 - [x] Confirm the current milestone and day-level checklist before implementing.
 - [x] Confirm documentation parity requirement (English + Chinese with cross-links).
 - [x] Start with Week 1 Day 1–2 mathematical groundwork.
-- [ ] Complete Week 1 Day 1–2 literature/derivation outputs.
-- [ ] Complete Week 1 Day 3–4 cross-derivative infrastructure.
+- [x] Complete Week 1 Day 1–2 literature/derivation outputs (draft scaffold completed).
+- [x] Complete Week 1 Day 3–4 cross-derivative infrastructure (initial implementation completed).
 - [ ] Complete Week 1 Day 5 numerical verification report.
 - [ ] Complete Week 2 CG full-loop implementation and validation.
 - [ ] Complete Week 3 warm-start decoupling + benchmark repair.
 - [ ] Complete Week 4 integration/release preparation.
+
+---
+
+## Progress Log (Sequential Advancement)
+
+### 2026-05-19 update
+
+- Added bilingual four-week execution plan documents.
+- Added bilingual CG derivation workspace documents.
+- Implemented initial Week 1 Day 3–4 infrastructure:
+  - `omnilss/src/omnilss/derivatives/cross_derivatives.py`
+  - `omnilss/tests/test_cross_derivatives.py`
+- Added finite structural verification (shape/symmetry/finiteness) for NO/GA/WEI.
+
+> Note: The active roadmap document defines Week 1–Week 4 only. Work is being advanced strictly in sequence from Week 1 onward; items beyond Week 4 are not yet defined in this plan and therefore cannot be marked complete.
 
 ---
 
@@ -34,36 +49,3 @@ This means the real value of JAX is not “making RS faster,” but rather:
 - and enabling **large design matrices / multi-parameter families** for batched GPU inference.
 
 ---
-
-## Milestone Overview
-
-| Week   | Core Goal                                                     | Deliverables                                            | Acceptance Criteria                               |
-| ------ | ------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------- |
-| Week 1 | CG theoretical modeling + cross-derivative infrastructure     | `cross_derivatives.py` + mathematical validation report | Numerical alignment with R, error < 1e-6          |
-| Week 2 | Full CG implementation + outer loop                           | `cg_algorithm.py` (full version)                        | NO/GA/WEI convergence with bias matching R        |
-| Week 3 | Architecture refactor: decouple warm-start, repair benchmarks | Refactored RS + honest benchmarking suite               | Benchmark report includes both cold/hot scenarios |
-| Week 4 | Integration / testing / release preparation                   | v0.3.0-rc, PyPI draft                                   | CI fully green, license migration completed       |
-
----
-
-## Weekly Plan (Canonical Task List)
-
-The detailed week/day tasks, acceptance thresholds, dependencies, risks, DoD, and target before/after states are adopted exactly from the approved plan text provided by product direction for 2026-05-20.
-
-To avoid divergence, implementation progress should be tracked by:
-
-1. checking the execution checklist above,
-2. updating task checkboxes in progress reports,
-3. linking evidence docs in `docs/math/` and `docs/reports/`.
-
----
-
-## Immediate Next Development Tasks (Activated Now)
-
-### Week 1 / Day 1–2
-
-- [x] Create this execution plan document.
-- [x] Create Chinese counterpart and cross-link both documents.
-- [x] Create `docs/math/cg_derivation.md` as the initial derivation output target.
-- [x] Create `docs/math/cg_derivation_cn.md` and cross-link both derivation documents.
-- [ ] Continue expanding derivations with full block-matrix notation and distribution-specific notes.
