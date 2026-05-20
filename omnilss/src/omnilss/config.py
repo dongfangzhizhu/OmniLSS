@@ -527,6 +527,31 @@ def describe_method_routing_reason(reason: str) -> str:
     }
     return mapping.get(reason, "No explanation registered for this routing reason code.")
 
+
+
+def build_method_routing_decision(
+    *,
+    requested_method: str,
+    selected_method: str,
+    reason: str,
+    backend: str,
+    family: str,
+    threshold: float | None,
+    n_obs: int | None,
+) -> dict[str, Any]:
+    """Build a stable routing decision payload for model metadata."""
+    return {
+        "requested_method": str(requested_method).upper(),
+        "selected_method": str(selected_method).upper(),
+        "reason": reason,
+        "reason_detail": describe_method_routing_reason(reason),
+        "backend": backend,
+        "threshold": threshold,
+        "n_obs": n_obs,
+        "family": str(family).upper(),
+    }
+
+
 def get_config_summary() -> dict[str, Any]:
     """Return a summary of the current configuration for diagnostics."""
     backend, devices = _current_backend()

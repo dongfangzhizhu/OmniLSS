@@ -71,6 +71,22 @@ class TestAutoSelectMethod:
 
 
 
+
+    def test_build_method_routing_decision_normalizes_payload(self):
+        payload = cfg.build_method_routing_decision(
+            requested_method="auto",
+            selected_method="rs",
+            reason="cpu_backend_prefers_numpy_rs",
+            backend="cpu",
+            threshold=None,
+            n_obs=12,
+            family="no",
+        )
+        assert payload["requested_method"] == "AUTO"
+        assert payload["selected_method"] == "RS"
+        assert payload["family"] == "NO"
+        assert payload["reason_detail"]
+
     def test_cpu_always_rs(self):
         """On CPU backend, auto_select_method always returns 'RS'."""
         import jax

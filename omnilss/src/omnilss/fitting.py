@@ -887,16 +887,15 @@ def gamlss(
         )
         _decision = _cfg.auto_select_method_trace(family.name, _n_obs)
         method_name = _decision.method.upper()
-        routing_decision = {
-            "requested_method": requested_method,
-            "selected_method": method_name,
-            "reason": _decision.reason,
-            "reason_detail": _cfg.describe_method_routing_reason(_decision.reason),
-            "backend": _decision.backend,
-            "threshold": _decision.threshold,
-            "n_obs": int(_n_obs),
-            "family": family.name,
-        }
+        routing_decision = _cfg.build_method_routing_decision(
+            requested_method=requested_method,
+            selected_method=method_name,
+            reason=_decision.reason,
+            backend=_decision.backend,
+            threshold=_decision.threshold,
+            n_obs=int(_n_obs),
+            family=family.name,
+        )
         if verbose:
             print("OmniLSS method routing")
             print(
@@ -924,16 +923,15 @@ def gamlss(
             from . import config as _cfg
 
             _backend, _ = _cfg._current_backend()
-            routing_decision = {
-                "requested_method": "RS_JAX",
-                "selected_method": "RS_JAX",
-                "reason": "explicit_method_requested",
-                "reason_detail": _cfg.describe_method_routing_reason("explicit_method_requested"),
-                "backend": _backend,
-                "threshold": None,
-                "n_obs": None,
-                "family": family.name,
-            }
+            routing_decision = _cfg.build_method_routing_decision(
+                requested_method="RS_JAX",
+                selected_method="RS_JAX",
+                reason="explicit_method_requested",
+                backend=_backend,
+                threshold=None,
+                n_obs=None,
+                family=family.name,
+            )
 
         warnings.warn(
             "method='RS_JAX' is deprecated as a user-facing route; use "
