@@ -124,6 +124,70 @@ class GAMLSSModel:
         
         return self.lambda_selection_info[parameter]
     
+
+    def get_method_routing(self, *, validate: bool = True) -> dict[str, Any] | None:
+        """Return structured method-routing metadata from ``additional_slots``.
+
+        Parameters
+        ----------
+        validate : bool, default=True
+            When True, validate the payload schema using
+            :func:`omnilss.config.validate_method_routing_decision`.
+
+        Returns
+        -------
+        dict or None
+            Routing payload dictionary when present, else ``None``.
+        """
+        payload = self.additional_slots.get("method_routing")
+        if payload is None:
+            return None
+        payload_dict = dict(payload)
+        if validate:
+            from .config import validate_method_routing_decision
+
+            validate_method_routing_decision(payload_dict)
+        return payload_dict
+
+    def has_method_routing(self) -> bool:
+        """Return True when structured method-routing metadata is available."""
+        return self.get_method_routing(validate=False) is not None
+
+
+    def get_method_routing_reason(self, *, validate: bool = True) -> str | None:
+        """Return the routing reason code when routing metadata is available."""
+        routing = self.get_method_routing(validate=validate)
+        if routing is None:
+            return None
+        return str(routing.get("reason"))
+
+    def get_method_routing_reason_detail(self, *, validate: bool = True) -> str | None:
+        """Return the user-facing routing reason detail string when available."""
+        routing = self.get_method_routing(validate=validate)
+        if routing is None:
+            return None
+        detail = routing.get("reason_detail")
+        return None if detail is None else str(detail)
+
+
+    def get_method_routing_summary(self, *, validate: bool = True) -> str | None:
+        """Return a compact human-readable method-routing summary string."""
+        routing = self.get_method_routing(validate=validate)
+        if routing is None:
+            return None
+        req = routing.get("requested_method", "?")
+        sel = routing.get("selected_method", "?")
+        backend = routing.get("backend", "?")
+        reason = routing.get("reason", "?")
+        n_obs = routing.get("n_obs", None)
+        threshold = routing.get("threshold", None)
+        suffix = ""
+        if n_obs is not None:
+            suffix += f", n_obs={n_obs}"
+        if threshold is not None:
+            suffix += f", threshold={threshold}"
+        return f"requested={req} -> selected={sel} on {backend} ({reason}{suffix})"
+
     def predict_params(
         self,
         newdata: dict[str, Any],

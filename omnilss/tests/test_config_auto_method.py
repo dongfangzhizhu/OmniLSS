@@ -365,3 +365,54 @@ def test_tpu_crossover_has_all_jax_family_placeholders():
     for family in cfg.JAX_SUPPORTED_FAMILIES:
         assert family in cfg.TPU_CROSSOVER_N
         assert cfg.TPU_CROSSOVER_N[family] == math.inf
+
+
+def test_model_get_method_routing_validated():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    routing = model.get_method_routing()
+    assert routing is None or isinstance(routing, dict)
+    if routing is not None:
+        assert routing.get("requested_method") in {"AUTO", "RS", "RS_JAX"}
+
+
+
+def test_model_get_method_routing_validation_toggle():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    routing = model.get_method_routing(validate=False)
+    if routing is None:
+        pytest.skip("No routing payload available in this environment")
+    broken = dict(routing)
+    broken.pop("reason", None)
+    model.additional_slots = {**dict(model.additional_slots), "method_routing": broken}
+    with pytest.raises(ValueError, match="missing keys"):
+        model.get_method_routing(validate=True)
+    relaxed = model.get_method_routing(validate=False)
+    assert isinstance(relaxed, dict)
+    assert model.has_method_routing() is True
+
+
+
+def test_model_get_method_routing_reason_accessors():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    reason = model.get_method_routing_reason()
+    detail = model.get_method_routing_reason_detail()
+    if reason is None:
+        assert detail is None
+    else:
+        assert isinstance(reason, str)
+        assert isinstance(detail, str)
+        assert detail
+
+
+
+def test_model_get_method_routing_summary():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    summary = model.get_method_routing_summary()
+    if summary is not None:
+        assert "requested=" in summary
+        assert "selected=" in summary
+
