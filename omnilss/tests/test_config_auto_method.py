@@ -87,6 +87,23 @@ class TestAutoSelectMethod:
         assert payload["family"] == "NO"
         assert payload["reason_detail"]
 
+
+    def test_validate_method_routing_decision_accepts_normalized_payload(self):
+        payload = cfg.build_method_routing_decision(
+            requested_method="AUTO",
+            selected_method="RS",
+            reason="cpu_backend_prefers_numpy_rs",
+            backend="cpu",
+            threshold=None,
+            n_obs=10,
+            family="NO",
+        )
+        cfg.validate_method_routing_decision(payload)
+
+    def test_validate_method_routing_decision_rejects_missing_key(self):
+        with pytest.raises(ValueError, match="missing keys"):
+            cfg.validate_method_routing_decision({"requested_method": "AUTO"})
+
     def test_cpu_always_rs(self):
         """On CPU backend, auto_select_method always returns 'RS'."""
         import jax

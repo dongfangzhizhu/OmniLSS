@@ -896,6 +896,7 @@ def gamlss(
             n_obs=int(_n_obs),
             family=family.name,
         )
+        _cfg.validate_method_routing_decision(routing_decision)
         if verbose:
             print("OmniLSS method routing")
             print(
@@ -932,6 +933,7 @@ def gamlss(
                 n_obs=None,
                 family=family.name,
             )
+            _cfg.validate_method_routing_decision(routing_decision)
 
         warnings.warn(
             "method='RS_JAX' is deprecated as a user-facing route; use "
