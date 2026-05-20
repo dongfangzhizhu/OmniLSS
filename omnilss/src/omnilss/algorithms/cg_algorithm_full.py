@@ -40,6 +40,7 @@ class CGRunResult:
     n_iter: int
     deviance_history: tuple[float, ...]
     step_sizes: tuple[float, ...]
+    termination_reason: str
 
 
 def _stack_score_vector(scores: Mapping[str, Array]) -> tuple[Array, dict[str, slice]]:
@@ -125,6 +126,9 @@ def cg_outer_step(
             break
         alpha *= backtracking
 
+    if accepted_dev >= old_dev:
+        alpha = 0.0
+
     return CGOuterStepResult(
         updated_eta=accepted_eta,
         deltas=deltas,
@@ -174,6 +178,7 @@ def run_cg_outer_loop(
                 n_iter=outer,
                 deviance_history=tuple(dev_hist),
                 step_sizes=tuple(step_hist),
+                termination_reason="relative_deviance_converged",
             )
 
     return CGRunResult(
@@ -182,4 +187,5 @@ def run_cg_outer_loop(
         n_iter=max_outer,
         deviance_history=tuple(dev_hist),
         step_sizes=tuple(step_hist),
+        termination_reason="max_outer_reached",
     )
