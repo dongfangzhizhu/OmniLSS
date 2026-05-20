@@ -540,6 +540,7 @@ def build_method_routing_decision(
     family: str,
     threshold: float | None,
     n_obs: int | None,
+    confidence: float | None = None,
 ) -> dict[str, Any]:
     """Build a stable routing decision payload for model metadata."""
     return {
@@ -552,6 +553,7 @@ def build_method_routing_decision(
         "n_obs": n_obs,
         "family": str(family).upper(),
         "schema_version": METHOD_ROUTING_SCHEMA_VERSION,
+        "confidence": confidence,
     }
 
 
@@ -575,6 +577,7 @@ def validate_method_routing_decision(payload: Mapping[str, Any]) -> None:
         "n_obs",
         "family",
         "schema_version",
+        "confidence",
     }
     missing = sorted(required.difference(payload.keys()))
     if missing:
@@ -585,6 +588,15 @@ def validate_method_routing_decision(payload: Mapping[str, Any]) -> None:
             "method routing payload schema_version mismatch: "
             f"expected {METHOD_ROUTING_SCHEMA_VERSION}, got {schema_version!r}"
         )
+    confidence = payload.get("confidence")
+    if confidence is not None:
+        try:
+            confidence_val = float(confidence)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("method routing payload confidence must be numeric") from exc
+        if not (0.0 <= confidence_val <= 1.0):
+            raise ValueError("method routing payload confidence must be in [0, 1]")
+
     for key in ("requested_method", "selected_method", "family"):
         value = str(payload[key])
         if value != value.upper():

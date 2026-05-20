@@ -465,3 +465,27 @@ def test_validate_method_routing_decision_rejects_schema_mismatch():
     with pytest.raises(ValueError, match="schema_version mismatch"):
         cfg.validate_method_routing_decision(payload)
 
+
+
+def test_validate_method_routing_decision_rejects_bad_confidence():
+    payload = cfg.build_method_routing_decision(
+        requested_method="AUTO",
+        selected_method="RS",
+        reason="cpu_backend_prefers_numpy_rs",
+        backend="cpu",
+        threshold=None,
+        n_obs=10,
+        family="NO",
+        confidence=2.0,
+    )
+    with pytest.raises(ValueError, match="confidence must be in \\[0, 1\\]"):
+        cfg.validate_method_routing_decision(payload)
+
+
+def test_auto_routing_payload_includes_confidence():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    routing = model.get_method_routing(validate=False)
+    if routing is not None:
+        assert "confidence" in routing
+
