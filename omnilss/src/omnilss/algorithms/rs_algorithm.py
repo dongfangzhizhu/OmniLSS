@@ -28,6 +28,7 @@ from ..model import GAMLSSModel
 from ..numerical_stability import sanitize_gradient, step_halving
 from ..tensor_protocol import validate_design_matrix, validate_vector
 from ..diagnostic_warnings import evaluate_numerical_warnings
+from ..family_validation import ensure_valid_likelihood_inputs
 from .stabilized_hessian import stabilize_hessian
 from ._model_metrics import df_fit_with_smooth_edf
 
@@ -248,6 +249,11 @@ def rs_step(
         # Use fitted_values as mu if not provided
         if "mu" in family.parameters:
             other_parameters = {**other_parameters, "mu": fitted_values.copy()}
+
+    # Week 4 validation: enforce parameter-domain safety before updates
+    _validation_inputs = {parameter: fitted_values}
+    _validation_inputs.update(other_parameters)
+    ensure_valid_likelihood_inputs(family, _validation_inputs)
 
     # Get link functions for this parameter
     link_fun = family.link_functions[parameter]
