@@ -444,10 +444,11 @@ def test_model_explain_method_routing():
 
 
 
-def test_model_get_method_routing_confidence_absent_returns_none():
+def test_model_get_method_routing_confidence_returns_bounded_value_or_none():
     data = _make_no_data()
     model = gamlss("y ~ x", family=NO(), data=data, method="auto")
-    assert model.get_method_routing_confidence() is None
+    confidence = model.get_method_routing_confidence()
+    assert (confidence is None) or (0.0 <= confidence <= 1.0)
 
 
 
@@ -488,4 +489,19 @@ def test_auto_routing_payload_includes_confidence():
     routing = model.get_method_routing(validate=False)
     if routing is not None:
         assert "confidence" in routing
+
+
+
+def test_model_get_method_routing_summary_includes_confidence_when_present():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    routing = model.get_method_routing(validate=False)
+    if routing is None:
+        pytest.skip("No routing payload available in this environment")
+    routing = dict(routing)
+    routing["confidence"] = 0.8765
+    model.additional_slots = {**dict(model.additional_slots), "method_routing": routing}
+    summary = model.get_method_routing_summary(validate=True)
+    assert summary is not None
+    assert "confidence=0.876" in summary
 

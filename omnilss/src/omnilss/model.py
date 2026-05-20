@@ -181,11 +181,14 @@ class GAMLSSModel:
         reason = routing.get("reason", "?")
         n_obs = routing.get("n_obs", None)
         threshold = routing.get("threshold", None)
+        confidence = self.get_method_routing_confidence(validate=False)
         suffix = ""
         if n_obs is not None:
             suffix += f", n_obs={n_obs}"
         if threshold is not None:
             suffix += f", threshold={threshold}"
+        if confidence is not None:
+            suffix += f", confidence={confidence:.3f}"
         return f"requested={req} -> selected={sel} on {backend} ({reason}{suffix})"
 
 
