@@ -891,6 +891,7 @@ def gamlss(
             "requested_method": requested_method,
             "selected_method": method_name,
             "reason": _decision.reason,
+            "reason_detail": _cfg.describe_method_routing_reason(_decision.reason),
             "backend": _decision.backend,
             "threshold": _decision.threshold,
             "n_obs": int(_n_obs),
