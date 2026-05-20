@@ -891,6 +891,7 @@ def gamlss(
             "requested_method": requested_method,
             "selected_method": method_name,
             "reason": _decision.reason,
+            "reason_detail": _cfg.describe_method_routing_reason(_decision.reason),
             "backend": _decision.backend,
             "threshold": _decision.threshold,
             "n_obs": int(_n_obs),
@@ -918,6 +919,21 @@ def gamlss(
 
     if requested_method_name == "RS_JAX":
         import warnings
+
+        if routing_decision is None:
+            from . import config as _cfg
+
+            _backend, _ = _cfg._current_backend()
+            routing_decision = {
+                "requested_method": "RS_JAX",
+                "selected_method": "RS_JAX",
+                "reason": "explicit_method_requested",
+                "reason_detail": _cfg.describe_method_routing_reason("explicit_method_requested"),
+                "backend": _backend,
+                "threshold": None,
+                "n_obs": None,
+                "family": family.name,
+            }
 
         warnings.warn(
             "method='RS_JAX' is deprecated as a user-facing route; use "
@@ -1041,6 +1057,7 @@ def gamlss(
             control=control,
             i_control=i_control,
             verbose=verbose,
+            routing_decision=routing_decision,
         )
 
     # For RS method, use the dedicated rs_fit function which implements the correct algorithm
@@ -1057,6 +1074,7 @@ def gamlss(
             max_iter=control.n_cyc if control is not None else 20,
             tol=control.c_crit if control is not None else 1e-4,
             verbose=verbose,
+            routing_decision=routing_decision,
         )
 
     if method_name == "CG":
