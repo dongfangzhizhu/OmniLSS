@@ -160,6 +160,8 @@ class TestGamlssAutoMethod:
             assert isinstance(routing.get("reason"), str)
             assert isinstance(routing.get("reason_detail"), str)
             assert routing["reason_detail"]
+        if method_used == "RS":
+            assert model.additional_slots.get("rs_policy_max_inner") == 1
 
     def test_auto_with_unsupported_family_uses_rs(self):
         """method='auto' with an unsupported family falls back to RS."""

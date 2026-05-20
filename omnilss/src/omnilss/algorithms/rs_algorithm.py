@@ -590,6 +590,7 @@ def rs_fit(
         print(f"Parameters: {family.parameters}")
         print(f"Max iterations: {max_iter}")
         print(f"Tolerance: {tol}")
+        print("RS inner-loop policy: max_inner=1 (gamlss::glim.fit aligned)")
         print("=" * 70)
 
     # Parse formulas
@@ -1056,13 +1057,14 @@ def rs_fit(
         control={"n.cyc": max_iter},
         additional_slots={
             "method": "RS",
-            # 存储平滑项信息（knots/degree 等），供预测时重建基矩阵使用
+            # Store smooth-term metadata (knots/degree, etc.) for prediction-time basis reconstruction.
             "smooth_infos": smooth_infos,
             "smooth_edf": smooth_edf,
             "rs_iterations": iteration,
             "rs_converged": converged,
             "step_sizes": step_sizes,
             "auto_step": auto_step,
+            "rs_policy_max_inner": 1,
             "noObs": int(n),
             "G.deviance": g_dev,
             "P.deviance": g_dev,
