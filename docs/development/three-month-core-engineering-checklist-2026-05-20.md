@@ -8,9 +8,9 @@ This checklist tracks execution order and completion status for
 - [x] Week 1 / Task 1: remove `build_ad_family` runtime monkey-patching of class state.
 - [x] Week 1 / Task 2: introduce a runtime backend protocol (`omnilss.runtime.backend.RuntimeBackend`).
 - [x] Week 1 / Task 3: introduce deterministic policy/config scaffold (`omnilss.runtime.config`).
-- [ ] Week 2 / Task 1: damped IRLS with backtracking line search.
-- [ ] Week 2 / Task 2: Hessian regularization module and singular-distribution tests.
-- [ ] Week 2 / Task 3: eta / z / weight clipping integration.
+- [x] Week 2 / Task 1: damped IRLS with backtracking line search (initial integration).
+- [x] Week 2 / Task 2: Hessian regularization module and singular-distribution tests.
+- [x] Week 2 / Task 3: eta / z / weight clipping integration.
 - [ ] Week 3 / Task 1: optimizer abstraction layer.
 - [ ] Week 3 / Task 2: convergence framework (grad/deviance/parameter/curvature).
 - [ ] Week 3 / Task 3: iteration trace JSON export + replay.
