@@ -124,6 +124,51 @@ class GAMLSSModel:
         
         return self.lambda_selection_info[parameter]
     
+
+    def get_method_routing(self, *, validate: bool = True) -> dict[str, Any] | None:
+        """Return structured method-routing metadata from ``additional_slots``.
+
+        Parameters
+        ----------
+        validate : bool, default=True
+            When True, validate the payload schema using
+            :func:`omnilss.config.validate_method_routing_decision`.
+
+        Returns
+        -------
+        dict or None
+            Routing payload dictionary when present, else ``None``.
+        """
+        payload = self.additional_slots.get("method_routing")
+        if payload is None:
+            return None
+        payload_dict = dict(payload)
+        if validate:
+            from .config import validate_method_routing_decision
+
+            validate_method_routing_decision(payload_dict)
+        return payload_dict
+
+    def has_method_routing(self) -> bool:
+        """Return True when structured method-routing metadata is available."""
+        return self.get_method_routing(validate=False) is not None
+
+
+    def get_method_routing_reason(self, *, validate: bool = True) -> str | None:
+        """Return the routing reason code when routing metadata is available."""
+        routing = self.get_method_routing(validate=validate)
+        if routing is None:
+            return None
+        return str(routing.get("reason"))
+
+    def get_method_routing_reason_detail(self, *, validate: bool = True) -> str | None:
+        """Return the user-facing routing reason detail string when available."""
+        routing = self.get_method_routing(validate=validate)
+        if routing is None:
+            return None
+        detail = routing.get("reason_detail")
+        return None if detail is None else str(detail)
+
     def predict_params(
         self,
         newdata: dict[str, Any],
