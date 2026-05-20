@@ -162,3 +162,44 @@ def test_strict_capabilities_reject_experimental_ga_rs_route():
             method="RS",
             strict_capabilities=True,
         )
+
+
+def test_rs_jax_receives_routing_decision_payload(monkeypatch):
+    captured = {}
+
+    def fake_jax_fit(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(additional_slots={"method": "RS_JAX"})
+
+    monkeypatch.setattr(cfg, "_current_backend", lambda: ("gpu", []))
+    monkeypatch.setattr(jax_rs_integration, "gamlss_rs_jax", fake_jax_fit)
+
+    with cfg.crossover_config(gpu={"NO": 1}):
+        gamlss("y ~ x", family=NO(), data=_make_no_data(n=40), method="auto")
+
+    routing = captured.get("routing_decision")
+    assert isinstance(routing, dict)
+    assert routing.get("requested_method") == "AUTO"
+    assert routing.get("selected_method") == "RS_JAX"
+
+
+
+def test_manual_rs_jax_receives_explicit_routing_decision(monkeypatch):
+    captured = {}
+
+    def fake_jax_fit(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(additional_slots={"method": "RS_JAX", "method_routing": kwargs.get("routing_decision")})
+
+    monkeypatch.setattr(cfg, "_current_backend", lambda: ("gpu", []))
+    monkeypatch.setattr(jax_rs_integration, "gamlss_rs_jax", fake_jax_fit)
+
+    result = gamlss("y ~ x", family=NO(), data=_make_no_data(n=40), method="RS_JAX")
+
+    routing = captured.get("routing_decision")
+    assert isinstance(routing, dict)
+    assert routing.get("requested_method") == "RS_JAX"
+    assert routing.get("selected_method") == "RS_JAX"
+    assert routing.get("reason") == "explicit_method_requested"
+    assert routing.get("reason_detail")
+    assert result.additional_slots.get("method_routing") == routing

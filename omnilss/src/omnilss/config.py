@@ -509,6 +509,24 @@ def auto_select_method_trace(family_name: str, n_obs: int) -> MethodRoutingDecis
     )
 
 
+
+
+def describe_method_routing_reason(reason: str) -> str:
+    """Return a user-facing explanation for a routing reason code."""
+    mapping = {
+        "force_jax_enabled": "FORCE_JAX is enabled, so RS_JAX is selected when supported.",
+        "auto_method_disabled": "Automatic method routing is disabled; using NumPy RS.",
+        "family_not_jax_supported": "This family is not JAX-enabled yet; using NumPy RS.",
+        "cpu_backend_prefers_numpy_rs": "CPU backend defaults to NumPy RS for stability and overhead control.",
+        "gpu_crossover_reached": "Sample size reached the configured GPU crossover threshold.",
+        "gpu_crossover_not_reached": "Sample size is below the configured GPU crossover threshold.",
+        "tpu_crossover_reached": "Sample size reached the configured TPU crossover threshold.",
+        "tpu_crossover_not_reached": "Sample size is below the configured TPU crossover threshold.",
+        "unknown_backend_fallback": "Backend could not be classified; falling back to NumPy RS.",
+        "explicit_method_requested": "User explicitly requested this method; auto-routing crossover logic was bypassed.",
+    }
+    return mapping.get(reason, "No explanation registered for this routing reason code.")
+
 def get_config_summary() -> dict[str, Any]:
     """Return a summary of the current configuration for diagnostics."""
     backend, devices = _current_backend()
