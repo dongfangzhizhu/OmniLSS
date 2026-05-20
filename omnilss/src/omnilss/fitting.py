@@ -920,6 +920,21 @@ def gamlss(
     if requested_method_name == "RS_JAX":
         import warnings
 
+        if routing_decision is None:
+            from . import config as _cfg
+
+            _backend, _ = _cfg._current_backend()
+            routing_decision = {
+                "requested_method": "RS_JAX",
+                "selected_method": "RS_JAX",
+                "reason": "explicit_method_requested",
+                "reason_detail": _cfg.describe_method_routing_reason("explicit_method_requested"),
+                "backend": _backend,
+                "threshold": None,
+                "n_obs": None,
+                "family": family.name,
+            }
+
         warnings.warn(
             "method='RS_JAX' is deprecated as a user-facing route; use "
             "method='RS' and configure device-aware crossover thresholds instead.",
