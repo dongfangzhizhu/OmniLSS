@@ -859,6 +859,7 @@ def gamlss(
         method = optimizer_kwargs.pop("algorithm")
     method_name = str(method).upper()
     requested_method_name = method_name
+    routing_decision: dict[str, Any] | None = None
 
     # ── Device-aware RS routing ──────────────────────────────────────────────
     # ``method="RS"`` is the public default and now participates in the same
@@ -884,7 +885,17 @@ def gamlss(
         _threshold = (
             _cfg._get_crossover(_table, family.name) if _table is not None else math.inf
         )
-        method_name = _cfg.auto_select_method(family.name, _n_obs).upper()
+        _decision = _cfg.auto_select_method_trace(family.name, _n_obs)
+        method_name = _decision.method.upper()
+        routing_decision = {
+            "requested_method": requested_method,
+            "selected_method": method_name,
+            "reason": _decision.reason,
+            "backend": _decision.backend,
+            "threshold": _decision.threshold,
+            "n_obs": int(_n_obs),
+            "family": family.name,
+        }
         if verbose:
             print("OmniLSS method routing")
             print(
@@ -1710,6 +1721,7 @@ def gamlss(
                 for p in family.parameters
             },
             "smooth_edf": smooth_edf,
+            "method_routing": routing_decision,
             **method_slots,
         },
         call={

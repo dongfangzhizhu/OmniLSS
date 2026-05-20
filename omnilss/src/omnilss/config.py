@@ -50,6 +50,7 @@ always take precedence.
 from __future__ import annotations
 
 from contextlib import contextmanager
+from dataclasses import dataclass
 import importlib
 import importlib.util
 import json
@@ -437,29 +438,75 @@ def auto_select_method(family_name: str, n_obs: int) -> str:
         backend == 'tpu'          → 'RS_JAX' if n >= TPU_CROSSOVER_N[family]
         else                      → 'RS'
     """
-    if FORCE_JAX and family_name in JAX_SUPPORTED_FAMILIES:
-        return "RS_JAX"
+    return auto_select_method_trace(family_name, n_obs).method
 
+
+@dataclass(frozen=True)
+class MethodRoutingDecision:
+    """Structured decision payload for method auto-routing."""
+
+    method: str
+    reason: str
+    backend: str
+    threshold: float | None = None
+
+
+def auto_select_method_trace(family_name: str, n_obs: int) -> MethodRoutingDecision:
+    """Return method auto-selection with structured routing context."""
+    family = str(family_name).upper()
+
+    if FORCE_JAX and family in JAX_SUPPORTED_FAMILIES:
+        return MethodRoutingDecision(
+            method="RS_JAX",
+            reason="force_jax_enabled",
+            backend=_current_backend()[0],
+            threshold=None,
+        )
     if not AUTO_METHOD_ENABLED:
-        return "RS"
-
-    if family_name not in JAX_SUPPORTED_FAMILIES:
-        return "RS"
+        return MethodRoutingDecision(
+            method="RS",
+            reason="auto_method_disabled",
+            backend=_current_backend()[0],
+            threshold=None,
+        )
+    if family not in JAX_SUPPORTED_FAMILIES:
+        return MethodRoutingDecision(
+            method="RS",
+            reason="family_not_jax_supported",
+            backend=_current_backend()[0],
+            threshold=None,
+        )
 
     backend, _devices = _current_backend()
-
     if backend == "cpu":
-        return "RS"
-
+        return MethodRoutingDecision(
+            method="RS",
+            reason="cpu_backend_prefers_numpy_rs",
+            backend=backend,
+            threshold=None,
+        )
     if backend == "gpu":
-        threshold = _get_crossover(GPU_CROSSOVER_N, family_name)
-        return "RS_JAX" if n_obs >= threshold else "RS"
-
+        threshold = _get_crossover(GPU_CROSSOVER_N, family)
+        return MethodRoutingDecision(
+            method="RS_JAX" if n_obs >= threshold else "RS",
+            reason="gpu_crossover_reached" if n_obs >= threshold else "gpu_crossover_not_reached",
+            backend=backend,
+            threshold=threshold,
+        )
     if backend == "tpu":
-        threshold = _get_crossover(TPU_CROSSOVER_N, family_name)
-        return "RS_JAX" if n_obs >= threshold else "RS"
-
-    return "RS"
+        threshold = _get_crossover(TPU_CROSSOVER_N, family)
+        return MethodRoutingDecision(
+            method="RS_JAX" if n_obs >= threshold else "RS",
+            reason="tpu_crossover_reached" if n_obs >= threshold else "tpu_crossover_not_reached",
+            backend=backend,
+            threshold=threshold,
+        )
+    return MethodRoutingDecision(
+        method="RS",
+        reason="unknown_backend_fallback",
+        backend=backend,
+        threshold=None,
+    )
 
 
 def get_config_summary() -> dict[str, Any]:
