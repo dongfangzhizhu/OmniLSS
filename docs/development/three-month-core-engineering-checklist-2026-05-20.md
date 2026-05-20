@@ -20,7 +20,7 @@ This checklist tracks execution order and completion status for
 - [x] Week 7 / profiling + flamegraph tooling.
 - [x] Week 8 / error hierarchy + structured observability.
 - [x] Week 9 / statistical validation suite.
-- [ ] Week 10 / artifact locking + deterministic replay.
+- [x] Week 10 / artifact locking + deterministic replay.
 - [ ] Week 11 / public API freeze and immutable return schemas.
 - [ ] Week 12 / stress and failure-mode hardening.
 
