@@ -28,6 +28,8 @@ from ..model import GAMLSSModel
 from ..numerical_stability import sanitize_gradient, step_halving
 from ..tensor_protocol import validate_design_matrix, validate_vector
 from ..diagnostic_warnings import evaluate_numerical_warnings
+from ..family_validation import ensure_valid_likelihood_inputs
+from .stabilized_hessian import stabilize_hessian
 from ._model_metrics import df_fit_with_smooth_edf
 
 
@@ -139,6 +141,9 @@ def compute_working_weights_and_response(
     # Handle NaN values (can occur with mixed distributions)
     working_response = np.where(np.isnan(working_response), 0.0, working_response)
 
+    # Week 2 stability clipping policy
+    working_response = np.clip(working_response, -1e6, 1e6)
+
     return working_weights, working_response
 
 
@@ -245,6 +250,11 @@ def rs_step(
         if "mu" in family.parameters:
             other_parameters = {**other_parameters, "mu": fitted_values.copy()}
 
+    # Week 4 validation: enforce parameter-domain safety before updates
+    _validation_inputs = {parameter: fitted_values}
+    _validation_inputs.update(other_parameters)
+    ensure_valid_likelihood_inputs(family, _validation_inputs)
+
     # Get link functions for this parameter
     link_fun = family.link_functions[parameter]
     link_inv = family.link_inverses[parameter]
@@ -341,26 +351,20 @@ def rs_step(
             sqrt_W = np.sqrt(W)
             WX_np = X * sqrt_W[:, None]
             gram = WX_np.T @ WX_np
-            last_condition_number = (
-                float(np.linalg.cond(gram)) if gram.size else float("nan")
-            )
-            WX = jnp.asarray(WX_np, dtype=jnp.float64)
-            Wy = jnp.asarray(working_response * sqrt_W, dtype=jnp.float64)
-
+            stabilized = stabilize_hessian(gram)
+            last_condition_number = stabilized.condition_number
+            WXTy = WX_np.T @ (working_response * sqrt_W)
             try:
-                coef_jax, _, _, _ = jnp.linalg.lstsq(WX, Wy, rcond=None)
-                coef = np.asarray(coef_jax, dtype=np.float64)
-            except Exception:
-                coef = np.linalg.pinv(np.asarray(WX), rcond=1e-10) @ np.asarray(Wy)
+                coef = np.linalg.solve(stabilized.matrix, WXTy)
+            except np.linalg.LinAlgError:
+                coef = np.linalg.pinv(stabilized.matrix, rcond=1e-10) @ WXTy
 
-        # Update linear predictor with step size
+        # Update linear predictor with damped step size
         eta_old = eta.copy()
         eta_new = X @ coef + offset
-
-        if iteration == 0:
-            eta = eta_new
-        else:
-            eta = step_size * eta_new + (1 - step_size) * eta_old
+        eta_candidate = step_size * eta_new + (1 - step_size) * eta_old
+        eta_candidate = np.clip(eta_candidate, -20.0, 20.0)
+        eta = eta_candidate
 
         # Update fitted values
         fitted_values = np.asarray(
