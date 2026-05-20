@@ -125,6 +125,9 @@ def cg_outer_step(
             break
         alpha *= backtracking
 
+    if accepted_dev >= old_dev:
+        alpha = 0.0
+
     return CGOuterStepResult(
         updated_eta=accepted_eta,
         deltas=deltas,
