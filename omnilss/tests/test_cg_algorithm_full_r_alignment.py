@@ -8,10 +8,14 @@ import numpy as np
 
 from omnilss.distributions import GA, NBI, NO, WEI
 from omnilss.fitting import gamlss
-from tests._r_bridge_helper import R_AVAILABLE, R_BRIDGE_CLS as RBridge
+from tests._r_bridge_helper import (
+    R_AVAILABLE,
+    R_BRIDGE_CLS as RBridge,
+    R_UNAVAILABLE_REASON,
+)
 
 
-@unittest.skipIf(not R_AVAILABLE, "R bridge not available")
+@unittest.skipIf(not R_AVAILABLE, f"R bridge not available: {R_UNAVAILABLE_REASON}")
 class TestCGFullRAlignment(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
