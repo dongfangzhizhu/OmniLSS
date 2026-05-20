@@ -187,20 +187,6 @@ def build_ad_family(
     _q_final = q if q is not None else _q_placeholder
     _r_final = r if r is not None else _r_placeholder
     
-    # Python lets us patch methods dynamically but since family_class is a subclass
-    # we can just attach it. Because frozen dataclasses don't allow modifying instance dict,
-    # we modify the class once.
-    if not hasattr(family_class, "pdf"):
-        setattr(family_class, "pdf", _pdf)
-    if not hasattr(family_class, "d"):
-        setattr(family_class, "d", _d_final)
-    if not hasattr(family_class, "p"):
-        setattr(family_class, "p", _p_final)
-    if not hasattr(family_class, "q"):
-        setattr(family_class, "q", _q_final)
-    if not hasattr(family_class, "r"):
-        setattr(family_class, "r", _r_final)
-
     return family_class(
         name=name,
         parameters=parameters,
