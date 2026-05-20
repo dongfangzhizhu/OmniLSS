@@ -48,3 +48,35 @@ def test_week2_validation_scaffold_for_core_families():
         )
         assert res.n_iter >= 1, family_name
         assert res.deviance_history[-1] <= res.deviance_history[0], family_name
+        assert res.termination_reason in {
+            "relative_deviance_converged",
+            "max_outer_reached",
+            "no_progress_step_rejected",
+        }, family_name
+
+
+def test_week2_validation_scaffold_no_progress_reason_is_explicit():
+    def build_no_progress(_eta):
+        return {"mu": np.array([1.0]), "sigma": np.array([1.0])}, {
+            ("mu", "mu"): np.eye(1),
+            ("mu", "sigma"): np.zeros((1, 1)),
+            ("sigma", "mu"): np.zeros((1, 1)),
+            ("sigma", "sigma"): np.eye(1),
+        }
+
+    def dev_fn(eta):
+        mu = np.asarray(eta["mu"])
+        sigma = np.asarray(eta["sigma"])
+        return float(np.dot(mu, mu) + np.dot(sigma, sigma))
+
+    res = run_cg_outer_loop(
+        eta0={"mu": np.array([1.0]), "sigma": np.array([1.0])},
+        build_scores_hessian_fn=build_no_progress,
+        global_deviance_fn=dev_fn,
+        max_outer=20,
+        c_crit=-1.0,
+        ridge=0.0,
+    )
+    assert not res.converged
+    assert res.n_iter == 1
+    assert res.termination_reason == "no_progress_step_rejected"
