@@ -36,6 +36,18 @@ def _r_available() -> bool:
         return False
 
 
+def get_r_unavailable_reason() -> str:
+    """Return explicit reason when R bridge tests are not runnable."""
+    if R_BRIDGE_CLS is None:
+        return "RBridge import unavailable"
+    rscript = _resolve_rscript()
+    if rscript is None:
+        return "Rscript executable not found"
+    if not _r_available():
+        return f"Rscript exists but not runnable: {rscript}"
+    return ""
+
+
 def get_r_bridge_class():
     """Return RBridge class, or None if not importable."""
     try:
@@ -63,3 +75,4 @@ def get_r_bridge_class():
 
 R_BRIDGE_CLS = get_r_bridge_class()
 R_AVAILABLE = R_BRIDGE_CLS is not None and _r_available()
+R_UNAVAILABLE_REASON = get_r_unavailable_reason()

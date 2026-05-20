@@ -15,7 +15,7 @@
 - [x] Complete Week 1 Day 3–4 cross-derivative infrastructure (initial implementation completed).
 - [x] Complete Week 1 Day 5 numerical verification report (local AD verification report published).
 - [ ] Complete Week 2 CG full-loop implementation and validation (in progress: outer-loop scaffold + validation report added; R-alignment pending).
-- - Started Week 3 Day 13 benchmark repair: added reusable `benchmark_jax(...)` helper with explicit cold/hot separation and wired `honest_benchmark(...)` to report `cold_s` + hot median.
+- [x] Started Week 3 Day 13 benchmark repair: added reusable `benchmark_jax(...)` helper with explicit cold/hot separation and wired `honest_benchmark(...)` to report `cold_s` + hot median.
 - Added benchmark helper test coverage: `benchmarks/test_comprehensive_performance_benchmark_helper.py` validates non-negative cold/hot timings and expected cold>=hot behavior for JITed path.
 - [ ] Complete Week 3 warm-start decoupling + benchmark repair (in progress: benchmark cold/hot helper integrated).
 - [ ] Complete Week 4 integration/release preparation.
@@ -41,6 +41,22 @@
 > Note: The active roadmap document defines Week 1–Week 4 only. Work is being advanced strictly in sequence from Week 1 onward; items beyond Week 4 are not yet defined in this plan and therefore cannot be marked complete.
 
 ---
+
+
+### 2026-05-20 update
+
+- Re-checked the execution checklist before implementation and continued in sequence from Week 2 tasks.
+- Hardened Week 2 CG outer-step line-search behavior: when no improving step is found down to `min_step_size`, the step is now explicitly rejected with `accepted_step_size=0.0` and parameters unchanged.
+- Added regression test coverage for the rejected-step path to ensure non-improving directions do not mutate `eta` and do not increase deviance.
+- Extended Week 2 CG outer-loop observability: `run_cg_outer_loop(...)` now reports explicit `termination_reason` (`relative_deviance_converged` or `max_outer_reached`) for deterministic validation bookkeeping.
+- Added Week 2 tests covering both termination paths to stabilize future R-alignment and report-generation assertions.
+- Hardened Week 2 loop-stall handling: `run_cg_outer_loop(...)` now exits early with `termination_reason="no_progress_step_rejected"` when line-search rejects the step (`accepted_step_size=0.0`), avoiding non-productive max-outer cycling.
+- Extended Week 2 validation harness assertions to require explicit termination bookkeeping across NO/GA/WEI/NBI and added a dedicated no-progress termination validation case.
+- Added Week 2 regression checks that preserve `eta` on no-progress termination and confirm zero-deviance fixed-point runs are still classified as converged.
+- Re-ran Week 2 R-alignment gate (`pytest -q omnilss/tests/test_cg_algorithm_full_r_alignment.py`): all cases skip in the current environment due to unavailable R bridge, so Week 2 completion remains pending on an R-enabled run.
+- Explicitly confirmed Week 2 is **not yet complete** as of 2026-05-20 UTC: R-alignment remains blocked by environment (`Rscript` / bridge unavailable). Added explicit skip-reason plumbing in test helpers to make the blocker auditable in CI logs.
+- Advanced Week 3 benchmark repair while Week 2 remains blocked: added `honest_benchmark(...)` contract-level regression coverage to enforce cold/hot metric fields and reporting note stability in lightweight (mocked) runs.
+- Added Week 3 benchmark contract test to lock call-count semantics of `benchmark_jax(...)` (`1 + n_warmup + n_repeat`), ensuring cold/warm/hot phase boundaries remain explicit during future refactors.
 
 ## Background and Architectural Understanding
 
