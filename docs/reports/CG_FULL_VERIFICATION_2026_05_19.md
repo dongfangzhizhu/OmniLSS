@@ -24,6 +24,7 @@ This report documents current Week 2 progress on full CG validation:
 
 - Direct R `gamlss` final deviance alignment (`< 0.01`) for NO/GA/WEI/NBI is wired with a full NO/GA/WEI/NBI test scaffold (execution depends on R bridge availability).
 - Existing R consistency coverage remains available in repository test suites, but dedicated Week 2 full-CG vs R bridge execution is pending integration.
+- As of 2026-05-20 UTC, `pytest -q omnilss/tests/test_cg_algorithm_full_r_alignment.py` executes but all four cases are skipped in this environment because the R bridge is unavailable; Week 2 remains open until this is run in an R-enabled environment.
 
 ## Commands Executed
 
