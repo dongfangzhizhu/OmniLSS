@@ -59,6 +59,13 @@ class TestAutoSelectMethod:
         assert decision.backend == "cpu"
         assert decision.reason == "cpu_backend_prefers_numpy_rs"
 
+    def test_describe_method_routing_reason_known_and_unknown(self):
+        known = cfg.describe_method_routing_reason("gpu_crossover_reached")
+        unknown = cfg.describe_method_routing_reason("unknown_code")
+        assert "GPU crossover threshold" in known
+        assert "No explanation registered" in unknown
+
+
     def test_cpu_always_rs(self):
         """On CPU backend, auto_select_method always returns 'RS'."""
         import jax
@@ -150,6 +157,11 @@ class TestGamlssAutoMethod:
             assert isinstance(routing, dict)
             assert routing.get("selected_method") in ("RS", "RS_JAX")
             assert routing.get("family") == "NO"
+            assert isinstance(routing.get("reason"), str)
+            assert isinstance(routing.get("reason_detail"), str)
+            assert routing["reason_detail"]
+        if method_used == "RS":
+            assert model.additional_slots.get("rs_policy_max_inner") == 1
 
     def test_auto_with_unsupported_family_uses_rs(self):
         """method='auto' with an unsupported family falls back to RS."""
