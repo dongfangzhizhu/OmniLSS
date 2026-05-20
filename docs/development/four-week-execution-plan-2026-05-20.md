@@ -54,6 +54,7 @@
 - Extended Week 2 validation harness assertions to require explicit termination bookkeeping across NO/GA/WEI/NBI and added a dedicated no-progress termination validation case.
 - Added Week 2 regression checks that preserve `eta` on no-progress termination and confirm zero-deviance fixed-point runs are still classified as converged.
 - Re-ran Week 2 R-alignment gate (`pytest -q omnilss/tests/test_cg_algorithm_full_r_alignment.py`): all cases skip in the current environment due to unavailable R bridge, so Week 2 completion remains pending on an R-enabled run.
+- Explicitly confirmed Week 2 is **not yet complete** as of 2026-05-20 UTC: R-alignment remains blocked by environment (`Rscript` / bridge unavailable). Added explicit skip-reason plumbing in test helpers to make the blocker auditable in CI logs.
 
 ## Background and Architectural Understanding
 
