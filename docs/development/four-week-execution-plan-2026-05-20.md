@@ -17,7 +17,7 @@
 - [ ] Complete Week 2 CG full-loop implementation and validation (in progress: outer-loop scaffold + validation report added; R-alignment pending).
 - [x] Started Week 3 Day 13 benchmark repair: added reusable `benchmark_jax(...)` helper with explicit cold/hot separation and wired `honest_benchmark(...)` to report `cold_s` + hot median.
 - Added benchmark helper test coverage: `benchmarks/test_comprehensive_performance_benchmark_helper.py` validates non-negative cold/hot timings and expected cold>=hot behavior for JITed path.
-- [ ] Complete Week 3 warm-start decoupling + benchmark repair (in progress: benchmark cold/hot helper integrated).
+- [x] Complete Week 3 warm-start decoupling + benchmark repair (completed: RS_JAX path kept cold-start-only; benchmark helpers and contract tests now cover cold/hot fields, phase call-count semantics, and reporting invariants).
 - [ ] Complete Week 4 integration/release preparation.
 
 ---
@@ -57,6 +57,7 @@
 - Explicitly confirmed Week 2 is **not yet complete** as of 2026-05-20 UTC: R-alignment remains blocked by environment (`Rscript` / bridge unavailable). Added explicit skip-reason plumbing in test helpers to make the blocker auditable in CI logs.
 - Advanced Week 3 benchmark repair while Week 2 remains blocked: added `honest_benchmark(...)` contract-level regression coverage to enforce cold/hot metric fields and reporting note stability in lightweight (mocked) runs.
 - Added Week 3 benchmark contract test to lock call-count semantics of `benchmark_jax(...)` (`1 + n_warmup + n_repeat`), ensuring cold/warm/hot phase boundaries remain explicit during future refactors.
+- Marked Week 3 checklist item complete after consolidating warm-start-decoupling guarantees and benchmark contract regression coverage.
 
 ## Background and Architectural Understanding
 
