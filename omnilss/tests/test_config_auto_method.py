@@ -449,3 +449,19 @@ def test_model_get_method_routing_confidence_absent_returns_none():
     model = gamlss("y ~ x", family=NO(), data=data, method="auto")
     assert model.get_method_routing_confidence() is None
 
+
+
+def test_validate_method_routing_decision_rejects_schema_mismatch():
+    payload = cfg.build_method_routing_decision(
+        requested_method="AUTO",
+        selected_method="RS",
+        reason="cpu_backend_prefers_numpy_rs",
+        backend="cpu",
+        threshold=None,
+        n_obs=10,
+        family="NO",
+    )
+    payload["schema_version"] = 999
+    with pytest.raises(ValueError, match="schema_version mismatch"):
+        cfg.validate_method_routing_decision(payload)
+

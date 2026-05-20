@@ -20,6 +20,7 @@ Expected keys:
 - `threshold`
 - `n_obs`
 - `family`
+- `schema_version`
 
 ## Reason codes
 

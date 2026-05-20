@@ -60,6 +60,8 @@ from pathlib import Path
 from typing import Any, Literal
 import warnings
 
+METHOD_ROUTING_SCHEMA_VERSION = 1
+
 # ---------------------------------------------------------------------------
 # JAX-supported families
 # ---------------------------------------------------------------------------
@@ -549,6 +551,7 @@ def build_method_routing_decision(
         "threshold": threshold,
         "n_obs": n_obs,
         "family": str(family).upper(),
+        "schema_version": METHOD_ROUTING_SCHEMA_VERSION,
     }
 
 
@@ -571,10 +574,17 @@ def validate_method_routing_decision(payload: Mapping[str, Any]) -> None:
         "threshold",
         "n_obs",
         "family",
+        "schema_version",
     }
     missing = sorted(required.difference(payload.keys()))
     if missing:
         raise ValueError(f"method routing payload missing keys: {missing}")
+    schema_version = payload.get("schema_version")
+    if schema_version != METHOD_ROUTING_SCHEMA_VERSION:
+        raise ValueError(
+            "method routing payload schema_version mismatch: "
+            f"expected {METHOD_ROUTING_SCHEMA_VERSION}, got {schema_version!r}"
+        )
     for key in ("requested_method", "selected_method", "family"):
         value = str(payload[key])
         if value != value.upper():
