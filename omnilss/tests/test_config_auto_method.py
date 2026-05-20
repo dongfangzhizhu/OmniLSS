@@ -392,3 +392,20 @@ def test_model_get_method_routing_validated():
     if routing is not None:
         assert routing.get("requested_method") in {"AUTO", "RS", "RS_JAX"}
 
+
+
+def test_model_get_method_routing_validation_toggle():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    routing = model.get_method_routing(validate=False)
+    if routing is None:
+        pytest.skip("No routing payload available in this environment")
+    broken = dict(routing)
+    broken.pop("reason", None)
+    model.additional_slots = {**dict(model.additional_slots), "method_routing": broken}
+    with pytest.raises(ValueError, match="missing keys"):
+        model.get_method_routing(validate=True)
+    relaxed = model.get_method_routing(validate=False)
+    assert isinstance(relaxed, dict)
+    assert model.has_method_routing() is True
+

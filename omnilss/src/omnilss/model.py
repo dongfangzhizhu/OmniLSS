@@ -149,6 +149,10 @@ class GAMLSSModel:
             validate_method_routing_decision(payload_dict)
         return payload_dict
 
+    def has_method_routing(self) -> bool:
+        """Return True when structured method-routing metadata is available."""
+        return self.get_method_routing(validate=False) is not None
+
     def predict_params(
         self,
         newdata: dict[str, Any],
