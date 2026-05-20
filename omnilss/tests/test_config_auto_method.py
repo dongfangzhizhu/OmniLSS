@@ -409,3 +409,17 @@ def test_model_get_method_routing_validation_toggle():
     assert isinstance(relaxed, dict)
     assert model.has_method_routing() is True
 
+
+
+def test_model_get_method_routing_reason_accessors():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    reason = model.get_method_routing_reason()
+    detail = model.get_method_routing_reason_detail()
+    if reason is None:
+        assert detail is None
+    else:
+        assert isinstance(reason, str)
+        assert isinstance(detail, str)
+        assert detail
+

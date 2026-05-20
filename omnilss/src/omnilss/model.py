@@ -153,6 +153,22 @@ class GAMLSSModel:
         """Return True when structured method-routing metadata is available."""
         return self.get_method_routing(validate=False) is not None
 
+
+    def get_method_routing_reason(self, *, validate: bool = True) -> str | None:
+        """Return the routing reason code when routing metadata is available."""
+        routing = self.get_method_routing(validate=validate)
+        if routing is None:
+            return None
+        return str(routing.get("reason"))
+
+    def get_method_routing_reason_detail(self, *, validate: bool = True) -> str | None:
+        """Return the user-facing routing reason detail string when available."""
+        routing = self.get_method_routing(validate=validate)
+        if routing is None:
+            return None
+        detail = routing.get("reason_detail")
+        return None if detail is None else str(detail)
+
     def predict_params(
         self,
         newdata: dict[str, Any],
