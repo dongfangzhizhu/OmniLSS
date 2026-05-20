@@ -50,6 +50,7 @@ def gamlss_rs_jax(
     i_control: GLIMControl | None = None,
     max_inner: int = 1,
     verbose: bool = False,
+    routing_decision: dict[str, Any] | None = None,
 ) -> GAMLSSModel:
     """Fit a GAMLSS model using the JAX-native RS algorithm.
 
@@ -388,6 +389,7 @@ def gamlss_rs_jax(
             "converged":       result.converged,
             "cycles":          result.iterations,
             "rs_jax_max_inner": max_inner,
+            "method_routing": routing_decision,
         },
     )
 
