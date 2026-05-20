@@ -15,7 +15,7 @@ This checklist tracks execution order and completion status for
 - [x] Week 3 / Task 2: convergence framework (grad/deviance/parameter/curvature).
 - [x] Week 3 / Task 3: iteration trace JSON export + replay.
 - [x] Week 4 / Family metadata + constraints + validation engine.
-- [ ] Week 5 / benchmark framework (correctness/performance/convergence/stress).
+- [x] Week 5 / benchmark framework (correctness/performance/convergence/stress).
 - [ ] Week 6 / CPU-first WLS (Cholesky-based).
 - [ ] Week 7 / profiling + flamegraph tooling.
 - [ ] Week 8 / error hierarchy + structured observability.
