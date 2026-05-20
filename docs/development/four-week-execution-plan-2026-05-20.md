@@ -48,6 +48,8 @@
 - Re-checked the execution checklist before implementation and continued in sequence from Week 2 tasks.
 - Hardened Week 2 CG outer-step line-search behavior: when no improving step is found down to `min_step_size`, the step is now explicitly rejected with `accepted_step_size=0.0` and parameters unchanged.
 - Added regression test coverage for the rejected-step path to ensure non-improving directions do not mutate `eta` and do not increase deviance.
+- Extended Week 2 CG outer-loop observability: `run_cg_outer_loop(...)` now reports explicit `termination_reason` (`relative_deviance_converged` or `max_outer_reached`) for deterministic validation bookkeeping.
+- Added Week 2 tests covering both termination paths to stabilize future R-alignment and report-generation assertions.
 
 ## Background and Architectural Understanding
 
