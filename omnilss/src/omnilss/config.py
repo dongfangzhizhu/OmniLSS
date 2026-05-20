@@ -60,6 +60,8 @@ from pathlib import Path
 from typing import Any, Literal
 import warnings
 
+METHOD_ROUTING_SCHEMA_VERSION = 1
+
 # ---------------------------------------------------------------------------
 # JAX-supported families
 # ---------------------------------------------------------------------------
@@ -507,6 +509,86 @@ def auto_select_method_trace(family_name: str, n_obs: int) -> MethodRoutingDecis
         backend=backend,
         threshold=None,
     )
+
+
+
+
+def describe_method_routing_reason(reason: str) -> str:
+    """Return a user-facing explanation for a routing reason code."""
+    mapping = {
+        "force_jax_enabled": "FORCE_JAX is enabled, so RS_JAX is selected when supported.",
+        "auto_method_disabled": "Automatic method routing is disabled; using NumPy RS.",
+        "family_not_jax_supported": "This family is not JAX-enabled yet; using NumPy RS.",
+        "cpu_backend_prefers_numpy_rs": "CPU backend defaults to NumPy RS for stability and overhead control.",
+        "gpu_crossover_reached": "Sample size reached the configured GPU crossover threshold.",
+        "gpu_crossover_not_reached": "Sample size is below the configured GPU crossover threshold.",
+        "tpu_crossover_reached": "Sample size reached the configured TPU crossover threshold.",
+        "tpu_crossover_not_reached": "Sample size is below the configured TPU crossover threshold.",
+        "unknown_backend_fallback": "Backend could not be classified; falling back to NumPy RS.",
+        "explicit_method_requested": "User explicitly requested this method; auto-routing crossover logic was bypassed.",
+    }
+    return mapping.get(reason, "No explanation registered for this routing reason code.")
+
+
+
+def build_method_routing_decision(
+    *,
+    requested_method: str,
+    selected_method: str,
+    reason: str,
+    backend: str,
+    family: str,
+    threshold: float | None,
+    n_obs: int | None,
+) -> dict[str, Any]:
+    """Build a stable routing decision payload for model metadata."""
+    return {
+        "requested_method": str(requested_method).upper(),
+        "selected_method": str(selected_method).upper(),
+        "reason": reason,
+        "reason_detail": describe_method_routing_reason(reason),
+        "backend": backend,
+        "threshold": threshold,
+        "n_obs": n_obs,
+        "family": str(family).upper(),
+        "schema_version": METHOD_ROUTING_SCHEMA_VERSION,
+    }
+
+
+
+
+def validate_method_routing_decision(payload: Mapping[str, Any]) -> None:
+    """Validate the routing metadata payload schema.
+
+    Raises
+    ------
+    ValueError
+        If required keys are missing or if normalized fields are malformed.
+    """
+    required = {
+        "requested_method",
+        "selected_method",
+        "reason",
+        "reason_detail",
+        "backend",
+        "threshold",
+        "n_obs",
+        "family",
+        "schema_version",
+    }
+    missing = sorted(required.difference(payload.keys()))
+    if missing:
+        raise ValueError(f"method routing payload missing keys: {missing}")
+    schema_version = payload.get("schema_version")
+    if schema_version != METHOD_ROUTING_SCHEMA_VERSION:
+        raise ValueError(
+            "method routing payload schema_version mismatch: "
+            f"expected {METHOD_ROUTING_SCHEMA_VERSION}, got {schema_version!r}"
+        )
+    for key in ("requested_method", "selected_method", "family"):
+        value = str(payload[key])
+        if value != value.upper():
+            raise ValueError(f"method routing payload field {key!r} must be uppercase")
 
 
 def get_config_summary() -> dict[str, Any]:
