@@ -199,6 +199,20 @@ class GAMLSSModel:
             return summary
         return "No method-routing metadata is available on this model."
 
+
+    def get_method_routing_confidence(self, *, validate: bool = True) -> float | None:
+        """Return routing confidence when present in routing metadata."""
+        routing = self.get_method_routing(validate=validate)
+        if routing is None:
+            return None
+        value = routing.get("confidence")
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
     def predict_params(
         self,
         newdata: dict[str, Any],

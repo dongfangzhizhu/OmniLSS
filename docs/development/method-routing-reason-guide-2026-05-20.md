@@ -56,3 +56,4 @@ For model-level diagnostics, use:
 - `model.get_method_routing_reason_detail()`
 - `model.get_method_routing_summary()`
 - `model.explain_method_routing()`
+- `model.get_method_routing_confidence()`

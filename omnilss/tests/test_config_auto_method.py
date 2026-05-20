@@ -442,3 +442,10 @@ def test_model_explain_method_routing():
     assert isinstance(text, str)
     assert len(text) > 0
 
+
+
+def test_model_get_method_routing_confidence_absent_returns_none():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    assert model.get_method_routing_confidence() is None
+
