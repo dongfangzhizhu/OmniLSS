@@ -230,3 +230,31 @@ def test_run_cg_outer_loop_termination_reason_no_progress_step_rejected():
     assert res.n_iter == 1
     assert res.step_sizes == (0.0,)
     assert res.termination_reason == "no_progress_step_rejected"
+    np.testing.assert_allclose(np.asarray(res.eta["mu"]), np.array([1.0]), atol=1e-12)
+    np.testing.assert_allclose(np.asarray(res.eta["sigma"]), np.array([1.0]), atol=1e-12)
+
+
+def test_run_cg_outer_loop_zero_deviance_still_reports_converged():
+    def dev_fn(eta):
+        mu = np.asarray(eta["mu"])
+        sigma = np.asarray(eta["sigma"])
+        return float(np.dot(mu, mu) + np.dot(sigma, sigma))
+
+    def build_fn(_eta):
+        return {"mu": np.array([0.0]), "sigma": np.array([0.0])}, {
+            ("mu", "mu"): np.eye(1),
+            ("mu", "sigma"): np.zeros((1, 1)),
+            ("sigma", "mu"): np.zeros((1, 1)),
+            ("sigma", "sigma"): np.eye(1),
+        }
+
+    res = run_cg_outer_loop(
+        eta0={"mu": np.array([0.0]), "sigma": np.array([0.0])},
+        build_scores_hessian_fn=build_fn,
+        global_deviance_fn=dev_fn,
+        max_outer=5,
+        c_crit=1e-8,
+        ridge=0.0,
+    )
+    assert res.converged
+    assert res.termination_reason == "relative_deviance_converged"
