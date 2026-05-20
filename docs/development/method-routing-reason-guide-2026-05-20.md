@@ -33,8 +33,11 @@ Common values of `reason` include:
 - `tpu_crossover_reached`
 - `auto_method_disabled`
 - `force_jax_enabled`
+- `explicit_method_requested`
 
 Use `reason_detail` for user-facing text.
+
+For explicit `method="RS_JAX"`, the reason is `explicit_method_requested` to indicate that auto crossover logic was intentionally bypassed.
 
 ## Practical guidance
 

@@ -65,6 +65,11 @@ class TestAutoSelectMethod:
         assert "GPU crossover threshold" in known
         assert "No explanation registered" in unknown
 
+    def test_describe_method_routing_reason_explicit_method(self):
+        detail = cfg.describe_method_routing_reason("explicit_method_requested")
+        assert "explicitly requested" in detail
+
+
 
     def test_cpu_always_rs(self):
         """On CPU backend, auto_select_method always returns 'RS'."""
