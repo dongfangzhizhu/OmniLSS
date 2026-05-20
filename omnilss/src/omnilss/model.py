@@ -124,6 +124,31 @@ class GAMLSSModel:
         
         return self.lambda_selection_info[parameter]
     
+
+    def get_method_routing(self, *, validate: bool = True) -> dict[str, Any] | None:
+        """Return structured method-routing metadata from ``additional_slots``.
+
+        Parameters
+        ----------
+        validate : bool, default=True
+            When True, validate the payload schema using
+            :func:`omnilss.config.validate_method_routing_decision`.
+
+        Returns
+        -------
+        dict or None
+            Routing payload dictionary when present, else ``None``.
+        """
+        payload = self.additional_slots.get("method_routing")
+        if payload is None:
+            return None
+        payload_dict = dict(payload)
+        if validate:
+            from .config import validate_method_routing_decision
+
+            validate_method_routing_decision(payload_dict)
+        return payload_dict
+
     def predict_params(
         self,
         newdata: dict[str, Any],

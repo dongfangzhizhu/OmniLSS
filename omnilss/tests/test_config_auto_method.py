@@ -382,3 +382,13 @@ def test_tpu_crossover_has_all_jax_family_placeholders():
     for family in cfg.JAX_SUPPORTED_FAMILIES:
         assert family in cfg.TPU_CROSSOVER_N
         assert cfg.TPU_CROSSOVER_N[family] == math.inf
+
+
+def test_model_get_method_routing_validated():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    routing = model.get_method_routing()
+    assert routing is None or isinstance(routing, dict)
+    if routing is not None:
+        assert routing.get("requested_method") in {"AUTO", "RS", "RS_JAX"}
+
