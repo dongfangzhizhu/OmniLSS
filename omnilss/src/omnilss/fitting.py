@@ -1042,6 +1042,7 @@ def gamlss(
             control=control,
             i_control=i_control,
             verbose=verbose,
+            routing_decision=routing_decision,
         )
 
     # For RS method, use the dedicated rs_fit function which implements the correct algorithm
