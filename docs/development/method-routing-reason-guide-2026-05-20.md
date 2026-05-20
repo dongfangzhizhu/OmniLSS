@@ -45,3 +45,14 @@ For explicit `method="RS_JAX"`, the reason is `explicit_method_requested` to ind
   demonstrates a lower threshold for your hardware.
 - If reason is `family_not_jax_supported`, `RS` is expected and preferred.
 - Avoid forcing `RS_JAX` in small-`n` workloads.
+
+
+## Model API helpers
+
+For model-level diagnostics, use:
+
+- `model.get_method_routing()`
+- `model.get_method_routing_reason()`
+- `model.get_method_routing_reason_detail()`
+- `model.get_method_routing_summary()`
+- `model.explain_method_routing()`

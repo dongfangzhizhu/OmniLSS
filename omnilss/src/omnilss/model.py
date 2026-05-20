@@ -188,6 +188,17 @@ class GAMLSSModel:
             suffix += f", threshold={threshold}"
         return f"requested={req} -> selected={sel} on {backend} ({reason}{suffix})"
 
+
+    def explain_method_routing(self, *, validate: bool = True) -> str:
+        """Return a user-facing explanation for the model routing decision."""
+        detail = self.get_method_routing_reason_detail(validate=validate)
+        if detail is not None:
+            return detail
+        summary = self.get_method_routing_summary(validate=validate)
+        if summary is not None:
+            return summary
+        return "No method-routing metadata is available on this model."
+
     def predict_params(
         self,
         newdata: dict[str, Any],

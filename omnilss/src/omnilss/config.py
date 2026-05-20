@@ -552,6 +552,35 @@ def build_method_routing_decision(
     }
 
 
+
+
+def validate_method_routing_decision(payload: Mapping[str, Any]) -> None:
+    """Validate the routing metadata payload schema.
+
+    Raises
+    ------
+    ValueError
+        If required keys are missing or if normalized fields are malformed.
+    """
+    required = {
+        "requested_method",
+        "selected_method",
+        "reason",
+        "reason_detail",
+        "backend",
+        "threshold",
+        "n_obs",
+        "family",
+    }
+    missing = sorted(required.difference(payload.keys()))
+    if missing:
+        raise ValueError(f"method routing payload missing keys: {missing}")
+    for key in ("requested_method", "selected_method", "family"):
+        value = str(payload[key])
+        if value != value.upper():
+            raise ValueError(f"method routing payload field {key!r} must be uppercase")
+
+
 def get_config_summary() -> dict[str, Any]:
     """Return a summary of the current configuration for diagnostics."""
     backend, devices = _current_backend()
