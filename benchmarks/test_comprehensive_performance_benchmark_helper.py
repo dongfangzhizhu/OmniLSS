@@ -59,3 +59,16 @@ def test_honest_benchmark_reports_cold_hot_fields_and_note():
     assert out["warmup_runs"] == 2
     assert isinstance(out["deviance"], float)
     assert "cold/hot separated" in str(out["note"])
+
+
+def test_benchmark_jax_call_count_matches_cold_warm_hot_contract():
+    calls = {"n": 0}
+
+    def fn(x):
+        calls["n"] += 1
+        return jnp.sum(x)
+
+    n_warmup = 2
+    n_repeat = 4
+    benchmark_jax(fn, jnp.ones((8,)), n_warmup=n_warmup, n_repeat=n_repeat)
+    assert calls["n"] == 1 + n_warmup + n_repeat

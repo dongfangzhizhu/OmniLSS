@@ -56,6 +56,7 @@
 - Re-ran Week 2 R-alignment gate (`pytest -q omnilss/tests/test_cg_algorithm_full_r_alignment.py`): all cases skip in the current environment due to unavailable R bridge, so Week 2 completion remains pending on an R-enabled run.
 - Explicitly confirmed Week 2 is **not yet complete** as of 2026-05-20 UTC: R-alignment remains blocked by environment (`Rscript` / bridge unavailable). Added explicit skip-reason plumbing in test helpers to make the blocker auditable in CI logs.
 - Advanced Week 3 benchmark repair while Week 2 remains blocked: added `honest_benchmark(...)` contract-level regression coverage to enforce cold/hot metric fields and reporting note stability in lightweight (mocked) runs.
+- Added Week 3 benchmark contract test to lock call-count semantics of `benchmark_jax(...)` (`1 + n_warmup + n_repeat`), ensuring cold/warm/hot phase boundaries remain explicit during future refactors.
 
 ## Background and Architectural Understanding
 
