@@ -52,6 +52,13 @@ class TestConfigDefaults:
 
 
 class TestAutoSelectMethod:
+    def test_auto_select_method_trace_cpu(self, monkeypatch):
+        monkeypatch.setattr(cfg, "_current_backend", lambda: ("cpu", []))
+        decision = cfg.auto_select_method_trace("NO", 12345)
+        assert decision.method == "RS"
+        assert decision.backend == "cpu"
+        assert decision.reason == "cpu_backend_prefers_numpy_rs"
+
     def test_cpu_always_rs(self):
         """On CPU backend, auto_select_method always returns 'RS'."""
         import jax
@@ -138,6 +145,11 @@ class TestGamlssAutoMethod:
         # method slot should be 'RS' or 'RS_JAX', not 'AUTO'
         method_used = model.additional_slots.get("method", "")
         assert method_used in ("RS", "RS_JAX"), f"Unexpected method: {method_used}"
+        routing = model.additional_slots.get("method_routing")
+        if routing is not None:
+            assert isinstance(routing, dict)
+            assert routing.get("selected_method") in ("RS", "RS_JAX")
+            assert routing.get("family") == "NO"
 
     def test_auto_with_unsupported_family_uses_rs(self):
         """method='auto' with an unsupported family falls back to RS."""
