@@ -53,6 +53,7 @@
 - Hardened Week 2 loop-stall handling: `run_cg_outer_loop(...)` now exits early with `termination_reason="no_progress_step_rejected"` when line-search rejects the step (`accepted_step_size=0.0`), avoiding non-productive max-outer cycling.
 - Extended Week 2 validation harness assertions to require explicit termination bookkeeping across NO/GA/WEI/NBI and added a dedicated no-progress termination validation case.
 - Added Week 2 regression checks that preserve `eta` on no-progress termination and confirm zero-deviance fixed-point runs are still classified as converged.
+- Re-ran Week 2 R-alignment gate (`pytest -q omnilss/tests/test_cg_algorithm_full_r_alignment.py`): all cases skip in the current environment due to unavailable R bridge, so Week 2 completion remains pending on an R-enabled run.
 
 ## Background and Architectural Understanding
 
