@@ -181,6 +181,17 @@ def run_cg_outer_loop(
                 termination_reason="relative_deviance_converged",
             )
 
+        if step.accepted_step_size == 0.0:
+            return CGRunResult(
+                eta=eta,
+                converged=False,
+                n_iter=outer,
+                deviance_history=tuple(dev_hist),
+                step_sizes=tuple(step_hist),
+                termination_reason="no_progress_step_rejected",
+            )
+
+
     return CGRunResult(
         eta=eta,
         converged=converged,

@@ -179,8 +179,10 @@ def test_run_cg_outer_loop_termination_reason_max_outer():
         s = np.asarray(eta["sigma"])
         return float(np.dot(m, m) + np.dot(s, s))
 
-    def build_fn(_eta):
-        return {"mu": np.array([0.0]), "sigma": np.array([0.0])}, {
+    def build_fn(eta):
+        mu = np.asarray(eta["mu"])
+        sigma = np.asarray(eta["sigma"])
+        return {"mu": -0.1 * mu, "sigma": -0.1 * sigma}, {
             ("mu", "mu"): np.eye(1),
             ("mu", "sigma"): np.zeros((1, 1)),
             ("sigma", "mu"): np.zeros((1, 1)),
@@ -198,3 +200,33 @@ def test_run_cg_outer_loop_termination_reason_max_outer():
     assert not res.converged
     assert res.n_iter == 2
     assert res.termination_reason == "max_outer_reached"
+
+
+def test_run_cg_outer_loop_termination_reason_no_progress_step_rejected():
+    def dev_fn(eta):
+        m = np.asarray(eta["mu"])
+        s = np.asarray(eta["sigma"])
+        return float(np.dot(m, m) + np.dot(s, s))
+
+    def build_fn(_eta):
+        # Wrong-way score direction forces line-search rejection.
+        return {"mu": np.array([1.0]), "sigma": np.array([1.0])}, {
+            ("mu", "mu"): np.eye(1),
+            ("mu", "sigma"): np.zeros((1, 1)),
+            ("sigma", "mu"): np.zeros((1, 1)),
+            ("sigma", "sigma"): np.eye(1),
+        }
+
+    res = run_cg_outer_loop(
+        eta0={"mu": np.array([1.0]), "sigma": np.array([1.0])},
+        build_scores_hessian_fn=build_fn,
+        global_deviance_fn=dev_fn,
+        max_outer=20,
+        c_crit=-1.0,
+        ridge=0.0,
+    )
+
+    assert not res.converged
+    assert res.n_iter == 1
+    assert res.step_sizes == (0.0,)
+    assert res.termination_reason == "no_progress_step_rejected"

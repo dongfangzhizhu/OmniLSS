@@ -50,6 +50,7 @@
 - Added regression test coverage for the rejected-step path to ensure non-improving directions do not mutate `eta` and do not increase deviance.
 - Extended Week 2 CG outer-loop observability: `run_cg_outer_loop(...)` now reports explicit `termination_reason` (`relative_deviance_converged` or `max_outer_reached`) for deterministic validation bookkeeping.
 - Added Week 2 tests covering both termination paths to stabilize future R-alignment and report-generation assertions.
+- Hardened Week 2 loop-stall handling: `run_cg_outer_loop(...)` now exits early with `termination_reason="no_progress_step_rejected"` when line-search rejects the step (`accepted_step_size=0.0`), avoiding non-productive max-outer cycling.
 
 ## Background and Architectural Understanding
 
