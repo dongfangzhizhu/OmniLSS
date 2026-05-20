@@ -861,6 +861,21 @@ def gamlss(
     requested_method_name = method_name
     routing_decision: dict[str, Any] | None = None
 
+    def _routing_confidence(decision: Any, n_obs: int) -> float | None:
+        reason = getattr(decision, "reason", "")
+        threshold = getattr(decision, "threshold", None)
+        if reason in {"force_jax_enabled", "explicit_method_requested"}:
+            return 1.0
+        if reason in {"auto_method_disabled", "family_not_jax_supported", "cpu_backend_prefers_numpy_rs"}:
+            return 0.95
+        if threshold is None or threshold in (0, math.inf):
+            return None
+        if not isinstance(n_obs, int) or n_obs < 0:
+            return None
+        distance = abs(n_obs - int(threshold)) / max(float(threshold), 1.0)
+        return max(0.5, min(0.99, 1.0 - min(distance, 1.0) * 0.5))
+
+
     # ── Device-aware RS routing ──────────────────────────────────────────────
     # ``method="RS"`` is the public default and now participates in the same
     # device-aware route selection as the forward-compatible ``method="auto"``
@@ -887,15 +902,17 @@ def gamlss(
         )
         _decision = _cfg.auto_select_method_trace(family.name, _n_obs)
         method_name = _decision.method.upper()
-        routing_decision = {
-            "requested_method": requested_method,
-            "selected_method": method_name,
-            "reason": _decision.reason,
-            "backend": _decision.backend,
-            "threshold": _decision.threshold,
-            "n_obs": int(_n_obs),
-            "family": family.name,
-        }
+        routing_decision = _cfg.build_method_routing_decision(
+            requested_method=requested_method,
+            selected_method=method_name,
+            reason=_decision.reason,
+            backend=_decision.backend,
+            threshold=_decision.threshold,
+            n_obs=int(_n_obs),
+            family=family.name,
+            confidence=_routing_confidence(_decision, int(_n_obs)),
+        )
+        _cfg.validate_method_routing_decision(routing_decision)
         if verbose:
             print("OmniLSS method routing")
             print(
@@ -918,6 +935,22 @@ def gamlss(
 
     if requested_method_name == "RS_JAX":
         import warnings
+
+        if routing_decision is None:
+            from . import config as _cfg
+
+            _backend, _ = _cfg._current_backend()
+            routing_decision = _cfg.build_method_routing_decision(
+                requested_method="RS_JAX",
+                selected_method="RS_JAX",
+                reason="explicit_method_requested",
+                backend=_backend,
+                threshold=None,
+                n_obs=None,
+                family=family.name,
+                confidence=1.0,
+            )
+            _cfg.validate_method_routing_decision(routing_decision)
 
         warnings.warn(
             "method='RS_JAX' is deprecated as a user-facing route; use "
@@ -1041,6 +1074,7 @@ def gamlss(
             control=control,
             i_control=i_control,
             verbose=verbose,
+            routing_decision=routing_decision,
         )
 
     # For RS method, use the dedicated rs_fit function which implements the correct algorithm
@@ -1057,6 +1091,7 @@ def gamlss(
             max_iter=control.n_cyc if control is not None else 20,
             tol=control.c_crit if control is not None else 1e-4,
             verbose=verbose,
+            routing_decision=routing_decision,
         )
 
     if method_name == "CG":
