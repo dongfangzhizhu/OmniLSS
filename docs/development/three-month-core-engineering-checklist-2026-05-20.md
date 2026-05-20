@@ -17,7 +17,7 @@ This checklist tracks execution order and completion status for
 - [x] Week 4 / Family metadata + constraints + validation engine.
 - [x] Week 5 / benchmark framework (correctness/performance/convergence/stress).
 - [x] Week 6 / CPU-first WLS (Cholesky-based).
-- [ ] Week 7 / profiling + flamegraph tooling.
+- [x] Week 7 / profiling + flamegraph tooling.
 - [ ] Week 8 / error hierarchy + structured observability.
 - [ ] Week 9 / statistical validation suite.
 - [ ] Week 10 / artifact locking + deterministic replay.

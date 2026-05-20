@@ -33,4 +33,10 @@ __all__ = [
     "OptimizerTraceEntry",
     "RSOptimizer",
     "TrustRegionOptimizer",
+    "ProfileEvent",
+    "RuntimeProfiler",
+    "to_collapsed_stacks",
+    "write_collapsed_stacks",
 ]
+
+from .profiling import ProfileEvent, RuntimeProfiler, to_collapsed_stacks, write_collapsed_stacks
