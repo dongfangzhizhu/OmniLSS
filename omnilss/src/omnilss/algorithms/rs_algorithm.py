@@ -468,6 +468,7 @@ def rs_fit(
     auto_step: bool = True,
     verbose: bool = False,
     raise_on_lambda_failure: bool = False,
+    routing_decision: Optional[Dict[str, Any]] = None,
 ) -> GAMLSSModel:
     """Fit GAMLSS model using RS (Rigby-Stasinopoulos) algorithm.
 
@@ -1065,6 +1066,7 @@ def rs_fit(
             "step_sizes": step_sizes,
             "auto_step": auto_step,
             "rs_policy_max_inner": 1,
+            "method_routing": routing_decision,
             "noObs": int(n),
             "G.deviance": g_dev,
             "P.deviance": g_dev,

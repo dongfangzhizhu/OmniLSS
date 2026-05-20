@@ -1058,6 +1058,7 @@ def gamlss(
             max_iter=control.n_cyc if control is not None else 20,
             tol=control.c_crit if control is not None else 1e-4,
             verbose=verbose,
+            routing_decision=routing_decision,
         )
 
     if method_name == "CG":
