@@ -169,6 +169,25 @@ class GAMLSSModel:
         detail = routing.get("reason_detail")
         return None if detail is None else str(detail)
 
+
+    def get_method_routing_summary(self, *, validate: bool = True) -> str | None:
+        """Return a compact human-readable method-routing summary string."""
+        routing = self.get_method_routing(validate=validate)
+        if routing is None:
+            return None
+        req = routing.get("requested_method", "?")
+        sel = routing.get("selected_method", "?")
+        backend = routing.get("backend", "?")
+        reason = routing.get("reason", "?")
+        n_obs = routing.get("n_obs", None)
+        threshold = routing.get("threshold", None)
+        suffix = ""
+        if n_obs is not None:
+            suffix += f", n_obs={n_obs}"
+        if threshold is not None:
+            suffix += f", threshold={threshold}"
+        return f"requested={req} -> selected={sel} on {backend} ({reason}{suffix})"
+
     def predict_params(
         self,
         newdata: dict[str, Any],

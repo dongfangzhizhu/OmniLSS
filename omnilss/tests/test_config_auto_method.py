@@ -423,3 +423,13 @@ def test_model_get_method_routing_reason_accessors():
         assert isinstance(detail, str)
         assert detail
 
+
+
+def test_model_get_method_routing_summary():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    summary = model.get_method_routing_summary()
+    if summary is not None:
+        assert "requested=" in summary
+        assert "selected=" in summary
+
