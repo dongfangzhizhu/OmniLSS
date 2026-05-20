@@ -427,6 +427,25 @@ def _time_r(dist: str, formula: str, data: dict, n_repeats: int) -> dict:
         Path(r_path).unlink(missing_ok=True)
 
 
+
+
+def _collect_hardware_details() -> dict[str, str]:
+    """Collect lightweight hardware/runtime metadata for benchmark reports."""
+    import platform
+
+    backend = jax.default_backend()
+    devices = jax.devices()
+    device_name = devices[0].device_kind if devices else "unknown"
+    return {
+        "python": platform.python_version(),
+        "platform": platform.platform(),
+        "processor": platform.processor() or "unknown",
+        "jax_version": getattr(jax, "__version__", "unknown"),
+        "jax_backend": backend,
+        "jax_device": device_name,
+    }
+
+
 # ── result dataclass ──────────────────────────────────────────────────────────
 
 
@@ -478,6 +497,15 @@ def _generate_report(
     a("")
     a(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     a(f"**R comparison**: {'live Rscript' if r_available else 'skipped'}")
+    a("")
+    hw = _collect_hardware_details()
+    a("## Environment")
+    a("")
+    a(f"- Python: `{hw['python']}`")
+    a(f"- Platform: `{hw['platform']}`")
+    a(f"- Processor: `{hw['processor']}`")
+    a(f"- JAX: `{hw['jax_version']}`")
+    a(f"- JAX backend/device: `{hw['jax_backend']}` / `{hw['jax_device']}`")
     a("")
     a("## Timing Methodology")
     a("")

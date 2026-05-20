@@ -56,3 +56,5 @@ This means the real value of JAX is not “making RS faster,” but rather:
 - and enabling **large design matrices / multi-parameter families** for batched GPU inference.
 
 ---
+
+- Added benchmark report environment metadata capture (Python/platform/processor/JAX/backend/device) to support Week 3 hardware-detail requirements.
