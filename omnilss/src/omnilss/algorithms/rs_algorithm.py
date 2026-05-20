@@ -30,6 +30,7 @@ from ..tensor_protocol import validate_design_matrix, validate_vector
 from ..diagnostic_warnings import evaluate_numerical_warnings
 from ..family_validation import ensure_valid_likelihood_inputs
 from .stabilized_hessian import stabilize_hessian
+from ..fast_wls import solve_weighted_least_squares_cholesky
 from ._model_metrics import df_fit_with_smooth_edf
 
 
@@ -353,11 +354,12 @@ def rs_step(
             gram = WX_np.T @ WX_np
             stabilized = stabilize_hessian(gram)
             last_condition_number = stabilized.condition_number
-            WXTy = WX_np.T @ (working_response * sqrt_W)
-            try:
-                coef = np.linalg.solve(stabilized.matrix, WXTy)
-            except np.linalg.LinAlgError:
-                coef = np.linalg.pinv(stabilized.matrix, rcond=1e-10) @ WXTy
+            coef = solve_weighted_least_squares_cholesky(
+                X=X,
+                z=working_response,
+                w=W,
+                ridge=max(stabilized.lambda_value, 1e-10),
+            )
 
         # Update linear predictor with damped step size
         eta_old = eta.copy()
