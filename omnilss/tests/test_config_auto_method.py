@@ -59,6 +59,51 @@ class TestAutoSelectMethod:
         assert decision.backend == "cpu"
         assert decision.reason == "cpu_backend_prefers_numpy_rs"
 
+    def test_describe_method_routing_reason_known_and_unknown(self):
+        known = cfg.describe_method_routing_reason("gpu_crossover_reached")
+        unknown = cfg.describe_method_routing_reason("unknown_code")
+        assert "GPU crossover threshold" in known
+        assert "No explanation registered" in unknown
+
+    def test_describe_method_routing_reason_explicit_method(self):
+        detail = cfg.describe_method_routing_reason("explicit_method_requested")
+        assert "explicitly requested" in detail
+
+
+
+
+    def test_build_method_routing_decision_normalizes_payload(self):
+        payload = cfg.build_method_routing_decision(
+            requested_method="auto",
+            selected_method="rs",
+            reason="cpu_backend_prefers_numpy_rs",
+            backend="cpu",
+            threshold=None,
+            n_obs=12,
+            family="no",
+        )
+        assert payload["requested_method"] == "AUTO"
+        assert payload["selected_method"] == "RS"
+        assert payload["family"] == "NO"
+        assert payload["reason_detail"]
+
+
+    def test_validate_method_routing_decision_accepts_normalized_payload(self):
+        payload = cfg.build_method_routing_decision(
+            requested_method="AUTO",
+            selected_method="RS",
+            reason="cpu_backend_prefers_numpy_rs",
+            backend="cpu",
+            threshold=None,
+            n_obs=10,
+            family="NO",
+        )
+        cfg.validate_method_routing_decision(payload)
+
+    def test_validate_method_routing_decision_rejects_missing_key(self):
+        with pytest.raises(ValueError, match="missing keys"):
+            cfg.validate_method_routing_decision({"requested_method": "AUTO"})
+
     def test_cpu_always_rs(self):
         """On CPU backend, auto_select_method always returns 'RS'."""
         import jax
@@ -150,6 +195,20 @@ class TestGamlssAutoMethod:
             assert isinstance(routing, dict)
             assert routing.get("selected_method") in ("RS", "RS_JAX")
             assert routing.get("family") == "NO"
+            assert isinstance(routing.get("reason"), str)
+            assert isinstance(routing.get("reason_detail"), str)
+            assert routing["reason_detail"]
+        if method_used == "RS":
+            assert model.additional_slots.get("rs_policy_max_inner") == 1
+
+
+    def test_manual_rs_stores_routing_decision(self):
+        data = _make_no_data()
+        model = gamlss("y ~ x", family=NO(), data=data, method="RS")
+        routing = model.additional_slots.get("method_routing")
+        assert isinstance(routing, dict)
+        assert routing.get("requested_method") == "RS"
+        assert routing.get("selected_method") in ("RS", "RS_JAX")
 
     def test_auto_with_unsupported_family_uses_rs(self):
         """method='auto' with an unsupported family falls back to RS."""
@@ -323,3 +382,70 @@ def test_tpu_crossover_has_all_jax_family_placeholders():
     for family in cfg.JAX_SUPPORTED_FAMILIES:
         assert family in cfg.TPU_CROSSOVER_N
         assert cfg.TPU_CROSSOVER_N[family] == math.inf
+
+
+def test_model_get_method_routing_validated():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    routing = model.get_method_routing()
+    assert routing is None or isinstance(routing, dict)
+    if routing is not None:
+        assert routing.get("requested_method") in {"AUTO", "RS", "RS_JAX"}
+
+
+
+def test_model_get_method_routing_validation_toggle():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    routing = model.get_method_routing(validate=False)
+    if routing is None:
+        pytest.skip("No routing payload available in this environment")
+    broken = dict(routing)
+    broken.pop("reason", None)
+    model.additional_slots = {**dict(model.additional_slots), "method_routing": broken}
+    with pytest.raises(ValueError, match="missing keys"):
+        model.get_method_routing(validate=True)
+    relaxed = model.get_method_routing(validate=False)
+    assert isinstance(relaxed, dict)
+    assert model.has_method_routing() is True
+
+
+
+def test_model_get_method_routing_reason_accessors():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    reason = model.get_method_routing_reason()
+    detail = model.get_method_routing_reason_detail()
+    if reason is None:
+        assert detail is None
+    else:
+        assert isinstance(reason, str)
+        assert isinstance(detail, str)
+        assert detail
+
+
+
+def test_model_get_method_routing_summary():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    summary = model.get_method_routing_summary()
+    if summary is not None:
+        assert "requested=" in summary
+        assert "selected=" in summary
+
+
+
+def test_model_explain_method_routing():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    text = model.explain_method_routing()
+    assert isinstance(text, str)
+    assert len(text) > 0
+
+
+
+def test_model_get_method_routing_confidence_absent_returns_none():
+    data = _make_no_data()
+    model = gamlss("y ~ x", family=NO(), data=data, method="auto")
+    assert model.get_method_routing_confidence() is None
+
