@@ -112,3 +112,34 @@ def test_run_cg_outer_loop_converges_on_quadratic_system():
     assert res.converged
     assert res.n_iter <= 2
     assert res.deviance_history[-1] <= res.deviance_history[0]
+
+def test_cg_outer_step_rejects_non_improving_direction_with_zero_step():
+    eta0 = {"mu": np.array([1.0]), "sigma": np.array([1.0])}
+    # Wrong-way direction: positive score with identity Hessian increases quadratic deviance.
+    scores = {"mu": np.array([1.0]), "sigma": np.array([1.0])}
+    blocks = {
+        ("mu", "mu"): np.eye(1),
+        ("mu", "sigma"): np.zeros((1, 1)),
+        ("sigma", "mu"): np.zeros((1, 1)),
+        ("sigma", "sigma"): np.eye(1),
+    }
+
+    def dev_fn(eta):
+        v = np.concatenate([np.asarray(eta["mu"]), np.asarray(eta["sigma"])])
+        return float(np.dot(v, v))
+
+    out = cg_outer_step(
+        eta=eta0,
+        scores=scores,
+        hessian_blocks=blocks,
+        global_deviance_fn=dev_fn,
+        ridge=0.0,
+        step_size=1.0,
+        min_step_size=1e-3,
+        backtracking=0.5,
+    )
+
+    assert out.accepted_step_size == 0.0
+    np.testing.assert_allclose(np.asarray(out.updated_eta["mu"]), eta0["mu"], atol=1e-12)
+    np.testing.assert_allclose(np.asarray(out.updated_eta["sigma"]), eta0["sigma"], atol=1e-12)
+    assert out.new_global_deviance == out.old_global_deviance
