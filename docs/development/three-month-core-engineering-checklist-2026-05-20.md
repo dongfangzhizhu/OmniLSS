@@ -11,9 +11,9 @@ This checklist tracks execution order and completion status for
 - [x] Week 2 / Task 1: damped IRLS with backtracking line search (initial integration).
 - [x] Week 2 / Task 2: Hessian regularization module and singular-distribution tests.
 - [x] Week 2 / Task 3: eta / z / weight clipping integration.
-- [ ] Week 3 / Task 1: optimizer abstraction layer.
-- [ ] Week 3 / Task 2: convergence framework (grad/deviance/parameter/curvature).
-- [ ] Week 3 / Task 3: iteration trace JSON export + replay.
+- [x] Week 3 / Task 1: optimizer abstraction layer (runtime scaffold).
+- [x] Week 3 / Task 2: convergence framework (grad/deviance/parameter/curvature).
+- [x] Week 3 / Task 3: iteration trace JSON export + replay.
 - [ ] Week 4 / Family metadata + constraints + validation engine.
 - [ ] Week 5 / benchmark framework (correctness/performance/convergence/stress).
 - [ ] Week 6 / CPU-first WLS (Cholesky-based).
