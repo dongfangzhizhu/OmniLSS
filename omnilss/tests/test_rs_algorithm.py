@@ -10,6 +10,7 @@ import pytest
 from omnilss.algorithms.rs_algorithm import (
     ConvergenceWarning,
     _get_eta_bounds,
+    _has_converged,
     rs_fit,
     rs_step,
     compute_working_weights_and_response,
@@ -351,6 +352,11 @@ class TestRSFit:
 
         assert np.mean(mu_hat) > 1e5
         assert not np.allclose(mu_hat, 20.0)
+
+    def test_has_converged_relative_or_absolute(self):
+        assert _has_converged(1000.0, 999.99995, tol=1e-4, rtol=1e-8)
+        assert _has_converged(1e9, 1e9 - 100.0, tol=1e-8, rtol=1e-6)
+        assert not _has_converged(1.0, 0.9, tol=1e-8, rtol=1e-8)
 
 
 class TestIntegration:

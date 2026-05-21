@@ -630,6 +630,13 @@ def rs_step(
     )
 
 
+def _has_converged(dev_old: float, dev_new: float, tol: float, rtol: float) -> bool:
+    """Relative + absolute convergence criterion."""
+    abs_change = abs(dev_old - dev_new)
+    rel_change = abs_change / (abs(dev_old) + 1e-10)
+    return abs_change < tol or rel_change < rtol
+
+
 def rs_fit(
     formula: str,
     family: Any,
@@ -639,6 +646,7 @@ def rs_fit(
     weights: Optional[np.ndarray] = None,
     max_iter: int = 20,
     tol: float = 1e-4,
+    rtol: float = 1e-6,
     mu_step: float = 1.0,
     sigma_step: float = 1.0,
     nu_step: float = 1.0,
@@ -991,7 +999,7 @@ def rs_fit(
     }
 
     core_rs_t0 = time.perf_counter()
-    while abs(g_dev_old - g_dev) > tol and iteration < max_iter:
+    while not _has_converged(g_dev_old, g_dev, tol, rtol) and iteration < max_iter:
         iteration += 1
         g_dev_old = g_dev
 
@@ -1130,7 +1138,7 @@ def rs_fit(
                 print(f"  WARNING: Global deviance increased!")
 
     # Check convergence
-    if abs(g_dev_old - g_dev) < tol:
+    if _has_converged(g_dev_old, g_dev, tol, rtol):
         converged = True
     timing_split["core_rs"] = float(time.perf_counter() - core_rs_t0)
     if solver_backend.name == "jax":
