@@ -53,6 +53,7 @@ def mixed_fit(
     algorithm: Literal["auto", "rs", "cg"] = "auto",
     max_iter: int = 20,
     tol: float = 1e-4,
+    rtol: float = 1e-6,
     verbose: bool = False
 ) -> GAMLSSModel:
     """Fit GAMLSS model using Mixed algorithm.
@@ -131,6 +132,7 @@ def mixed_fit(
             data=data,
             max_iter=max_iter,
             tol=tol,
+            rtol=rtol,
             verbose=verbose
         )
         # Add mixed algorithm metadata
