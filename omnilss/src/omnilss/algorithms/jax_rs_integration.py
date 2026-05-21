@@ -21,6 +21,7 @@ For other families, a ``ValueError`` is raised with a helpful message.
 from __future__ import annotations
 
 from collections.abc import Mapping
+import time
 from dataclasses import asdict
 from typing import Any
 
@@ -166,6 +167,7 @@ def gamlss_rs_jax(
         predictor_labels[param]   = labels_param
 
     # ── Initialise parameters ─────────────────────────────────────────────────
+    init_t0 = time.perf_counter()
     X_mu = design_matrices_np["mu"]
     eps = np.finfo(np.float64).eps
 
@@ -206,6 +208,7 @@ def gamlss_rs_jax(
             fixed_parameter_values=fixed_parameter_values,
         )
 
+    beta_norm_first_step = float(np.linalg.norm(beta_mu))
     eta_mu = X_mu @ beta_mu
     mu     = np.asarray(family.link_inverses["mu"](jnp.asarray(eta_mu)), dtype=np.float64)
 
@@ -255,11 +258,14 @@ def gamlss_rs_jax(
         [jnp.asarray(e, dtype=jnp.float64) for e in init_etas_list], axis=0
     )  # [n_params, n]
 
+    warm_start_time = time.perf_counter() - init_t0
+
     # ── Run JAX RS core ───────────────────────────────────────────────────────
     if verbose:
         print(f"[RS_JAX] Family: {family.name}, n={n}, "
               f"params={list(family.estimable_parameters)}")
 
+    core_t0 = time.perf_counter()
     result = jax_rs_fit_core(
         y=y_jax,
         Xs=Xs_jax,
@@ -277,6 +283,11 @@ def gamlss_rs_jax(
         print(f"[RS_JAX] Converged={result.converged}, "
               f"iterations={result.iterations}, deviance={result.g_dev:.6f}")
 
+    core_rs_time = time.perf_counter() - core_t0
+    sync_t0 = time.perf_counter()
+    _ = jnp.asarray(result.g_dev).block_until_ready()
+    host_device_sync_time = time.perf_counter() - sync_t0
+
     # ── Unpack result ─────────────────────────────────────────────────────────
     param_names = list(family.estimable_parameters)
     fitted_vals_np: dict[str, np.ndarray] = {}
@@ -291,6 +302,9 @@ def gamlss_rs_jax(
     # Add fixed parameters
     for param, val in fixed_parameter_values.items():
         fitted_vals_np[param] = val
+
+    p_total = int(sum(design_matrices_np[p].shape[1] for p in family.estimable_parameters))
+    suggested_backend = "numpy" if p_total <= 4 else "jax"
 
     # ── Build GAMLSSModel ─────────────────────────────────────────────────────
     fitted_values_jax = {
@@ -390,6 +404,15 @@ def gamlss_rs_jax(
             "cycles":          result.iterations,
             "rs_jax_max_inner": max_inner,
             "method_routing": routing_decision,
+            "timing_split": {
+                "warm_start": float(warm_start_time),
+                "core_rs": float(core_rs_time),
+                "host_device_sync": float(host_device_sync_time),
+            },
+            "beta_norm_first_step": beta_norm_first_step,
+            "eta_clip_ratio": float(result.eta_clip_ratio),
+            "device_aware_suggested_backend": suggested_backend,
+            "p_total": p_total,
         },
     )
 
