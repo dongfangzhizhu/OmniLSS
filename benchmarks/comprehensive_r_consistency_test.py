@@ -643,6 +643,9 @@ def test_fitting(
         py_dev    = float(model.deviance)
         py_coef   = np.asarray(model.coefficients["mu"], dtype=np.float64)
         py_fitted = np.asarray(model.fitted_values["mu"], dtype=np.float64)
+        timing_split = (getattr(model, "additional_slots", {}) or {}).get(
+            "timing_split", {}
+        )
     except Exception as e:
         return ConsistencyResult(
             test_name=f"{dist}_{algorithm}_fitting", category="fitting",
@@ -652,7 +655,9 @@ def test_fitting(
         return ConsistencyResult(
             test_name=f"{dist}_{algorithm}_fitting", category="fitting",
             distribution=dist, success=True,
-            python_time=py_time, notes="R comparison not available")
+            python_time=py_time,
+            notes=f"R comparison not available; timing_split={timing_split}",
+        )
 
     # R
     csv_path = _write_csv(data)
@@ -700,7 +705,11 @@ def test_fitting(
         distribution=dist, success=passed,
         python_time=py_time, r_time=r_time, speedup=sp,
         error_message=None if passed else "R comparison exceeded tolerance",
-        notes=f"deviance diff={dev_diff:.4e}; " + _tolerance_note(combined_err, abs_tol, rel_tol),
+        notes=(
+            f"deviance diff={dev_diff:.4e}; "
+            + _tolerance_note(combined_err, abs_tol, rel_tol)
+            + f"; timing_split={timing_split}"
+        ),
         abs_tolerance=abs_tol, rel_tolerance=rel_tol,
         **combined_err)
 

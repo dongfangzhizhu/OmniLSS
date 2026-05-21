@@ -262,6 +262,8 @@ def _time_python(
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    slots = getattr(model, "additional_slots", {}) or {}
+    timing_split = slots.get("timing_split", {}) if isinstance(slots, dict) else {}
     return {
         "success": True,
         "cold_time": cold_time,
@@ -271,6 +273,9 @@ def _time_python(
         "max_time": float(np.max(times)),
         "deviance": deviance,
         "python_peak_memory_mb": float(peak_bytes / (1024 * 1024)),
+        "warm_start_time": timing_split.get("warm_start"),
+        "core_rs_time": timing_split.get("core_rs"),
+        "host_device_sync_time": timing_split.get("host_device_sync"),
     }
 
 
