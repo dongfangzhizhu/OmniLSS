@@ -11,6 +11,7 @@ import importlib.util
 import json
 import os
 import sqlite3
+import threading
 import time
 import uuid
 from concurrent import futures
@@ -38,50 +39,57 @@ class _ModelRegistry:
     TTL_SECONDS = 3600
 
     def __init__(self) -> None:
+        self._lock = threading.RLock()
         self._paths: dict[str, tuple[Path, float]] = {}
         self._db = sqlite3.connect(MODEL_DB, check_same_thread=False)
+        self._db.execute("PRAGMA journal_mode=WAL")
+        self._db.execute("PRAGMA synchronous=NORMAL")
         self._db.execute("CREATE TABLE IF NOT EXISTS models (id TEXT PRIMARY KEY, path TEXT NOT NULL, created_at REAL NOT NULL)")
         self._db.commit()
         for model_id, path, created_at in self._db.execute("SELECT id, path, created_at FROM models"):
             self._paths[str(model_id)] = (Path(path), float(created_at))
 
     def save(self, model: Any) -> str:
-        self._evict_expired()
-        if len(self._paths) >= self.MAX_MODELS:
-            oldest_id = min(self._paths, key=lambda key: self._paths[key][1])
-            self._remove(oldest_id)
+        with self._lock:
+            self._evict_expired()
+            if len(self._paths) >= self.MAX_MODELS:
+                oldest_id = min(self._paths, key=lambda key: self._paths[key][1])
+                self._remove(oldest_id)
 
-        model_id = str(uuid.uuid4())
-        path = MODEL_STORE / f"{model_id}.omnilss"
-        save_model_json(model, path)
-        created_at = time.time()
-        self._paths[model_id] = (path, created_at)
-        self._db.execute("INSERT INTO models(id, path, created_at) VALUES (?, ?, ?)", (model_id, str(path), created_at))
-        self._db.commit()
-        return model_id
+            model_id = str(uuid.uuid4())
+            path = MODEL_STORE / f"{model_id}.omnilss"
+            save_model_json(model, path)
+            created_at = time.time()
+            self._paths[model_id] = (path, created_at)
+            self._db.execute("INSERT INTO models(id, path, created_at) VALUES (?, ?, ?)", (model_id, str(path), created_at))
+            self._db.commit()
+            return model_id
 
     def load(self, model_id: str):
-        self._evict_expired()
-        entry = self._paths.get(model_id)
-        if entry is None:
-            raise KeyError(model_id)
-        path, _created_at = entry
-        if not path.exists():
-            self._paths.pop(model_id, None)
-            self._db.execute("DELETE FROM models WHERE id = ?", (model_id,))
-            self._db.commit()
-            raise KeyError(model_id)
-        return load_model_json(path)
+        with self._lock:
+            self._evict_expired()
+            entry = self._paths.get(model_id)
+            if entry is None:
+                raise KeyError(model_id)
+            path, _created_at = entry
+            if not path.exists():
+                self._paths.pop(model_id, None)
+                self._db.execute("DELETE FROM models WHERE id = ?", (model_id,))
+                self._db.commit()
+                raise KeyError(model_id)
+            return load_model_json(path)
 
     def list_ids(self) -> list[str]:
-        self._evict_expired()
-        return sorted(self._paths)
+        with self._lock:
+            self._evict_expired()
+            return sorted(self._paths)
 
     def delete(self, model_id: str) -> bool:
-        if model_id not in self._paths:
-            return False
-        self._remove(model_id)
-        return True
+        with self._lock:
+            if model_id not in self._paths:
+                return False
+            self._remove(model_id)
+            return True
 
     def _evict_expired(self) -> None:
         now = time.time()
