@@ -17,6 +17,7 @@ from typing import Sequence
 _LOCALIZATION_TOOL = Path(__file__).with_name("check_docs_localization.py")
 _CAPABILITY_MATRIX_TOOL = Path(__file__).with_name("validate_capability_matrix.py")
 _RELEASE_GATE_SMOKE_TOOL = Path(__file__).with_name("release_gate_smoke.py")
+_THREE_MONTH_PLAN_TOOL = Path(__file__).with_name("validate_three_month_execution_plan.py")
 _LOCALIZATION_SPEC = importlib.util.spec_from_file_location(
     "check_docs_localization", _LOCALIZATION_TOOL
 )
@@ -49,6 +50,17 @@ assert (
 _RELEASE_GATE_SMOKE_SPEC.loader.exec_module(release_gate_smoke)
 run_release_gate_smoke = release_gate_smoke.run_release_gate_smoke
 
+_THREE_MONTH_PLAN_SPEC = importlib.util.spec_from_file_location(
+    "validate_three_month_execution_plan", _THREE_MONTH_PLAN_TOOL
+)
+three_month_plan = importlib.util.module_from_spec(_THREE_MONTH_PLAN_SPEC)
+assert (
+    _THREE_MONTH_PLAN_SPEC is not None
+    and _THREE_MONTH_PLAN_SPEC.loader is not None
+)
+_THREE_MONTH_PLAN_SPEC.loader.exec_module(three_month_plan)
+validate_three_month_checklist = three_month_plan.validate_three_month_checklist
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -80,6 +92,17 @@ def _run_preflight_checks() -> int:
             )
         return 1
 
+
+    checklist_report = validate_three_month_checklist()
+    if not checklist_report["ok"]:
+        print("Three-month execution checklist validation failed:", file=sys.stderr)
+        for issue in checklist_report["issues"]:
+            print(
+                f"- {issue['code']} in week {issue.get('week', '?')}: {issue['message']}",
+                file=sys.stderr,
+            )
+        return 1
+
     smoke_report = run_release_gate_smoke()
     if not smoke_report["ok"]:
         print("Release gate smoke checks failed:", file=sys.stderr)
@@ -101,7 +124,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help=(
             "Run offline release-gate checks only: documentation localization, "
-            "generated capability matrix validation, and core smoke checks."
+            "generated capability matrix validation, three-month checklist validation, and core smoke checks."
         ),
     )
     args = parser.parse_args(argv)
