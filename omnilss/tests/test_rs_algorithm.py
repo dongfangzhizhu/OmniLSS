@@ -8,6 +8,9 @@ import numpy as np
 import pytest
 
 from omnilss.algorithms.rs_algorithm import (
+    ConvergenceWarning,
+    _get_eta_bounds,
+    _has_converged,
     rs_fit,
     rs_step,
     compute_working_weights_and_response,
@@ -98,6 +101,28 @@ class TestComputeWorkingWeightsAndResponse:
         # Weights should be clipped
         assert np.all(weights <= 1e10)
         assert np.all(weights >= 1e-10)
+
+    def test_working_response_clipping_emits_warning(self):
+        n = 20
+        y = np.zeros(n)
+        fitted_values = np.zeros(n)
+        link_derivative = np.ones(n)
+        first_derivative = np.full(n, 1e10)
+        second_derivative = -np.ones(n)
+        offset = np.zeros(n)
+        eta = np.zeros(n)
+
+        with pytest.warns(ConvergenceWarning, match="working_response clipped"):
+            _weights, response = compute_working_weights_and_response(
+                y=y,
+                fitted_values=fitted_values,
+                link_derivative=link_derivative,
+                first_derivative=first_derivative,
+                second_derivative=second_derivative,
+                offset=offset,
+                eta=eta
+            )
+        assert np.all(np.isfinite(response))
 
 
 class TestRSStep:
@@ -216,6 +241,11 @@ class TestRSStep:
         # Half step may need more iterations
         assert result_half.iterations >= result_full.iterations
 
+    def test_eta_bounds_are_link_aware(self):
+        assert _get_eta_bounds("identity") == (-1e8, 1e8)
+        assert _get_eta_bounds("log") == (-15.0, 15.0)
+        assert _get_eta_bounds("logit") == (-15.0, 15.0)
+
 
 class TestRSFit:
     """Tests for rs_fit function."""
@@ -297,6 +327,36 @@ class TestRSFit:
         # Should still converge
         assert model is not None
         assert np.isfinite(model.g_dev)
+
+    def test_gradient_norm_is_finite(self, simple_data):
+        model = rs_fit(formula="y ~ x", family="NO", data=simple_data, verbose=False)
+        mu_grad = model.additional_slots["rs_last_gradient_norm_by_param"]["mu"]
+        assert np.isfinite(mu_grad)
+        assert mu_grad > 0
+        assert np.isfinite(model.additional_slots["gradient_norm"])
+        assert model.additional_slots["gradient_norm"] > 0
+
+    def test_policy_max_inner_is_one(self, simple_data):
+        model = rs_fit(formula="y ~ x", family="NO", data=simple_data, verbose=False)
+        assert model.additional_slots["rs_policy_max_inner"] == 1
+
+    def test_identity_link_large_response_not_clipped_to_20(self):
+        np.random.seed(123)
+        n = 120
+        x = np.linspace(0, 10, n)
+        y = 1e6 + 50.0 * x + np.random.randn(n) * 10.0
+        data = {"x": x, "y": y}
+
+        model = rs_fit(formula="y ~ x", family="NO", data=data, max_iter=5, verbose=False)
+        mu_hat = np.asarray(model.fitted_values["mu"], dtype=float)
+
+        assert np.mean(mu_hat) > 1e5
+        assert not np.allclose(mu_hat, 20.0)
+
+    def test_has_converged_relative_or_absolute(self):
+        assert _has_converged(1000.0, 999.99995, tol=1e-4, rtol=1e-8)
+        assert _has_converged(1e9, 1e9 - 100.0, tol=1e-8, rtol=1e-6)
+        assert not _has_converged(1.0, 0.9, tol=1e-8, rtol=1e-8)
 
 
 class TestIntegration:
