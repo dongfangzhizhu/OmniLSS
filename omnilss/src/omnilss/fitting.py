@@ -913,6 +913,37 @@ def gamlss(
             confidence=_routing_confidence(_decision, int(_n_obs)),
         )
         _cfg.validate_method_routing_decision(routing_decision)
+
+        # v1 freeze policy: CPU-first for small design matrices (p_total <= 4),
+        # even when device crossover suggests RS_JAX.
+        if method_name == "RS_JAX":
+            try:
+                p_total = 0
+                resolved_formulas = _resolve_parameter_formulas(
+                    response=_resp,
+                    family=family,
+                    mu_formula=formula,
+                    sigma_formula=sigma_formula,
+                    parameter_formulas=parameter_formulas,
+                )
+                for _param in family.estimable_parameters:
+                    _, _X_param, _ = _build_design_matrix(resolved_formulas[_param], data)
+                    p_total += int(_X_param.shape[1])
+                if p_total <= 4:
+                    method_name = "RS"
+                    routing_decision = _cfg.build_method_routing_decision(
+                        requested_method=requested_method,
+                        selected_method=method_name,
+                        reason="small_p_cpu_first_policy",
+                        backend=_decision.backend,
+                        threshold=_decision.threshold,
+                        n_obs=int(_n_obs),
+                        family=family.name,
+                        confidence=0.99,
+                    )
+                    _cfg.validate_method_routing_decision(routing_decision)
+            except Exception:
+                pass
         if verbose:
             print("OmniLSS method routing")
             print(
