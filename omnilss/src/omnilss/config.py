@@ -527,6 +527,7 @@ def describe_method_routing_reason(reason: str) -> str:
         "tpu_crossover_not_reached": "Sample size is below the configured TPU crossover threshold.",
         "unknown_backend_fallback": "Backend could not be classified; falling back to NumPy RS.",
         "explicit_method_requested": "User explicitly requested this method; auto-routing crossover logic was bypassed.",
+        "small_p_cpu_first_policy": "Small design matrices default to NumPy RS to avoid JAX launch overhead.",
     }
     return mapping.get(reason, "No explanation registered for this routing reason code.")
 
