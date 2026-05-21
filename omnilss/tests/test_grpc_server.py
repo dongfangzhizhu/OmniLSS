@@ -1,6 +1,7 @@
 """gRPC server smoke tests (optional dependency)."""
 
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import importlib.util
 
@@ -81,6 +82,25 @@ def test_create_service_reports_actionable_runtime_gap(monkeypatch) -> None:
     assert "Missing: protobuf" in message
     assert "pip install 'omnilss[grpc]'" in message
     assert "omnilss.api.grpc.generated" in message
+
+
+def test_model_registry_save_is_thread_safe() -> None:
+    """Concurrent saves should not corrupt in-memory/db registry state."""
+    from omnilss.api.grpc import server as grpc_server
+
+    from omnilss.algorithms.rs_algorithm import rs_fit
+
+    registry = grpc_server._ModelRegistry()
+    data = {"x": [0.0, 1.0, 2.0], "y": [1.0, 2.0, 3.0]}
+    model = rs_fit(formula="y ~ x", family="NO", data=data, max_iter=2, verbose=False)
+    try:
+        with ThreadPoolExecutor(max_workers=10) as pool:
+            model_ids = list(pool.map(lambda _: registry.save(model), range(10)))
+        assert len(set(model_ids)) == 10
+        assert len(registry.list_ids()) >= 10
+    finally:
+        for model_id in list(registry.list_ids()):
+            registry.delete(model_id)
 
 
 @pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")

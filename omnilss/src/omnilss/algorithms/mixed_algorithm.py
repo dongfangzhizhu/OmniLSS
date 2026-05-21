@@ -12,6 +12,7 @@ References:
 from typing import Dict, Optional, Literal
 import time
 import numpy as np
+import warnings
 
 from .rs_algorithm import rs_fit
 from .lbfgs_algorithm import joint_lbfgs_fit as cg_fit
@@ -50,9 +51,10 @@ def mixed_fit(
     tau_formula: Optional[str] = None,
     family: str = "NO",
     data: Optional[Dict[str, np.ndarray]] = None,
-    algorithm: Literal["auto", "rs", "cg"] = "auto",
+    algorithm: Literal["auto", "rs", "cg", "lbfgs"] = "auto",
     max_iter: int = 20,
     tol: float = 1e-4,
+    rtol: float = 1e-6,
     verbose: bool = False
 ) -> GAMLSSModel:
     """Fit GAMLSS model using Mixed algorithm.
@@ -110,7 +112,21 @@ def mixed_fit(
             reason = "smooth terms" if has_smooth else f"n={n}, family={family}"
             print(f"Auto-selection: Using {selected_algorithm.upper()} algorithm ({reason})")
     else:
-        selected_algorithm = algorithm
+        algo_key = str(algorithm).lower()
+        aliases = {
+            "rs": "rs",
+            "cg": "lbfgs",
+            "lbfgs": "lbfgs",
+            "l-bfgs": "lbfgs",
+            "auto": "auto",
+        }
+        selected_algorithm = aliases.get(algo_key, algorithm)
+        if algo_key == "cg" and selected_algorithm == "lbfgs":
+            warnings.warn(
+                "algorithm='cg' is a deprecated alias for 'lbfgs' (L-BFGS joint optimizer).",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         if verbose:
             print(f"Using {selected_algorithm.upper()} algorithm")
     
@@ -131,13 +147,14 @@ def mixed_fit(
             data=data,
             max_iter=max_iter,
             tol=tol,
+            rtol=rtol,
             verbose=verbose
         )
         # Add mixed algorithm metadata
         model.additional_slots["mixed_algorithm_used"] = "rs"
         model.additional_slots["mixed_auto_selected"] = (algorithm == "auto")
         
-    elif selected_algorithm == "cg":
+    elif selected_algorithm == "lbfgs":
         model = cg_fit(
             formula=formula,
             sigma_formula=sigma_formula,
@@ -150,11 +167,11 @@ def mixed_fit(
             verbose=verbose
         )
         # Add mixed algorithm metadata
-        model.additional_slots["mixed_algorithm_used"] = "cg"
+        model.additional_slots["mixed_algorithm_used"] = "lbfgs"
         model.additional_slots["mixed_auto_selected"] = (algorithm == "auto")
     
     else:
-        raise ValueError(f"Unknown algorithm: {algorithm}. Use 'auto', 'rs', or 'cg'.")
+        raise ValueError(f"Unknown algorithm: {algorithm}. Use 'auto', 'rs', or 'lbfgs'.")
     
     if verbose:
         print("=" * 70)
