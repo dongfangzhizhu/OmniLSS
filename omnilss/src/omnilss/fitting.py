@@ -717,6 +717,27 @@ def gamlss_ml(
     )
 
 
+
+
+def _estimate_formula_width(formula: str) -> int | None:
+    """Estimate design width from a simple mu formula string.
+
+    Returns None when formula cannot be safely estimated (fallback to existing routing).
+    """
+    try:
+        rhs = formula.split("~", 1)[1].strip()
+    except Exception:
+        return None
+    if rhs in {"1", ""}:
+        return 1
+    if any(tok in rhs for tok in ("pb(", "ps(", "cs(", "tps(", "bs(")):
+        return None
+    terms = [x.strip() for x in rhs.split("+") if x.strip()]
+    if not terms:
+        return 1
+    has_intercept = "0" not in terms and "-1" not in terms
+    return len([t for t in terms if t not in {"1", "0", "-1"}]) + (1 if has_intercept else 0)
+
 def gamlss(
     formula: str,
     sigma_formula: str = "~1",
@@ -902,6 +923,14 @@ def gamlss(
         )
         _decision = _cfg.auto_select_method_trace(family.name, _n_obs)
         method_name = _decision.method.upper()
+        _p_est = _estimate_formula_width(formula)
+        if method_name == "RS_JAX" and _p_est is not None and _p_est <= 4:
+            method_name = "RS"
+            _decision = type("Decision", (), {
+                "reason": "small_p_prefers_numpy_rs",
+                "backend": _backend,
+                "threshold": _decision.threshold,
+            })
         routing_decision = _cfg.build_method_routing_decision(
             requested_method=requested_method,
             selected_method=method_name,
@@ -936,6 +965,37 @@ def gamlss(
                 routing_decision = {**routing_decision, "p_total": _p_total}
 
         _cfg.validate_method_routing_decision(routing_decision)
+
+        # v1 freeze policy: CPU-first for small design matrices (p_total <= 4),
+        # even when device crossover suggests RS_JAX.
+        if method_name == "RS_JAX":
+            try:
+                p_total = 0
+                resolved_formulas = _resolve_parameter_formulas(
+                    response=_resp,
+                    family=family,
+                    mu_formula=formula,
+                    sigma_formula=sigma_formula,
+                    parameter_formulas=parameter_formulas,
+                )
+                for _param in family.estimable_parameters:
+                    _, _X_param, _ = _build_design_matrix(resolved_formulas[_param], data)
+                    p_total += int(_X_param.shape[1])
+                if p_total <= 4:
+                    method_name = "RS"
+                    routing_decision = _cfg.build_method_routing_decision(
+                        requested_method=requested_method,
+                        selected_method=method_name,
+                        reason="small_p_cpu_first_policy",
+                        backend=_decision.backend,
+                        threshold=_decision.threshold,
+                        n_obs=int(_n_obs),
+                        family=family.name,
+                        confidence=0.99,
+                    )
+                    _cfg.validate_method_routing_decision(routing_decision)
+            except Exception:
+                pass
         if verbose:
             print("OmniLSS method routing")
             print(
