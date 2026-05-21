@@ -16,11 +16,11 @@
 - [x] Day 2: Emit diagnostics (`beta_norm_first_step`, `eta_clip_ratio`).
 - [x] Day 3: Add first-step beta explosion guard + fallback init.
 - [x] Day 4: Add regression tests for telemetry/fallback schema and sanity bounds.
-- [ ] Day 5: Update benchmark report template sections to explicitly surface all RS_JAX diagnostics.
+- [x] Day 5: Update benchmark report template sections to explicitly surface all RS_JAX diagnostics.
 
 ## Week 2 (routing + performance policy)
 - [x] Day 1: Add device-aware routing metadata foundation (`p_total`, suggested backend).
-- [ ] Day 2: Add explicit routing comparison group in `benchmarks/comprehensive_performance_test.py`.
+- [x] Day 2: Add explicit routing comparison group in `benchmarks/comprehensive_performance_test.py`.
 - [ ] Day 3: Add comparison mode under fixed precision constraints.
 - [ ] Day 4: Generate family × device recommendation matrix from benchmark outputs.
 - [ ] Day 5: Freeze v1 strategy defaults (CPU-first for small `p`, no blind GPU path).
