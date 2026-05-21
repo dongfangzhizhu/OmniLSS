@@ -345,8 +345,38 @@ class ConsistencyResult:
     abs_tolerance:       float | None = None
     rel_tolerance:       float | None = None
 
-    def to_dict(self) -> dict:
-        return {k: v for k, v in self.__dict__.items()}
+
+def _extract_backend_policy_from_notes(notes: str | None) -> tuple[str, str]:
+    """Parse backend/policy tags from notes string with safe fallbacks."""
+    if not notes:
+        return "unknown", "unknown"
+    backend = "unknown"
+    policy = "unknown"
+    for part in notes.split(";"):
+        p = part.strip()
+        if p.startswith("backend="):
+            backend = p.split("=", 1)[1].strip() or "unknown"
+        elif p.startswith("warm_start="):
+            policy = p.split("=", 1)[1].strip() or "unknown"
+    return backend, policy
+
+
+def _extract_convergence_from_notes(notes: str | None) -> tuple[str, str, str]:
+    """Parse convergence telemetry tags from notes string with safe fallbacks."""
+    if not notes:
+        return "unknown", "unknown", "unknown"
+    delta_dev = "unknown"
+    beta_l2 = "unknown"
+    max_score = "unknown"
+    for part in notes.split(";"):
+        p = part.strip()
+        if p.startswith("delta_dev="):
+            delta_dev = p.split("=", 1)[1].strip() or "unknown"
+        elif p.startswith("beta_l2_delta="):
+            beta_l2 = p.split("=", 1)[1].strip() or "unknown"
+        elif p.startswith("max_abs_score="):
+            max_score = p.split("=", 1)[1].strip() or "unknown"
+    return delta_dev, beta_l2, max_score
 
 
 # ── parameter table for all distributions ────────────────────────────────────
@@ -643,6 +673,15 @@ def test_fitting(
         py_dev    = float(model.deviance)
         py_coef   = np.asarray(model.coefficients["mu"], dtype=np.float64)
         py_fitted = np.asarray(model.fitted_values["mu"], dtype=np.float64)
+        slots = getattr(model, "additional_slots", {}) or {}
+        timing_split = (getattr(model, "additional_slots", {}) or {}).get(
+            "timing_split", {}
+        )
+        solver_backend = slots.get("solver_backend", "unknown")
+        warm_start_policy = slots.get("warm_start_policy", "unknown")
+        delta_dev = slots.get("delta_deviance", "unknown")
+        beta_l2_delta = slots.get("beta_l2_delta", "unknown")
+        max_abs_score = slots.get("max_abs_score", "unknown")
     except Exception as e:
         return ConsistencyResult(
             test_name=f"{dist}_{algorithm}_fitting", category="fitting",
@@ -652,7 +691,14 @@ def test_fitting(
         return ConsistencyResult(
             test_name=f"{dist}_{algorithm}_fitting", category="fitting",
             distribution=dist, success=True,
-            python_time=py_time, notes="R comparison not available")
+            python_time=py_time,
+            notes=(
+                f"R comparison not available; timing_split={timing_split}; "
+                f"backend={solver_backend}; warm_start={warm_start_policy}; "
+                f"delta_dev={delta_dev}; beta_l2_delta={beta_l2_delta}; "
+                f"max_abs_score={max_abs_score}"
+            ),
+        )
 
     # R
     csv_path = _write_csv(data)
@@ -700,7 +746,14 @@ def test_fitting(
         distribution=dist, success=passed,
         python_time=py_time, r_time=r_time, speedup=sp,
         error_message=None if passed else "R comparison exceeded tolerance",
-        notes=f"deviance diff={dev_diff:.4e}; " + _tolerance_note(combined_err, abs_tol, rel_tol),
+        notes=(
+            f"deviance diff={dev_diff:.4e}; "
+            + _tolerance_note(combined_err, abs_tol, rel_tol)
+            + f"; timing_split={timing_split}"
+            + f"; backend={solver_backend}; warm_start={warm_start_policy}"
+            + f"; delta_dev={delta_dev}; beta_l2_delta={beta_l2_delta}; "
+            + f"max_abs_score={max_abs_score}"
+        ),
         abs_tolerance=abs_tol, rel_tolerance=rel_tol,
         **combined_err)
 
@@ -846,6 +899,7 @@ def _generate_report(results: list[ConsistencyResult],
         ok = [r for r in rs if r.success]
         a(f"## {cat.upper()} Tests")
         a("")
+
         a(f"Passed {len(ok)}/{len(rs)}")
         a("")
 
@@ -876,9 +930,9 @@ def _generate_report(results: list[ConsistencyResult],
 
         elif cat == "fitting":
             if r_available:
-                a("| Distribution | Algorithm | Python (s) | R (s) | Speedup | "
+                a("| Distribution | Algorithm | Backend | Warm-start | Python (s) | R (s) | Speedup | "
                   "Max abs err | Dev diff |")
-                a("|-------------|-----------|-----------|-------|---------|"
+                a("|-------------|-----------|---------|------------|-----------|-------|---------|"
                   "------------|----------|")
                 for r in sorted(ok, key=lambda x: (x.distribution or "", x.test_name)):
                     sp  = f"{r.speedup:.1f}×" if r.speedup else "—"
@@ -886,19 +940,21 @@ def _generate_report(results: list[ConsistencyResult],
                     dev = r.notes.replace("deviance diff=", "") if r.notes else "—"
                     pt  = f"{r.python_time:.4f}" if r.python_time else "—"
                     rt  = f"{r.r_time:.4f}" if r.r_time else "—"
+                    backend, policy = _extract_backend_policy_from_notes(r.notes)
                     # Extract algorithm from test_name: "{dist}_{algo}_fitting"
                     parts = r.test_name.split("_")
                     algo  = parts[1] if len(parts) >= 3 else "?"
-                    a(f"| {r.distribution} | {algo} | {pt} | {rt} | {sp} | {mae} | {dev} |")
+                    a(f"| {r.distribution} | {algo} | `{backend}` | `{policy}` | {pt} | {rt} | {sp} | {mae} | {dev} |")
             else:
-                a("| Distribution | Algorithm | Python (s) | Status |")
-                a("|-------------|-----------|-----------|--------|")
+                a("| Distribution | Algorithm | Backend | Warm-start | Python (s) | Status |")
+                a("|-------------|-----------|---------|------------|-----------|--------|")
                 for r in sorted(rs, key=lambda x: x.test_name):
                     parts = r.test_name.split("_")
                     algo  = parts[1] if len(parts) >= 3 else "?"
                     pt    = f"{r.python_time:.4f}" if r.python_time else "—"
                     st    = "✅" if r.success else f"❌ {r.error_message or ''}"
-                    a(f"| {r.distribution} | {algo} | {pt} | {st} |")
+                    backend, policy = _extract_backend_policy_from_notes(r.notes)
+                    a(f"| {r.distribution} | {algo} | `{backend}` | `{policy}` | {pt} | {st} |")
 
         elif cat == "smoothing":
             if r_available:
@@ -921,6 +977,38 @@ def _generate_report(results: list[ConsistencyResult],
                     st = "✅" if r.success else f"❌ {r.error_message or ''}"
                     a(f"| {sm} | {pt} | {st} |")
         a("")
+
+    # ── backend/policy attribution summary ───────────────────────────────────
+    a("---")
+    a("")
+    a("## Backend/Policy Usage (Fitting)")
+    a("")
+    fitting_rows = [r for r in results if r.category == "fitting"]
+    if fitting_rows:
+        counts: dict[tuple[str, str], int] = {}
+        for r in fitting_rows:
+            backend, policy = _extract_backend_policy_from_notes(r.notes)
+            key = (backend, policy)
+            counts[key] = counts.get(key, 0) + 1
+        a("| Backend | Warm-start policy | Cases |")
+        a("|---------|-------------------|-------|")
+        for (backend, policy), cnt in sorted(counts.items()):
+            a(f"| `{backend}` | `{policy}` | {cnt} |")
+    else:
+        a("*(No fitting rows available.)*")
+    a("")
+
+    a("## Convergence Telemetry Snapshot (Fitting)")
+    a("")
+    if fitting_rows:
+        a("| Test | Δdeviance | β L2 delta | max |score| |")
+        a("|------|-----------|------------|-------------|")
+        for r in sorted(fitting_rows, key=lambda x: x.test_name):
+            delta_dev, beta_l2_delta, max_abs_score = _extract_convergence_from_notes(r.notes)
+            a(f"| `{r.test_name}` | `{delta_dev}` | `{beta_l2_delta}` | `{max_abs_score}` |")
+    else:
+        a("*(No fitting rows available.)*")
+    a("")
 
     # ── failures ──────────────────────────────────────────────────────────────
     if failed:

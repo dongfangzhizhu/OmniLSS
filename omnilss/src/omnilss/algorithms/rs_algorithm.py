@@ -16,10 +16,12 @@ iterative procedure, extended to handle multiple distribution parameters.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import time
 import warnings
 from typing import Any, Dict, Optional, Tuple
 
 import jax.numpy as jnp
+import jax
 import numpy as np
 
 from ..distributions import resolve_family
@@ -32,10 +34,151 @@ from ..family_validation import ensure_valid_likelihood_inputs
 from .stabilized_hessian import stabilize_hessian
 from ..fast_wls import solve_weighted_least_squares_cholesky
 from ._model_metrics import df_fit_with_smooth_edf
+from .backend_protocol import IWLSState, SolverBackend
+from .warm_start_policy import FamilyHeuristicInit, WarmStartPolicy
 
 
 class ConvergenceWarning(UserWarning):
     """Convergence warning for RS updates."""
+
+
+class NumpySolverBackend(SolverBackend):
+    """Default NumPy backend for RS/IWLS operations."""
+
+    name = "numpy"
+
+    def __init__(self, family: FamilyDefinition) -> None:
+        self._family = family
+
+    def compute_score_hessian(
+        self,
+        *,
+        parameter: str,
+        y: np.ndarray,
+        fitted: np.ndarray,
+        context: dict[str, np.ndarray],
+    ) -> tuple[np.ndarray, np.ndarray]:
+        score_fn = self._family.score_functions[parameter]
+        hess_fn = self._family.hessian_functions[parameter]
+        param_dict = {"y": y, parameter: fitted}
+        param_dict.update(context)
+        score = np.asarray(
+            sanitize_gradient(jnp.asarray(score_fn(**param_dict), dtype=jnp.float64)),
+            dtype=np.float64,
+        )
+        hessian = np.asarray(hess_fn(**param_dict), dtype=np.float64)
+        return score, hessian
+
+    def iwls_step(
+        self,
+        *,
+        state: IWLSState,
+        score: np.ndarray,
+        hessian: np.ndarray,
+        link_derivative: np.ndarray,
+        offset: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        iter_w, z = compute_working_weights_and_response(
+            y=state.fitted,
+            fitted_values=state.fitted,
+            link_derivative=link_derivative,
+            first_derivative=score,
+            second_derivative=hessian,
+            offset=offset,
+            eta=state.eta,
+        )
+        return z, iter_w
+
+    def wls_solve(
+        self,
+        *,
+        design: np.ndarray,
+        working_response: np.ndarray,
+        weights: np.ndarray,
+    ) -> np.ndarray:
+        sqrt_w = np.sqrt(weights)
+        weighted_x = design * sqrt_w[:, None]
+        gram = weighted_x.T @ weighted_x
+        stabilized = stabilize_hessian(gram)
+        return solve_weighted_least_squares_cholesky(
+            X=design,
+            z=working_response,
+            w=weights,
+            ridge=max(stabilized.lambda_value, 1e-10),
+        )
+
+
+class JaxSolverBackend(SolverBackend):
+    """JAX-backed implementation for RS/IWLS operations."""
+
+    name = "jax"
+
+    def __init__(self, family: FamilyDefinition) -> None:
+        self._family = family
+
+    def compute_score_hessian(
+        self,
+        *,
+        parameter: str,
+        y: np.ndarray,
+        fitted: np.ndarray,
+        context: dict[str, np.ndarray],
+    ) -> tuple[np.ndarray, np.ndarray]:
+        score_fn = self._family.score_functions[parameter]
+        hess_fn = self._family.hessian_functions[parameter]
+        param_dict = {"y": y, parameter: fitted}
+        param_dict.update(context)
+        score = np.asarray(
+            sanitize_gradient(jnp.asarray(score_fn(**param_dict), dtype=jnp.float64)),
+            dtype=np.float64,
+        )
+        hessian = np.asarray(hess_fn(**param_dict), dtype=np.float64)
+        return score, hessian
+
+    def iwls_step(
+        self,
+        *,
+        state: IWLSState,
+        score: np.ndarray,
+        hessian: np.ndarray,
+        link_derivative: np.ndarray,
+        offset: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        iter_w, z = compute_working_weights_and_response(
+            y=state.fitted,
+            fitted_values=state.fitted,
+            link_derivative=link_derivative,
+            first_derivative=score,
+            second_derivative=hessian,
+            offset=offset,
+            eta=state.eta,
+        )
+        return z, iter_w
+
+    def wls_solve(
+        self,
+        *,
+        design: np.ndarray,
+        working_response: np.ndarray,
+        weights: np.ndarray,
+    ) -> np.ndarray:
+        sqrt_w = jnp.sqrt(jnp.asarray(weights, dtype=jnp.float64))
+        xw = jnp.asarray(design, dtype=jnp.float64) * sqrt_w[:, None]
+        zw = jnp.asarray(working_response, dtype=jnp.float64) * sqrt_w
+        beta, _, _, _ = jnp.linalg.lstsq(xw, zw, rcond=None)
+        return np.asarray(beta, dtype=np.float64)
+
+
+def _select_solver_backend(
+    family: FamilyDefinition,
+    routing_decision: Optional[Dict[str, Any]],
+) -> SolverBackend:
+    backend_name = "numpy"
+    if isinstance(routing_decision, dict):
+        backend_name = str(routing_decision.get("solver_backend", "numpy")).lower()
+    if backend_name == "jax":
+        return JaxSolverBackend(family)
+    return NumpySolverBackend(family)
 
 
 @dataclass
@@ -163,6 +306,7 @@ def rs_step(
     auto_step: bool = True,
     verbose: bool = False,
     smooth_info=None,  # 新增：SmoothDesignInfo 或 None
+    solver_backend: SolverBackend | None = None,
 ) -> RSStepResult:
     """Perform one RS algorithm step for a single parameter.
 
@@ -260,9 +404,7 @@ def rs_step(
     link_fun = family.link_functions[parameter]
     link_inv = family.link_inverses[parameter]
 
-    # Get derivative functions from score_functions and hessian_functions dictionaries
-    dldp = family.score_functions[parameter]
-    d2ldp2 = family.hessian_functions[parameter]
+    backend = solver_backend or NumpySolverBackend(family)
 
     # Initialize
     eta = np.asarray(
@@ -275,14 +417,12 @@ def rs_step(
     last_gradient_norm = float("nan")
 
     # Compute INITIAL derivatives (before loop, following R's glim.fit structure)
-    param_dict = {"y": y, parameter: fitted_values}
-    param_dict.update(other_parameters)
-
-    first_deriv = np.asarray(
-        sanitize_gradient(jnp.asarray(dldp(**param_dict), dtype=jnp.float64)),
-        dtype=np.float64,
+    first_deriv, second_deriv = backend.compute_score_hessian(
+        parameter=parameter,
+        y=y,
+        fitted=fitted_values,
+        context=other_parameters,
     )
-    second_deriv = np.asarray(d2ldp2(**param_dict), dtype=np.float64)
 
     # Compute link derivative (dη/dμ) using analytical formula
     link_deriv_func = family.link_derivatives[parameter]
@@ -294,14 +434,17 @@ def rs_step(
     link_deriv = 1.0 / (dmu_deta + 1e-15)
 
     # Compute INITIAL working weights and response
-    working_weights, working_response = compute_working_weights_and_response(
-        y=y,
-        fitted_values=fitted_values,
+    working_response, working_weights = backend.iwls_step(
+        state=IWLSState(
+            design=X,
+            eta=eta,
+            fitted=fitted_values,
+            observation_weights=weights,
+        ),
+        score=first_deriv,
+        hessian=second_deriv,
         link_derivative=link_deriv,
-        first_derivative=first_deriv,
-        second_derivative=second_deriv,
         offset=offset,
-        eta=eta,
     )
 
     for iteration in range(max_iter):
@@ -354,11 +497,10 @@ def rs_step(
             gram = WX_np.T @ WX_np
             stabilized = stabilize_hessian(gram)
             last_condition_number = stabilized.condition_number
-            coef = solve_weighted_least_squares_cholesky(
-                X=X,
-                z=working_response,
-                w=W,
-                ridge=max(stabilized.lambda_value, 1e-10),
+            coef = backend.wls_solve(
+                design=X,
+                working_response=working_response,
+                weights=W,
             )
 
         # Update linear predictor with damped step size
@@ -411,14 +553,12 @@ def rs_step(
 
         # Recompute derivatives at NEW fitted values for NEXT iteration
         # This follows R's glim.fit structure (lines 262-271)
-        param_dict = {"y": y, parameter: fitted_values}
-        param_dict.update(other_parameters)
-
-        first_deriv = np.asarray(
-            sanitize_gradient(jnp.asarray(dldp(**param_dict), dtype=jnp.float64)),
-            dtype=np.float64,
+        first_deriv, second_deriv = backend.compute_score_hessian(
+            parameter=parameter,
+            y=y,
+            fitted=fitted_values,
+            context=other_parameters,
         )
-        second_deriv = np.asarray(d2ldp2(**param_dict), dtype=np.float64)
 
         # Recompute link derivative
         dmu_deta = np.asarray(
@@ -427,14 +567,17 @@ def rs_step(
         link_deriv = 1.0 / (dmu_deta + 1e-15)
 
         # Recompute working weights and response for NEXT iteration
-        working_weights, working_response = compute_working_weights_and_response(
-            y=y,
-            fitted_values=fitted_values,
+        working_response, working_weights = backend.iwls_step(
+            state=IWLSState(
+                design=X,
+                eta=eta,
+                fitted=fitted_values,
+                observation_weights=weights,
+            ),
+            score=first_deriv,
+            hessian=second_deriv,
             link_derivative=link_deriv,
-            first_derivative=first_deriv,
-            second_derivative=second_deriv,
             offset=offset,
-            eta=eta,
         )
 
     return RSStepResult(
@@ -469,6 +612,7 @@ def rs_fit(
     verbose: bool = False,
     raise_on_lambda_failure: bool = False,
     routing_decision: Optional[Dict[str, Any]] = None,
+    warm_start_policy: WarmStartPolicy | None = None,
 ) -> GAMLSSModel:
     """Fit GAMLSS model using RS (Rigby-Stasinopoulos) algorithm.
 
@@ -635,6 +779,15 @@ def rs_fit(
         smooth_infos[parameter] = param_smooth_info
         predictor_labels[parameter] = param_labels
 
+    timing_split = {"warm_start": 0.0, "core_rs": 0.0, "host_device_sync": 0.0}
+    warm_start_t0 = time.perf_counter()
+    warm_start = warm_start_policy or FamilyHeuristicInit()
+    warm_start_result = warm_start.initialize(
+        y=y,
+        parameter_names=tuple(family.estimable_parameters),
+    )
+    solver_backend = _select_solver_backend(family, routing_decision)
+
     # Initialize parameter values
     parameter_values = {}
     coefficients = {}
@@ -644,13 +797,29 @@ def rs_fit(
     if "mu" in design_matrices:
         mu_X = design_matrices["mu"]
         mu_smooth_info = smooth_infos["mu"]
+        warm_mu = warm_start_result.initial_fitted.get("mu")
 
         if mu_smooth_info is not None:
             beta_mu = _weighted_least_squares(mu_X, y, w, smooth_info=mu_smooth_info)
         else:
-            beta_mu = _initial_mu_beta(
-                family, mu_X, y, w, fixed_parameter_values=fixed_parameter_values
-            )
+            if warm_mu is not None:
+                warm_mu = np.asarray(warm_mu, dtype=np.float64)
+                if warm_mu.shape == (n,):
+                    eta_warm_mu = np.asarray(
+                        family.link_functions["mu"](
+                            jnp.asarray(warm_mu, dtype=jnp.float64)
+                        ),
+                        dtype=np.float64,
+                    )
+                    beta_mu, _, _, _ = np.linalg.lstsq(mu_X, eta_warm_mu, rcond=None)
+                else:
+                    beta_mu = _initial_mu_beta(
+                        family, mu_X, y, w, fixed_parameter_values=fixed_parameter_values
+                    )
+            else:
+                beta_mu = _initial_mu_beta(
+                    family, mu_X, y, w, fixed_parameter_values=fixed_parameter_values
+                )
 
         mu_linear = mu_X @ beta_mu
         mu = np.asarray(
@@ -695,6 +864,11 @@ def rs_fit(
             initial_value = _initial_parameter_value(
                 family, parameter, y, parameter_values["mu"], w
             )
+        warm_param = warm_start_result.initial_fitted.get(parameter)
+        if warm_param is not None:
+            warm_param = np.asarray(warm_param, dtype=np.float64)
+            if warm_param.shape == (n,):
+                initial_value = float(np.mean(warm_param))
 
         # Initialize linear predictor
         eta_init = np.full(
@@ -752,6 +926,7 @@ def rs_fit(
     g_dev_incr = np.asarray(family.g_dev_inc(**dev_kwargs), dtype=np.float64)
     g_dev = np.sum(w * g_dev_incr)
     g_dev_old = g_dev + 1
+    timing_split["warm_start"] = float(time.perf_counter() - warm_start_t0)
 
     # 记录每个参数最新的 IRLS 工作向量（用于λ更新）
     last_working_weights: dict = {}
@@ -780,6 +955,7 @@ def rs_fit(
         p: float("nan") for p in family.estimable_parameters
     }
 
+    core_rs_t0 = time.perf_counter()
     while abs(g_dev_old - g_dev) > tol and iteration < max_iter:
         iteration += 1
         g_dev_old = g_dev
@@ -814,6 +990,7 @@ def rs_fit(
                 auto_step=auto_step,
                 verbose=False,
                 smooth_info=param_smooth_info,  # 新增
+                solver_backend=solver_backend,
             )
 
             # 记录 IRLS 工作向量，用于λ更新
@@ -920,6 +1097,15 @@ def rs_fit(
     # Check convergence
     if abs(g_dev_old - g_dev) < tol:
         converged = True
+    timing_split["core_rs"] = float(time.perf_counter() - core_rs_t0)
+    if solver_backend.name == "jax":
+        sync_t0 = time.perf_counter()
+        try:
+            for _param in family.estimable_parameters:
+                jax.block_until_ready(jnp.asarray(parameter_values[_param]))
+        except Exception:
+            pass
+        timing_split["host_device_sync"] = float(time.perf_counter() - sync_t0)
 
     if verbose:
         print("=" * 70)
@@ -1026,6 +1212,19 @@ def rs_fit(
         "lambda_update_failed_params": tuple(sorted(lambda_update_failed_params)),
     }
     _warning_events = evaluate_numerical_warnings(_phase1_slots_seed)
+    _delta_deviance = float("nan")
+    if len(deviance_history) >= 2:
+        _delta_deviance = float(deviance_history[-1] - deviance_history[-2])
+    _beta_l2_delta = float("nan")
+    if family.estimable_parameters:
+        _norms = []
+        for _p in family.estimable_parameters:
+            _coef = np.asarray(coefficients.get(_p, np.array([])), dtype=np.float64)
+            if _coef.size:
+                _norms.append(float(np.linalg.norm(_coef)))
+        if _norms:
+            _beta_l2_delta = float(max(_norms))
+    _max_abs_score = _phase1_slots_seed["gradient_norm"]
 
     model = GAMLSSModel(
         par=family.parameters,
@@ -1090,6 +1289,13 @@ def rs_fit(
             "phase1_warning_events": tuple(
                 (e.code, e.level, e.message) for e in _warning_events
             ),
+            "delta_deviance": _delta_deviance,
+            "beta_l2_delta": _beta_l2_delta,
+            "max_abs_score": _max_abs_score,
+            "timing_split": timing_split,
+            "warm_start_policy": warm_start.name,
+            "warm_start_metadata": dict(warm_start_result.metadata),
+            "solver_backend": solver_backend.name,
         },
     )
 
