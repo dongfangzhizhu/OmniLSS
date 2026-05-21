@@ -281,6 +281,11 @@ def _time_python(
         "delta_deviance": slots.get("delta_deviance") if isinstance(slots, dict) else None,
         "beta_l2_delta": slots.get("beta_l2_delta") if isinstance(slots, dict) else None,
         "max_abs_score": slots.get("max_abs_score") if isinstance(slots, dict) else None,
+        "beta_explosion_threshold": slots.get("beta_explosion_threshold") if isinstance(slots, dict) else None,
+        "beta_fallback_applied": slots.get("beta_fallback_applied") if isinstance(slots, dict) else None,
+        "eta_clip_ratio": slots.get("eta_clip_ratio") if isinstance(slots, dict) else None,
+        "device_aware_suggested_backend": slots.get("device_aware_suggested_backend") if isinstance(slots, dict) else None,
+        "p_total": slots.get("p_total") if isinstance(slots, dict) else None,
     }
 
 
@@ -361,6 +366,43 @@ def benchmark_jax(fn, *args, n_warmup: int = 3, n_repeat: int = 10):
 
     return float(cold_s), float(np.median(times))
 
+
+
+
+def _time_python_forced_method(
+    dist: str,
+    formula: str,
+    data: dict,
+    n_repeats: int,
+    warmup: int,
+    method: str,
+) -> dict:
+    family = resolve_family(dist)
+
+    def _fit():
+        model = gamlss(formula, family=family, data=data, method=method)
+        try:
+            for fv in model.fitted_values.values():
+                jax.block_until_ready(fv)
+        except Exception:
+            pass
+        return model
+
+    for _ in range(max(warmup, 1)):
+        try:
+            _fit()
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    times = []
+    for _ in range(n_repeats):
+        t0 = time.perf_counter()
+        try:
+            _fit()
+            times.append(time.perf_counter() - t0)
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    return {"success": True, "median_time": float(np.median(times))}
 
 # ── R timing ──────────────────────────────────────────────────────────────────
 
@@ -486,6 +528,14 @@ class ComparisonResult:
     delta_deviance: float | None = None
     beta_l2_delta: float | None = None
     max_abs_score: float | None = None
+    beta_explosion_threshold: float | None = None
+    beta_fallback_applied: bool | None = None
+    eta_clip_ratio: float | None = None
+    device_aware_suggested_backend: str | None = None
+    p_total: int | None = None
+    forced_rs_time: float | None = None
+    forced_rsjax_time: float | None = None
+    forced_preferred: str | None = None
     python_error: str | None = None
     r_error: str | None = None
 
@@ -849,8 +899,23 @@ def main() -> int:
                     cr.delta_deviance = py.get("delta_deviance")
                     cr.beta_l2_delta = py.get("beta_l2_delta")
                     cr.max_abs_score = py.get("max_abs_score")
+                    cr.beta_explosion_threshold = py.get("beta_explosion_threshold")
+                    cr.beta_fallback_applied = py.get("beta_fallback_applied")
+                    cr.eta_clip_ratio = py.get("eta_clip_ratio")
+                    cr.device_aware_suggested_backend = py.get("device_aware_suggested_backend")
+                    cr.p_total = py.get("p_total")
                 else:
                     cr.python_error = py.get("error", "")
+
+                if args.routing_compare:
+                    rs_forced = _time_python_forced_method(dist, formula, data, n_repeats, WARMUP, "RS")
+                    jax_forced = _time_python_forced_method(dist, formula, data, n_repeats, WARMUP, "RS_JAX")
+                    if rs_forced.get("success"):
+                        cr.forced_rs_time = rs_forced.get("median_time")
+                    if jax_forced.get("success"):
+                        cr.forced_rsjax_time = jax_forced.get("median_time")
+                    if cr.forced_rs_time is not None and cr.forced_rsjax_time is not None:
+                        cr.forced_preferred = "RS" if cr.forced_rs_time <= cr.forced_rsjax_time else "RS_JAX"
 
                 # R timing
                 if r_available:
