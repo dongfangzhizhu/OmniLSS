@@ -2,6 +2,7 @@
 
 import pytest
 import numpy as np
+import warnings
 from omnilss.algorithms import mixed_fit, compare_algorithms
 
 
@@ -53,26 +54,50 @@ class TestMixedBasic:
         assert "rs_converged" in model.additional_slots
     
     def test_mixed_explicit_cg(self):
-        """Test Mixed with explicit CG selection."""
+        """Test Mixed with explicit CG (deprecated alias -> L-BFGS)."""
         np.random.seed(42)
         n = 100
         x = np.linspace(0, 10, n)
         y = 2 + 3*x + np.random.normal(0, 1, n)
         data = {"y": y, "x": x}
         
-        model = mixed_fit(
-            formula="y ~ x",
-            sigma_formula="~ 1",
-            family="NO",
-            data=data,
-            algorithm="cg",
-            verbose=False
-        )
+        with pytest.warns(DeprecationWarning, match="deprecated alias for 'lbfgs'"):
+            model = mixed_fit(
+                formula="y ~ x",
+                sigma_formula="~ 1",
+                family="NO",
+                data=data,
+                algorithm="cg",
+                verbose=False
+            )
         
         assert model is not None
-        assert model.additional_slots["mixed_algorithm_used"] == "cg"
+        assert model.additional_slots["mixed_algorithm_used"] == "lbfgs"
         assert model.additional_slots["mixed_auto_selected"] is False
         assert "cg_converged" in model.additional_slots
+
+    def test_mixed_explicit_lbfgs_no_deprecation_warning(self):
+        np.random.seed(42)
+        n = 100
+        x = np.linspace(0, 10, n)
+        y = 2 + 3*x + np.random.normal(0, 1, n)
+        data = {"y": y, "x": x}
+
+        with warnings.catch_warnings(record=True) as record:
+            warnings.simplefilter("always")
+            model = mixed_fit(
+                formula="y ~ x",
+                sigma_formula="~ 1",
+                family="NO",
+                data=data,
+                algorithm="lbfgs",
+                verbose=False,
+            )
+        assert model is not None
+        assert model.additional_slots["mixed_algorithm_used"] == "lbfgs"
+        assert not any(
+            "deprecated alias for 'lbfgs'" in str(w.message) for w in record
+        )
 
 
 class TestMixedComparison:
