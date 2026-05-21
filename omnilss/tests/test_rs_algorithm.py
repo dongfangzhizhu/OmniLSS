@@ -298,6 +298,18 @@ class TestRSFit:
         assert model is not None
         assert np.isfinite(model.g_dev)
 
+    def test_gradient_norm_is_finite(self, simple_data):
+        model = rs_fit(formula="y ~ x", family="NO", data=simple_data, verbose=False)
+        mu_grad = model.additional_slots["rs_last_gradient_norm_by_param"]["mu"]
+        assert np.isfinite(mu_grad)
+        assert mu_grad > 0
+        assert np.isfinite(model.additional_slots["gradient_norm"])
+        assert model.additional_slots["gradient_norm"] > 0
+
+    def test_policy_max_inner_is_one(self, simple_data):
+        model = rs_fit(formula="y ~ x", family="NO", data=simple_data, verbose=False)
+        assert model.additional_slots["rs_policy_max_inner"] == 1
+
 
 class TestIntegration:
     """Integration tests for RS algorithm."""

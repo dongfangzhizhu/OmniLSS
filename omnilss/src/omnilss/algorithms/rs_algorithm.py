@@ -42,6 +42,22 @@ class ConvergenceWarning(UserWarning):
     """Convergence warning for RS updates."""
 
 
+_LINK_ETA_BOUNDS: dict[str, tuple[float, float]] = {
+    "log": (-15.0, 15.0),
+    "logit": (-15.0, 15.0),
+    "identity": (-1e8, 1e8),
+    "sqrt": (0.0, 1e4),
+    "inverse": (1e-6, 1e6),
+    "log_log": (-10.0, 10.0),
+    "clog_log": (-10.0, 10.0),
+    "probit": (-6.0, 6.0),
+}
+
+
+def _get_eta_bounds(link_name: str) -> tuple[float, float]:
+    return _LINK_ETA_BOUNDS.get(link_name, (-1e8, 1e8))
+
+
 class NumpySolverBackend(SolverBackend):
     """Default NumPy backend for RS/IWLS operations."""
 
@@ -171,9 +187,10 @@ class JaxSolverBackend(SolverBackend):
 
 def _select_solver_backend(
     family: FamilyDefinition,
+    n: int,
     routing_decision: Optional[Dict[str, Any]],
 ) -> SolverBackend:
-    backend_name = "numpy"
+    backend_name = "jax" if n > 50_000 else "numpy"
     if isinstance(routing_decision, dict):
         backend_name = str(routing_decision.get("solver_backend", "numpy")).lower()
     if backend_name == "jax":
@@ -285,8 +302,15 @@ def compute_working_weights_and_response(
     # Handle NaN values (can occur with mixed distributions)
     working_response = np.where(np.isnan(working_response), 0.0, working_response)
 
-    # Week 2 stability clipping policy
-    working_response = np.clip(working_response, -1e6, 1e6)
+    clipped = np.clip(working_response, -1e6, 1e6)
+    n_clipped = int(np.sum(np.abs(working_response) > 1e6))
+    if n_clipped > 0:
+        warnings.warn(
+            f"working_response clipped: {n_clipped} values exceeded ±1e6. Model may not have converged. Consider checking data scale.",
+            ConvergenceWarning,
+            stacklevel=4,
+        )
+    working_response = clipped
 
     return working_weights, working_response
 
@@ -300,7 +324,7 @@ def rs_step(
     parameter: str,
     other_parameters: Optional[Dict[str, np.ndarray]] = None,
     offset: Optional[np.ndarray] = None,
-    max_iter: int = 20,
+    max_iter: int = 1,
     tol: float = 1e-4,
     step_size: float = 1.0,
     auto_step: bool = True,
@@ -332,8 +356,9 @@ def rs_step(
         Dictionary of other parameter values (e.g., {"sigma": sigma_values})
     offset : np.ndarray, optional
         Offset for this parameter
-    max_iter : int, default=20
-        Maximum number of inner iterations
+    max_iter : int, default=1
+        Maximum inner IRLS iterations. Set to 1 (matching R's gamlss::glim.fit)
+        to prevent oscillation near warm-start values.
     tol : float, default=1e-4
         Convergence tolerance for deviance
     step_size : float, default=1.0
@@ -507,8 +532,17 @@ def rs_step(
         eta_old = eta.copy()
         eta_new = X @ coef + offset
         eta_candidate = step_size * eta_new + (1 - step_size) * eta_old
-        eta_candidate = np.clip(eta_candidate, -20.0, 20.0)
-        eta = eta_candidate
+        link_name = family.links.get(parameter, "identity")
+        eta_lo, eta_hi = _get_eta_bounds(link_name)
+        eta_clipped = np.clip(eta_candidate, eta_lo, eta_hi)
+        if np.any(eta_clipped != eta_candidate):
+            n_clipped = int(np.sum(eta_clipped != eta_candidate))
+            warnings.warn(
+                f"eta clipped for parameter '{parameter}' (link='{link_name}'): {n_clipped}/{len(eta_candidate)} values out of [{eta_lo}, {eta_hi}]",
+                ConvergenceWarning,
+                stacklevel=3,
+            )
+        eta = eta_clipped
 
         # Update fitted values
         fitted_values = np.asarray(
@@ -559,6 +593,7 @@ def rs_step(
             fitted=fitted_values,
             context=other_parameters,
         )
+        last_gradient_norm = float(np.linalg.norm(first_deriv))
 
         # Recompute link derivative
         dmu_deta = np.asarray(
@@ -786,7 +821,7 @@ def rs_fit(
         y=y,
         parameter_names=tuple(family.estimable_parameters),
     )
-    solver_backend = _select_solver_backend(family, routing_decision)
+    solver_backend = _select_solver_backend(family, n, routing_decision)
 
     # Initialize parameter values
     parameter_values = {}
@@ -984,7 +1019,7 @@ def rs_fit(
                 parameter=parameter,
                 other_parameters=other_params,
                 offset=None,
-                max_iter=20,
+                max_iter=1,
                 tol=1e-4,
                 step_size=step_sizes.get(parameter, 1.0),
                 auto_step=auto_step,
