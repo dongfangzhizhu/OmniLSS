@@ -209,6 +209,15 @@ def gamlss_rs_jax(
         )
 
     beta_norm_first_step = float(np.linalg.norm(beta_mu))
+    beta_explosion_threshold = 1e4
+    beta_fallback_applied = False
+    if not np.isfinite(beta_norm_first_step) or beta_norm_first_step > beta_explosion_threshold:
+        beta_mu = _initial_mu_beta(
+            family, X_mu, y, w,
+            fixed_parameter_values=fixed_parameter_values,
+        )
+        beta_norm_first_step = float(np.linalg.norm(beta_mu))
+        beta_fallback_applied = True
     eta_mu = X_mu @ beta_mu
     mu     = np.asarray(family.link_inverses["mu"](jnp.asarray(eta_mu)), dtype=np.float64)
 
@@ -410,6 +419,8 @@ def gamlss_rs_jax(
                 "host_device_sync": float(host_device_sync_time),
             },
             "beta_norm_first_step": beta_norm_first_step,
+            "beta_explosion_threshold": beta_explosion_threshold,
+            "beta_fallback_applied": beta_fallback_applied,
             "eta_clip_ratio": float(result.eta_clip_ratio),
             "device_aware_suggested_backend": suggested_backend,
             "p_total": p_total,

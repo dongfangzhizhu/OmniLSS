@@ -27,6 +27,10 @@ def test_rs_jax_emits_week1_week2_observability_slots():
 
     assert "beta_norm_first_step" in slots
     assert float(slots["beta_norm_first_step"]) >= 0.0
+    assert "beta_explosion_threshold" in slots
+    assert float(slots["beta_explosion_threshold"]) > 0.0
+    assert "beta_fallback_applied" in slots
+    assert isinstance(slots["beta_fallback_applied"], bool)
 
     assert "eta_clip_ratio" in slots
     ratio = float(slots["eta_clip_ratio"])
