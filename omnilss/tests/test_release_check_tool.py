@@ -26,10 +26,13 @@ def test_release_check_reports_missing_build_module(monkeypatch) -> None:
     monkeypatch.setattr(release_check, "_run", fake_run)
     monkeypatch.setattr(release_check, "validate_docs_localization", lambda: [])
     monkeypatch.setattr(release_check.shutil, "which", lambda _: "/usr/bin/python")
+    monkeypatch.setattr(release_check, "validate_three_month_checklist", lambda: {"ok": True, "issues": []})
+    monkeypatch.setattr(release_check, "validate_capability_matrix_file", lambda: {"ok": True, "issues": []})
+    monkeypatch.setattr(release_check, "run_release_gate_smoke", lambda: {"ok": True, "issues": []})
 
     stderr = io.StringIO()
     with contextlib.redirect_stderr(stderr):
-        code = release_check.main()
+        code = release_check.main([])
 
     assert code == 1
     assert "install with: pip install build" in stderr.getvalue()
@@ -51,11 +54,48 @@ def test_release_check_fails_on_docs_localization_errors(monkeypatch) -> None:
         "validate_docs_localization",
         lambda: ["missing Chinese document: api/example_cn.md"],
     )
+    monkeypatch.setattr(release_check, "validate_three_month_checklist", lambda: {"ok": True, "issues": []})
 
     stderr = io.StringIO()
     with contextlib.redirect_stderr(stderr):
-        code = release_check.main()
+        code = release_check.main([])
 
     assert code == 1
     assert calls == []
     assert "missing Chinese document" in stderr.getvalue()
+
+
+def test_release_check_fails_on_three_month_checklist_errors(monkeypatch) -> None:
+    """release_check should stop when sequential week checklist validation fails."""
+
+    calls = []
+
+    def fake_run(cmd):
+        calls.append(cmd)
+        return 0
+
+    monkeypatch.setattr(release_check, "_run", fake_run)
+    monkeypatch.setattr(release_check.shutil, "which", lambda _: "/usr/bin/python")
+    monkeypatch.setattr(release_check, "validate_docs_localization", lambda: [])
+    monkeypatch.setattr(release_check, "validate_capability_matrix_file", lambda: {"ok": True, "issues": []})
+    monkeypatch.setattr(
+        release_check,
+        "validate_three_month_checklist",
+        lambda: {
+            "ok": False,
+            "issues": [
+                {
+                    "code": "WEEK_SEQUENCE_MISMATCH",
+                    "message": "Checklist week entries are missing, duplicated, or out of order.",
+                }
+            ],
+        },
+    )
+
+    stderr = io.StringIO()
+    with contextlib.redirect_stderr(stderr):
+        code = release_check.main(["--preflight-only"])
+
+    assert code == 1
+    assert calls == []
+    assert "Three-month execution checklist validation failed" in stderr.getvalue()
