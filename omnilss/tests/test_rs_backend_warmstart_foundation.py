@@ -142,3 +142,15 @@ def test_rs_fit_records_warm_start_metadata():
     )
     assert model.additional_slots["warm_start_policy"] == "family_heuristic"
     assert "y_mean" in model.additional_slots["warm_start_metadata"]
+
+
+def test_rs_fit_accepts_explicit_no_warm_start_policy():
+    x = np.linspace(0.0, 1.0, 16)
+    y = 2.0 + x
+    model = rs_fit(
+        formula="y ~ x",
+        family="NO",
+        data={"x": x, "y": y},
+        warm_start_policy=NoWarmStart(),
+    )
+    assert model.additional_slots["warm_start_policy"] == "none"

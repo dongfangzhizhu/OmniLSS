@@ -194,3 +194,59 @@ OmniLSS 当前的核心是：围绕 `fitting.py` 的 GAMLSS/RS 迭代框架，�
 - [x] **Day 3**: Add tests for timing split schema and non-negative values.
 - [x] **Day 4**: Add tests for warm-start metadata persistence in model slots.
 - [x] **Day 5**: Re-check roadmap sequencing and confirm benchmark compatibility remains intact.
+
+## Week 5 Task Checklist (English Default)
+
+- [x] **Day 1**: Persist timing split fields into benchmark result dataclass for structured reporting.
+- [x] **Day 2**: Populate timing split fields from Python run outputs in benchmark loop.
+- [x] **Day 3**: Add RS timing split summary table to benchmark markdown report.
+- [x] **Day 4**: Re-check compatibility with existing report generation paths.
+- [x] **Day 5**: Re-validate sequence completion and keep benchmark linkage explicit.
+
+## Week 6 Task Checklist (English Default)
+
+- [x] **Day 1**: Consume warm-start fitted values in RS initialization (mu path).
+- [x] **Day 2**: Consume warm-start hints for non-mu parameter initial values.
+- [x] **Day 3**: Keep fallback behavior safe when warm-start vectors are unavailable/mismatched.
+- [x] **Day 4**: Add tests that explicit warm-start policy selection is persisted.
+- [x] **Day 5**: Re-check checklist sequencing and maintain benchmark linkage continuity.
+
+## Week 7 Task Checklist (English Default)
+
+- [x] **Day 1**: Extend benchmark result schema with solver backend and warm-start policy fields.
+- [x] **Day 2**: Populate backend/policy fields from model `additional_slots` in Python benchmark path.
+- [x] **Day 3**: Add backend/policy usage summary section to markdown benchmark report.
+- [x] **Day 4**: Preserve backward compatibility for missing metadata (`unknown` fallback).
+- [x] **Day 5**: Re-check sequencing discipline and keep roadmap/benchmark alignment explicit.
+
+## Week 8 Task Checklist (English Default)
+
+- [x] **Day 1**: Extend R-consistency fitting notes with solver backend metadata.
+- [x] **Day 2**: Extend R-consistency fitting notes with warm-start policy metadata.
+- [x] **Day 3**: Keep metadata fallback safe (`unknown`) when slots are absent.
+- [x] **Day 4**: Preserve existing timing split note format while appending backend/policy context.
+- [x] **Day 5**: Re-check checklist sequence and ensure benchmark parity across performance/consistency scripts.
+
+## Week 9 Task Checklist (English Default)
+
+- [x] **Day 1**: Add parsing helper for backend/warm-start attribution from consistency notes.
+- [x] **Day 2**: Add backend/warm-start columns in fitting report table (R-available mode).
+- [x] **Day 3**: Add backend/warm-start columns in fitting report table (no-R mode).
+- [x] **Day 4**: Keep fallback safety through `unknown` extraction for legacy notes.
+- [x] **Day 5**: Re-check sequence adherence and keep performance/consistency reporting parity.
+
+## Week 10 Task Checklist (English Default)
+
+- [x] **Day 1**: Add consistency-report backend/policy usage summary section.
+- [x] **Day 2**: Ensure summary is based on fitting-category rows only.
+- [x] **Day 3**: Reuse parser helper for compatibility with legacy note strings.
+- [x] **Day 4**: Keep graceful behavior when no fitting rows are available.
+- [x] **Day 5**: Re-check sequence discipline and maintain parity with performance report attribution summaries.
+
+## Week 11 Task Checklist (English Default)
+
+- [x] **Day 1**: Extend performance benchmark result schema with convergence telemetry fields.
+- [x] **Day 2**: Populate convergence telemetry from model `additional_slots` in Python benchmark path.
+- [x] **Day 3**: Extend consistency fitting notes with convergence telemetry tags.
+- [x] **Day 4**: Add a fitting convergence telemetry snapshot section in consistency markdown report.
+- [x] **Day 5**: Re-check sequence discipline and keep report fallback behavior safe when fitting rows are absent.

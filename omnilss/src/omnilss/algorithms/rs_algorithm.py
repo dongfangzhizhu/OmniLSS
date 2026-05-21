@@ -797,13 +797,29 @@ def rs_fit(
     if "mu" in design_matrices:
         mu_X = design_matrices["mu"]
         mu_smooth_info = smooth_infos["mu"]
+        warm_mu = warm_start_result.initial_fitted.get("mu")
 
         if mu_smooth_info is not None:
             beta_mu = _weighted_least_squares(mu_X, y, w, smooth_info=mu_smooth_info)
         else:
-            beta_mu = _initial_mu_beta(
-                family, mu_X, y, w, fixed_parameter_values=fixed_parameter_values
-            )
+            if warm_mu is not None:
+                warm_mu = np.asarray(warm_mu, dtype=np.float64)
+                if warm_mu.shape == (n,):
+                    eta_warm_mu = np.asarray(
+                        family.link_functions["mu"](
+                            jnp.asarray(warm_mu, dtype=jnp.float64)
+                        ),
+                        dtype=np.float64,
+                    )
+                    beta_mu, _, _, _ = np.linalg.lstsq(mu_X, eta_warm_mu, rcond=None)
+                else:
+                    beta_mu = _initial_mu_beta(
+                        family, mu_X, y, w, fixed_parameter_values=fixed_parameter_values
+                    )
+            else:
+                beta_mu = _initial_mu_beta(
+                    family, mu_X, y, w, fixed_parameter_values=fixed_parameter_values
+                )
 
         mu_linear = mu_X @ beta_mu
         mu = np.asarray(
@@ -848,6 +864,11 @@ def rs_fit(
             initial_value = _initial_parameter_value(
                 family, parameter, y, parameter_values["mu"], w
             )
+        warm_param = warm_start_result.initial_fitted.get(parameter)
+        if warm_param is not None:
+            warm_param = np.asarray(warm_param, dtype=np.float64)
+            if warm_param.shape == (n,):
+                initial_value = float(np.mean(warm_param))
 
         # Initialize linear predictor
         eta_init = np.full(
