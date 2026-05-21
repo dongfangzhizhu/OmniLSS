@@ -395,7 +395,26 @@ def serve(host: str = "0.0.0.0", port: int = 50051):
         sample_pb2_grpc,
         capability_pb2_grpc,
     ) = create_service()
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=8))
+    api_token = os.getenv("OMNILSS_API_TOKEN", "")
+
+    class _TokenAuthInterceptor(grpc.ServerInterceptor):
+        def __init__(self, token: str) -> None:
+            self._token = token
+
+        def intercept_service(self, continuation, handler_call_details):
+            if not self._token:
+                return continuation(handler_call_details)
+            metadata = dict(handler_call_details.invocation_metadata or [])
+            if metadata.get("authorization", "") != f"Bearer {self._token}":
+                def _abort(_request, context):
+                    context.abort(grpc.StatusCode.UNAUTHENTICATED, "Invalid token")
+                return grpc.unary_unary_rpc_method_handler(_abort)
+            return continuation(handler_call_details)
+
+    server = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=8),
+        interceptors=[_TokenAuthInterceptor(api_token)],
+    )
     fit_pb2_grpc.add_FitServiceServicer_to_server(service, server)
     predict_pb2_grpc.add_PredictServiceServicer_to_server(service, server)
     sample_pb2_grpc.add_SampleServiceServicer_to_server(service, server)

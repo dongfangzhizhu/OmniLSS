@@ -42,3 +42,27 @@ def test_fastapi_models_endpoints_share_registry(monkeypatch):
 
     response = client.delete("/models/missing")
     assert response.status_code == 404
+
+
+@pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="fastapi not installed")
+def test_fastapi_auth_token_enforced_when_configured(monkeypatch):
+    from fastapi.testclient import TestClient
+    from omnilss.api.http.fastapi_server import create_app
+    import omnilss.api.grpc.server as grpc_server
+
+    class DummyRegistry:
+        def list_ids(self):
+            return ["m1"]
+
+        def delete(self, _model_id: str):
+            return True
+
+    monkeypatch.setattr(grpc_server, "REGISTRY", DummyRegistry())
+    monkeypatch.setenv("OMNILSS_API_TOKEN", "test123")
+
+    app = create_app()
+    client = TestClient(app)
+
+    assert client.get("/models").status_code == 401
+    assert client.get("/models", headers={"authorization": "Bearer bad"}).status_code == 401
+    assert client.get("/models", headers={"authorization": "Bearer test123"}).status_code == 200
