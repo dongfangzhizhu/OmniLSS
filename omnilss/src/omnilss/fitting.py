@@ -941,6 +941,29 @@ def gamlss(
             family=family.name,
             confidence=_routing_confidence(_decision, int(_n_obs)),
         )
+
+        # Freeze v1 routing strategy: for AUTO/RS requests, avoid blind RS_JAX
+        # on small design matrices where launch overhead dominates.
+        if method_name == "RS_JAX":
+            try:
+                _, _x_mu, _ = _build_design_matrix(formula, data)
+                _p_total = int(_x_mu.shape[1])
+            except Exception:
+                _p_total = None
+            if _p_total is not None and _p_total <= 4:
+                method_name = "RS"
+                routing_decision = _cfg.build_method_routing_decision(
+                    requested_method=requested_method,
+                    selected_method=method_name,
+                    reason="small_p_prefers_numpy_rs",
+                    backend=_decision.backend,
+                    threshold=_decision.threshold,
+                    n_obs=int(_n_obs),
+                    family=family.name,
+                    confidence=0.95,
+                )
+                routing_decision = {**routing_decision, "p_total": _p_total}
+
         _cfg.validate_method_routing_decision(routing_decision)
 
         # v1 freeze policy: CPU-first for small design matrices (p_total <= 4),

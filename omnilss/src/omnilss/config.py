@@ -520,7 +520,7 @@ def describe_method_routing_reason(reason: str) -> str:
         "auto_method_disabled": "Automatic method routing is disabled; using NumPy RS.",
         "family_not_jax_supported": "This family is not JAX-enabled yet; using NumPy RS.",
         "cpu_backend_prefers_numpy_rs": "CPU backend defaults to NumPy RS for stability and overhead control.",
-        "small_p_prefers_numpy_rs": "Estimated small design width prefers NumPy RS to avoid JAX launch overhead.",
+        "small_p_prefers_numpy_rs": "Small design matrices default to NumPy RS to avoid RS_JAX overhead.",
         "gpu_crossover_reached": "Sample size reached the configured GPU crossover threshold.",
         "gpu_crossover_not_reached": "Sample size is below the configured GPU crossover threshold.",
         "tpu_crossover_reached": "Sample size reached the configured TPU crossover threshold.",
