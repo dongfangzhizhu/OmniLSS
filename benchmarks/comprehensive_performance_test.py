@@ -824,6 +824,28 @@ def main() -> int:
         help=f"Timing repetitions (default {N_REPEATS})",
     )
     parser.add_argument(
+        "--routing-compare",
+        action="store_true",
+        help="Also benchmark forced RS vs RS_JAX (Python-only timing comparison)",
+    )
+    parser.add_argument(
+        "--precision-compare",
+        action="store_true",
+        help="Evaluate RS vs RS_JAX under fixed precision constraints",
+    )
+    parser.add_argument(
+        "--precision-abs-tol",
+        type=float,
+        default=1e-5,
+        help="Absolute deviance tolerance for precision compare",
+    )
+    parser.add_argument(
+        "--precision-rel-tol",
+        type=float,
+        default=1e-5,
+        help="Relative deviance tolerance for precision compare",
+    )
+    parser.add_argument(
         "--require-r",
         action="store_true",
         help="Fail immediately if Rscript with gamlss/jsonlite is unavailable",
