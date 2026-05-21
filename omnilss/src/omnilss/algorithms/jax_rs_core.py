@@ -74,6 +74,7 @@ class JaxRSResult(NamedTuple):
     g_dev: float
     iterations: int
     converged: bool
+    eta_clip_ratio: float
 
 
 # ---------------------------------------------------------------------------
@@ -144,11 +145,11 @@ def _irls_step_inline(
         )
 
         # Update eta and the parameter value in params
-        eta_new = X_k @ beta
+        eta_raw = X_k @ beta
         # Clip eta to the per-parameter safe range.
         # This prevents overflow in link_inv and keeps the IRLS stable.
         # The bounds are set conservatively in FamilyJAXSpec.eta_bounds.
-        eta_new = jnp.clip(eta_new, eta_lo, eta_hi)
+        eta_new = jnp.clip(eta_raw, eta_lo, eta_hi)
         theta_new = link_inv(eta_new)
         # Safety: replace non-finite params with previous values
         theta_new = jnp.where(jnp.isfinite(theta_new), theta_new, params_c[param_idx])
@@ -475,6 +476,15 @@ def jax_rs_fit_core(
         beta_k, _, _, _ = jnp.linalg.lstsq(X_k, eta_k, rcond=None)
         betas.append(beta_k)
 
+    clipped = 0.0
+    total = 0.0
+    for k in range(n_params):
+        lo, hi = eta_bounds[k] if k < len(eta_bounds) else (-10.0, 10.0)
+        eta_k = final_etas[k]
+        clipped += float(jnp.sum((eta_k <= lo + 1e-12) | (eta_k >= hi - 1e-12)))
+        total += float(eta_k.size)
+    eta_clip_ratio = clipped / total if total > 0 else 0.0
+
     return JaxRSResult(
         params=final_params,
         etas=final_etas,
@@ -482,6 +492,7 @@ def jax_rs_fit_core(
         g_dev=float(final_gdev),
         iterations=int(final_it),
         converged=int(final_it) < max_outer,
+        eta_clip_ratio=eta_clip_ratio,
     )
 
 
