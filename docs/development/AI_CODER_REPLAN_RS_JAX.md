@@ -21,7 +21,7 @@
 ## Week 2 (routing + performance policy)
 - [x] Day 1: Add device-aware routing metadata foundation (`p_total`, suggested backend).
 - [x] Day 2: Add explicit routing comparison group in `benchmarks/comprehensive_performance_test.py`.
-- [ ] Day 3: Add comparison mode under fixed precision constraints.
+- [x] Day 3: Add comparison mode under fixed precision constraints.
 - [ ] Day 4: Generate family × device recommendation matrix from benchmark outputs.
 - [ ] Day 5: Freeze v1 strategy defaults (CPU-first for small `p`, no blind GPU path).
 

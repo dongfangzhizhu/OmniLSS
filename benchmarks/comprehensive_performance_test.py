@@ -404,6 +404,20 @@ def _time_python_forced_method(
             return {"success": False, "error": str(e)}
     return {"success": True, "median_time": float(np.median(times))}
 
+
+def _fit_forced_method_once(dist: str, formula: str, data: dict, method: str) -> dict:
+    family = resolve_family(dist)
+    try:
+        model = gamlss(formula, family=family, data=data, method=method)
+        try:
+            for fv in model.fitted_values.values():
+                jax.block_until_ready(fv)
+        except Exception:
+            pass
+        return {"success": True, "deviance": float(model.g_dev)}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 # ── R timing ──────────────────────────────────────────────────────────────────
 
 
@@ -536,6 +550,11 @@ class ComparisonResult:
     forced_rs_time: float | None = None
     forced_rsjax_time: float | None = None
     forced_preferred: str | None = None
+    precision_ref_deviance: float | None = None
+    precision_rs_deviance: float | None = None
+    precision_rsjax_deviance: float | None = None
+    precision_rs_pass: bool | None = None
+    precision_rsjax_pass: bool | None = None
     python_error: str | None = None
     r_error: str | None = None
 
@@ -916,6 +935,24 @@ def main() -> int:
                         cr.forced_rsjax_time = jax_forced.get("median_time")
                     if cr.forced_rs_time is not None and cr.forced_rsjax_time is not None:
                         cr.forced_preferred = "RS" if cr.forced_rs_time <= cr.forced_rsjax_time else "RS_JAX"
+
+                if args.precision_compare:
+                    rs_once = _fit_forced_method_once(dist, formula, data, "RS")
+                    jax_once = _fit_forced_method_once(dist, formula, data, "RS_JAX")
+                    if rs_once.get("success"):
+                        cr.precision_rs_deviance = rs_once.get("deviance")
+                    if jax_once.get("success"):
+                        cr.precision_rsjax_deviance = jax_once.get("deviance")
+                    ref = cr.r_deviance if cr.r_deviance is not None else cr.precision_rs_deviance
+                    cr.precision_ref_deviance = ref
+                    if ref is not None and cr.precision_rs_deviance is not None:
+                        d = abs(cr.precision_rs_deviance - ref)
+                        rel = d / max(abs(ref), 1.0)
+                        cr.precision_rs_pass = d <= args.precision_abs_tol or rel <= args.precision_rel_tol
+                    if ref is not None and cr.precision_rsjax_deviance is not None:
+                        d = abs(cr.precision_rsjax_deviance - ref)
+                        rel = d / max(abs(ref), 1.0)
+                        cr.precision_rsjax_pass = d <= args.precision_abs_tol or rel <= args.precision_rel_tol
 
                 # R timing
                 if r_available:
