@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import http.client
 import json
+from concurrent.futures import ThreadPoolExecutor
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -293,6 +294,43 @@ def test_http_invalid_content_length_returns_structured_error_and_metric():
         with _get_response(f"http://{host}:{port}/metrics") as metrics_response:
             body = metrics_response.read().decode("utf-8")
         assert "omnilss_http_bad_request_total 1" in body
+    finally:
+        server.shutdown()
+        server.server_close()
+
+def test_http_fit_endpoint_concurrent_post_requests_are_stable():
+    server = serve(host="127.0.0.1", port=0)
+    try:
+        host, port = server.server_address
+
+        def _post_fit(i: int) -> tuple[int, str, str]:
+            request_id = f"fit-concurrency-{i}"
+            req = Request(
+                f"http://{host}:{port}/fit",
+                data=b"{}",
+                method="POST",
+                headers={"X-Request-ID": request_id},
+            )
+            try:
+                urlopen(req, timeout=5)  # noqa: S310 - local test server
+                raise AssertionError("expected HTTPError")
+            except HTTPError as exc:
+                payload = json.loads(exc.read().decode("utf-8"))
+                return exc.code, payload["request_id"], payload["error"]["code"]
+
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            results = list(executor.map(_post_fit, range(10)))
+
+        assert all(code == 405 for code, _, _ in results)
+        assert all(error_code == "method_not_allowed" for _, _, error_code in results)
+        assert {request_id for _, request_id, _ in results} == {
+            f"fit-concurrency-{i}" for i in range(10)
+        }
+
+        with _get_response(f"http://{host}:{port}/metrics") as response:
+            body = response.read().decode("utf-8")
+
+        assert "omnilss_http_method_not_allowed_total 10" in body
     finally:
         server.shutdown()
         server.server_close()

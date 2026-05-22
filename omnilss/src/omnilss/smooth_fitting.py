@@ -475,6 +475,15 @@ def fit_penalized_wls(
                     )
                     smooth.lambda_ = 1.0
 
+    # Fast path: no smooth penalties -> weighted least squares directly.
+    # This avoids JAX conversion/scatter setup overhead for T6 WLS optimization.
+    if len(smooth_fits) == 0:
+        sqrt_w = np.sqrt(np.asarray(w, dtype=np.float64))
+        Xw = np.asarray(X, dtype=np.float64) * sqrt_w[:, None]
+        zw = np.asarray(z, dtype=np.float64) * sqrt_w
+        beta_np, *_ = np.linalg.lstsq(Xw, zw, rcond=None)
+        return np.asarray(beta_np, dtype=np.float64)
+
     # Convert to JAX arrays
     X_jax = jnp.array(X)
     z_jax = jnp.array(z)
