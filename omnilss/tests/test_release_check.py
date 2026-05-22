@@ -192,6 +192,8 @@ def test_release_check_reports_twine_failure_and_hint(monkeypatch, capsys):
     assert "Twine check failed" in err
     assert "pip install twine" in err
     assert any("twine" in c for c in calls)
+    assert any("build" in c for c in calls)
+    assert next(i for i, c in enumerate(calls) if "build" in c) < next(i for i, c in enumerate(calls) if "twine" in c)
 
 
 def test_release_check_full_success_runs_build_and_twine(monkeypatch, capsys):
@@ -229,3 +231,80 @@ def test_release_check_preflight_only_still_requires_python_executable(monkeypat
     assert release_check.main(["--preflight-only"]) == 2
     err = capsys.readouterr().err
     assert "Missing required executable: python" in err
+
+
+def test_release_check_reports_missing_python_before_preflight_calls(monkeypatch):
+    monkeypatch.setattr(release_check.shutil, "which", lambda name: None if name == "python" else "/usr/bin/" + name)
+
+    called = {"docs": False, "matrix": False, "checklist": False, "smoke": False}
+
+    monkeypatch.setattr(release_check, "validate_docs_localization", lambda: called.__setitem__("docs", True) or [])
+    monkeypatch.setattr(release_check, "validate_capability_matrix_file", lambda: called.__setitem__("matrix", True) or {"ok": True, "issues": []})
+    monkeypatch.setattr(release_check, "validate_three_month_checklist", lambda: called.__setitem__("checklist", True) or {"ok": True, "issues": []})
+    monkeypatch.setattr(release_check, "run_release_gate_smoke", lambda: called.__setitem__("smoke", True) or {"ok": True, "issues": []})
+
+    assert release_check.main([]) == 2
+    assert called == {"docs": False, "matrix": False, "checklist": False, "smoke": False}
+
+
+def test_release_check_preflight_only_missing_python_short_circuits_downstream(monkeypatch):
+    monkeypatch.setattr(release_check.shutil, "which", lambda name: None if name == "python" else "/usr/bin/" + name)
+
+    called = {"docs": False, "matrix": False, "checklist": False, "smoke": False}
+
+    monkeypatch.setattr(release_check, "validate_docs_localization", lambda: called.__setitem__("docs", True) or [])
+    monkeypatch.setattr(release_check, "validate_capability_matrix_file", lambda: called.__setitem__("matrix", True) or {"ok": True, "issues": []})
+    monkeypatch.setattr(release_check, "validate_three_month_checklist", lambda: called.__setitem__("checklist", True) or {"ok": True, "issues": []})
+    monkeypatch.setattr(release_check, "run_release_gate_smoke", lambda: called.__setitem__("smoke", True) or {"ok": True, "issues": []})
+
+    assert release_check.main(["--preflight-only"]) == 2
+    assert called == {"docs": False, "matrix": False, "checklist": False, "smoke": False}
+
+
+def test_release_check_missing_python_never_runs_packaging(monkeypatch):
+    monkeypatch.setattr(release_check.shutil, "which", lambda name: None if name == "python" else "/usr/bin/" + name)
+
+    called = {"run": False}
+
+    def _fail_if_called(cmd):
+        called["run"] = True
+        raise AssertionError("_run should not be called when python is missing")
+
+    monkeypatch.setattr(release_check, "_run", _fail_if_called)
+
+    assert release_check.main([]) == 2
+    assert called["run"] is False
+
+
+def test_release_check_preflight_only_missing_python_never_runs_packaging(monkeypatch):
+    monkeypatch.setattr(release_check.shutil, "which", lambda name: None if name == "python" else "/usr/bin/" + name)
+
+    called = {"run": False}
+
+    def _fail_if_called(cmd):
+        called["run"] = True
+        raise AssertionError("_run should not be called in preflight-only when python is missing")
+
+    monkeypatch.setattr(release_check, "_run", _fail_if_called)
+
+    assert release_check.main(["--preflight-only"]) == 2
+    assert called["run"] is False
+
+
+def test_release_check_uses_python_interpreter_for_build_and_twine(monkeypatch):
+    monkeypatch.setattr(release_check, "validate_docs_localization", lambda: [])
+    monkeypatch.setattr(release_check, "validate_capability_matrix_file", lambda: {"ok": True, "issues": []})
+    monkeypatch.setattr(release_check, "validate_three_month_checklist", lambda: {"ok": True, "issues": []})
+    monkeypatch.setattr(release_check, "run_release_gate_smoke", lambda: {"ok": True, "issues": []})
+
+    calls = []
+
+    def _fake_run(cmd):
+        calls.append(cmd)
+        return 0
+
+    monkeypatch.setattr(release_check, "_run", _fake_run)
+
+    assert release_check.main([]) == 0
+    assert any(cmd[:3] == [release_check.sys.executable, "-m", "build"] for cmd in calls)
+    assert any(cmd[:3] == [release_check.sys.executable, "-m", "twine"] for cmd in calls)
