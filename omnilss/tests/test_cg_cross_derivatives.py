@@ -156,6 +156,23 @@ def test_full_hessian_keeps_nonzero_mu_sigma_cross_block():
     assert result.cross_derivatives == "full_hessian"
 
 
+
+def test_extract_information_blocks_roundtrip_with_joint_builder():
+    y, X_mu, X_sigma, _ = _heteroscedastic_normal_case(n=20)
+    result = fit_cg(NO(), y, X_mu, X_sigma, max_iter=6, tol=1e-5, return_fisher=True)
+
+    assert result.fisher_matrix is not None
+    assert result.param_slices is not None
+    blocks = extract_information_blocks(result.fisher_matrix, result.param_slices)
+    from omnilss.derivatives import build_joint_fisher_from_blocks
+
+    rebuilt = build_joint_fisher_from_blocks(blocks, result.param_slices)
+    np.testing.assert_allclose(
+        np.asarray(rebuilt),
+        np.asarray(result.fisher_matrix),
+        rtol=1e-6,
+        atol=1e-6,
+    )
 def test_zeroing_cross_blocks_changes_cg_update_direction():
     y, X_mu, X_sigma, _ = _heteroscedastic_normal_case()
     family = NO()
@@ -275,4 +292,475 @@ def test_cg_backend_selection_rejects_unknown_backend():
             cg_backend="not-a-backend",
             control=gamlss_control(n_cyc=2, c_crit=1e-4, trace=False),
             verbose=False,
+        )
+
+
+def test_gamlss_cg_uses_rs_warm_start_by_default():
+    rng = np.random.default_rng(99)
+    x = rng.normal(size=40)
+    y = 0.5 + 1.2 * x + rng.normal(scale=0.3, size=40)
+    data = {"y": y, "x": x}
+
+    model = gamlss("y ~ x", family="NO", data=data, method="CG")
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 2
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+    assert np.isfinite(model.additional_slots["cg_rs_warm_start_deviance"])
+    assert model.additional_slots["cg_rs_warm_start_param_count"] >= 1
+    assert np.isfinite(model.additional_slots["cg_final_minus_warm_start_deviance"])
+    np.testing.assert_allclose(
+        model.additional_slots["cg_final_deviance"]
+        - model.additional_slots["cg_rs_warm_start_deviance"],
+        model.additional_slots["cg_final_minus_warm_start_deviance"],
+        rtol=1e-10,
+        atol=1e-10,
+    )
+
+
+def test_gamlss_cg_can_disable_rs_warm_start():
+    rng = np.random.default_rng(100)
+    x = rng.normal(size=32)
+    y = 0.2 + 0.8 * x + rng.normal(scale=0.25, size=32)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=0,
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 0
+    assert model.additional_slots["cg_rs_warm_start_used"] is False
+    assert model.additional_slots["cg_rs_warm_start_deviance"] is None
+    assert model.additional_slots["cg_rs_warm_start_param_count"] == 0
+    assert model.additional_slots["cg_final_minus_warm_start_deviance"] is None
+
+
+def test_gamlss_cg_rejects_negative_rs_warm_start_iters():
+    import pytest
+
+    rng = np.random.default_rng(101)
+    x = rng.normal(size=16)
+    y = 0.1 + 0.5 * x + rng.normal(scale=0.2, size=16)
+    data = {"y": y, "x": x}
+
+    with pytest.raises(ValueError, match="cg_rs_warm_start_iters"):
+        gamlss(
+            "y ~ x",
+            family="NO",
+            data=data,
+            method="CG",
+            cg_rs_warm_start_iters=-1,
+        )
+
+
+def test_gamlss_cg_accepts_custom_rs_warm_start_iters():
+    rng = np.random.default_rng(102)
+    x = rng.normal(size=36)
+    y = 0.3 + 0.9 * x + rng.normal(scale=0.22, size=36)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=3,
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 3
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+    assert np.isfinite(model.additional_slots["cg_rs_warm_start_deviance"])
+    assert np.isfinite(model.additional_slots["cg_final_minus_warm_start_deviance"])
+    np.testing.assert_allclose(
+        model.additional_slots["cg_final_deviance"]
+        - model.additional_slots["cg_rs_warm_start_deviance"],
+        model.additional_slots["cg_final_minus_warm_start_deviance"],
+        rtol=1e-10,
+        atol=1e-10,
+    )
+
+
+def test_gamlss_cg_accepts_one_step_rs_warm_start_iters():
+    rng = np.random.default_rng(103)
+    x = rng.normal(size=28)
+    y = -0.1 + 0.7 * x + rng.normal(scale=0.3, size=28)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=1,
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 1
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+    assert np.isfinite(model.additional_slots["cg_rs_warm_start_deviance"])
+    assert np.isfinite(model.additional_slots["cg_final_minus_warm_start_deviance"])
+
+
+def test_gamlss_cg_rejects_fractional_rs_warm_start_iters():
+    import pytest
+
+    rng = np.random.default_rng(104)
+    x = rng.normal(size=20)
+    y = 0.4 + 0.6 * x + rng.normal(scale=0.2, size=20)
+    data = {"y": y, "x": x}
+
+    with pytest.raises(ValueError, match="integer"):
+        gamlss(
+            "y ~ x",
+            family="NO",
+            data=data,
+            method="CG",
+            cg_rs_warm_start_iters=1.5,
+        )
+
+
+def test_gamlss_cg_rejects_boolean_rs_warm_start_iters():
+    import pytest
+
+    rng = np.random.default_rng(105)
+    x = rng.normal(size=18)
+    y = 0.2 + 0.4 * x + rng.normal(scale=0.25, size=18)
+    data = {"y": y, "x": x}
+
+    with pytest.raises(ValueError, match="integer"):
+        gamlss(
+            "y ~ x",
+            family="NO",
+            data=data,
+            method="CG",
+            cg_rs_warm_start_iters=True,
+        )
+
+
+def test_gamlss_cg_rejects_string_rs_warm_start_iters():
+    import pytest
+
+    rng = np.random.default_rng(106)
+    x = rng.normal(size=18)
+    y = 0.1 + 0.3 * x + rng.normal(scale=0.25, size=18)
+    data = {"y": y, "x": x}
+
+    with pytest.raises(ValueError, match="integer"):
+        gamlss(
+            "y ~ x",
+            family="NO",
+            data=data,
+            method="CG",
+            cg_rs_warm_start_iters="2",
+        )
+
+
+def test_gamlss_cg_accepts_numpy_integer_rs_warm_start_iters():
+    rng = np.random.default_rng(107)
+    x = rng.normal(size=24)
+    y = 0.2 + 0.5 * x + rng.normal(scale=0.2, size=24)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=np.int64(2),
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 2
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+
+
+def test_gamlss_cg_rejects_numpy_boolean_rs_warm_start_iters():
+    import pytest
+
+    rng = np.random.default_rng(108)
+    x = rng.normal(size=18)
+    y = -0.2 + 0.2 * x + rng.normal(scale=0.2, size=18)
+    data = {"y": y, "x": x}
+
+    with pytest.raises(ValueError, match="integer"):
+        gamlss(
+            "y ~ x",
+            family="NO",
+            data=data,
+            method="CG",
+            cg_rs_warm_start_iters=np.bool_(True),
+        )
+
+
+def test_gamlss_cg_accepts_numpy_int32_rs_warm_start_iters():
+    rng = np.random.default_rng(109)
+    x = rng.normal(size=22)
+    y = -0.3 + 0.9 * x + rng.normal(scale=0.25, size=22)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=np.int32(2),
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 2
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+
+
+def test_gamlss_cg_accepts_python_int_subclass_rs_warm_start_iters():
+    class MyInt(int):
+        pass
+
+    rng = np.random.default_rng(110)
+    x = rng.normal(size=20)
+    y = 0.3 + 0.2 * x + rng.normal(scale=0.2, size=20)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=MyInt(2),
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 2
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+
+
+def test_gamlss_cg_accepts_numpy_uint32_rs_warm_start_iters():
+    rng = np.random.default_rng(111)
+    x = rng.normal(size=20)
+    y = 0.05 + 0.4 * x + rng.normal(scale=0.25, size=20)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=np.uint32(2),
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 2
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+
+
+def test_gamlss_cg_accepts_numpy_uint64_rs_warm_start_iters():
+    rng = np.random.default_rng(112)
+    x = rng.normal(size=20)
+    y = -0.15 + 0.35 * x + rng.normal(scale=0.25, size=20)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=np.uint64(2),
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 2
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+
+
+def test_gamlss_cg_accepts_numpy_int16_rs_warm_start_iters():
+    rng = np.random.default_rng(113)
+    x = rng.normal(size=20)
+    y = 0.12 + 0.45 * x + rng.normal(scale=0.22, size=20)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=np.int16(2),
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 2
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+
+
+def test_gamlss_cg_accepts_numpy_int8_rs_warm_start_iters():
+    rng = np.random.default_rng(114)
+    x = rng.normal(size=20)
+    y = -0.05 + 0.25 * x + rng.normal(scale=0.2, size=20)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=np.int8(2),
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 2
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+
+
+def test_gamlss_cg_accepts_numpy_uint8_rs_warm_start_iters():
+    rng = np.random.default_rng(115)
+    x = rng.normal(size=20)
+    y = 0.08 + 0.33 * x + rng.normal(scale=0.24, size=20)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=np.uint8(2),
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 2
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+
+
+def test_gamlss_cg_accepts_numpy_ulonglong_rs_warm_start_iters():
+    rng = np.random.default_rng(116)
+    x = rng.normal(size=20)
+    y = 0.18 + 0.28 * x + rng.normal(scale=0.2, size=20)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=np.ulonglong(2),
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 2
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+
+
+def test_gamlss_cg_accepts_numpy_int__rs_warm_start_iters():
+    rng = np.random.default_rng(117)
+    x = rng.normal(size=20)
+    y = 0.11 + 0.27 * x + rng.normal(scale=0.23, size=20)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=np.int_(2),
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 2
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+
+
+def test_gamlss_cg_accepts_numpy_uint16_rs_warm_start_iters():
+    rng = np.random.default_rng(118)
+    x = rng.normal(size=20)
+    y = 0.06 + 0.22 * x + rng.normal(scale=0.23, size=20)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=np.uint16(2),
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 2
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+
+
+def test_gamlss_cg_accepts_numpy_short_rs_warm_start_iters():
+    rng = np.random.default_rng(119)
+    x = rng.normal(size=20)
+    y = -0.07 + 0.31 * x + rng.normal(scale=0.21, size=20)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=np.short(2),
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 2
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+
+
+def test_gamlss_cg_accepts_numpy_uintc_rs_warm_start_iters():
+    rng = np.random.default_rng(120)
+    x = rng.normal(size=20)
+    y = 0.09 + 0.29 * x + rng.normal(scale=0.22, size=20)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=np.uintc(2),
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 2
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+
+
+def test_gamlss_cg_accepts_numpy_longlong_rs_warm_start_iters():
+    rng = np.random.default_rng(121)
+    x = rng.normal(size=20)
+    y = -0.02 + 0.21 * x + rng.normal(scale=0.2, size=20)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=np.longlong(2),
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 2
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
+
+
+def test_gamlss_cg_rejects_numpy_float_rs_warm_start_iters():
+    import pytest
+
+    rng = np.random.default_rng(122)
+    x = rng.normal(size=20)
+    y = 0.14 + 0.19 * x + rng.normal(scale=0.2, size=20)
+    data = {"y": y, "x": x}
+
+    with pytest.raises(ValueError, match="integer"):
+        gamlss(
+            "y ~ x",
+            family="NO",
+            data=data,
+            method="CG",
+            cg_rs_warm_start_iters=np.float32(2.0),
+        )
+
+
+def test_gamlss_cg_rejects_numpy_float64_rs_warm_start_iters():
+    import pytest
+
+    rng = np.random.default_rng(123)
+    x = rng.normal(size=20)
+    y = -0.03 + 0.23 * x + rng.normal(scale=0.2, size=20)
+    data = {"y": y, "x": x}
+
+    with pytest.raises(ValueError, match="integer"):
+        gamlss(
+            "y ~ x",
+            family="NO",
+            data=data,
+            method="CG",
+            cg_rs_warm_start_iters=np.float64(2.0),
         )
