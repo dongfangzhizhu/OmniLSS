@@ -39,6 +39,8 @@ from typing import Optional, Dict, Tuple, Callable
 from dataclasses import dataclass
 import warnings
 
+from .derivatives import build_joint_fisher_from_blocks
+
 import jax.numpy as jnp
 from jax import grad, hessian
 
@@ -679,11 +681,17 @@ def extract_information_blocks(
     slices: Dict[str, slice],
 ) -> Dict[Tuple[str, str], jnp.ndarray]:
     """Extract named blocks from a flattened CG observed-information matrix."""
-    return {
+    blocks = {
         (left, right): fisher[left_slice, right_slice]
         for left, left_slice in slices.items()
         for right, right_slice in slices.items()
     }
+    rebuilt = build_joint_fisher_from_blocks(blocks, slices)
+    if rebuilt.shape != fisher.shape:
+        raise ValueError(
+            f"rebuilt Fisher shape {rebuilt.shape} does not match input {fisher.shape}"
+        )
+    return blocks
 
 
 def zero_cross_information_blocks(
