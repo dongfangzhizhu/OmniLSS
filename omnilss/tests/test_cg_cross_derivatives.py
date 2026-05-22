@@ -854,3 +854,24 @@ def test_gamlss_cg_rejects_numpy_single_rs_warm_start_iters():
             method="CG",
             cg_rs_warm_start_iters=np.single(2.0),
         )
+
+
+def test_gamlss_cg_rejects_numpy_float__rs_warm_start_iters():
+    import pytest
+
+    if not hasattr(np, "float_"):
+        pytest.skip("NumPy 2.x removed np.float_ alias")
+
+    rng = np.random.default_rng(129)
+    x = rng.normal(size=20)
+    y = 0.06 + 0.16 * x + rng.normal(scale=0.2, size=20)
+    data = {"y": y, "x": x}
+
+    with pytest.raises(ValueError, match="integer"):
+        gamlss(
+            "y ~ x",
+            family="NO",
+            data=data,
+            method="CG",
+            cg_rs_warm_start_iters=np.float_(2.0),
+        )
