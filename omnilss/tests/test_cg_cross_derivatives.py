@@ -746,3 +746,21 @@ def test_gamlss_cg_rejects_numpy_float_rs_warm_start_iters():
             method="CG",
             cg_rs_warm_start_iters=np.float32(2.0),
         )
+
+
+def test_gamlss_cg_rejects_numpy_float64_rs_warm_start_iters():
+    import pytest
+
+    rng = np.random.default_rng(123)
+    x = rng.normal(size=20)
+    y = -0.03 + 0.23 * x + rng.normal(scale=0.2, size=20)
+    data = {"y": y, "x": x}
+
+    with pytest.raises(ValueError, match="integer"):
+        gamlss(
+            "y ~ x",
+            family="NO",
+            data=data,
+            method="CG",
+            cg_rs_warm_start_iters=np.float64(2.0),
+        )
