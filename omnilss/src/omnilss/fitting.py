@@ -14,6 +14,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import asdict
 import warnings
+from numbers import Integral
 import math
 from statistics import NormalDist
 from typing import Any
@@ -1351,9 +1352,43 @@ def gamlss(
         print("\nIteration progress:")
 
     if method_name == "CG":
+        from .algorithms.rs_algorithm import rs_fit
         from .fitting_cg import fit_cg
 
+        cg_rs_warm_start_raw = optimizer_kwargs.pop("cg_rs_warm_start_iters", 2)
+        if isinstance(cg_rs_warm_start_raw, bool) or not isinstance(
+            cg_rs_warm_start_raw, Integral
+        ):
+            raise ValueError("cg_rs_warm_start_iters must be an integer >= 0")
+        cg_rs_warm_start_iters = int(cg_rs_warm_start_raw)
+        if cg_rs_warm_start_iters < 0:
+            raise ValueError("cg_rs_warm_start_iters must be >= 0")
         cg_start_params = None
+        cg_rs_warm_start_param_count = 0
+        cg_rs_warm_start_deviance = None
+        if cg_rs_warm_start_iters > 0:
+            rs_warm = rs_fit(
+                formula=formula,
+                family=family,
+                data=data,
+                sigma_formula=sigma_formula,
+                parameter_formulas=parameter_formulas,
+                weights=weights,
+                max_iter=cg_rs_warm_start_iters,
+                tol=control.c_crit,
+                verbose=False,
+                routing_decision=routing_decision,
+            )
+            cg_rs_warm_start_deviance = float(rs_warm.g_dev)
+            cg_start_params = {
+                f"beta_{parameter}": jnp.asarray(
+                    rs_warm.coefficients[parameter], dtype=jnp.float64
+                )
+                for parameter in family.estimable_parameters
+                if parameter in rs_warm.coefficients
+            }
+            cg_rs_warm_start_param_count = len(cg_start_params)
+
         cg_designs: dict[str, Any] = {"X_sigma": None, "X_nu": None, "X_tau": None}
         for parameter in family.estimable_parameters:
             if parameter == "mu":
@@ -1754,6 +1789,15 @@ def gamlss(
     if method_name == "CG":
         method_slots = {
             "cg_converged": bool(converged),
+            "cg_rs_warm_start_iters": int(cg_rs_warm_start_iters),
+            "cg_rs_warm_start_used": bool(cg_start_params is not None),
+            "cg_rs_warm_start_deviance": cg_rs_warm_start_deviance,
+            "cg_rs_warm_start_param_count": int(cg_rs_warm_start_param_count),
+            "cg_final_minus_warm_start_deviance": (
+                None
+                if cg_rs_warm_start_deviance is None
+                else float(g_dev - cg_rs_warm_start_deviance)
+            ),
             "cg_iterations": int(iteration),
             "cg_final_deviance": float(g_dev),
             "cg_backend": getattr(cg_result, "cg_backend", "CG_FULL_HESSIAN"),
