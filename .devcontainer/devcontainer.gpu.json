@@ -12,6 +12,8 @@
     "VIRTUAL_ENV": "/opt/omnilss-venv",
     "PATH": "/opt/omnilss-venv/bin:${containerEnv:PATH}",
     "OMNILSS_WHEELHOUSE": "/opt/omnilss-wheelhouse",
+    "OMNILSS_R_CACHE": "/opt/omnilss-r-cache",
+    "OMNILSS_R_SOURCE": "/opt/omnilss-r-source",
     "JAX_PLATFORMS": "cuda",
     "JAX_ENABLE_X64": "true",
     "RENV_PATHS_CACHE": "/opt/renv/cache",

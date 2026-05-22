@@ -20,9 +20,19 @@ Usage
     python benchmarks/comprehensive_performance_test.py --no-r       # Python only
     python benchmarks/comprehensive_performance_test.py --large      # add n=50000,500000,5000000
     python benchmarks/comprehensive_performance_test.py --n-repeats 5
+
+Environment
+-----------
+    JAX_ENABLE_X64=true   (set automatically if not already set)
+    JAX_PLATFORMS=cpu     (set automatically if not already set)
 """
 
 from __future__ import annotations
+
+# ── JAX configuration must happen before any jax import ──────────────────────
+import os
+os.environ.setdefault("JAX_ENABLE_X64", "true")
+os.environ.setdefault("JAX_PLATFORMS", "cpu")
 
 import argparse
 import json
@@ -229,24 +239,33 @@ def _time_python(
             pass
         return model
 
+    # Suppress RS convergence warnings during timing — they are expected for
+    # some distribution/formula combinations (e.g. PO with intercept-only) and
+    # are already captured in model.additional_slots for diagnostic purposes.
+    import warnings as _warnings
+
     # Cold-start: first call includes JIT compilation.  tracemalloc reports
     # Python heap peak memory only; JAX device allocator memory is backend-specific.
-    t_cold_start = time.perf_counter()
     tracemalloc.start()
+    t_cold_start = time.perf_counter()
     try:
-        model = _fit()
-        _, peak_bytes = tracemalloc.get_traced_memory()
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("ignore")
+            model = _fit()
         cold_time = time.perf_counter() - t_cold_start
+        _, peak_bytes = tracemalloc.get_traced_memory()
         deviance = float(model.g_dev)
     except Exception as e:
-        return {"success": False, "error": str(e)}
-    finally:
         tracemalloc.stop()
+        return {"success": False, "error": str(e)}
+    tracemalloc.stop()
 
     # Additional warm-up calls excluded from timed performance.
     for _ in range(max(warmup - 1, 0)):
         try:
-            _fit()
+            with _warnings.catch_warnings():
+                _warnings.simplefilter("ignore")
+                _fit()
         except Exception:
             pass
 
@@ -255,7 +274,9 @@ def _time_python(
     for _ in range(n_repeats):
         t0 = time.perf_counter()
         try:
-            model = _fit()
+            with _warnings.catch_warnings():
+                _warnings.simplefilter("ignore")
+                model = _fit()
             elapsed = time.perf_counter() - t0
             times.append(elapsed)
             deviance = float(model.g_dev)
@@ -883,28 +904,6 @@ def main() -> int:
         type=float,
         default=DEFAULT_DEVIANCE_REL_TOL,
         help=f"Relative tolerance for OmniLSS/R deviance checks (default {DEFAULT_DEVIANCE_REL_TOL:g})",
-    )
-    parser.add_argument(
-        "--routing-compare",
-        action="store_true",
-        help="Also benchmark forced RS vs RS_JAX (Python-only timing comparison)",
-    )
-    parser.add_argument(
-        "--precision-compare",
-        action="store_true",
-        help="Evaluate RS vs RS_JAX under fixed precision constraints",
-    )
-    parser.add_argument(
-        "--precision-abs-tol",
-        type=float,
-        default=1e-5,
-        help="Absolute deviance tolerance for precision compare",
-    )
-    parser.add_argument(
-        "--precision-rel-tol",
-        type=float,
-        default=1e-5,
-        help="Relative deviance tolerance for precision compare",
     )
     args = parser.parse_args()
 

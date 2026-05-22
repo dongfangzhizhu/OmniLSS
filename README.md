@@ -207,10 +207,95 @@ or speed claims.
 
 **vs ondil**: ondil is designed for online/incremental learning on streaming data (scikit-learn API). OmniLSS is for batch differentiable modeling with hardware acceleration.
 
+## R GAMLSS Parity
+
+OmniLSS targets feature parity with the upstream R `gamlss` and `gamlss.dist`
+packages bundled under [`R/gamlss/`](R/gamlss/) and
+[`R/gamlss.dist/`](R/gamlss.dist/). The current state — what is implemented,
+what is partial, what is missing, and the phased plan to close the gaps — is
+tracked in
+[`docs/development/r-gamlss-coverage-and-plan-2026-05-22.md`](docs/development/r-gamlss-coverage-and-plan-2026-05-22.md).
+
+Highlights from that audit:
+
+- ≈105 distribution families are registered through
+  `omnilss.distribution_registry`. Around 31 currently carry a
+  `r_consistency = validated` evidence tier in the capability matrix; the rest
+  are `experimental`.
+- Several `gamlss.dist` exports are not yet wrapped (e.g. `ST1`–`ST4`, `TF2`,
+  `DBI`, `DBURR12`, untruncated Box-Cox variants, the `gen.Family` skeletons,
+  and the `distributions3` interface).
+- Core `gamlss` functions are largely ported; the missing routines are
+  `find.hyper`, `prof.dev`, `prof.term`, `par.plot`, `dtop`, `lms`, `z.scores`,
+  `quantSheets`, `histSmo*`, `gen.likelihood`, `Formulae2data`, `loglogSurv`,
+  `logSurv`, `getSmo`, `edfAll`, `rvcov`, `get.K`, `getZmatrix`, `vis.lo`,
+  `pcat`, `plotDF`, `plotLambda`, and `ECDF`/`loglogplot`.
+- Smoothers `pb`, `ps`, `cs` are implemented; `bp`, `pbm`, `pbo`, `pbz`, `pbc`,
+  `pbp`, `pvc`, `cy`, `fp`, `bfp`, `re`, `pp`, `lo`, `random`, `ri`, `pcat`
+  are not.
+
+Any equivalence claim must be backed by an artifact from the validation gate:
+
+```bash
+python benchmarks/run_local_validation.py --quick
+```
+
+In environments without R, `--allow-python-only` can run the smoke checks but
+must not be cited as proof of equivalence with native `gamlss`.
+
+## Offline Dev + R Validation Container
+
+The repository ships an offline-capable devcontainer that lets a single
+container develop OmniLSS in Python and validate against native R `gamlss` /
+`gamlss.dist` without further network access. It is the recommended setup for
+running the validation gate end to end.
+
+```bash
+# Build once with network access. This is the only phase allowed to fetch apt,
+# PyPI, and CRAN artifacts.
+devcontainer build --workspace-folder .
+devcontainer up --workspace-folder .
+
+# Inside the container, refresh editable installs and confirm health.
+bash .codex/setup.sh
+
+# Run the consistency-then-performance gate against native R gamlss.
+python benchmarks/run_local_validation.py --quick
+```
+
+The image bakes in:
+
+- R 4.4.1 (from `rocker/r-ver`) with `gamlss`, `gamlss.dist`, `jsonlite`,
+  `renv`, and `languageserver`, plus the C/C++/Fortran toolchain needed to
+  rebuild `gamlss` from source.
+- A local CRAN mirror of `gamlss` / `gamlss.dist` source tarballs at
+  `/opt/omnilss-r-cache/` so a fresh offline R install is possible without
+  network access.
+- A snapshot of the bundled `R/gamlss/` and `R/gamlss.dist/` source trees at
+  `/opt/omnilss-r-source/`, which `R CMD INSTALL` can reuse if a future R
+  package upgrade breaks an offline workflow.
+- A Python `/opt/omnilss-venv` and `/opt/omnilss-wheelhouse` with `jax`,
+  `jaxlib`, `flax`, `optax`, `scikit-learn`, `scoringrules`, `grpcio`,
+  `grpcio-tools`, `protobuf`, `mkdocs-material`, `build`, `twine`, and the
+  full dev/test toolchain.
+
+The image build step fails fast if any required Python module or R package is
+missing, so an offline reuse cannot silently regress on dependencies.
+
+If you only need a Python development environment without R, the same
+Dockerfile works — the R-backed tests will skip cleanly. Detailed runbooks
+live in
+[`docs/development/offline-dev-bootstrap-2026-05-17.md`](docs/development/offline-dev-bootstrap-2026-05-17.md)
+and
+[`docs/development/r-environment-setup.md`](docs/development/r-environment-setup.md).
+
 ## Resources
 
 - [Benchmarks](benchmarks/) — performance and consistency scripts
 - [R consistency coverage](docs/testing/r-consistency-coverage.md) — current R-backed d/p/q coverage map
+- [R GAMLSS coverage and plan](docs/development/r-gamlss-coverage-and-plan-2026-05-22.md) — gap audit and phased implementation plan
+- [Offline dev bootstrap](docs/development/offline-dev-bootstrap-2026-05-17.md) — devcontainer build/reuse rules
+- [R environment setup](docs/development/r-environment-setup.md) — R install/test guide
 - [Benchmark methodology](docs/benchmarks/benchmarking-principles.md) — reporting rules for generated artifacts
 - [Architecture freeze](docs/architecture/30-day-feature-freeze.md) — current stabilization policy
 - [Maintenance status](docs/maintenance/30-day-refactor-status.md) — active refactor tasks and audit links

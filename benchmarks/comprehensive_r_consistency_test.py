@@ -12,9 +12,19 @@ Usage
     python benchmarks/comprehensive_r_consistency_test.py
     python benchmarks/comprehensive_r_consistency_test.py --no-r   # Python only
     python benchmarks/comprehensive_r_consistency_test.py --quick  # fewer dists
+
+Environment
+-----------
+    JAX_ENABLE_X64=true   (set automatically if not already set)
+    JAX_PLATFORMS=cpu     (set automatically if not already set)
 """
 
 from __future__ import annotations
+
+# ── JAX configuration must happen before any jax import ──────────────────────
+import os
+os.environ.setdefault("JAX_ENABLE_X64", "true")
+os.environ.setdefault("JAX_PLATFORMS", "cpu")
 
 import argparse
 import csv
@@ -345,6 +355,10 @@ class ConsistencyResult:
     abs_tolerance:       float | None = None
     rel_tolerance:       float | None = None
 
+    def to_dict(self) -> dict:
+        """Serialize to a plain dict for JSON output."""
+        return {k: v for k, v in self.__dict__.items()}
+
 
 def _extract_backend_policy_from_notes(notes: str | None) -> tuple[str, str]:
     """Parse backend/policy tags from notes string with safe fallbacks."""
@@ -659,15 +673,20 @@ def test_fitting(
 
     # Python: run one untimed warm-up so timing reflects steady-state execution
     # rather than first-call JAX compilation/setup.
+    import warnings as _warnings
     try:
-        warm_model = gamlss("y ~ x", family=family, data=data, method=algorithm)
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("ignore")
+            warm_model = gamlss("y ~ x", family=family, data=data, method=algorithm)
         _block_until_ready_model(warm_model)
     except Exception:
         pass
 
     t0 = time.perf_counter()
     try:
-        model     = gamlss("y ~ x", family=family, data=data, method=algorithm)
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("ignore")
+            model     = gamlss("y ~ x", family=family, data=data, method=algorithm)
         _block_until_ready_model(model)
         py_time   = time.perf_counter() - t0
         py_dev    = float(model.deviance)
@@ -773,14 +792,19 @@ def test_smoother(
     family  = resolve_family("NO")
 
     # Warm-up (not timed) to avoid measuring JIT compilation
+    import warnings as _warnings
     try:
-        gamlss(formula, family=family, data=data)
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("ignore")
+            gamlss(formula, family=family, data=data)
     except Exception:
         pass
 
     t0 = time.perf_counter()
     try:
-        model     = gamlss(formula, family=family, data=data)
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("ignore")
+            model     = gamlss(formula, family=family, data=data)
         _block_until_ready_model(model)
         py_time   = time.perf_counter() - t0
         py_fitted = np.asarray(model.fitted_values["mu"], dtype=np.float64)

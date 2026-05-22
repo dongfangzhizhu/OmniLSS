@@ -8,6 +8,8 @@
     "VIRTUAL_ENV": "/opt/omnilss-venv",
     "PATH": "/opt/omnilss-venv/bin:${containerEnv:PATH}",
     "OMNILSS_WHEELHOUSE": "/opt/omnilss-wheelhouse",
+    "OMNILSS_R_CACHE": "/opt/omnilss-r-cache",
+    "OMNILSS_R_SOURCE": "/opt/omnilss-r-source",
     "JAX_PLATFORMS": "cpu",
     "JAX_ENABLE_X64": "true",
     "RENV_PATHS_CACHE": "/opt/renv/cache",
@@ -33,5 +35,5 @@
     }
   },
   "postCreateCommand": "bash .codex/setup.sh",
-  "postStartCommand": "python --version && R --version | head -1"
+  "postStartCommand": "python --version && R --version | head -1 && Rscript -e \"cat('gamlss=',as.character(packageVersion('gamlss')),' gamlss.dist=',as.character(packageVersion('gamlss.dist')),'\\n', sep='')\""
 }

@@ -82,13 +82,22 @@ if [[ -f "${REPO_ROOT}/omnilss-pro/pyproject.toml" ]]; then
 fi
 
 log "R"
+R_CACHE="${OMNILSS_R_CACHE:-/opt/omnilss-r-cache}"
+R_SOURCE="${OMNILSS_R_SOURCE:-/opt/omnilss-r-source}"
 if command -v R >/dev/null 2>&1; then
   R --version | head -1
   if is_truthy "${OFFLINE}"; then
-    warn "OMNILSS_OFFLINE=${OFFLINE}; skipping R package refresh."
+    warn "OMNILSS_OFFLINE=${OFFLINE}; skipping CRAN-backed R package refresh."
+    if [[ -d "${R_CACHE}" ]]; then
+      Rscript -e "missing <- setdiff(c('renv','gamlss','gamlss.dist','jsonlite','languageserver'), rownames(installed.packages())); cache <- Sys.getenv('OMNILSS_R_CACHE','${R_CACHE}'); for (pkg in missing) { tarballs <- list.files(cache, pattern=paste0('^', pkg, '_.*\\.tar\\.gz$'), full.names=TRUE); if (length(tarballs)) install.packages(tarballs[1], repos=NULL, type='source') }"
+    fi
+    if [[ -d "${R_SOURCE}/gamlss" || -d "${R_SOURCE}/gamlss.dist" ]]; then
+      Rscript -e "missing <- setdiff(c('gamlss','gamlss.dist'), rownames(installed.packages())); src <- Sys.getenv('OMNILSS_R_SOURCE','${R_SOURCE}'); for (pkg in missing) { dir <- file.path(src, pkg); if (dir.exists(dir)) install.packages(dir, repos=NULL, type='source') }"
+    fi
   else
     R -q -e "options(repos=c(CRAN='https://cloud.r-project.org')); missing <- setdiff(c('renv','gamlss','gamlss.dist','jsonlite','languageserver'), rownames(installed.packages())); if (length(missing)) install.packages(missing, Ncpus=max(1, parallel::detectCores()-1)); if (file.exists('renv.lock')) renv::restore(prompt=FALSE)"
   fi
+  Rscript -e "missing <- setdiff(c('renv','gamlss','gamlss.dist','jsonlite','languageserver'), rownames(installed.packages())); if (length(missing)) { warning(paste('R packages still missing:', paste(missing, collapse=', '))); quit(status=0) }; cat('gamlss', as.character(packageVersion('gamlss')), 'gamlss.dist', as.character(packageVersion('gamlss.dist')), '\n')"
   if is_truthy "${REFRESH_R_REFERENCE}"; then
     Rscript "${REPO_ROOT}/benchmarks/generate_r_reference_results.R" "${REPO_ROOT}/benchmarks/r_reference_results.json"
   else
@@ -123,5 +132,15 @@ def has_module(name):
 for mod in ["grpc", "google.protobuf", "grpc_tools", "build", "twine", "jax", "flax", "optax", "sklearn", "scoringrules", "mkdocs"]:
     print(f"{mod}: {'ok' if has_module(mod) else 'missing'}")
 PY
+
+log "R bridge smoke check"
+if command -v Rscript >/dev/null 2>&1; then
+  Rscript -e "suppressMessages(library(gamlss)); suppressMessages(library(gamlss.dist)); suppressMessages(library(jsonlite)); cat('R bridge ready: gamlss', as.character(packageVersion('gamlss')), 'gamlss.dist', as.character(packageVersion('gamlss.dist')), '\n')" \
+    || warn "Rscript ran but at least one bridge package failed to load; R-backed tests will skip."
+  echo "Validation gate (run from the repo root when ready):"
+  echo "  python benchmarks/run_local_validation.py --quick"
+else
+  warn "Rscript not found; R-backed validation will skip. Use --allow-python-only for smoke runs only."
+fi
 
 log "Environment Ready"

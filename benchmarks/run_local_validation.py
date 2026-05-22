@@ -8,11 +8,29 @@ The gate executes in the order requested for architecture-freeze work:
 
 R comparison is required by default.  Use ``--allow-python-only`` only for local
 smoke checks in environments where Rscript or R packages are unavailable.
+
+Python interpreter
+------------------
+The script auto-detects the project ``.venv`` (created by ``uv``) when invoked
+from the repository root.  If ``.venv/Scripts/python.exe`` (Windows) or
+``.venv/bin/python`` (Linux/macOS) exists it is used for the sub-processes so
+the correct omnilss editable install and JAX version are always picked up.
+
+You can also invoke the script directly through the venv:
+
+    .venv\\Scripts\\python.exe benchmarks/run_local_validation.py --quick
+    .venv/bin/python benchmarks/run_local_validation.py --quick
+
+JAX environment
+---------------
+``JAX_ENABLE_X64=true`` and ``JAX_PLATFORMS=cpu`` are forwarded to every
+sub-process automatically.  Override them in the calling shell if needed.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -21,24 +39,53 @@ BENCHMARK_DIR = Path(__file__).resolve().parent
 REPO_ROOT = BENCHMARK_DIR.parent
 
 
-def _run_step(label: str, cmd: list[str]) -> int:
+def _resolve_python() -> str:
+    """Return the Python executable to use for sub-processes.
+
+    Priority:
+    1. The .venv inside the repo root (created by ``uv sync``).
+    2. The current interpreter (sys.executable) as fallback.
+    """
+    for candidate in (
+        REPO_ROOT / ".venv" / "Scripts" / "python.exe",   # Windows
+        REPO_ROOT / ".venv" / "bin" / "python",            # Linux / macOS
+    ):
+        if candidate.exists():
+            return str(candidate)
+    return sys.executable
+
+
+def _build_env() -> dict[str, str]:
+    """Build the subprocess environment with required JAX settings."""
+    env = os.environ.copy()
+    env.setdefault("JAX_ENABLE_X64", "true")
+    env.setdefault("JAX_PLATFORMS", "cpu")
+    return env
+
+
+def _run_step(label: str, cmd: list[str], env: dict[str, str]) -> int:
     print("=" * 80, flush=True)
     print(label, flush=True)
     print("$ " + " ".join(cmd), flush=True)
     print("=" * 80, flush=True)
-    completed = subprocess.run(cmd, cwd=REPO_ROOT)
+    completed = subprocess.run(cmd, cwd=REPO_ROOT, env=env)
     if completed.returncode != 0:
         print(f"{label} failed with exit code {completed.returncode}")
     return completed.returncode
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run consistency then performance benchmark validation")
-    parser.add_argument("--quick", action="store_true", help="Use the quick benchmark matrices")
+    parser = argparse.ArgumentParser(
+        description="Run consistency then performance benchmark validation"
+    )
+    parser.add_argument("--quick", action="store_true",
+                        help="Use the quick benchmark matrices")
     parser.add_argument("--allow-python-only", action="store_true",
                         help="Do not require Rscript/gamlss; useful for smoke checks only")
-    parser.add_argument("--no-fit", action="store_true", help="Forwarded to consistency script")
-    parser.add_argument("--no-smooth", action="store_true", help="Forwarded to consistency script")
+    parser.add_argument("--no-fit", action="store_true",
+                        help="Forwarded to consistency script")
+    parser.add_argument("--no-smooth", action="store_true",
+                        help="Forwarded to consistency script")
     parser.add_argument("--n-repeats", type=int, default=1,
                         help="Performance timing repetitions (default: 1 for local validation)")
     parser.add_argument("--dpqr-abs-tol", type=float, default=1e-5)
@@ -49,18 +96,26 @@ def main() -> int:
     parser.add_argument("--deviance-rel-tol", type=float, default=1e-5)
     args = parser.parse_args()
 
+    python = _resolve_python()
+    env = _build_env()
+
+    print(f"Python  : {python}")
+    print(f"JAX x64 : {env.get('JAX_ENABLE_X64')}")
+    print(f"JAX platform: {env.get('JAX_PLATFORMS')}")
+    print()
+
     consistency_cmd = [
-        sys.executable,
+        python,
         "benchmarks/comprehensive_r_consistency_test.py",
         "--dpqr-abs-tol", str(args.dpqr_abs_tol),
         "--dpqr-rel-tol", str(args.dpqr_rel_tol),
-        "--fit-abs-tol", str(args.fit_abs_tol),
-        "--fit-rel-tol", str(args.fit_rel_tol),
+        "--fit-abs-tol",  str(args.fit_abs_tol),
+        "--fit-rel-tol",  str(args.fit_rel_tol),
     ]
     performance_cmd = [
-        sys.executable,
+        python,
         "benchmarks/comprehensive_performance_test.py",
-        "--n-repeats", str(args.n_repeats),
+        "--n-repeats",       str(args.n_repeats),
         "--deviance-abs-tol", str(args.deviance_abs_tol),
         "--deviance-rel-tol", str(args.deviance_rel_tol),
     ]
@@ -79,16 +134,23 @@ def main() -> int:
         consistency_cmd.append("--require-r")
         performance_cmd.append("--require-r")
 
-    rc = _run_step("Step 1/2: numerical consistency vs native R gamlss", consistency_cmd)
+    rc = _run_step(
+        "Step 1/2: numerical consistency vs native R gamlss",
+        consistency_cmd,
+        env,
+    )
     if rc != 0:
         print("Skipping performance comparison because consistency did not pass.")
         return rc
 
-    rc = _run_step("Step 2/2: performance comparison", performance_cmd)
+    rc = _run_step("Step 2/2: performance comparison", performance_cmd, env)
     if rc != 0:
         return rc
 
-    print("Validation completed successfully. Review benchmarks/results/raw and benchmarks/results/reports.")
+    print(
+        "Validation completed successfully. "
+        "Review benchmarks/results/raw and benchmarks/results/reports."
+    )
     return 0
 
 
