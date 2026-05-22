@@ -1,0 +1,178 @@
+{
+  "plan_doc": "/workspace/OmniLSS/docs/development/r-gamlss-coverage-and-plan-2026-05-22.md",
+  "requirements_total": 21,
+  "requirements_ok": 21,
+  "requirements_missing": 0,
+  "all_ok": true,
+  "rows": [
+    {
+      "symbol": "gamlss",
+      "python_paths": [
+        "omnilss/src/omnilss/fitting.py",
+        "omnilss/src/omnilss/gamlss_5.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "gamlss.control",
+      "python_paths": [
+        "omnilss/src/omnilss/controls.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "predict.gamlss",
+      "python_paths": [
+        "omnilss/src/omnilss/predict_gamlss_23_12_21.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "predictAll",
+      "python_paths": [
+        "omnilss/src/omnilss/predictAll_22_08_22.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "lpred",
+      "python_paths": [
+        "omnilss/src/omnilss/lpred.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "prodist.gamlss",
+      "python_paths": [
+        "omnilss/src/omnilss/prodist.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "acfResid",
+      "python_paths": [
+        "omnilss/src/omnilss/acfResid.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "summary.gamlss",
+      "python_paths": [
+        "omnilss/src/omnilss/SUMMARY.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "print.gamlss",
+      "python_paths": [
+        "omnilss/src/omnilss/print.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "Q.stats",
+      "python_paths": [
+        "omnilss/src/omnilss/qstats.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "LR.test",
+      "python_paths": [
+        "omnilss/src/omnilss/LR_test_12_06_2013.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "VC.test",
+      "python_paths": [
+        "omnilss/src/omnilss/VuongClarkTest.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "devianceIncr",
+      "python_paths": [
+        "omnilss/src/omnilss/DevianceIncr.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "centiles.pred",
+      "python_paths": [
+        "omnilss/src/omnilss/centile_pred_30_06_22.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "centiles.com",
+      "python_paths": [
+        "omnilss/src/omnilss/centilescom.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "centiles.fan",
+      "python_paths": [
+        "omnilss/src/omnilss/centilesFan.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "centiles",
+      "python_paths": [
+        "omnilss/src/omnilss/centilesPLOT.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "fittedPlot",
+      "python_paths": [
+        "omnilss/src/omnilss/fitted_plot.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "pdf.plot",
+      "python_paths": [
+        "omnilss/src/omnilss/pdfplot.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "term.plot",
+      "python_paths": [
+        "omnilss/src/omnilss/term_plot_new.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    },
+    {
+      "symbol": "plot2way",
+      "python_paths": [
+        "omnilss/src/omnilss/plot2way.py"
+      ],
+      "ok": true,
+      "missing_paths": []
+    }
+  ]
+}

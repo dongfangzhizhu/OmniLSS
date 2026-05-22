@@ -3,7 +3,7 @@
 This module implements the pb() smoother, which combines B-splines basis functions
 with difference penalties to create flexible smooth functions.
 
-R source: gamlss/R/pb.R
+R reference: `gamlss/R/pb.R::{pb, gamlss.pb, pb.control}`.
 References:
 - Eilers, P. H. C., & Marx, B. D. (1996). Flexible smoothing with B-splines and penalties.
   Statistical Science, 11(2), 89-121.
