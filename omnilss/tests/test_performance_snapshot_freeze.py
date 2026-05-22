@@ -16,6 +16,9 @@ def _build_data(case_name: str, n: int) -> pd.DataFrame:
     elif case_name.startswith("PO"):
         mu = np.exp(1.0 + 0.5 * x1)
         y = rng.poisson(mu)
+    elif case_name.startswith("GA"):
+        mu = np.exp(1.0 + 0.5 * x1)
+        y = rng.gamma(shape=2.0, scale=mu / 2.0)
     else:
         raise ValueError(f"Unsupported case: {case_name}")
     return pd.DataFrame({"y": y, "x1": x1})

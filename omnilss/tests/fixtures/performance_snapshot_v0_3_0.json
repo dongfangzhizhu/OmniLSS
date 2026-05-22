@@ -7,14 +7,21 @@
       "n": 100,
       "formula": "y ~ x1",
       "sigma_formula": "~1",
-      "max_seconds": 0.50
+      "max_seconds": 0.5
     },
     "PO_small_n100": {
       "family": "PO",
       "n": 100,
       "formula": "y ~ x1",
       "sigma_formula": "~1",
-      "max_seconds": 0.50
+      "max_seconds": 0.5
+    },
+    "GA_small_n100": {
+      "family": "GA",
+      "n": 100,
+      "formula": "y ~ x1",
+      "sigma_formula": "~1",
+      "max_seconds": 0.8
     }
   }
 }
