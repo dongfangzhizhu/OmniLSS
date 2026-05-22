@@ -692,3 +692,21 @@ def test_gamlss_cg_accepts_numpy_short_rs_warm_start_iters():
 
     assert model.additional_slots["cg_rs_warm_start_iters"] == 2
     assert model.additional_slots["cg_rs_warm_start_used"] is True
+
+
+def test_gamlss_cg_accepts_numpy_uintc_rs_warm_start_iters():
+    rng = np.random.default_rng(120)
+    x = rng.normal(size=20)
+    y = 0.09 + 0.29 * x + rng.normal(scale=0.22, size=20)
+    data = {"y": y, "x": x}
+
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data=data,
+        method="CG",
+        cg_rs_warm_start_iters=np.uintc(2),
+    )
+
+    assert model.additional_slots["cg_rs_warm_start_iters"] == 2
+    assert model.additional_slots["cg_rs_warm_start_used"] is True
