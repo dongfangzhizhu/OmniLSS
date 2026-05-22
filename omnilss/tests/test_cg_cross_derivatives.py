@@ -728,3 +728,21 @@ def test_gamlss_cg_accepts_numpy_longlong_rs_warm_start_iters():
 
     assert model.additional_slots["cg_rs_warm_start_iters"] == 2
     assert model.additional_slots["cg_rs_warm_start_used"] is True
+
+
+def test_gamlss_cg_rejects_numpy_float_rs_warm_start_iters():
+    import pytest
+
+    rng = np.random.default_rng(122)
+    x = rng.normal(size=20)
+    y = 0.14 + 0.19 * x + rng.normal(scale=0.2, size=20)
+    data = {"y": y, "x": x}
+
+    with pytest.raises(ValueError, match="integer"):
+        gamlss(
+            "y ~ x",
+            family="NO",
+            data=data,
+            method="CG",
+            cg_rs_warm_start_iters=np.float32(2.0),
+        )
