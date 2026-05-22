@@ -59,7 +59,7 @@ from .distributions_b1 import GU, IGAMMA, NBII, PARETO2, RG
 from .distributions_b2 import LOGNO2, NO2, PE, SIMPLEX, exGAUS
 from .distributions_b3 import GT, SHASH, SN1, SN2
 from .distributions_b4 import BEINF, BEINF0, BEINF1, BEOI, BEZI
-from .distributions_b5 import ZAGA, ZAIG, ZAP, ZIP2
+from .distributions_b5 import ZAGA, ZAIG, ZAP, ZIP2, ZINBI
 from .distributions_b6 import DEL, DPO, PIG, SI, SICHEL, WARING, YULE
 from .distributions_b7 import BB, BNB, MN3, MN4, MN5
 from .distributions_b8 import GB2, GG, LNO, NET, PARETO
@@ -299,7 +299,6 @@ from .methods import (
     vuong_clarke_test,
     worm_plot_data,
 )
-from .momentSK import MomentSKResult, momentSK, momentSkew
 from .methods import (
     choose_dist_pred_data as choose_dist_pred,
 )
@@ -335,6 +334,22 @@ from .stepGAICAll_B_Parallel import addtermAllP, droptermAllP, stepGAICAll_B
 from .stepTGD import add1TGD, add1TGDP, drop1TGD, drop1TGDP, extractTGD, stepTGD
 from .update import update
 from .worm_plot import MultiPanelWormPlotData, WormPlotData, wp, wp_data, wp_interactive
+
+# ── New Phase-A diagnostic / helper imports ───────────────────────────────────
+from .par_plot import par_plot, ParPlotResult, ParPlotSeries
+from .prof_dev import prof_dev, prof_term, ProfDevResult
+from .lms import lms, z_scores, LMSResult
+from .getSmo import getSmo, edfAll, SmootherInfo
+from .getZmatrix import getZmatrix
+from .quantSheets import quantSheets, findPower, z_scoresQS, QuantSheetsResult
+from .vis_lo import vis_lo, VisLoResult
+from .quantSheets_control import quantSheets_control, QuantSheetsControl
+from .centileSK import centileSK, CentileSKResult
+from .centileKurt import centileKurt, CentileKurtResult
+from .checkMomentSK import checkMomentSK, CheckMomentSKResult
+from .checkCentileSK import checkCentileSK, CheckCentileSKResult
+from .theoCentileSK import theoCentileSK, TheoCentileSKResult
+from .vcov_gamlss import get_K, rvcov
 
 # Optional modules are resolved lazily via __getattr__ below so missing optional
 # dependencies do not make ``import omnilss`` fail.
