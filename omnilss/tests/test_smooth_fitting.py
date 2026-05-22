@@ -211,5 +211,21 @@ class TestSmoothFitting(unittest.TestCase):
         self.assertEqual(beta.shape, (info.X.shape[1],))
 
 
+    def test_fit_penalized_wls_linear_fast_path_matches_weighted_lstsq(self):
+        """No-smooth fast path should match weighted least squares."""
+        info = build_smooth_design("y ~ x1", self.data)
+        z = self.y.copy()
+        w = np.linspace(0.5, 1.5, self.n)
+
+        beta = fit_penalized_wls(info.X, z, w, info.smooth_fits)
+
+        sqrt_w = np.sqrt(w)
+        Xw = info.X * sqrt_w[:, None]
+        zw = z * sqrt_w
+        beta_ref, *_ = np.linalg.lstsq(Xw, zw, rcond=None)
+
+        np.testing.assert_allclose(beta, beta_ref, rtol=1e-8, atol=1e-8)
+
+
 if __name__ == "__main__":
     unittest.main()
