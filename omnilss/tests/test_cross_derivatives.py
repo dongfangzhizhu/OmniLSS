@@ -10,6 +10,7 @@ from jax.test_util import check_grads
 from omnilss.derivatives.cross_derivatives import (
     cross_hessian,
     cross_hessian_from_family,
+    cross_information_blocks_from_family,
 )
 from omnilss.distributions import GA, NO, WEI
 
@@ -103,3 +104,29 @@ def test_cross_hessian_generic_finite_difference_check():
         rtol=1e-8,
         atol=1e-8,
     )
+
+
+def test_cross_information_blocks_from_family_weighted_symmetry():
+    rng = np.random.default_rng(7)
+    n = 30
+    y = rng.gamma(shape=2.2, scale=0.9, size=n)
+    weights = np.linspace(0.5, 1.5, n)
+
+    blocks = cross_information_blocks_from_family(
+        y=y,
+        param_values={"mu": np.full(n, 2.0), "sigma": np.full(n, 0.7)},
+        family=GA(),
+        weights=weights,
+    )
+
+    mm = np.asarray(blocks[("mu", "mu")])
+    ms = np.asarray(blocks[("mu", "sigma")])
+    sm = np.asarray(blocks[("sigma", "mu")])
+    ss = np.asarray(blocks[("sigma", "sigma")])
+    assert mm.shape == (1, 1)
+    assert ms.shape == (1, 1)
+    assert sm.shape == (1, 1)
+    assert ss.shape == (1, 1)
+    np.testing.assert_allclose(ms, sm, rtol=1e-8, atol=1e-8)
+    assert np.isfinite(mm[0, 0])
+    assert np.isfinite(ss[0, 0])
