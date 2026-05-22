@@ -60,3 +60,40 @@ def cross_hessian_from_family(
         for i, pi in enumerate(order)
         for j, pj in enumerate(order)
     }
+
+
+def cross_information_blocks_from_family(
+    y: Any,
+    param_values: Mapping[str, Any],
+    family: Any,
+    parameter_order: tuple[str, ...] | None = None,
+    weights: Any | None = None,
+) -> dict[tuple[str, str], Array]:
+    """Build weighted observed-information cross blocks from family derivatives.
+
+    Returns block scalars (shape ``(1, 1)``) for each parameter pair, where
+    each block equals ``-sum_i w_i * d²l_i/(d eta_j d eta_k)``.
+    """
+    bundle = eta_score_hessian(
+        y=y,
+        param_values=param_values,
+        family=family,
+        parameter_order=parameter_order,
+    )
+    order = bundle.parameter_order
+    hess = bundle.hessian
+    n = hess.shape[0]
+    if weights is None:
+        w = jnp.ones((n,), dtype=hess.dtype)
+    else:
+        w = jnp.asarray(weights, dtype=hess.dtype)
+        if w.ndim == 0:
+            w = jnp.full((n,), w, dtype=hess.dtype)
+        if w.shape != (n,):
+            raise ValueError(f"weights must have shape ({n},), got {w.shape}")
+    weighted = -jnp.einsum("nij,n->ij", hess, w)
+    return {
+        (pi, pj): weighted[i : i + 1, j : j + 1]
+        for i, pi in enumerate(order)
+        for j, pj in enumerate(order)
+    }
