@@ -14,6 +14,8 @@ from .centilesFan import centiles_fan
 from .chooseDistParallel import chooseDist, chooseDistPred, getOrder
 from .controls import GAMLSSControl, GLIMControl, gamlss_control, glim_control
 from .DevianceIncr import devianceIncr
+from .dtop import dtop, DTopResult
+from .ECDF import ECDF, ECDFResult
 from .distributions import (
     BCCG,
     BCPE,
@@ -76,7 +78,7 @@ from .distributions_b10_zero_variants import (
     ZIPIG,
     ZISICHEL,
 )
-from .distributions_b11 import GB1, GIG, JSU
+from .distributions_b11 import GB1, GIG
 from .distributions_b12 import GAF, NOF, RGE, WEI2, WEI3, BEo, GEOMo, PARETO2o
 from .distributions_b13 import DELAPORT, IGA, LOGITNO, PE2, PIG2, GeneralisedPoisson
 from .distributions_b14 import ST5, BCPEo, BCTo, JSUo, SHASHo, SHASHo2
@@ -118,12 +120,19 @@ from .family_capabilities import (
 )
 from .fitDist import fitDist
 from .fitDistPred import fitDistPred, gamlssMLpred
+from .Formulae2data import Formulae2data, Formulae2DataResult
+from .FitTail import logSurv, loglogSurv, TailCurveResult
 from .fitted_plot import fitted_plot
+from .flexDist import FlexDistResult, flexDist
+from .find_hyper import find_hyper, FindHyperResult
 from .fitting import gamlss, gamlss_ml
 from .gamlss_5 import gamlss_control_exact, glim_control_exact
 from .gamlssML import gamlssML
 from .gamlssVGD_23_12_21 import CV, VGD, gamlssCV, gamlssVGD, getTGD
+from .gen_likelihood import gen_likelihood, GenLikelihoodResult
 from .hatvalues import hatvalues
+from .histSmo import histSmo, histSmoC, histSmoO, histSmoP, HistSmoResult
+from .hazardFun import HazardResult, gen_hazard, hazardFun
 from .links import (
     identity_derivative,
     identity_inverse,
@@ -136,7 +145,11 @@ from .links import (
     probit_link,
 )
 from .logLik import logLik
+from .loglogSurv import logSurv0
+from .loglogplot import loglogplot, LogLogPlotResult
+from .plotCentileSK import PlotCentileSKResult, plotCentileSK
 from .lpred import lpred as lpred_exact
+from .momentSK import MomentSKResult, momentSK, momentSkew
 from .methods import (
     CentileCurveEntry,
     CentileFanBand,
@@ -286,6 +299,7 @@ from .methods import (
     vuong_clarke_test,
     worm_plot_data,
 )
+from .momentSK import MomentSKResult, momentSK, momentSkew
 from .methods import (
     choose_dist_pred_data as choose_dist_pred,
 )
@@ -726,7 +740,71 @@ __all__ = [
     "artifact_schema_policy",
     "compare_model_capability_snapshot",
     "save_model_pickle",
-    "load_model_pickle",
+    "load_model_pickle",    "Formulae2DataResult",
+    "Formulae2data",
+    "GenLikelihoodResult",
+    "gen_likelihood",
+    "DTopResult",
+    "dtop",
+    "ECDF",
+    "ECDFResult",
+    "loglogplot",
+    "LogLogPlotResult",
+    "par_plot",
+    "ParPlotResult",
+    "ParPlotSeries",
+    "find_hyper",
+    "FindHyperResult",
+    "get_K",
+    "rvcov",
+    "prof_dev",
+    "prof_term",
+    "ProfDevResult",
+    "lms",
+    "z_scores",
+    "LMSResult",
+    "getSmo",
+    "edfAll",
+    "SmootherInfo",
+    "getZmatrix",
+    "logSurv",
+    "loglogSurv",
+    "TailCurveResult",
+    "histSmo",
+    "histSmoO",
+    "histSmoC",
+    "histSmoP",
+    "HistSmoResult",
+    "quantSheets",
+    "findPower",
+    "z_scoresQS",
+    "QuantSheetsResult",
+    "vis_lo",
+    "VisLoResult",
+    "quantSheets_control",
+    "QuantSheetsControl",
+    "logSurv0",
+    "centileSK",
+    "CentileSKResult",
+    "hazardFun",
+    "gen_hazard",
+    "HazardResult",
+    "momentSK",
+    "momentSkew",
+    "MomentSKResult",
+    "flexDist",
+    "FlexDistResult",
+    "checkMomentSK",
+    "CheckMomentSKResult",
+    "checkCentileSK",
+    "CheckCentileSKResult",
+    "theoCentileSK",
+    "TheoCentileSKResult",
+    "centileKurt",
+    "CentileKurtResult",
+    "plotCentileSK",
+    "PlotCentileSKResult",
+
 ]
 
 

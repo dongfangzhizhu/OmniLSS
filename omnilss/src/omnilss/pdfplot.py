@@ -1,8 +1,6 @@
 """R-aligned density plot interfaces.
 
-R source reference:
-- file: `gamlss/R/pdfplot.R`
-- functions: `pdf.plot`
+R reference: `gamlss/R/pdfplot.R::pdf.plot`.
 """
 
 from __future__ import annotations

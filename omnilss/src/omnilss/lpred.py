@@ -1,8 +1,6 @@
 """R-aligned linear predictor interfaces.
 
-R source reference:
-- file: `gamlss/R/lpred.R`
-- functions: `lpred`
+R reference: `gamlss/R/lpred.R::lpred`.
 """
 
 from .operations import lpred

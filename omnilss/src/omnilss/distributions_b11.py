@@ -1,4 +1,4 @@
-"""Batch 11: JSU, GIG, GB1 distributions."""
+"""Batch 11: GIG, GB1 distributions plus a legacy JSU alias."""
 
 from __future__ import annotations
 
@@ -15,98 +15,11 @@ from .links import (
 )
 
 
-# ============================================================================
-# JSU - Johnson's SU Distribution
-# ============================================================================
-
-@dataclass(frozen=True)
-class JSUFamily(FamilyDefinition):
-    """Johnson's SU distribution family."""
-    pass
-
-
-def _jsu_log_pdf(y, mu, sigma, nu, tau):
-    """Johnson's SU log-PDF.
-    
-    Parameters:
-    - mu: location parameter
-    - sigma: scale parameter (> 0)
-    - nu: skewness parameter
-    - tau: kurtosis parameter (> 0)
-    
-    Transformation: z = (y - mu) / sigma
-    r = sinh^{-1}(z)
-    w = -nu + tau * r
-    
-    PDF: f(y) = (tau / (sigma * sqrt(2π))) * (1 / sqrt(1 + z^2)) * exp(-w^2 / 2)
-    """
-    eps = jnp.finfo(jnp.float64).eps
-    sigma = jnp.maximum(sigma, eps)
-    tau = jnp.maximum(tau, eps)
-    
-    # Standardize
-    z = (y - mu) / sigma
-    
-    # Sinh-arcsinh transformation
-    r = jnp.arcsinh(z)
-    w = -nu + tau * r
-    
-    # Log-PDF
-    log_pdf = (
-        jnp.log(tau) 
-        - jnp.log(sigma) 
-        - 0.5 * jnp.log(2.0 * jnp.pi)
-        - 0.5 * jnp.log1p(z * z)
-        - 0.5 * w * w
-    )
-    
-    return log_pdf
-
-
 def JSU():
-    """Johnson's SU distribution.
-    
-    A flexible distribution using sinh-arcsinh transformation.
-    Can model skewness and kurtosis independently.
-    
-    Parameters:
-    - mu: location
-    - sigma: scale (> 0)
-    - nu: skewness
-    - tau: kurtosis (> 0)
-    
-    Link functions:
-    - mu: identity
-    - sigma: log
-    - nu: identity
-    - tau: log
-    """
-    return build_ad_family(
-        family_class=JSUFamily,
-        name="JSU",
-        parameters=("mu", "sigma", "nu", "tau"),
-        log_pdf_func=_jsu_log_pdf,
-        type_="Continuous",
-        links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
-        link_functions={
-            "mu": identity_link,
-            "sigma": log_link,
-            "nu": identity_link,
-            "tau": log_link,
-        },
-        link_inverses={
-            "mu": identity_inverse,
-            "sigma": log_inverse,
-            "nu": identity_inverse,
-            "tau": log_inverse,
-        },
-        link_derivatives={
-            "mu": identity_derivative,
-            "sigma": log_derivative,
-            "nu": identity_derivative,
-            "tau": log_derivative,
-        },
-    )
+    """Legacy alias that delegates to the canonical JSU factory."""
+    from .distributions import JSU as _canonical_jsu
+
+    return _canonical_jsu()
 
 
 # ============================================================================

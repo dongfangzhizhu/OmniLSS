@@ -2,8 +2,8 @@
 
 cs() 使用 scipy.interpolate.UnivariateSpline 实现，对应 R 的 smooth.spline()。
 
-R source: gamlss/R/cubicSplines-10-08-12.R
-R functions: cs(), gamlss.cs(), smooth.spline()
+R reference: `gamlss/R/cubicSplines-10-08-12.R::{cs, gamlss.cs}`.
+Related R primitive: `stats::smooth.spline()`.
 """
 
 from __future__ import annotations

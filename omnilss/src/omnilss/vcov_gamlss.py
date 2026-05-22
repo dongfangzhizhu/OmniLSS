@@ -163,6 +163,22 @@ def vcov(
     return {"coef": flat_coef, "se": se, "vcov": cov, "cor": cor}
 
 
+def get_K(object: GAMLSSModel) -> int:
+    """R reference: `gamlss/R/vcov-gamlss.R::get.K`."""
+
+    _require_gamlss_method(object)
+    flat_coef, _ = _flatten_coefficients(object)
+    return int(flat_coef.size)
+
+
+def rvcov(object: GAMLSSModel) -> np.ndarray:
+    """R reference: `gamlss/R/vcov-gamlss.R::rvcov`."""
+
+    return np.asarray(vcov(object, type="vcov"), dtype=np.float64)
+
+
 __all__ = [
+    "get_K",
+    "rvcov",
     "vcov",
 ]
