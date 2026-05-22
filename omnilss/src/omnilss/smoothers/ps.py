@@ -4,7 +4,7 @@ ps() 与 pb() 的区别在于节点放置策略：
 - pb(): 基于分位数放置节点
 - ps(): 基于等间距区间放置节点（R 的 PS.R 实现）
 
-R source: gamlss/R/PS.R
+R reference: `gamlss/R/PS.R::{ps, gamlss.ps}`.
 References:
 - Eilers, P. H. C., & Marx, B. D. (1996). Flexible smoothing with B-splines and penalties.
 - Rigby & Stasinopoulos (2005). gamlss package.

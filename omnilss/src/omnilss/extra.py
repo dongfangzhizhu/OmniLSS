@@ -1,12 +1,11 @@
 """R-aligned utility operations and extra methods.
 
-R source reference:
-- file: `gamlss/R/extra.R`
-- functions: `refit`, `fitted.gamlss`, `coef.gamlss`, `coefAll`,
-  `residuals.gamlss`, `deviance.gamlss`, `lp`, `fv`, `model.frame.gamlss`,
-  `terms.gamlss`, `model.matrix.gamlss`, `formula.gamlss`, `is.gamlss`,
-  `IC`, `GAIC.gamlss`, `GAIC_table`, `GAIC_scaled`, `Rsq.gamlss`,
-  `.hat.WX`, `numeric.deriv`
+R reference: `gamlss/R/extra.R`.
+Ported symbols include: `refit`, `fitted.gamlss`, `coef.gamlss`, `coefAll`,
+`residuals.gamlss`, `deviance.gamlss`, `lp`, `fv`, `model.frame.gamlss`,
+`terms.gamlss`, `model.matrix.gamlss`, `formula.gamlss`, `is.gamlss`, `IC`,
+`GAIC.gamlss`, `GAIC_table`, `GAIC_scaled`, `Rsq.gamlss`, `.hat.WX`,
+`numeric.deriv`.
 """
 
 from .methods import rsq
