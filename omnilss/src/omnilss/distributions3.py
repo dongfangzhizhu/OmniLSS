@@ -62,26 +62,58 @@ def support(family: FamilyDefinition) -> str:
     return "(-∞,∞)"
 
 
-def mean(family: FamilyDefinition, *params: Any) -> float:
+def mean(family: FamilyDefinition, *params: Any, fallback: str = "analytic", n: int = 20000, seed: int = 12345) -> float:
     if params:
-        return float(np.mean(np.asarray(params[0], dtype=float)))
-    raise NotImplementedError(f"Mean is not parameterized for family {family.name!r} without params")
+        if fallback == "analytic":
+            return float(np.mean(np.asarray(params[0], dtype=float)))
+        if fallback == "sample":
+            return _sample_moments(family, *params, n=n, seed=seed)[0]
+    raise NotImplementedError(f"Mean is not available for family {family.name!r}; set fallback='sample' when random generation exists")
 
-
-def variance(family: FamilyDefinition, *params: Any) -> float:
+def variance(family: FamilyDefinition, *params: Any, fallback: str = "analytic", n: int = 20000, seed: int = 12345) -> float:
     if family.name in {"NO", "TF", "TF2"} and len(params) >= 2:
         sigma = np.asarray(params[1], dtype=float)
         return float(np.mean(np.square(sigma)))
-    raise NotImplementedError(f"Variance helper is not implemented for family {family.name!r}")
+    if fallback == "sample":
+        return _sample_moments(family, *params, n=n, seed=seed)[1]
+    raise NotImplementedError(f"Variance helper is not implemented analytically for family {family.name!r}")
 
-
-def skewness(family: FamilyDefinition, *params: Any) -> float:
+def skewness(family: FamilyDefinition, *params: Any, fallback: str = "analytic", n: int = 20000, seed: int = 12345) -> float:
     if family.name in {"NO"}:
         return 0.0
-    raise NotImplementedError(f"Skewness helper is not implemented for family {family.name!r}")
+    if fallback == "sample":
+        return _sample_moments(family, *params, n=n, seed=seed)[2]
+    raise NotImplementedError(f"Skewness helper is not implemented analytically for family {family.name!r}")
 
-
-def kurtosis(family: FamilyDefinition, *params: Any) -> float:
+def kurtosis(family: FamilyDefinition, *params: Any, fallback: str = "analytic", n: int = 20000, seed: int = 12345) -> float:
     if family.name in {"NO"}:
         return 3.0
-    raise NotImplementedError(f"Kurtosis helper is not implemented for family {family.name!r}")
+    if fallback == "sample":
+        return _sample_moments(family, *params, n=n, seed=seed)[3]
+    raise NotImplementedError(f"Kurtosis helper is not implemented analytically for family {family.name!r}")
+
+def _sample_moments(family: FamilyDefinition, *params: Any, n: int = 20000, seed: int = 12345) -> tuple[float, float, float, float]:
+    """Monte-Carlo fallback moments using family random generator when available."""
+    if family.r is None:
+        raise NotImplementedError(f"Family {family.name!r} does not define random generation for fallback moments")
+    from jax import random as jrandom
+
+    key = jrandom.PRNGKey(seed)
+    scalar_params = []
+    for p in params:
+        arr = jnp.asarray(p)
+        if arr.ndim > 0:
+            arr = jnp.asarray(arr).reshape(-1)[0]
+        scalar_params.append(arr)
+    draws = np.asarray(family.r(key, int(n), *scalar_params), dtype=float).ravel()
+    if draws.size == 0:
+        raise NotImplementedError(f"Family {family.name!r} produced no draws for fallback moments")
+    mu = float(np.mean(draws))
+    centered = draws - mu
+    var = float(np.mean(centered ** 2))
+    if var <= 0:
+        return mu, var, 0.0, 0.0
+    sd = float(np.sqrt(var))
+    skew = float(np.mean((centered / sd) ** 3))
+    kurt = float(np.mean((centered / sd) ** 4))
+    return mu, var, skew, kurt

@@ -29,28 +29,31 @@
 
 ### B2. 计划中“缺失分布/接口”
 
+> 进度说明（2026-05-23）：以上分布缺口已全部具备“兼容层可调用入口 + registry 可解析”，
+> 当前剩余重点转向“专用数值内核替换 + R 一致性证据从脚手架升级为稳定覆盖”。
+
 - ✅ `MULTIN` 构造接口（`MULTIN(3|4|5) -> MN3|MN4|MN5`）。
 - 🟡 `TF2` 接口：已提供构造器与注册；并新增基于 R `TF` 的 d/p/q 一致性测试，后续仍需针对 R `TF2` 专用参数化逐项比对。
-- 🟡 ST1（已提供兼容构造器与 registry，当前共用 ST3C 数值内核）
-- 🟡 ST2（已提供兼容构造器与 registry，当前共用 ST3C 数值内核）
-- 🟡 ST3（已提供兼容构造器与 registry，当前共用 ST3C 数值内核）
-- 🟡 ST4（已提供兼容构造器与 registry，当前共用 ST3C 数值内核）
+- 🟡 ST1（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；并新增基于 ST3C 参考路径的 d/p/q R 一致性测试脚手架）
+- 🟡 ST2（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；并新增基于 ST3C 参考路径的 d/p/q R 一致性测试脚手架）
+- 🟡 ST3（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；并新增基于 ST3C 参考路径的 d/p/q R 一致性测试脚手架）
+- 🟡 ST4（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；并新增基于 ST3C 参考路径的 d/p/q R 一致性测试脚手架）
 - 🟡 DBI（已提供兼容构造器与 registry，当前共用 BI 数值内核；并新增基于 BI 参考路径的 d/p/q R 一致性测试脚手架）
 - 🟡 DBURR12（已提供兼容构造器与 registry，当前共用 SICHEL 数值内核；并新增基于 SICHEL 参考路径的 d/p/q R 一致性测试脚手架）
-- 🟡 BCCGuntr（已提供兼容构造器与 registry，当前共用 BCCG 数值内核）
-- 🟡 BCPEuntr（已提供兼容构造器与 registry，当前共用 BCPE 数值内核）
-- 🟡 BCTuntr（已提供兼容构造器与 registry，当前共用 BCT 数值内核）
-- 🟡 `centileSK`：已有实现与基础单测，仍需补齐 R 一致性证据。
+- 🟡 BCCGuntr（已提供兼容构造器与 registry，当前共用 BCCG 数值内核；并新增基于 BCCG 参考路径的 d/p/q R 一致性测试脚手架）
+- 🟡 BCPEuntr（已提供兼容构造器与 registry，当前共用 BCPE 数值内核；已新增基于 BCPE 参考路径的 d/p/q R 一致性测试脚手架）
+- 🟡 BCTuntr（已提供兼容构造器与 registry，当前共用 BCT 数值内核；已新增基于 BCT 参考路径的 d/p/q R 一致性测试脚手架）
+- 🟡 `centileSK`：已有实现、基础单测与 R 一致性测试脚手架；仍需扩大输入覆盖并纳入 CI R 证据统计。
 - ✅ `flexDist`, `momentSK`, `hazardFun`, `gen.hazard`：已具备实现与基础单测覆盖。
 
 ### B3. `gen.Family` skeleton builder
 
-- 🟡 已新增统一兼容 builder 入口（`build_gen_family_skeleton`）并将 19 个常见 skeleton 名称注册到 registry；仍待逐个替换为专用数值实现。
+- 🟡 已新增统一兼容 builder 入口（`build_gen_family_skeleton`）并将 19 个常见 skeleton 名称注册到 registry；已为代表性 count/continuous skeleton 新增 d/p/q R 一致性测试脚手架；仍待逐个替换为专用数值实现。
 
 ### B4. `distributions3` 风格接口
 
 - 🟡 已完成第一版 helper：`pdf/log_pdf/cdf/quantile/random/is_continuous/is_discrete/support`。
-- ⬜ 待补：`mean/variance/skewness/kurtosis` 统一接口与 family 级实现/回退策略。
+- 🟡 已补：`mean/variance/skewness/kurtosis` 支持统一参数与 sample 回退策略；仍待扩展更多 family 的解析解与精度基准。
 
 ---
 
@@ -87,9 +90,9 @@
 
 ## 下一批开发优先级（从高到低）
 
-1. **ST1/ST2/ST3/ST4** family 实现 + registry + 最小单测。  
-2. **DBI** family 实现（先 d，再 p/q/r）+ registry + 单测。  
-3. `distributions3` 增补统计矩接口（mean/variance/skewness/kurtosis）并建立统一回退策略。  
+1. **兼容层 family 的 R consistency 证据深化**：将已建脚手架从单路径验证扩展到多参数区间与边界场景。  
+2. **将兼容层逐步替换为专用数值实现**：优先 ST1/ST2/ST3/ST4、DBI、DBURR12、Box-Cox untr 系列。  
+3. `distributions3` 统计矩接口从“部分 family 支持”升级为“可配置回退 + 全家族可用性声明”。  
 4. 为当前已注册但无证据的 family 批量补 d/p/q R consistency（按家族分组推进）。
 
 ---

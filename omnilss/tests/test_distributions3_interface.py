@@ -44,3 +44,18 @@ def test_moment_helpers_for_no() -> None:
     assert variance(fam, mu, sigma) == 4.0
     assert skewness(fam, mu, sigma) == 0.0
     assert kurtosis(fam, mu, sigma) == 3.0
+
+
+def test_moment_helpers_sample_fallback_for_po() -> None:
+    from omnilss import PO
+
+    fam = PO()
+    mu = np.array([3.0] * 200)
+    m = mean(fam, mu, fallback="sample", n=4000, seed=7)
+    v = variance(fam, mu, fallback="sample", n=4000, seed=7)
+    s = skewness(fam, mu, fallback="sample", n=4000, seed=7)
+    k = kurtosis(fam, mu, fallback="sample", n=4000, seed=7)
+    assert 2.6 < m < 3.4
+    assert 2.2 < v < 3.8
+    assert s > 0.3
+    assert k > 2.0
