@@ -17,6 +17,8 @@ Examples
 >>>
 >>> # 在公式中使用
 >>> # gamlss("y ~ te(x1, x2)", family="NO", data=data)
+
+R reference: no direct `gamlss` analogue; OmniLSS extension inspired by mgcv tensor smooths (`te`/`ti`).
 """
 
 from __future__ import annotations

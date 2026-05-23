@@ -2,6 +2,8 @@
 
 This module provides the s() function for creating smooth terms with automatic
 smoothing parameter selection, similar to mgcv::s() in R.
+
+R reference: `gamlss/R/pb.R`, `gamlss/R/PS.R`, `gamlss/R/cubicSplines-10-08-12.R`.
 """
 
 from __future__ import annotations

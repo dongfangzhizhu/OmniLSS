@@ -13,6 +13,8 @@ Wood, S. N. (2011). Fast stable restricted maximum likelihood and marginal
     Journal of the Royal Statistical Society: Series B, 73(1), 3-36.
 Wood, S. N. (2017). Generalized Additive Models: An Introduction with R (2nd ed.).
     Chapman and Hall/CRC.
+
+R reference: `gamlss/R/pb.R::pb.control` (REML-style λ selection path).
 """
 
 from __future__ import annotations

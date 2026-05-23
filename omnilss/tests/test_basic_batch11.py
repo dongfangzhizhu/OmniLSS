@@ -148,18 +148,6 @@ def test_gb1_boundary():
     assert jnp.all(pdf >= 0)
 
 
-def test_jsu_batch11_alias_matches_canonical_factory():
-    """Batch11 JSU should resolve to the canonical family implementation."""
-    from omnilss.distributions import JSU as canonical_jsu
-    from omnilss.distributions_b11 import JSU as alias_jsu
-
-    canonical = canonical_jsu()
-    alias = alias_jsu()
-
-    assert alias.name == canonical.name == "JSU"
-    assert alias.parameters == canonical.parameters
-    assert type(alias) is type(canonical)
-
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

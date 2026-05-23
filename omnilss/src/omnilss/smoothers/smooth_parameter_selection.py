@@ -12,6 +12,8 @@ This continues until convergence.
 NOTE: This is currently a PROTOTYPE implementation. The outer loop structure
 is in place, but full λ optimization between iterations requires deeper
 integration with the smooth fitting code.
+
+R reference: `gamlss/R/pb.R::pb.control` and `gamlss/R/gamlss-5.R` outer-loop fitting strategy.
 """
 
 from __future__ import annotations

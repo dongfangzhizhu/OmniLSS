@@ -7,6 +7,8 @@ R source: gamlss/R/pb.R, mgcv package
 References:
 - de Boor, C. (1978). A Practical Guide to Splines.
 - Eilers, P. H. C., & Marx, B. D. (1996). Flexible smoothing with B-splines and penalties.
+
+R reference: `gamlss/R/pb.R` (basis construction used by `pb`/`ps`); related behavior mirrors `splines::bs`.
 """
 
 from __future__ import annotations

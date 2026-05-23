@@ -10,6 +10,8 @@ Craven, P., & Wahba, G. (1978). Smoothing noisy data with spline functions.
 Numerische Mathematik, 31(4), 377-403.
 
 Wahba, G. (1990). Spline models for observational data. SIAM.
+
+R reference: no dedicated `gamlss` UBRE helper; integrated as OmniLSS smoother-selection extension.
 """
 
 from __future__ import annotations
