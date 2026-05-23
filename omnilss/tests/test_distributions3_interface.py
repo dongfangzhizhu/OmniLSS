@@ -3,8 +3,8 @@ from __future__ import annotations
 import jax.numpy as jnp
 import numpy as np
 
-from omnilss import GA, NO
-from omnilss.distributions3 import cdf, is_continuous, is_discrete, kurtosis, log_pdf, mean, pdf, quantile, skewness, support, variance
+from omnilss import BI, EXP, GA, NO, PO
+from omnilss.distributions3 import cdf, is_continuous, is_discrete, kurtosis, log_pdf, mean, moment_availability, pdf, quantile, skewness, support, variance
 
 
 def test_pdf_logpdf_and_cdf_no() -> None:
@@ -47,8 +47,6 @@ def test_moment_helpers_for_no() -> None:
 
 
 def test_moment_helpers_sample_fallback_for_po() -> None:
-    from omnilss import PO
-
     fam = PO()
     mu = np.array([3.0] * 200)
     m = mean(fam, mu, fallback="sample", n=4000, seed=7)
@@ -59,3 +57,50 @@ def test_moment_helpers_sample_fallback_for_po() -> None:
     assert 2.2 < v < 3.8
     assert s > 0.3
     assert k > 2.0
+
+
+def test_moment_helpers_analytic_for_ga_exp_po_bi() -> None:
+    ga = GA()
+    mu = np.array([2.0, 4.0])
+    sigma = np.array([0.5, 0.5])
+    assert mean(ga, mu, sigma) == 3.0
+    assert variance(ga, mu, sigma) == 2.5
+    assert skewness(ga, mu, sigma) == 1.0
+    assert kurtosis(ga, mu, sigma) == 4.5
+
+    exp = EXP()
+    mu_exp = np.array([2.0, 2.0])
+    assert mean(exp, mu_exp) == 2.0
+    assert variance(exp, mu_exp) == 4.0
+    assert skewness(exp, mu_exp) == 2.0
+    assert kurtosis(exp, mu_exp) == 9.0
+
+    po = PO()
+    mu_po = np.array([4.0, 4.0])
+    assert mean(po, mu_po) == 4.0
+    assert variance(po, mu_po) == 4.0
+    assert np.isclose(skewness(po, mu_po), 0.5)
+    assert np.isclose(kurtosis(po, mu_po), 3.25)
+
+    bi = BI()
+    mu_bi = np.array([0.25, 0.25])
+    assert mean(bi, mu_bi) == 0.25
+    assert np.isclose(variance(bi, mu_bi), 0.1875)
+    assert np.isclose(skewness(bi, mu_bi), 1.1547005383792517)
+    assert np.isclose(kurtosis(bi, mu_bi), 2.333333333333333)
+
+
+def test_moment_availability_declaration() -> None:
+    no_tiers = moment_availability(NO())
+    assert no_tiers == {
+        "mean": "analytic",
+        "variance": "analytic",
+        "skewness": "analytic",
+        "kurtosis": "analytic",
+    }
+
+    ga_tiers = moment_availability(GA())
+    assert ga_tiers["mean"] == "analytic"
+    assert ga_tiers["variance"] == "analytic"
+    assert ga_tiers["skewness"] == "analytic"
+    assert ga_tiers["kurtosis"] == "analytic"
