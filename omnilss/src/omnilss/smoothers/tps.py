@@ -22,6 +22,8 @@ This implementation follows the approach in Wood (2003) and mgcv:
 2. Add polynomial terms for unpenalized space
 3. Apply penalty to radial basis coefficients only
 4. Use eigendecomposition for efficient computation
+
+R reference: no direct `gamlss` analogue; OmniLSS extension inspired by mgcv thin-plate regression splines.
 """
 
 from __future__ import annotations

@@ -3,6 +3,8 @@
 R source: gamlss/R/pb.R
 References:
 - Eilers & Marx (1996). Flexible smoothing with B-splines and penalties.
+
+R reference: `gamlss/R/pb.R::{pb, pb.control}` (difference-penalty and edf calculations).
 """
 
 from __future__ import annotations
