@@ -14,10 +14,10 @@ import numpy as np
 from .families import FamilyDefinition
 
 
-_ANALYTIC_MEAN_FAMILIES = frozenset({"NO", "NO2", "TF", "TF2", "GA", "PO", "EXP", "BI"})
-_ANALYTIC_VARIANCE_FAMILIES = frozenset({"NO", "TF", "TF2", "GA", "EXP", "PO", "BI"})
-_ANALYTIC_SKEWNESS_FAMILIES = frozenset({"NO", "GA", "EXP", "PO", "BI"})
-_ANALYTIC_KURTOSIS_FAMILIES = frozenset({"NO", "GA", "EXP", "PO", "BI"})
+_ANALYTIC_MEAN_FAMILIES = frozenset({"NO", "NO2", "TF", "TF2", "GA", "LOGNO", "PO", "EXP", "BI"})
+_ANALYTIC_VARIANCE_FAMILIES = frozenset({"NO", "NO2", "TF", "TF2", "GA", "LOGNO", "EXP", "PO", "BI"})
+_ANALYTIC_SKEWNESS_FAMILIES = frozenset({"NO", "NO2", "GA", "LOGNO", "EXP", "PO", "BI"})
+_ANALYTIC_KURTOSIS_FAMILIES = frozenset({"NO", "NO2", "GA", "LOGNO", "EXP", "PO", "BI"})
 
 
 def pdf(family: FamilyDefinition, x: Any, *params: Any, log: bool = False) -> np.ndarray:
@@ -96,6 +96,10 @@ def moment_availability(family: FamilyDefinition) -> dict[str, str]:
 
 def mean(family: FamilyDefinition, *params: Any, fallback: str = "analytic", n: int = 20000, seed: int = 12345) -> float:
     if params and fallback == "analytic":
+        if family.name == "LOGNO" and len(params) >= 2:
+            mu = np.asarray(params[0], dtype=float)
+            sigma = np.asarray(params[1], dtype=float)
+            return float(np.mean(np.exp(mu + 0.5 * np.square(sigma))))
         mu = float(np.mean(np.asarray(params[0], dtype=float)))
         if family.name in _ANALYTIC_MEAN_FAMILIES:
             return mu
@@ -104,13 +108,18 @@ def mean(family: FamilyDefinition, *params: Any, fallback: str = "analytic", n: 
     raise NotImplementedError(f"Mean is not available for family {family.name!r}; set fallback='sample' when random generation exists")
 
 def variance(family: FamilyDefinition, *params: Any, fallback: str = "analytic", n: int = 20000, seed: int = 12345) -> float:
-    if family.name in {"NO", "TF", "TF2"} and len(params) >= 2:
+    if family.name in {"NO", "NO2", "TF", "TF2"} and len(params) >= 2:
         sigma = np.asarray(params[1], dtype=float)
         return float(np.mean(np.square(sigma)))
     if family.name == "GA" and len(params) >= 2:
         mu = np.asarray(params[0], dtype=float)
         sigma = np.asarray(params[1], dtype=float)
         return float(np.mean(np.square(sigma * mu)))
+    if family.name == "LOGNO" and len(params) >= 2:
+        mu = np.asarray(params[0], dtype=float)
+        sigma = np.asarray(params[1], dtype=float)
+        s2 = np.square(sigma)
+        return float(np.mean((np.exp(s2) - 1.0) * np.exp(2.0 * mu + s2)))
     if family.name == "EXP" and len(params) >= 1:
         mu = np.asarray(params[0], dtype=float)
         return float(np.mean(np.square(mu)))
@@ -125,13 +134,17 @@ def variance(family: FamilyDefinition, *params: Any, fallback: str = "analytic",
     raise NotImplementedError(f"Variance helper is not implemented analytically for family {family.name!r}")
 
 def skewness(family: FamilyDefinition, *params: Any, fallback: str = "analytic", n: int = 20000, seed: int = 12345) -> float:
-    if family.name in {"NO"}:
+    if family.name in {"NO", "NO2"}:
         return 0.0
     if family.name == "GA" and len(params) >= 2:
         sigma = np.asarray(params[1], dtype=float)
         # GA parameterization in this project: Var(Y)=sigma^2*mu^2 (shape=1/sigma^2)
         # Skewness of Gamma(shape=k) is 2/sqrt(k) -> 2*sigma
         return float(np.mean(2.0 * sigma))
+    if family.name == "LOGNO" and len(params) >= 2:
+        sigma = np.asarray(params[1], dtype=float)
+        s2 = np.square(sigma)
+        return float(np.mean((np.exp(s2) + 2.0) * np.sqrt(np.maximum(np.exp(s2) - 1.0, 1e-12))))
     if family.name == "EXP":
         return 2.0
     if family.name == "PO" and len(params) >= 1:
@@ -145,12 +158,16 @@ def skewness(family: FamilyDefinition, *params: Any, fallback: str = "analytic",
     raise NotImplementedError(f"Skewness helper is not implemented analytically for family {family.name!r}")
 
 def kurtosis(family: FamilyDefinition, *params: Any, fallback: str = "analytic", n: int = 20000, seed: int = 12345) -> float:
-    if family.name in {"NO"}:
+    if family.name in {"NO", "NO2"}:
         return 3.0
     if family.name == "GA" and len(params) >= 2:
         sigma = np.asarray(params[1], dtype=float)
         # Pearson kurtosis of Gamma(shape=k) is 3 + 6/k -> 3 + 6*sigma^2
         return float(np.mean(3.0 + 6.0 * np.square(sigma)))
+    if family.name == "LOGNO" and len(params) >= 2:
+        sigma = np.asarray(params[1], dtype=float)
+        s2 = np.square(sigma)
+        return float(np.mean(np.exp(4.0 * s2) + 2.0 * np.exp(3.0 * s2) + 3.0 * np.exp(2.0 * s2)))
     if family.name == "EXP":
         return 9.0
     if family.name == "PO" and len(params) >= 1:

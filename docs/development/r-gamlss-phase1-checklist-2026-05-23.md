@@ -53,7 +53,7 @@
 ### B4. `distributions3` 风格接口
 
 - 🟡 已完成第一版 helper：`pdf/log_pdf/cdf/quantile/random/is_continuous/is_discrete/support`。
-- 🟡 已补：`mean/variance/skewness/kurtosis` 支持统一参数与 sample 回退策略；并新增 GA/EXP/PO/BI 的解析矩实现与单测（含 GA 偏度/峰度解析式），仍待扩展更多 family 的解析解与精度基准。
+- 🟡 已补：`mean/variance/skewness/kurtosis` 支持统一参数与 sample 回退策略；并新增 LOGNO/NO2/GA/EXP/PO/BI 的解析矩实现与单测（含 GA 偏度/峰度解析式），仍待扩展更多 family 的解析解与精度基准。
 
 ---
 
@@ -90,7 +90,7 @@
 
 ## 下一批开发优先级（从高到低）
 
-1. **兼容层 family 的 R consistency 证据深化**：已将 ST1-4、DBI、BCPEuntr、BCTuntr 的脚手架扩展到多参数区间与边界场景（central/tail、edge-heavy μ、更宽 p 区间）；其余兼容层 family 持续补齐中。  
+1. **兼容层 family 的 R consistency 证据深化**：已将 ST1-4、DBI、DBURR12、BCCGuntr、BCPEuntr、BCTuntr 的脚手架扩展到多参数区间与边界场景（central/tail、edge-heavy μ、更宽 p 区间）；其余兼容层 family 持续补齐中。  
 2. **将兼容层逐步替换为专用数值实现**：优先 ST1/ST2/ST3/ST4、DBI、DBURR12、Box-Cox untr 系列。  
 3. `distributions3` 统计矩接口从“部分 family 支持”升级为“可配置回退 + 全家族可用性声明”（已新增 `moment_availability` 声明接口与单测，后续继续扩展解析矩覆盖）。  
 4. 为当前已注册但无证据的 family 批量补 d/p/q R consistency（按家族分组推进）。

@@ -45,6 +45,28 @@ class TestBoxCoxUntrMoreConsistency(unittest.TestCase):
                 py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
                 np.testing.assert_allclose(py_d, r_d, rtol=1e-5, atol=1e-7)
 
+    def test_bccguntr_d_consistency_against_bccg_reference(self) -> None:
+        fam = resolve("BCCGUNTR")
+        for profile in ("central", "tail"):
+            with self.subTest(profile=profile):
+                x, mu, sigma, nu, _ = self._profile_inputs(profile, "BCCG")
+                r_d = self.bus.eval_family("BCCG", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
+                py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu)))
+                np.testing.assert_allclose(py_d, r_d, rtol=1e-5, atol=1e-7)
+
+    def test_bccguntr_pq_consistency_against_bccg_reference(self) -> None:
+        fam = resolve("BCCGUNTR")
+        for profile in ("central", "tail"):
+            with self.subTest(profile=profile):
+                q, mu, sigma, nu, _ = self._profile_inputs(profile, "BCCG")
+                p = np.linspace(0.01, 0.99, 30)
+                r_p = self.bus.eval_family("BCCG", "p", {"q": q.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
+                r_q = self.bus.eval_family("BCCG", "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
+                py_p = np.asarray(fam.p(jnp.array(q), jnp.array(mu), jnp.array(sigma), jnp.array(nu)))
+                py_q = np.asarray(fam.q(jnp.array(p), jnp.array(mu), jnp.array(sigma), jnp.array(nu)))
+                np.testing.assert_allclose(py_p, r_p, rtol=1e-5, atol=1e-7)
+                np.testing.assert_allclose(py_q, r_q, rtol=1e-5, atol=1e-7)
+
     def test_bcpeuntr_pq_consistency_against_bcpe_reference(self) -> None:
         fam = resolve("BCPEUNTR")
         for profile in ("central", "tail"):
