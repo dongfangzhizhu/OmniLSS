@@ -26,6 +26,12 @@ install.packages(c(
 
 完整离线开发环境清单见 `docs/development/offline-dev-bootstrap-2026-05-17.md`。若未来 R 侧 benchmark 或 validation 新增包依赖，必须同步更新该文档和 `.devcontainer/Dockerfile`。
 
+镜像还会把上述 R 包及其递归依赖的 source tarball 缓存在
+`/opt/omnilss-r-cache/`，并生成本地 `PACKAGES` 索引；`.codex/setup.sh` 在
+`OMNILSS_OFFLINE=1` 时会通过该本地 source repository 进行补装，而不是访问
+CRAN。仓库内置的 `R/gamlss/` 与 `R/gamlss.dist/` 也会复制到
+`/opt/omnilss-r-source/`，作为 CRAN cache 不可用时的最后备选来源。
+
 ## Ubuntu/Debian（手动备选）
 
 优先使用 devcontainer；仅在本地手动调试且系统包管理器可用时使用以下方案：

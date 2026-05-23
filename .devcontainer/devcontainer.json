@@ -13,7 +13,8 @@
     "JAX_PLATFORMS": "cpu",
     "JAX_ENABLE_X64": "true",
     "RENV_PATHS_CACHE": "/opt/renv/cache",
-    "OMNILSS_REFRESH_R_REFERENCE": "0"
+    "OMNILSS_REFRESH_R_REFERENCE": "0",
+    "OMNILSS_OFFLINE": "1"
   },
   "customizations": {
     "vscode": {

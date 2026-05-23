@@ -39,13 +39,46 @@ Cross-references:
 The categorization below is conservative: when in doubt, the entry is marked
 `partial` so the validation plan does not assume coverage that is not proven.
 
+### 1.1 Implementation-grounded correction (2026-05-23)
+
+The current development plan must distinguish **callable API surface** from
+**real statistical implementation**. A code audit on 2026-05-23 found several
+registered families and helpers whose Python names are present but whose numeric
+kernels are compatibility aliases or placeholders:
+
+- `omnilss/distributions_st_compat.py`: `ST1`, `ST2`, `ST3`, and `ST4` clone
+  the `ST3C` kernel while preserving distinct family names.
+- `omnilss/distributions_count_compat.py`: `DBI` reuses the `BI` kernel.
+- `omnilss/distributions_discrete_compat.py`: `DBURR12` reuses the `SICHEL`
+  kernel.
+- `omnilss/distributions_boxcox_compat.py`: `BCCGuntr`, `BCPEuntr`, and
+  `BCTuntr` clone the truncated Box-Cox kernels.
+- `omnilss/gen_family_builder.py`: `count_*` and `binom_*` skeletons route to
+  `PO`; `contR*` skeletons route to `NO`.
+- `omnilss/dpqr_functions.py`: generic fallback p/q/r helpers still return
+  normal approximations or `NaN` placeholders for distributions without real
+  CDF/quantile/random implementations.
+
+For this plan, those entries are therefore **not implemented** for statistical
+coverage purposes. They may remain useful as temporary import/API sentinels, but
+they must not be treated as migrated R functionality, must not be promoted to
+`validated`, and must not be exposed by production service routes until their
+dedicated likelihood, d/p/q/r, parameterization, and R-backed tests exist.
+
+Scope for the next development cycle:
+
+1. Primary: migrate every required `R/gamlss` and `R/gamlss.dist` behavior into
+   `omnilss/`.
+2. Secondary: expose validated `omnilss` behavior through `omnilss-server/`.
+3. Out of scope for this document cycle: `omnilss-pro/`.
+
 ## 2. Distribution coverage (`gamlss.dist`)
 
 R `gamlss.dist` exports d/p/q/r quartets for ~100 named families, plus several
 helpers (`flexDist`, `hazardFun`, `momentSK`, `MULTIN`, generic count/binomial
 skeletons, etc.).
 
-### 2.1 Implemented in OmniLSS (registered + Python factory present)
+### 2.1 Callable in OmniLSS (registered + Python factory present)
 
 The following families have a `FamilyDefinition` factory and are reachable
 through `omnilss.distribution_registry.resolve()`:
@@ -81,6 +114,14 @@ Note: factory `JSU` is exposed both from `distributions.py` and
 `distributions_b11.py`; the b11 alias should be reconciled to a single source of
 truth before the next release.
 
+Implementation correction: registration is only a callable-surface fact. It is
+not sufficient evidence of migrated R behavior. Families implemented as
+compatibility aliases (`ST1`-`ST4`, `DBI`, `DBURR12`, untruncated Box-Cox
+variants, and `gen.Family` skeleton names) must be counted separately from
+families with dedicated numerical kernels. Families whose p/q/r paths use
+generic `NaN` or normal-approximation fallbacks must be marked `placeholder`
+until replaced.
+
 ### 2.2 Validated against native R (full d/p/q + fitting parity)
 
 From `docs/testing/r-consistency-coverage.md` and the existing
@@ -99,19 +140,20 @@ ZAGA, ZIP — **31 families**.
 All other registered families are tier `experimental` and need extra evidence
 before any equivalence claim.
 
-### 2.3 Missing or untested distribution exports
+### 2.3 Missing, aliased, placeholder, or untested distribution exports
 
-R-side exports that are not yet exposed by OmniLSS or whose Python equivalent
-needs to be built:
+R-side exports that are not yet exposed by OmniLSS, whose Python equivalent is
+currently only an alias/placeholder, or whose parity evidence is incomplete:
 
-- ST1, ST2, ST3, ST4 — only ST3C, ST5, SST, SEP4 ports of the Skew-t family are
-  registered. ST1/ST2/ST3/ST4 are referenced in `fitting_jit.py` warm-start
-  defaults but no `FamilyDefinition` factory exists.
+- ST1, ST2, ST3, ST4 — factories exist, but they currently clone the `ST3C`
+  numeric kernel and therefore remain `compat_alias`, not implemented R
+  families.
 - TF2 — alternative Student-t parameterization with degrees-of-freedom
-  parameter.
-- DBI — Double Binomial.
-- DBURR12 — Discrete Burr-12.
-- BCCGuntr, BCPEuntr, BCTuntr — untruncated Box-Cox variants.
+  parameter; verify that implementation is not only a `TF` alias.
+- DBI — Double Binomial; currently reuses `BI` and must be replaced.
+- DBURR12 — Discrete Burr-12; currently reuses `SICHEL` and must be replaced.
+- BCCGuntr, BCPEuntr, BCTuntr — untruncated Box-Cox variants; currently clone
+  truncated kernels and must be replaced.
 - MULTIN — multinomial fitting helper (`MN3/4/5` exist as factories but the
   generic `MULTIN(...)` constructor used in R formulas is missing).
 - `flexDist`, `momentSK`, `centileSK`, `momentSkew`, `centileSkew`,
@@ -123,6 +165,8 @@ needs to be built:
   `binom_1_31`, `binom_2_33`, `binom_3_33`, `contR_2_12`, `contR_3_11`,
   `contR_4_13`, `contRplus_1_1`, `contRplus_2_11`, `contRplus_3_13`,
   `contRplus_4_33`, `contR01_2_13`, `contR01_4_33`.
+  Current compatibility builders route these names to `PO` or `NO`; they must
+  become real generic builders before being counted as migrated.
 - `distributions3` interface (`GAMLSS` S4 wrapper, `pdf`, `log_pdf`, `cdf`,
   `quantile`, `random`, `is_continuous`, `is_discrete`, `support`, `mean`,
   `variance`, `skewness`, `kurtosis`).
@@ -287,146 +331,261 @@ closed, each new family/function needs:
 
 ## 6. Implementation plan
 
-The plan is phased so that every step lands behind the existing
-benchmark-validation gate (consistency before performance). Inside each phase,
-work is ordered by *risk reduction* first, *coverage breadth* second.
+This plan is now ordered by implementation truth rather than by API surface.
+The guiding rule is: **a migrated R symbol is not counted as implemented until
+its Python code has a dedicated numeric implementation and R-backed evidence**.
+Callable aliases, compatibility constructors, placeholder p/q/r functions, and
+`NaN` fallbacks are treated as migration debt.
 
-### Phase A — Plumbing for systematic R parity (week 1–2)
+### Phase 0 — Truth gate and scope freeze (immediate)
 
-A1. Lock the R-comparison runtime in CI by adding a job to
-   `.github/workflows/environment-validation.yml` that runs
-   `python benchmarks/run_local_validation.py --quick` in the prebuilt
-   devcontainer (so consistency is exercised on every PR that affects
-   distributions or fitting).
+P0.1. Add a machine-readable implementation status layer for every R export:
 
-A2. Generate `docs/development/r-coverage-matrix-2026-05-22.json` from a single
-   script that crawls
-   - `R/gamlss.dist/NAMESPACE` and `R/gamlss/NAMESPACE` for exports,
-   - `omnilss.distribution_registry.list_families()` for Python factories,
-   - `omnilss/tests/test_r_consistency_*.py` for R-backed parity tests,
-   and emits a row per R symbol with its Python module, validation status, and
-   capability tier. This becomes the source of truth that supersedes the
-   prose tables in §2 and §3.
+- `implemented`: dedicated Python implementation exists and has R-backed tests;
+- `experimental`: dedicated Python implementation exists but evidence is
+  incomplete;
+- `compat_alias`: public constructor exists but reuses another family's numeric
+  kernel;
+- `placeholder`: code returns `NaN`, normal approximations, or unsupported
+  fallbacks;
+- `missing`: no Python entry point.
 
-A3. Reconcile the duplicate `JSU` factory between `distributions.py` and
-   `distributions_b11.py` so the registry has one canonical entry.
+This status must be generated from code, not maintained only in prose. The
+generator should inspect `omnilss.distribution_registry`, known compatibility
+modules, `dpqr_functions.py`, and `omnilss/tests/test_r_consistency_*.py`.
 
-A4. Add explicit `R reference:` doc strings to every Python module that ports
-   a named R symbol (most exist, but `extra.py`, `lpred.py`, `pdfplot.py`, and
-   the smoother modules need consistent backlinks).
+P0.2. Block false coverage:
 
-### Phase B — Distribution coverage gap closure (week 2–8)
+- `compat_alias` and `placeholder` families must not be counted in
+  "implemented" totals.
+- `gamlss()` must either reject them by default or require an explicit
+  `allow_experimental=True` / `allow_compat_alias=True` style flag.
+- `family_capabilities.py` must expose the distinction so tests, benchmarks,
+  REST, and gRPC can enforce it.
 
-B1. Add R-backed d/p/q tests for every `experimental` family currently
-   registered (≈75 families). Reuse the structure of
-   `tests/test_dpqr_r_consistency.py`: scalarize R output with the existing
-   `RTestBus`, compare under `1e-5` tolerances, and update the capability
-   matrix.
+P0.3. Keep current cycle scope strict:
 
-B2. Add the missing R distribution factories listed in §2.3, in priority order:
-   ST1, ST2, ST3, ST4, TF2, DBI, DBURR12, BCCGuntr, BCPEuntr, BCTuntr,
-   followed by the categorical/multinomial helpers (`MULTIN`) and the shape
-   utilities (`flexDist`, `momentSK`, `centileSK`, `hazardFun`, `gen.hazard`).
+- Primary work is `omnilss/`.
+- Secondary work is `omnilss-server/` after `omnilss` behavior is validated.
+- `omnilss-pro/` is not part of this plan.
 
-B3. Port the `gen.Family` skeleton families (`count_*`, `binom_*`, `contR_*`,
-   `contRplus_*`, `contR01_*`) as a single generic builder rather than 17
-   independent factories, exposing them through one helper that constructs a
-   `FamilyDefinition` from R-style argument tuples.
+### Phase A — `omnilss` distribution migration from `R/gamlss.dist`
 
-B4. Add the `distributions3` interface (`pdf`, `log_pdf`, `cdf`, `quantile`,
-   `random`, `is_continuous`, `is_discrete`, `support`, `mean`, `variance`,
-   `skewness`, `kurtosis`) on top of `FamilyDefinition`. This mirrors the R
-   `GAMLSS` S4 wrapper without a new class hierarchy.
+A1. Replace compatibility aliases with dedicated distribution kernels, in this
+priority order:
 
-### Phase C — Fitting / diagnostics gap closure (week 4–10)
+1. `ST1`, `ST2`, `ST3`, `ST4` — replace `ST3C` clones with real skew-t
+   parameterizations.
+2. `DBI` — replace `BI` reuse with Double Binomial likelihood, score, Hessian,
+   and d/p/q/r.
+3. `DBURR12` — replace `SICHEL` reuse with Discrete Burr-12 implementation.
+4. `BCCGuntr`, `BCPEuntr`, `BCTuntr` — implement the untruncated Box-Cox
+   variants rather than cloning truncated kernels.
+5. `TF2` — ensure the constructor and d/p/q/r match R `TF2` parameterization,
+   not only a `TF` alias.
 
-C1. Implement the missing diagnostic helpers as data-only ports first:
-   `dtop`, `par.plot`, `prof.dev`, `prof.term`, `find.hyper`, `gen.likelihood`,
-   `loglogSurv`, `logSurv`, `lms`, `z.scores`, `quantSheets`, `findPower`,
-   `histSmo`/`histSmoO/C/P`, `getSmo`, `get.K`, `rvcov`, `getZmatrix`,
-   `vis.lo`, `Formulae2data`, `edfAll`, `ECDF`, `loglogplot`. Each port
-   returns a structured dataclass with the same column names as R, then the
-   plot helpers can layer on matplotlib without coupling.
+A2. Replace generic p/q/r placeholders:
 
-C2. Promote the existing diagnostics wrappers (`predict.gamlssML`,
-   `summary.gamlssML`, `vcov.gamlssML`) from partial to validated by adding
-   R parity tests.
+- Any p/q/r helper returning `NaN`, a standard normal fallback, or a generic
+  random normal draw must either be replaced by a mathematically correct
+  implementation or removed from the family capability surface.
+- For distributions where closed-form CDF/quantile is unavailable, implement a
+  bounded numerical method with explicit support, monotonicity checks, tail
+  handling, and R parity tests.
 
-C3. Round-trip every diagnostic through the JSON model artifact so service
-   clients (REST + gRPC) can request them by name, matching the existing
-   capability metadata snapshot policy.
+A3. Port `gen.Family` skeletons as real builders:
 
-### Phase D — Smoother coverage (week 6–14)
+- `count_*`, `binom_*`, `contR_*`, `contRplus_*`, and `contR01_*` must build
+  `FamilyDefinition` objects from the R-style argument tuples and supplied
+  density/CDF/quantile/random components.
+- Do not route skeletons to `PO` or `NO` except in tests that explicitly assert
+  the current debt and are marked as expected failures.
 
-D1. Port the next tier of R smoothers behind the same `SmoothTerm` ABI used by
-   `pb`/`ps`/`cs`:
-   - `pbm` (monotonic P-spline) and `pbz` (zero-going P-spline) — straightforward
-     constraint extensions of `pb`;
-   - `pbo` (P-spline with offset) and `pbc` (cyclic P-spline);
-   - `cy` (cyclic spline), `pvc` (varying-coefficient term);
-   - `fp` and `bfp` (fractional polynomials);
-   - `lo` (LOESS) and `vis.lo` companion;
-   - `re` and `random` (mixed-effects/random terms via a thin
-     `ridge`-style backend before any nlme-equivalent landing);
-   - `ri` (ridge term), `pcat` (penalized categorical), with `plotDF`,
-     `plotLambda` companions.
+A4. For every family promoted above `experimental`, add:
 
-D2. Update `omnilss.formula_parser` so each new smoother is a first-class term
-   with parameter parsing instead of a regex hint, and add `getSmo`, `edfAll`
-   bindings.
+- d/p/q tests against native R;
+- at least one fitting test when R `gamlss` supports the family in model
+  fitting;
+- extreme-domain tests for support boundaries, zeros/ones, tail probabilities,
+  and invalid parameter values;
+- capability matrix update with evidence artifact path.
 
-D3. Add R-backed smoother parity tests modelled on
-   `tests/test_r_consistency_smooth.py`.
+### Phase B — `omnilss` core `gamlss` migration from `R/gamlss`
 
-### Phase E — Service/runtime alignment (week 10–14)
+B1. Make the RS implementation faithful and auditable:
 
-E1. Expose the new diagnostics, smoother terms, and capability rows through
-    REST (`omnilss-server/main.py`) and gRPC (`omnilss/api/grpc/proto/`)
-    boundaries, with capability metadata advertised through the existing
-    `CapabilityService.RouteCapability`.
+- Separate "statistical update" logic from "numerical guardrail" logic in
+  `fitting.py` and `algorithms/rs_algorithm.py`.
+- Record when Hessian floors, weight clipping, NaN replacement, eta clipping,
+  step halving, or fallback solvers are used.
+- Add tests that fail when clipping silently changes convergence without a
+  warning or diagnostic slot.
 
-E2. Persist new family/diagnostic artifacts through the SQLite-backed model
-    store, including the capability snapshot schema `version` bump.
+B2. Promote CG only behind evidence:
 
-E3. Update the published JOSS-ready benchmark suite to cover the new
-    R-validated families and smoothers.
+- `fitting_cg.py` uses full observed Hessian and line search, which is useful
+  but expensive. Keep it as a validated route only for families with finite
+  derivative tests, monotonic deviance tests, and R/RS comparison artifacts.
+- For families with unstable Hessians, expose CG as experimental and explain
+  fallback behavior in capability metadata.
 
-### Phase F — Release gating and docs (week 12–16)
+B3. Finish core R helper migration before broad service work:
 
-F1. Block release until every family with an OmniLSS factory has at least one
-    R-backed d/p/q test or is explicitly marked `experimental` in the
-    capability matrix.
+- fitting/control: `Formulae2data`, `gen.likelihood`, `gamlssML` parity;
+- diagnostics: `dtop`, `par.plot`, `prof.dev`, `prof.term`, `find.hyper`,
+  `get.K`, `rvcov`, `ECDF`, `loglogplot`;
+- model selection: explicit parity for `stepGAIC*`, `drop/add`, `chooseDist`;
+- survival/specialized: `loglogSurv*`, `logSurv*`, `lms`, `z.scores`,
+  `quantSheets`, `histSmo*`.
 
-F2. Update `README.md`, `omnilss/README.md`, the `chineseREADME` companions,
-    `mkdocs.yml`, and the generated capability page to point at the new
-    coverage matrix.
+B4. For diagnostics and plotting ports, keep the first implementation
+data-only, but enforce R-compatible column names, vector lengths, ordering, and
+edge-case behavior through tests.
 
-F3. Promote families and method routes from `experimental` to `validated`
-    only after the R-equivalence run has been recorded as an artifact.
+### Phase C — `omnilss` smoother migration
+
+C1. Complete first-class smoother parsing and implementation:
+
+- Existing: `pb`, `ps`, `cs` should stay the reference ABI.
+- Next: `pbm`, `pbz`, `pbo`, `pbc`, `pbp`, `pvc`, `cy`, `fp`, `bfp`, `lo`,
+  `vis.lo`, `re`, `random`, `ri`, `pcat`, `plotDF`, `plotLambda`.
+
+C2. Remove parser-level placeholders:
+
+- `formula_parser.py` and `smooth_fitting.py` must not return intercept-like
+  placeholder bases for unsupported smoothers.
+- Unsupported smoothers should fail early with a structured error until their
+  basis, penalty, prediction rebuild, EDF, and R parity tests exist.
+
+C3. Add R-backed smoother tests:
+
+- formula parsing parity;
+- basis dimension and penalty shape checks;
+- fitted values/deviance checks for small deterministic datasets;
+- prediction matrix rebuild checks for saved JSON artifacts.
+
+### Phase D — Benchmark gate correctness and completeness
+
+D1. Fix `benchmarks/comprehensive_r_consistency_test.py` so it is a source of
+truth, not a hand-written whitelist:
+
+- Load the test matrix from generated capability/coverage metadata.
+- Exclude `compat_alias` and `placeholder` entries unless a test explicitly
+  verifies that they are blocked.
+- When `--require-r` is set, any missing R dependency, skipped R comparison,
+  missing R function, null reference value, or all-NaN comparison must fail the
+  run.
+- Python-only mode (`--no-r`) must label results as smoke-only and must never
+  mark R consistency as passed.
+- d/p/q tests must fail when Python returns all `NaN`, all infinities, or a
+  shape-broadcasted scalar that hides vector errors.
+
+D2. Fix fitting and smoother consistency checks:
+
+- Compare deviance, coefficients, fitted values, convergence status, iteration
+  counts, and diagnostic warnings where R exposes them.
+- Make tolerances family-specific when mathematical scale requires it, and store
+  those tolerances in the generated results JSON.
+- Add deterministic seed and data-generation metadata to every result row.
+
+D3. Fix `benchmarks/comprehensive_performance_test.py` so performance never
+outruns correctness:
+
+- Performance runs must require a passing consistency result for the same
+  family/formula/data case, unless explicitly invoked in smoke-only mode.
+- Reports must separate cold time, warm median, R in-process time, Python heap,
+  and JAX device memory availability; missing device memory must be reported as
+  "not measured", not zero.
+- The distribution list must be generated from validated/experimental
+  capability metadata, not manually maintained constants.
+- If R succeeds and Python fails, the script must return non-zero.
+- If Python and R both succeed but deviance exceeds tolerance, the script must
+  return non-zero even if timing succeeded.
+
+D4. Replace stale/null fixtures:
+
+- `benchmarks/r_reference_results.json` currently contains null R values and
+  must not be used as evidence.
+- Generate real R fixtures inside the offline devcontainer and attach the R
+  version, `gamlss`, `gamlss.dist`, data seed, family, formula, tolerance, and
+  source commit.
+
+### Phase E — `omnilss-server` alignment after `omnilss` validation
+
+E1. Expose only validated or explicitly experimental `omnilss` behavior:
+
+- REST and gRPC fit endpoints must reject `compat_alias` and `placeholder`
+  families by default.
+- `CapabilityService.RouteCapability` must include implementation status,
+  validation evidence, and service availability.
+
+E2. Harden service execution:
+
+- fix gRPC `Fit()` error response to return the correct `FitResponse` type;
+- add request size limits, maximum rows/columns, maximum candidate families,
+  maximum iterations, fit timeout, and cancellation;
+- require authentication by default for non-local deployments;
+- avoid exposing raw internal exception strings to clients except in debug mode.
+
+E3. Persist only safe model artifacts:
+
+- service storage should use JSON artifacts (`save_model_json` /
+  `load_model_json`) and must not load pickle/cloudpickle artifacts from
+  untrusted paths;
+- model registry should record family implementation status and capability
+  snapshot at save time.
+
+### Phase F — Release gating and documentation
+
+F1. A release candidate cannot pass unless:
+
+- every exposed `FamilyDefinition` is `implemented` or `experimental` with an
+  explicit reason;
+- no `compat_alias` or `placeholder` family is exposed as normal coverage;
+- `python benchmarks/run_local_validation.py --quick` passes with native R;
+- comprehensive consistency and performance reports are generated as artifacts.
+
+F2. Documentation updates come after code truth:
+
+- update README, package docs, generated capability pages, and migration logs
+  from the generated coverage/capability matrix;
+- do not manually advertise family counts.
 
 ## 7. Risks and acceptance criteria
 
-- **Risk: silent divergence.** Many `experimental` families compile and fit but
-  have not been compared to R. Mitigation: every family must have a d/p/q
-  parity test before its capability tier is upgraded; CI must run the
-  validation gate.
-- **Risk: feature creep during freeze.** The 30-day architecture freeze
-  (`docs/architecture/30-day-feature-freeze.md`) is still in effect.
-  Distribution and smoother additions in Phases B and D must wait until the
-  freeze ends. Phase A and the test-only parts of Phase C are allowed inside
-  the freeze.
-- **Risk: numerical method drift.** The L-BFGS, Adam, and IRLS-cross routes are
-  OmniLSS-specific; they need their own parity targets (e.g. RS reference
-  fits) instead of R `gamlss` since R does not expose them.
-- **Acceptance criteria for "covers gamlss":**
-  - capability matrix has `r_consistency = validated` for every family that
-    OmniLSS exposes;
-  - every R `gamlss` core function listed in §3 is either implemented with an
-    R parity test or explicitly marked unsupported with rationale;
-  - the benchmark-validation gate passes in the offline devcontainer with
-    `gamlss`, `gamlss.dist`, and `jsonlite` installed;
-  - `omnilss/tests` reaches >90% line coverage on the touched modules and the
-    `tests/consistency/` suite is green.
+- **Risk: false coverage through aliases.** A family name can resolve and fit
+  while running another family's math. Mitigation: `compat_alias` status,
+  default rejection in fitting/service routes, and R-backed promotion gates.
+- **Risk: placeholder numerical functions.** Generic p/q/r fallbacks can return
+  normal approximations or `NaN`. Mitigation: placeholder detection in tests and
+  benchmark scripts; no placeholder can pass coverage.
+- **Risk: silent numerical drift.** Hessian floors, clipping, and fallback
+  solvers can keep a fit alive while changing the statistical update.
+  Mitigation: structured diagnostics, warning tests, and parity artifacts.
+- **Risk: benchmark false positives.** Python-only smoke runs, skipped R cases,
+  null fixtures, or manual distribution lists can look like evidence.
+  Mitigation: `--require-r` fail-hard semantics and generated matrices.
+- **Risk: service overexposure.** `omnilss-server` can expose unvalidated
+  families or long-running fits. Mitigation: capability gate, request limits,
+  authentication, timeout, and safe JSON-only artifact loading.
+
+Acceptance criteria for "covers R gamlss / gamlss.dist":
+
+- every R export under `R/gamlss` and `R/gamlss.dist` appears in the generated
+  coverage matrix with one of `implemented`, `experimental`, `compat_alias`,
+  `placeholder`, `missing`, or `unsupported_with_rationale`;
+- every `implemented` distribution has dedicated d/p/q/r code and native R
+  parity evidence;
+- every `implemented` fitting/diagnostic/smoother helper has R-backed tests or
+  an explicitly justified data-only equivalence test;
+- the benchmark validation gate passes in the offline devcontainer with
+  `gamlss`, `gamlss.dist`, and `jsonlite` installed;
+- `comprehensive_r_consistency_test.py` fails when R is required but unavailable
+  or skipped;
+- `comprehensive_performance_test.py` fails when correctness fails for a tested
+  family/formula/data case;
+- `omnilss-server` exposes only statuses allowed by capability metadata;
+- `omnilss-pro` remains out of scope for this cycle.
 
 ## 8. Operating in the offline devcontainer
 

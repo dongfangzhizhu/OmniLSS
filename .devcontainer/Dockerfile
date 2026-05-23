@@ -74,16 +74,21 @@ RUN mkdir -p "${OMNILSS_WHEELHOUSE}" && \
 COPY R/gamlss "${OMNILSS_R_SOURCE}/gamlss"
 COPY R/gamlss.dist "${OMNILSS_R_SOURCE}/gamlss.dist"
 
-# Cache CRAN tarballs for the R packages required by the validation gate. The
-# download.packages step writes versioned source tarballs into
-# /opt/omnilss-r-cache/, which `install.packages(..., repos=NULL, type='source')`
-# can reuse without network access.
+# Cache CRAN tarballs for the R packages required by the validation gate,
+# including recursive dependencies. The cache is indexed as a local source
+# repository so `.codex/setup.sh` can reinstall from file:// URLs offline.
 RUN mkdir -p "${RENV_PATHS_CACHE}" "${OMNILSS_R_CACHE}" && \
     R -e "options(repos=c(CRAN='https://cloud.r-project.org')); \
-          download.packages(c('renv','gamlss','gamlss.dist','jsonlite','languageserver'), \
-                            destdir='${OMNILSS_R_CACHE}', type='source')" && \
+          required <- c('renv','gamlss','gamlss.dist','jsonlite','languageserver'); \
+          available <- available.packages(); \
+          dep_types <- c('Depends','Imports','LinkingTo'); \
+          deps <- tools::package_dependencies(required, db=available, which=dep_types, recursive=TRUE); \
+          pkgs <- unique(c(required, unlist(deps, use.names=FALSE))); \
+          download.packages(pkgs, destdir='${OMNILSS_R_CACHE}', type='source')" && \
+    R -e "tools::write_PACKAGES('${OMNILSS_R_CACHE}', type='source')" && \
     R -e "options(repos=c(CRAN='https://cloud.r-project.org')); \
           install.packages(c('renv','gamlss','gamlss.dist','jsonlite','languageserver'), \
+                           dependencies=c('Depends','Imports','LinkingTo'), \
                            Ncpus=max(1, parallel::detectCores()-1))"
 
 # Fail the image build if a required offline-development dependency was not

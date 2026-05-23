@@ -89,7 +89,7 @@ if command -v R >/dev/null 2>&1; then
   if is_truthy "${OFFLINE}"; then
     warn "OMNILSS_OFFLINE=${OFFLINE}; skipping CRAN-backed R package refresh."
     if [[ -d "${R_CACHE}" ]]; then
-      Rscript -e "missing <- setdiff(c('renv','gamlss','gamlss.dist','jsonlite','languageserver'), rownames(installed.packages())); cache <- Sys.getenv('OMNILSS_R_CACHE','${R_CACHE}'); for (pkg in missing) { tarballs <- list.files(cache, pattern=paste0('^', pkg, '_.*\\.tar\\.gz$'), full.names=TRUE); if (length(tarballs)) install.packages(tarballs[1], repos=NULL, type='source') }"
+      Rscript -e "required <- c('renv','gamlss','gamlss.dist','jsonlite','languageserver'); missing <- setdiff(required, rownames(installed.packages())); cache <- Sys.getenv('OMNILSS_R_CACHE','${R_CACHE}'); if (length(missing) && file.exists(file.path(cache, 'PACKAGES'))) install.packages(missing, repos=paste0('file://', normalizePath(cache)), type='source', dependencies=c('Depends','Imports','LinkingTo'))"
     fi
     if [[ -d "${R_SOURCE}/gamlss" || -d "${R_SOURCE}/gamlss.dist" ]]; then
       Rscript -e "missing <- setdiff(c('gamlss','gamlss.dist'), rownames(installed.packages())); src <- Sys.getenv('OMNILSS_R_SOURCE','${R_SOURCE}'); for (pkg in missing) { dir <- file.path(src, pkg); if (dir.exists(dir)) install.packages(dir, repos=NULL, type='source') }"

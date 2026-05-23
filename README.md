@@ -245,10 +245,11 @@ must not be cited as proof of equivalence with native `gamlss`.
 
 ## Offline Dev + R Validation Container
 
-The repository ships an offline-capable devcontainer that lets a single
-container develop OmniLSS in Python and validate against native R `gamlss` /
-`gamlss.dist` without further network access. It is the recommended setup for
-running the validation gate end to end.
+The repository ships an offline-capable devcontainer for Codex Cloud and local
+development. A single CPU container can develop OmniLSS in Python, regenerate
+gRPC stubs, build docs/package artifacts, and validate against native R
+`gamlss` / `gamlss.dist` without further network access. It is the recommended
+setup for running the validation gate end to end.
 
 ```bash
 # Build once with network access. This is the only phase allowed to fetch apt,
@@ -256,7 +257,8 @@ running the validation gate end to end.
 devcontainer build --workspace-folder .
 devcontainer up --workspace-folder .
 
-# Inside the container, refresh editable installs and confirm health.
+# Inside the container, refresh editable installs and confirm health from the
+# cached Python/R artifacts baked into the image.
 bash .codex/setup.sh
 
 # Run the consistency-then-performance gate against native R gamlss.
@@ -268,9 +270,9 @@ The image bakes in:
 - R 4.4.1 (from `rocker/r-ver`) with `gamlss`, `gamlss.dist`, `jsonlite`,
   `renv`, and `languageserver`, plus the C/C++/Fortran toolchain needed to
   rebuild `gamlss` from source.
-- A local CRAN mirror of `gamlss` / `gamlss.dist` source tarballs at
-  `/opt/omnilss-r-cache/` so a fresh offline R install is possible without
-  network access.
+- A local CRAN source repository at `/opt/omnilss-r-cache/`, including
+  recursive dependencies for the R validation stack, so a fresh offline R
+  package install is possible without network access.
 - A snapshot of the bundled `R/gamlss/` and `R/gamlss.dist/` source trees at
   `/opt/omnilss-r-source/`, which `R CMD INSTALL` can reuse if a future R
   package upgrade breaks an offline workflow.
@@ -281,6 +283,19 @@ The image bakes in:
 
 The image build step fails fast if any required Python module or R package is
 missing, so an offline reuse cannot silently regress on dependencies.
+
+The default `.devcontainer/devcontainer.json` is the CPU profile Codex Cloud
+should use. It sets `OMNILSS_OFFLINE=1`, so `.codex/setup.sh` consumes the
+prebuilt wheelhouse and local R package repository instead of trying PyPI or
+CRAN during the cloud session. To refresh caches intentionally in a connected
+maintenance session, run:
+
+```bash
+OMNILSS_OFFLINE=0 bash .codex/setup.sh
+```
+
+The optional `.devcontainer/devcontainer.gpu.json` profile is for self-hosted
+GPU machines and may need network access to install CUDA-enabled JAX wheels.
 
 If you only need a Python development environment without R, the same
 Dockerfile works — the R-backed tests will skip cleanly. Detailed runbooks
