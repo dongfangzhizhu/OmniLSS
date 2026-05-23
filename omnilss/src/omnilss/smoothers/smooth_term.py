@@ -86,7 +86,7 @@ class SmoothTerm:
             )
         
         # Validate smoother
-        valid_smoothers = ["pb", "ps", "cs"]
+        valid_smoothers = ["pb", "ps", "cs", "lo", "random", "re", "ri", "pcat", "fp", "bfp", "cy", "pvc", "pbm", "pbz", "pbo", "pbc"]
         if self.smoother not in valid_smoothers:
             raise ValueError(
                 f"smoother must be one of {valid_smoothers}, got {self.smoother!r}"
@@ -147,7 +147,7 @@ class SmoothTerm:
 def s(
     variable: str,
     method: Literal["auto", "GCV", "REML", "AIC", "ML", "GAIC"] = "auto",
-    smoother: Literal["pb", "ps", "cs"] = "pb",
+    smoother: Literal["pb", "ps", "cs", "lo", "random", "re", "ri", "pcat", "fp", "bfp", "cy", "pvc", "pbm", "pbz", "pbo", "pbc"] = "pb",
     df: Optional[float] = None,
     lambda_: Optional[float] = None,
     **kwargs

@@ -21,14 +21,31 @@ class TestDBIConsistency(unittest.TestCase):
 
     def test_dbi_dpq_consistency_against_bi_reference(self) -> None:
         fam = resolve("DBI")
-        for profile_name, mu in (
-            ("mid_range", np.linspace(0.1, 0.9, 30)),
-            ("edge_heavy", np.linspace(0.01, 0.99, 30)),
+        for profile_name, x, mu, p in (
+            (
+                "mid_range",
+                np.arange(0, 30),
+                np.linspace(0.1, 0.9, 30),
+                np.linspace(0.01, 0.99, 30),
+            ),
+            (
+                "edge_heavy",
+                np.arange(0, 30),
+                np.linspace(0.01, 0.99, 30),
+                np.linspace(0.001, 0.999, 30),
+            ),
+            (
+                "ultra_tail",
+                np.arange(0, 30),
+                np.concatenate(
+                    [np.linspace(1e-4, 0.05, 15), np.linspace(0.95, 1.0 - 1e-4, 15)]
+                ),
+                np.concatenate(
+                    [np.geomspace(1e-6, 1e-2, 15), 1.0 - np.geomspace(1e-2, 1e-6, 15)]
+                ),
+            ),
         ):
             with self.subTest(profile=profile_name):
-                x = np.arange(0, 30)
-                p = np.linspace(0.01, 0.99, 30)
-
                 # Compatibility phase: DBI routes through BI kernel.
                 r_d = self.bus.eval_family("BI", "d", {"x": x.tolist(), "mu": mu.tolist()})
                 r_p = self.bus.eval_family("BI", "p", {"q": x.tolist(), "mu": mu.tolist()})

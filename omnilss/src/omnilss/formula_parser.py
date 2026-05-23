@@ -38,7 +38,8 @@ class SmoothTerm:
         
     Notes
     -----
-    Random effects ("random", "re") are not currently implemented.
+    `random`/`re`/`ri`/`pcat`/`fp`/`bfp`/`cy`/`pvc`/`pbm`/`pbz`/`pbo`/`pbc` and `lo` can be parsed as smooth-like terms for staged API
+    compatibility; full fitting parity remains pending.
     """
     smoother: str
     variable: str
@@ -205,7 +206,7 @@ def parse_formula(formula: str) -> ParsedFormula:
         if not term or term == "1":
             continue
         
-        # Check if it's a smooth term (pb, ps, cs, s, te, ti)
+        # Check if it's a smooth term (pb, ps, cs, s, lo, random, re, ri, pcat, fp, bfp, cy, pvc, pbm, pbz, pbo, pbc, te, ti)
         smooth_match = re.match(r'(\w+)\((.*)\)', term)
         if smooth_match:
             smoother = smooth_match.group(1)
@@ -217,7 +218,7 @@ def parse_formula(formula: str) -> ParsedFormula:
                 tensor = _parse_tensor_term(smoother, args_str)
                 tensor_terms.append(tensor)
             # Check if it's a recognized smooth term
-            elif smoother in ('pb', 'ps', 'cs', 's'):
+            elif smoother in ('pb', 'ps', 'cs', 's', 'lo', 'random', 're', 'ri', 'pcat', 'fp', 'bfp', 'cy', 'pvc', 'pbm', 'pbz', 'pbo', 'pbc'):
                 # Parse smooth term
                 smooth = _parse_smooth_term(smoother, args_str)
                 smooth_terms.append(smooth)
@@ -699,6 +700,7 @@ def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
             'variable': term.variable,
             'df': term.df,
             'lambda_': term.lambda_,
+            'staged_compat': False,
         }
     
     elif actual_smoother == "ps":
@@ -729,6 +731,7 @@ def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
             'variable': term.variable,
             'df': term.df,
             'lambda_': term.lambda_,
+            'staged_compat': False,
         }
 
     elif actual_smoother == "cs":
@@ -746,6 +749,105 @@ def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
             'df': term.df,
             'lambda_': term.lambda_,
             'cs_x': x.copy(),  # store x for re-fitting
+            'staged_compat': False,
+        }
+    elif actual_smoother in {"random", "re", "ri", "pcat"}:
+        # Random-effects staged basis: treatment-coded group indicators.
+        # This provides a concrete data-path basis for mixed-term formulas while
+        # full random-effects fitting parity is implemented separately.
+        levels = np.unique(x)
+        if len(levels) <= 1:
+            basis = np.zeros((len(x), 0), dtype=float)
+            kept_levels = np.array([], dtype=levels.dtype)
+        else:
+            kept_levels = levels[1:]  # drop baseline level
+            basis = np.column_stack([(x == lvl).astype(float) for lvl in kept_levels])
+        return {
+            "basis": basis,
+            "smoother": actual_smoother,
+            "variable": term.variable,
+            "levels": levels,
+            "kept_levels": kept_levels,
+            "df": term.df,
+            "lambda_": term.lambda_,
+            "staged_compat": True,
+        }
+    elif actual_smoother == "lo":
+        # Lightweight compatibility basis: local smoother placeholder columns.
+        # Uses centered x and x^2 to keep a non-linear data path available.
+        x_float = np.asarray(x, dtype=np.float64)
+        centered = x_float - float(np.mean(x_float))
+        basis = np.column_stack([centered, centered ** 2])
+        return {
+            "basis": basis,
+            "smoother": "lo",
+            "variable": term.variable,
+            "df": term.df,
+            "lambda_": term.lambda_,
+            "span": float(term.kwargs.get("span", 0.5)),
+            "staged_compat": True,
+        }
+    elif actual_smoother in {"fp", "bfp"}:
+        # Fractional-polynomial staged compatibility basis (degree-2 subset).
+        x_float = np.asarray(x, dtype=np.float64)
+        shifted = x_float + 1e-6
+        basis = np.column_stack([np.log(np.maximum(shifted, 1e-12)), np.sqrt(np.maximum(shifted, 1e-12))])
+        return {
+            "basis": basis,
+            "smoother": actual_smoother,
+            "variable": term.variable,
+            "df": term.df,
+            "lambda_": term.lambda_,
+            "staged_compat": True,
+        }
+    elif actual_smoother == "cy":
+        # Cyclic smoother staged basis: sin/cos periodic expansion.
+        x_float = np.asarray(x, dtype=np.float64)
+        xmin = float(np.min(x_float))
+        xmax = float(np.max(x_float))
+        width = max(xmax - xmin, 1e-12)
+        phase = 2.0 * np.pi * (x_float - xmin) / width
+        basis = np.column_stack([np.sin(phase), np.cos(phase)])
+        return {
+            "basis": basis,
+            "smoother": "cy",
+            "variable": term.variable,
+            "df": term.df,
+            "lambda_": term.lambda_,
+            "staged_compat": True,
+        }
+    elif actual_smoother == "pvc":
+        # Varying-coefficient staged basis: center x and add cubic trend column.
+        x_float = np.asarray(x, dtype=np.float64)
+        centered = x_float - float(np.mean(x_float))
+        basis = np.column_stack([centered, centered ** 3])
+        return {
+            "basis": basis,
+            "smoother": "pvc",
+            "variable": term.variable,
+            "df": term.df,
+            "lambda_": term.lambda_,
+            "staged_compat": True,
+        }
+    elif actual_smoother in {"pbm", "pbz", "pbo", "pbc"}:
+        # Penalized-B spline variants staged compatibility basis.
+        x_float = np.asarray(x, dtype=np.float64)
+        centered = x_float - float(np.mean(x_float))
+        if actual_smoother == "pbm":
+            basis = np.column_stack([centered, centered ** 2])
+        elif actual_smoother == "pbz":
+            basis = np.column_stack([centered, np.maximum(centered, 0.0)])
+        elif actual_smoother == "pbo":
+            basis = np.column_stack([centered, np.sign(centered) * np.sqrt(np.abs(centered) + 1e-12)])
+        else:  # pbc
+            basis = np.column_stack([np.cos(centered), np.sin(centered)])
+        return {
+            "basis": basis,
+            "smoother": actual_smoother,
+            "variable": term.variable,
+            "df": term.df,
+            "lambda_": term.lambda_,
+            "staged_compat": True,
         }
     
     else:

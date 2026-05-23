@@ -362,9 +362,11 @@ from .par_plot import par_plot, ParPlotResult, ParPlotSeries
 from .prof_dev import prof_dev, prof_term, ProfDevResult
 from .lms import lms, z_scores, LMSResult
 from .getSmo import getSmo, edfAll, SmootherInfo
+from .plot_smoothers import plotDF, plotLambda, SmootherPlotRow
 from .getZmatrix import getZmatrix
 from .quantSheets import quantSheets, findPower, z_scoresQS, QuantSheetsResult
 from .vis_lo import vis_lo, VisLoResult
+from .lo import lo, LoResult
 from .quantSheets_control import quantSheets_control, QuantSheetsControl
 from .centileSK import centileSK, CentileSKResult
 from .centileKurt import centileKurt, CentileKurtResult
@@ -827,6 +829,8 @@ __all__ = [
     "LMSResult",
     "getSmo",
     "edfAll",
+    "plotDF",
+    "plotLambda",
     "SmootherInfo",
     "getZmatrix",
     "logSurv",
@@ -842,7 +846,9 @@ __all__ = [
     "z_scoresQS",
     "QuantSheetsResult",
     "vis_lo",
+    "lo",
     "VisLoResult",
+    "LoResult",
     "quantSheets_control",
     "QuantSheetsControl",
     "logSurv0",
