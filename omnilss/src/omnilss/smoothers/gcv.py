@@ -12,6 +12,8 @@ Craven, P., & Wahba, G. (1978). Smoothing noisy data with spline functions.
     Numerische mathematik, 31(4), 377-403.
 Wood, S. N. (2017). Generalized Additive Models: An Introduction with R (2nd ed.).
     Chapman and Hall/CRC.
+
+R reference: `gamlss/R/pb.R::pb.control` (GCV-style λ selection for spline smoothers).
 """
 
 from __future__ import annotations

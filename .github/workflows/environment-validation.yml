@@ -1,6 +1,22 @@
 name: Environment Validation
 
 on:
+  pull_request:
+    paths:
+      - "omnilss/src/omnilss/**"
+      - "omnilss/tests/**"
+      - "benchmarks/**"
+      - ".github/workflows/environment-validation.yml"
+      - ".devcontainer/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "omnilss/src/omnilss/**"
+      - "omnilss/tests/**"
+      - "benchmarks/**"
+      - ".github/workflows/environment-validation.yml"
+      - ".devcontainer/**"
   workflow_dispatch:
     inputs:
       enable_gpu:
@@ -47,6 +63,12 @@ jobs:
           python -m build
           twine check dist/*
 
+      - name: Verify R coverage matrix is up to date
+        run: |
+          PYTHONPATH=omnilss/src python omnilss/tools/generate_r_coverage_matrix.py
+          git diff --exit-code docs/development/r-coverage-matrix-2026-05-22.json
+
+
   r-reference:
     name: R reference fixture validation
     runs-on: ubuntu-latest
@@ -88,6 +110,22 @@ jobs:
         with:
           name: r-reference-results
           path: /tmp/r_reference_results.json
+
+  quick-r-parity:
+    name: Quick R parity gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build and start devcontainer
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: |
+            cd omnilss
+            python ../benchmarks/run_local_validation.py --quick
 
   gpu-smoke:
     name: GPU smoke validation (self-hosted optional)

@@ -16,6 +16,8 @@ Main smoothers:
 - lo: LOESS smoothing
 
 R source: gamlss/R/
+
+R reference: `gamlss/R/zzz.R` (namespace-level smoother exports) and smoother modules in `gamlss/R/`.
 """
 
 from __future__ import annotations

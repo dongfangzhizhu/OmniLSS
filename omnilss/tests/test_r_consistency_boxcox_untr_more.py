@@ -1,0 +1,80 @@
+"""R consistency harness for BCPEuntr/BCTuntr compatibility families."""
+
+from __future__ import annotations
+
+import unittest
+
+import jax.numpy as jnp
+import numpy as np
+
+from omnilss.distribution_registry import resolve
+from tests.rbus.core import RTestBus
+
+
+class TestBoxCoxUntrMoreConsistency(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        try:
+            cls.bus = RTestBus()
+        except RuntimeError as exc:
+            raise unittest.SkipTest(f"RTestBus not available: {exc}")
+
+    def test_bcpeuntr_d_consistency_against_bcpe_reference(self) -> None:
+        x = np.linspace(0.3, 3.5, 30)
+        mu = np.linspace(0.8, 2.0, 30)
+        sigma = np.linspace(0.1, 0.6, 30)
+        nu = np.linspace(-0.4, 0.4, 30)
+        tau = np.linspace(1.2, 2.5, 30)
+
+        r_d = self.bus.eval_family("BCPE", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
+        fam = resolve("BCPEUNTR")
+        py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
+        np.testing.assert_allclose(py_d, r_d, rtol=1e-5, atol=1e-7)
+
+    def test_bcpeuntr_pq_consistency_against_bcpe_reference(self) -> None:
+        q = np.linspace(0.3, 3.5, 30)
+        p = np.linspace(0.05, 0.95, 30)
+        mu = np.linspace(0.8, 2.0, 30)
+        sigma = np.linspace(0.1, 0.6, 30)
+        nu = np.linspace(-0.4, 0.4, 30)
+        tau = np.linspace(1.2, 2.5, 30)
+
+        r_p = self.bus.eval_family("BCPE", "p", {"q": q.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
+        r_q = self.bus.eval_family("BCPE", "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
+        fam = resolve("BCPEUNTR")
+        py_p = np.asarray(fam.p(jnp.array(q), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
+        py_q = np.asarray(fam.q(jnp.array(p), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
+        np.testing.assert_allclose(py_p, r_p, rtol=1e-5, atol=1e-7)
+        np.testing.assert_allclose(py_q, r_q, rtol=1e-5, atol=1e-7)
+
+    def test_bctuntr_d_consistency_against_bct_reference(self) -> None:
+        x = np.linspace(0.3, 3.5, 30)
+        mu = np.linspace(0.8, 2.0, 30)
+        sigma = np.linspace(0.1, 0.6, 30)
+        nu = np.linspace(-0.4, 0.4, 30)
+        tau = np.linspace(2.2, 5.0, 30)
+
+        r_d = self.bus.eval_family("BCT", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
+        fam = resolve("BCTUNTR")
+        py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
+        np.testing.assert_allclose(py_d, r_d, rtol=1e-5, atol=1e-7)
+
+    def test_bctuntr_pq_consistency_against_bct_reference(self) -> None:
+        q = np.linspace(0.3, 3.5, 30)
+        p = np.linspace(0.05, 0.95, 30)
+        mu = np.linspace(0.8, 2.0, 30)
+        sigma = np.linspace(0.1, 0.6, 30)
+        nu = np.linspace(-0.4, 0.4, 30)
+        tau = np.linspace(2.2, 5.0, 30)
+
+        r_p = self.bus.eval_family("BCT", "p", {"q": q.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
+        r_q = self.bus.eval_family("BCT", "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
+        fam = resolve("BCTUNTR")
+        py_p = np.asarray(fam.p(jnp.array(q), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
+        py_q = np.asarray(fam.q(jnp.array(p), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
+        np.testing.assert_allclose(py_p, r_p, rtol=1e-5, atol=1e-7)
+        np.testing.assert_allclose(py_q, r_q, rtol=1e-5, atol=1e-7)
+
+
+if __name__ == "__main__":
+    unittest.main()
