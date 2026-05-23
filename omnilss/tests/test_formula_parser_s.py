@@ -103,6 +103,53 @@ class TestSFunctionParsing:
         assert smooth.kwargs['degree'] == 3.0
         assert smooth.kwargs['n_knots'] == 20.0
 
+    def test_s_with_random_re_and_lo_smoother(self):
+        """Test parsing s(x, smoother='random'|'re'|'lo')."""
+        parsed = parse_formula("y ~ s(grp, smoother='random') + s(site, smoother='re') + s(x, smoother='lo')")
+        assert len(parsed.smooth_terms) == 3
+        assert parsed.smooth_terms[0].smoother == "random"
+        assert parsed.smooth_terms[0].variable == "grp"
+        assert parsed.smooth_terms[1].smoother == "re"
+        assert parsed.smooth_terms[1].variable == "site"
+        assert parsed.smooth_terms[2].smoother == "lo"
+        assert parsed.smooth_terms[2].variable == "x"
+
+    def test_s_with_pcat_smoother(self):
+        parsed = parse_formula("y ~ s(cat, smoother='pcat')")
+        assert len(parsed.smooth_terms) == 1
+        assert parsed.smooth_terms[0].smoother == "pcat"
+        assert parsed.smooth_terms[0].variable == "cat"
+
+    def test_s_with_ri_smoother(self):
+        parsed = parse_formula("y ~ s(id, smoother='ri')")
+        assert len(parsed.smooth_terms) == 1
+        assert parsed.smooth_terms[0].smoother == "ri"
+        assert parsed.smooth_terms[0].variable == "id"
+
+    def test_s_with_fp_and_bfp_smoother(self):
+        parsed = parse_formula("y ~ s(x, smoother='fp') + s(z, smoother='bfp')")
+        assert len(parsed.smooth_terms) == 2
+        assert parsed.smooth_terms[0].smoother == "fp"
+        assert parsed.smooth_terms[1].smoother == "bfp"
+
+    def test_s_with_cy_smoother(self):
+        parsed = parse_formula("y ~ s(x, smoother='cy')")
+        assert len(parsed.smooth_terms) == 1
+        assert parsed.smooth_terms[0].smoother == "cy"
+
+    def test_s_with_pvc_smoother(self):
+        parsed = parse_formula("y ~ s(x, smoother='pvc')")
+        assert len(parsed.smooth_terms) == 1
+        assert parsed.smooth_terms[0].smoother == "pvc"
+
+    def test_s_with_pbm_pbz_pbo_pbc_smoother(self):
+        parsed = parse_formula("y ~ s(x, smoother='pbm') + s(z, smoother='pbz') + s(a, smoother='pbo') + s(b, smoother='pbc')")
+        assert len(parsed.smooth_terms) == 4
+        assert parsed.smooth_terms[0].smoother == "pbm"
+        assert parsed.smooth_terms[1].smoother == "pbz"
+        assert parsed.smooth_terms[2].smoother == "pbo"
+        assert parsed.smooth_terms[3].smoother == "pbc"
+
 
 class TestMultipleSTerms:
     """Test formulas with multiple s() terms."""

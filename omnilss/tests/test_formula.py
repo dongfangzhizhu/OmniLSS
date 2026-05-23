@@ -95,6 +95,17 @@ class TestFormulaParser(unittest.TestCase):
         self.assertEqual(parsed.smooth_terms[1].smoother, "ps")
         self.assertEqual(parsed.smooth_terms[2].smoother, "cs")
 
+    def test_parse_staged_lo_random_re_smoothers(self):
+        """`lo`/`random`/`re` should be parsed as smooth-like staged terms."""
+        parsed = parse_formula("y ~ lo(x1) + random(grp) + re(site)")
+        self.assertEqual(len(parsed.smooth_terms), 3)
+        self.assertEqual(parsed.smooth_terms[0].smoother, "lo")
+        self.assertEqual(parsed.smooth_terms[0].variable, "x1")
+        self.assertEqual(parsed.smooth_terms[1].smoother, "random")
+        self.assertEqual(parsed.smooth_terms[1].variable, "grp")
+        self.assertEqual(parsed.smooth_terms[2].smoother, "re")
+        self.assertEqual(parsed.smooth_terms[2].variable, "site")
+
     def test_parse_invalid_formula(self):
         """Test that invalid formulas raise errors."""
         # No tilde
@@ -228,6 +239,7 @@ class TestDesignMatrix(unittest.TestCase):
         self.assertEqual(info["smoother"], "pb")
         self.assertEqual(info["variable"], "x3")
         self.assertEqual(info["df"], 5.0)
+        self.assertIs(info["staged_compat"], False)
 
 
 if __name__ == "__main__":
@@ -263,6 +275,93 @@ def test_build_design_matrix_factor_term():
     # treatment coding (baseline=a): columns are [b, c]
     np.testing.assert_array_equal(X[:, 1], np.array([0.0, 1.0, 0.0, 0.0]))
     np.testing.assert_array_equal(X[:, 2], np.array([0.0, 0.0, 0.0, 1.0]))
+
+
+def test_build_design_matrix_random_and_re_terms():
+    data = {
+        "y": np.array([1.0, 2.0, 3.0, 4.0]),
+        "grp": np.array(["a", "b", "a", "c"]),
+        "site": np.array(["s1", "s1", "s2", "s3"]),
+    }
+    parsed = parse_formula("y ~ random(grp) + re(site) - 1")
+    X, smooth_info = build_design_matrix(parsed, data)
+    assert X.shape == (4, 4)
+    assert smooth_info["smooth_0"]["smoother"] == "random"
+    assert smooth_info["smooth_1"]["smoother"] == "re"
+    assert smooth_info["smooth_0"]["staged_compat"] is True
+    assert smooth_info["smooth_1"]["staged_compat"] is True
+
+
+def test_build_design_matrix_pcat_term():
+    data = {
+        "y": np.array([1.0, 2.0, 3.0, 4.0]),
+        "cat": np.array(["c1", "c2", "c1", "c3"]),
+    }
+    parsed = parse_formula("y ~ pcat(cat) - 1")
+    X, smooth_info = build_design_matrix(parsed, data)
+    assert X.shape == (4, 2)  # 3 levels -> 2 treatment columns
+    assert smooth_info["smooth_0"]["smoother"] == "pcat"
+
+
+def test_build_design_matrix_ri_term():
+    data = {
+        "y": np.array([1.0, 2.0, 3.0, 4.0]),
+        "id": np.array(["i1", "i2", "i1", "i3"]),
+    }
+    parsed = parse_formula("y ~ ri(id) - 1")
+    X, smooth_info = build_design_matrix(parsed, data)
+    assert X.shape == (4, 2)  # 3 levels -> 2 treatment columns
+    assert smooth_info["smooth_0"]["smoother"] == "ri"
+
+
+def test_build_design_matrix_fp_and_bfp_terms():
+    data = {
+        "y": np.array([1.0, 2.0, 3.0, 4.0]),
+        "x": np.array([0.2, 0.5, 1.0, 2.0]),
+    }
+    parsed = parse_formula("y ~ fp(x) + bfp(x) - 1")
+    X, smooth_info = build_design_matrix(parsed, data)
+    assert X.shape == (4, 4)  # two basis cols per smooth term
+    assert smooth_info["smooth_0"]["smoother"] == "fp"
+    assert smooth_info["smooth_1"]["smoother"] == "bfp"
+    assert smooth_info["smooth_0"]["staged_compat"] is True
+    assert smooth_info["smooth_1"]["staged_compat"] is True
+
+
+def test_build_design_matrix_cy_term():
+    data = {
+        "y": np.array([1.0, 2.0, 3.0, 4.0]),
+        "x": np.array([0.0, 1.0, 2.0, 3.0]),
+    }
+    parsed = parse_formula("y ~ cy(x) - 1")
+    X, smooth_info = build_design_matrix(parsed, data)
+    assert X.shape == (4, 2)
+    assert smooth_info["smooth_0"]["smoother"] == "cy"
+
+
+def test_build_design_matrix_pvc_term():
+    data = {
+        "y": np.array([1.0, 2.0, 3.0, 4.0]),
+        "x": np.array([0.0, 1.0, 2.0, 3.0]),
+    }
+    parsed = parse_formula("y ~ pvc(x) - 1")
+    X, smooth_info = build_design_matrix(parsed, data)
+    assert X.shape == (4, 2)
+    assert smooth_info["smooth_0"]["smoother"] == "pvc"
+
+
+def test_build_design_matrix_pbm_pbz_pbo_pbc_terms():
+    data = {
+        "y": np.array([1.0, 2.0, 3.0, 4.0]),
+        "x": np.array([0.0, 1.0, 2.0, 3.0]),
+    }
+    parsed = parse_formula("y ~ pbm(x) + pbz(x) + pbo(x) + pbc(x) - 1")
+    X, smooth_info = build_design_matrix(parsed, data)
+    assert X.shape == (4, 8)  # each smoother contributes 2 columns
+    assert smooth_info["smooth_0"]["smoother"] == "pbm"
+    assert smooth_info["smooth_1"]["smoother"] == "pbz"
+    assert smooth_info["smooth_2"]["smoother"] == "pbo"
+    assert smooth_info["smooth_3"]["smoother"] == "pbc"
 
 
 def test_formula_expression_uses_safe_ast_evaluator():

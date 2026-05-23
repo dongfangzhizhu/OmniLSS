@@ -21,9 +21,10 @@ class TestDBURR12Consistency(unittest.TestCase):
 
     def test_dburr12_dpq_consistency_against_sichel_reference(self) -> None:
         fam = resolve("DBURR12")
-        for profile_name, mu, sigma, nu, p in (
+        for profile_name, x, mu, sigma, nu, p in (
             (
                 "central",
+                np.arange(0, 40),
                 np.linspace(0.5, 8.0, 40),
                 np.linspace(0.2, 1.0, 40),
                 np.linspace(-0.3, 0.8, 40),
@@ -31,15 +32,24 @@ class TestDBURR12Consistency(unittest.TestCase):
             ),
             (
                 "tail_edge",
+                np.arange(0, 40),
                 np.linspace(0.1, 15.0, 40),
                 np.linspace(0.05, 2.0, 40),
                 np.linspace(-0.95, 1.2, 40),
                 np.linspace(0.01, 0.99, 40),
             ),
+            (
+                "ultra_tail_prob",
+                np.arange(0, 60),
+                np.linspace(0.1, 25.0, 60),
+                np.linspace(0.05, 2.4, 60),
+                np.linspace(-0.98, 1.4, 60),
+                np.concatenate(
+                    [np.geomspace(1e-6, 1e-2, 30), 1.0 - np.geomspace(1e-2, 1e-6, 30)]
+                ),
+            ),
         ):
             with self.subTest(profile=profile_name):
-                x = np.arange(0, 40)
-
                 # Compatibility phase: DBURR12 routes through SICHEL kernel.
                 r_d = self.bus.eval_family("SICHEL", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
                 r_p = self.bus.eval_family("SICHEL", "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
