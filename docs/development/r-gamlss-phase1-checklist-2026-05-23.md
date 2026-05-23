@@ -35,8 +35,8 @@
 - 🟡 ST2（已提供兼容构造器与 registry，当前共用 ST3C 数值内核）
 - 🟡 ST3（已提供兼容构造器与 registry，当前共用 ST3C 数值内核）
 - 🟡 ST4（已提供兼容构造器与 registry，当前共用 ST3C 数值内核）
-- 🟡 DBI（已提供兼容构造器与 registry，当前共用 BI 数值内核）
-- 🟡 DBURR12（已提供兼容构造器与 registry，当前共用 SICHEL 数值内核）
+- 🟡 DBI（已提供兼容构造器与 registry，当前共用 BI 数值内核；并新增基于 BI 参考路径的 d/p/q R 一致性测试脚手架）
+- 🟡 DBURR12（已提供兼容构造器与 registry，当前共用 SICHEL 数值内核；并新增基于 SICHEL 参考路径的 d/p/q R 一致性测试脚手架）
 - 🟡 BCCGuntr（已提供兼容构造器与 registry，当前共用 BCCG 数值内核）
 - 🟡 BCPEuntr（已提供兼容构造器与 registry，当前共用 BCPE 数值内核）
 - 🟡 BCTuntr（已提供兼容构造器与 registry，当前共用 BCT 数值内核）
@@ -45,7 +45,7 @@
 
 ### B3. `gen.Family` skeleton builder
 
-- 🟡 已新增统一兼容 builder 入口（`build_gen_family_skeleton`），可按 skeleton 名称生成过渡 family；仍待逐个替换为专用数值实现。
+- 🟡 已新增统一兼容 builder 入口（`build_gen_family_skeleton`）并将 19 个常见 skeleton 名称注册到 registry；仍待逐个替换为专用数值实现。
 
 ### B4. `distributions3` 风格接口
 
