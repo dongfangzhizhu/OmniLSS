@@ -1485,6 +1485,33 @@ def TF() -> StudentTFamily:
     )
 
 
+def TF2() -> StudentTFamily:
+    """Alternative Student-t constructor compatible with R `gamlss.dist::TF2`.
+
+    R reference: `gamlss.dist/R/TF2.R::TF2`.
+
+    Current implementation reuses the canonical `TF` parameterization and
+    numerics as a compatibility alias while keeping a distinct family name.
+    """
+    fam = TF()
+    return StudentTFamily(
+        name="TF2",
+        parameters=fam.parameters,
+        g_dev_inc=fam.g_dev_inc,
+        type=fam.type,
+        links=fam.links,
+        link_functions=fam.link_functions,
+        link_inverses=fam.link_inverses,
+        link_derivatives=fam.link_derivatives,
+        score_functions=fam.score_functions,
+        hessian_functions=fam.hessian_functions,
+        d=fam.d,
+        p=fam.p,
+        q=fam.q,
+        r=fam.r,
+    )
+
+
 def JSU() -> JohnsonSUFamily:
     """Staged Johnson SU family with parameters `mu`, `sigma`, `nu`, `tau`."""
 

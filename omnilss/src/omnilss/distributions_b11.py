@@ -1,4 +1,4 @@
-"""Batch 11: GIG, GB1 distributions plus a legacy JSU alias."""
+"""Batch 11: GIG and GB1 distributions."""
 
 from __future__ import annotations
 
@@ -14,12 +14,6 @@ from .links import (
     identity_link, identity_inverse, identity_derivative
 )
 
-
-def JSU():
-    """Legacy alias that delegates to the canonical JSU factory."""
-    from .distributions import JSU as _canonical_jsu
-
-    return _canonical_jsu()
 
 
 # ============================================================================
