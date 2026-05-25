@@ -12,9 +12,11 @@ import numpy as np
 @dataclass(frozen=True)
 class LMSResult:
     z: np.ndarray
+    weighted_z: np.ndarray
     mu: np.ndarray
     sigma: np.ndarray
     nu: np.ndarray
+    weights: np.ndarray
 
 
 def z_scores(y, mu, sigma, nu) -> np.ndarray:
@@ -32,13 +34,24 @@ def z_scores(y, mu, sigma, nu) -> np.ndarray:
     return np.where(use_log, z_log, z_bc)
 
 
-def lms(y, mu, sigma, nu) -> LMSResult:
+def lms(y, mu, sigma, nu, weights=None) -> LMSResult:
     """Build LMS payload with computed z-scores."""
+    y_arr = np.asarray(y, dtype=np.float64)
     mu_arr = np.asarray(mu, dtype=np.float64)
     sigma_arr = np.asarray(sigma, dtype=np.float64)
     nu_arr = np.asarray(nu, dtype=np.float64)
-    z = z_scores(y=y, mu=mu_arr, sigma=sigma_arr, nu=nu_arr)
-    return LMSResult(z=z, mu=mu_arr, sigma=sigma_arr, nu=nu_arr)
+    z = z_scores(y=y_arr, mu=mu_arr, sigma=sigma_arr, nu=nu_arr)
+
+    if weights is None:
+        w = np.ones_like(z, dtype=np.float64)
+    else:
+        w = np.asarray(weights, dtype=np.float64)
+        if w.shape != z.shape:
+            raise ValueError("weights must have same shape as y")
+        if np.any(w < 0) or not np.isfinite(w).all():
+            raise ValueError("weights must be finite and non-negative")
+
+    return LMSResult(z=z, weighted_z=w * z, mu=mu_arr, sigma=sigma_arr, nu=nu_arr, weights=w)
 
 
 __all__ = ["lms", "z_scores", "LMSResult"]

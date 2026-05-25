@@ -25,3 +25,17 @@ def test_prof_term_validates_model() -> None:
     )
     out = prof_term(model, [1, 2], [2.0, 1.0])
     assert out.minimum_index == 1
+
+
+def test_prof_dev_weighted_minimum_and_rank_order() -> None:
+    out = prof_dev([0.0, 1.0, 2.0], [3.0, 1.0, 2.0], weights=[0.1, 10.0, 0.2])
+    assert out.minimum_index == 0
+    assert out.rank_order.tolist() == [0, 2, 1]
+
+
+def test_prof_dev_rejects_non_finite_inputs() -> None:
+    try:
+        prof_dev([0.0, 1.0], [1.0, float("nan")])
+        raise AssertionError("expected ValueError")
+    except ValueError as exc:
+        assert "finite" in str(exc)

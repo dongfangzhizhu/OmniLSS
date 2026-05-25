@@ -18,9 +18,9 @@ class LogLogPlotResult:
     log_log_survival: np.ndarray
 
 
-def loglogplot(y) -> LogLogPlotResult:
+def loglogplot(y, weights=None) -> LogLogPlotResult:
     """Compute log(x) vs log(-log(S(x))) diagnostic coordinates."""
-    ecdf = ECDF(y)
+    ecdf = ECDF(y, weights=weights)
     # clip probabilities to avoid log(0)
     eps = np.finfo(np.float64).eps
     surv = np.clip(1.0 - ecdf.p, eps, 1.0 - eps)

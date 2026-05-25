@@ -59,7 +59,7 @@
 
 ## C. 拟合与诊断缺口（Phase C）
 
-- 🟡 已有模块雏形/数据接口：`Formulae2data`, `getSmo/edfAll`, `dtop`, `par_plot`, `prof_dev`, `find_hyper`, `ECDF`, `loglogplot`, `gen_likelihood`, `lms`, `quantSheets` 等。
+- 🟡 已有模块雏形/数据接口：`Formulae2data`, `getSmo/edfAll`, `dtop`, `par_plot`, `prof_dev`, `find_hyper`, `ECDF`, `loglogplot`, `gen_likelihood`, `lms`, `quantSheets` 等；其中 `gen_likelihood` 已补权重加权总量（weighted totals）与权重形状校验，`dtop` 已补权重加权偏差贡献排序与权重形状校验，`par_plot` 已补 response residual / weighted residual 诊断载荷与权重形状校验，`find_hyper` 已补有限值校验与候选排序索引（rank order / best index）输出，`ECDF/loglogplot` 已补权重路径与权重语义校验，`quantSheets` 已补加权分位路径与概率序约束校验，`findPower/z_scoresQS` 已补加权路径与权重语义校验，`lms` 已补权重输入与 weighted z 诊断载荷，`prof_dev` 已补加权偏差曲线/排序输出与有限值校验，`getSmo/edfAll` 已补 finite 校验与 `edf_summary` 汇总载荷（含 total/share），`Formulae2data` 已补权重列读取与权重语义校验。
 - ⬜ 待完成：上述函数的 R 对齐验收（输入语义、列名、边界行为、数值容差）。
 - ⬜ 待完成：`gamlssML` 相关 `predict/summary/vcov` 的 R parity 完整验证。
 
