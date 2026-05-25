@@ -9,12 +9,34 @@ names in registry and metadata.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from .distributions_b15 import ST3C
 from .families import FamilyDefinition
 
 
-def _clone_with_name(base: FamilyDefinition, name: str) -> FamilyDefinition:
-    return FamilyDefinition(
+@dataclass(frozen=True)
+class ST1Family(FamilyDefinition):
+    """Compatibility shell for ST1 family."""
+
+
+@dataclass(frozen=True)
+class ST2Family(FamilyDefinition):
+    """Compatibility shell for ST2 family."""
+
+
+@dataclass(frozen=True)
+class ST3Family(FamilyDefinition):
+    """Compatibility shell for ST3 family."""
+
+
+@dataclass(frozen=True)
+class ST4Family(FamilyDefinition):
+    """Compatibility shell for ST4 family."""
+
+
+def _clone_with_name(base: FamilyDefinition, name: str, family_class):
+    return family_class(
         name=name,
         parameters=base.parameters,
         g_dev_inc=base.g_dev_inc,
@@ -34,16 +56,16 @@ def _clone_with_name(base: FamilyDefinition, name: str) -> FamilyDefinition:
 
 
 def ST1() -> FamilyDefinition:
-    return _clone_with_name(ST3C(), "ST1")
+    return _clone_with_name(ST3C(), "ST1", ST1Family)
 
 
 def ST2() -> FamilyDefinition:
-    return _clone_with_name(ST3C(), "ST2")
+    return _clone_with_name(ST3C(), "ST2", ST2Family)
 
 
 def ST3() -> FamilyDefinition:
-    return _clone_with_name(ST3C(), "ST3")
+    return _clone_with_name(ST3C(), "ST3", ST3Family)
 
 
 def ST4() -> FamilyDefinition:
-    return _clone_with_name(ST3C(), "ST4")
+    return _clone_with_name(ST3C(), "ST4", ST4Family)

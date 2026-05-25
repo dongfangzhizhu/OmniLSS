@@ -6,8 +6,15 @@ R references:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from .distributions import BI
 from .families import FamilyDefinition
+
+
+@dataclass(frozen=True)
+class DBIFamily(FamilyDefinition):
+    """Compatibility shell for DBI family."""
 
 
 def DBI() -> FamilyDefinition:
@@ -17,7 +24,7 @@ def DBI() -> FamilyDefinition:
     existing `BI` numeric kernel until dedicated DBI likelihood is implemented.
     """
     base = BI()
-    return FamilyDefinition(
+    return DBIFamily(
         name="DBI",
         parameters=base.parameters,
         g_dev_inc=base.g_dev_inc,
