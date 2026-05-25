@@ -8,12 +8,29 @@ R references:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from .distributions import BCCG, BCPE, BCT
 from .families import FamilyDefinition
 
 
-def _clone(base: FamilyDefinition, name: str) -> FamilyDefinition:
-    return FamilyDefinition(
+@dataclass(frozen=True)
+class BCCGuntrFamily(FamilyDefinition):
+    """Compatibility shell for BCCGUNTR family."""
+
+
+@dataclass(frozen=True)
+class BCPEuntrFamily(FamilyDefinition):
+    """Compatibility shell for BCPEUNTR family."""
+
+
+@dataclass(frozen=True)
+class BCTuntrFamily(FamilyDefinition):
+    """Compatibility shell for BCTUNTR family."""
+
+
+def _clone(base: FamilyDefinition, name: str, family_class) -> FamilyDefinition:
+    return family_class(
         name=name,
         parameters=base.parameters,
         g_dev_inc=base.g_dev_inc,
@@ -33,12 +50,12 @@ def _clone(base: FamilyDefinition, name: str) -> FamilyDefinition:
 
 
 def BCCGuntr() -> FamilyDefinition:
-    return _clone(BCCG(), "BCCGUNTR")
+    return _clone(BCCG(), "BCCGUNTR", BCCGuntrFamily)
 
 
 def BCPEuntr() -> FamilyDefinition:
-    return _clone(BCPE(), "BCPEUNTR")
+    return _clone(BCPE(), "BCPEUNTR", BCPEuntrFamily)
 
 
 def BCTuntr() -> FamilyDefinition:
-    return _clone(BCT(), "BCTUNTR")
+    return _clone(BCT(), "BCTUNTR", BCTuntrFamily)

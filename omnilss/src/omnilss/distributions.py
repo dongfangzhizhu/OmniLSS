@@ -127,6 +127,11 @@ class StudentTFamily(FamilyDefinition):
 
 
 @dataclass(frozen=True)
+class TF2Family(FamilyDefinition):
+    """Compatibility Student-t family shell for `TF2`."""
+
+
+@dataclass(frozen=True)
 class JohnsonSUFamily(FamilyDefinition):
     """Minimal Johnson SU (`JSU`) family for the staged Python port."""
 
@@ -1485,7 +1490,7 @@ def TF() -> StudentTFamily:
     )
 
 
-def TF2() -> StudentTFamily:
+def TF2() -> TF2Family:
     """Alternative Student-t constructor compatible with R `gamlss.dist::TF2`.
 
     R reference: `gamlss.dist/R/TF2.R::TF2`.
@@ -1494,7 +1499,7 @@ def TF2() -> StudentTFamily:
     numerics as a compatibility alias while keeping a distinct family name.
     """
     fam = TF()
-    return StudentTFamily(
+    return TF2Family(
         name="TF2",
         parameters=fam.parameters,
         g_dev_inc=fam.g_dev_inc,

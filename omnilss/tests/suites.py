@@ -90,6 +90,7 @@ SUITES: OrderedDict[str, list[str]] = OrderedDict(
                 "tests.test_r_consistency_dbi",
                 "tests.test_r_consistency_dburr12",
                 "tests.test_r_consistency_gig",
+                "tests.test_r_consistency_yule",
             ],
         ),
         (
@@ -143,6 +144,7 @@ SUITES: OrderedDict[str, list[str]] = OrderedDict(
                 "tests.test_r_consistency_dbi",
                 "tests.test_r_consistency_dburr12",
                 "tests.test_r_consistency_gig",
+                "tests.test_r_consistency_yule",
                 "tests.test_r_consistency_batch1_bc",
                 "tests.test_r_consistency_batch3_4_remaining",
                 "tests.test_r_consistency_batch5",
@@ -166,6 +168,7 @@ SUITES: OrderedDict[str, list[str]] = OrderedDict(
                 "tests.test_r_consistency_boxcox_untr_more",
                 "tests.test_r_consistency_centile_sk",
                 "tests.test_r_consistency_gig",
+                "tests.test_r_consistency_yule",
                 "tests.test_r_consistency_be",
                 "tests.test_r_consistency_zip",
                 "tests.consistency.test_gradient_no_finite_difference",
