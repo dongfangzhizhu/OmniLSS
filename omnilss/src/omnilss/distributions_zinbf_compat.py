@@ -9,13 +9,13 @@ from .families import FamilyDefinition
 
 
 @dataclass(frozen=True)
-class ZINBFFamilyCompat(FamilyDefinition):
+class ZINBFFamily(FamilyDefinition):
     """Compatibility shell for ZINBF family."""
 
 
 def ZINBF() -> FamilyDefinition:
     base = _ZINBF()
-    return ZINBFFamilyCompat(
+    return ZINBFFamily(
         name="ZINBF",
         parameters=base.parameters,
         g_dev_inc=base.g_dev_inc,

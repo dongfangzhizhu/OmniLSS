@@ -100,4 +100,4 @@ def test_zabb_zibb_zazipf_zabnb_zibnb_aliases_use_distinct_compat_classes() -> N
     assert resolve("ZAZIPF").__class__.__name__ == "ZAZIPFFamily"
     assert resolve("ZABNB").__class__.__name__ == "ZABNBFamily"
     assert resolve("ZIBNB").__class__.__name__ == "ZIBNBFamily"
-    assert resolve("ZINBF").__class__.__name__ == "ZINBFFamilyCompat"
+    assert resolve("ZINBF").__class__.__name__ == "ZINBFFamily"

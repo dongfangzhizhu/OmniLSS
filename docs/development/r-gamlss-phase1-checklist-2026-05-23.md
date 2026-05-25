@@ -25,7 +25,7 @@
 ### B1. 已注册 family 的 R-backed d/p/q 证据补齐
 
 - 🟡 已推进：新增 `GIG` 的 R consistency（d/p/q）测试文件，并已纳入 consistency suites 的 basic/all/phase0 gate 组。
-- 🟡 持续推进：新增 `YULE` 的 R consistency（d/p/q）测试，并已纳入 consistency suites 的 basic/all 组；其余 `experimental` family 的 d/p/q parity 仍待批量补齐（约 60+）。
+- 🟡 持续推进：新增 `YULE`、`ZINBF` 的 R consistency（d/p/q）测试，并已纳入 consistency suites 的 basic/all（含 phase0 gate）组，且已并入项目 `all` 与 `quick` 套件；其余 `experimental` family 的 d/p/q parity 仍待批量补齐（约 60+）。
 
 ### B2. 计划中“缺失分布/接口”
 
@@ -57,7 +57,7 @@
 - ✅ `ZABI`/`ZANBI` alias 兼容语义修正（新增独立 `ZABIFamily`/`ZANBIFamily` compatibility shell，避免回落到原始 zero-adjusted 构造器类型语义）。
 - ✅ `ZABB`/`ZIBB`/`ZAZIPF`/`ZABNB`/`ZIBNB` alias 兼容语义修正（新增独立 compatibility shell，避免回落到原始 zero-variant 构造器类型语义）。
 - ✅ `ZASICHEL`/`ZISICHEL`/`ZAPIG`/`ZIPIG` alias 兼容语义修正（新增独立 compatibility shell，避免回落到原始 batch-10 zero-variant 构造器类型语义）。
-- ✅ `ZINBF` alias 兼容语义修正（新增独立 `ZINBFFamilyCompat` compatibility shell，避免回落到原始 `ZINBFFamily` 构造器类型语义）。
+- ✅ `ZINBF` alias 兼容语义修正（新增独立 `ZINBFFamily` compatibility shell，避免回落到原始 `ZINBFFamily` 构造器类型语义）。
 - 🟡 `centileSK`：已有实现与 R 一致性测试；已将经验分位对齐扩展到 `linear/right_skew/mixed_sign` 三组样本剖面，并补充 `theoCentileSK` 极端概率（0.1%~99.9%）对齐；已纳入 consistency suites 的 basic/all/phase0 gate 组，后续继续补充更多边界语义验收。
 - ✅ `flexDist`, `momentSK`, `hazardFun`, `gen.hazard`：已具备实现与基础单测覆盖。
 
