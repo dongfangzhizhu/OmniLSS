@@ -25,30 +25,45 @@
 ### B1. 已注册 family 的 R-backed d/p/q 证据补齐
 
 - 🟡 已推进：新增 `GIG` 的 R consistency（d/p/q）测试文件，并已纳入 consistency suites 的 basic/all/phase0 gate 组。
-- ⬜ 待完成：其余大量 `experimental` family 的 d/p/q parity（约 70+）。
+- 🟡 持续推进：新增 `YULE`、`ZINBF` 的 R consistency（d/p/q）测试，并已纳入 consistency suites 的 basic/all（含 phase0 gate）组，且已并入项目 `all` 与 `quick` 套件；其余 `experimental` family 的 d/p/q parity 仍待批量补齐（约 60+）。
 
 ### B2. 计划中“缺失分布/接口”
 
 > 进度说明（2026-05-23）：以上分布缺口已全部具备“兼容层可调用入口 + registry 可解析”，
 > 当前剩余重点转向“专用数值内核替换 + R 一致性证据从脚手架升级为稳定覆盖”。
 
-- ✅ `MULTIN` 构造接口（`MULTIN(3|4|5) -> MN3|MN4|MN5`）。
-- 🟡 `TF2` 接口：已提供构造器与注册；并新增基于 R `TF` 的 d/p/q 一致性测试，且已纳入 consistency suites（basic/all/phase0 gate）；后续仍需针对 R `TF2` 专用参数化逐项比对。
+- ✅ `MULTIN` 构造接口（`MULTIN(3|4|5)`），并补齐 `distribution_registry.resolve("MULTIN")` 默认解析路径；新增独立 `MULTINFamily` compatibility shell（保留当前基于 `MN3/4/5` 数值骨架）。
+- ✅ Batch-16 家族 registry 入口补齐（`DPO1`/`PARETO1`/`PARETO1o`/`SEP`/`BCCGo`/`LOGSHASHo` 已可通过 `distribution_registry.resolve()` 解析）。
+- ✅ Batch-9/10/13/15 多家族 registry 入口补齐（`LG`/`ZIPF`/`ZALG`/`IGA`/`PIG2`/`PE2`/`LOGITNO`/`DELAPORT`/`GP`/`GeneralisedPoisson`/`ZASICHEL`/`ZISICHEL`/`ZAPIG`/`ZIPIG`/`ZABB`/`ZIBB`/`ZAZIPF`/`ZABNB`/`ZIBNB`/`ZINBF` 已可通过 `distribution_registry.resolve()` 解析）。
+- ✅ `GP` alias 兼容语义修正（新增独立 `GPFamily` compatibility shell，避免 `resolve("GP")` 名称/类型回落到 `GENERALISEDPOISSON`）。
+- ✅ `GENERALISEDPOISSON` alias 兼容语义修正（新增独立 `GENERALISEDPOISSONFamily` compatibility shell，避免 registry 解析后名称/类型回落到 `GeneralisedPoisson` 原始构造器）。
+- ✅ `*O` 后缀 alias 兼容语义修正（`SHASHO`/`JSUO`/`SHASHO2`/`BCPEO`/`BCTO`/`PARETO1O`/`BCCGO`/`LOGSHASHO` 新增独立 compatibility shell，避免名称/类型回落到原始小写-o构造器）。
+- ✅ Batch-11/12/15 与零调整族 registry 入口继续补齐（`GIG`/`GB1`/`WEI2`/`WEI3`/`NOF`/`GAF`/`RGE`/`SEP1-4`/`SST`/`ST3C`/`EGB2`/`LQNO`/`NBF`/`LOGSHASH`/`GPO`/`ZABI`/`ZANBI` 已可通过 `distribution_registry.resolve()` 解析）。
+- ✅ `SEP2/SEP3/SEP4` 兼容构造器语义修正（保持共用 SEP 数值骨架，但分别使用独立 family class + 对应名称返回 `SEP2`/`SEP3`/`SEP4`，避免 registry 解析后名称/类型回落为 `SEP1`）。
+- 🟡 `TF2` 接口：已提供构造器与注册；新增独立 `TF2Family` compatibility class（与 `TF` 解耦 family 类型语义）并保留当前共用数值内核；已补基于 R `TF` 的 d/p/q 一致性测试并纳入 consistency suites（basic/all/phase0 gate）；后续仍需针对 R `TF2` 专用参数化逐项比对。
 - 🟡 ST1（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景与极端概率区间，并纳入 consistency suites 的 basic/all 组）
 - 🟡 ST2（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景与极端概率区间，并纳入 consistency suites 的 basic/all 组）
 - 🟡 ST3（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景与极端概率区间，并纳入 consistency suites 的 basic/all 组）
 - 🟡 ST4（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景与极端概率区间，并纳入 consistency suites 的 basic/all 组）
+- ✅ `ST1/ST2/ST3/ST4` compatibility class 语义修正（在共用 ST3C 数值骨架前提下，分别返回独立 `ST1Family`/`ST2Family`/`ST3Family`/`ST4Family`，避免类型语义回落到通用 `FamilyDefinition`）。
 - 🟡 DBI（已提供兼容构造器与 registry，当前共用 BI 数值内核；已将 d/p/q R 一致性用例扩展到 `mid_range/edge_heavy/ultra_tail` 三组参数与极端概率区间，并纳入 consistency suites 的 basic/all 组）
 - 🟡 DBURR12（已提供兼容构造器与 registry，当前共用 SICHEL 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail_edge/ultra_tail_prob` 场景并覆盖极端概率区间，并纳入 consistency suites 的 basic/all 组）
 - 🟡 BCCGuntr（已提供兼容构造器与 registry，当前共用 BCCG 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景并覆盖极端概率区间，并纳入 consistency suites 的 basic/all/phase0 gate 组）
 - 🟡 BCPEuntr（已提供兼容构造器与 registry，当前共用 BCPE 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景并覆盖极端概率区间，并纳入 consistency suites 的 basic/all/phase0 gate 组）
 - 🟡 BCTuntr（已提供兼容构造器与 registry，当前共用 BCT 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景并覆盖极端概率区间，并纳入 consistency suites 的 basic/all/phase0 gate 组）
+- ✅ `DBI`/`DBURR12`/`BCCGuntr`/`BCPEuntr`/`BCTuntr` compatibility class 语义修正（保持当前共用数值骨架，同时分别返回独立 compatibility family class，避免类型语义回落到通用 `FamilyDefinition`）。
+- ✅ `ZIBI`/`ZINBI` alias 兼容语义修正（新增独立 `ZIBIFamily`/`ZINBIFamily` compatibility shell，避免回落到原始 zero-variant 构造器类型语义）。
+- ✅ `ZAGA`/`ZAIG`/`ZAP` alias 兼容语义修正（新增独立 `ZAGAFamily`/`ZAIGFamily`/`ZAPFamily` compatibility shell，避免回落到原始 mixed/zero-altered 构造器类型语义）。
+- ✅ `ZABI`/`ZANBI` alias 兼容语义修正（新增独立 `ZABIFamily`/`ZANBIFamily` compatibility shell，避免回落到原始 zero-adjusted 构造器类型语义）。
+- ✅ `ZABB`/`ZIBB`/`ZAZIPF`/`ZABNB`/`ZIBNB` alias 兼容语义修正（新增独立 compatibility shell，避免回落到原始 zero-variant 构造器类型语义）。
+- ✅ `ZASICHEL`/`ZISICHEL`/`ZAPIG`/`ZIPIG` alias 兼容语义修正（新增独立 compatibility shell，避免回落到原始 batch-10 zero-variant 构造器类型语义）。
+- ✅ `ZINBF` alias 兼容语义修正（新增独立 `ZINBFFamily` compatibility shell，避免回落到原始 `ZINBFFamily` 构造器类型语义）。
 - 🟡 `centileSK`：已有实现与 R 一致性测试；已将经验分位对齐扩展到 `linear/right_skew/mixed_sign` 三组样本剖面，并补充 `theoCentileSK` 极端概率（0.1%~99.9%）对齐；已纳入 consistency suites 的 basic/all/phase0 gate 组，后续继续补充更多边界语义验收。
 - ✅ `flexDist`, `momentSK`, `hazardFun`, `gen.hazard`：已具备实现与基础单测覆盖。
 
 ### B3. `gen.Family` skeleton builder
 
-- 🟡 已新增统一兼容 builder 入口（`build_gen_family_skeleton`）并将 19 个常见 skeleton 名称注册到 registry；已为代表性 count/continuous skeleton 新增 d/p/q R 一致性测试脚手架；仍待逐个替换为专用数值实现。
+- 🟡 已新增统一兼容 builder 入口（`build_gen_family_skeleton`）并将 19 个常见 skeleton 名称注册到 registry；现已补齐 `GenSkeletonCompatFamily` compatibility shell 以稳定 skeleton 类型语义，并为代表性 count/continuous skeleton 新增 d/p/q R 一致性测试脚手架；仍待逐个替换为专用数值实现。
 
 ### B4. `distributions3` 风格接口
 
