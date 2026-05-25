@@ -37,7 +37,7 @@
 - ✅ Batch-9/10/13/15 多家族 registry 入口补齐（`LG`/`ZIPF`/`ZALG`/`IGA`/`PIG2`/`PE2`/`LOGITNO`/`DELAPORT`/`GP`/`GeneralisedPoisson`/`ZASICHEL`/`ZISICHEL`/`ZAPIG`/`ZIPIG`/`ZABB`/`ZIBB`/`ZAZIPF`/`ZABNB`/`ZIBNB`/`ZINBF` 已可通过 `distribution_registry.resolve()` 解析）。
 - ✅ `GP` alias 兼容语义修正（新增独立 `GPFamily` compatibility shell，避免 `resolve("GP")` 名称/类型回落到 `GENERALISEDPOISSON`）。
 - ✅ `GENERALISEDPOISSON` alias 兼容语义修正（新增独立 `GENERALISEDPOISSONFamily` compatibility shell，避免 registry 解析后名称/类型回落到 `GeneralisedPoisson` 原始构造器）。
-- ✅ `*O` 后缀 alias 兼容语义修正（`JSUO`/`SHASHO2`/`BCPEO`/`BCTO`/`PARETO1O`/`BCCGO`/`LOGSHASHO` 新增独立 compatibility shell，避免名称/类型回落到原始小写-o构造器）。
+- ✅ `*O` 后缀 alias 兼容语义修正（`SHASHO`/`JSUO`/`SHASHO2`/`BCPEO`/`BCTO`/`PARETO1O`/`BCCGO`/`LOGSHASHO` 新增独立 compatibility shell，避免名称/类型回落到原始小写-o构造器）。
 - ✅ Batch-11/12/15 与零调整族 registry 入口继续补齐（`GIG`/`GB1`/`WEI2`/`WEI3`/`NOF`/`GAF`/`RGE`/`SEP1-4`/`SST`/`ST3C`/`EGB2`/`LQNO`/`NBF`/`LOGSHASH`/`GPO`/`ZABI`/`ZANBI` 已可通过 `distribution_registry.resolve()` 解析）。
 - ✅ `SEP2/SEP3/SEP4` 兼容构造器语义修正（保持共用 SEP 数值骨架，但分别使用独立 family class + 对应名称返回 `SEP2`/`SEP3`/`SEP4`，避免 registry 解析后名称/类型回落为 `SEP1`）。
 - 🟡 `TF2` 接口：已提供构造器与注册；新增独立 `TF2Family` compatibility class（与 `TF` 解耦 family 类型语义）并保留当前共用数值内核；已补基于 R `TF` 的 d/p/q 一致性测试并纳入 consistency suites（basic/all/phase0 gate）；后续仍需针对 R `TF2` 专用参数化逐项比对。
@@ -52,6 +52,12 @@
 - 🟡 BCPEuntr（已提供兼容构造器与 registry，当前共用 BCPE 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景并覆盖极端概率区间，并纳入 consistency suites 的 basic/all/phase0 gate 组）
 - 🟡 BCTuntr（已提供兼容构造器与 registry，当前共用 BCT 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景并覆盖极端概率区间，并纳入 consistency suites 的 basic/all/phase0 gate 组）
 - ✅ `DBI`/`DBURR12`/`BCCGuntr`/`BCPEuntr`/`BCTuntr` compatibility class 语义修正（保持当前共用数值骨架，同时分别返回独立 compatibility family class，避免类型语义回落到通用 `FamilyDefinition`）。
+- ✅ `ZIBI`/`ZINBI` alias 兼容语义修正（新增独立 `ZIBIFamily`/`ZINBIFamily` compatibility shell，避免回落到原始 zero-variant 构造器类型语义）。
+- ✅ `ZAGA`/`ZAIG`/`ZAP` alias 兼容语义修正（新增独立 `ZAGAFamily`/`ZAIGFamily`/`ZAPFamily` compatibility shell，避免回落到原始 mixed/zero-altered 构造器类型语义）。
+- ✅ `ZABI`/`ZANBI` alias 兼容语义修正（新增独立 `ZABIFamily`/`ZANBIFamily` compatibility shell，避免回落到原始 zero-adjusted 构造器类型语义）。
+- ✅ `ZABB`/`ZIBB`/`ZAZIPF`/`ZABNB`/`ZIBNB` alias 兼容语义修正（新增独立 compatibility shell，避免回落到原始 zero-variant 构造器类型语义）。
+- ✅ `ZASICHEL`/`ZISICHEL`/`ZAPIG`/`ZIPIG` alias 兼容语义修正（新增独立 compatibility shell，避免回落到原始 batch-10 zero-variant 构造器类型语义）。
+- ✅ `ZINBF` alias 兼容语义修正（新增独立 `ZINBFFamilyCompat` compatibility shell，避免回落到原始 `ZINBFFamily` 构造器类型语义）。
 - 🟡 `centileSK`：已有实现与 R 一致性测试；已将经验分位对齐扩展到 `linear/right_skew/mixed_sign` 三组样本剖面，并补充 `theoCentileSK` 极端概率（0.1%~99.9%）对齐；已纳入 consistency suites 的 basic/all/phase0 gate 组，后续继续补充更多边界语义验收。
 - ✅ `flexDist`, `momentSK`, `hazardFun`, `gen.hazard`：已具备实现与基础单测覆盖。
 

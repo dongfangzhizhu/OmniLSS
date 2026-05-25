@@ -9,7 +9,7 @@ def test_phase1_compat_registry_names_are_resolvable() -> None:
         "BCCGUNTR", "BCPEUNTR", "BCTUNTR",
         "COUNT_1_31", "BINOM_2_33", "CONTRPLUS_2_11", "CONTR01_4_33",
         "DPO1", "PARETO1", "PARETO1O", "SEP", "BCCGO", "LOGSHASHO", "MULTIN",
-        "LG", "ZIPF", "ZALG", "IGA", "PIG2", "PE2", "LOGITNO", "DELAPORT",
+        "LG", "ZIPF", "ZALG", "SHASHO", "IGA", "PIG2", "PE2", "LOGITNO", "DELAPORT",
         "GENERALISEDPOISSON", "GP", "ZASICHEL", "ZISICHEL", "ZAPIG", "ZIPIG",
         "ZABB", "ZIBB", "ZAZIPF", "ZABNB", "ZIBNB", "ZINBF",
         "GIG", "GB1", "WEI2", "WEI3", "NOF", "GAF", "RGE",
@@ -62,9 +62,42 @@ def test_generalisedpoisson_alias_uses_distinct_compat_class() -> None:
 
 def test_o_suffix_aliases_use_distinct_compat_classes() -> None:
     assert resolve("JSUO").__class__.__name__ == "JSUOFamily"
+    assert resolve("SHASHO").__class__.__name__ == "SHASHOFamily"
     assert resolve("SHASHO2").__class__.__name__ == "SHASHO2Family"
     assert resolve("BCPEO").__class__.__name__ == "BCPEOFamily"
     assert resolve("BCTO").__class__.__name__ == "BCTOFamily"
     assert resolve("PARETO1O").__class__.__name__ == "PARETO1OFamily"
     assert resolve("BCCGO").__class__.__name__ == "BCCGOFamily"
     assert resolve("LOGSHASHO").__class__.__name__ == "LOGSHASHOFamily"
+
+
+def test_zibi_zinbi_aliases_use_distinct_compat_classes() -> None:
+    assert resolve("ZIBI").__class__.__name__ == "ZIBIFamily"
+    assert resolve("ZINBI").__class__.__name__ == "ZINBIFamily"
+
+
+def test_zaga_zaig_zap_aliases_use_distinct_compat_classes() -> None:
+    assert resolve("ZAGA").__class__.__name__ == "ZAGAFamily"
+    assert resolve("ZAIG").__class__.__name__ == "ZAIGFamily"
+    assert resolve("ZAP").__class__.__name__ == "ZAPFamily"
+
+
+def test_zabi_zanbi_aliases_use_distinct_compat_classes() -> None:
+    assert resolve("ZABI").__class__.__name__ == "ZABIFamily"
+    assert resolve("ZANBI").__class__.__name__ == "ZANBIFamily"
+
+
+def test_zasichel_zisichel_zapig_zipig_aliases_use_distinct_compat_classes() -> None:
+    assert resolve("ZASICHEL").__class__.__name__ == "ZASICHELFamily"
+    assert resolve("ZISICHEL").__class__.__name__ == "ZISICHELFamily"
+    assert resolve("ZAPIG").__class__.__name__ == "ZAPIGFamily"
+    assert resolve("ZIPIG").__class__.__name__ == "ZIPIGFamily"
+
+
+def test_zabb_zibb_zazipf_zabnb_zibnb_aliases_use_distinct_compat_classes() -> None:
+    assert resolve("ZABB").__class__.__name__ == "ZABBFamily"
+    assert resolve("ZIBB").__class__.__name__ == "ZIBBFamily"
+    assert resolve("ZAZIPF").__class__.__name__ == "ZAZIPFFamily"
+    assert resolve("ZABNB").__class__.__name__ == "ZABNBFamily"
+    assert resolve("ZIBNB").__class__.__name__ == "ZIBNBFamily"
+    assert resolve("ZINBF").__class__.__name__ == "ZINBFFamilyCompat"
