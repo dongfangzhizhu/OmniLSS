@@ -24,7 +24,7 @@
 
 ### B1. 已注册 family 的 R-backed d/p/q 证据补齐
 
-- 🟡 已推进：新增 `GIG` 的 R consistency（d/p/q）测试文件。
+- 🟡 已推进：新增 `GIG` 的 R consistency（d/p/q）测试文件，并已纳入 consistency suites 的 basic/all/phase0 gate 组。
 - ⬜ 待完成：其余大量 `experimental` family 的 d/p/q parity（约 70+）。
 
 ### B2. 计划中“缺失分布/接口”
@@ -34,16 +34,16 @@
 
 - ✅ `MULTIN` 构造接口（`MULTIN(3|4|5) -> MN3|MN4|MN5`）。
 - 🟡 `TF2` 接口：已提供构造器与注册；并新增基于 R `TF` 的 d/p/q 一致性测试，且已纳入 consistency suites（basic/all/phase0 gate）；后续仍需针对 R `TF2` 专用参数化逐项比对。
-- 🟡 ST1（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；并新增基于 ST3C 参考路径的 d/p/q R 一致性测试脚手架）
-- 🟡 ST2（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；并新增基于 ST3C 参考路径的 d/p/q R 一致性测试脚手架）
-- 🟡 ST3（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；并新增基于 ST3C 参考路径的 d/p/q R 一致性测试脚手架）
-- 🟡 ST4（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；并新增基于 ST3C 参考路径的 d/p/q R 一致性测试脚手架）
+- 🟡 ST1（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景与极端概率区间，并纳入 consistency suites 的 basic/all 组）
+- 🟡 ST2（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景与极端概率区间，并纳入 consistency suites 的 basic/all 组）
+- 🟡 ST3（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景与极端概率区间，并纳入 consistency suites 的 basic/all 组）
+- 🟡 ST4（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景与极端概率区间，并纳入 consistency suites 的 basic/all 组）
 - 🟡 DBI（已提供兼容构造器与 registry，当前共用 BI 数值内核；已将 d/p/q R 一致性用例扩展到 `mid_range/edge_heavy/ultra_tail` 三组参数与极端概率区间，并纳入 consistency suites 的 basic/all 组）
 - 🟡 DBURR12（已提供兼容构造器与 registry，当前共用 SICHEL 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail_edge/ultra_tail_prob` 场景并覆盖极端概率区间，并纳入 consistency suites 的 basic/all 组）
-- 🟡 BCCGuntr（已提供兼容构造器与 registry，当前共用 BCCG 数值内核；并新增基于 BCCG 参考路径的 d/p/q R 一致性测试脚手架）
-- 🟡 BCPEuntr（已提供兼容构造器与 registry，当前共用 BCPE 数值内核；已新增基于 BCPE 参考路径的 d/p/q R 一致性测试脚手架）
-- 🟡 BCTuntr（已提供兼容构造器与 registry，当前共用 BCT 数值内核；已新增基于 BCT 参考路径的 d/p/q R 一致性测试脚手架）
-- 🟡 `centileSK`：已有实现、基础单测与 R 一致性测试脚手架；仍需扩大输入覆盖并纳入 CI R 证据统计。
+- 🟡 BCCGuntr（已提供兼容构造器与 registry，当前共用 BCCG 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景并覆盖极端概率区间，并纳入 consistency suites 的 basic/all/phase0 gate 组）
+- 🟡 BCPEuntr（已提供兼容构造器与 registry，当前共用 BCPE 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景并覆盖极端概率区间，并纳入 consistency suites 的 basic/all/phase0 gate 组）
+- 🟡 BCTuntr（已提供兼容构造器与 registry，当前共用 BCT 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景并覆盖极端概率区间，并纳入 consistency suites 的 basic/all/phase0 gate 组）
+- 🟡 `centileSK`：已有实现与 R 一致性测试；已将经验分位对齐扩展到 `linear/right_skew/mixed_sign` 三组样本剖面，并补充 `theoCentileSK` 极端概率（0.1%~99.9%）对齐；已纳入 consistency suites 的 basic/all/phase0 gate 组，后续继续补充更多边界语义验收。
 - ✅ `flexDist`, `momentSK`, `hazardFun`, `gen.hazard`：已具备实现与基础单测覆盖。
 
 ### B3. `gen.Family` skeleton builder
@@ -59,7 +59,7 @@
 
 ## C. 拟合与诊断缺口（Phase C）
 
-- 🟡 已有模块雏形/数据接口：`Formulae2data`, `getSmo/edfAll`, `dtop`, `par_plot`, `prof_dev`, `find_hyper`, `ECDF`, `loglogplot`, `gen_likelihood`, `lms`, `quantSheets` 等。
+- 🟡 已有模块雏形/数据接口：`Formulae2data`, `getSmo/edfAll`, `dtop`, `par_plot`, `prof_dev`, `find_hyper`, `ECDF`, `loglogplot`, `gen_likelihood`, `lms`, `quantSheets` 等；其中 `gen_likelihood` 已补权重加权总量（weighted totals）与权重形状校验，`dtop` 已补权重加权偏差贡献排序与权重形状校验，`par_plot` 已补 response residual / weighted residual 诊断载荷与权重形状校验，`find_hyper` 已补有限值校验与候选排序索引（rank order / best index）输出，`ECDF/loglogplot` 已补权重路径与权重语义校验，`quantSheets` 已补加权分位路径与概率序约束校验，`findPower/z_scoresQS` 已补加权路径与权重语义校验，`lms` 已补权重输入与 weighted z 诊断载荷，`prof_dev` 已补加权偏差曲线/排序输出与有限值校验，`getSmo/edfAll` 已补 finite 校验与 `edf_summary` 汇总载荷（含 total/share），`Formulae2data` 已补权重列读取与权重语义校验。
 - ⬜ 待完成：上述函数的 R 对齐验收（输入语义、列名、边界行为、数值容差）。
 - ⬜ 待完成：`gamlssML` 相关 `predict/summary/vcov` 的 R parity 完整验证。
 
@@ -82,7 +82,7 @@
 
 ## F. 发布门禁与文档（Phase F）
 
-- 🟡 CI 已具备部分门禁（quick parity + coverage matrix drift）。
+- 🟡 CI 已具备部分门禁（quick parity + coverage matrix drift + phase0 gate 扩展覆盖 ST1-4 / Box-Cox untr / centileSK / GIG 一致性模块；`tests/run_suite.py` 已增强为可容忍可选依赖触发的 skip-like 模块加载异常，并补齐脚本直跑场景（无预设 PYTHONPATH）下的 suites 导入回退，避免门禁脚本因环境差异/单模块缺依赖直接中断）。
 - ⬜ “所有暴露 family 均有 R-backed d/p/q 或明确 experimental 标注”尚未达成。
 - ⬜ README / 中英文文档 / capability 页面全量对齐待完成。
 

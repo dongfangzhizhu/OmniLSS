@@ -20,6 +20,7 @@ class DTopResult:
 
     indices: np.ndarray
     deviance_increment: np.ndarray
+    weighted_deviance_increment: np.ndarray
     y: np.ndarray
 
 
@@ -43,14 +44,24 @@ def dtop(object: GAMLSSModel, n: int = 10, descending: bool = True) -> DTopResul
     else:
         raise ValueError(f"family {getattr(family, 'name', '<unknown>')} has no g_dev_inc() or d()")
 
-    order = jnp.argsort(dev_inc)
+    dev_inc_np = np.asarray(dev_inc, dtype=np.float64)
+    if object.weights is None:
+        weights = np.ones_like(dev_inc_np, dtype=np.float64)
+    else:
+        weights = np.asarray(object.weights, dtype=np.float64)
+        if weights.shape != dev_inc_np.shape:
+            raise ValueError("weights must have same shape as observations")
+    weighted_dev_inc = weights * dev_inc_np
+
+    order = np.argsort(weighted_dev_inc)
     if descending:
         order = order[::-1]
     top = np.asarray(order[: min(n, order.shape[0])], dtype=np.int64)
 
     return DTopResult(
         indices=top,
-        deviance_increment=np.asarray(dev_inc[top], dtype=np.float64),
+        deviance_increment=np.asarray(dev_inc_np[top], dtype=np.float64),
+        weighted_deviance_increment=np.asarray(weighted_dev_inc[top], dtype=np.float64),
         y=np.asarray(y[top], dtype=np.float64),
     )
 

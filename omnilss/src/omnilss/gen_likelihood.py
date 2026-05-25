@@ -22,6 +22,8 @@ class GenLikelihoodResult:
     deviance_increment: np.ndarray
     total_log_likelihood: float
     total_deviance: float
+    weighted_total_log_likelihood: float
+    weighted_total_deviance: float
 
 
 def gen_likelihood(object: GAMLSSModel) -> GenLikelihoodResult:
@@ -43,12 +45,26 @@ def gen_likelihood(object: GAMLSSModel) -> GenLikelihoodResult:
     else:
         raise ValueError(f"family {getattr(family, 'name', '<unknown>')} has no d() or g_dev_inc()")
 
+    loglik_np = np.asarray(loglik, dtype=np.float64)
+    dev_inc_np = np.asarray(dev_inc, dtype=np.float64)
+    if loglik_np.shape != dev_inc_np.shape:
+        raise ValueError("log-likelihood and deviance increment shape mismatch")
+
+    if object.weights is None:
+        weights = np.ones_like(loglik_np, dtype=np.float64)
+    else:
+        weights = np.asarray(object.weights, dtype=np.float64)
+        if weights.shape != loglik_np.shape:
+            raise ValueError("weights must have same shape as observations")
+
     return GenLikelihoodResult(
         family=str(getattr(family, "name", "")),
-        log_likelihood=np.asarray(loglik, dtype=np.float64),
-        deviance_increment=np.asarray(dev_inc, dtype=np.float64),
-        total_log_likelihood=float(jnp.sum(loglik)),
-        total_deviance=float(jnp.sum(dev_inc)),
+        log_likelihood=loglik_np,
+        deviance_increment=dev_inc_np,
+        total_log_likelihood=float(np.sum(loglik_np)),
+        total_deviance=float(np.sum(dev_inc_np)),
+        weighted_total_log_likelihood=float(np.sum(weights * loglik_np)),
+        weighted_total_deviance=float(np.sum(weights * dev_inc_np)),
     )
 
 

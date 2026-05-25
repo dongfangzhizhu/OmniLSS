@@ -17,7 +17,9 @@ class FindHyperResult:
     scores: np.ndarray
     best_value: float
     best_score: float
+    best_index: int
     direction: str
+    rank_order: np.ndarray
 
 
 def find_hyper(values: Iterable[float], scores: Iterable[float], direction: str = "min") -> FindHyperResult:
@@ -30,14 +32,21 @@ def find_hyper(values: Iterable[float], scores: Iterable[float], direction: str 
         raise ValueError("values and scores must have the same shape")
     if direction not in {"min", "max"}:
         raise ValueError("direction must be 'min' or 'max'")
+    if not np.isfinite(vals).all() or not np.isfinite(scr).all():
+        raise ValueError("values and scores must be finite")
 
-    idx = int(np.argmin(scr) if direction == "min" else np.argmax(scr))
+    order = np.argsort(scr)
+    if direction == "max":
+        order = order[::-1]
+    idx = int(order[0])
     return FindHyperResult(
         values=vals,
         scores=scr,
         best_value=float(vals[idx]),
         best_score=float(scr[idx]),
+        best_index=idx,
         direction=direction,
+        rank_order=np.asarray(order, dtype=np.int64),
     )
 
 

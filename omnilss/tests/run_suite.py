@@ -6,13 +6,32 @@ import argparse
 import os
 import sys
 import unittest
+from dataclasses import dataclass
 from pathlib import Path
-
-from tests.suites import SUITES, get_suite_modules, resolve_suite_name
-
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
+
+try:
+    from tests.suites import SUITES, get_suite_modules, resolve_suite_name
+except ModuleNotFoundError:
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from tests.suites import SUITES, get_suite_modules, resolve_suite_name
+
+
+@dataclass
+class ModuleLoadIssue:
+    module: str
+    reason: str
+
+
+def _is_skip_like_exception(exc: BaseException) -> bool:
+    if isinstance(exc, unittest.SkipTest):
+        return True
+    name = exc.__class__.__name__.lower()
+    return "skip" in name
+
 
 
 def configure_environment() -> None:
@@ -101,8 +120,23 @@ def main() -> int:
     modules = resolve_requested_modules(args)
     loader = unittest.defaultTestLoader
     suite = unittest.TestSuite()
+    skipped_modules: list[ModuleLoadIssue] = []
+    failed_modules: list[ModuleLoadIssue] = []
     for module in modules:
-        suite.addTests(loader.loadTestsFromName(module))
+        try:
+            suite.addTests(loader.loadTestsFromName(module))
+        except BaseException as exc:  # pragma: no cover - defensive for pytest skip outcomes
+            issue = ModuleLoadIssue(module=module, reason=f"{exc.__class__.__name__}: {exc}")
+            if _is_skip_like_exception(exc):
+                skipped_modules.append(issue)
+                continue
+            failed_modules.append(issue)
+
+    if failed_modules:
+        print("Failed to load test modules:")
+        for issue in failed_modules:
+            print(f"- {issue.module}: {issue.reason}")
+        return 1
 
     runner = unittest.TextTestRunner(
         verbosity=2 if args.verbose else 1,
@@ -118,6 +152,10 @@ def main() -> int:
     print("")
     print(f"Executed suites/modules: {requested_names}")
     print(f"Module count: {len(modules)}")
+    if skipped_modules:
+        print("Skipped test modules during loading:")
+        for issue in skipped_modules:
+            print(f"- {issue.module}: {issue.reason}")
     return 0 if result.wasSuccessful() else 1
 
 

@@ -21,3 +21,21 @@ def test_loglogplot_output_shapes_and_finite() -> None:
     assert out.log_log_survival.shape == y.shape
     assert np.all(np.isfinite(out.log_x))
     assert np.all(np.isfinite(out.log_log_survival))
+
+
+def test_ecdf_weighted_probabilities() -> None:
+    y = np.array([3.0, 1.0, 2.0], dtype=np.float64)
+    w = np.array([1.0, 2.0, 1.0], dtype=np.float64)
+    res = ECDF(y, weights=w)
+    np.testing.assert_allclose(res.x, np.array([1.0, 2.0, 3.0]))
+    np.testing.assert_allclose(res.weights, np.array([2.0, 1.0, 1.0]))
+    np.testing.assert_allclose(res.p, np.array([0.5, 0.75, 1.0]))
+
+
+def test_loglogplot_weighted_paths() -> None:
+    y = np.array([0.5, 1.0, 2.0, 4.0], dtype=np.float64)
+    w = np.array([3.0, 1.0, 1.0, 1.0], dtype=np.float64)
+    out = loglogplot(y, weights=w)
+    assert out.x.shape == y.shape
+    assert np.all(np.isfinite(out.log_x))
+    assert np.all(np.isfinite(out.log_log_survival))
