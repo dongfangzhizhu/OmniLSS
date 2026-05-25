@@ -32,13 +32,19 @@ class TestBoxCoxUntrMoreConsistency(unittest.TestCase):
             sigma = np.linspace(0.05, 1.0, 30)
             nu = np.linspace(-1.5, 1.5, 30)
             tau = np.linspace(1.05, 6.0, 30) if family == "BCPE" else np.linspace(2.05, 20.0, 30)
+        elif profile == "ultra_tail":
+            x = np.linspace(0.01, 15.0, 30)
+            mu = np.linspace(0.15, 8.0, 30)
+            sigma = np.linspace(0.03, 1.6, 30)
+            nu = np.linspace(-2.2, 2.2, 30)
+            tau = np.linspace(1.01, 12.0, 30) if family == "BCPE" else np.linspace(2.01, 35.0, 30)
         else:
             raise ValueError(f"Unknown profile: {profile}")
         return x, mu, sigma, nu, tau
 
     def test_bcpeuntr_d_consistency_against_bcpe_reference(self) -> None:
         fam = resolve("BCPEUNTR")
-        for profile in ("central", "tail"):
+        for profile in ("central", "tail", "ultra_tail"):
             with self.subTest(profile=profile):
                 x, mu, sigma, nu, tau = self._profile_inputs(profile, "BCPE")
                 r_d = self.bus.eval_family("BCPE", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
@@ -47,7 +53,7 @@ class TestBoxCoxUntrMoreConsistency(unittest.TestCase):
 
     def test_bccguntr_d_consistency_against_bccg_reference(self) -> None:
         fam = resolve("BCCGUNTR")
-        for profile in ("central", "tail"):
+        for profile in ("central", "tail", "ultra_tail"):
             with self.subTest(profile=profile):
                 x, mu, sigma, nu, _ = self._profile_inputs(profile, "BCCG")
                 r_d = self.bus.eval_family("BCCG", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
@@ -56,7 +62,7 @@ class TestBoxCoxUntrMoreConsistency(unittest.TestCase):
 
     def test_bccguntr_pq_consistency_against_bccg_reference(self) -> None:
         fam = resolve("BCCGUNTR")
-        for profile in ("central", "tail"):
+        for profile in ("central", "tail", "ultra_tail"):
             with self.subTest(profile=profile):
                 q, mu, sigma, nu, _ = self._profile_inputs(profile, "BCCG")
                 p = np.linspace(0.01, 0.99, 30)
@@ -69,7 +75,7 @@ class TestBoxCoxUntrMoreConsistency(unittest.TestCase):
 
     def test_bcpeuntr_pq_consistency_against_bcpe_reference(self) -> None:
         fam = resolve("BCPEUNTR")
-        for profile in ("central", "tail"):
+        for profile in ("central", "tail", "ultra_tail"):
             with self.subTest(profile=profile):
                 q, mu, sigma, nu, tau = self._profile_inputs(profile, "BCPE")
                 p = np.linspace(0.01, 0.99, 30)
@@ -82,7 +88,7 @@ class TestBoxCoxUntrMoreConsistency(unittest.TestCase):
 
     def test_bctuntr_d_consistency_against_bct_reference(self) -> None:
         fam = resolve("BCTUNTR")
-        for profile in ("central", "tail"):
+        for profile in ("central", "tail", "ultra_tail"):
             with self.subTest(profile=profile):
                 x, mu, sigma, nu, tau = self._profile_inputs(profile, "BCT")
                 r_d = self.bus.eval_family("BCT", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
@@ -91,7 +97,7 @@ class TestBoxCoxUntrMoreConsistency(unittest.TestCase):
 
     def test_bctuntr_pq_consistency_against_bct_reference(self) -> None:
         fam = resolve("BCTUNTR")
-        for profile in ("central", "tail"):
+        for profile in ("central", "tail", "ultra_tail"):
             with self.subTest(profile=profile):
                 q, mu, sigma, nu, tau = self._profile_inputs(profile, "BCT")
                 p = np.linspace(0.01, 0.99, 30)

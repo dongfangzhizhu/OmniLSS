@@ -24,7 +24,7 @@
 
 ### B1. 已注册 family 的 R-backed d/p/q 证据补齐
 
-- 🟡 已推进：新增 `GIG` 的 R consistency（d/p/q）测试文件。
+- 🟡 已推进：新增 `GIG` 的 R consistency（d/p/q）测试文件，并已纳入 consistency suites 的 basic/all/phase0 gate 组。
 - ⬜ 待完成：其余大量 `experimental` family 的 d/p/q parity（约 70+）。
 
 ### B2. 计划中“缺失分布/接口”
@@ -34,16 +34,16 @@
 
 - ✅ `MULTIN` 构造接口（`MULTIN(3|4|5) -> MN3|MN4|MN5`）。
 - 🟡 `TF2` 接口：已提供构造器与注册；并新增基于 R `TF` 的 d/p/q 一致性测试，且已纳入 consistency suites（basic/all/phase0 gate）；后续仍需针对 R `TF2` 专用参数化逐项比对。
-- 🟡 ST1（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；并新增基于 ST3C 参考路径的 d/p/q R 一致性测试脚手架）
-- 🟡 ST2（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；并新增基于 ST3C 参考路径的 d/p/q R 一致性测试脚手架）
-- 🟡 ST3（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；并新增基于 ST3C 参考路径的 d/p/q R 一致性测试脚手架）
-- 🟡 ST4（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；并新增基于 ST3C 参考路径的 d/p/q R 一致性测试脚手架）
+- 🟡 ST1（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景与极端概率区间，并纳入 consistency suites 的 basic/all 组）
+- 🟡 ST2（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景与极端概率区间，并纳入 consistency suites 的 basic/all 组）
+- 🟡 ST3（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景与极端概率区间，并纳入 consistency suites 的 basic/all 组）
+- 🟡 ST4（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景与极端概率区间，并纳入 consistency suites 的 basic/all 组）
 - 🟡 DBI（已提供兼容构造器与 registry，当前共用 BI 数值内核；已将 d/p/q R 一致性用例扩展到 `mid_range/edge_heavy/ultra_tail` 三组参数与极端概率区间，并纳入 consistency suites 的 basic/all 组）
 - 🟡 DBURR12（已提供兼容构造器与 registry，当前共用 SICHEL 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail_edge/ultra_tail_prob` 场景并覆盖极端概率区间，并纳入 consistency suites 的 basic/all 组）
-- 🟡 BCCGuntr（已提供兼容构造器与 registry，当前共用 BCCG 数值内核；并新增基于 BCCG 参考路径的 d/p/q R 一致性测试脚手架）
-- 🟡 BCPEuntr（已提供兼容构造器与 registry，当前共用 BCPE 数值内核；已新增基于 BCPE 参考路径的 d/p/q R 一致性测试脚手架）
-- 🟡 BCTuntr（已提供兼容构造器与 registry，当前共用 BCT 数值内核；已新增基于 BCT 参考路径的 d/p/q R 一致性测试脚手架）
-- 🟡 `centileSK`：已有实现、基础单测与 R 一致性测试脚手架；仍需扩大输入覆盖并纳入 CI R 证据统计。
+- 🟡 BCCGuntr（已提供兼容构造器与 registry，当前共用 BCCG 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景并覆盖极端概率区间，并纳入 consistency suites 的 basic/all/phase0 gate 组）
+- 🟡 BCPEuntr（已提供兼容构造器与 registry，当前共用 BCPE 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景并覆盖极端概率区间，并纳入 consistency suites 的 basic/all/phase0 gate 组）
+- 🟡 BCTuntr（已提供兼容构造器与 registry，当前共用 BCT 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景并覆盖极端概率区间，并纳入 consistency suites 的 basic/all/phase0 gate 组）
+- 🟡 `centileSK`：已有实现与 R 一致性测试；已将经验分位对齐扩展到 `linear/right_skew/mixed_sign` 三组样本剖面，并补充 `theoCentileSK` 极端概率（0.1%~99.9%）对齐；已纳入 consistency suites 的 basic/all/phase0 gate 组，后续继续补充更多边界语义验收。
 - ✅ `flexDist`, `momentSK`, `hazardFun`, `gen.hazard`：已具备实现与基础单测覆盖。
 
 ### B3. `gen.Family` skeleton builder
@@ -82,7 +82,7 @@
 
 ## F. 发布门禁与文档（Phase F）
 
-- 🟡 CI 已具备部分门禁（quick parity + coverage matrix drift）。
+- 🟡 CI 已具备部分门禁（quick parity + coverage matrix drift + phase0 gate 扩展覆盖 ST1-4 / Box-Cox untr / centileSK / GIG 一致性模块；`tests/run_suite.py` 已增强为可容忍可选依赖触发的 skip-like 模块加载异常，并补齐脚本直跑场景（无预设 PYTHONPATH）下的 suites 导入回退，避免门禁脚本因环境差异/单模块缺依赖直接中断）。
 - ⬜ “所有暴露 family 均有 R-backed d/p/q 或明确 experimental 标注”尚未达成。
 - ⬜ README / 中英文文档 / capability 页面全量对齐待完成。
 
