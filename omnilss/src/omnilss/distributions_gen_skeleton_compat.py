@@ -2,12 +2,36 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from .gen_family_builder import build_gen_family_skeleton
 from .families import FamilyDefinition
 
 
+@dataclass(frozen=True)
+class GenSkeletonCompatFamily(FamilyDefinition):
+    """Compatibility shell for `gen.Family` skeleton aliases."""
+
+
 def _make(name: str) -> FamilyDefinition:
-    return build_gen_family_skeleton(name)
+    base = build_gen_family_skeleton(name)
+    return GenSkeletonCompatFamily(
+        name=base.name,
+        parameters=base.parameters,
+        g_dev_inc=base.g_dev_inc,
+        type=base.type,
+        links=base.links,
+        link_functions=base.link_functions,
+        link_inverses=base.link_inverses,
+        link_derivatives=base.link_derivatives,
+        score_functions=base.score_functions,
+        hessian_functions=base.hessian_functions,
+        fixed_parameters=base.fixed_parameters,
+        d=base.d,
+        p=base.p,
+        q=base.q,
+        r=base.r,
+    )
 
 
 def count_1_31() -> FamilyDefinition: return _make("count_1_31")

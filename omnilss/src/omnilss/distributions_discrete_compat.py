@@ -6,8 +6,15 @@ R references:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from .distributions_b6 import SICHEL
 from .families import FamilyDefinition
+
+
+@dataclass(frozen=True)
+class DBURR12Family(FamilyDefinition):
+    """Compatibility shell for DBURR12 family."""
 
 
 def DBURR12() -> FamilyDefinition:
@@ -17,7 +24,7 @@ def DBURR12() -> FamilyDefinition:
     while temporarily reusing the existing `SICHEL` numeric kernel.
     """
     base = SICHEL()
-    return FamilyDefinition(
+    return DBURR12Family(
         name="DBURR12",
         parameters=base.parameters,
         g_dev_inc=base.g_dev_inc,

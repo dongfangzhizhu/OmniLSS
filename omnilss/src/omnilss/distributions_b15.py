@@ -26,6 +26,24 @@ class SEP1Family(FamilyDefinition):
     pass
 
 
+@dataclass(frozen=True)
+class SEP2Family(FamilyDefinition):
+    """Skew Exponential Power Type 2 family."""
+    pass
+
+
+@dataclass(frozen=True)
+class SEP3Family(FamilyDefinition):
+    """Skew Exponential Power Type 3 family."""
+    pass
+
+
+@dataclass(frozen=True)
+class SEP4Family(FamilyDefinition):
+    """Skew Exponential Power Type 4 family."""
+    pass
+
+
 def _sep1_log_pdf(y, mu, sigma, nu, tau):
     """SEP1 log-PDF."""
     eps = jnp.finfo(jnp.float64).eps
@@ -77,19 +95,49 @@ def SEP1():
 
 
 # SEP2, SEP3, SEP4 are similar with minor variations
+def _build_sep_alias(name: str, family_class):
+    """Build SEP compatibility aliases with distinct family names."""
+    return build_ad_family(
+        family_class=family_class,
+        name=name,
+        parameters=("mu", "sigma", "nu", "tau"),
+        log_pdf_func=_sep1_log_pdf,
+        type_="Continuous",
+        links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
+        link_functions={
+            "mu": identity_link,
+            "sigma": log_link,
+            "nu": identity_link,
+            "tau": log_link,
+        },
+        link_inverses={
+            "mu": identity_inverse,
+            "sigma": log_inverse,
+            "nu": identity_inverse,
+            "tau": log_inverse,
+        },
+        link_derivatives={
+            "mu": identity_derivative,
+            "sigma": log_derivative,
+            "nu": identity_derivative,
+            "tau": log_derivative,
+        },
+    )
+
+
 def SEP2():
     """Skew Exponential Power Type 2."""
-    return SEP1()  # Simplified - same structure
+    return _build_sep_alias("SEP2", SEP2Family)
 
 
 def SEP3():
     """Skew Exponential Power Type 3."""
-    return SEP1()  # Simplified - same structure
+    return _build_sep_alias("SEP3", SEP3Family)
 
 
 def SEP4():
     """Skew Exponential Power Type 4."""
-    return SEP1()  # Simplified - same structure
+    return _build_sep_alias("SEP4", SEP4Family)
 
 
 # ============================================================================
