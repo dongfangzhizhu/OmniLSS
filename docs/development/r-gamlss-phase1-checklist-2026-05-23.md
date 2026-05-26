@@ -40,7 +40,7 @@
 - ✅ `*O` 后缀 alias 兼容语义修正（`SHASHO`/`JSUO`/`SHASHO2`/`BCPEO`/`BCTO`/`PARETO1O`/`BCCGO`/`LOGSHASHO` 新增独立 compatibility shell，避免名称/类型回落到原始小写-o构造器）。
 - ✅ Batch-11/12/15 与零调整族 registry 入口继续补齐（`GIG`/`GB1`/`WEI2`/`WEI3`/`NOF`/`GAF`/`RGE`/`SEP1-4`/`SST`/`ST3C`/`EGB2`/`LQNO`/`NBF`/`LOGSHASH`/`GPO`/`ZABI`/`ZANBI` 已可通过 `distribution_registry.resolve()` 解析）。
 - ✅ `SEP2/SEP3/SEP4` 兼容构造器语义修正（保持共用 SEP 数值骨架，但分别使用独立 family class + 对应名称返回 `SEP2`/`SEP3`/`SEP4`，避免 registry 解析后名称/类型回落为 `SEP1`）。
-- 🟡 `TF2` 接口：已提供构造器与注册；新增独立 `TF2Family` compatibility class（与 `TF` 解耦 family 类型语义）并保留当前共用数值内核；已补基于 R `TF` 的 d/p/q 一致性测试并纳入 consistency suites（basic/all/phase0 gate）；后续仍需针对 R `TF2` 专用参数化逐项比对。
+- 🟡 `TF2` 接口：已提供构造器与注册；新增独立 `TF2Family` compatibility class（与 `TF` 解耦 family 类型语义）并保留当前共用数值内核；`nu` 链接已切换为 `logshiftto2`（显式约束 `nu > 2`，与 TF2 语义对齐），并新增构造器/链接单测；同时在 TF2 family d/p/q/r 与 score/hessian 路径加入 `nu>2` 钳制防护（即使直接调用 family 接口也保持 TF2 语义）；d/p/q R 一致性已扩展到 `central/tail/ultra_tail_prob` 三组参数剖面（含极端概率区间 `1e-4 ~ 1-1e-4`），并纳入 consistency suites（basic/all/phase0 gate）；已改为直接对 R `TF2` 执行 d/p/q 对齐（不再借道 R `TF`）；后续仍需继续扩展 TF2 专用参数化的边界验收。
 - 🟡 ST1（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景与极端概率区间，并纳入 consistency suites 的 basic/all 组）
 - 🟡 ST2（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景与极端概率区间，并纳入 consistency suites 的 basic/all 组）
 - 🟡 ST3（已提供兼容构造器与 registry，当前共用 ST3C 数值内核；已将 d/p/q R 一致性用例扩展到 `central/tail/ultra_tail` 三组参数场景与极端概率区间，并纳入 consistency suites 的 basic/all 组）
