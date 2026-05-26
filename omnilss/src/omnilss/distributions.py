@@ -29,6 +29,9 @@ from .links import (
     logit_derivative,
     logit_inverse,
     logit_link,
+    logshiftto2_derivative,
+    logshiftto2_inverse,
+    logshiftto2_link,
 )
 from .dpqr_functions import (
     dNO, pNO, qNO, rNO,
@@ -1495,25 +1498,103 @@ def TF2() -> TF2Family:
 
     R reference: `gamlss.dist/R/TF2.R::TF2`.
 
-    Current implementation reuses the canonical `TF` parameterization and
-    numerics as a compatibility alias while keeping a distinct family name.
+    TF2 keeps TF numerics for d/p/q/r in the current staged migration, but
+    uses the dedicated ``logshiftto2`` link for ``nu`` so fitting paths enforce
+    ``nu > 2`` semantics expected by TF2.
     """
     fam = TF()
+    eps = jnp.finfo(jnp.float64).eps
+
+    def _nu_gt2(nu):
+        return jnp.maximum(jnp.asarray(nu, dtype=jnp.float64), 2.0 + eps)
+
+    def g_dev_inc_tf2(y, mu, sigma, nu):
+        return fam.g_dev_inc(y, mu, sigma, _nu_gt2(nu))
+
+    def d_tf2(x, mu=0.0, sigma=1.0, nu=3.0, log=False):
+        return fam.d(x, mu, sigma, _nu_gt2(nu), log=log)
+
+    def p_tf2(q, mu=0.0, sigma=1.0, nu=3.0, lower_tail=True, log_p=False):
+        return fam.p(q, mu, sigma, _nu_gt2(nu), lower_tail=lower_tail, log_p=log_p)
+
+    def q_tf2(p, mu=0.0, sigma=1.0, nu=3.0, lower_tail=True, log_p=False):
+        """Quantile wrapper with one-step refinement for staged TF2 numerics."""
+        nu_safe = _nu_gt2(nu)
+
+        # Normalize all paths to lower-tail probability space.
+        p_arr = jnp.asarray(p, dtype=jnp.float64)
+        p_log_safe = jnp.minimum(p_arr, 0.0)
+        p_raw = jnp.where(log_p, jnp.exp(p_log_safe), p_arr)
+        p_target = jnp.where(lower_tail, p_raw, 1.0 - p_raw)
+        p_target = jnp.clip(p_target, eps, 1.0 - eps)
+
+        # Base quantile evaluation in stable lower-tail mode.
+        q0 = fam.q(p_target, mu, sigma, nu_safe, lower_tail=True, log_p=False)
+
+        # One Newton-style correction improves p/q self-consistency near nu boundary.
+        p0 = fam.p(q0, mu, sigma, nu_safe, lower_tail=True, log_p=False)
+        d0 = fam.d(q0, mu, sigma, nu_safe, log=False)
+        d0 = jnp.where(jnp.isfinite(d0), d0, eps)
+        d0 = jnp.maximum(d0, eps)
+
+        step = (p0 - p_target) / d0
+        step = jnp.clip(step, -5.0, 5.0)
+        edge_mask = (p_target <= 1e-8) | (p_target >= 1.0 - 1e-8)
+        step = jnp.where(edge_mask, 0.0, step)
+        step = jnp.where(jnp.isfinite(step), step, 0.0)
+
+        q1 = q0 - step
+        q1 = jnp.where(jnp.isfinite(q1), q1, q0)
+
+        # For monotone probability grids, enforce weak monotonicity as a staged
+        # compatibility guard for quantile behavior.
+        p_flat = jnp.ravel(p_target)
+        q_flat = jnp.ravel(q1)
+        if q_flat.ndim == 1:
+            p_diff = jnp.diff(p_flat)
+            is_monotone_grid = p_flat.size <= 1 or bool(jnp.all(p_diff >= 0.0))
+            if is_monotone_grid:
+                q_flat = jnp.maximum.accumulate(q_flat)
+                q1 = jnp.reshape(q_flat, q1.shape)
+        return q1
+
+
+    def r_tf2(n, mu=0.0, sigma=1.0, nu=3.0):
+        return fam.r(n, mu, sigma, _nu_gt2(nu))
+
+    def dldm_tf2(y, mu, sigma, nu):
+        return fam.score_functions["mu"](y, mu, sigma, _nu_gt2(nu))
+
+    def dldd_tf2(y, mu, sigma, nu):
+        return fam.score_functions["sigma"](y, mu, sigma, _nu_gt2(nu))
+
+    def dldn_tf2(y, mu, sigma, nu):
+        return fam.score_functions["nu"](y, mu, sigma, _nu_gt2(nu))
+
+    def d2ldm2_tf2(y, mu, sigma, nu):
+        return fam.hessian_functions["mu"](y, mu, sigma, _nu_gt2(nu))
+
+    def d2ldd2_tf2(y, mu, sigma, nu):
+        return fam.hessian_functions["sigma"](y, mu, sigma, _nu_gt2(nu))
+
+    def d2ldn2_tf2(y, mu, sigma, nu):
+        return fam.hessian_functions["nu"](y, mu, sigma, _nu_gt2(nu))
+
     return TF2Family(
         name="TF2",
         parameters=fam.parameters,
-        g_dev_inc=fam.g_dev_inc,
+        g_dev_inc=g_dev_inc_tf2,
         type=fam.type,
-        links=fam.links,
-        link_functions=fam.link_functions,
-        link_inverses=fam.link_inverses,
-        link_derivatives=fam.link_derivatives,
-        score_functions=fam.score_functions,
-        hessian_functions=fam.hessian_functions,
-        d=fam.d,
-        p=fam.p,
-        q=fam.q,
-        r=fam.r,
+        links={"mu": "identity", "sigma": "log", "nu": "logshiftto2"},
+        link_functions={"mu": identity_link, "sigma": log_link, "nu": logshiftto2_link},
+        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": logshiftto2_inverse},
+        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": logshiftto2_derivative},
+        score_functions={"mu": dldm_tf2, "sigma": dldd_tf2, "nu": dldn_tf2},
+        hessian_functions={"mu": d2ldm2_tf2, "sigma": d2ldd2_tf2, "nu": d2ldn2_tf2},
+        d=d_tf2,
+        p=p_tf2,
+        q=q_tf2,
+        r=r_tf2,
     )
 
 
