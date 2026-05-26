@@ -1522,7 +1522,9 @@ def TF2() -> TF2Family:
         nu_safe = _nu_gt2(nu)
 
         # Normalize all paths to lower-tail probability space.
-        p_raw = jnp.where(log_p, jnp.exp(jnp.asarray(p, dtype=jnp.float64)), jnp.asarray(p, dtype=jnp.float64))
+        p_arr = jnp.asarray(p, dtype=jnp.float64)
+        p_log_safe = jnp.minimum(p_arr, 0.0)
+        p_raw = jnp.where(log_p, jnp.exp(p_log_safe), p_arr)
         p_target = jnp.where(lower_tail, p_raw, 1.0 - p_raw)
         p_target = jnp.clip(p_target, eps, 1.0 - eps)
 
@@ -1544,16 +1546,16 @@ def TF2() -> TF2Family:
         q1 = q0 - step
         q1 = jnp.where(jnp.isfinite(q1), q1, q0)
 
-        # For vectorized probability grids, enforce weak monotonicity in p-order
-        # as a staged compatibility guard for quantile behavior.
+        # For monotone probability grids, enforce weak monotonicity as a staged
+        # compatibility guard for quantile behavior.
         p_flat = jnp.ravel(p_target)
         q_flat = jnp.ravel(q1)
         if q_flat.ndim == 1:
-            order = jnp.argsort(p_flat)
-            q_sorted = q_flat[order]
-            q_sorted = jnp.maximum.accumulate(q_sorted)
-            q_recovered = q_flat.at[order].set(q_sorted)
-            q1 = jnp.reshape(q_recovered, q1.shape)
+            p_diff = jnp.diff(p_flat)
+            is_monotone_grid = p_flat.size <= 1 or bool(jnp.all(p_diff >= 0.0))
+            if is_monotone_grid:
+                q_flat = jnp.maximum.accumulate(q_flat)
+                q1 = jnp.reshape(q_flat, q1.shape)
         return q1
 
 
