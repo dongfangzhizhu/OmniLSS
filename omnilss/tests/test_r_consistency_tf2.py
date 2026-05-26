@@ -172,7 +172,10 @@ class TestTF2Consistency(unittest.TestCase):
         r_lower = self.bus.eval_family(
             family="TF2",
             func_type="p",
-            args={"q": q.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()},
+            args={"q": q.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "lower.tail": False},
+        )
+        py_upper = np.asarray(
+            fam.p(jnp.array(q), jnp.array(mu), jnp.array(sigma), jnp.array(nu), lower_tail=False)
         )
         r_upper = self.bus.eval_family(
             family="TF2",
