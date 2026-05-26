@@ -38,6 +38,28 @@ def log_derivative(eta: jnp.ndarray) -> jnp.ndarray:
     return jnp.maximum(jnp.exp(eta), jnp.finfo(jnp.float64).eps)
 
 
+
+
+def logshiftto2_link(mu: jnp.ndarray) -> jnp.ndarray:
+    """Shifted log link: eta = log(mu - 2), enforcing mu > 2."""
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    eps = jnp.finfo(jnp.float64).eps
+    return jnp.log(jnp.maximum(mu - 2.0, eps))
+
+
+def logshiftto2_inverse(eta: jnp.ndarray) -> jnp.ndarray:
+    """Inverse shifted-log link: mu = 2 + exp(eta)."""
+    eta = jnp.asarray(eta, dtype=jnp.float64)
+    eps = jnp.finfo(jnp.float64).eps
+    return 2.0 + jnp.maximum(jnp.exp(eta), eps)
+
+
+def logshiftto2_derivative(eta: jnp.ndarray) -> jnp.ndarray:
+    """Derivative of shifted-log inverse with respect to eta."""
+    eta = jnp.asarray(eta, dtype=jnp.float64)
+    eps = jnp.finfo(jnp.float64).eps
+    return jnp.maximum(jnp.exp(eta), eps)
+
 def logit_link(mu: jnp.ndarray) -> jnp.ndarray:
     mu = jnp.asarray(mu, dtype=jnp.float64)
     eps = jnp.finfo(jnp.float64).eps
