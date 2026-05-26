@@ -49,6 +49,15 @@ class TestTF2Consistency(unittest.TestCase):
                 "p": np.linspace(1e-4, 1 - 1e-4, 80),
                 "tol": {"d": (5e-5, 5e-7), "p": (5e-5, 5e-7), "q": (8e-5, 8e-5)},
             },
+            {
+                "name": "near_nu_boundary",
+                "x": np.linspace(-9.0, 9.0, 80),
+                "mu": np.linspace(-2.0, 2.0, 80),
+                "sigma": np.linspace(0.08, 2.4, 80),
+                "nu": np.linspace(2.000001, 2.08, 80),
+                "p": np.linspace(5e-5, 1 - 5e-5, 80),
+                "tol": {"d": (9e-5, 9e-7), "p": (9e-5, 9e-7), "q": (1.2e-4, 1.2e-4)},
+            },
         ]
 
         fam = resolve("TF2")
@@ -172,10 +181,10 @@ class TestTF2Consistency(unittest.TestCase):
         r_lower = self.bus.eval_family(
             family="TF2",
             func_type="p",
-            args={"q": q.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "lower.tail": False},
+            args={"q": q.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "log.p": True},
         )
-        py_upper = np.asarray(
-            fam.p(jnp.array(q), jnp.array(mu), jnp.array(sigma), jnp.array(nu), lower_tail=False)
+        py_logp = np.asarray(
+            fam.p(jnp.array(q), jnp.array(mu), jnp.array(sigma), jnp.array(nu), log_p=True)
         )
         r_upper = self.bus.eval_family(
             family="TF2",

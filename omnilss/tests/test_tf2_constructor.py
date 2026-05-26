@@ -131,3 +131,17 @@ def test_tf2_q_monotonic_over_probability_grid() -> None:
     # Quantile function should be non-decreasing over probability grid.
     diffs = q_vals[1:] - q_vals[:-1]
     assert jnp.all(diffs >= -1e-6)
+
+
+def test_tf2_q_nonmonotone_inputs_match_pointwise_evaluation() -> None:
+    tf2 = TF2()
+
+    mu = jnp.array([0.0])
+    sigma = jnp.array([1.0])
+    nu = jnp.array([2.2])
+
+    probs = jnp.array([0.2, 0.8, 0.3, 0.7, 0.1, 0.9])
+    q_vec = tf2.q(probs, mu, sigma, nu)
+    q_pointwise = jnp.stack([tf2.q(jnp.array([p]), mu, sigma, nu)[0] for p in probs])
+
+    assert jnp.allclose(q_vec, q_pointwise, atol=1e-6, rtol=1e-6)
