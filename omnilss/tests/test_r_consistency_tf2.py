@@ -281,5 +281,63 @@ class TestTF2Consistency(unittest.TestCase):
                 np.testing.assert_allclose(p_back_r, pvals, rtol=profile["tol"][0], atol=profile["tol"][1])
 
 
+    def test_tf2_near_nu_boundary_upper_tail_logp_roundtrip(self) -> None:
+        pvals = np.linspace(0.02, 0.98, 44)
+        p_log = np.log(pvals)
+        mu = np.linspace(-1.2, 1.2, 44)
+        sigma = np.linspace(0.12, 2.0, 44)
+        nu = np.linspace(2.000001, 2.06, 44)
+
+        fam = resolve("TF2")
+
+        x_py = np.asarray(
+            fam.q(
+                jnp.array(p_log),
+                jnp.array(mu),
+                jnp.array(sigma),
+                jnp.array(nu),
+                lower_tail=False,
+                log_p=True,
+            )
+        )
+        p_back_py = np.asarray(
+            fam.p(
+                jnp.array(x_py),
+                jnp.array(mu),
+                jnp.array(sigma),
+                jnp.array(nu),
+                lower_tail=False,
+                log_p=True,
+            )
+        )
+        np.testing.assert_allclose(p_back_py, p_log, rtol=2.5e-4, atol=2.5e-4)
+
+        x_r = self.bus.eval_family(
+            family="TF2",
+            func_type="q",
+            args={
+                "p": p_log.tolist(),
+                "mu": mu.tolist(),
+                "sigma": sigma.tolist(),
+                "nu": nu.tolist(),
+                "lower.tail": False,
+                "log.p": True,
+            },
+        )
+        p_back_r = self.bus.eval_family(
+            family="TF2",
+            func_type="p",
+            args={
+                "q": np.asarray(x_r).tolist(),
+                "mu": mu.tolist(),
+                "sigma": sigma.tolist(),
+                "nu": nu.tolist(),
+                "lower.tail": False,
+                "log.p": True,
+            },
+        )
+        np.testing.assert_allclose(p_back_r, p_log, rtol=2.5e-4, atol=2.5e-4)
+
+
 if __name__ == "__main__":
     unittest.main()
