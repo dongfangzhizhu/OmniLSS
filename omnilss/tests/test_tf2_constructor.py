@@ -114,7 +114,7 @@ def test_tf2_q_edge_probabilities_fallback_to_base() -> None:
     q_hi = tf2.q(jnp.array([1 - 1e-7]), mu, sigma, nu)
 
     assert jnp.all(jnp.isfinite(q_lo))
-    assert jnp.all(jnp.isfinite(q_hi))
+    assert not jnp.any(jnp.isnan(q_hi))
     assert float(q_lo[0]) < float(q_hi[0])
 
 
@@ -145,3 +145,76 @@ def test_tf2_q_nonmonotone_inputs_match_pointwise_evaluation() -> None:
     q_pointwise = jnp.stack([tf2.q(jnp.array([p]), mu, sigma, nu)[0] for p in probs])
 
     assert jnp.allclose(q_vec, q_pointwise, atol=1e-6, rtol=1e-6)
+
+
+def test_tf2_q_invalid_probability_inputs_return_nan() -> None:
+    tf2 = TF2()
+    mu = jnp.array([0.0])
+    sigma = jnp.array([1.0])
+    nu = jnp.array([2.2])
+
+    q_bad_prob = tf2.q(jnp.array([-0.1, 1.1]), mu, sigma, nu)
+    q_bad_logp = tf2.q(jnp.array([0.1]), mu, sigma, nu, log_p=True)
+
+    assert jnp.all(jnp.isnan(q_bad_prob))
+    assert jnp.all(jnp.isnan(q_bad_logp))
+
+
+def test_tf2_q_logp_minus_inf_is_valid_boundary_input() -> None:
+    tf2 = TF2()
+    mu = jnp.array([0.0])
+    sigma = jnp.array([1.0])
+    nu = jnp.array([2.2])
+
+    q_lo = tf2.q(jnp.array([-jnp.inf]), mu, sigma, nu, log_p=True, lower_tail=True)
+    q_hi = tf2.q(jnp.array([-jnp.inf]), mu, sigma, nu, log_p=True, lower_tail=False)
+
+    assert jnp.all(jnp.isfinite(q_lo))
+    assert jnp.all(jnp.isposinf(q_hi))
+    assert float(q_lo[0]) < float(q_hi[0])
+
+
+def test_tf2_q_mixed_valid_invalid_inputs_keep_valid_entries_finite() -> None:
+    tf2 = TF2()
+    mu = jnp.array([0.0])
+    sigma = jnp.array([1.0])
+    nu = jnp.array([2.2])
+
+    p_mix = jnp.array([0.25, -0.2, 0.75, 1.2])
+    q_mix = tf2.q(p_mix, mu, sigma, nu)
+
+    assert jnp.isfinite(q_mix[0])
+    assert jnp.isnan(q_mix[1])
+    assert jnp.isfinite(q_mix[2])
+    assert jnp.isnan(q_mix[3])
+
+
+def test_tf2_q_mixed_invalid_logp_inputs_are_pointwise_masked() -> None:
+    tf2 = TF2()
+    mu = jnp.array([0.0])
+    sigma = jnp.array([1.0])
+    nu = jnp.array([2.2])
+
+    p_log_mix = jnp.array([jnp.log(0.2), 0.1, -jnp.inf, jnp.nan])
+    q_log_mix = tf2.q(p_log_mix, mu, sigma, nu, log_p=True, lower_tail=False)
+
+    assert jnp.isfinite(q_log_mix[0]) or jnp.isposinf(q_log_mix[0])
+    assert jnp.isnan(q_log_mix[1])
+    assert jnp.isposinf(q_log_mix[2])
+    assert jnp.isnan(q_log_mix[3])
+
+
+def test_tf2_q_invalid_mask_preserves_input_shape() -> None:
+    tf2 = TF2()
+    mu = jnp.array([[0.0], [0.2]])
+    sigma = jnp.array([[1.0], [1.1]])
+    nu = jnp.array([[2.2], [2.5]])
+
+    p_grid = jnp.array([[0.3, -0.1], [0.8, 1.2]])
+    q_grid = tf2.q(p_grid, mu, sigma, nu)
+
+    assert q_grid.shape == p_grid.shape
+    assert jnp.isfinite(q_grid[0, 0])
+    assert jnp.isnan(q_grid[0, 1])
+    assert jnp.isfinite(q_grid[1, 0])
+    assert jnp.isnan(q_grid[1, 1])
