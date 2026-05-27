@@ -1523,24 +1523,38 @@ def TF2() -> TF2Family:
 
         # Normalize all paths to lower-tail probability space.
         p_arr = jnp.asarray(p, dtype=jnp.float64)
+        log_half = -jnp.log(jnp.array(2.0, dtype=p_arr.dtype))
         if log_p:
             # log-probability path accepts finite values <= 0 and -Inf (p=0).
             valid_input = ~jnp.isnan(p_arr)
             valid_input = valid_input & (p_arr <= 0.0)
+            # Clamp only for internal staged numerics: values above 0 are routed
+            # to a conservative interior point and still masked out in output.
+            p_internal = jnp.minimum(p_arr, 0.0)
         else:
             valid_input = jnp.isfinite(p_arr) & (p_arr >= 0.0) & (p_arr <= 1.0)
+            p_internal = p_arr
         # Keep downstream staged numerics stable even for invalid inputs by
         # routing invalid entries through a conservative interior probability.
         # Branch at Python level to avoid constructing unused fill tensors.
         if log_p:
-            logp_fill = jnp.full_like(p_arr, jnp.log(jnp.array(0.5, dtype=p_arr.dtype)))
-            p_arr_safe = jnp.where(valid_input, p_arr, logp_fill)
-            p_raw = jnp.exp(jnp.minimum(p_arr_safe, 0.0))
+            logp_fill = jnp.full_like(p_arr, log_half)
+            p_arr_safe = jnp.where(valid_input, p_internal, logp_fill)
+            p_raw = jnp.exp(p_arr_safe)
         else:
             prob_fill = jnp.full_like(p_arr, 0.5)
-            p_arr_safe = jnp.where(valid_input, p_arr, prob_fill)
+            p_arr_safe = jnp.where(valid_input, p_internal, prob_fill)
             p_raw = p_arr_safe
         p_target = jnp.where(lower_tail, p_raw, 1.0 - p_raw)
+        # Keep exact boundary semantics for legal log.p points:
+        # log.p==0 maps to p=1 (or upper-tail p=0) before clip.
+        if log_p:
+            is_logp_zero = valid_input & (p_arr == 0.0)
+            p_target = jnp.where(
+                is_logp_zero,
+                jnp.where(lower_tail, jnp.ones_like(p_target), jnp.zeros_like(p_target)),
+                p_target,
+            )
         p_target = jnp.clip(p_target, eps, 1.0 - eps)
 
         # Base quantile evaluation in stable lower-tail mode.
@@ -1571,6 +1585,19 @@ def TF2() -> TF2Family:
             if is_monotone_grid:
                 q_flat = jnp.maximum.accumulate(q_flat)
                 q1 = jnp.reshape(q_flat, q1.shape)
+        if log_p:
+            is_logp_zero = valid_input & (p_arr == 0.0)
+            is_logp_neginf = valid_input & jnp.isneginf(p_arr)
+            q1 = jnp.where(
+                is_logp_zero,
+                jnp.where(lower_tail, jnp.inf, -jnp.inf),
+                q1,
+            )
+            q1 = jnp.where(
+                is_logp_neginf,
+                jnp.where(lower_tail, -jnp.inf, jnp.inf),
+                q1,
+            )
         return jnp.where(valid_input, q1, jnp.nan)
 
 

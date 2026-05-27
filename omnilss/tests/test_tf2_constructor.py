@@ -169,7 +169,7 @@ def test_tf2_q_logp_minus_inf_is_valid_boundary_input() -> None:
     q_lo = tf2.q(jnp.array([-jnp.inf]), mu, sigma, nu, log_p=True, lower_tail=True)
     q_hi = tf2.q(jnp.array([-jnp.inf]), mu, sigma, nu, log_p=True, lower_tail=False)
 
-    assert jnp.all(jnp.isfinite(q_lo))
+    assert jnp.all(jnp.isneginf(q_lo))
     assert jnp.all(jnp.isposinf(q_hi))
     assert float(q_lo[0]) < float(q_hi[0])
 
@@ -218,3 +218,37 @@ def test_tf2_q_invalid_mask_preserves_input_shape() -> None:
     assert jnp.isnan(q_grid[0, 1])
     assert jnp.isfinite(q_grid[1, 0])
     assert jnp.isnan(q_grid[1, 1])
+
+
+def test_tf2_q_logp_posinf_is_invalid_and_pointwise_masked() -> None:
+    tf2 = TF2()
+    mu = jnp.array([0.0])
+    sigma = jnp.array([1.0])
+    nu = jnp.array([2.2])
+
+    p_log = jnp.array([jnp.log(0.4), jnp.inf, jnp.log(0.7)])
+    q = tf2.q(p_log, mu, sigma, nu, log_p=True)
+
+    assert jnp.isfinite(q[0])
+    assert jnp.isnan(q[1])
+    assert jnp.isfinite(q[2])
+
+
+def test_tf2_q_logp_zero_boundary_is_valid() -> None:
+    tf2 = TF2()
+    mu = jnp.array([0.0])
+    sigma = jnp.array([1.0])
+    nu = jnp.array([2.2])
+
+    q = tf2.q(jnp.array([0.0]), mu, sigma, nu, log_p=True, lower_tail=True)
+    assert jnp.all(jnp.isposinf(q))
+
+
+def test_tf2_q_logp_zero_upper_tail_boundary_is_valid() -> None:
+    tf2 = TF2()
+    mu = jnp.array([0.0])
+    sigma = jnp.array([1.0])
+    nu = jnp.array([2.2])
+
+    q = tf2.q(jnp.array([0.0]), mu, sigma, nu, log_p=True, lower_tail=False)
+    assert jnp.all(jnp.isneginf(q))
