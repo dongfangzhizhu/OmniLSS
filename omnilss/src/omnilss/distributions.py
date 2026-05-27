@@ -1523,8 +1523,23 @@ def TF2() -> TF2Family:
 
         # Normalize all paths to lower-tail probability space.
         p_arr = jnp.asarray(p, dtype=jnp.float64)
-        p_log_safe = jnp.minimum(p_arr, 0.0)
-        p_raw = jnp.where(log_p, jnp.exp(p_log_safe), p_arr)
+        if log_p:
+            # log-probability path accepts finite values <= 0 and -Inf (p=0).
+            valid_input = ~jnp.isnan(p_arr)
+            valid_input = valid_input & (p_arr <= 0.0)
+        else:
+            valid_input = jnp.isfinite(p_arr) & (p_arr >= 0.0) & (p_arr <= 1.0)
+        # Keep downstream staged numerics stable even for invalid inputs by
+        # routing invalid entries through a conservative interior probability.
+        # Branch at Python level to avoid constructing unused fill tensors.
+        if log_p:
+            logp_fill = jnp.full_like(p_arr, jnp.log(jnp.array(0.5, dtype=p_arr.dtype)))
+            p_arr_safe = jnp.where(valid_input, p_arr, logp_fill)
+            p_raw = jnp.exp(jnp.minimum(p_arr_safe, 0.0))
+        else:
+            prob_fill = jnp.full_like(p_arr, 0.5)
+            p_arr_safe = jnp.where(valid_input, p_arr, prob_fill)
+            p_raw = p_arr_safe
         p_target = jnp.where(lower_tail, p_raw, 1.0 - p_raw)
         p_target = jnp.clip(p_target, eps, 1.0 - eps)
 
@@ -1556,7 +1571,7 @@ def TF2() -> TF2Family:
             if is_monotone_grid:
                 q_flat = jnp.maximum.accumulate(q_flat)
                 q1 = jnp.reshape(q_flat, q1.shape)
-        return q1
+        return jnp.where(valid_input, q1, jnp.nan)
 
 
     def r_tf2(n, mu=0.0, sigma=1.0, nu=3.0):
