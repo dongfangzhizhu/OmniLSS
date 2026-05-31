@@ -8,11 +8,15 @@ still lacking enough evidence to be treated as production-safe.
 
 from __future__ import annotations
 
+import ast
 from dataclasses import dataclass, field
 from enum import Enum
+from functools import lru_cache
+from importlib.util import find_spec
+from pathlib import Path
 from typing import Mapping
 
-from .distribution_registry import _REGISTERED_FAMILIES
+from .distribution_registry import _BUILTIN_FAMILY_FACTORIES, _REGISTERED_FAMILIES
 
 
 class CapabilityStatus(str, Enum):
@@ -23,11 +27,22 @@ class CapabilityStatus(str, Enum):
     UNSUPPORTED = "unsupported"
 
 
+class ImplementationStatus(str, Enum):
+    """Implementation truth for a registered R distribution family."""
+
+    IMPLEMENTED = "implemented"
+    EXPERIMENTAL = "experimental"
+    COMPAT_ALIAS = "compat_alias"
+    PLACEHOLDER = "placeholder"
+    MISSING = "missing"
+    UNSUPPORTED_WITH_RATIONALE = "unsupported_with_rationale"
+
+
 class FamilyCapabilityError(ValueError):
     """Raised when a requested family feature is not available at the requested tier."""
 
 
-CAPABILITY_MATRIX_VERSION = 3
+CAPABILITY_MATRIX_VERSION = 4
 
 FEATURES: tuple[str, ...] = (
     "rs_fit",
@@ -127,12 +142,129 @@ _RS_JAX_SUPPORTED = frozenset({"NO", "GA", "PO", "BI", "WEI", "TF"})
 # has strong evidence across fit, prediction, artifact, and R-consistency paths.
 _PRODUCTION_SAFE = frozenset({"NO"})
 
+_KNOWN_COMPAT_ALIAS_FAMILIES = frozenset(
+    {
+        "BCCGUNTR",
+        "BCPEUNTR",
+        "BCTUNTR",
+        "DBI",
+        "DBURR12",
+        "MULTIN",
+        "ST1",
+        "ST2",
+        "ST3",
+        "ST4",
+        "COUNT_1_31",
+        "COUNT_1_22",
+        "COUNT_2_32",
+        "COUNT_2_32R",
+        "COUNT_2_33",
+        "COUNT_3_32",
+        "COUNT_3_33",
+        "BINOM_1_31",
+        "BINOM_2_33",
+        "BINOM_3_33",
+        "CONTR_2_12",
+        "CONTR_3_11",
+        "CONTR_4_13",
+        "CONTRPLUS_1_1",
+        "CONTRPLUS_2_11",
+        "CONTRPLUS_3_13",
+        "CONTRPLUS_4_33",
+        "CONTR01_2_13",
+        "CONTR01_4_33",
+    }
+)
+
+_COMPAT_FACTORY_MODULES = frozenset(
+    {
+        "omnilss.distributions_boxcox_compat",
+        "omnilss.distributions_count_compat",
+        "omnilss.distributions_discrete_compat",
+        "omnilss.distributions_gen_skeleton_compat",
+        "omnilss.distributions_st_compat",
+    }
+)
+
+
+@lru_cache(maxsize=None)
+def _module_function_defs(module_name: str) -> dict[str, ast.FunctionDef]:
+    """Return function definitions for a registry factory module without importing it."""
+
+    try:
+        spec = find_spec(module_name)
+    except (ImportError, AttributeError, ValueError):
+        return {}
+    if spec is None or spec.origin is None:
+        return {}
+    try:
+        source = Path(spec.origin).read_text(encoding="utf-8")
+        module = ast.parse(source)
+    except (OSError, SyntaxError, UnicodeDecodeError):
+        return {}
+    return {
+        node.name: node
+        for node in module.body
+        if isinstance(node, ast.FunctionDef)
+    }
+
+
+def _call_name(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    return None
+
+
+def _build_ad_family_call_has_placeholder(call: ast.Call) -> bool:
+    keywords = {keyword.arg: keyword.value for keyword in call.keywords if keyword.arg}
+    for dpqr_name in ("p", "q", "r"):
+        value = keywords.get(dpqr_name)
+        if value is None:
+            return True
+        if isinstance(value, ast.Constant) and value.value is None:
+            return True
+    return False
+
+
+def _function_uses_build_ad_placeholder(
+    function_name: str,
+    defs: Mapping[str, ast.FunctionDef],
+    seen: frozenset[str] = frozenset(),
+) -> bool:
+    if function_name in seen:
+        return False
+    node = defs.get(function_name)
+    if node is None:
+        return False
+    next_seen = seen | {function_name}
+    for child in ast.walk(node):
+        if not isinstance(child, ast.Call):
+            continue
+        call_name = _call_name(child.func)
+        if call_name == "build_ad_family":
+            if _build_ad_family_call_has_placeholder(child):
+                return True
+        elif call_name in defs and _function_uses_build_ad_placeholder(
+            call_name, defs, next_seen
+        ):
+            return True
+    return False
+
+
+@lru_cache(maxsize=None)
+def _factory_uses_placeholder_dpqr(module_name: str, attr_name: str) -> bool:
+    defs = _module_function_defs(module_name)
+    return _function_uses_build_ad_placeholder(attr_name, defs)
+
 
 @dataclass(frozen=True)
 class FamilyCapability:
     """Capability statuses for one distribution family."""
 
     name: str
+    implementation_status: ImplementationStatus
     features: Mapping[str, CapabilityStatus]
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -154,13 +286,37 @@ class FamilyCapability:
 
         return {
             "name": self.name,
+            "implementation_status": self.implementation_status.value,
             "features": {k: v.value for k, v in self.features.items()},
             "notes": list(self.notes),
         }
 
 
+def implementation_status_for_family(name: str) -> ImplementationStatus:
+    """Return the code-derived implementation truth for a registered family.
+
+    This status is intentionally separate from feature evidence.  For example,
+    a compatibility alias may have smoke or R-consistency tests that prove the
+    wrapper is callable, but it still must not be counted as a migrated
+    statistical implementation.
+    """
+
+    key = str(name).upper()
+    factory = _BUILTIN_FAMILY_FACTORIES.get(key)
+    if factory is None:
+        return ImplementationStatus.MISSING
+
+    module_name, _attr_name = factory
+    if key in _KNOWN_COMPAT_ALIAS_FAMILIES or module_name in _COMPAT_FACTORY_MODULES:
+        return ImplementationStatus.COMPAT_ALIAS
+    if _factory_uses_placeholder_dpqr(module_name, _attr_name):
+        return ImplementationStatus.PLACEHOLDER
+    return ImplementationStatus.EXPERIMENTAL
+
+
 def _build_capability(name: str) -> FamilyCapability:
     key = name.upper()
+    implementation_status = implementation_status_for_family(key)
     features = {feature: CapabilityStatus.EXPERIMENTAL for feature in FEATURES}
 
     # Normal RS is the broadest runtime path, but most families still need more
@@ -201,8 +357,17 @@ def _build_capability(name: str) -> FamilyCapability:
             "production_safe",
         ):
             features[validated_feature] = CapabilityStatus.VALIDATED
+        implementation_status = ImplementationStatus.IMPLEMENTED
         notes.append(
             "production-safe baseline family with the strongest current evidence"
+        )
+    elif implementation_status is ImplementationStatus.COMPAT_ALIAS:
+        notes.append(
+            "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior"
+        )
+    elif implementation_status is ImplementationStatus.PLACEHOLDER:
+        notes.append(
+            "public surface contains placeholder numerical behavior and requires replacement"
         )
     elif key in _R_CONSISTENCY_EVIDENCE:
         notes.append(
@@ -215,7 +380,12 @@ def _build_capability(name: str) -> FamilyCapability:
     if features["rs_jax_fit"] is CapabilityStatus.UNSUPPORTED:
         notes.append("RS_JAX route is not advertised for this family")
 
-    return FamilyCapability(name=key, features=features, notes=tuple(notes))
+    return FamilyCapability(
+        name=key,
+        implementation_status=implementation_status,
+        features=features,
+        notes=tuple(notes),
+    )
 
 
 _DEFAULT_CAPABILITIES: dict[str, FamilyCapability] = {
@@ -258,6 +428,7 @@ def capability_matrix() -> dict[str, object]:
     return {
         "version": CAPABILITY_MATRIX_VERSION,
         "features": list(FEATURES),
+        "implementation_statuses": [status.value for status in ImplementationStatus],
         "method_capability_features": method_capability_features(),
         # ``method_routes`` is retained as a compatibility alias for clients and
         # documents created during the first capability-gate iteration.
@@ -314,6 +485,19 @@ def validate_capability_matrix_payload(
                 "features_mismatch",
                 "capability matrix features do not match the runtime registry",
                 path="$.features",
+            )
+        )
+
+    implementation_statuses = payload.get("implementation_statuses")
+    expected_implementation_statuses = [
+        status.value for status in ImplementationStatus
+    ]
+    if implementation_statuses != expected_implementation_statuses:
+        issues.append(
+            _capability_matrix_issue(
+                "implementation_statuses_mismatch",
+                "implementation statuses do not match the runtime registry",
+                path="$.implementation_statuses",
             )
         )
 
@@ -405,6 +589,21 @@ def validate_capability_matrix_payload(
                         path=f"{family_path}.name",
                     )
                 )
+            implementation_status = family_payload.get("implementation_status")
+            valid_implementation_statuses = {
+                status.value for status in ImplementationStatus
+            }
+            if implementation_status not in valid_implementation_statuses:
+                issues.append(
+                    _capability_matrix_issue(
+                        "invalid_implementation_status",
+                        (
+                            f"family {family_name!r} has invalid implementation "
+                            f"status {implementation_status!r}"
+                        ),
+                        path=f"{family_path}.implementation_status",
+                    )
+                )
             family_features = family_payload.get("features")
             if not isinstance(family_features, Mapping):
                 issues.append(
@@ -477,6 +676,8 @@ def method_route_capability_report(
     method_name: str,
     *,
     strict: bool = False,
+    allow_compat_alias: bool = False,
+    allow_placeholder: bool = False,
 ) -> dict[str, object]:
     """Return a JSON-friendly route-admission report for fitting methods.
 
@@ -523,6 +724,51 @@ def method_route_capability_report(
         }
 
     capability = get_family_capability(family)
+    implementation_status = capability.implementation_status
+    if (
+        implementation_status is ImplementationStatus.COMPAT_ALIAS
+        and not allow_compat_alias
+    ):
+        return {
+            "ok": False,
+            "family": capability.name,
+            "method": method,
+            "feature": feature,
+            "status": None,
+            "implementation_status": implementation_status.value,
+            "strict": bool(strict),
+            "allow_experimental": allow_experimental,
+            "allow_compat_alias": bool(allow_compat_alias),
+            "allow_placeholder": bool(allow_placeholder),
+            "code": "compat_alias_requires_opt_in",
+            "message": (
+                f"family {capability.name!r} method {method!r} is a "
+                "compatibility alias; pass allow_compat_alias=True only for "
+                "explicit migration or smoke-test work"
+            ),
+        }
+    if (
+        implementation_status is ImplementationStatus.PLACEHOLDER
+        and not allow_placeholder
+    ):
+        return {
+            "ok": False,
+            "family": capability.name,
+            "method": method,
+            "feature": feature,
+            "status": None,
+            "implementation_status": implementation_status.value,
+            "strict": bool(strict),
+            "allow_experimental": allow_experimental,
+            "allow_compat_alias": bool(allow_compat_alias),
+            "allow_placeholder": bool(allow_placeholder),
+            "code": "placeholder_requires_opt_in",
+            "message": (
+                f"family {capability.name!r} method {method!r} has placeholder "
+                "numeric behavior; pass allow_placeholder=True only for explicit "
+                "migration or smoke-test work"
+            ),
+        }
     status = capability.status(feature)
     if status is CapabilityStatus.VALIDATED:
         ok = True
@@ -559,8 +805,11 @@ def method_route_capability_report(
         "method": method,
         "feature": feature,
         "status": status.value,
+        "implementation_status": implementation_status.value,
         "strict": bool(strict),
         "allow_experimental": allow_experimental,
+        "allow_compat_alias": bool(allow_compat_alias),
+        "allow_placeholder": bool(allow_placeholder),
         "code": code,
         "message": message,
     }
@@ -659,6 +908,7 @@ __all__ = [
     "CapabilityStatus",
     "CAPABILITY_MATRIX_VERSION",
     "FEATURES",
+    "ImplementationStatus",
     "METHOD_ROUTE_FEATURES",
     "capability_matrix",
     "FamilyCapability",
@@ -666,6 +916,7 @@ __all__ = [
     "family_capability_names",
     "family_supports",
     "get_family_capability",
+    "implementation_status_for_family",
     "list_family_capabilities",
     "method_capability_features",
     "method_route_capability_report",

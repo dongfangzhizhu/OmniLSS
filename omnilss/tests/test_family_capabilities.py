@@ -7,6 +7,7 @@ from omnilss.family_capabilities import (
     CapabilityStatus,
     CAPABILITY_MATRIX_VERSION,
     FEATURES,
+    ImplementationStatus,
     METHOD_ROUTE_FEATURES,
     FamilyCapabilityError,
     capability_matrix,
@@ -15,6 +16,7 @@ from omnilss.family_capabilities import (
     family_capability_names,
     family_supports,
     get_family_capability,
+    implementation_status_for_family,
     method_route_feature,
     list_family_capabilities,
     require_family_capability,
@@ -30,18 +32,44 @@ def test_capability_registry_covers_all_registered_families():
 def test_every_family_has_every_feature_status():
     for capability in list_family_capabilities():
         assert set(capability.features) == set(FEATURES)
+        assert isinstance(capability.implementation_status, ImplementationStatus)
         assert all(
             isinstance(status, CapabilityStatus)
             for status in capability.features.values()
         )
         assert capability.as_dict()["name"] == capability.name
+        assert (
+            capability.as_dict()["implementation_status"]
+            == capability.implementation_status.value
+        )
 
 
 def test_known_core_family_statuses_are_case_insensitive():
     no_capability = get_family_capability("no")
+    assert no_capability.implementation_status is ImplementationStatus.IMPLEMENTED
     assert no_capability.status("r_consistency") is CapabilityStatus.VALIDATED
     assert no_capability.status("production_safe") is CapabilityStatus.VALIDATED
     assert family_supports("NO", "rs_jax_fit")
+
+
+def test_known_compat_alias_families_are_marked_separately_from_evidence():
+    for family_name in ("ST1", "DBI", "DBURR12", "BCCGUNTR", "COUNT_1_31"):
+        capability = get_family_capability(family_name)
+        assert capability.implementation_status is ImplementationStatus.COMPAT_ALIAS
+        assert implementation_status_for_family(family_name) is (
+            ImplementationStatus.COMPAT_ALIAS
+        )
+        assert any("compatibility constructor" in note for note in capability.notes)
+
+
+def test_ad_families_without_explicit_dpqr_are_marked_placeholder():
+    for family_name in ("GB2", "GIG", "SEP1"):
+        capability = get_family_capability(family_name)
+        assert capability.implementation_status is ImplementationStatus.PLACEHOLDER
+        assert implementation_status_for_family(family_name) is (
+            ImplementationStatus.PLACEHOLDER
+        )
+        assert any("placeholder numerical behavior" in note for note in capability.notes)
 
 
 def test_unsupported_jax_route_is_reported():
@@ -88,8 +116,11 @@ def test_method_route_capability_report_supports_service_admission():
         "method": "RS",
         "feature": "rs_fit",
         "status": "validated",
+        "implementation_status": "implemented",
         "strict": True,
         "allow_experimental": False,
+        "allow_compat_alias": False,
+        "allow_placeholder": False,
         "code": "validated",
         "message": "family 'NO' method 'RS' is validated through capability feature 'rs_fit'",
     }
@@ -101,8 +132,15 @@ def test_method_route_capability_report_supports_service_admission():
 
     unsupported = method_route_capability_report("GB2", "RS_JAX")
     assert unsupported["ok"] is False
-    assert unsupported["code"] == "unsupported_route"
+    assert unsupported["code"] == "placeholder_requires_opt_in"
     assert unsupported["feature"] == "rs_jax_fit"
+    assert unsupported["implementation_status"] == "placeholder"
+
+    unsupported_with_placeholder_opt_in = method_route_capability_report(
+        "GB2", "RS_JAX", allow_placeholder=True
+    )
+    assert unsupported_with_placeholder_opt_in["ok"] is False
+    assert unsupported_with_placeholder_opt_in["code"] == "unsupported_route"
 
     unknown = method_route_capability_report("NO", "NOT_A_METHOD")
     assert unknown["ok"] is False
@@ -114,12 +152,26 @@ def test_method_route_capability_report_supports_service_admission():
     assert unknown_family["code"] == "unknown_family"
     assert unknown_family["feature"] == "rs_fit"
 
+    compat = method_route_capability_report("ST1", "RS")
+    assert compat["ok"] is False
+    assert compat["code"] == "compat_alias_requires_opt_in"
+    assert compat["implementation_status"] == "compat_alias"
+
+    compat_opt_in = method_route_capability_report(
+        "ST1", "RS", allow_compat_alias=True
+    )
+    assert compat_opt_in["ok"] is True
+    assert compat_opt_in["implementation_status"] == "compat_alias"
+
 
 def test_capability_matrix_is_machine_readable():
     matrix = capability_matrix()
     assert matrix["version"] == CAPABILITY_MATRIX_VERSION
-    assert matrix["version"] == 3
+    assert matrix["version"] == 4
     assert matrix["features"] == list(FEATURES)
+    assert matrix["implementation_statuses"] == [
+        status.value for status in ImplementationStatus
+    ]
     assert matrix["method_capability_features"] == method_capability_features()
     assert matrix["method_capability_features"]["RS_JAX"] == "rs_jax_fit"
     assert matrix["strict_capability_policy"] == {
@@ -128,6 +180,9 @@ def test_capability_matrix_is_machine_readable():
         "unsupported_routes_fail_fast": True,
     }
     assert "NO" in matrix["families"]
+    assert matrix["families"]["NO"]["implementation_status"] == "implemented"
+    assert matrix["families"]["ST1"]["implementation_status"] == "compat_alias"
+    assert matrix["families"]["GB2"]["implementation_status"] == "placeholder"
     assert matrix["families"]["NO"]["features"]["production_safe"] == "validated"
 
 

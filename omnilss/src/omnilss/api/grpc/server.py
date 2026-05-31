@@ -11,6 +11,7 @@ import importlib.util
 import json
 import os
 import sqlite3
+import tempfile
 import threading
 import time
 import uuid
@@ -19,10 +20,16 @@ from pathlib import Path
 from typing import Any
 
 from ... import gamlss
+from ...family_capabilities import method_route_capability_report
 from ...prediction import PredictionSchemaError
 from ...serialization import load_model_json, save_model_json
 
-MODEL_STORE = Path(os.getenv("OMNILSS_MODEL_STORE_DIR", "/tmp/omnilss-grpc-models"))
+MODEL_STORE = Path(
+    os.getenv(
+        "OMNILSS_MODEL_STORE_DIR",
+        str(Path(tempfile.gettempdir()) / "omnilss-grpc-models"),
+    )
+)
 MODEL_STORE.mkdir(parents=True, exist_ok=True)
 MODEL_DB = Path(os.getenv("OMNILSS_MODEL_DB_PATH", str(MODEL_STORE / "registry.sqlite3")))
 
@@ -244,6 +251,12 @@ def create_service():
 
         def _fit_one(self, request):
             data = _from_json(request.data_json)
+            method = str(request.method or "RS").strip() or "RS"
+            route_report = method_route_capability_report(
+                request.family, method, strict=False
+            )
+            if not route_report["ok"]:
+                raise ValueError(_to_json(route_report))
             kwargs: dict[str, Any] = {
                 "formula": request.formula,
                 "family": request.family,
@@ -255,8 +268,7 @@ def create_service():
                 kwargs.setdefault("parameter_formulas", {})["nu"] = request.nu_formula
             if request.tau_formula:
                 kwargs.setdefault("parameter_formulas", {})["tau"] = request.tau_formula
-            if request.method:
-                kwargs["method"] = request.method
+            kwargs["method"] = method
             if request.max_iter > 0:
                 kwargs["max_iter"] = int(request.max_iter)
             kwargs["verbose"] = bool(request.verbose)
@@ -278,8 +290,8 @@ def create_service():
             try:
                 return self._fit_one(request)
             except Exception as exc:
-                return fit_pb2.BatchFitResponse(
-                    responses=[], success=False, error=_error_text(exc)
+                return fit_pb2.FitResponse(
+                    model_id="", success=False, error=_error_text(exc)
                 )
 
         def BatchFit(self, request, context):  # noqa: N802, ARG002

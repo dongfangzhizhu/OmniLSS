@@ -7,6 +7,7 @@ from pathlib import Path
 from omnilss.family_capabilities import (
     CAPABILITY_MATRIX_VERSION,
     FEATURES,
+    ImplementationStatus,
     capability_matrix,
 )
 
@@ -38,7 +39,12 @@ def test_generate_capability_matrix_writes_runtime_snapshot(tmp_path):
     assert payload == capability_matrix()
     assert payload["version"] == CAPABILITY_MATRIX_VERSION
     assert payload["features"] == list(FEATURES)
+    assert payload["implementation_statuses"] == [
+        status.value for status in ImplementationStatus
+    ]
     assert payload["method_capability_features"]["RS"] == "rs_fit"
+    assert payload["families"]["ST1"]["implementation_status"] == "compat_alias"
+    assert payload["families"]["GB2"]["implementation_status"] == "placeholder"
     assert payload["families"]["NO"]["features"]["production_safe"] == "validated"
 
 

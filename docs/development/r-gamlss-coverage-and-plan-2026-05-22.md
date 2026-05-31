@@ -369,6 +369,31 @@ P0.3. Keep current cycle scope strict:
 - Secondary work is `omnilss-server/` after `omnilss` behavior is validated.
 - `omnilss-pro/` is not part of this plan.
 
+Progress update (2026-05-31):
+
+- `omnilss.family_capabilities` now exposes a code-derived
+  `implementation_status` layer in capability matrix v4. Registered families
+  carry one of `implemented`, `experimental`, `compat_alias`, `placeholder`,
+  `missing`, or `unsupported_with_rationale`.
+- Known compatibility constructors (`ST1`-`ST4`, `DBI`, `DBURR12`,
+  `BCCGuntr`, `BCPEuntr`, `BCTuntr`, `MULTIN`, and `gen.Family` skeleton
+  shells) are marked `compat_alias` from registry/factory metadata and are not
+  counted as migrated implementations even when callable tests exist.
+- Method-route preflight now blocks `compat_alias` families by default and
+  requires an explicit `allow_compat_alias=True` opt-in for migration or
+  smoke-test usage. The generated capability artifact was refreshed at
+  `docs/development/family-capability-matrix-2026-05-18.json`.
+- AD fallback placeholder detection is static and code-derived: registry
+  factory source is scanned for `build_ad_family(...)` calls that omit explicit
+  `p/q/r`, so families such as `GB2`, `GIG`, and `SEP1` are marked
+  `placeholder` without triggering expensive JAX/family instantiation.
+- Method-route preflight also blocks `placeholder` families by default and
+  requires an explicit `allow_placeholder=True` opt-in for migration or
+  smoke-test usage.
+- Remaining P0 work: broaden automatic placeholder detection to the
+  `dpqr_functions.py` generic fallback helpers, then propagate the same status
+  gate through REST/gRPC fit endpoints and benchmark matrices.
+
 ### Phase A — `omnilss` distribution migration from `R/gamlss.dist`
 
 A1. Replace compatibility aliases with dedicated distribution kernels, in this
@@ -526,6 +551,17 @@ E2. Harden service execution:
   maximum iterations, fit timeout, and cancellation;
 - require authentication by default for non-local deployments;
 - avoid exposing raw internal exception strings to clients except in debug mode.
+
+Progress update (2026-05-31):
+
+- gRPC unary `Fit()` now returns `FitResponse` on errors instead of the wrong
+  `BatchFitResponse` envelope.
+- gRPC `_fit_one` now runs method-route capability preflight before invoking
+  `gamlss()`, so `compat_alias` and `placeholder` families are rejected at the
+  service boundary by default.
+- The default gRPC model-store path now uses
+  `tempfile.gettempdir()/omnilss-grpc-models` instead of a hard-coded `/tmp`
+  path, which keeps service import portable on Windows.
 
 E3. Persist only safe model artifacts:
 

@@ -1,0 +1,2737 @@
+{
+  "version": 4,
+  "features": [
+    "rs_fit",
+    "rs_jax_fit",
+    "cg_fit",
+    "prediction",
+    "sampling",
+    "smooth_terms",
+    "r_consistency",
+    "ad_hessian",
+    "production_safe"
+  ],
+  "implementation_statuses": [
+    "implemented",
+    "experimental",
+    "compat_alias",
+    "placeholder",
+    "missing",
+    "unsupported_with_rationale"
+  ],
+  "method_capability_features": {
+    "RS": "rs_fit",
+    "RS_JAX": "rs_jax_fit",
+    "CG": "cg_fit",
+    "MIXED": "cg_fit",
+    "JOINT": "cg_fit",
+    "LBFGS": "cg_fit"
+  },
+  "method_routes": {
+    "RS": "rs_fit",
+    "RS_JAX": "rs_jax_fit",
+    "CG": "cg_fit",
+    "MIXED": "cg_fit",
+    "JOINT": "cg_fit",
+    "LBFGS": "cg_fit"
+  },
+  "strict_capability_policy": {
+    "default_allow_experimental": true,
+    "strict_capabilities_allow_experimental": false,
+    "unsupported_routes_fail_fast": true
+  },
+  "families": {
+    "BB": {
+      "name": "BB",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BCCG": {
+      "name": "BCCG",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BCCGO": {
+      "name": "BCCGO",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BCCGUNTR": {
+      "name": "BCCGUNTR",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BCPE": {
+      "name": "BCPE",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BCPEO": {
+      "name": "BCPEO",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BCPEUNTR": {
+      "name": "BCPEUNTR",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BCT": {
+      "name": "BCT",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BCTO": {
+      "name": "BCTO",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BCTUNTR": {
+      "name": "BCTUNTR",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BE": {
+      "name": "BE",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BEINF": {
+      "name": "BEINF",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BEINF0": {
+      "name": "BEINF0",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BEINF1": {
+      "name": "BEINF1",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BEOI": {
+      "name": "BEOI",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BEZI": {
+      "name": "BEZI",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BI": {
+      "name": "BI",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "experimental",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "experimental",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates"
+      ]
+    },
+    "BINOM_1_31": {
+      "name": "BINOM_1_31",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BINOM_2_33": {
+      "name": "BINOM_2_33",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BINOM_3_33": {
+      "name": "BINOM_3_33",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "BNB": {
+      "name": "BNB",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "CONTR01_2_13": {
+      "name": "CONTR01_2_13",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "CONTR01_4_33": {
+      "name": "CONTR01_4_33",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "CONTRPLUS_1_1": {
+      "name": "CONTRPLUS_1_1",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "CONTRPLUS_2_11": {
+      "name": "CONTRPLUS_2_11",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "CONTRPLUS_3_13": {
+      "name": "CONTRPLUS_3_13",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "CONTRPLUS_4_33": {
+      "name": "CONTRPLUS_4_33",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "CONTR_2_12": {
+      "name": "CONTR_2_12",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "CONTR_3_11": {
+      "name": "CONTR_3_11",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "CONTR_4_13": {
+      "name": "CONTR_4_13",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "COUNT_1_22": {
+      "name": "COUNT_1_22",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "COUNT_1_31": {
+      "name": "COUNT_1_31",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "COUNT_2_32": {
+      "name": "COUNT_2_32",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "COUNT_2_32R": {
+      "name": "COUNT_2_32R",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "COUNT_2_33": {
+      "name": "COUNT_2_33",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "COUNT_3_32": {
+      "name": "COUNT_3_32",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "COUNT_3_33": {
+      "name": "COUNT_3_33",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "DBI": {
+      "name": "DBI",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "DBURR12": {
+      "name": "DBURR12",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "DEL": {
+      "name": "DEL",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "DELAPORT": {
+      "name": "DELAPORT",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "DPO": {
+      "name": "DPO",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "DPO1": {
+      "name": "DPO1",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "EGB2": {
+      "name": "EGB2",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "EXGAUS": {
+      "name": "EXGAUS",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "EXP": {
+      "name": "EXP",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "GA": {
+      "name": "GA",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "experimental",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "experimental",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates"
+      ]
+    },
+    "GAF": {
+      "name": "GAF",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "GB1": {
+      "name": "GB1",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "GB2": {
+      "name": "GB2",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "GENERALISEDPOISSON": {
+      "name": "GENERALISEDPOISSON",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "GEOM": {
+      "name": "GEOM",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "GG": {
+      "name": "GG",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "GIG": {
+      "name": "GIG",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "GP": {
+      "name": "GP",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "GPO": {
+      "name": "GPO",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "GT": {
+      "name": "GT",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "GU": {
+      "name": "GU",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "IG": {
+      "name": "IG",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "IGA": {
+      "name": "IGA",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "IGAMMA": {
+      "name": "IGAMMA",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "JSU": {
+      "name": "JSU",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "JSUO": {
+      "name": "JSUO",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "LG": {
+      "name": "LG",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "LNO": {
+      "name": "LNO",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "LO": {
+      "name": "LO",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "LOGITNO": {
+      "name": "LOGITNO",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "LOGNO": {
+      "name": "LOGNO",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "LOGNO2": {
+      "name": "LOGNO2",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "LOGSHASH": {
+      "name": "LOGSHASH",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "LOGSHASHO": {
+      "name": "LOGSHASHO",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "LQNO": {
+      "name": "LQNO",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "MN3": {
+      "name": "MN3",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "MN4": {
+      "name": "MN4",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "MN5": {
+      "name": "MN5",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "MULTIN": {
+      "name": "MULTIN",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "NBF": {
+      "name": "NBF",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "NBI": {
+      "name": "NBI",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "NBII": {
+      "name": "NBII",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "NET": {
+      "name": "NET",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "NO": {
+      "name": "NO",
+      "implementation_status": "implemented",
+      "features": {
+        "rs_fit": "validated",
+        "rs_jax_fit": "experimental",
+        "cg_fit": "experimental",
+        "prediction": "validated",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "experimental",
+        "production_safe": "validated"
+      },
+      "notes": [
+        "production-safe baseline family with the strongest current evidence"
+      ]
+    },
+    "NO2": {
+      "name": "NO2",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "NOF": {
+      "name": "NOF",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "PARETO": {
+      "name": "PARETO",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "PARETO1": {
+      "name": "PARETO1",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "PARETO1O": {
+      "name": "PARETO1O",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "PARETO2": {
+      "name": "PARETO2",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "PE": {
+      "name": "PE",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "PE2": {
+      "name": "PE2",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "PIG": {
+      "name": "PIG",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "PIG2": {
+      "name": "PIG2",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "PO": {
+      "name": "PO",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "experimental",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "experimental",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates"
+      ]
+    },
+    "RG": {
+      "name": "RG",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "RGE": {
+      "name": "RGE",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SEP": {
+      "name": "SEP",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SEP1": {
+      "name": "SEP1",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SEP2": {
+      "name": "SEP2",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SEP3": {
+      "name": "SEP3",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SEP4": {
+      "name": "SEP4",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SHASH": {
+      "name": "SHASH",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SHASHO": {
+      "name": "SHASHO",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SHASHO2": {
+      "name": "SHASHO2",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SI": {
+      "name": "SI",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SICHEL": {
+      "name": "SICHEL",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SIMPLEX": {
+      "name": "SIMPLEX",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SN1": {
+      "name": "SN1",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SN2": {
+      "name": "SN2",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "SST": {
+      "name": "SST",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ST1": {
+      "name": "ST1",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ST2": {
+      "name": "ST2",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ST3": {
+      "name": "ST3",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ST3C": {
+      "name": "ST3C",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ST4": {
+      "name": "ST4",
+      "implementation_status": "compat_alias",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ST5": {
+      "name": "ST5",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "TF": {
+      "name": "TF",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "experimental",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "experimental",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates"
+      ]
+    },
+    "TF2": {
+      "name": "TF2",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "WARING": {
+      "name": "WARING",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "WEI": {
+      "name": "WEI",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "experimental",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "experimental",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement"
+      ]
+    },
+    "WEI2": {
+      "name": "WEI2",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "WEI3": {
+      "name": "WEI3",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "YULE": {
+      "name": "YULE",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZABB": {
+      "name": "ZABB",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZABI": {
+      "name": "ZABI",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZABNB": {
+      "name": "ZABNB",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZAGA": {
+      "name": "ZAGA",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZAIG": {
+      "name": "ZAIG",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZALG": {
+      "name": "ZALG",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZANBI": {
+      "name": "ZANBI",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZAP": {
+      "name": "ZAP",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZAPIG": {
+      "name": "ZAPIG",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZASICHEL": {
+      "name": "ZASICHEL",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZAZIPF": {
+      "name": "ZAZIPF",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZIBB": {
+      "name": "ZIBB",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZIBI": {
+      "name": "ZIBI",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZIBNB": {
+      "name": "ZIBNB",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZINBF": {
+      "name": "ZINBF",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZINBI": {
+      "name": "ZINBI",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZIP": {
+      "name": "ZIP",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "validated",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZIP2": {
+      "name": "ZIP2",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZIPF": {
+      "name": "ZIPF",
+      "implementation_status": "placeholder",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "public surface contains placeholder numerical behavior and requires replacement",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZIPIG": {
+      "name": "ZIPIG",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    },
+    "ZISICHEL": {
+      "name": "ZISICHEL",
+      "implementation_status": "experimental",
+      "features": {
+        "rs_fit": "experimental",
+        "rs_jax_fit": "unsupported",
+        "cg_fit": "experimental",
+        "prediction": "experimental",
+        "sampling": "experimental",
+        "smooth_terms": "experimental",
+        "r_consistency": "unsupported",
+        "ad_hessian": "unsupported",
+        "production_safe": "experimental"
+      },
+      "notes": [
+        "registered family without enough validation evidence for production use",
+        "RS_JAX route is not advertised for this family"
+      ]
+    }
+  }
+}

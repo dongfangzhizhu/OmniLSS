@@ -502,6 +502,73 @@ def test_grpc_batch_fit_reports_partial_failures(monkeypatch) -> None:
     assert "1 of 2 fits failed" in resp.error
     assert [r.success for r in resp.responses] == [True, False]
 
+
+def test_grpc_fit_error_returns_fit_response(monkeypatch) -> None:
+    """Unary Fit failures must return FitResponse, not BatchFitResponse."""
+    import json
+
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import fit_pb2
+
+    try:
+        service, *_ = grpc_server.create_service()
+    except RuntimeError as exc:
+        pytest.skip(f"gRPC stubs/runtime unavailable in environment: {exc}")
+
+    def fake_gamlss(**kwargs):  # noqa: ANN003
+        raise ValueError("simulated unary fit failure")
+
+    monkeypatch.setattr(grpc_server, "gamlss", fake_gamlss)
+
+    response = service.Fit(
+        fit_pb2.FitRequest(
+            formula="y ~ x",
+            family="NO",
+            data_json=json.dumps({"y": [1.0], "x": [0.0]}),
+            method="RS",
+        ),
+        None,
+    )
+
+    assert isinstance(response, fit_pb2.FitResponse)
+    assert response.success is False
+    assert response.model_id == ""
+    assert "simulated unary fit failure" in response.error
+
+
+def test_grpc_fit_blocks_placeholder_family_before_backend(monkeypatch) -> None:
+    """Fit should reject placeholder families at the service boundary."""
+    import json
+
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import fit_pb2
+
+    try:
+        service, *_ = grpc_server.create_service()
+    except RuntimeError as exc:
+        pytest.skip(f"gRPC stubs/runtime unavailable in environment: {exc}")
+
+    def fake_gamlss(**kwargs):  # noqa: ANN003
+        raise AssertionError("placeholder family should be blocked before gamlss")
+
+    monkeypatch.setattr(grpc_server, "gamlss", fake_gamlss)
+
+    response = service.Fit(
+        fit_pb2.FitRequest(
+            formula="y ~ x",
+            family="GB2",
+            data_json=json.dumps({"y": [1.0], "x": [0.0]}),
+            method="RS",
+        ),
+        None,
+    )
+
+    assert response.success is False
+    payload = json.loads(response.error)
+    assert payload["code"] == "placeholder_requires_opt_in"
+    assert payload["implementation_status"] == "placeholder"
+
+
 def test_grpc_predict_supports_column_vectors(monkeypatch) -> None:
     """Predict should accept structured column vectors without JSON payload."""
     from omnilss.api.grpc import server as grpc_server
