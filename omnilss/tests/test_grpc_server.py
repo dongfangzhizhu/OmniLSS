@@ -341,6 +341,111 @@ def test_model_registry_recovers_index_from_sqlite(tmp_path, monkeypatch) -> Non
     assert model_id in second.list_ids()
 
 
+def test_model_registry_migrates_legacy_sqlite_schema(tmp_path, monkeypatch) -> None:
+    """Legacy SQLite registries should gain capability replay columns."""
+    import sqlite3
+
+    from omnilss.api.grpc import server as grpc_server
+
+    model_dir = tmp_path / "models"
+    model_dir.mkdir(parents=True, exist_ok=True)
+    db_path = model_dir / "registry.sqlite3"
+    artifact_path = model_dir / "legacy.omnilss"
+    artifact_path.write_text("not-a-zip")
+    with sqlite3.connect(db_path) as db:
+        db.execute(
+            "CREATE TABLE models ("
+            "id TEXT PRIMARY KEY, path TEXT NOT NULL, created_at REAL NOT NULL"
+            ")"
+        )
+        db.execute(
+            "INSERT INTO models(id, path, created_at) VALUES (?, ?, ?)",
+            ("legacy", str(artifact_path), time.time()),
+        )
+
+    monkeypatch.setattr(grpc_server, "MODEL_STORE", model_dir)
+    monkeypatch.setattr(grpc_server, "MODEL_DB", db_path)
+
+    registry = grpc_server._ModelRegistry()
+
+    assert registry.list_ids() == ["legacy"]
+    with sqlite3.connect(db_path) as db:
+        columns = {row[1] for row in db.execute("PRAGMA table_info(models)")}
+        row = db.execute(
+            "SELECT schema_version, capability_report_json, capability_ok "
+            "FROM models WHERE id = 'legacy'"
+        ).fetchone()
+
+    assert {
+        "schema_version",
+        "family",
+        "capability_matrix_version",
+        "implementation_status",
+        "capability_json",
+        "capability_report_json",
+        "capability_ok",
+    }.issubset(columns)
+    assert row[0] == grpc_server._MODEL_REGISTRY_SCHEMA_VERSION
+    assert "capability_replay_failed" in row[1]
+    assert row[2] == 0
+
+
+def test_model_registry_persists_capability_snapshot_and_replay_report(
+    tmp_path, monkeypatch
+) -> None:
+    """SQLite registry rows should include replayable family capability metadata."""
+    import json
+    import sqlite3
+
+    import numpy as np
+
+    from omnilss import CAPABILITY_MATRIX_VERSION, gamlss
+    from omnilss.api.grpc import server as grpc_server
+
+    monkeypatch.setattr(grpc_server, "MODEL_STORE", tmp_path / "models")
+    grpc_server.MODEL_STORE.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(
+        grpc_server, "MODEL_DB", tmp_path / "models" / "registry.sqlite3"
+    )
+
+    x = np.linspace(-1.0, 1.0, 24)
+    y = 1.0 + 0.25 * x + np.random.default_rng(203).normal(scale=0.1, size=x.size)
+    model = gamlss("y ~ x", family="NO", data={"y": y, "x": x}, max_iter=5)
+
+    first = grpc_server._ModelRegistry()
+    model_id = first.save(model)
+
+    with sqlite3.connect(grpc_server.MODEL_DB) as db:
+        row = db.execute(
+            "SELECT schema_version, family, capability_matrix_version, "
+            "implementation_status, capability_json, "
+            "capability_report_json, capability_ok "
+            "FROM models WHERE id = ?",
+            (model_id,),
+        ).fetchone()
+
+    assert row is not None
+    (
+        schema_version,
+        family,
+        capability_matrix_version,
+        implementation_status,
+        capability_json,
+        capability_report_json,
+        capability_ok,
+    ) = row
+    assert schema_version == grpc_server._MODEL_REGISTRY_SCHEMA_VERSION
+    assert family == "NO"
+    assert capability_matrix_version == CAPABILITY_MATRIX_VERSION
+    assert implementation_status == "implemented"
+    assert json.loads(capability_json)["features"]["r_consistency"] == "validated"
+    assert json.loads(capability_report_json)["ok"] is True
+    assert capability_ok == 1
+
+    second = grpc_server._ModelRegistry()
+    assert model_id in second.list_ids()
+
+
 def test_grpc_list_models_and_delete_model_service_direct(monkeypatch) -> None:
     """Fit service management RPCs should expose list/delete semantics."""
     from omnilss.api.grpc import server as grpc_server

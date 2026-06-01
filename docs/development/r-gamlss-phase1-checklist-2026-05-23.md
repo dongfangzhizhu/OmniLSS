@@ -105,7 +105,7 @@
 - ✅ gRPC 本地模型仓默认路径已从硬编码 `/tmp/omnilss-grpc-models`
   改为跨平台 `tempfile.gettempdir()/omnilss-grpc-models`，避免 Windows
   环境导入服务模块时因 `\tmp` 权限失败。
-- ⬜ SQLite 模型仓 capability snapshot schema 升级与回放验证待完成。
+- ✅ SQLite 模型仓 capability snapshot schema 升级与回放验证已完成：`models` 表现在迁移/创建 `schema_version`、`family`、`capability_matrix_version`、`implementation_status`、`capability_json`、`capability_report_json`、`capability_ok` 字段；保存、加载与进程重启恢复索引时会从模型 artifact 回放 capability snapshot 并持久化当前 runtime 对齐报告。
 
 ---
 
@@ -116,7 +116,8 @@
   并新增运行时/生成工具测试；method route preflight 现在默认拒绝
   `compat_alias` 与 `placeholder` family，除非调用方显式传入
   `allow_compat_alias=True` / `allow_placeholder=True` 用于迁移或
-  smoke-test 场景。
+  smoke-test 场景；本轮已同步刷新 matrix artifact，以纳入
+  `dpqr_functions.py` placeholder/近似静态识别结果。
 - ⬜ “所有暴露 family 均有 R-backed d/p/q 或明确 experimental 标注”尚未达成。
 - ⬜ README / 中英文文档 / capability 页面全量对齐待完成。
 
@@ -126,7 +127,7 @@
 
 1. **兼容层 family 的 R consistency 证据深化**：已将 ST1-4、DBI、DBURR12、BCCGuntr、BCPEuntr、BCTuntr 的脚手架扩展到多参数区间与边界场景（central/tail、edge-heavy μ、`ultra_tail` 概率区间）；其余兼容层 family 持续补齐中。  
 2. **将兼容层逐步替换为专用数值实现**：优先 ST1/ST2/ST3/ST4、DBI、DBURR12、Box-Cox untr 系列；替换完成前必须保持 `implementation_status=compat_alias`，不得计入实现覆盖。  
-3. 继续扩展 placeholder 自动检测范围：已覆盖 AD `build_ad_family` fallback，下一步补 `dpqr_functions.py` 中 NaN、正态近似或 generic random draw 的静态识别。  
+3. ✅ placeholder 自动检测范围继续扩展：已覆盖 AD `build_ad_family` fallback，且已补 `dpqr_functions.py` 中 NaN / not-implemented / 正态近似 / generic fallback random draw 的静态识别；同时修正“先用 `build_ad_family` 再显式接入专用 d/p/q/r”的 family（如 `BE`、`WEI`、`IG`）不再被误判为 placeholder。
 4. `distributions3` 统计矩接口从“部分 family 支持”升级为“可配置回退 + 全家族可用性声明”（已新增 `moment_availability` 声明接口与单测，后续继续扩展解析矩覆盖）。  
 5. 为当前已注册但无证据的 family 批量补 d/p/q R consistency（按家族分组推进）。
 

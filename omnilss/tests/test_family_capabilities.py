@@ -16,6 +16,7 @@ from omnilss.family_capabilities import (
     family_capability_names,
     family_supports,
     get_family_capability,
+    _dpqr_function_uses_placeholder,
     implementation_status_for_family,
     method_route_feature,
     list_family_capabilities,
@@ -70,6 +71,35 @@ def test_ad_families_without_explicit_dpqr_are_marked_placeholder():
             ImplementationStatus.PLACEHOLDER
         )
         assert any("placeholder numerical behavior" in note for note in capability.notes)
+
+
+def test_dpqr_placeholder_helpers_are_marked_placeholder():
+    for helper_name in (
+        "pNBI",
+        "qNBI",
+        "pNBII",
+        "qNBII",
+        "qTF",
+        "generic_p_not_implemented",
+    ):
+        assert _dpqr_function_uses_placeholder(helper_name) is True
+
+    for family_name in ("NBI", "NBII", "TF"):
+        capability = get_family_capability(family_name)
+        assert capability.implementation_status is ImplementationStatus.PLACEHOLDER
+        assert implementation_status_for_family(family_name) is (
+            ImplementationStatus.PLACEHOLDER
+        )
+        assert any("placeholder numerical behavior" in note for note in capability.notes)
+
+
+def test_ad_families_with_explicit_dpqr_are_not_false_placeholder():
+    for family_name in ("BE", "WEI", "IG"):
+        capability = get_family_capability(family_name)
+        assert capability.implementation_status is ImplementationStatus.EXPERIMENTAL
+        assert implementation_status_for_family(family_name) is (
+            ImplementationStatus.EXPERIMENTAL
+        )
 
 
 def test_unsupported_jax_route_is_reported():

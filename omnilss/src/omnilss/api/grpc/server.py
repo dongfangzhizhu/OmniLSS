@@ -15,14 +15,15 @@ import tempfile
 import threading
 import time
 import uuid
+import zipfile
 from concurrent import futures
 from pathlib import Path
 from typing import Any
 
 from ... import gamlss
-from ...family_capabilities import method_route_capability_report
+from ...family_capabilities import CAPABILITY_MATRIX_VERSION, method_route_capability_report
 from ...prediction import PredictionSchemaError
-from ...serialization import load_model_json, save_model_json
+from ...serialization import compare_model_capability_snapshot, load_model_json, save_model_json
 
 MODEL_STORE = Path(
     os.getenv(
@@ -32,6 +33,24 @@ MODEL_STORE = Path(
 )
 MODEL_STORE.mkdir(parents=True, exist_ok=True)
 MODEL_DB = Path(os.getenv("OMNILSS_MODEL_DB_PATH", str(MODEL_STORE / "registry.sqlite3")))
+
+
+_MODEL_REGISTRY_SCHEMA_VERSION = 2
+
+
+def _artifact_family_capability(path: Path) -> dict[str, Any]:
+    """Read the saved family capability snapshot from a model artifact."""
+
+    with zipfile.ZipFile(path, "r") as zf:
+        meta = json.loads(zf.read("meta.json").decode("utf-8"))
+    capability = meta.get("family_capability", {})
+    return dict(capability) if isinstance(capability, dict) else {}
+
+
+def _artifact_capability_replay_report(path: Path) -> dict[str, Any]:
+    """Replay capability validation for an artifact against this runtime."""
+
+    return dict(compare_model_capability_snapshot(path))
 
 
 class _ModelRegistry:
@@ -51,10 +70,95 @@ class _ModelRegistry:
         self._db = sqlite3.connect(MODEL_DB, check_same_thread=False)
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute("PRAGMA synchronous=NORMAL")
-        self._db.execute("CREATE TABLE IF NOT EXISTS models (id TEXT PRIMARY KEY, path TEXT NOT NULL, created_at REAL NOT NULL)")
+        self._ensure_schema()
         self._db.commit()
-        for model_id, path, created_at in self._db.execute("SELECT id, path, created_at FROM models"):
-            self._paths[str(model_id)] = (Path(path), float(created_at))
+        rows = self._db.execute("SELECT id, path, created_at FROM models")
+        for model_id, path, created_at in rows:
+            artifact_path = Path(path)
+            self._paths[str(model_id)] = (artifact_path, float(created_at))
+            if artifact_path.exists():
+                self._refresh_capability_snapshot(str(model_id), artifact_path)
+            else:
+                self._db.execute("DELETE FROM models WHERE id = ?", (str(model_id),))
+        self._db.commit()
+
+    def _ensure_schema(self) -> None:
+        """Create or migrate the persistent registry schema in place."""
+
+        self._db.execute(
+            "CREATE TABLE IF NOT EXISTS models ("
+            "id TEXT PRIMARY KEY, "
+            "path TEXT NOT NULL, "
+            "created_at REAL NOT NULL, "
+            "schema_version INTEGER NOT NULL DEFAULT 1, "
+            "family TEXT, "
+            "capability_matrix_version INTEGER, "
+            "implementation_status TEXT, "
+            "capability_json TEXT, "
+            "capability_report_json TEXT, "
+            "capability_ok INTEGER"
+            ")"
+        )
+        existing = {row[1] for row in self._db.execute("PRAGMA table_info(models)")}
+        migrations = {
+            "schema_version": (
+                "ALTER TABLE models ADD COLUMN "
+                "schema_version INTEGER NOT NULL DEFAULT 1"
+            ),
+            "family": "ALTER TABLE models ADD COLUMN family TEXT",
+            "capability_matrix_version": (
+                "ALTER TABLE models ADD COLUMN capability_matrix_version INTEGER"
+            ),
+            "implementation_status": "ALTER TABLE models ADD COLUMN implementation_status TEXT",
+            "capability_json": "ALTER TABLE models ADD COLUMN capability_json TEXT",
+            "capability_report_json": "ALTER TABLE models ADD COLUMN capability_report_json TEXT",
+            "capability_ok": "ALTER TABLE models ADD COLUMN capability_ok INTEGER",
+        }
+        for column, statement in migrations.items():
+            if column not in existing:
+                self._db.execute(statement)
+
+    def _refresh_capability_snapshot(self, model_id: str, path: Path) -> None:
+        """Persist artifact capability metadata and current replay status."""
+
+        try:
+            capability = _artifact_family_capability(path)
+            report = _artifact_capability_replay_report(path)
+        except Exception as exc:  # pragma: no cover - defensive for corrupt legacy rows
+            capability = {}
+            report = {
+                "ok": False,
+                "family": None,
+                "artifact_capability": {},
+                "runtime_capability": None,
+                "changes": [
+                    {
+                        "code": "capability_replay_failed",
+                        "message": str(exc),
+                    }
+                ],
+            }
+        self._db.execute(
+            "UPDATE models SET "
+            "schema_version = ?, "
+            "family = ?, "
+            "capability_matrix_version = ?, "
+            "implementation_status = ?, "
+            "capability_json = ?, "
+            "capability_report_json = ?, "
+            "capability_ok = ? "
+            "WHERE id = ?",
+            (
+                _MODEL_REGISTRY_SCHEMA_VERSION,
+                capability.get("name") or report.get("family"),
+                CAPABILITY_MATRIX_VERSION,
+                capability.get("implementation_status"),
+                json.dumps(capability, ensure_ascii=False, sort_keys=True),
+                json.dumps(report, ensure_ascii=False, sort_keys=True),
+                1 if report.get("ok") else 0,
+                model_id,
+            ),
+        )
 
     def save(self, model: Any) -> str:
         with self._lock:
@@ -68,7 +172,12 @@ class _ModelRegistry:
             save_model_json(model, path)
             created_at = time.time()
             self._paths[model_id] = (path, created_at)
-            self._db.execute("INSERT INTO models(id, path, created_at) VALUES (?, ?, ?)", (model_id, str(path), created_at))
+            self._db.execute(
+                "INSERT INTO models(id, path, created_at, schema_version) "
+                "VALUES (?, ?, ?, ?)",
+                (model_id, str(path), created_at, _MODEL_REGISTRY_SCHEMA_VERSION),
+            )
+            self._refresh_capability_snapshot(model_id, path)
             self._db.commit()
             return model_id
 
@@ -84,6 +193,8 @@ class _ModelRegistry:
                 self._db.execute("DELETE FROM models WHERE id = ?", (model_id,))
                 self._db.commit()
                 raise KeyError(model_id)
+            self._refresh_capability_snapshot(model_id, path)
+            self._db.commit()
             return load_model_json(path)
 
     def list_ids(self) -> list[str]:
@@ -206,8 +317,6 @@ def create_service():
 
         def RouteCapability(self, request, context):  # noqa: N802, ARG002
             try:
-                from ...family_capabilities import method_route_capability_report
-
                 family = str(request.family).strip()
                 method = str(request.method).strip()
                 if not family or not method:

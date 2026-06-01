@@ -233,7 +233,7 @@
     },
     "BE": {
       "name": "BE",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -246,7 +246,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "has repository R-consistency test coverage; still requires feature-specific gates",
         "RS_JAX route is not advertised for this family"
       ]
     },
@@ -1124,7 +1124,7 @@
     },
     "GU": {
       "name": "GU",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1137,13 +1137,13 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "has repository R-consistency test coverage; still requires feature-specific gates",
         "RS_JAX route is not advertised for this family"
       ]
     },
     "IG": {
       "name": "IG",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1156,7 +1156,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "has repository R-consistency test coverage; still requires feature-specific gates",
         "RS_JAX route is not advertised for this family"
       ]
     },
@@ -1181,7 +1181,7 @@
     },
     "IGAMMA": {
       "name": "IGAMMA",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1194,7 +1194,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "has repository R-consistency test coverage; still requires feature-specific gates",
         "RS_JAX route is not advertised for this family"
       ]
     },
@@ -1276,7 +1276,7 @@
     },
     "LO": {
       "name": "LO",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1289,7 +1289,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "has repository R-consistency test coverage; still requires feature-specific gates",
         "RS_JAX route is not advertised for this family"
       ]
     },
@@ -1333,7 +1333,7 @@
     },
     "LOGNO2": {
       "name": "LOGNO2",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1346,7 +1346,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "has repository R-consistency test coverage; still requires feature-specific gates",
         "RS_JAX route is not advertised for this family"
       ]
     },
@@ -1504,7 +1504,7 @@
     },
     "NBI": {
       "name": "NBI",
-      "implementation_status": "experimental",
+      "implementation_status": "placeholder",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1517,13 +1517,13 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "public surface contains placeholder numerical behavior and requires replacement",
         "RS_JAX route is not advertised for this family"
       ]
     },
     "NBII": {
       "name": "NBII",
-      "implementation_status": "experimental",
+      "implementation_status": "placeholder",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1536,7 +1536,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "public surface contains placeholder numerical behavior and requires replacement",
         "RS_JAX route is not advertised for this family"
       ]
     },
@@ -1674,7 +1674,7 @@
     },
     "PARETO2": {
       "name": "PARETO2",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1687,7 +1687,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "has repository R-consistency test coverage; still requires feature-specific gates",
         "RS_JAX route is not advertised for this family"
       ]
     },
@@ -1787,7 +1787,7 @@
     },
     "RG": {
       "name": "RG",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1800,7 +1800,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "has repository R-consistency test coverage; still requires feature-specific gates",
         "RS_JAX route is not advertised for this family"
       ]
     },
@@ -2205,7 +2205,7 @@
     },
     "TF": {
       "name": "TF",
-      "implementation_status": "experimental",
+      "implementation_status": "placeholder",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "experimental",
@@ -2218,12 +2218,12 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "has repository R-consistency test coverage; still requires feature-specific gates"
+        "public surface contains placeholder numerical behavior and requires replacement"
       ]
     },
     "TF2": {
       "name": "TF2",
-      "implementation_status": "experimental",
+      "implementation_status": "placeholder",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -2236,7 +2236,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "registered family without enough validation evidence for production use",
+        "public surface contains placeholder numerical behavior and requires replacement",
         "RS_JAX route is not advertised for this family"
       ]
     },
@@ -2261,7 +2261,7 @@
     },
     "WEI": {
       "name": "WEI",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "experimental",
@@ -2274,7 +2274,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement"
+        "has repository R-consistency test coverage; still requires feature-specific gates"
       ]
     },
     "WEI2": {
@@ -2640,7 +2640,7 @@
     },
     "ZIP": {
       "name": "ZIP",
-      "implementation_status": "experimental",
+      "implementation_status": "placeholder",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -2653,7 +2653,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "has repository R-consistency test coverage; still requires feature-specific gates",
+        "public surface contains placeholder numerical behavior and requires replacement",
         "RS_JAX route is not advertised for this family"
       ]
     },
