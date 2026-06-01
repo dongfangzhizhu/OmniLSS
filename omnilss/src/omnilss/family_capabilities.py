@@ -188,19 +188,40 @@ _COMPAT_FACTORY_MODULES = frozenset(
 
 
 @lru_cache(maxsize=None)
-def _module_function_defs(module_name: str) -> dict[str, ast.FunctionDef]:
-    """Return function definitions for a registry factory module without importing it."""
+def _module_source(module_name: str) -> str:
+    """Return source for ``module_name`` without importing the module."""
 
     try:
         spec = find_spec(module_name)
     except (ImportError, AttributeError, ValueError):
-        return {}
+        return ""
     if spec is None or spec.origin is None:
-        return {}
+        return ""
     try:
-        source = Path(spec.origin).read_text(encoding="utf-8")
-        module = ast.parse(source)
-    except (OSError, SyntaxError, UnicodeDecodeError):
+        return Path(spec.origin).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return ""
+
+
+@lru_cache(maxsize=None)
+def _module_ast(module_name: str) -> ast.Module | None:
+    """Parse module source without importing it."""
+
+    source = _module_source(module_name)
+    if not source:
+        return None
+    try:
+        return ast.parse(source)
+    except SyntaxError:
+        return None
+
+
+@lru_cache(maxsize=None)
+def _module_function_defs(module_name: str) -> dict[str, ast.FunctionDef]:
+    """Return function definitions for a registry factory module without importing it."""
+
+    module = _module_ast(module_name)
+    if module is None:
         return {}
     return {
         node.name: node
@@ -228,6 +249,26 @@ def _build_ad_family_call_has_placeholder(call: ast.Call) -> bool:
     return False
 
 
+def _call_has_complete_dpqr_keywords(call: ast.Call) -> bool:
+    keywords = {keyword.arg: keyword.value for keyword in call.keywords if keyword.arg}
+    for dpqr_name in ("p", "q", "r"):
+        value = keywords.get(dpqr_name)
+        if value is None:
+            return False
+        if isinstance(value, ast.Constant) and value.value is None:
+            return False
+    return True
+
+
+def _function_has_complete_dpqr_keywords(node: ast.FunctionDef) -> bool:
+    """Return whether a factory explicitly wires all p/q/r family methods."""
+
+    return any(
+        isinstance(child, ast.Call) and _call_has_complete_dpqr_keywords(child)
+        for child in ast.walk(node)
+    )
+
+
 def _function_uses_build_ad_placeholder(
     function_name: str,
     defs: Mapping[str, ast.FunctionDef],
@@ -237,6 +278,8 @@ def _function_uses_build_ad_placeholder(
         return False
     node = defs.get(function_name)
     if node is None:
+        return False
+    if _function_has_complete_dpqr_keywords(node):
         return False
     next_seen = seen | {function_name}
     for child in ast.walk(node):
@@ -257,6 +300,75 @@ def _function_uses_build_ad_placeholder(
 def _factory_uses_placeholder_dpqr(module_name: str, attr_name: str) -> bool:
     defs = _module_function_defs(module_name)
     return _function_uses_build_ad_placeholder(attr_name, defs)
+
+
+_DPQR_PLACEHOLDER_SOURCE_MARKERS = (
+    "placeholder",
+    "not implemented",
+    "normal approximation",
+    "normal cdf as fallback",
+    "normal as fallback",
+    "return nan",
+    "jnp.nan",
+)
+
+
+def _function_source(module_name: str, node: ast.FunctionDef) -> str:
+    source = _module_source(module_name)
+    if not source:
+        return ""
+    return ast.get_source_segment(source, node) or ""
+
+
+@lru_cache(maxsize=None)
+def _dpqr_function_uses_placeholder(function_name: str) -> bool:
+    """Return whether a dpqr helper has obvious placeholder behavior."""
+
+    defs = _module_function_defs("omnilss.dpqr_functions")
+    node = defs.get(function_name)
+    if node is None:
+        return False
+    source = _function_source("omnilss.dpqr_functions", node).lower()
+    return any(marker in source for marker in _DPQR_PLACEHOLDER_SOURCE_MARKERS)
+
+
+def _factory_dpqr_keyword_names(
+    function_name: str,
+    defs: Mapping[str, ast.FunctionDef],
+    seen: frozenset[str] = frozenset(),
+) -> frozenset[str]:
+    """Return p/q/r keyword function names referenced by a family factory."""
+
+    if function_name in seen:
+        return frozenset()
+    node = defs.get(function_name)
+    if node is None:
+        return frozenset()
+    next_seen = seen | {function_name}
+    names: set[str] = set()
+    for child in ast.walk(node):
+        if not isinstance(child, ast.Call):
+            continue
+        for keyword in child.keywords:
+            if keyword.arg not in {"p", "q", "r"}:
+                continue
+            if isinstance(keyword.value, ast.Name):
+                names.add(keyword.value.id)
+        call_name = _call_name(child.func)
+        if call_name in defs:
+            names.update(_factory_dpqr_keyword_names(call_name, defs, next_seen))
+    return frozenset(names)
+
+
+@lru_cache(maxsize=None)
+def _factory_uses_placeholder_dpqr_functions(module_name: str, attr_name: str) -> bool:
+    """Detect factories wired to dpqr_functions placeholder/approximation helpers."""
+
+    defs = _module_function_defs(module_name)
+    for function_name in _factory_dpqr_keyword_names(attr_name, defs):
+        if _dpqr_function_uses_placeholder(function_name):
+            return True
+    return False
 
 
 @dataclass(frozen=True)
@@ -310,6 +422,8 @@ def implementation_status_for_family(name: str) -> ImplementationStatus:
     if key in _KNOWN_COMPAT_ALIAS_FAMILIES or module_name in _COMPAT_FACTORY_MODULES:
         return ImplementationStatus.COMPAT_ALIAS
     if _factory_uses_placeholder_dpqr(module_name, _attr_name):
+        return ImplementationStatus.PLACEHOLDER
+    if _factory_uses_placeholder_dpqr_functions(module_name, _attr_name):
         return ImplementationStatus.PLACEHOLDER
     return ImplementationStatus.EXPERIMENTAL
 
