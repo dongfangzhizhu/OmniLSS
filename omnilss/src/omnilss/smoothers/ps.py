@@ -236,7 +236,7 @@ def fit_pspline_smooth(
     lambda_: Optional[float] = None,
     ps_intervals: int = 20,
     degree: int = 3,
-    order: int = 2,
+    order: int = 3,  # R default for ps() is order=3 (different from pb which uses order=2)
     method: Optional[Literal["ML", "GAIC", "GCV", "REML", "AIC", "auto"]] = None,
     k: float = 2.0,
 ) -> PSResult:
@@ -313,9 +313,17 @@ def fit_pspline_smooth(
     else:
         w = np.asarray(weights, dtype=np.float64).ravel()
 
-    # Validate: require explicit df, lambda_, or method
-    if df is None and lambda_ is None and method is None:
-        raise ValueError("Either df or lambda_ must be specified (or pass method=)")
+    # Validate: if df and lambda_ are both None, use R's default df=3
+    if df is None and lambda_ is None:
+        if method is None:
+            # Use R's default: df=3 (which R internally converts to df=5 by adding 2)
+            df = 3
+        # else: method is specified, so use automatic lambda selection
+    
+    # R's ps() adds 2 to df (for intercept + linear term)
+    # Match this behavior
+    if df is not None:
+        df = df + 2
 
     # Negative lambda: warn and clamp
     if lambda_ is not None and lambda_ < 0:

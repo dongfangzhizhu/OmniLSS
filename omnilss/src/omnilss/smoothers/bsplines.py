@@ -191,6 +191,7 @@ def create_knots(
     n_knots: Optional[int] = None,
     degree: int = 3,
     boundary: Optional[Tuple[float, float]] = None,
+    inter: Optional[int] = None,
 ) -> np.ndarray:
     """Create knot sequence for B-splines.
     
@@ -199,11 +200,14 @@ def create_knots(
     x : np.ndarray
         Data points
     n_knots : int, optional
-        Number of interior knots. If None, uses a default based on sample size.
+        Number of interior knots. If None, uses default based on inter or sample size.
     degree : int, default=3
         Degree of the B-spline
     boundary : tuple, optional
         (lower, upper) boundary knots. If None, uses min and max of x.
+    inter : int, optional
+        Number of intervals (R gamlss::pb() style). If provided, overrides n_knots.
+        R default is inter=20, which creates approximately inter + degree basis functions.
     
     Returns
     -------
@@ -218,16 +222,25 @@ def create_knots(
     - degree + 1 copies of the upper boundary knot
     
     R equivalent: Default knot placement in mgcv::s() or gamlss::pb()
+    
+    For R gamlss::pb() compatibility:
+    - inter=20 (default) creates 20 intervals
+    - This gives approximately inter + degree = 23 basis functions for degree=3
     """
     if boundary is None:
         x_min, x_max = np.min(x), np.max(x)
     else:
         x_min, x_max = boundary
     
-    if n_knots is None:
-        # Default: use a rule of thumb based on sample size
-        n = len(x)
-        n_knots = min(max(5, n // 10), 40)
+    # If inter is specified (R gamlss::pb() style), use it to determine n_knots
+    if inter is not None:
+        # R's inter parameter creates inter intervals
+        # Number of interior knots = inter - 1 (knots at interval boundaries)
+        n_knots = inter - 1
+    elif n_knots is None:
+        # Default: match R gamlss::pb() default of inter=20
+        # This gives 19 interior knots, approximately 20 + degree basis functions
+        n_knots = 19  # inter - 1 where inter=20 (R default)
     
     # Create interior knots at evenly spaced quantiles
     if n_knots > 0:
@@ -252,6 +265,7 @@ def bspline_design_matrix(
     degree: int = 3,
     boundary: Optional[Tuple[float, float]] = None,
     derivative: int = 0,
+    inter: Optional[int] = None,
 ) -> Tuple[jnp.ndarray, np.ndarray]:
     """Create B-spline design matrix for regression.
     
@@ -267,6 +281,9 @@ def bspline_design_matrix(
         (lower, upper) boundary knots
     derivative : int, default=0
         Order of derivative
+    inter : int, optional
+        Number of intervals (R gamlss::pb() style). If provided, overrides n_knots.
+        R default is inter=20.
     
     Returns
     -------
@@ -281,8 +298,13 @@ def bspline_design_matrix(
     >>> X, knots = bspline_design_matrix(x, n_knots=10, degree=3)
     >>> X.shape
     (100, 14)  # 10 interior knots + 3 + 1 = 14 basis functions
+    
+    >>> # R gamlss::pb() style with inter=20 (default)
+    >>> X, knots = bspline_design_matrix(x, inter=20, degree=3)
+    >>> X.shape
+    (100, 23)  # approximately inter + degree basis functions
     """
-    knots = create_knots(x, n_knots=n_knots, degree=degree, boundary=boundary)
+    knots = create_knots(x, n_knots=n_knots, degree=degree, boundary=boundary, inter=inter)
     design_matrix = bspline_basis(jnp.array(x), jnp.array(knots), degree=degree, derivative=derivative)
     
     return design_matrix, knots

@@ -43,6 +43,13 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
+# Verify JAX 64-bit mode is enabled
+if not jax.config.jax_enable_x64:
+    raise RuntimeError(
+        "JAX 64-bit mode is not enabled! "
+        "Set JAX_ENABLE_X64=true before running this script."
+    )
+
 # Force UTF-8 output for stdout/stderr on Windows so emoji status indicators
 # don't crash. This must run before any print() calls.
 if sys.platform == "win32":

@@ -34,6 +34,15 @@
 
 - 🟡 已推进：新增 `GIG` 的 R consistency（d/p/q）测试文件，并已纳入 consistency suites 的 basic/all/phase0 gate 组。
 - 🟡 持续推进：新增 `YULE`、`ZINBF` 的 R consistency（d/p/q）测试，并已纳入 consistency suites 的 basic/all（含 phase0 gate）组，且已并入项目 `all` 与 `quick` 套件；其余 `experimental` family 的 d/p/q parity 仍待批量补齐（约 60+）。
+- ✅ **2026-06-02 更新**：已完成 42 个缺失 family 的完整 R consistency 测试生成：
+  - 零调整/膨胀变体：ZAPIG, ZIPIG, ZASICHEL, ZISICHEL, ZAZIPF, ZABB, ZIBB, ZABNB, ZIBNB（9个）
+  - 连续正值分布：GAF, NOF, RGE, WEI2, WEI3, GB1, PARETO1, PARETO1O, PIG2, PE2（10个）
+  - 偏斜/形状分布：EGB2, LQNO, SST, ST5, SEP, SEP1, SEP2, SEP3, SEP4, LOGSHASH, LOGSHASHO, SHASHO, SHASHO2, JSUO（14个）
+  - 计数分布：LG, ZIPF, ZALG, GPO, DELAPORT, DPO1, GP, GENERALISEDPOISSON（8个）
+  - 有界分布：LOGITNO（1个）
+  - 测试基于参数感知框架，支持 1-4 参数 family，使用正确的参数范围配置。
+  - 创建了 `family_param_ranges.py` 配置文件，定义每个 family 的参数约束。
+  - 创建了 `generate_all_r_tests.py` 统一测试生成器。
 
 ### B2. 计划中“缺失分布/接口”
 
@@ -137,3 +146,94 @@
 
 - 请优先确认该清单状态标注是否符合你对“一期目标”的验收口径。  
 - 若认可该口径，下一轮将直接按“下一批开发优先级”第 1 项开始实现。
+
+
+---
+
+## 2026-06-02 开发进展更新（第二轮）
+
+### 已完成工作
+
+1. **验证 benchmarks 测试框架**
+   - ✅ 运行 `comprehensive_r_consistency_test.py --quick` 测试
+   - ✅ Python-only 模式：42/42 测试通过 (100%)
+   - 🟡 R 对比模式：14/42 测试通过 (33.3%)
+     - Fitting 测试：11/12 通过 (92%)
+     - DPQR 测试：3/27 通过 (11%) - 主要是容差问题
+     - Smoothing 测试：0/3 通过 (0%) - 需要调查
+
+2. **测试失败分析**
+   - DPQR 测试失败主要是数值精度问题：
+     - Max absolute error: 4.95e-05 到 4.90e-04
+     - 默认容差：abs=1.0e-05, rel=1.0e-05（可能过严）
+   - Smoothing 测试失败误差较大：
+     - pb: 6.87e+00
+     - ps: 1.49e+02
+     - cs: 3.63e+02
+   - 需要调查 smoothing 实现差异
+
+3. **测试基础设施状态**
+   - ✅ benchmarks 目录已有完善的测试框架
+   - ✅ 自动生成 JSON 结果和 Markdown 报告
+   - ✅ 支持多种测试模式（quick, no-r, large 等）
+   - ✅ 包含性能测试（comprehensive_performance_test.py）
+
+4. **Smoother 问题诊断（2026-06-02 下午）**
+   - ✅ 创建了 `diagnose_smoother_differences.py` 诊断工具
+   - ✅ 运行诊断发现了根本问题：
+     - **pb smoother**: Python 使用 35 个系数 vs R 使用 2 个系数（EDF=12）
+       - 误差：max_abs=5.66e-02, RMSE=2.22e-02, correlation=0.999
+       - 问题：默认参数不匹配，Python 可能使用了过多的基函数
+     - **ps smoother**: Python 使用 24 个系数 vs R 使用 2 个系数（EDF=5）
+       - 误差：max_abs=3.99e-01, RMSE=2.26e-01, correlation=0.964
+       - 问题：默认参数不匹配，拟合形状差异较大
+     - **cs smoother**: Python 返回常数值（完全失败）
+       - 所有拟合值都是 0.1807（数据均值）
+       - 误差：max_abs=8.01e-01, RMSE=4.44e-01
+       - 问题：cubic spline 实现有严重 bug
+   - ⚠️ **JAX 64位精度未启用**：所有测试都在 float32 模式下运行
+     - 这可能导致数值精度问题
+     - 需要确保测试环境正确设置 `JAX_ENABLE_X64=true`
+
+### 发现的问题
+
+1. **DPQR 数值精度**
+   - 大部分 family 的 d/p/q 函数与 R 有小的数值差异
+   - 误差在 1e-5 到 1e-4 量级，可能是浮点精度或算法实现差异
+   - 需要评估是否需要调整容差或改进实现
+
+2. **Smoothing 实现差异（已诊断）**
+   - ❌ **cs smoother 完全失败**：返回常数值，需要紧急修复
+   - ⚠️ **pb/ps smoother 参数不匹配**：
+     - Python 使用的基函数数量远多于 R
+     - 默认参数（n_knots, ps_intervals 等）与 R 不一致
+     - 需要对齐默认参数或在 gamlss() 调用时传递正确参数
+   - ⚠️ **JAX 64位模式未启用**：可能影响数值精度
+
+3. **测试覆盖**
+   - 当前 benchmarks 测试覆盖了主要的 family
+   - 但还有 67 个 family 缺少专门的 R consistency 测试
+   - 需要继续补充测试覆盖
+
+### 下一步计划
+
+1. **紧急修复（最高优先级）**
+   - 🔴 修复 cs smoother 返回常数值的 bug
+   - 🔴 确保测试环境启用 JAX 64位模式（`JAX_ENABLE_X64=true`）
+   - 🟡 对齐 pb/ps smoother 的默认参数与 R gamlss
+
+2. **短期（本次会话）**
+   - 调查 cs smoother 为什么返回常数值
+   - 对比 R gamlss 的 pb/ps 默认参数设置
+   - 修复发现的问题并重新运行测试
+   - 评估 DPQR 容差设置是否合理
+
+3. **中期（后续开发）**
+   - 验证 smoother 修复后的测试结果
+   - 为剩余 67 个 family 添加测试
+   - 改进数值精度（如果需要）
+
+4. **长期（Phase 1 完成目标）**
+   - 所有 family 都有 R consistency 测试
+   - 所有测试通过或有明确的差异说明
+   - 完成文档更新

@@ -225,7 +225,13 @@ def fit_pspline(
             raise ValueError(f"weights must have length {n}, got {len(weights)}")
     
     # Create B-spline design matrix
-    X, knots = bspline_design_matrix(x, n_knots=n_knots, degree=degree)
+    # Use inter parameter to match R gamlss::pb() default (inter=20)
+    # If n_knots is explicitly provided, it takes precedence
+    if n_knots is not None:
+        X, knots = bspline_design_matrix(x, n_knots=n_knots, degree=degree)
+    else:
+        # Use R default: inter=20
+        X, knots = bspline_design_matrix(x, inter=20, degree=degree)
     X = jnp.array(X)
     p = X.shape[1]
     

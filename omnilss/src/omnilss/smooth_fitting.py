@@ -233,18 +233,30 @@ def build_smooth_design(
             cs_method = (
                 fit_method if fit_method in ["GCV", "REML", "AIC", "auto"] else "GCV"
             )
+            
+            # R's cs() default is df=3, which becomes df=5 after adding 2 internally
+            # If no df is specified, use R's default
+            cs_df = smooth_term.df if smooth_term.df is not None else 3
 
             cs_result = fit_cubic_spline(
                 x_smooth,
                 y,
                 weights=weights,
-                df=smooth_term.df,
+                df=cs_df,
                 method=cs_method,
             )
-            n_basis_cs = info["basis"].shape[1]
+            
+            # For cs(), we use the fitted values directly as the "basis"
+            # This is different from pb/ps which use B-spline basis functions
+            cs_fitted = cs_result.fitted_values.reshape(-1, 1)
+            
+            # Replace the placeholder basis with actual fitted values
+            X = np.hstack([X, cs_fitted])
+            
+            # Create a dummy penalty matrix (cs uses internal smoothing)
             from omnilss.smoothers.penalties import penalty_matrix
-
-            dummy_P = penalty_matrix(n_basis_cs, order=2)
+            dummy_P = penalty_matrix(1, order=2)
+            
             smooth_fits.append(
                 SmoothFitInfo(
                     term_index=i,
@@ -253,12 +265,12 @@ def build_smooth_design(
                     lambda_=cs_result.lambda_,
                     edf=cs_result.edf,
                     penalty=dummy_P,
-                    basis_columns=(current_col, current_col + n_basis_cs),
+                    basis_columns=(current_col, current_col + 1),
                     selection_method=cs_result.selection_method,
                     criterion_value=cs_result.criterion_value,
                 )
             )
-            current_col += n_basis_cs
+            current_col += 1
             continue
         elif smoother_type == "re":
             # ── 随机效应：s(group, bs="re") ──

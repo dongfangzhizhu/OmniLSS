@@ -79,7 +79,8 @@ def fit_cubic_spline(
     weights : np.ndarray, optional
         Observation weights
     df : float, optional
-        Target degrees of freedom. R adds 2 internally; we match that.
+        Target degrees of freedom. R's cs() default is 3, which becomes 5 after
+        adding 2 internally. If None, uses GCV for automatic selection.
     spar : float, optional
         Smoothing parameter (maps to UnivariateSpline s parameter).
         If both df and spar are None, uses method for automatic selection.
@@ -97,6 +98,12 @@ def fit_cubic_spline(
         - selection_method: Method used for lambda selection
         - criterion_value: Value of the optimization criterion
         
+    Notes
+    -----
+    R's cs() function has df=3 as default, which is converted to df=5 when
+    passed to smooth.spline (by adding 2). This implementation matches that
+    behavior when df is specified.
+        
     Examples
     --------
     >>> # Automatic lambda selection (recommended)
@@ -108,8 +115,8 @@ def fit_cubic_spline(
     >>> # Use REML for lambda selection
     >>> result = fit_cubic_spline(x, y, method="REML")
     
-    >>> # Manual df specification
-    >>> result = fit_cubic_spline(x, y, df=5)
+    >>> # Manual df specification (R default is df=3)
+    >>> result = fit_cubic_spline(x, y, df=3)
     
     References
     ----------
