@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import time
 
+from omnilss.family_capabilities import require_production_family_route
+
 from .dataset_registry import BenchmarkDatasetRegistry, default_dataset_registry
 from .report import BenchmarkRecord
 
@@ -23,6 +25,7 @@ class BenchmarkRunner:
         self.registry = registry or default_dataset_registry()
 
     def run(self, spec: BenchmarkSpec) -> BenchmarkRecord:
+        require_production_family_route(spec.family, spec.method, route="benchmark")
         dataset = self.registry.get(spec.dataset)
         payload = dataset.builder(spec.n)
         start = time.perf_counter()

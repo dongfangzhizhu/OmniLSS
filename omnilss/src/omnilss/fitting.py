@@ -300,12 +300,16 @@ def _require_method_family_capability(
 
     from .family_capabilities import (
         FamilyCapabilityError,
-        method_route_capability_report,
+        require_production_family_route,
     )
 
-    report = method_route_capability_report(
-        family_name, method_name, strict=not allow_experimental
+    report = require_production_family_route(
+        family_name, method_name, route="public_fit"
     )
+    if not allow_experimental:
+        from .family_capabilities import method_route_capability_report
+
+        report = method_route_capability_report(family_name, method_name, strict=True)
     if report["code"] == "unknown_method":
         return
     if report["ok"]:

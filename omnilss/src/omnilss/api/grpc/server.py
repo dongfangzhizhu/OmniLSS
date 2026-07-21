@@ -21,7 +21,12 @@ from pathlib import Path
 from typing import Any
 
 from ... import gamlss
-from ...family_capabilities import CAPABILITY_MATRIX_VERSION, method_route_capability_report
+from ...family_capabilities import (
+    CAPABILITY_MATRIX_VERSION,
+    ProductionFamilyRejectedError,
+    require_production_family_route,
+    method_route_capability_report,
+)
 from ...prediction import PredictionSchemaError
 from ...serialization import compare_model_capability_snapshot, load_model_json, save_model_json
 
@@ -244,6 +249,8 @@ def _from_json(text: str) -> dict[str, Any]:
 def _error_text(exc: Exception) -> str:
     """Return a machine-readable error string for gRPC response fields."""
 
+    if isinstance(exc, ProductionFamilyRejectedError):
+        return _to_json(exc.to_dict())
     if isinstance(exc, PredictionSchemaError):
         return _to_json({"type": "prediction_schema_error", **exc.to_dict()})
     return str(exc)
@@ -361,11 +368,9 @@ def create_service():
         def _fit_one(self, request):
             data = _from_json(request.data_json)
             method = str(request.method or "RS").strip() or "RS"
-            route_report = method_route_capability_report(
-                request.family, method, strict=False
+            require_production_family_route(
+                request.family, method, route="service"
             )
-            if not route_report["ok"]:
-                raise ValueError(_to_json(route_report))
             kwargs: dict[str, Any] = {
                 "formula": request.formula,
                 "family": request.family,

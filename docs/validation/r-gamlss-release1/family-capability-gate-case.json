@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "case_id": "family-capability-gate-gb2-rs-seed-20260722",
+  "family": "GB2",
+  "method": "RS",
+  "seed": 20260722,
+  "fixed_r_sources": {
+    "gamlss": {
+      "source_path": "R/gamlss",
+      "version": "5.5-3",
+      "namespace_sha256": "709cd6a70b13e91d14bce45b2d59f9d8efe66aa50cca2c943e3711221116dfb8",
+      "description_sha256": "598ab71f4b0bf3f78b74883689db7e459f1bf47cf63881a819f9c0ac1a269f82"
+    },
+    "gamlss.dist": {
+      "source_path": "R/gamlss.dist",
+      "version": "6.1-8",
+      "namespace_sha256": "a1b0cd62d169a22ba20c01e1a6283ceff49c90b3809205016261f182d57454e2",
+      "description_sha256": "cc5ed69d40c94d1ff8e7a0ec4941af5a9c8b5d94ebccbd6105a0ec0e4fe70b00"
+    }
+  },
+  "family_status": "placeholder",
+  "implementation_status": "placeholder",
+  "admission": {
+    "ok": false,
+    "family": "GB2",
+    "method": "RS",
+    "feature": "rs_fit",
+    "status": null,
+    "implementation_status": "placeholder",
+    "strict": false,
+    "allow_experimental": true,
+    "allow_compat_alias": false,
+    "allow_placeholder": false,
+    "code": "placeholder_requires_opt_in",
+    "message": "family 'GB2' method 'RS' has placeholder numeric behavior; pass allow_placeholder=True only for explicit migration or smoke-test work",
+    "route": "benchmark"
+  },
+  "evidence_paths": [
+    "R/gamlss.dist/NAMESPACE",
+    "omnilss/src/omnilss/distribution_registry.py",
+    "omnilss/src/omnilss/family_capabilities.py"
+  ],
+  "comparison": {
+    "status": "excluded",
+    "r_consistency_success": false,
+    "reason": "production capability rejection occurred before R comparison"
+  }
+}

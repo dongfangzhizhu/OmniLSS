@@ -42,6 +42,22 @@ class FamilyCapabilityError(ValueError):
     """Raised when a requested family feature is not available at the requested tier."""
 
 
+class ProductionFamilyRejectedError(FamilyCapabilityError):
+    """Fail-closed rejection for an unsafe family on a production route.
+
+    ``report`` is deliberately retained as structured diagnostic data so direct
+    fit, batch, benchmark, and service callers cannot lose the status or
+    reason that caused admission to fail.
+    """
+
+    def __init__(self, report: Mapping[str, object]) -> None:
+        self.report = dict(report)
+        super().__init__(str(self.report.get("message", "production family rejected")))
+
+    def to_dict(self) -> dict[str, object]:
+        return dict(self.report)
+
+
 CAPABILITY_MATRIX_VERSION = 4
 
 FEATURES: tuple[str, ...] = (
@@ -929,6 +945,31 @@ def method_route_capability_report(
     }
 
 
+def require_production_family_route(
+    family_name: str,
+    method_name: str,
+    *,
+    route: str,
+) -> dict[str, object]:
+    """Admit a public production route or raise with structured evidence.
+
+    Migration-only opt-ins are intentionally unavailable here: placeholder and
+    compatibility-alias kernels must never be admitted by public fitting,
+    batch, benchmark, or service routes.
+    """
+
+    report = method_route_capability_report(family_name, method_name, strict=False)
+    report = {**report, "route": route}
+    if report["ok"]:
+        return report
+    if report.get("implementation_status") in {
+        ImplementationStatus.PLACEHOLDER.value,
+        ImplementationStatus.COMPAT_ALIAS.value,
+    }:
+        raise ProductionFamilyRejectedError(report)
+    return report
+
+
 def require_method_route(
     family_name: str,
     method_name: str,
@@ -1027,6 +1068,7 @@ __all__ = [
     "capability_matrix",
     "FamilyCapability",
     "FamilyCapabilityError",
+    "ProductionFamilyRejectedError",
     "family_capability_names",
     "family_supports",
     "get_family_capability",
@@ -1038,5 +1080,6 @@ __all__ = [
     "METHOD_CAPABILITY_FEATURES",
     "validate_capability_matrix_payload",
     "require_family_capability",
+    "require_production_family_route",
     "require_method_route",
 ]
