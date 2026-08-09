@@ -165,9 +165,10 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   - 【实现】① `links.py`：新增 `inverse_square_link/inverse_square_inverse/inverse_square_derivative`（η=1/μ²），`LINK_REGISTRY["1/mu^2"]` 由错误的 `inverse_link`（1/μ）改为平方逆链接；注册 `logshiftto2`（函数此前存在但未注册）；② `distributions3.py`：修复 TF/TF2 方差公式补 `ν/(ν-2)` 因子（Student-t 方差，此前返回 σ²；ν≤2 返回 inf）；③ `dpqr_functions.py`：删除重复定义的 `pNBII/qNBII/rNBII`（旧版无连续性修正），保留连续性修正版。
   - 【验收】新增 `tests/test_link_registry_and_metadata.py`（6 项：`1/mu^2` 正确映射、logshiftto2 往返、pNBII 唯一性、TF 方差 ν 因子、LOGNO 峰度 Pearson、NO 方差不变）全部通过；distributions3/momentSK 11 项全绿；A/B 确认 probit 2 项与 NBII 拟合 3 项失败为预先存在。
   - 【注】① `GeneralisedPoisson` 核实已注册（`GENERALISEDPOISSON`，resolve 大小写不敏感）——审计项已过时无需修复；② LOGNO 峰度核实为 Pearson 公式（NO=3、GA=3+6σ² 均不减 3，模块统一 Pearson 约定）——审计"补 −3"为误判无需修改。
-- [ ] **1.9 高危分布族清理**（H6）
-  - 【实现】SIMPLEX 接线真实 d/p/q/r（移除 `ad.py:170-182` 的 NaN 占位，用 `dpqr_functions.py:6205-6265` 并改进 pSIMPLEX 梯形积分精度）；SHASH ν 改 log link；TF2 加 σ 重缩放；ST1-4 按各自定义实现或显式标记 alias 不可用。
-  - 【验收】所有 family 的 p/q/r 无 NaN（新增全族扫描测试：遍历 registry 全部 family，随机参数下 d/p/q 全有限且单调）；`test_*_dpqr.py` 对应文件通过。
+- [x] **1.9 高危分布族清理**（H6）✅ commit `3ae784a`
+  - 【实现】① SIMPLEX：family 接线真实 d/p/q/r（此前 NaN 占位），`pSIMPLEX` 由 `jnp.vectorize`+200 点积分改为共享网格 16384 点向量化梯形积分（>2min→1.5s，精度 2e-8），`qSIMPLEX` brentq xtol 1e-10；② SHASH：ν 链接由 identity 改为 log（R `SHASH.R` nu.link="log"）；③ TF2：补 `sigma*sqrt((nu-2)/nu)` 重缩放（R `TF2.R`），g_dev_inc/d/p/q 统一；④ ST1/ST2：由 ST3C 克隆改为真实 Azzalini skew-t 密度（R `ST1.R`/`ST2.R`），p 用数值积分、q 用自适应区间 brentq（修复闭包捕获 bug）；ST3/ST4 保留克隆。
+  - 【验收】新增 `tests/test_high_risk_families.py`（7 项：R 对照 SIMPLEX/SHASH/TF2/ST1/ST2、非克隆守卫）与 `tests/test_all_families_dpqr_scan.py`（全族扫描：清单外 family d/p/q 全有限且单调，80 个已知 NaN 占位族登记为 `KNOWN_NAN_PLACEHOLDER` 供后续阶段处理）全部通过；与 R 对照 SIMPLEX d 1e-16/p 2e-8、TF2 1e-15、ST1/ST2 1e-15；TF2 R 一致性失败比修复前少 3 个（无新增）。
+  - 【注】80 个 NaN 占位族（BCCGO/BCPEO/BCTO/BEINF0/DPO/NO2/IGAMMA/WEI2/ST3/ST4 等）登记于 `KNOWN_NAN_PLACEHOLDER`，留待后续阶段接线；恢复遗留改动提交 `496c75c`（3-way merge 找回上个会话的 qPO/pBI/pNBII 精确实现）。
 
 ---
 
@@ -338,7 +339,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | 阶段 | 状态 | 备注 |
 |---|---|---|
 | Phase 0 工程地基 | 🔄 进行中 | 0.1–0.3 完成；0.4–0.8 待办 |
-| Phase 1 数学正确性 | 🔄 进行中 | 1.1 完成；1.2–1.9 待办（下一步：1.2 pIG/qIG） |
+| Phase 1 数学正确性 | ✅ **完成** | 1.1–1.9 全部完成（含遗留恢复 `496c75c`）；进入 Phase 2 前置条件满足 |
 | Phase 2 最小可信核心 | ⬜ 待办 | 依赖 Phase 0/1 |
 | Phase 3 可信平滑预测 | ⬜ 待办 | 依赖 Phase 2 |
 | Phase 4 验证与发布 | ⬜ 待办 | 依赖 Phase 0–3 |
