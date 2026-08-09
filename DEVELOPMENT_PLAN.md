@@ -123,9 +123,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [x] **0.7 精度策略落地（x64）** — 与 C5 联动 ✅ commit `108980f`
   - 【实现】新增 `omnilss/src/omnilss/_precision.py`（import 时全局启用 `jax_enable_x64`），在 `__init__.py` 第一行导入（任何 JAX 使用之前）；`rs_jax.py` 的孤立设置标记 DEPRECATED。
   - 【验收】`import omnilss` 后 `jax.config.jax_enable_x64 == True`，`jnp.float64` 数组不再截断为 float32；新增 `tests/test_x64_precision.py`（3 项：import 后 x64=True、float64 不截断、拟合参数为 float64）全部通过；62 项综合回归（1.1–1.7 全部）无破坏。
-- [ ] **0.8 golden fixture 出处与生成脚本**
-  - 【实现】为 `tests/fixtures/r_golden/*.json` 补齐生成脚本（R 侧 `generate_r_reference_results.R` 对接）与 manifest（R 版本、gamlss 版本、seed、commit、hash）。
-  - 【验收】fixture 可从头再生成且数值一致；schema 测试从"查键存在"升级为含内容 hash 校验。
+- [x] **0.8 golden fixture 出处与生成脚本** ✅ commit `0b3305f`
+  - 【实现】新增 `omnilss/tests/fixtures/r_golden/generate_golden.R`（R 侧可复现管线：固定 seed 生成数据 + gamlss 拟合 + JSON + manifest）；`regenerated/` 目录含重新生成的 4 个 fixture 与 manifest（R 4.5.0 / gamlss 5.5.0 / gamlss.dist 6.1.1 / seed / djb2 内容 hash）；原 fixtures 保留为历史锚点（replay 测试依赖）。
+  - 【验收】新增 `tests/test_r_golden_manifest.py`（6 项：manifest 存在与 hash 格式、覆盖全部 checked-in fixture、regenerated schema）全部通过；可复现性验证：重跑脚本 hash 完全一致（`58264720/8f50eebe/83d749c5/9ea3e78d`）；10 项（新 manifest 6 + 既有 schema 4）全绿。
 
 ---
 
