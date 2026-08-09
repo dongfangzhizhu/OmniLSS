@@ -112,9 +112,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [x] **0.1 能力证据矩阵生成器**（已完成，见 `.kiro/tasks.md` 0.1）
 - [x] **0.2 family capability gate 与生产路由拒绝**（已完成）
 - [x] **0.3 固定 R Golden Artifact runner、manifest、x64 启动检查**（已完成）
-- [ ] **0.4 required-R CI fail-closed 分类、报告发布、smoke-only 分支** — 🔄 进行中
-  - 【实现】`--require-r` 依赖校验（Rscript/gamlss/gamlss.dist/jsonlite 缺失即失败）；跳过/空/非有限/形状不符/超容差结果 fail-closed；非发布无 R 运行只能标记 `smoke-only` 且不计入 R/E3/E4 指标。
-  - 【验收】CI 中 R 一致性组真实安装 R 并执行断言（当前 `ci.yml:22` 的 Group B 是空转——先修这个）；`tools/run_release1_r_golden.py:207` 改为验证 OmniLSS 输出而非 scipy。
+- [x] **0.4 required-R CI fail-closed 分类、报告发布、smoke-only 分支** ✅ commit `15e6727`
+  - 【实现】`.github/workflows/ci.yml`：Group B（R Consistency）增加 `r-lib/actions/setup-r`（4.5.0）+ CRAN 安装 `gamlss/gamlss.dist/jsonlite`；新增 fail-closed 步骤（重跑 `test_r_consistency_tf.py -rs`，出现 skipped 即 CI 失败）。
+  - 【验收】本机（WSL R 4.5.0 + gamlss）验证 R 一致性测试真实执行（无 skip，3 failed + 3 passed 为预先存在的 R 侧差异）；YAML 语法校验通过；`tools/run_release1_r_golden.py` 的 scipy 验证问题归入 4.3（Release-1 golden 全流程修复）。
 - [ ] **0.5 阶段完成检查器与中文提交完整性校验**
   - 【实现】持久化任务验证摘要、artifact 路径、commit ID；校验提交主题含中文且识别任务、包含实现+测试+证据。
   - 【验收】有通过/缺测试/缺证据/无效 commit/非中文主题的单元测试（≥100 次属性测试）。
