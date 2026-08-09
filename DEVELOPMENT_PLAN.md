@@ -147,9 +147,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [x] **1.3 拆分 WEI 与 WEI3 参数化**（C3）✅ commit `70ec58c`
   - 【实现】WEI d/p/q/r 由错误的中位数参数化（`lambda=mu/(log2)^sigma`）改为 R WEI.R scale 参数化（`dweibull(x, scale=mu, shape=sigma)`）；新增独立 WEI3 d/p/q/r（均值参数化 `scale=mu/gamma(1+1/sigma)`）；WEI3 family 接线 d/p/q/r（此前为 NaN 占位）。
   - 【验收】新增 `tests/test_wei_dpqr.py`（6 项：scipy 对照、family 拟合密度一致性 `dWEI==-0.5*g_dev_inc`、中位数参数化回归守卫、p/q 互逆、边界）全部通过；WEI/WEI3 与 scipy 误差 ~1e-16；`test_r_consistency_wei.py`/`test_r_consistency_wei3.py` 通过（WEI3 含 2 个 dpq subtest）；24 项综合测试全绿（含 1.1/1.2 回归）；无新增失败（WEI2 失败为预先存在，dpqr NaN 占位，归入任务 1.9）。
-- [ ] **1.4 BCCG/BCT/BCPE 补截断归一化与 BCPE 标准化核**（C4）
-  - 【实现】对照 `R/gamlss.dist/R/BCCG.R:93-124`、`BCT.R:122,161-164`、`BCPE.R:190-208`：密度加 `-log(F_trunc)`，CDF 加截断平移/分母，BCPE 用方差标准化 `c = exp(0.5(-(2/τ)ln2 + lgamma(1/τ) − lgamma(3/τ)))`。
-  - 【验收】d/p 与 R 对照 rtol ≤ 1e-5（ν∈{±0.3,±1}，σ∈{0.1,0.5}）；现有 `test_bccg_dpqr.py`、`test_bcpe_dpqr.py`、`test_bct_dpqr.py`、`test_r_consistency_batch1_bc.py` 通过。
+- [x] **1.4 BCCG/BCT/BCPE 补截断归一化与 BCPE 标准化核**（C4）✅ commit `20ce13a`
+  - 【实现】对照 `R/gamlss.dist/R/BCCG.R:93-124`、`BCT.R:122,161-164`、`BCPE.R:190-208`：dBCCG/dBCT/dBCPE 补截断归一化项（`-log(F_trunc)`），p 函数补截断 CDF（`(F(z)-F(-1/(σ|ν|)))/F(1/(σ|ν|))`，ν 符号分支），q 函数补截断反演；BCPE 改用方差标准化核（`c=exp(0.5(-(2/τ)ln2+lgamma(1/τ)-lgamma(3/τ)))`），新增 `_bcpe_c/_bcpe_ftrunc/_bcpe_q` 辅助函数。
+  - 【验收】新增 `tests/test_bccg_bct_bcpe_dpqr.py`（5 项：R 4.5.0 gamlss.dist 机器精度参考值 d/p/q 共 27 点、p/q 互逆、τ=2 与 BCCG 等价）全部通过；与 R 实时对照 BCCG 15 点 / BCT 12 点 / BCPE 12 点全部误差 ≤1e-14；25 项综合测试（含 1.1–1.3 回归）全绿；A/B 确认 batch1_bc 拟合失败为预先存在（float32 收敛问题，归入 C5）。
 - [ ] **1.5 拟合引擎正确性：RS_JAX NaN 收敛、MIXED 真混合、L-BFGS/CG 入口**（C6/C7/H1）
   - 【实现】① `jax_rs_core.py:347,494` 收敛条件显式拒绝 NaN（`jnp.isfinite` 检查），`compute_gdev` 的 `-1e6` 替换改为传播 NaN/raise；② `method="MIXED"` 改为调用 `algorithms/mixed_algorithm.py` 的真实混合，或删除该 method 名并文档化；③ L-BFGS 加 line search 或显式报错；修正 `lbfgs_algorithm.py` 命名与行为。
   - 【验收】新增 NaN 注入测试：含 NaN 数据必须抛错或 `converged=False` 且 deviance 为 NaN，绝不"成功收敛"；`method="MIXED"` 与 RS/CG 在 8 核心族上输出可复现且与 R 在容差内一致。
