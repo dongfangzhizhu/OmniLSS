@@ -1154,10 +1154,15 @@ def pIG(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     
-    z1 = (q / mu - 1.0) / (sigma * jnp.sqrt(q / mu))
-    z2 = -(q / mu + 1.0) / (sigma * jnp.sqrt(q / mu))
+    # R IG.R:72-73: z = ((q/mu)-1)/(sigma*sqrt(q)), NOT sqrt(q/mu)
+    z1 = (q / mu - 1.0) / (sigma * jnp.sqrt(q))
+    z2 = -(q / mu + 1.0) / (sigma * jnp.sqrt(q))
     
     cdf = norm.cdf(z1) + jnp.exp(2.0 / (sigma * sigma * mu)) * norm.cdf(z2)
+    
+    # Boundary handling (R: cdf[q<=0]=0, cdf[q>=Inf]=1)
+    cdf = jnp.where(q <= 0.0, 0.0, cdf)
+    cdf = jnp.where(jnp.isinf(q), 1.0, cdf)
     
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -1189,22 +1194,26 @@ def qIG(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     array_like
         Quantiles
     """
-    p = jnp.asarray(p, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    p = np.asarray(p, dtype=np.float64)
+    mu = np.asarray(mu, dtype=np.float64)
+    sigma = np.asarray(sigma, dtype=np.float64)
     
     if log_p:
-        p = jnp.exp(p)
+        p = np.exp(p)
     
     if not lower_tail:
         p = 1.0 - p
     
-    # Approximation using normal quantile
-    # Full implementation would require numerical inversion
-    z = ndtri(p)
-    q = mu * (1.0 + sigma * z * jnp.sqrt(mu) + 0.5 * sigma * sigma * z * z)
+    # Clip probabilities to avoid edge cases at exactly 0 or 1
+    p = np.clip(p, 1e-12, 1 - 1e-12)
     
-    return jnp.maximum(q, 1e-10)
+    # Exact inverse-Gaussian quantile via scipy.
+    # GAMLSS IG(mu, sigma) == standard IG(mu, lambda=1/sigma^2);
+    # X ~ invgauss(mu*sigma^2) has lambda=1, and Y = X/sigma^2 ~ IG(mu, 1/sigma^2).
+    from scipy.stats import invgauss as _ig_dist
+    q = _ig_dist.ppf(p, mu=mu * sigma * sigma) / (sigma * sigma)
+    
+    return q
 
 
 def rIG(key, n, mu=1.0, sigma=1.0):
