@@ -313,6 +313,11 @@ def _simplex_log_pdf(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp
 
 
 def SIMPLEX() -> SimplexFamily:
+    from omnilss.dpqr_functions import dSIMPLEX as _dSIMPLEX
+    from omnilss.dpqr_functions import pSIMPLEX as _pSIMPLEX
+    from omnilss.dpqr_functions import qSIMPLEX as _qSIMPLEX
+    from omnilss.dpqr_functions import rSIMPLEX as _rSIMPLEX
+
     return build_ad_family(
         family_class=SimplexFamily,
         name="SIMPLEX",
@@ -323,6 +328,10 @@ def SIMPLEX() -> SimplexFamily:
         link_functions={"mu": logit_link, "sigma": log_link},
         link_inverses={"mu": logit_inverse, "sigma": log_inverse},
         link_derivatives={"mu": logit_derivative, "sigma": log_derivative},
+        d=_dSIMPLEX,
+        p=_pSIMPLEX,
+        q=_qSIMPLEX,
+        r=_rSIMPLEX,
     )
 
 

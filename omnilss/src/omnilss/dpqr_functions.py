@@ -6302,26 +6302,42 @@ def pSIMPLEX(q, mu=0.5, sigma=1.0, lower_tail=True, log_p=False):
     mu = jnp.clip(mu, eps, 1.0 - eps)
     sigma = jnp.maximum(sigma, eps)
 
-    # Use numerical integration
-    def integrate_density(q_val):
-        # Create integration grid from eps to q_val
-        n_points = 200
-        x_grid = jnp.linspace(eps, q_val, n_points)
-        dx = (q_val - eps) / (n_points - 1)
-        
-        # Compute density at grid points
-        d_grid = dSIMPLEX(x_grid, mu, sigma, log=False)
-        
-        # Trapezoidal integration
-        cdf_val = jnp.trapz(d_grid, dx=dx)
-        return cdf_val
+    # Use vectorized trapezoidal integration over a shared grid.
+    # All quantiles share the same grid nodes; integrate per-q by
+    # masking density beyond each q (faster and more accurate than
+    # jnp.vectorize over per-q grids).
+    n_points = 16384
+    x_grid = jnp.linspace(eps, 1.0 - eps, n_points)
+    d_grid = dSIMPLEX(x_grid, mu, sigma, log=False)
+    # Ensure 2-D shape (param_batch, n_points): scalar params -> (1, n_points)
+    d_grid = jnp.atleast_2d(d_grid)
 
-    # Vectorize the integration
-    cdf = jnp.vectorize(integrate_density)(q)
+    # Cumulative integral via cumulative trapezoid on the shared grid.
+    dx = (1.0 - 2.0 * eps) / (n_points - 1)
+    integrand = (d_grid[:, :-1] + d_grid[:, 1:]) * 0.5 * dx
+    cum = jnp.concatenate([jnp.zeros_like(integrand[:, :1]), jnp.cumsum(integrand, axis=-1)], axis=-1)
+
+    # Map each q onto the grid via searchsorted, then interpolate the cumulative mass.
+    # q is 1-D here (broadcast over parameters was already applied by dSIMPLEX).
+    q_flat = jnp.atleast_1d(q)
+    q_clipped = jnp.clip(q_flat, eps, 1.0 - eps)
+    idx = jnp.searchsorted(x_grid, q_clipped, side="right") - 1
+    idx = jnp.clip(idx, 0, n_points - 2)
+    x0 = x_grid[idx]
+    frac = (q_clipped - x0) / jnp.maximum(x_grid[idx + 1] - x0, eps)
+    # cum has shape (param_batch, n_points); gather along the grid axis.
+    cdf_vals = cum[:, idx] + frac[None, :] * (cum[:, idx + 1] - cum[:, idx])
+    if cdf_vals.shape[0] == 1:
+        cdf = jnp.reshape(cdf_vals[0], jnp.shape(q))
+    else:
+        cdf = cdf_vals
 
     # Handle q outside (0, 1)
-    cdf = jnp.where(q <= 0, 0.0, cdf)
-    cdf = jnp.where(q >= 1, 1.0, cdf)
+    cdf = jnp.where(q_flat <= 0, 0.0, cdf)
+    cdf = jnp.where(q_flat >= 1, 1.0, cdf)
+
+    # Broadcast back to the original shape (scalar input -> scalar output)
+    cdf = cdf.reshape(jnp.shape(q))
 
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -6387,7 +6403,7 @@ def qSIMPLEX(p, mu=0.5, sigma=1.0, lower_tail=True, log_p=False):
         upper = 1.0 - eps
         
         try:
-            result = brentq(objective, lower, upper, xtol=1e-8)
+            result = brentq(objective, lower, upper, xtol=1e-10)
             return result
         except:
             # Fallback to bisection

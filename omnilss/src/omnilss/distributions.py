@@ -1508,14 +1508,20 @@ def TF2() -> TF2Family:
     def _nu_gt2(nu):
         return jnp.maximum(jnp.asarray(nu, dtype=jnp.float64), 2.0 + eps)
 
+    def _sigma_scaled(sigma, nu):
+        # R TF2.R: sigma1 = sqrt((nu-2)/nu) * sigma  (variance-1 t rescaled)
+        sigma = jnp.asarray(sigma, dtype=jnp.float64)
+        nu_safe = _nu_gt2(nu)
+        return sigma * jnp.sqrt((nu_safe - 2.0) / nu_safe)
+
     def g_dev_inc_tf2(y, mu, sigma, nu):
-        return fam.g_dev_inc(y, mu, sigma, _nu_gt2(nu))
+        return fam.g_dev_inc(y, mu, _sigma_scaled(sigma, nu), _nu_gt2(nu))
 
     def d_tf2(x, mu=0.0, sigma=1.0, nu=3.0, log=False):
-        return fam.d(x, mu, sigma, _nu_gt2(nu), log=log)
+        return fam.d(x, mu, _sigma_scaled(sigma, nu), _nu_gt2(nu), log=log)
 
     def p_tf2(q, mu=0.0, sigma=1.0, nu=3.0, lower_tail=True, log_p=False):
-        return fam.p(q, mu, sigma, _nu_gt2(nu), lower_tail=lower_tail, log_p=log_p)
+        return fam.p(q, mu, _sigma_scaled(sigma, nu), _nu_gt2(nu), lower_tail=lower_tail, log_p=log_p)
 
     def q_tf2(p, mu=0.0, sigma=1.0, nu=3.0, lower_tail=True, log_p=False):
         """Quantile wrapper with one-step refinement for staged TF2 numerics."""
@@ -1558,11 +1564,12 @@ def TF2() -> TF2Family:
         p_target = jnp.clip(p_target, eps, 1.0 - eps)
 
         # Base quantile evaluation in stable lower-tail mode.
-        q0 = fam.q(p_target, mu, sigma, nu_safe, lower_tail=True, log_p=False)
+        sigma_s = _sigma_scaled(sigma, nu_safe)
+        q0 = fam.q(p_target, mu, sigma_s, nu_safe, lower_tail=True, log_p=False)
 
         # One Newton-style correction improves p/q self-consistency near nu boundary.
-        p0 = fam.p(q0, mu, sigma, nu_safe, lower_tail=True, log_p=False)
-        d0 = fam.d(q0, mu, sigma, nu_safe, log=False)
+        p0 = fam.p(q0, mu, sigma_s, nu_safe, lower_tail=True, log_p=False)
+        d0 = fam.d(q0, mu, sigma_s, nu_safe, log=False)
         d0 = jnp.where(jnp.isfinite(d0), d0, eps)
         d0 = jnp.maximum(d0, eps)
 
