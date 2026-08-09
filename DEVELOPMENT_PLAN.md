@@ -144,9 +144,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [x] **1.2 修复 `pIG`/`qIG`**（C2）✅ commit `f6030e5`
   - 【实现】`pIG` 按 R `IG.R:72-73` 修正 z 公式分母（`sigma*sqrt(q)` 替代 `sigma*sqrt(q/mu)`），消除 √μ 因子错误，补充 q≤0/q=∞ 边界；`qIG` 由 delta 法正态近似改为 scipy `invgauss` 精确 ppf（参数映射 `IG(mu,sigma) == invgauss(mu*σ²)/σ²`，已数值验证）。
   - 【验收】新增 `tests/test_ig_dpqr.py`（7 项：R 公式对照 μ∈{0.5,1,2,5}、scipy 精确反演对照、p/q 互逆、upper_tail/log_p 语义、边界、单调性）全部通过；pIG 与 R 误差 ~1e-16，qIG 与 scipy 误差 0；`test_r_consistency_ig.py` 3 项通过；无新增失败（IGAMMA 拟合失败为预先存在，float32 收敛问题，归入 C5/拟合引擎任务）。
-- [ ] **1.3 拆分 WEI 与 WEI3 参数化**（C3）
-  - 【实现】`dpqr_functions.py` 中 WEI 的 d/p/q/r 改用 R WEI 参数化（`scale=μ, shape=σ`）；新增独立 WEI3 函数（中位数参数化）供需要处引用。
-  - 【验收】`WEI().d == exp(WEI().g_dev_inc 推断密度)` 一致性测试；`test_r_consistency_wei.py` 通过。
+- [x] **1.3 拆分 WEI 与 WEI3 参数化**（C3）✅ commit `70ec58c`
+  - 【实现】WEI d/p/q/r 由错误的中位数参数化（`lambda=mu/(log2)^sigma`）改为 R WEI.R scale 参数化（`dweibull(x, scale=mu, shape=sigma)`）；新增独立 WEI3 d/p/q/r（均值参数化 `scale=mu/gamma(1+1/sigma)`）；WEI3 family 接线 d/p/q/r（此前为 NaN 占位）。
+  - 【验收】新增 `tests/test_wei_dpqr.py`（6 项：scipy 对照、family 拟合密度一致性 `dWEI==-0.5*g_dev_inc`、中位数参数化回归守卫、p/q 互逆、边界）全部通过；WEI/WEI3 与 scipy 误差 ~1e-16；`test_r_consistency_wei.py`/`test_r_consistency_wei3.py` 通过（WEI3 含 2 个 dpq subtest）；24 项综合测试全绿（含 1.1/1.2 回归）；无新增失败（WEI2 失败为预先存在，dpqr NaN 占位，归入任务 1.9）。
 - [ ] **1.4 BCCG/BCT/BCPE 补截断归一化与 BCPE 标准化核**（C4）
   - 【实现】对照 `R/gamlss.dist/R/BCCG.R:93-124`、`BCT.R:122,161-164`、`BCPE.R:190-208`：密度加 `-log(F_trunc)`，CDF 加截断平移/分母，BCPE 用方差标准化 `c = exp(0.5(-(2/τ)ln2 + lgamma(1/τ) − lgamma(3/τ)))`。
   - 【验收】d/p 与 R 对照 rtol ≤ 1e-5（ν∈{±0.3,±1}，σ∈{0.1,0.5}）；现有 `test_bccg_dpqr.py`、`test_bcpe_dpqr.py`、`test_bct_dpqr.py`、`test_r_consistency_batch1_bc.py` 通过。
