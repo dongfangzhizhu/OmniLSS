@@ -154,9 +154,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   - 【实现】① `jax_rs_core.py`/`jax_rs_batch.py`：`compute_gdev` 不再用 `-1e6` 掩盖 NaN（改传播），`cond_fn` 检测非有限 deviance 立即退出，状态增加 `failed` 标志（含 init 检测），`converged` 需"未达上限且有限且未 failed"；② `fitting.py`：`method="MIXED"` 接线到 `algorithms/mixed_algorithm.mixed_fit` 真实调度器（RS/L-BFGS 按数据特征自动选择），记录 `mixed_auto_selected`，调度失败不破坏拟合；③ `core/lbfgs_optimizer.py`：`linesearch` 参数（zoom/backtracking/None）真正生效（按 optax 0.2.8 `GradientTransformationExtraArgs` 约定传 `value/grad/value_fn`），默认 zoom（此前固定 `linesearch=None`）。
   - 【验收】新增 `tests/test_jax_rs_nan_handling.py`（4 项：NaN/Inf 数据绝不判收敛、正常拟合仍收敛、GA 族 y=0 防护）全部通过；NaN 场景 `converged=False`（修复前误报 True）；56 项综合测试全绿（含 1.1–1.4 回归）；A/B 确认 `test_jax_rs_core` 4 个失败（PO/TF deviance 对比）为预先存在。
   - 【注】H1 的 `lbfgs_algorithm.py` 命名错位（`joint_lbfgs_fit` 内部仍走 `method="CG"`）为历史命名问题，涉及行为变更风险，记录为遗留，归入 Phase 8 收尾（8.5 删除错位包装）。
-- [ ] **1.6 `gamlss_ml` σ 系数尺度修复**（H3）
-  - 【实现】`fitting.py:619-620` 存储链接尺度（log σ）系数；`core/gamlss_integration.py:148-153` 热启动直接用该值。
-  - 【验收】JOINT/L-BFGS 热启动与 RS 终值一致（新增 `test_joint_optimizer.py` 扩展）。
+- [x] **1.6 `gamlss_ml` σ 系数尺度修复**（H3）✅ commit `64976fc`
+  - 【实现】`fitting.py:619-620`：intercept-only 的 σ 系数由参数尺度（`initial_value`=σ）改为链接尺度（`eta_init[0]`=link(σ)，如 log σ），与其他参数及 RS 路径一致；JOINT/L-BFGS 热启动不再把系数当链接尺度再套 exp。
+  - 【验收】新增 `tests/test_gamlss_ml_sigma_scale.py`（4 项：系数==log(σ)、与 RS 路径系数一致、非参数尺度回归守卫、JOINT 热启动正常）全部通过；实测 `gamlss_ml` σ 系数 -0.7386 == log(0.4778)，与 RS 完全一致；48 项综合测试全绿；A/B 确认 `test_gamlss_ml_smooth_with_weights` 失败（float32 精度）为预先存在。
 - [ ] **1.7 数值地基：safe_math 落地、WLS 稳定性、Hessian floor 审计**
   - 【实现】在拟合路径全面启用 `safe_math.safe_divide/safe_exp/safe_log`；`fast_wls.py` 从正规方程 Cholesky 改为 QR 或带条件数检查；BCT 硬编码 floor（`distributions.py:1977-1987`）改为可配置并记录 safeguard 诊断（对齐 Phase 2 的 1.3 任务）。
   - 【验收】`test_numerical_stability.py`、`test_safe_math.py` 覆盖新路径；病态设计矩阵（共线性）不再产生 NaN 系数。
