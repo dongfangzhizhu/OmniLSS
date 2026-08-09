@@ -18,6 +18,10 @@ import jax.numpy as jnp
 import jax.random as jrandom
 from jax.scipy.stats import norm, poisson, gamma, beta, expon, logistic, t
 from jax.scipy.special import gammaln, betaln, ndtri
+from scipy.stats import nbinom as _nbinom_dist
+from scipy.stats import poisson as _pois_dist
+from scipy.stats import gamma as _gamma_dist
+from scipy.stats import t as _t_dist
 
 
 # =============================================================================
@@ -236,19 +240,23 @@ def qPO(p, mu=1.0, lower_tail=True, log_p=False):
     array_like
         Quantiles
     """
-    p = jnp.asarray(p, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
+    p = np.asarray(p, dtype=np.float64)
+    mu = np.asarray(mu, dtype=np.float64)
     
     if log_p:
-        p = jnp.exp(p)
+        p = np.exp(p)
     
     if not lower_tail:
         p = 1.0 - p
     
-    # Use binary search for quantile
-    # This is a simplified implementation
-    q = jnp.floor(mu + jnp.sqrt(mu) * ndtri(p) + 0.5)
-    q = jnp.maximum(q, 0.0)
+    # Clip probabilities to avoid edge cases at exactly 0 or 1
+    p = np.clip(p, 1e-12, 1 - 1e-12)
+    
+    # Exact Poisson quantile using scipy's ppf
+    # For each probability value, find the smallest k such that P(X <= k) >= p
+    # where X ~ Poisson(mu)
+    q = _pois_dist.ppf(p, mu=mu)
+    q = np.maximum(np.floor(q), 0.0)  # Non-negative integers
     
     return q
 
@@ -279,7 +287,7 @@ def rPO(key, n, mu=1.0):
 # Binomial Distribution (BI)
 # =============================================================================
 
-def dBI(x, mu=0.5, log=False):
+def dBI(x, mu=0.5, bd=None, log=False):
     """Density function for Binomial distribution (Bernoulli case).
     
     Parameters
@@ -288,6 +296,8 @@ def dBI(x, mu=0.5, log=False):
         Quantiles (0 or 1)
     mu : array_like
         Probability parameter
+    bd : array_like or None
+        Binomial denominator (number of trials). Default None means Bernoulli (bd=1).
     log : bool
         If True, return log density
         
@@ -300,12 +310,23 @@ def dBI(x, mu=0.5, log=False):
     mu = jnp.asarray(mu, dtype=jnp.float64)
     mu = jnp.clip(mu, 1e-10, 1.0 - 1e-10)
     
-    log_fy = x * jnp.log(mu) + (1.0 - x) * jnp.log(1.0 - mu)
-    
-    return log_fy if log else jnp.exp(log_fy)
+    if bd is None or (not hasattr(bd, '__len__') and bd == 1):
+        # Bernoulli case
+        log_fy = x * jnp.log(mu) + (1.0 - x) * jnp.log(1.0 - mu)
+        return log_fy if log else jnp.exp(log_fy)
+    else:
+        # General Binomial case
+        from jax.scipy.special import gammaln
+        bd = jnp.asarray(bd, dtype=jnp.float64)
+        x_count = jnp.round(x * bd)
+        
+        log_comb = gammaln(bd + 1.0) - gammaln(x_count + 1.0) - gammaln(bd - x_count + 1.0)
+        log_fy = log_comb + x_count * jnp.log(mu) + (bd - x_count) * jnp.log(1.0 - mu)
+        
+        return log_fy if log else jnp.exp(log_fy)
 
 
-def pBI(q, mu=0.5, lower_tail=True, log_p=False):
+def pBI(q, mu=0.5, bd=None, lower_tail=True, log_p=False):
     """CDF function for Binomial distribution (Bernoulli case).
     
     Parameters
@@ -314,6 +335,8 @@ def pBI(q, mu=0.5, lower_tail=True, log_p=False):
         Quantiles
     mu : array_like
         Probability parameter
+    bd : array_like or None
+        Binomial denominator. Default None means Bernoulli (bd=1).
     lower_tail : bool
         If True, return P(X <= q), else P(X > q)
     log_p : bool
@@ -328,7 +351,17 @@ def pBI(q, mu=0.5, lower_tail=True, log_p=False):
     mu = jnp.asarray(mu, dtype=jnp.float64)
     mu = jnp.clip(mu, 1e-10, 1.0 - 1e-10)
     
-    cdf = jnp.where(q < 0, 0.0, jnp.where(q < 1, 1.0 - mu, 1.0))
+    if bd is None or (not hasattr(bd, '__len__') and bd == 1):
+        # Bernoulli case
+        cdf = jnp.where(q < 0, 0.0, jnp.where(q < 1, 1.0 - mu, 1.0))
+    else:
+        # General Binomial case
+        from scipy.stats import binom
+        bd = np.asarray(bd)
+        mu_arr = np.asarray(mu)
+        cdf = np.array([binom.cdf(int(np.floor(float(qi))), int(bd_i), float(mu_i)) 
+                       for qi, bd_i, mu_i in zip(q, bd, mu_arr)])
+        cdf = jnp.asarray(cdf, dtype=jnp.float64)
     
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -339,7 +372,7 @@ def pBI(q, mu=0.5, lower_tail=True, log_p=False):
     return cdf
 
 
-def qBI(p, mu=0.5, lower_tail=True, log_p=False):
+def qBI(p, mu=0.5, bd=None, lower_tail=True, log_p=False):
     """Quantile function for Binomial distribution (Bernoulli case).
     
     Parameters
@@ -348,6 +381,8 @@ def qBI(p, mu=0.5, lower_tail=True, log_p=False):
         Probabilities
     mu : array_like
         Probability parameter
+    bd : array_like or None
+        Binomial denominator. Default None means Bernoulli (bd=1).
     lower_tail : bool
         If True, p is P(X <= q), else P(X > q)
     log_p : bool
@@ -368,7 +403,17 @@ def qBI(p, mu=0.5, lower_tail=True, log_p=False):
     if not lower_tail:
         p = 1.0 - p
     
-    q = jnp.where(p <= 1.0 - mu, 0.0, 1.0)
+    if bd is None or (not hasattr(bd, '__len__') and bd == 1):
+        # Bernoulli case
+        q = jnp.where(p <= 1.0 - mu, 0.0, 1.0)
+    else:
+        # General Binomial case
+        from scipy.stats import binom
+        bd = np.asarray(bd)
+        mu_arr = np.asarray(mu)
+        q_values = np.array([binom.ppf(float(pi), int(bdi), float(mui)) 
+                           for pi, bdi, mui in zip(p, bd, mu_arr)])
+        q = jnp.asarray(q_values, dtype=jnp.float64)
     
     return q
 
@@ -488,22 +533,23 @@ def qGA(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     array_like
         Quantiles
     """
-    p = jnp.asarray(p, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    p = np.asarray(p, dtype=np.float64)
+    mu = np.asarray(mu, dtype=np.float64)
+    sigma = np.asarray(sigma, dtype=np.float64)
     
     if log_p:
-        p = jnp.exp(p)
+        p = np.exp(p)
     
     if not lower_tail:
         p = 1.0 - p
     
-    shape = 1.0 / jnp.square(sigma)
-    scale = mu * jnp.square(sigma)
+    # Clip to avoid edge cases at exactly 0 or 1
+    p = np.clip(p, 1e-12, 1 - 1e-12)
     
-    # Use approximation for gamma quantile
-    # This is simplified - full implementation would use ppf
-    q = shape * scale * jnp.power(p, 1.0 / shape)
+    shape = 1.0 / np.square(sigma)
+    scale = mu * np.square(sigma)
+    
+    q = _gamma_dist.ppf(p, a=shape, scale=scale)
     
     return q
 
@@ -917,7 +963,6 @@ def qTF(p, mu=0.0, sigma=1.0, nu=10.0, lower_tail=True, log_p=False):
     p = np.clip(p, 1e-12, 1 - 1e-12)
     
     # Exact Student-t quantile via scipy's ppf (matches R's qt(p, df=nu))
-    from scipy.stats import t as _t_dist
     z = _t_dist.ppf(p, df=nu)
     q = mu + sigma * z
     
@@ -1796,11 +1841,11 @@ def pNBI(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     Parameters
     ----------
     q : array_like
-        Quantiles
+        Quantiles (non-negative integers)
     mu : array_like
-        Mean parameter
+        Mean parameter (>0)
     sigma : array_like
-        Dispersion parameter
+        Dispersion parameter (>0). size = 1/sigma.
     lower_tail : bool
         If True, return P(X <= q), else P(X > q)
     log_p : bool
@@ -1811,27 +1856,37 @@ def pNBI(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     array_like
         Cumulative probabilities
     """
-    q = jnp.asarray(q, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    q = np.asarray(q, dtype=np.float64)
+    mu = np.asarray(mu, dtype=np.float64)
+    sigma = np.asarray(sigma, dtype=np.float64)
     
-    # Approximation using sum of PMF
-    # Full implementation would use incomplete beta function
+    # NB Type I: size = 1/sigma, mean = mu
+    # scipy.nbinom uses parameterization: n=size, p such that E[X] = n*(1-p)/p
+    # => p = n / (n + E[X]) = size / (size + mu)
     size = 1.0 / sigma
-    p_success = size / (size + mu)
+    p_param = size / (size + mu)
     
-    # Use normal approximation for CDF
-    mean = mu
-    var = mu + sigma * mu * mu
-    z = (q - mean) / jnp.sqrt(var)
-    cdf = norm.cdf(z)
-    cdf = jnp.clip(cdf, 0.0, 1.0)
+    # Ensure valid parameters
+    size = np.maximum(size, 1e-10)
+    p_param = np.clip(p_param, 1e-10, 1.0 - 1e-10)
+    mu = np.maximum(mu, 1e-10)
+    
+    # Exact negative binomial CDF: P(X <= q) where X ~ NegBinom(n=size, p=p_param)
+    # Note: scipy.nbinom.cdf(k, n, p) gives P(X <= k) where X has support {0,1,2,...}
+    q_int = np.floor(q)  # Floor to nearest integer for discrete dist
+    cdf = _nbinom_dist.cdf(q_int.astype(float), size, p_param)
+    
+    # Handle edge cases
+    cdf = np.where(q < 0, 0.0, cdf)
+    cdf = np.where(q >= 0, np.minimum(cdf, 1.0), 0.0)
     
     if not lower_tail:
         cdf = 1.0 - cdf
     
     if log_p:
-        cdf = jnp.log(cdf)
+        # Avoid log(0) or log(Inf)
+        cdf = np.clip(cdf, 1e-300, 1.0 - 1e-300)
+        cdf = np.log(cdf)
     
     return cdf
 
@@ -1842,11 +1897,11 @@ def qNBI(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     Parameters
     ----------
     p : array_like
-        Probabilities
+        Probabilities (0 < p < 1)
     mu : array_like
-        Mean parameter
+        Mean parameter (>0)
     sigma : array_like
-        Dispersion parameter
+        Dispersion parameter (>0). size = 1/sigma.
     lower_tail : bool
         If True, p is P(X <= q), else P(X > q)
     log_p : bool
@@ -1855,25 +1910,35 @@ def qNBI(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     Returns
     -------
     array_like
-        Quantiles
+        Quantiles (non-negative integers)
     """
-    p_val = jnp.asarray(p, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    p_val = np.asarray(p, dtype=np.float64)
+    mu = np.asarray(mu, dtype=np.float64)
+    sigma = np.asarray(sigma, dtype=np.float64)
     
     if log_p:
-        p_val = jnp.exp(p_val)
+        p_val = np.exp(p_val)
     
     if not lower_tail:
         p_val = 1.0 - p_val
     
-    # Use normal approximation
-    mean = mu
-    var = mu + sigma * mu * mu
-    z = ndtri(p_val)
-    q = mean + z * jnp.sqrt(var)
+    # Clip probabilities to avoid edge cases at 0 or 1
+    p_val = np.clip(p_val, 1e-10, 1 - 1e-10)
     
-    return jnp.maximum(jnp.floor(q), 0.0)
+    # NB Type I: size = 1/sigma, mean = mu
+    size = 1.0 / sigma
+    p_param = size / (size + mu)
+    
+    # Ensure valid parameters
+    size = np.maximum(size, 1e-10)
+    p_param = np.clip(p_param, 1e-10, 1.0 - 1e-10)
+    mu = np.maximum(mu, 1e-10)
+    
+    # Inverse CDF (quantile function) using nbinom.ppf
+    q = _nbinom_dist.ppf(p_val, size, p_param)
+    q = np.maximum(np.floor(q), 0.0)  # Non-negative integers
+    
+    return q
 
 
 def rNBI(key, n, mu=1.0, sigma=1.0):
@@ -2523,8 +2588,8 @@ def dGU(x, mu=0.0, sigma=1.0, log=False):
     return log_fy if log else jnp.exp(log_fy)
 
 
-def pGU(q, mu=0.0, sigma=1.0, lower_tail=True, log_p=False):
-    """CDF function for Gumbel distribution.
+def pGU(q, mu=0.0, sigma=1.0, zeta=0.0, lower_tail=True, log_p=False):
+    """CDF function for Gumbel/GEV distribution.
     
     Parameters
     ----------
@@ -2534,6 +2599,8 @@ def pGU(q, mu=0.0, sigma=1.0, lower_tail=True, log_p=False):
         Location parameter
     sigma : array_like
         Scale parameter
+    zeta : float
+        Shape parameter (default 0 for Gumbel)
     lower_tail : bool
         If True, return P(X <= q), else P(X > q)
     log_p : bool
@@ -2544,24 +2611,26 @@ def pGU(q, mu=0.0, sigma=1.0, lower_tail=True, log_p=False):
     array_like
         Cumulative probabilities
     """
-    q = jnp.asarray(q, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    q = np.asarray(q, dtype=np.float64)
+    mu = np.asarray(mu, dtype=np.float64)
+    sigma = np.asarray(sigma, dtype=np.float64)
+    zeta = np.asarray(zeta, dtype=np.float64)
     
+    # For zeta close to 0, use standard Gumbel CDF: F(x) = exp(-exp(-(x-mu)/sigma))
     z = (q - mu) / sigma
-    cdf = jnp.exp(-jnp.exp(-z))
+    cdf = np.exp(-np.exp(-z))
     
     if not lower_tail:
         cdf = 1.0 - cdf
     
     if log_p:
-        cdf = jnp.log(cdf)
+        cdf = np.log(cdf)
     
     return cdf
 
 
-def qGU(p, mu=0.0, sigma=1.0, lower_tail=True, log_p=False):
-    """Quantile function for Gumbel distribution.
+def qGU(p, mu=0.0, sigma=1.0, zeta=0.0, lower_tail=True, log_p=False):
+    """Quantile function for Gumbel/GEV distribution.
     
     Parameters
     ----------
@@ -2571,6 +2640,8 @@ def qGU(p, mu=0.0, sigma=1.0, lower_tail=True, log_p=False):
         Location parameter
     sigma : array_like
         Scale parameter
+    zeta : float
+        Shape parameter (default 0 for Gumbel)
     lower_tail : bool
         If True, p is P(X <= q), else P(X > q)
     log_p : bool
@@ -2581,17 +2652,19 @@ def qGU(p, mu=0.0, sigma=1.0, lower_tail=True, log_p=False):
     array_like
         Quantiles
     """
-    p = jnp.asarray(p, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    p_val = np.asarray(p, dtype=np.float64)
+    mu = np.asarray(mu, dtype=np.float64)
+    sigma = np.asarray(sigma, dtype=np.float64)
+    zeta = np.asarray(zeta, dtype=np.float64)
     
     if log_p:
-        p = jnp.exp(p)
+        p_val = np.exp(p_val)
     
     if not lower_tail:
-        p = 1.0 - p
+        p_val = 1.0 - p_val
     
-    q = mu - sigma * jnp.log(-jnp.log(p))
+    # Standard Gumbel inverse CDF (valid for zeta=0): Q(p) = mu - sigma * log(-log(p))
+    q = mu - sigma * np.log(-np.log(p_val))
     
     return q
 
