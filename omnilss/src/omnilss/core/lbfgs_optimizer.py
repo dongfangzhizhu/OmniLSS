@@ -122,13 +122,26 @@ class LBFGSOptimizer:
         self.c2 = c2
         self.max_ls_iter = max_ls_iter
         
-        # Create Optax L-BFGS optimizer without line search
-        # Note: We use a simpler approach without zoom line search to avoid
-        # the complex API requirements of GradientTransformationExtraArgs
+        # Create Optax L-BFGS optimizer with proper line search.
+        # The line_search parameter ("zoom"|"backtracking"|None) selects the
+        # Optax linesearch transform; passing None keeps the old behaviour.
+        if self.line_search == "zoom":
+            linesearch = optax.scale_by_zoom_linesearch(
+                max_linesearch_steps=self.max_ls_iter,
+                max_learning_rate=self.learning_rate,
+            )
+        elif self.line_search == "backtracking":
+            linesearch = optax.scale_by_backtracking_linesearch(
+                max_backtracking_steps=self.max_ls_iter,
+                slope_rtol=self.c1,
+                decrease_factor=0.8,
+            )
+        else:
+            linesearch = None
         self.optimizer = optax.lbfgs(
-            learning_rate=learning_rate,
+            learning_rate=self.learning_rate,
             memory_size=history_size,
-            linesearch=None,  # Disable line search for simpler API
+            linesearch=linesearch,
         )
     
     def optimize(
@@ -175,12 +188,22 @@ class LBFGSOptimizer:
         loss_history = []
         grad_norms = []
         
-        # JIT-compiled update function
+        # JIT-compiled update function.
+        # Linesearch transforms (zoom/backtracking) are
+        # GradientTransformationExtraArgs: they consume extra keyword
+        # arguments 'grad' and 'value_fn' on update().
         @jax.jit
         def update_step(params, opt_state, data):
             loss, grads = jax.value_and_grad(loss_fn)(params, data)
+            extra_args = {}
+            if self.optimizer is not None and self.line_search is not None:
+                extra_args = {
+                    "value": loss,
+                    "grad": grads,
+                    "value_fn": lambda p: loss_fn(p, data),
+                }
             updates, opt_state = self.optimizer.update(
-                grads, opt_state, params
+                grads, opt_state, params, **extra_args
             )
             params = optax.apply_updates(params, updates)
             return params, opt_state, loss, grads

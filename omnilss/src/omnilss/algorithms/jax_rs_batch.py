@@ -154,24 +154,37 @@ def _vmap_same_family_group(
         def compute_gdev(params):
             param_list = [params[k] for k in range(n_params)]
             ll = loglik_fn(y, *param_list)
-            ll = jnp.where(jnp.isfinite(ll), ll, -1e6)
+            # Propagate NaN/Inf instead of masking: non-finite deviance
+            # must never look like convergence.
+            ll = jnp.where(jnp.isfinite(ll), ll, jnp.nan)
             return -2.0 * jnp.sum(obs_weights * ll)
 
         init_gdev = compute_gdev(init_params)
+        init_failed = jnp.logical_not(jnp.isfinite(init_gdev))
         init_state = (
             init_params,
             init_etas,
             init_gdev,
             init_gdev + 1.0,
             jnp.array(0, dtype=jnp.int32),
+            init_failed,
         )
 
         def cond_fn(state):
-            _, _, g_dev, g_dev_old, it = state
-            return jnp.logical_and(jnp.abs(g_dev_old - g_dev) > tol, it < max_outer)
+            _, _, g_dev, g_dev_old, it, failed = state
+            not_converged = jnp.abs(g_dev_old - g_dev) > tol
+            not_maxed = it < max_outer
+            # NaN/Inf deviance: never treated as convergence; stop immediately.
+            nonfinite = jnp.logical_not(
+                jnp.isfinite(g_dev) & jnp.isfinite(g_dev_old)
+            )
+            return jnp.logical_and(
+                jnp.logical_and(not_converged, not_maxed),
+                jnp.logical_not(nonfinite),
+            )
 
         def body_fn(state):
-            params, etas, g_dev, _, it = state
+            params, etas, g_dev, _, it, _failed = state
             new_params = params
             new_etas = etas
 
@@ -251,9 +264,10 @@ def _vmap_same_family_group(
                 lambda _: (new_params, new_etas, new_gdev),
                 operand=None,
             )
-            return final_params, final_etas, final_gdev, g_dev, it + 1
+            failed = jnp.logical_not(jnp.isfinite(final_gdev))
+            return final_params, final_etas, final_gdev, g_dev, it + 1, failed
 
-        final_params, final_etas, final_gdev, _, final_it = jax.lax.while_loop(
+        final_params, final_etas, final_gdev, _, final_it, failed = jax.lax.while_loop(
             cond_fn, body_fn, init_state
         )
         betas = tuple(
@@ -266,7 +280,7 @@ def _vmap_same_family_group(
             betas,
             final_gdev,
             final_it,
-            final_it < max_outer,
+            jnp.logical_and(final_it < max_outer, jnp.logical_not(failed)),
         )
 
     @jax.jit

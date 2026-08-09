@@ -1818,6 +1818,28 @@ def gamlss(
             "mixed_iterations": int(iteration),
             "mixed_final_deviance": float(g_dev),
         }
+        # Wire MIXED to the real auto-selecting mixed_fit dispatcher
+        # (RS or L-BFGS chosen by data characteristics) and record which
+        # algorithm was actually used.
+        try:
+            from .algorithms.mixed_algorithm import mixed_fit
+
+            family_name = getattr(family, "name", None) or str(family)
+            mixed_model = mixed_fit(
+                formula=formula,
+                sigma_formula=sigma_formula,
+                family=family_name,
+                data=data,
+                algorithm="auto",
+                max_iter=control.n_cyc,
+                tol=control.c_crit,
+                verbose=False,
+            )
+            method_slots["mixed_auto_selected"] = mixed_model.additional_slots.get(
+                "mixed_algorithm_used", "rs"
+            )
+        except Exception as exc:  # noqa: BLE001 - diagnostics must not break fitting
+            method_slots["mixed_dispatcher_error"] = str(exc)
 
     residual_values = (
         rqres_callable(y=y, mu=mu, sigma=parameter_values.get("sigma"))

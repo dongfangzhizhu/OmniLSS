@@ -325,31 +325,42 @@ def jax_rs_fit_core(
     def compute_gdev(params):
         param_list = [params[k] for k in range(n_params)]
         ll = loglik_fn(y, *param_list)
-        ll = jnp.where(jnp.isfinite(ll), ll, -1e6)
+        # Propagate NaN/Inf instead of masking with a finite placeholder:
+        # a non-finite deviance must never look like convergence.
+        ll = jnp.where(jnp.isfinite(ll), ll, jnp.nan)
         return -2.0 * jnp.sum(obs_weights * ll)
 
     # Build the outer while_loop as a single @jax.jit function
     @jax.jit
     def _run(init_params, init_etas, obs_weights):
         init_gdev = compute_gdev(init_params)
+        init_failed = jnp.logical_not(jnp.isfinite(init_gdev))
 
-        # State: (params, etas, g_dev, g_dev_old, iteration)
+        # State: (params, etas, g_dev, g_dev_old, iteration, failed)
         init_state = (
             init_params,
             init_etas,
             init_gdev,
             init_gdev + 1.0,   # g_dev_old > g_dev to enter loop
             jnp.array(0, dtype=jnp.int32),
+            init_failed,
         )
 
         def cond_fn(state):
-            _, _, g_dev, g_dev_old, it = state
+            _, _, g_dev, g_dev_old, it, failed = state
             not_converged = jnp.abs(g_dev_old - g_dev) > tol
             not_maxed = it < max_outer
-            return jnp.logical_and(not_converged, not_maxed)
+            # NaN/Inf deviance: never treated as convergence; stop immediately.
+            nonfinite = jnp.logical_not(
+                jnp.isfinite(g_dev) & jnp.isfinite(g_dev_old)
+            )
+            return jnp.logical_and(
+                jnp.logical_and(not_converged, not_maxed),
+                jnp.logical_not(nonfinite),
+            )
 
         def body_fn(state):
-            params, etas, g_dev, _, it = state
+            params, etas, g_dev, _, it, _failed = state
 
             new_params = params
             new_etas   = etas
@@ -460,11 +471,14 @@ def jax_rs_fit_core(
                 operand=None,
             )
 
-            return (final_params, final_etas, final_gdev, g_dev, it + 1)
+            # Mark failure when the deviance becomes non-finite anywhere.
+            failed = jnp.logical_not(jnp.isfinite(final_gdev))
+
+            return (final_params, final_etas, final_gdev, g_dev, it + 1, failed)
 
         return jax.lax.while_loop(cond_fn, body_fn, init_state)
 
-    final_params, final_etas, final_gdev, _, final_it = _run(
+    final_params, final_etas, final_gdev, _, final_it, failed = _run(
         init_params, init_etas, obs_weights
     )
 
@@ -491,7 +505,8 @@ def jax_rs_fit_core(
         betas=betas,
         g_dev=float(final_gdev),
         iterations=int(final_it),
-        converged=int(final_it) < max_outer,
+        # Convergence requires: hit max_outer AND finite deviance AND no NaN flag.
+        converged=(int(final_it) < max_outer) and bool(failed) is False,
         eta_clip_ratio=eta_clip_ratio,
     )
 
