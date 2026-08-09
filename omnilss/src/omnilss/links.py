@@ -99,6 +99,29 @@ def inverse_derivative(eta: jnp.ndarray) -> jnp.ndarray:
     return -1.0 / jnp.square(eta)
 
 
+def inverse_square_link(mu: jnp.ndarray) -> jnp.ndarray:
+    """Inverse-square link: eta = 1/mu^2 (R: ``1/mu^2``)."""
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    eps = jnp.finfo(jnp.float64).eps
+    return 1.0 / jnp.square(jnp.maximum(mu, eps))
+
+
+def inverse_square_inverse(eta: jnp.ndarray) -> jnp.ndarray:
+    """Inverse of 1/mu^2: mu = 1/sqrt(eta), eta > 0."""
+    eta = jnp.asarray(eta, dtype=jnp.float64)
+    eps = jnp.finfo(jnp.float64).eps
+    eta = jnp.maximum(eta, eps)
+    return 1.0 / jnp.sqrt(eta)
+
+
+def inverse_square_derivative(eta: jnp.ndarray) -> jnp.ndarray:
+    """d/deta of 1/sqrt(eta) = -0.5 * eta^(-3/2)."""
+    eta = jnp.asarray(eta, dtype=jnp.float64)
+    eps = jnp.finfo(jnp.float64).eps
+    eta = jnp.maximum(eta, eps)
+    return -0.5 * jnp.power(eta, -1.5)
+
+
 def probit_link(mu: jnp.ndarray) -> jnp.ndarray:
     """Probit link function: Φ^(-1)(μ)
 
@@ -263,10 +286,13 @@ LINK_REGISTRY: dict = {
     "inverse": (inverse_link, inverse_inverse, inverse_derivative),
     "cloglog": (cloglog_link, cloglog_inverse, cloglog_derivative),
     "sqrt": (sqrt_link, sqrt_inverse, sqrt_derivative),
+    "logshiftto2": (logshiftto2_link, logshiftto2_inverse, logshiftto2_derivative),
     # 别名
     "log-link": (log_link, log_inverse, log_derivative),
     "logit-link": (logit_link, logit_inverse, logit_derivative),
-    "1/mu^2": (inverse_link, inverse_inverse, inverse_derivative),
+    # 1/mu^2 is the inverse-square link (eta = 1/mu^2), NOT the plain
+    # inverse link (1/mu) — previously mis-mapped.
+    "1/mu^2": (inverse_square_link, inverse_square_inverse, inverse_square_derivative),
 }
 
 

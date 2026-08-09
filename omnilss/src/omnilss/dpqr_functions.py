@@ -1944,65 +1944,6 @@ def dNBII(x, mu=1.0, sigma=1.0, log=False):
     return log_fy if log else jnp.exp(log_fy)
 
 
-def pNBII(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
-    """CDF function for Negative Binomial Type II distribution."""
-    q = jnp.asarray(q, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    
-    # Use normal approximation
-    mean = mu
-    var = mu + sigma * mu * mu
-    z = (q - mean) / jnp.sqrt(var)
-    cdf = norm.cdf(z)
-    cdf = jnp.clip(cdf, 0.0, 1.0)
-    
-    if not lower_tail:
-        cdf = 1.0 - cdf
-    
-    if log_p:
-        cdf = jnp.log(cdf)
-    
-    return cdf
-
-
-def qNBII(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
-    """Quantile function for Negative Binomial Type II distribution."""
-    p_val = jnp.asarray(p, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    
-    if log_p:
-        p_val = jnp.exp(p_val)
-    
-    if not lower_tail:
-        p_val = 1.0 - p_val
-    
-    mean = mu
-    var = mu + sigma * mu * mu
-    z = ndtri(p_val)
-    q = mean + z * jnp.sqrt(var)
-    
-    return jnp.maximum(jnp.floor(q), 0.0)
-
-
-def rNBII(key, n, mu=1.0, sigma=1.0):
-    """Random generation for Negative Binomial Type II distribution."""
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    
-    key1, key2 = jrandom.split(key)
-    size = 1.0 / (sigma * mu)
-    scale = mu / size
-    
-    lambda_vals = jrandom.gamma(key1, size, shape=(n,)) * scale
-    return jrandom.poisson(key2, lambda_vals)
-
-
-# =============================================================================
-# Generic wrapper for distributions without specific implementations
-# These will use numerical methods or approximations
-# =============================================================================
 
 def _generic_d(log_pdf_func):
     """Create a generic d function from a log PDF."""

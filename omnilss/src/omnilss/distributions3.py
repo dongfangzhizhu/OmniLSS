@@ -108,9 +108,15 @@ def mean(family: FamilyDefinition, *params: Any, fallback: str = "analytic", n: 
     raise NotImplementedError(f"Mean is not available for family {family.name!r}; set fallback='sample' when random generation exists")
 
 def variance(family: FamilyDefinition, *params: Any, fallback: str = "analytic", n: int = 20000, seed: int = 12345) -> float:
-    if family.name in {"NO", "NO2", "TF", "TF2"} and len(params) >= 2:
+    if family.name in {"NO", "NO2"} and len(params) >= 2:
         sigma = np.asarray(params[1], dtype=float)
         return float(np.mean(np.square(sigma)))
+    if family.name in {"TF", "TF2"} and len(params) >= 3:
+        # Student-t variance: sigma^2 * nu/(nu-2) for nu>2, else undefined (inf).
+        sigma = np.asarray(params[1], dtype=float)
+        nu = np.asarray(params[2], dtype=float)
+        scale = np.where(nu > 2.0, nu / np.maximum(nu - 2.0, 1e-12), np.inf)
+        return float(np.mean(np.square(sigma) * scale))
     if family.name == "GA" and len(params) >= 2:
         mu = np.asarray(params[0], dtype=float)
         sigma = np.asarray(params[1], dtype=float)
