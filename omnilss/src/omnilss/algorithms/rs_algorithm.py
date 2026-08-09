@@ -314,15 +314,19 @@ def compute_working_weights_and_response(
     # Handle NaN values (can occur with mixed distributions)
     working_response = np.where(np.isnan(working_response), 0.0, working_response)
 
-    clipped = np.clip(working_response, -1e6, 1e6)
-    n_clipped = int(np.sum(np.abs(working_response) > 1e6))
-    if n_clipped > 0:
+    # R's glim.fit does NOT clip the working response; a hard ±1e6 clip
+    # corrupted IRLS for zero-inflated data (e.g. y=0 in Poisson made the
+    # response explode and the clip then dominated the WLS solve).  Only
+    # guard against non-finite values; extreme-but-finite responses are the
+    # algorithm's signal, and step-halving / convergence checks handle them.
+    if np.any(~np.isfinite(working_response)):
         warnings.warn(
-            f"working_response clipped: {n_clipped} values exceeded ±1e6. Model may not have converged. Consider checking data scale.",
+            "non-finite working_response detected; replaced with 0.0. "
+            "Model may not have converged. Consider checking data scale.",
             ConvergenceWarning,
             stacklevel=4,
         )
-    working_response = clipped
+    working_response = np.where(np.isfinite(working_response), working_response, 0.0)
 
     return working_weights, working_response
 

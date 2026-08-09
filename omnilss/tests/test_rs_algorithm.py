@@ -112,12 +112,15 @@ class TestComputeWorkingWeightsAndResponse:
         offset = np.zeros(n)
         eta = np.zeros(n)
 
-        with pytest.warns(ConvergenceWarning, match="working_response clipped"):
+        # The ±1e6 hard clip was removed to match R's glim.fit (it corrupted
+        # IRLS for zero-inflated data).  Extreme-but-finite responses are now
+        # preserved; only non-finite values are replaced and warned about.
+        with pytest.warns(ConvergenceWarning, match="non-finite working_response"):
             _weights, response = compute_working_weights_and_response(
                 y=y,
                 fitted_values=fitted_values,
                 link_derivative=link_derivative,
-                first_derivative=first_derivative,
+                first_derivative=np.full(n, np.inf),  # inf -> non-finite response
                 second_derivative=second_derivative,
                 offset=offset,
                 eta=eta
