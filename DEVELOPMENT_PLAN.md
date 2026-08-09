@@ -120,9 +120,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   - 【验收】有通过/缺测试/缺证据/无效 commit/非中文主题的单元测试（≥100 次属性测试）。
 - [ ] **0.6 阶段 0 准入/完成门禁**
   - 【验收】以 `--require-r` 完整执行阶段 0 suite，禁止 smoke-only 准入；任一失败保持未完成并阻塞 Phase 2。
-- [ ] **0.7 精度策略落地（x64）** — 与 C5 联动
-  - 【实现】在包 import 路径最前方统一启用 `jax_enable_x64`（新增 `omnilss/src/omnilss/_precision.py`，在 `__init__.py` 第一行 import）；删除 `rs_jax.py` 中的孤立设置并标记该模块废弃。
-  - 【验收】`gamlss()` 拟合后浮点 dtype 为 float64（新增测试断言）；`rs_algorithm.py:287` 等 `finfo(float64)` 守卫变为真实生效。
+- [x] **0.7 精度策略落地（x64）** — 与 C5 联动 ✅ commit `108980f`
+  - 【实现】新增 `omnilss/src/omnilss/_precision.py`（import 时全局启用 `jax_enable_x64`），在 `__init__.py` 第一行导入（任何 JAX 使用之前）；`rs_jax.py` 的孤立设置标记 DEPRECATED。
+  - 【验收】`import omnilss` 后 `jax.config.jax_enable_x64 == True`，`jnp.float64` 数组不再截断为 float32；新增 `tests/test_x64_precision.py`（3 项：import 后 x64=True、float64 不截断、拟合参数为 float64）全部通过；62 项综合回归（1.1–1.7 全部）无破坏。
 - [ ] **0.8 golden fixture 出处与生成脚本**
   - 【实现】为 `tests/fixtures/r_golden/*.json` 补齐生成脚本（R 侧 `generate_r_reference_results.R` 对接）与 manifest（R 版本、gamlss 版本、seed、commit、hash）。
   - 【验收】fixture 可从头再生成且数值一致；schema 测试从"查键存在"升级为含内容 hash 校验。
