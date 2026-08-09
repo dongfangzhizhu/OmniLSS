@@ -141,9 +141,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   - 【实现】`dpqr_functions.py` 的 `qTF` 由 `ndtri` 正态近似改为 `scipy.stats.t.ppf` 精确实现（`q = mu + sigma * qt(p, df=nu)`）；TF2 的 `q_tf2` 链随之修复。
   - 【验收】新增 `tests/test_tf_dpqr.py`（7 项：df/p 网格对照 scipy、已知 R 值 `qt(0.975,3)=3.1824463`、p/q 互逆、upper_tail/log_p 语义、单调性）全部通过；`test_tf2_constructor`（18）+`test_mixed_algorithm`（13）无回归；R 一致性测试 `test_tf2_q_p_roundtrip_against_r_profiled` 的 core/tail_heavy 两个 profile 由失败转通过（修复前 14 失败 → 修复后 12 失败，无新增失败）。
   - 【注】`distributions3.py` TF 方差公式修复并入后续任务；`test_r_consistency_tf.py` 拟合类失败为预先存在（float32 精度问题，见 C5），非本任务引入。
-- [ ] **1.2 修复 `pIG`/`qIG`**（C2）
-  - 【实现】按 R `IG.R:72-73` 修正 z 公式 `(q−μ)/(σ√(q·μ))`；`qIG` 改为对修正后 `pIG` 的精确数值反演（scipy `brentq` 或 JAX 二分），删除 delta 法近似。
-  - 【验收】`pIG(q; μ, σ)` 与 R 对照 rtol ≤ 1e-5（μ∈{0.5,1,2,5}）；`qIG(pIG(q))==q` 性质测试；现有 `test_ig_dpqr.py`、`test_r_consistency_ig.py` 通过。
+- [x] **1.2 修复 `pIG`/`qIG`**（C2）✅ commit `f6030e5`
+  - 【实现】`pIG` 按 R `IG.R:72-73` 修正 z 公式分母（`sigma*sqrt(q)` 替代 `sigma*sqrt(q/mu)`），消除 √μ 因子错误，补充 q≤0/q=∞ 边界；`qIG` 由 delta 法正态近似改为 scipy `invgauss` 精确 ppf（参数映射 `IG(mu,sigma) == invgauss(mu*σ²)/σ²`，已数值验证）。
+  - 【验收】新增 `tests/test_ig_dpqr.py`（7 项：R 公式对照 μ∈{0.5,1,2,5}、scipy 精确反演对照、p/q 互逆、upper_tail/log_p 语义、边界、单调性）全部通过；pIG 与 R 误差 ~1e-16，qIG 与 scipy 误差 0；`test_r_consistency_ig.py` 3 项通过；无新增失败（IGAMMA 拟合失败为预先存在，float32 收敛问题，归入 C5/拟合引擎任务）。
 - [ ] **1.3 拆分 WEI 与 WEI3 参数化**（C3）
   - 【实现】`dpqr_functions.py` 中 WEI 的 d/p/q/r 改用 R WEI 参数化（`scale=μ, shape=σ`）；新增独立 WEI3 函数（中位数参数化）供需要处引用。
   - 【验收】`WEI().d == exp(WEI().g_dev_inc 推断密度)` 一致性测试；`test_r_consistency_wei.py` 通过。
