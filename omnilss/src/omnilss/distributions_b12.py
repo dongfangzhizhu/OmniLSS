@@ -177,6 +177,11 @@ def _wei3_log_pdf(y, mu, sigma):
 
 def WEI3():
     """Weibull Type 3 distribution."""
+    from omnilss.dpqr_functions import dWEI3 as _dWEI3
+    from omnilss.dpqr_functions import pWEI3 as _pWEI3
+    from omnilss.dpqr_functions import qWEI3 as _qWEI3
+    from omnilss.dpqr_functions import rWEI3 as _rWEI3
+
     return build_ad_family(
         family_class=WEI3Family,
         name="WEI3",
@@ -187,6 +192,10 @@ def WEI3():
         link_functions={"mu": log_link, "sigma": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative},
+        d=_dWEI3,
+        p=_pWEI3,
+        q=_qWEI3,
+        r=_rWEI3,
     )
 
 

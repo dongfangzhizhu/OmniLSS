@@ -957,14 +957,17 @@ def rTF(key, n, mu=0.0, sigma=1.0, nu=10.0):
 # =============================================================================
 
 def dWEI(x, mu=1.0, sigma=1.0, log=False):
-    """Density function for Weibull distribution.
+    """Density function for Weibull distribution (R WEI parameterization).
+
+    R WEI.R: ``dweibull(x, scale=mu, shape=sigma)`` — mu is the *scale*
+    parameter (NOT the mean or median).
     
     Parameters
     ----------
     x : array_like
         Quantiles (positive)
     mu : array_like
-        Scale parameter (median)
+        Scale parameter
     sigma : array_like
         Shape parameter
     log : bool
@@ -979,25 +982,29 @@ def dWEI(x, mu=1.0, sigma=1.0, log=False):
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     
-    alpha = 1.0 / sigma
-    lambda_param = mu / jnp.power(jnp.log(2.0), sigma)
-    
-    log_fy = (jnp.log(alpha) - jnp.log(lambda_param) +
-              (alpha - 1.0) * (jnp.log(x) - jnp.log(lambda_param)) -
-              jnp.power(x / lambda_param, alpha))
+    # R WEI: dweibull(x, scale=mu, shape=sigma)
+    # log f = log(sigma) - log(mu) + (sigma-1)*(log(x)-log(mu)) - (x/mu)^sigma
+    log_fy = (
+        jnp.log(sigma) - jnp.log(mu)
+        + (sigma - 1.0) * (jnp.log(x) - jnp.log(mu))
+        - jnp.power(x / mu, sigma)
+    )
+    log_fy = jnp.where(x <= 0.0, -jnp.inf, log_fy)
     
     return log_fy if log else jnp.exp(log_fy)
 
 
 def pWEI(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
-    """CDF function for Weibull distribution.
+    """CDF function for Weibull distribution (R WEI parameterization).
+
+    R WEI.R: ``pweibull(q, scale=mu, shape=sigma)`` — mu is the scale.
     
     Parameters
     ----------
     q : array_like
         Quantiles
     mu : array_like
-        Scale parameter (median)
+        Scale parameter
     sigma : array_like
         Shape parameter
     lower_tail : bool
@@ -1014,10 +1021,9 @@ def pWEI(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     
-    alpha = 1.0 / sigma
-    lambda_param = mu / jnp.power(jnp.log(2.0), sigma)
-    
-    cdf = 1.0 - jnp.exp(-jnp.power(q / lambda_param, alpha))
+    # R WEI: pweibull(q, scale=mu, shape=sigma)
+    cdf = 1.0 - jnp.exp(-jnp.power(q / mu, sigma))
+    cdf = jnp.where(q <= 0.0, 0.0, cdf)
     
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -1029,14 +1035,16 @@ def pWEI(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
 
 
 def qWEI(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
-    """Quantile function for Weibull distribution.
+    """Quantile function for Weibull distribution (R WEI parameterization).
+
+    R WEI.R: ``qweibull(p, scale=mu, shape=sigma)`` — mu is the scale.
     
     Parameters
     ----------
     p : array_like
         Probabilities
     mu : array_like
-        Scale parameter (median)
+        Scale parameter
     sigma : array_like
         Shape parameter
     lower_tail : bool
@@ -1059,16 +1067,16 @@ def qWEI(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     if not lower_tail:
         p = 1.0 - p
     
-    alpha = 1.0 / sigma
-    lambda_param = mu / jnp.power(jnp.log(2.0), sigma)
-    
-    q = lambda_param * jnp.power(-jnp.log(1.0 - p), sigma)
+    # R WEI: qweibull(p, scale=mu, shape=sigma) = mu * (-log(1-p))^(1/sigma)
+    q = mu * jnp.power(-jnp.log(1.0 - p), 1.0 / sigma)
     
     return q
 
 
 def rWEI(key, n, mu=1.0, sigma=1.0):
-    """Random generation for Weibull distribution.
+    """Random generation for Weibull distribution (R WEI parameterization).
+
+    R WEI.R: ``rweibull(n, scale=mu, shape=sigma)`` — mu is the scale.
     
     Parameters
     ----------
@@ -1077,7 +1085,7 @@ def rWEI(key, n, mu=1.0, sigma=1.0):
     n : int
         Number of observations
     mu : array_like
-        Scale parameter (median)
+        Scale parameter
     sigma : array_like
         Shape parameter
         
@@ -1089,11 +1097,100 @@ def rWEI(key, n, mu=1.0, sigma=1.0):
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     
-    alpha = 1.0 / sigma
-    lambda_param = mu / jnp.power(jnp.log(2.0), sigma)
-    
+    # R WEI: rweibull(n, scale=mu, shape=sigma)
     u = jrandom.uniform(key, shape=(n,))
-    return lambda_param * jnp.power(-jnp.log(1.0 - u), sigma)
+    return mu * jnp.power(-jnp.log(1.0 - u), 1.0 / sigma)
+
+
+# =============================================================================
+def _wei3_scale(mu, sigma):
+    """Mean-parameterized Weibull scale: R WEI3 uses mu/gamma(1+1/sigma)."""
+    from jax.scipy.special import gammaln
+
+    return mu / jnp.exp(gammaln(1.0 + 1.0 / sigma))
+
+
+def dWEI3(x, mu=1.0, sigma=1.0, log=False):
+    """Density function for Weibull distribution (R WEI3, mean parameterization).
+
+    R WEI3.R: ``dweibull(x, scale=mu/gamma(1+1/sigma), shape=sigma)``.
+    
+    Parameters
+    ----------
+    x : array_like
+        Quantiles (positive)
+    mu : array_like
+        Mean parameter
+    sigma : array_like
+        Shape parameter
+    log : bool
+        If True, return log density
+        
+    Returns
+    -------
+    array_like
+        Density values
+    """
+    x = jnp.asarray(x, dtype=jnp.float64)
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+
+    scale = _wei3_scale(mu, sigma)
+    log_fy = (
+        jnp.log(sigma) - jnp.log(scale)
+        + (sigma - 1.0) * (jnp.log(x) - jnp.log(scale))
+        - jnp.power(x / scale, sigma)
+    )
+    log_fy = jnp.where(x <= 0.0, -jnp.inf, log_fy)
+
+    return log_fy if log else jnp.exp(log_fy)
+
+
+def pWEI3(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
+    """CDF function for Weibull distribution (R WEI3, mean parameterization)."""
+    q = jnp.asarray(q, dtype=jnp.float64)
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+
+    scale = _wei3_scale(mu, sigma)
+    cdf = 1.0 - jnp.exp(-jnp.power(q / scale, sigma))
+    cdf = jnp.where(q <= 0.0, 0.0, cdf)
+
+    if not lower_tail:
+        cdf = 1.0 - cdf
+
+    if log_p:
+        cdf = jnp.log(cdf)
+
+    return cdf
+
+
+def qWEI3(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
+    """Quantile function for Weibull distribution (R WEI3, mean parameterization)."""
+    p = jnp.asarray(p, dtype=jnp.float64)
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+
+    if log_p:
+        p = jnp.exp(p)
+
+    if not lower_tail:
+        p = 1.0 - p
+
+    scale = _wei3_scale(mu, sigma)
+    q = scale * jnp.power(-jnp.log(1.0 - p), 1.0 / sigma)
+
+    return q
+
+
+def rWEI3(key, n, mu=1.0, sigma=1.0):
+    """Random generation for Weibull distribution (R WEI3, mean parameterization)."""
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+
+    scale = _wei3_scale(mu, sigma)
+    u = jrandom.uniform(key, shape=(n,))
+    return scale * jnp.power(-jnp.log(1.0 - u), 1.0 / sigma)
 
 
 # =============================================================================
@@ -2388,6 +2485,7 @@ __all__ = [
     'dGA', 'pGA', 'qGA', 'rGA',
     'dLOGNO', 'pLOGNO', 'qLOGNO', 'rLOGNO',
     'dWEI', 'pWEI', 'qWEI', 'rWEI',
+    'dWEI3', 'pWEI3', 'qWEI3', 'rWEI3',
     'dEXP', 'pEXP', 'qEXP', 'rEXP',
     'dIG', 'pIG', 'qIG', 'rIG',
     'dLO', 'pLO', 'qLO', 'rLO',
