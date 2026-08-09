@@ -179,7 +179,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 
 ### 任务清单
 
-- [ ] **2.1 八核心 family 固定 case matrix 与 E3 晋级判定**（NO/GA/PO/BI/NBI/BE/ZAGA/GU）
+- [ ] **2.1 八核心 family 固定 case matrix 与 E3 晋级判定**（NO/GA/PO/BI/NBI/BE/ZAGA/GU）— 进行中
+  - 重大前置修复（commit `460cfaa`）：IRLS `working_response` 的 ±1e6 硬 clip 移除（R glim.fit 无此 clip），修复零膨胀数据（y=0）下 PO/NBI 拟合不收敛到 MLE 的问题——PO 系数由 (0.878, 0.499) 修正为 (0.545, 0.731) 与 R glm 一致；PO/NBI R 一致性 5 failed → 全通过；新增 `tests/test_irls_working_response.py`（3 项）。
+  - 当前 E3 基线（WSL R 4.5.0 实测）：NO/GA/PO/BI/NBI 的 R 一致性测试全部通过；BE/GU/ZAGA 部分拟合失败（GU rtol 1e-5 容差问题、ZAGA 待查），归入 2.2/2.3 容差与收敛处理。
   - 每个族：d/p/q/r、support、boundary、单调性、seeded-random、≥1 拟合 case；计数族含零值/多零/边界/极端均值数据。
   - 验收：每族 100 次属性测试 + 固定 R artifact；仅全过才晋级 E3。
 - [ ] **2.2 按算法隔离（RS/CG/Mixed）的核心拟合 R 对照**
@@ -340,6 +342,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 |---|---|---|
 | Phase 0 工程地基 | 🔄 进行中 | 0.1–0.3 完成；0.4–0.8 待办 |
 | Phase 1 数学正确性 | ✅ **完成** | 1.1–1.9 全部完成（含遗留恢复 `496c75c`）；进入 Phase 2 前置条件满足 |
+| Phase 2 最小可信核心 | 🔄 进行中 | 2.1 前置修复（IRLS clip, `460cfaa`）完成；八核心族 E3 基线评估中 |
 | Phase 2 最小可信核心 | ⬜ 待办 | 依赖 Phase 0/1 |
 | Phase 3 可信平滑预测 | ⬜ 待办 | 依赖 Phase 2 |
 | Phase 4 验证与发布 | ⬜ 待办 | 依赖 Phase 0–3 |
