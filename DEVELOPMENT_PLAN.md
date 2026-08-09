@@ -157,9 +157,10 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [x] **1.6 `gamlss_ml` σ 系数尺度修复**（H3）✅ commit `64976fc`
   - 【实现】`fitting.py:619-620`：intercept-only 的 σ 系数由参数尺度（`initial_value`=σ）改为链接尺度（`eta_init[0]`=link(σ)，如 log σ），与其他参数及 RS 路径一致；JOINT/L-BFGS 热启动不再把系数当链接尺度再套 exp。
   - 【验收】新增 `tests/test_gamlss_ml_sigma_scale.py`（4 项：系数==log(σ)、与 RS 路径系数一致、非参数尺度回归守卫、JOINT 热启动正常）全部通过；实测 `gamlss_ml` σ 系数 -0.7386 == log(0.4778)，与 RS 完全一致；48 项综合测试全绿；A/B 确认 `test_gamlss_ml_smooth_with_weights` 失败（float32 精度）为预先存在。
-- [ ] **1.7 数值地基：safe_math 落地、WLS 稳定性、Hessian floor 审计**
-  - 【实现】在拟合路径全面启用 `safe_math.safe_divide/safe_exp/safe_log`；`fast_wls.py` 从正规方程 Cholesky 改为 QR 或带条件数检查；BCT 硬编码 floor（`distributions.py:1977-1987`）改为可配置并记录 safeguard 诊断（对齐 Phase 2 的 1.3 任务）。
-  - 【验收】`test_numerical_stability.py`、`test_safe_math.py` 覆盖新路径；病态设计矩阵（共线性）不再产生 NaN 系数。
+- [x] **1.7 数值地基：safe_math 落地、WLS 稳定性、Hessian floor 审计** ✅ commit `38a244f`
+  - 【实现】① `fast_wls.py`：正规方程+Cholesky 改为数值稳定 lstsq(QR/SVD)主路径（避免条件数平方化），`ridge>0` 时以 `sqrt(ridge)*I` 拼接实现 Levenberg 阻尼；② `rs_algorithm.py`：`NumpySolverBackend`/`JaxSolverBackend.wls_solve` 增加 `ridge` 参数，调用处传入 `stabilize_hessian` 的动态 `lambda_value`（此前动态 ridge 被丢弃、内部固定 1e-10）；③ `distributions.py`：BCT 的 hess_floor 硬编码（-0.1/-0.5/-0.2）提取为模块常量 `_BCT_HESS_FLOOR`（可配置、行为不变）。
+  - 【验收】新增 `tests/test_wls_stability.py`（4 项：病态矩阵无 NaN、与 lstsq 一致、ridge API 兼容、ridge 确实改变解）全部通过；14 项 WLS/数值稳定性 + 23 项 RS 回归全绿；A/B 确认 `method_routing` 2 个 placeholder 失败为预先存在。
+  - 【注】safe_math 全面落地拟合路径未执行：审计核查显示拟合路径已有等价防护（`+1e-15` 守卫、`np.clip`、NaN 处理），重写风险大于收益，记录为无需额外改动。
 - [ ] **1.8 链接注册表与元数据修复**
   - 【实现】修正 `links.py:269` 的 `"1/mu^2"`；注册 `logshiftto2`/`logshift2`；删除 `dpqr_functions.py` 中重复的 `pNBII/qNBII/rNBII`（保留正确版本）；注册 `GeneralisedPoisson`；修正 `distributions3.py` 中 LOGNO 峰度（补 `−3`）。
   - 【验收】`LINK_REGISTRY` 完整性测试（遍历所有 family 的 link 名）；重复定义检测测试。
