@@ -28,6 +28,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Set up R (Group B needs real R + gamlss)
+        if: contains(matrix.group.name, 'R Consistency')
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.0'
+      - name: Install R packages for R-consistency group
+        if: contains(matrix.group.name, 'R Consistency')
+        run: |
+          Rscript -e 'install.packages(c("gamlss", "gamlss.dist", "jsonlite"), repos = "https://cloud.r-project.org")'
       - run: pip install uv
       - name: Install dependencies
         run: |
@@ -41,6 +50,18 @@ jobs:
         run: |
           cd omnilss
           python -m pytest -n auto ${{ matrix.group.pattern }} -v --cov=omnilss --cov-report=xml --cov-report=term
+      - name: Fail closed if R-consistency tests were skipped
+        if: contains(matrix.group.name, 'R Consistency') && always() && !cancelled()
+        run: |
+          cd omnilss
+          # R-consistency tests must ACTUALLY run against R, never skip.
+          # Re-run one representative test with -rs; any skip fails the CI.
+          python -m pytest tests/test_r_consistency_tf.py -rs -q 2>&1 | tee /tmp/rcons.log
+          if grep -qE "SKIPPED|skipped" /tmp/rcons.log; then
+            echo "::error::R-consistency tests were skipped (R not usable in CI)"
+            exit 1
+          fi
+          echo "OK: R-consistency tests executed against real R"
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
