@@ -617,7 +617,14 @@ def gamlss_ml(
         parameter_values[parameter] = parameter_vector
         fitted_values[parameter] = jnp.asarray(parameter_vector, dtype=jnp.float64)
         if parameter == "sigma" and _is_intercept_only_formula(parameter_formula):
-            coefficients[parameter] = jnp.asarray([initial_value], dtype=jnp.float64)
+            # Store the *link-scale* coefficient (consistent with the
+            # non-intercept branch below): for an intercept-only model this
+            # is link(sigma), e.g. log(sigma), NOT sigma itself.  Storing the
+            # parameter scale here broke JOINT/L-BFGS warm starts, which
+            # treated coefficients as link-scale and re-applied exp().
+            coefficients[parameter] = jnp.asarray(
+                [float(eta_init[0])], dtype=jnp.float64
+            )
         else:
             coefficients[parameter] = jnp.asarray(beta_parameter, dtype=jnp.float64)
         linear_predictors[parameter] = jnp.asarray(eta_parameter, dtype=jnp.float64)
