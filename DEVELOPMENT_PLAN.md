@@ -161,9 +161,10 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   - 【实现】① `fast_wls.py`：正规方程+Cholesky 改为数值稳定 lstsq(QR/SVD)主路径（避免条件数平方化），`ridge>0` 时以 `sqrt(ridge)*I` 拼接实现 Levenberg 阻尼；② `rs_algorithm.py`：`NumpySolverBackend`/`JaxSolverBackend.wls_solve` 增加 `ridge` 参数，调用处传入 `stabilize_hessian` 的动态 `lambda_value`（此前动态 ridge 被丢弃、内部固定 1e-10）；③ `distributions.py`：BCT 的 hess_floor 硬编码（-0.1/-0.5/-0.2）提取为模块常量 `_BCT_HESS_FLOOR`（可配置、行为不变）。
   - 【验收】新增 `tests/test_wls_stability.py`（4 项：病态矩阵无 NaN、与 lstsq 一致、ridge API 兼容、ridge 确实改变解）全部通过；14 项 WLS/数值稳定性 + 23 项 RS 回归全绿；A/B 确认 `method_routing` 2 个 placeholder 失败为预先存在。
   - 【注】safe_math 全面落地拟合路径未执行：审计核查显示拟合路径已有等价防护（`+1e-15` 守卫、`np.clip`、NaN 处理），重写风险大于收益，记录为无需额外改动。
-- [ ] **1.8 链接注册表与元数据修复**
-  - 【实现】修正 `links.py:269` 的 `"1/mu^2"`；注册 `logshiftto2`/`logshift2`；删除 `dpqr_functions.py` 中重复的 `pNBII/qNBII/rNBII`（保留正确版本）；注册 `GeneralisedPoisson`；修正 `distributions3.py` 中 LOGNO 峰度（补 `−3`）。
-  - 【验收】`LINK_REGISTRY` 完整性测试（遍历所有 family 的 link 名）；重复定义检测测试。
+- [x] **1.8 链接注册表与元数据修复** ✅ commit `4b9c3c6`
+  - 【实现】① `links.py`：新增 `inverse_square_link/inverse_square_inverse/inverse_square_derivative`（η=1/μ²），`LINK_REGISTRY["1/mu^2"]` 由错误的 `inverse_link`（1/μ）改为平方逆链接；注册 `logshiftto2`（函数此前存在但未注册）；② `distributions3.py`：修复 TF/TF2 方差公式补 `ν/(ν-2)` 因子（Student-t 方差，此前返回 σ²；ν≤2 返回 inf）；③ `dpqr_functions.py`：删除重复定义的 `pNBII/qNBII/rNBII`（旧版无连续性修正），保留连续性修正版。
+  - 【验收】新增 `tests/test_link_registry_and_metadata.py`（6 项：`1/mu^2` 正确映射、logshiftto2 往返、pNBII 唯一性、TF 方差 ν 因子、LOGNO 峰度 Pearson、NO 方差不变）全部通过；distributions3/momentSK 11 项全绿；A/B 确认 probit 2 项与 NBII 拟合 3 项失败为预先存在。
+  - 【注】① `GeneralisedPoisson` 核实已注册（`GENERALISEDPOISSON`，resolve 大小写不敏感）——审计项已过时无需修复；② LOGNO 峰度核实为 Pearson 公式（NO=3、GA=3+6σ² 均不减 3，模块统一 Pearson 约定）——审计"补 −3"为误判无需修改。
 - [ ] **1.9 高危分布族清理**（H6）
   - 【实现】SIMPLEX 接线真实 d/p/q/r（移除 `ad.py:170-182` 的 NaN 占位，用 `dpqr_functions.py:6205-6265` 并改进 pSIMPLEX 梯形积分精度）；SHASH ν 改 log link；TF2 加 σ 重缩放；ST1-4 按各自定义实现或显式标记 alias 不可用。
   - 【验收】所有 family 的 p/q/r 无 NaN（新增全族扫描测试：遍历 registry 全部 family，随机参数下 d/p/q 全有限且单调）；`test_*_dpqr.py` 对应文件通过。
