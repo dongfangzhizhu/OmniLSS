@@ -1,5 +1,8 @@
 """JAX reimplementation of selected `gamlss` R package functionality."""
 
+# Enable JAX float64 globally before anything else touches JAX.
+from . import _precision as _precision  # noqa: F401  (side-effect import)
+
 from importlib.metadata import PackageNotFoundError, version
 
 try:

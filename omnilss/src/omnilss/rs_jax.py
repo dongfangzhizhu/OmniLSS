@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import jax
 
+# DEPRECATED: x64 is now enabled globally via omnilss/_precision.py on
+# package import; this local setting is redundant and kept only for
+# standalone use of this module.
 jax.config.update("jax_enable_x64", True)
 
 import jax.numpy as jnp
