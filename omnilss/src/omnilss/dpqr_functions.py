@@ -902,19 +902,23 @@ def qTF(p, mu=0.0, sigma=1.0, nu=10.0, lower_tail=True, log_p=False):
     array_like
         Quantiles
     """
-    p = jnp.asarray(p, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    nu = jnp.asarray(nu, dtype=jnp.float64)
+    p = np.asarray(p, dtype=np.float64)
+    mu = np.asarray(mu, dtype=np.float64)
+    sigma = np.asarray(sigma, dtype=np.float64)
+    nu = np.asarray(nu, dtype=np.float64)
     
     if log_p:
-        p = jnp.exp(p)
+        p = np.exp(p)
     
     if not lower_tail:
         p = 1.0 - p
     
-    # Approximate quantile - full implementation would use ppf
-    z = ndtri(p)  # Normal approximation for now
+    # Clip probabilities to avoid edge cases at exactly 0 or 1
+    p = np.clip(p, 1e-12, 1 - 1e-12)
+    
+    # Exact Student-t quantile via scipy's ppf (matches R's qt(p, df=nu))
+    from scipy.stats import t as _t_dist
+    z = _t_dist.ppf(p, df=nu)
     q = mu + sigma * z
     
     return q
