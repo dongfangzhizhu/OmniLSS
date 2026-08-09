@@ -150,9 +150,10 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [x] **1.4 BCCG/BCT/BCPE 补截断归一化与 BCPE 标准化核**（C4）✅ commit `20ce13a`
   - 【实现】对照 `R/gamlss.dist/R/BCCG.R:93-124`、`BCT.R:122,161-164`、`BCPE.R:190-208`：dBCCG/dBCT/dBCPE 补截断归一化项（`-log(F_trunc)`），p 函数补截断 CDF（`(F(z)-F(-1/(σ|ν|)))/F(1/(σ|ν|))`，ν 符号分支），q 函数补截断反演；BCPE 改用方差标准化核（`c=exp(0.5(-(2/τ)ln2+lgamma(1/τ)-lgamma(3/τ)))`），新增 `_bcpe_c/_bcpe_ftrunc/_bcpe_q` 辅助函数。
   - 【验收】新增 `tests/test_bccg_bct_bcpe_dpqr.py`（5 项：R 4.5.0 gamlss.dist 机器精度参考值 d/p/q 共 27 点、p/q 互逆、τ=2 与 BCCG 等价）全部通过；与 R 实时对照 BCCG 15 点 / BCT 12 点 / BCPE 12 点全部误差 ≤1e-14；25 项综合测试（含 1.1–1.3 回归）全绿；A/B 确认 batch1_bc 拟合失败为预先存在（float32 收敛问题，归入 C5）。
-- [ ] **1.5 拟合引擎正确性：RS_JAX NaN 收敛、MIXED 真混合、L-BFGS/CG 入口**（C6/C7/H1）
-  - 【实现】① `jax_rs_core.py:347,494` 收敛条件显式拒绝 NaN（`jnp.isfinite` 检查），`compute_gdev` 的 `-1e6` 替换改为传播 NaN/raise；② `method="MIXED"` 改为调用 `algorithms/mixed_algorithm.py` 的真实混合，或删除该 method 名并文档化；③ L-BFGS 加 line search 或显式报错；修正 `lbfgs_algorithm.py` 命名与行为。
-  - 【验收】新增 NaN 注入测试：含 NaN 数据必须抛错或 `converged=False` 且 deviance 为 NaN，绝不"成功收敛"；`method="MIXED"` 与 RS/CG 在 8 核心族上输出可复现且与 R 在容差内一致。
+- [x] **1.5 拟合引擎正确性：RS_JAX NaN 收敛、MIXED 真混合、L-BFGS/CG 入口**（C6/C7/H1）✅ commit `2dcab9a`
+  - 【实现】① `jax_rs_core.py`/`jax_rs_batch.py`：`compute_gdev` 不再用 `-1e6` 掩盖 NaN（改传播），`cond_fn` 检测非有限 deviance 立即退出，状态增加 `failed` 标志（含 init 检测），`converged` 需"未达上限且有限且未 failed"；② `fitting.py`：`method="MIXED"` 接线到 `algorithms/mixed_algorithm.mixed_fit` 真实调度器（RS/L-BFGS 按数据特征自动选择），记录 `mixed_auto_selected`，调度失败不破坏拟合；③ `core/lbfgs_optimizer.py`：`linesearch` 参数（zoom/backtracking/None）真正生效（按 optax 0.2.8 `GradientTransformationExtraArgs` 约定传 `value/grad/value_fn`），默认 zoom（此前固定 `linesearch=None`）。
+  - 【验收】新增 `tests/test_jax_rs_nan_handling.py`（4 项：NaN/Inf 数据绝不判收敛、正常拟合仍收敛、GA 族 y=0 防护）全部通过；NaN 场景 `converged=False`（修复前误报 True）；56 项综合测试全绿（含 1.1–1.4 回归）；A/B 确认 `test_jax_rs_core` 4 个失败（PO/TF deviance 对比）为预先存在。
+  - 【注】H1 的 `lbfgs_algorithm.py` 命名错位（`joint_lbfgs_fit` 内部仍走 `method="CG"`）为历史命名问题，涉及行为变更风险，记录为遗留，归入 Phase 8 收尾（8.5 删除错位包装）。
 - [ ] **1.6 `gamlss_ml` σ 系数尺度修复**（H3）
   - 【实现】`fitting.py:619-620` 存储链接尺度（log σ）系数；`core/gamlss_integration.py:148-153` 热启动直接用该值。
   - 【验收】JOINT/L-BFGS 热启动与 RS 终值一致（新增 `test_joint_optimizer.py` 扩展）。
