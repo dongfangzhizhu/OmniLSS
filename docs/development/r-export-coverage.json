@@ -1,0 +1,1298 @@
+{
+  "generated_at": "2026-07-23T21:11:56.613009+00:00",
+  "source_repo_root": "D:\\AI\\my\\githubprojs\\OmniLSS",
+  "stats": {
+    "total_registered": 142,
+    "status_distribution": {
+      "experimental": 55,
+      "compat_alias": 29,
+      "placeholder": 57,
+      "implemented": 1
+    },
+    "validated_count": 1,
+    "experimental_count": 55,
+    "compat_alias_count": 29,
+    "placeholder_count": 57,
+    "missing_count": 0
+  },
+  "families": {
+    "BB": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BCCG": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BCCGO": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BCCGUNTR": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BCPE": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BCPEO": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BCPEUNTR": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BCT": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BCTO": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BCTUNTR": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BE": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BEINF": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BEINF0": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BEINF1": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BEOI": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BEZI": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BI": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BINOM_1_31": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BINOM_2_33": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BINOM_3_33": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "BNB": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "CONTR01_2_13": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "CONTR01_4_33": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "CONTRPLUS_1_1": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "CONTRPLUS_2_11": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "CONTRPLUS_3_13": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "CONTRPLUS_4_33": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "CONTR_2_12": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "CONTR_3_11": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "CONTR_4_13": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "COUNT_1_22": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "COUNT_1_31": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "COUNT_2_32": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "COUNT_2_32R": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "COUNT_2_33": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "COUNT_3_32": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "COUNT_3_33": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "DBI": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "DBURR12": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "DEL": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "DELAPORT": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "DPO": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "DPO1": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "EGB2": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "EXGAUS": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "EXP": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "GA": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "GAF": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "GB1": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "GB2": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "GENERALISEDPOISSON": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "GEOM": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "GG": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "GIG": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "GP": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "GPO": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "GT": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "GU": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "IG": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "IGA": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "IGAMMA": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "JSU": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "JSUO": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "LG": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "LNO": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "LO": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "LOGITNO": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "LOGNO": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "LOGNO2": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "LOGSHASH": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "LOGSHASHO": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "LQNO": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "MN3": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "MN4": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "MN5": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "MULTIN": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "NBF": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "NBI": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "NBII": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "NET": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "NO": {
+      "implementation_status": "implemented",
+      "is_production_safe": true,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "NO2": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "NOF": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "PARETO": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "PARETO1": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "PARETO1O": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "PARETO2": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "PE": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "PE2": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "PIG": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "PIG2": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "PO": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "RG": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "RGE": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "SEP": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "SEP1": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "SEP2": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "SEP3": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "SEP4": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "SHASH": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "SHASHO": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "SHASHO2": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "SI": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "SICHEL": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "SIMPLEX": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "SN1": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "SN2": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "SST": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ST1": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ST2": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ST3": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ST3C": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ST4": {
+      "implementation_status": "compat_alias",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ST5": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "TF": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "TF2": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "WARING": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "WEI": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "WEI2": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "WEI3": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "YULE": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZABB": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZABI": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZABNB": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZAGA": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZAIG": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZALG": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZANBI": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZAP": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZAPIG": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZASICHEL": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZAZIPF": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZIBB": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZIBI": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZIBNB": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZINBF": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZINBI": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZIP": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZIP2": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZIPF": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZIPIG": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ZISICHEL": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    }
+  }
+}
