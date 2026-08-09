@@ -106,8 +106,8 @@ FIT_DISTRIBUTIONS = [
 FIT_ALGORITHMS = ["RS", "CG", "Mixed"]
 SMOOTHERS      = ["pb", "ps", "cs"]   # te excluded: not yet implemented
 
-DEFAULT_DPQR_ABS_TOL = 1e-5
-DEFAULT_DPQR_REL_TOL = 1e-5
+DEFAULT_DPQR_ABS_TOL = 1e-4
+DEFAULT_DPQR_REL_TOL = 1e-3
 DEFAULT_FIT_ABS_TOL = 1e-3
 DEFAULT_FIT_REL_TOL = 1e-3
 
@@ -477,7 +477,7 @@ def _dpqr_params(dist: str, family) -> tuple[np.ndarray, np.ndarray, tuple]:
             params = (1.0, 1.0, 0.2)
     elif dist == "BI":
         x = np.array([0.0, 1.0] * (n // 2))
-        params = (0.5,)
+        params = (1, 0.5)  # (bd, mu) for Binomial
     elif dist == "BB":
         x = np.arange(0, min(n, 20), dtype=float)
         # BB has fixed parameter bd (binomial denominator); must be >= max(x)

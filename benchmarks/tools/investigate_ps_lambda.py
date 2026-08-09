@@ -97,11 +97,13 @@ def test_ps_with_r():
     
     if (!is.null(mu_s) && length(mu_s) > 0) {
         ps_info <- mu_s[[1]]
-        if (!is.null(ps_info$lambda)) {
-            lambda_val <- ps_info$lambda
-        }
-        if (!is.null(ps_info$edf)) {
-            edf_val <- ps_info$edf
+        if (is.list(ps_info)) {
+            if (!is.null(ps_info$lambda)) {
+                lambda_val <- ps_info$lambda
+            }
+            if (!is.null(ps_info$edf)) {
+                edf_val <- ps_info$edf
+            }
         }
     }
     
@@ -202,7 +204,7 @@ def test_ps_internals():
     
     # Test lambda for different target df
     print("\nLambda for different target df:")
-    for target_df in [3, 5, 7, 10]:
+    for target_df in [5, 7, 10, 15]:
         lambda_opt = find_lambda_for_df(
             jnp.array(X), jnp.array(P), float(target_df), jnp.ones(n)
         )

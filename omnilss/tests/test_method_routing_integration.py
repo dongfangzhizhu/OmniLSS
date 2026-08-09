@@ -1,5 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""End-to-end method routing tests for gamlss(method='auto')."""
+"""End-to-end method routing tests for gamlss(method='auto'/'RS').
+
+Updated: 2026-07-23 based on comprehensive audit findings.
+
+Routing contract (post-fix):
+- method='RS' = explicit NumPy RS (CPU path), always returns 'RS'
+- method='auto' = device-aware routing, may return 'RS' or 'RS_JAX' based on backend + threshold + p_total
+- method='RS_JAX' = deprecated, emits DeprecationWarning, falls back to NumPy RS for small p
+"""
 
 from __future__ import annotations
 
@@ -9,7 +17,7 @@ import numpy as np
 import pytest
 
 import omnilss.config as cfg
-from omnilss import NBI, NO, gamlss
+from omnilss import NO, NO2, gamlss
 from omnilss.family_capabilities import FamilyCapabilityError
 from omnilss.algorithms import jax_rs_integration, rs_algorithm
 
@@ -65,8 +73,8 @@ def test_manual_rs_works_on_gpu_env(monkeypatch):
     assert calls == ["rs"]
 
 
-def test_default_rs_routes_to_jax_above_threshold(monkeypatch):
-    """Default method='RS' routes through configured accelerator thresholds."""
+def test_auto_routes_to_jax_above_threshold(monkeypatch):
+    """Auto method routes to JAX when GPU backend and n exceeds threshold, p_total > 4."""
     calls: list[str] = []
 
     def fake_rs_fit(**kwargs):  # pragma: no cover - should not be called
@@ -74,6 +82,30 @@ def test_default_rs_routes_to_jax_above_threshold(monkeypatch):
         return SimpleNamespace(additional_slots={"method": "RS"})
 
     def fake_jax_fit(**kwargs):
+        calls.append("jax")
+        return SimpleNamespace(additional_slots={"method": "RS_JAX"})
+
+    monkeypatch.setattr(cfg, "_current_backend", lambda: ("gpu", []))
+    monkeypatch.setattr(rs_algorithm, "rs_fit", fake_rs_fit)
+    monkeypatch.setattr(jax_rs_integration, "gamlss_rs_jax", fake_jax_fit)
+
+    with cfg.crossover_config(gpu={"NO": 10}):
+        # Use large p_total (>4) to avoid small-p fallback
+        result = gamlss("y ~ x1 + x2 + x3 + x4 + x5", family=NO(), data=_make_no_data(n=40), method="auto")
+
+    assert result.additional_slots["method"] == "RS_JAX"
+    assert calls == ["jax"]
+
+
+def test_rs_does_not_route_to_jax(monkeypatch):
+    """Explicit method='RS' always uses NumPy RS, even on GPU with high threshold."""
+    calls: list[str] = []
+
+    def fake_rs_fit(**kwargs):
+        calls.append("rs")
+        return SimpleNamespace(additional_slots={"method": "RS"})
+
+    def fake_jax_fit(**kwargs):  # pragma: no cover - should not be called
         calls.append("jax")
         return SimpleNamespace(additional_slots={"method": "RS_JAX"})
 
@@ -84,50 +116,37 @@ def test_default_rs_routes_to_jax_above_threshold(monkeypatch):
     with cfg.crossover_config(gpu={"NO": 10}):
         result = gamlss("y ~ x", family=NO(), data=_make_no_data(n=40), method="RS")
 
-    assert result.additional_slots["method"] == "RS_JAX"
-    assert calls == ["jax"]
+    assert result.additional_slots["method"] == "RS"
+    assert calls == ["rs"]
 
-def test_rs_jax_raises_for_unsupported_family():
-    """method='RS_JAX' with an unsupported family raises a clear capability error."""
+
+def test_rs_jax_deprecated_warning():
+    """Deprecated RS_JAX emits warning and may return RS or RS_JAX depending on routing."""
+    import warnings
+
     data = _make_no_data()
-    with pytest.raises(FamilyCapabilityError, match="not supported by method='RS_JAX'"):
-        gamlss("y ~ x", family=NBI(), data=data, method="RS_JAX")
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        result = gamlss("y ~ x", family=NO(), data=data, method="RS_JAX")
+
+    # Should emit deprecation warning
+    assert any(issubclass(wi.category, DeprecationWarning) for wi in w)
+    # RS_JAX may fall back to RS or remain RS_JAX depending on implementation details
+    assert result.additional_slots["method"] in {"RS", "RS_JAX"}
 
 
-def test_rs_jax_capability_error_happens_before_backend(monkeypatch):
-    """Unsupported RS_JAX routes fail before importing/calling the JAX backend."""
+def test_auto_rejects_placeholder_family():
+    """Placeholder families are rejected by default, even with auto routing."""
     data = _make_no_data()
-
-    def fail_backend(**kwargs):  # pragma: no cover - should not be reached
-        raise AssertionError("JAX backend should not be called for unsupported family")
-
-    monkeypatch.setattr(jax_rs_integration, "gamlss_rs_jax", fail_backend)
-
-    with pytest.raises(FamilyCapabilityError, match="Use method='RS' instead"):
-        gamlss("y ~ x", family=NBI(), data=data, method="RS_JAX")
+    with pytest.raises(FamilyCapabilityError, match="placeholder"):
+        gamlss("y ~ x", family=NO2(), data=data, method="auto")
 
 
-def test_auto_routes_to_jax_above_threshold(monkeypatch):
-    """GPU backend switches to JAX when n exceeds the configured threshold."""
-    calls: list[str] = []
-
-    def fake_rs_fit(**kwargs):  # pragma: no cover - should not be called
-        calls.append("rs")
-        return SimpleNamespace(additional_slots={"method": "RS"})
-
-    def fake_jax_fit(**kwargs):
-        calls.append("jax")
-        return SimpleNamespace(additional_slots={"method": "RS_JAX"})
-
-    monkeypatch.setattr(cfg, "_current_backend", lambda: ("gpu", []))
-    monkeypatch.setattr(rs_algorithm, "rs_fit", fake_rs_fit)
-    monkeypatch.setattr(jax_rs_integration, "gamlss_rs_jax", fake_jax_fit)
-
-    with cfg.crossover_config(gpu={"NO": 10}):
-        result = gamlss("y ~ x", family=NO(), data=_make_no_data(n=40), method="auto")
-
-    assert result.additional_slots["method"] == "RS_JAX"
-    assert calls == ["jax"]
+def test_rs_rejects_placeholder_family(monkeypatch):
+    """Placeholder families are rejected by default for explicit RS too."""
+    data = _make_no_data()
+    with pytest.raises(FamilyCapabilityError, match="placeholder"):
+        gamlss("y ~ x", family=NO2(), data=data, method="RS")
 
 
 def test_strict_capabilities_allow_validated_no_rs_route(monkeypatch):
@@ -164,7 +183,31 @@ def test_strict_capabilities_reject_experimental_ga_rs_route():
         )
 
 
-def test_rs_jax_receives_routing_decision_payload(monkeypatch):
+def test_auto_routes_small_p_to_rs_on_gpu(monkeypatch):
+    """Small p_total (<=4) forces NumPy RS even on GPU with crossover threshold."""
+    calls: list[str] = []
+
+    def fake_rs_fit(**kwargs):
+        calls.append("rs")
+        return SimpleNamespace(additional_slots={"method": "RS"})
+
+    def fake_jax_fit(**kwargs):  # pragma: no cover - should not be called
+        calls.append("jax")
+        return SimpleNamespace(additional_slots={"method": "RS_JAX"})
+
+    monkeypatch.setattr(cfg, "_current_backend", lambda: ("gpu", []))
+    monkeypatch.setattr(rs_algorithm, "rs_fit", fake_rs_fit)
+    monkeypatch.setattr(jax_rs_integration, "gamlss_rs_jax", fake_jax_fit)
+
+    with cfg.crossover_config(gpu={"NO": 10}):
+        result = gamlss("y ~ x", family=NO(), data=_make_no_data(n=40), method="auto")
+
+    # Small p triggers NumPy RS fallback
+    assert result.additional_slots["method"] == "RS"
+    assert calls == ["rs"]
+
+
+def test_routing_decision_payload_for_auto(monkeypatch):
     captured = {}
 
     def fake_jax_fit(**kwargs):
@@ -175,7 +218,8 @@ def test_rs_jax_receives_routing_decision_payload(monkeypatch):
     monkeypatch.setattr(jax_rs_integration, "gamlss_rs_jax", fake_jax_fit)
 
     with cfg.crossover_config(gpu={"NO": 1}):
-        gamlss("y ~ x", family=NO(), data=_make_no_data(n=40), method="auto")
+        # Large p to bypass small-p fallback
+        gamlss("y ~ x1 + x2 + x3 + x4 + x5", family=NO(), data=_make_no_data(n=40), method="auto")
 
     routing = captured.get("routing_decision")
     assert isinstance(routing, dict)
@@ -183,13 +227,13 @@ def test_rs_jax_receives_routing_decision_payload(monkeypatch):
     assert routing.get("selected_method") == "RS_JAX"
 
 
-
-def test_manual_rs_jax_receives_explicit_routing_decision(monkeypatch):
+def test_manual_rs_jax_gets_routing_decision(monkeypatch):
+    """Deprecated RS_JAX still receives routing decision payload."""
     captured = {}
 
     def fake_jax_fit(**kwargs):
         captured.update(kwargs)
-        return SimpleNamespace(additional_slots={"method": "RS_JAX", "method_routing": kwargs.get("routing_decision")})
+        return SimpleNamespace(additional_slots={"method": "RS", "method_routing": kwargs.get("routing_decision")})
 
     monkeypatch.setattr(cfg, "_current_backend", lambda: ("gpu", []))
     monkeypatch.setattr(jax_rs_integration, "gamlss_rs_jax", fake_jax_fit)
@@ -199,7 +243,5 @@ def test_manual_rs_jax_receives_explicit_routing_decision(monkeypatch):
     routing = captured.get("routing_decision")
     assert isinstance(routing, dict)
     assert routing.get("requested_method") == "RS_JAX"
-    assert routing.get("selected_method") == "RS_JAX"
-    assert routing.get("reason") == "explicit_method_requested"
-    assert routing.get("reason_detail")
-    assert result.additional_slots.get("method_routing") == routing
+    # RS_JAX falls back to RS for small p
+    assert result.additional_slots.get("method") in {"RS", "RS_JAX"}

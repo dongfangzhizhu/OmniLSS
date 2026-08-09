@@ -13,6 +13,11 @@ from pathlib import Path
 import numpy as np
 from scipy.stats import t as scipy_t
 
+# Machine-precision assertions require float64 (project precision policy).
+import jax
+
+jax.config.update("jax_enable_x64", True)
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from omnilss.dpqr_functions import qTF
