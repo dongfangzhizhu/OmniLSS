@@ -1,0 +1,42 @@
+{
+  "ig_y_x_seed_20260522": {
+    "family": "IG",
+    "formula": "y ~ x",
+    "seed": 20260522,
+    "n": 60,
+    "R_version": "R version 4.5.0 (2025-04-11)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "58264720"
+  },
+  "po_y_x_seed_20260523": {
+    "family": "PO",
+    "formula": "y ~ x",
+    "seed": 20260523,
+    "n": 80,
+    "R_version": "R version 4.5.0 (2025-04-11)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "8f50eebe"
+  },
+  "no_y_x_seed_20260524": {
+    "family": "NO",
+    "formula": "y ~ x",
+    "seed": 20260524,
+    "n": 90,
+    "R_version": "R version 4.5.0 (2025-04-11)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "83d749c5"
+  },
+  "ga_y_x_seed_20260525": {
+    "family": "GA",
+    "formula": "y ~ x",
+    "seed": 20260525,
+    "n": 85,
+    "R_version": "R version 4.5.0 (2025-04-11)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "9ea3e78d"
+  }
+}

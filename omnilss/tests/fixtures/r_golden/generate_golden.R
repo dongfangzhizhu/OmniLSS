@@ -1,0 +1,112 @@
+# Regenerate reproducible R golden fixtures for OmniLSS R-consistency tests.
+#
+# Usage:  Rscript generate_golden.R
+#
+# Writes regenerated fixtures + manifest into
+#   omnilss/tests/fixtures/r_golden/regenerated/
+# (the checked-in fixtures under r_golden/ are the historical anchors used by
+# replay tests; regenerated/ proves the pipeline is reproducible and records
+# provenance: R version, gamlss versions, seeds, per-fixture content hashes).
+#
+# Requires: gamlss, gamlss.dist, jsonlite.
+
+suppressPackageStartupMessages(library(gamlss))
+suppressPackageStartupMessages(library(jsonlite))
+
+out_dir <- "omnilss/tests/fixtures/r_golden/regenerated"
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+# ---- case definitions (family, formula, seed, n) ---------------------------
+cases <- list(
+  list(case = "ig_y_x_seed_20260522", family = "IG",  formula = "y ~ x", seed = 20260522, n = 60),
+  list(case = "po_y_x_seed_20260523", family = "PO",  formula = "y ~ x", seed = 20260523, n = 80),
+  list(case = "no_y_x_seed_20260524", family = "NO",  formula = "y ~ x", seed = 20260524, n = 90),
+  list(case = "ga_y_x_seed_20260525", family = "GA",  formula = "y ~ x", seed = 20260525, n = 85)
+)
+
+# ---- helpers ---------------------------------------------------------------
+make_data <- function(seed, n, family) {
+  set.seed(seed)
+  x <- rnorm(n, 0, 1)  # standard-normal x, matching the historical fixtures
+  if (family == "NO") {
+    mu <- 1.0 + 0.4 * x
+    y <- rNO(n, mu = mu, sigma = 0.6)
+  } else if (family == "GA") {
+    mu <- exp(0.4 + 0.3 * x)
+    y <- rGA(n, mu = mu, sigma = 0.3)
+  } else if (family == "PO") {
+    mu <- exp(0.7 + 0.15 * x)
+    y <- rPO(n, mu = mu)
+  } else if (family == "IG") {
+    mu <- exp(0.6 + 0.75 * x)
+    y <- rIG(n, mu = mu, sigma = 0.2)
+  } else {
+    stop("unknown family ", family)
+  }
+  list(x = x, y = y)
+}
+
+content_hash <- function(x) {
+  # djb2-style string hash (pure string arithmetic, no 32-bit overflow);
+  # hex via a manual conversion (sprintf %x does not accept doubles in R)
+  chars <- utf8ToInt(x)
+  h <- 5381
+  for (b in chars) {
+    h <- (h * 33 + b) %% 4294967296
+  }
+  hex_chars <- c("0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f")
+  out <- ""
+  for (i in 1:8) {
+    out <- paste0(hex_chars[(h %% 16) + 1], out)
+    h <- floor(h / 16)
+  }
+  out
+}
+
+# ---- generate each fixture ------------------------------------------------
+manifest <- list()
+for (c in cases) {
+  dat <- make_data(c$seed, c$n, c$family)
+  df <- data.frame(y = dat$y, x = dat$x)
+
+  fam <- gamlss.dist::gamlss.family(c$family)
+  fit <- gamlss(as.formula(c$formula), family = fam, data = df,
+                control = gamlss.control(trace = FALSE))
+
+  mu_coef <- as.numeric(coef(fit, "mu"))
+  expected <- list(
+    mu_coefficients = as.list(mu_coef),
+    deviance = as.numeric(deviance(fit))
+  )
+  if ("sigma" %in% fit$parameters) {
+    expected$sigma_coefficients <- as.list(as.numeric(coef(fit, "sigma")))
+  }
+
+  payload <- list(
+    case = c$case,
+    family = c$family,
+    formula = c$formula,
+    data = list(x = dat$x, y = dat$y),
+    expected = expected
+  )
+
+  json_text <- toJSON(payload, digits = 17, auto_unbox = TRUE)
+  fpath <- file.path(out_dir, paste0(c$case, ".json"))
+  writeLines(json_text, fpath)
+  message("wrote ", fpath)
+
+  manifest[[c$case]] <- list(
+    family = c$family,
+    formula = c$formula,
+    seed = c$seed,
+    n = c$n,
+    R_version = R.version.string,
+    gamlss_version = as.character(packageVersion("gamlss")),
+    gamlss_dist_version = as.character(packageVersion("gamlss.dist")),
+    content_hash = content_hash(json_text)
+  )
+}
+
+manifest_path <- file.path(out_dir, "manifest.json")
+writeLines(toJSON(manifest, digits = 17, auto_unbox = TRUE, pretty = TRUE), manifest_path)
+message("wrote ", manifest_path)
