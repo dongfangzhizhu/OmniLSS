@@ -3614,7 +3614,13 @@ def dBCT(x, mu=1.0, sigma=1.0, nu=1.0, tau=10.0, log=False):
     # Kernel
     kernel = -((tau + 1.0) / 2.0) * jnp.log1p(jnp.square(z) / tau)
     
-    log_fy = log_norm + jacobian + kernel
+    # Truncation normalization (R BCT.R: loglik - log(pt(1/(sigma*abs(nu)), df=tau)))
+    from scipy.stats import t as t_dist
+    trunc = t_dist.logcdf(np.asarray(1.0 / (sigma * jnp.abs(nu))), np.asarray(tau))
+    trunc = jnp.asarray(trunc, dtype=jnp.float64)
+    
+    log_fy = log_norm + jacobian + kernel - trunc
+    log_fy = jnp.where(x <= 0.0, -jnp.inf, log_fy)
     
     return log_fy if log else jnp.exp(log_fy)
 
@@ -3669,10 +3675,17 @@ def pBCT(q, mu=1.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False):
     z_log = jnp.log(ratio) / sigma
     z = jnp.where(use_log, z_log, z_boxcox)
     
-    # t-distribution CDF
+    # Truncated t CDF (R BCT.R): FYy = (pt(z) - pt(-1/(sigma|nu|))) / pt(1/(sigma|nu|))
     from scipy.stats import t as t_dist
-    cdf = t_dist.cdf(np.asarray(z), np.asarray(tau))
+    z_np = np.asarray(z)
+    tau_np = np.asarray(tau)
+    fyy1 = t_dist.cdf(z_np, tau_np)
+    fyy2 = np.where(np.asarray(nu) > 0, t_dist.cdf(-1.0 / (np.asarray(sigma) * np.abs(np.asarray(nu))), tau_np), 0.0)
+    fyy3 = t_dist.cdf(1.0 / (np.asarray(sigma) * np.abs(np.asarray(nu))), tau_np)
+    cdf = (fyy1 - fyy2) / fyy3
     cdf = jnp.asarray(cdf, dtype=jnp.float64)
+    cdf = jnp.where(q <= 0.0, 0.0, cdf)
+    cdf = jnp.clip(cdf, 0.0, 1.0)
     
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -3732,10 +3745,15 @@ def qBCT(p, mu=1.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False):
     sigma = jnp.maximum(sigma, eps)
     tau = jnp.maximum(tau, 2.0 + eps)
     
-    # t-distribution quantile
+    # Truncated-t quantile inversion (R BCT.R):
+    #   zp = pt(1/(sigma*abs(nu)), df=tau)
+    #   z[nu>0]  = qt(1 - (1-p) * zp, tau)
+    #   z[nu<=0] = qt(p * zp, tau)
     from scipy.stats import t as t_dist
-    z = t_dist.ppf(np.asarray(p), np.asarray(tau))
-    z = jnp.asarray(z, dtype=jnp.float64)
+    zp = t_dist.cdf(np.asarray(1.0 / (sigma * jnp.abs(nu))), np.asarray(tau))
+    z_neg = t_dist.ppf(np.asarray(p) * zp, np.asarray(tau))
+    z_pos = t_dist.ppf(1.0 - (1.0 - np.asarray(p)) * zp, np.asarray(tau))
+    z = jnp.asarray(np.where(np.asarray(nu) > 0, z_pos, z_neg), dtype=jnp.float64)
     
     # Inverse Box-Cox transformation
     use_log = jnp.abs(nu) < 1e-6
@@ -3820,6 +3838,44 @@ def rBCT(key, n, mu=1.0, sigma=1.0, nu=1.0, tau=10.0):
 # Box-Cox Power Exponential Distribution (BCPE)
 # =============================================================================
 
+def _bcpe_c(tau):
+    """Standardization constant c for BCPE power-exponential kernel."""
+    return jnp.exp(0.5 * (-(2.0 / tau) * jnp.log(2.0) + gammaln(1.0 / tau) - gammaln(3.0 / tau)))
+
+
+def _bcpe_ftrunc_log(t, tau):
+    """log(F.T(t, tau)): CDF of the standardized PE distribution at t."""
+    # F.T(t) = 0.5 * (1 + F.s * sign(t)), F.s = pgamma(0.5*(t/c)^tau, shape=1/tau, scale=1)
+    from jax.scipy.special import gammainc
+
+    c = _bcpe_c(tau)
+    s = 0.5 * jnp.power(jnp.abs(t) / c, tau)
+    # pgamma(s, 1/tau, 1) = gammainc(1/tau, s)
+    fs = gammainc(1.0 / tau, s)
+    cdf = 0.5 * (1.0 + fs * jnp.sign(t))
+    return jnp.log(jnp.maximum(cdf, jnp.finfo(jnp.float64).tiny))
+
+
+def _bcpe_ftrunc(t, tau):
+    """F.T(t, tau): CDF of the standardized PE distribution at t."""
+    return jnp.exp(_bcpe_ftrunc_log(t, tau))
+
+
+def _bcpe_q(p, tau):
+    """q.T(p, tau): quantile of standardized PE distribution (R BCPE.R q.T)."""
+    c = _bcpe_c(tau)
+    # s = qgamma((2p-1)*sign(p-0.5), shape=1/tau, scale=1)
+    # z = sign(p-0.5) * ((2s)^(1/tau)) * c
+    from scipy.special import gammaincinv as _gammaincinv
+    p_np = np.asarray(p)
+    tau_np = np.asarray(tau)
+    sign_p = np.sign(p_np - 0.5)
+    arg = (2.0 * p_np - 1.0) * sign_p
+    s = _gammaincinv(1.0 / tau_np, arg)
+    z = sign_p * np.power(2.0 * s, 1.0 / tau_np) * np.asarray(c)
+    return z
+
+
 def dBCPE(x, mu=1.0, sigma=1.0, nu=1.0, tau=2.0, log=False):
     """Density function for Box-Cox Power Exponential distribution.
     
@@ -3873,16 +3929,24 @@ def dBCPE(x, mu=1.0, sigma=1.0, nu=1.0, tau=2.0, log=False):
     z_log = jnp.log(ratio) / sigma
     z = jnp.where(use_log, z_log, z_boxcox)
     
-    # Power Exponential log density
-    log_norm = jnp.log(tau) - (1.0 + 1.0 / tau) * jnp.log(2.0) - gammaln(1.0 / tau)
+    # Variance-standardized power-exponential kernel (R BCPE.R):
+    #   log.c = 0.5*(-(2/tau)*log(2) + lgamma(1/tau) - lgamma(3/tau));  c = exp(log.c)
+    #   log.lik = log(tau) - log.c - 0.5*(abs(t/c)^tau) - (1+1/tau)*log(2) - lgamma(1/tau)
+    log_c = 0.5 * (-(2.0 / tau) * jnp.log(2.0) + gammaln(1.0 / tau) - gammaln(3.0 / tau))
+    log_fz = (
+        jnp.log(tau) - log_c
+        - 0.5 * jnp.power(jnp.abs(z) / jnp.exp(log_c), tau)
+        - (1.0 + 1.0 / tau) * jnp.log(2.0) - gammaln(1.0 / tau)
+    )
     
     # Jacobian term
     jacobian = -jnp.log(sigma) - nu * jnp.log(mu) + (nu - 1.0) * jnp.log(x)
     
-    # Kernel
-    kernel = -0.5 * jnp.power(jnp.abs(z), tau)
+    # Truncation normalization (R BCPE.R): loglik = logder + logfZ - log(F.T(1/(sigma*abs(nu))))
+    log_ftrunc = _bcpe_ftrunc_log(1.0 / (sigma * jnp.abs(nu)), tau)
     
-    log_fy = log_norm + jacobian + kernel
+    log_fy = jacobian + log_fz - log_ftrunc
+    log_fy = jnp.where(x <= 0.0, -jnp.inf, log_fy)
     
     return log_fy if log else jnp.exp(log_fy)
 
@@ -3939,20 +4003,15 @@ def pBCPE(q, mu=1.0, sigma=1.0, nu=1.0, tau=2.0, lower_tail=True, log_p=False):
     z_log = jnp.log(ratio) / sigma
     z = jnp.where(use_log, z_log, z_boxcox)
     
-    # Power Exponential CDF
-    # For z, we use the regularized incomplete gamma function
-    # P(Z <= z) = 0.5 + 0.5 * sign(z) * P(1/tau, 0.5 * |z|^tau)
-    from scipy.special import gammainc
-    
-    abs_z = jnp.abs(z)
-    u = 0.5 * jnp.power(abs_z, tau)
-    
-    # Regularized incomplete gamma function
-    p_gamma = gammainc(1.0 / tau, u)
-    p_gamma = jnp.asarray(p_gamma, dtype=jnp.float64)
-    
-    # CDF
-    cdf = 0.5 + 0.5 * jnp.sign(z) * p_gamma
+    # Truncated standardized-PE CDF (R BCPE.R):
+    #   FYy = (F.T(z) - F.T(-1/(sigma*abs(nu)))) / F.T(1/(sigma*abs(nu)))   for nu > 0
+    #   FYy =  F.T(z) / F.T(1/(sigma*abs(nu)))                              for nu <= 0
+    fyy1 = _bcpe_ftrunc(z, tau)
+    fyy2 = jnp.where(nu > 0, _bcpe_ftrunc(-1.0 / (sigma * jnp.abs(nu)), tau), 0.0)
+    fyy3 = _bcpe_ftrunc(1.0 / (sigma * jnp.abs(nu)), tau)
+    cdf = (fyy1 - fyy2) / fyy3
+    cdf = jnp.where(q <= 0.0, 0.0, cdf)
+    cdf = jnp.clip(cdf, 0.0, 1.0)
     
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -4014,22 +4073,22 @@ def qBCPE(p, mu=1.0, sigma=1.0, nu=1.0, tau=2.0, lower_tail=True, log_p=False):
     sigma = jnp.maximum(sigma, eps)
     tau = jnp.maximum(tau, eps)
     
-    # Power Exponential quantile
-    # For p, we need to invert: p = 0.5 + 0.5 * sign(z) * P(1/tau, 0.5 * |z|^tau)
-    # This requires numerical inversion
-    from scipy.special import gammaincinv
+    # Truncated standardized-PE quantile inversion (R BCPE.R):
+    #   za[nu<0]  = q.T(p * F.T(1/(sigma*abs(nu))))
+    #   za[nu==0] = q.T(p)
+    #   za[nu>0]  = q.T(1 - (1-p) * F.T(1/(sigma*abs(nu))))
+    p_np = np.asarray(p, dtype=np.float64)
+    tau_np = np.asarray(tau, dtype=np.float64)
+    nu_np = np.asarray(nu, dtype=np.float64)
+    sigma_np = np.asarray(sigma, dtype=np.float64)
+    mu_np = np.asarray(mu, dtype=np.float64)
+    ftrunc = np.asarray(_bcpe_ftrunc(1.0 / (sigma * jnp.abs(nu)), tau), dtype=np.float64)
     
-    # Convert p to centered probability
-    p_centered = 2.0 * (p - 0.5)
-    sign_z = jnp.sign(p_centered)
-    abs_p = jnp.abs(p_centered)
-    
-    # Inverse incomplete gamma
-    u = gammaincinv(1.0 / tau, abs_p)
-    u = jnp.asarray(u, dtype=jnp.float64)
-    
-    # z = sign(z) * (2 * u)^(1/tau)
-    z = sign_z * jnp.power(2.0 * u, 1.0 / tau)
+    za_neg = _bcpe_q(p_np * ftrunc, tau_np)
+    za_zero = _bcpe_q(p_np, tau_np)
+    za_pos = _bcpe_q(1.0 - (1.0 - p_np) * ftrunc, tau_np)
+    za = np.where(nu_np < 0, za_neg, np.where(nu_np == 0, za_zero, za_pos))
+    z = jnp.asarray(za, dtype=jnp.float64)
     
     # Inverse Box-Cox transformation
     use_log = jnp.abs(nu) < 1e-6
@@ -4416,7 +4475,11 @@ def dBCCG(x, mu=1.0, sigma=1.0, nu=1.0, log=False):
     # Kernel
     kernel = -0.5 * jnp.square(z)
     
-    log_fy = log_norm + jacobian + kernel
+    # Truncation normalization (R BCCG.R: loglik <- loglik - log(pnorm(1/(sigma*abs(nu)))))
+    trunc = norm.logcdf(1.0 / (sigma * jnp.abs(nu)))
+    
+    log_fy = log_norm + jacobian + kernel - trunc
+    log_fy = jnp.where(x <= 0.0, -jnp.inf, log_fy)
     
     return log_fy if log else jnp.exp(log_fy)
 
@@ -4467,8 +4530,13 @@ def pBCCG(q, mu=1.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
     z_log = jnp.log(ratio) / sigma
     z = jnp.where(use_log, z_log, z_boxcox)
     
-    # Standard normal CDF
-    cdf = norm.cdf(z)
+    # Truncated normal CDF (R BCCG.R):
+    #   FYy = (Phi(z) - Phi(-1/(sigma*abs(nu)))) / Phi(1/(sigma*abs(nu)))   for nu > 0
+    #   FYy =  Phi(z) / Phi(1/(sigma*abs(nu)))                              for nu <= 0
+    trunc_const = norm.cdf(1.0 / (sigma * jnp.abs(nu)))
+    cdf = (norm.cdf(z) - jnp.where(nu > 0, norm.cdf(-1.0 / (sigma * jnp.abs(nu))), 0.0)) / trunc_const
+    cdf = jnp.where(q <= 0.0, 0.0, cdf)
+    cdf = jnp.clip(cdf, 0.0, 1.0)
     
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -4524,8 +4592,13 @@ def qBCCG(p, mu=1.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
     
-    # Standard normal quantile
-    z = norm.ppf(p)
+    # Truncated-normal quantile inversion (R BCCG.R):
+    #   z[nu<=0] = qnorm(p * pnorm(1/(sigma*abs(nu))))
+    #   z[nu>0]  = qnorm(1 - (1-p) * pnorm(1/(sigma*abs(nu))))
+    trunc_const = norm.cdf(1.0 / (sigma * jnp.abs(nu)))
+    z_neg = norm.ppf(p * trunc_const)
+    z_pos = norm.ppf(1.0 - (1.0 - p) * trunc_const)
+    z = jnp.where(nu > 0, z_pos, z_neg)
     
     # Inverse Box-Cox transformation
     use_log = jnp.abs(nu) < 1e-6
