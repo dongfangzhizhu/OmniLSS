@@ -1857,6 +1857,12 @@ def BCCG() -> BoxCoxColeGreenFamily:
     )
 
 
+# BCT (Box-Cox t) Hessian floors per parameter — heuristic lower bounds on
+# the second derivative to prevent IWLS collapse.  Kept as module constants
+# so they can be tuned without touching the fitting code.
+_BCT_HESS_FLOOR = {"tau": -0.1, "sigma": -0.5, "nu": -0.2, "mu": -1e-10}
+
+
 def BCT() -> BoxCoxTFamily:
     """Staged Box-Cox t family with parameters `mu`, `sigma`, `nu`, `tau`."""
 
@@ -1976,14 +1982,7 @@ def BCT() -> BoxCoxTFamily:
         hess = (plus - 2.0 * center + minus) / jnp.square(step)
         # Add floor to prevent instability in IWLS
         # sigma and nu also need floors to prevent collapse
-        if parameter == "tau":
-            hess_floor = -0.1
-        elif parameter == "sigma":
-            hess_floor = -0.5
-        elif parameter == "nu":
-            hess_floor = -0.2
-        else:
-            hess_floor = -1e-10
+        hess_floor = _BCT_HESS_FLOOR.get(parameter, -1e-10)
         return jnp.minimum(hess, hess_floor)
 
     return BoxCoxTFamily(

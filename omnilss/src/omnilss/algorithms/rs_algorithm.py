@@ -111,16 +111,21 @@ class NumpySolverBackend(SolverBackend):
         design: np.ndarray,
         working_response: np.ndarray,
         weights: np.ndarray,
+        ridge: float | None = None,
     ) -> np.ndarray:
         sqrt_w = np.sqrt(weights)
         weighted_x = design * sqrt_w[:, None]
         gram = weighted_x.T @ weighted_x
-        stabilized = stabilize_hessian(gram)
+        if ridge is None:
+            stabilized = stabilize_hessian(gram)
+            # Only apply the ridge when stabilization actually kicked in
+            # (lambda_value > 0); otherwise keep the pure lstsq path.
+            ridge = stabilized.lambda_value if stabilized.lambda_value > 0.0 else None
         return solve_weighted_least_squares_cholesky(
             X=design,
             z=working_response,
             w=weights,
-            ridge=max(stabilized.lambda_value, 1e-10),
+            ridge=ridge,
         )
 
 
@@ -177,10 +182,17 @@ class JaxSolverBackend(SolverBackend):
         design: np.ndarray,
         working_response: np.ndarray,
         weights: np.ndarray,
+        ridge: float | None = None,
     ) -> np.ndarray:
         sqrt_w = jnp.sqrt(jnp.asarray(weights, dtype=jnp.float64))
         xw = jnp.asarray(design, dtype=jnp.float64) * sqrt_w[:, None]
         zw = jnp.asarray(working_response, dtype=jnp.float64) * sqrt_w
+        if ridge is not None:
+            # Levenberg-style damping for the normal equations, matching the
+            # NumPy backend's stabilized ridge.
+            p = xw.shape[1]
+            xw = jnp.concatenate([xw, jnp.sqrt(jnp.asarray(ridge, dtype=jnp.float64)) * jnp.eye(p)], axis=0)
+            zw = jnp.concatenate([zw, jnp.zeros(p, dtype=jnp.float64)])
         beta, _, _, _ = jnp.linalg.lstsq(xw, zw, rcond=None)
         return np.asarray(beta, dtype=np.float64)
 
@@ -526,6 +538,11 @@ def rs_step(
                 design=X,
                 working_response=working_response,
                 weights=W,
+                ridge=(
+                    stabilized.lambda_value
+                    if stabilized.lambda_value > 0.0
+                    else None
+                ),
             )
 
         # Update linear predictor with damped step size
