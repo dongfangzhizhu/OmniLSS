@@ -1230,6 +1230,33 @@ def gamlss(
                 f"got {cg_backend_name!r}"
             )
 
+    # MIXED: real mixed algorithm (auto-selects RS or L-BFGS per data).
+    # Previously MIXED fell through to the inline damped-IWLS path below,
+    # which converged to a suboptimal fixed point for some families (e.g.
+    # NBI sigma -> -0.39 vs the MLE -0.90, deviance 516.3 vs 513.5).  Route
+    # it through mixed_fit so the result is a properly converged fit.
+    if method_name == "MIXED":
+        from .algorithms.mixed_algorithm import mixed_fit
+
+        mixed_model = mixed_fit(
+            formula=formula,
+            sigma_formula=sigma_formula,
+            family=getattr(family, "name", None) or str(family),
+            data=data,
+            algorithm="auto",
+            max_iter=control.n_cyc if control is not None else 20,
+            tol=control.c_crit if control is not None else 1e-4,
+            verbose=verbose,
+        )
+        # Preserve the requested method label: mixed_fit may run RS internally
+        # (which stamps additional_slots["method"]="RS").
+        if getattr(mixed_model, "additional_slots", None) is not None:
+            mixed_model.additional_slots = {
+                **dict(mixed_model.additional_slots),
+                "method": "MIXED",
+            }
+        return mixed_model
+
     # CG and MIXED methods use the inline implementation below
     rqres_callable = _build_rqres_callable(family)
 
