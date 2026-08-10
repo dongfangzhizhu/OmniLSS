@@ -952,6 +952,7 @@ def gamlss(
             n_obs=int(_n_obs),
             family=family.name,
             confidence=_routing_confidence(_decision, int(_n_obs)),
+            accelerator_available=_backend in {"gpu", "tpu"},
         )
 
         # Freeze v1 routing strategy: for AUTO/RS requests, avoid blind RS_JAX
@@ -973,6 +974,7 @@ def gamlss(
                     n_obs=int(_n_obs),
                     family=family.name,
                     confidence=0.95,
+                    accelerator_available=_backend in {"gpu", "tpu"},
                 )
                 routing_decision = {**routing_decision, "p_total": _p_total}
 
@@ -1004,6 +1006,7 @@ def gamlss(
                         n_obs=int(_n_obs),
                         family=family.name,
                         confidence=0.99,
+                        accelerator_available=_backend in {"gpu", "tpu"},
                     )
                     _cfg.validate_method_routing_decision(routing_decision)
             except Exception:
@@ -1044,6 +1047,7 @@ def gamlss(
                 n_obs=None,
                 family=family.name,
                 confidence=1.0,
+                accelerator_available=_backend in {"gpu", "tpu"},
             )
             _cfg.validate_method_routing_decision(routing_decision)
 

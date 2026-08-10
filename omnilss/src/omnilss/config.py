@@ -543,8 +543,14 @@ def build_method_routing_decision(
     threshold: float | None,
     n_obs: int | None,
     confidence: float | None = None,
+    accelerator_available: bool | None = None,
 ) -> dict[str, Any]:
-    """Build a stable routing decision payload for model metadata."""
+    """Build a stable routing decision payload for model metadata.
+
+    ``accelerator_available`` records whether a hardware accelerator (GPU/TPU)
+    was present when the decision was made (Phase 2 task 2.4: environments
+    without an accelerator must record ``False``).
+    """
     return {
         "requested_method": str(requested_method).upper(),
         "selected_method": str(selected_method).upper(),
@@ -556,6 +562,7 @@ def build_method_routing_decision(
         "family": str(family).upper(),
         "schema_version": METHOD_ROUTING_SCHEMA_VERSION,
         "confidence": confidence,
+        "accelerator_available": accelerator_available,
     }
 
 
@@ -580,6 +587,7 @@ def validate_method_routing_decision(payload: Mapping[str, Any]) -> None:
         "family",
         "schema_version",
         "confidence",
+        "accelerator_available",
     }
     missing = sorted(required.difference(payload.keys()))
     if missing:

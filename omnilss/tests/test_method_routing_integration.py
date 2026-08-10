@@ -97,6 +97,75 @@ def test_auto_routes_to_jax_above_threshold(monkeypatch):
     assert calls == ["jax"]
 
 
+def test_auto_routes_to_rs_below_threshold(monkeypatch):
+    """Auto method stays on NumPy RS when n is below the GPU crossover threshold."""
+    calls: list[str] = []
+
+    def fake_rs_fit(**kwargs):
+        calls.append("rs")
+        return SimpleNamespace(additional_slots={"method": "RS"})
+
+    def fake_jax_fit(**kwargs):  # pragma: no cover - should not be called
+        calls.append("jax")
+        return SimpleNamespace(additional_slots={"method": "RS_JAX"})
+
+    monkeypatch.setattr(cfg, "_current_backend", lambda: ("gpu", []))
+    monkeypatch.setattr(rs_algorithm, "rs_fit", fake_rs_fit)
+    monkeypatch.setattr(jax_rs_integration, "gamlss_rs_jax", fake_jax_fit)
+
+    with cfg.crossover_config(gpu={"NO": 100}):  # n=40 < threshold=100
+        result = gamlss("y ~ x1 + x2 + x3 + x4 + x5", family=NO(), data=_make_no_data(n=40), method="auto")
+
+    assert result.additional_slots["method"] == "RS"
+    assert calls == ["rs"]
+
+
+def test_auto_routes_to_jax_at_threshold(monkeypatch):
+    """Auto method routes to JAX when n equals the GPU crossover threshold."""
+    calls: list[str] = []
+
+    def fake_rs_fit(**kwargs):  # pragma: no cover - should not be called
+        calls.append("rs")
+        return SimpleNamespace(additional_slots={"method": "RS"})
+
+    def fake_jax_fit(**kwargs):
+        calls.append("jax")
+        return SimpleNamespace(additional_slots={"method": "RS_JAX"})
+
+    monkeypatch.setattr(cfg, "_current_backend", lambda: ("gpu", []))
+    monkeypatch.setattr(rs_algorithm, "rs_fit", fake_rs_fit)
+    monkeypatch.setattr(jax_rs_integration, "gamlss_rs_jax", fake_jax_fit)
+
+    with cfg.crossover_config(gpu={"NO": 40}):  # n=40 == threshold=40
+        result = gamlss("y ~ x1 + x2 + x3 + x4 + x5", family=NO(), data=_make_no_data(n=40), method="auto")
+
+    assert result.additional_slots["method"] == "RS_JAX"
+    assert calls == ["jax"]
+
+
+def test_routing_records_accelerator_available(monkeypatch):
+    """Route diagnostic records accelerator_available=False without a GPU/TPU."""
+    # Real CPU fit: route diagnostic must record accelerator_available=False.
+    result = gamlss("y ~ x", family=NO(), data=_make_no_data(n=40), method="auto")
+    routing = result.additional_slots["method_routing"]
+    assert routing["accelerator_available"] is False
+
+    # GPU backend: routing decision handed to the backend records True.
+    captured = {}
+
+    def fake_jax_fit(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(additional_slots={"method": "RS_JAX"})
+
+    monkeypatch.setattr(cfg, "_current_backend", lambda: ("gpu", []))
+    monkeypatch.setattr(jax_rs_integration, "gamlss_rs_jax", fake_jax_fit)
+
+    with cfg.crossover_config(gpu={"NO": 1}):
+        gamlss("y ~ x1 + x2 + x3 + x4 + x5", family=NO(), data=_make_no_data(n=40), method="auto")
+
+    assert captured["routing_decision"]["accelerator_available"] is True
+
+
 def test_rs_does_not_route_to_jax(monkeypatch):
     """Explicit method='RS' always uses NumPy RS, even on GPU with high threshold."""
     calls: list[str] = []
