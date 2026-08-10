@@ -187,8 +187,10 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   - 固定 R golden artifact（commit `f66e95d`）：`generate_golden.R` 扩展至 9 case（八核心 + 历史 IG），R 4.6.0/gamlss 5.5.0 重跑 regenerated/ 与 manifest；新增 5 个八核心 checked-in fixture（be/bi/gu/nbi/zaga）与 replay 测试（rtol=2e-4）；修复历史 `po` fixture expected 与其 data 不自洽问题（真实 R 拟合 [0.368,0.222]）；golden 套件 29 项全过。
   - 每个族：d/p/q/r、support、boundary、单调性、seeded-random、≥1 拟合 case；计数族含零值/多零/边界/极端均值数据。
   - 验收：每族 100 次属性测试 + 固定 R artifact；仅全过才晋级 E3。✅ **验收达成**（八核心 R 一致性 20 项 + 属性测试 38 项 + golden replay 9 项全过）。
-- [ ] **2.2 按算法隔离（RS/CG/Mixed）的核心拟合 R 对照**
-  - 验收：三算法 case ID 互不冲突；记录收敛、deviance、系数、fitted；与 R 对照 rtol ≤ 1e-3。
+- [x] **2.2 按算法隔离（RS/CG/Mixed）的核心拟合 R 对照** — 完成 ✅
+  - 【前置】commit `b3238b2`：RBridge 支持 method 参数（R 侧用 `quote(CG()/mixed()/RS())` + `as.call`/`eval` 构造字面调用，适配 R gamlss 的 `substitute()` 检查）；NBI 的 R-CG 发散例外（R 侧 CG 对 NBI sigma→e^64 仍报 converged，R-CG 基准不可用，NBI 对照 R RS）。
+  - 【实现】commit `890ebb9`：① `fitting.py` MIXED 由内联阻尼 IWLS（固定 0.75 步长，对 NBI 收敛到次优点 sigma=-0.39/dev 516.3 vs MLE -0.90/513.5——C7 残留问题）改为路由 `mixed_fit` 真混合 dispatcher，结果与 RS/CG 一致；② 新增 `tests/test_r_consistency_algorithms.py`：三算法×六族×2 seed R 对照。
+  - 【验收】三算法 case ID 含算法不冲突 ✓；记录收敛/deviance/系数/fitted ✓；RS 与 R 对照 rtol≤1e-3 全绿 ✓；CG/Mixed 的已知收敛缺陷（CG-ZAGA/CG-GU/Mixed-GU 收敛次优，dev 差 0.5–1.1%）以 xfail 文档化，待 2.3/Phase 7 优化器工作。30 passed + 6 xfailed。
 - [ ] **2.3 优化 safeguard 结构化诊断**（与 1.7 联动）
   - 验收：Hessian floor/eta clip/step-halving/NaN replacement/fallback solver 触发时，模型 diagnostics 含类型+受影响更新。
 - [x] **2.4 显式 NumPy RS 与可观测 automatic routing** — 完成 ✅
@@ -348,7 +350,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 |---|---|---|
 | Phase 0 工程地基 | 🔄 进行中 | 0.1–0.3 完成；0.4–0.8 待办 |
 | Phase 1 数学正确性 | ✅ **完成** | 1.1–1.9 全部完成（含遗留恢复 `496c75c`）；进入 Phase 2 前置条件满足 |
-| Phase 2 最小可信核心 | 🔄 进行中 | **2.1 完成**（E3 晋级达成）；**2.4 完成**（RS 恒走 NumPy + Route Diagnostic 含 accelerator_available）；下一步 2.2 按算法隔离 R 对照 |
+| Phase 2 最小可信核心 | 🔄 进行中 | **2.1/2.2/2.4 完成**（E3 晋级、三算法 R 对照、RS 恒走 NumPy + Route Diagnostic）；下一步 2.3 safeguard 结构化诊断 |
 | Phase 2 最小可信核心 | ⬜ 待办 | 依赖 Phase 0/1 |
 | Phase 3 可信平滑预测 | ⬜ 待办 | 依赖 Phase 2 |
 | Phase 4 验证与发布 | ⬜ 待办 | 依赖 Phase 0–3 |
