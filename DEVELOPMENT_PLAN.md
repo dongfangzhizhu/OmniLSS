@@ -196,6 +196,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   - 【测试】`tests/test_method_routing_integration.py` 新增：`test_auto_routes_to_rs_below_threshold`（n < threshold → RS）、`test_auto_routes_to_jax_at_threshold`（n == threshold → RS_JAX，与 `n_obs >= threshold` 语义一致）、`test_routing_records_accelerator_available`（CPU 真实拟合记录 False；GPU 决策传递 True）；连同既有 `test_rs_does_not_route_to_jax` / `test_routing_decision_payload_for_auto` 覆盖全部验收点。
   - 【验收】`method="RS"` 恒走 CPU NumPy ✓；`method="auto"` 走路由策略并存 Route Diagnostic ✓；阈值下/等于/上边界测试 ✓；无加速器环境记录 `accelerator_available=False` ✓。method routing 15 项 + config 44 项全绿（`test_yaml_config_loading` 为预先存在的本机环境失败，非本次引入）。
 - [ ] **2.5 `ps`/`cs` 缺陷回归基线（修改实现前）**
+  - 【注】2026-08-09：上会话遗留的 ps"单一训练表示"探索重构（stash `c3b1c9fc`）已**弃用并丢弃**（`git stash drop`，可从 reflog 找回）：该实现将 450 行 B-spline P-spline 改为 180 行截断幂基半成品，签名与 `smooth_fitting.py` 调用不匹配（必然 TypeError），且截断幂基偏离 R 的 `PS.R`（B-spline + 差分惩罚）；HEAD 的 B-spline 实现保持可用（`fit_pspline_smooth` 拟合正常）。Phase 3.2（ps 单一表示）按设计文档正式实现，不复用该探索代码。
   - 验收：精确刻画当前双列占位/追加/陈旧 ownership/newdata schema mismatch 行为，测试标记为修复基线。
 - [ ] **2.6 阶段 1 准入/完成门禁**（对齐 .kiro 1.6）
   - 验收：`--require-r` 全量执行；任一失败阻塞 Phase 3。
