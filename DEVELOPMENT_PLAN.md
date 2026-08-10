@@ -191,8 +191,10 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   - 验收：三算法 case ID 互不冲突；记录收敛、deviance、系数、fitted；与 R 对照 rtol ≤ 1e-3。
 - [ ] **2.3 优化 safeguard 结构化诊断**（与 1.7 联动）
   - 验收：Hessian floor/eta clip/step-halving/NaN replacement/fallback solver 触发时，模型 diagnostics 含类型+受影响更新。
-- [ ] **2.4 显式 NumPy RS 与可观测 automatic routing**
-  - 验收：`method="RS"` 恒走 CPU NumPy；`method="auto"` 走路由策略并存 Route Diagnostic；阈值下/等于/上边界测试；无加速器环境记录 `accelerator_available=False`。
+- [x] **2.4 显式 NumPy RS 与可观测 automatic routing** — 完成 ✅
+  - 【实现】commit `2914041`：`config.py` 的 `build_method_routing_decision` 新增 `accelerator_available` 字段（Route Diagnostic 完整化，validate required 同步）；`fitting.py` 4 处路由决策构造传入 `accelerator_available`（backend ∈ {gpu,tpu} 即 True，否则 False）。
+  - 【测试】`tests/test_method_routing_integration.py` 新增：`test_auto_routes_to_rs_below_threshold`（n < threshold → RS）、`test_auto_routes_to_jax_at_threshold`（n == threshold → RS_JAX，与 `n_obs >= threshold` 语义一致）、`test_routing_records_accelerator_available`（CPU 真实拟合记录 False；GPU 决策传递 True）；连同既有 `test_rs_does_not_route_to_jax` / `test_routing_decision_payload_for_auto` 覆盖全部验收点。
+  - 【验收】`method="RS"` 恒走 CPU NumPy ✓；`method="auto"` 走路由策略并存 Route Diagnostic ✓；阈值下/等于/上边界测试 ✓；无加速器环境记录 `accelerator_available=False` ✓。method routing 15 项 + config 44 项全绿（`test_yaml_config_loading` 为预先存在的本机环境失败，非本次引入）。
 - [ ] **2.5 `ps`/`cs` 缺陷回归基线（修改实现前）**
   - 验收：精确刻画当前双列占位/追加/陈旧 ownership/newdata schema mismatch 行为，测试标记为修复基线。
 - [ ] **2.6 阶段 1 准入/完成门禁**（对齐 .kiro 1.6）
@@ -345,7 +347,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 |---|---|---|
 | Phase 0 工程地基 | 🔄 进行中 | 0.1–0.3 完成；0.4–0.8 待办 |
 | Phase 1 数学正确性 | ✅ **完成** | 1.1–1.9 全部完成（含遗留恢复 `496c75c`）；进入 Phase 2 前置条件满足 |
-| Phase 2 最小可信核心 | 🔄 进行中 | **2.1 完成**（R 一致性 20 项 + 属性测试 38 项 + golden replay 9 项，E3 晋级达成）；下一步 2.2 按算法隔离 R 对照 |
+| Phase 2 最小可信核心 | 🔄 进行中 | **2.1 完成**（E3 晋级达成）；**2.4 完成**（RS 恒走 NumPy + Route Diagnostic 含 accelerator_available）；下一步 2.2 按算法隔离 R 对照 |
 | Phase 2 最小可信核心 | ⬜ 待办 | 依赖 Phase 0/1 |
 | Phase 3 可信平滑预测 | ⬜ 待办 | 依赖 Phase 2 |
 | Phase 4 验证与发布 | ⬜ 待办 | 依赖 Phase 0–3 |
