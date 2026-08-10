@@ -39,6 +39,24 @@ class TestCGV2RConsistency(unittest.TestCase):
         )
         self.assertTrue(r["success"], r.get("error", "R failed"))
         self.assertTrue(r.get("converged", True), "R model not converged")
+
+        if family == "NBI":
+            # Documented exception (Phase 2.2): R's CG algorithm numerically
+            # diverges for NBI (sigma coefficient -> ~64.9, deviance ~15414 vs
+            # the RS baseline ~521) while still reporting converged=TRUE.  The
+            # R-CG reference is therefore unreliable for NBI; validate the
+            # Python CG fit against R's RS baseline (both converge to the MLE).
+            r_rs = self.r_bridge.call_r_gamlss(
+                data=data,
+                formula="y ~ x",
+                family=family,
+                sigma_formula="~1",
+                method="RS",
+            )
+            self.assertTrue(r_rs["success"], r_rs.get("error", "R failed"))
+            self.assertLess(abs(float(py.g_dev) - float(r_rs["deviance"])), 1e-4)
+            return
+
         self.assertLess(abs(float(py.g_dev) - float(r["deviance"])), 1e-4)
 
     def test_no(self):

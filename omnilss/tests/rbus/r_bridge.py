@@ -114,6 +114,7 @@ class RBridge:
         nu_formula: Optional[str] = None,
         tau_formula: Optional[str] = None,
         weights: Optional[np.ndarray] = None,
+        method: str = "RS",
     ) -> Dict[str, Any]:
         """Call R gamlss function.
         
@@ -131,6 +132,8 @@ class RBridge:
             Formula for nu parameter
         tau_formula : str, optional
             Formula for tau parameter
+        method : str, optional
+            Fitting algorithm passed to R gamlss() (e.g. "RS", "CG", "Mixed").
         
         Returns
         -------
@@ -154,6 +157,7 @@ class RBridge:
             "formula": formula,
             "family": family,
             "sigma_formula": sigma_formula,
+            "method": str(method),
         }
         
         if nu_formula is not None:

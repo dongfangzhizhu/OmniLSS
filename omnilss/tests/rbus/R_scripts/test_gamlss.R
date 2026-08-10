@@ -90,9 +90,19 @@ cat(paste("  Columns:", paste(names(data_df), collapse=", "), "\n"), file=stderr
 cat(paste("  Formula:", deparse(mu_formula), "\n"), file=stderr())
 cat(paste("  Family:", family_name, "\n"), file=stderr())
 
-# Fit model
+# Fit model.  gamlss() inspects the literal method expression (RS()/CG()/mixed())
+# via substitute(), so the call must be constructed with the unevaluated
+# expression rather than passed through do.call.
+method_str <- if (!is.null(input$method)) tolower(as.character(input$method)) else "rs"
+method_expr <- switch(method_str,
+  "cg" = quote(CG()),
+  "mixed" = quote(mixed()),
+  "rs" = quote(RS()),
+  stop("unknown gamlss method: ", input$method))
+gamlss_args$method <- method_expr
+
 tryCatch({
-  model <- do.call(gamlss, gamlss_args)
+  model <- eval(as.call(c(list(as.name("gamlss")), gamlss_args)))
   
   # Extract results
   output <- list(
