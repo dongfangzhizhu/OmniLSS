@@ -17,11 +17,18 @@ out_dir <- "omnilss/tests/fixtures/r_golden/regenerated"
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 # ---- case definitions (family, formula, seed, n) ---------------------------
+# Core eight families (DEVELOPMENT_PLAN Phase 2 task 2.1): NO/GA/PO/BI/NBI/BE/
+# ZAGA/GU each get a fixed R golden artifact used as acceptance evidence.
 cases <- list(
   list(case = "ig_y_x_seed_20260522", family = "IG",  formula = "y ~ x", seed = 20260522, n = 60),
   list(case = "po_y_x_seed_20260523", family = "PO",  formula = "y ~ x", seed = 20260523, n = 80),
   list(case = "no_y_x_seed_20260524", family = "NO",  formula = "y ~ x", seed = 20260524, n = 90),
-  list(case = "ga_y_x_seed_20260525", family = "GA",  formula = "y ~ x", seed = 20260525, n = 85)
+  list(case = "ga_y_x_seed_20260525", family = "GA",  formula = "y ~ x", seed = 20260525, n = 85),
+  list(case = "bi_y_x_seed_20260809",  family = "BI",  formula = "y ~ x", seed = 20260809, n = 120),
+  list(case = "nbi_y_x_seed_20260810", family = "NBI", formula = "y ~ x", seed = 20260810, n = 100),
+  list(case = "be_y_x_seed_20260811",  family = "BE",  formula = "y ~ x", seed = 20260811, n = 90),
+  list(case = "zaga_y_x_seed_20260812", family = "ZAGA", formula = "y ~ x", seed = 20260812, n = 120),
+  list(case = "gu_y_x_seed_20260813",  family = "GU",  formula = "y ~ x", seed = 20260813, n = 100)
 )
 
 # ---- helpers ---------------------------------------------------------------
@@ -40,6 +47,22 @@ make_data <- function(seed, n, family) {
   } else if (family == "IG") {
     mu <- exp(0.6 + 0.75 * x)
     y <- rIG(n, mu = mu, sigma = 0.2)
+  } else if (family == "BI") {
+    # Bernoulli semantics (bd=1), matching test_r_consistency_bi.py
+    mu <- plogis(0.2 + 0.6 * x)
+    y <- rBI(n, bd = 1, mu = mu)
+  } else if (family == "NBI") {
+    mu <- exp(0.4 + 0.3 * x)
+    y <- rNBI(n, mu = mu, sigma = 0.3)
+  } else if (family == "BE") {
+    mu <- plogis(0.3 + 0.4 * x)
+    y <- rBE(n, mu = mu, sigma = 0.2)
+  } else if (family == "ZAGA") {
+    mu <- exp(0.5 + 0.2 * x)
+    y <- rZAGA(n, mu = mu, sigma = 0.4, nu = 0.2)
+  } else if (family == "GU") {
+    mu <- 1.0 + 0.5 * x
+    y <- rGU(n, mu = mu, sigma = 0.8)
   } else {
     stop("unknown family ", family)
   }
@@ -78,8 +101,13 @@ for (c in cases) {
     mu_coefficients = as.list(mu_coef),
     deviance = as.numeric(deviance(fit))
   )
-  if ("sigma" %in% fit$parameters) {
-    expected$sigma_coefficients <- as.list(as.numeric(coef(fit, "sigma")))
+  # Record coefficients on the link scale for every estimable parameter
+  # (sigma for GA/NO/IG/BE/NBI/GU/ZAGA, nu for ZAGA), matching what the
+  # OmniLSS replay tests compare against.
+  for (p in fit$parameters) {
+    if (p != "mu") {
+      expected[[paste0(p, "_coefficients")]] <- as.list(as.numeric(coef(fit, p)))
+    }
   }
 
   payload <- list(

@@ -23,6 +23,12 @@ CHECKED_IN = [
     "po_y_x_seed_20260523.json",
     "no_y_x_seed_20260524.json",
     "ga_y_x_seed_20260525.json",
+    # Phase 2.1: remaining core eight families (NO/GA/PO/BI/NBI/BE/ZAGA/GU)
+    "bi_y_x_seed_20260809.json",
+    "nbi_y_x_seed_20260810.json",
+    "be_y_x_seed_20260811.json",
+    "zaga_y_x_seed_20260812.json",
+    "gu_y_x_seed_20260813.json",
 ]
 
 

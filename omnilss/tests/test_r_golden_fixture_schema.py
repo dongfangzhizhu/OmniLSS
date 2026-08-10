@@ -11,6 +11,12 @@ import pytest
         ("po_y_x_seed_20260523.json", False),
         ("no_y_x_seed_20260524.json", True),
         ("ga_y_x_seed_20260525.json", True),
+        # Phase 2.1 core eight families
+        ("bi_y_x_seed_20260809.json", False),
+        ("nbi_y_x_seed_20260810.json", True),
+        ("be_y_x_seed_20260811.json", True),
+        ("zaga_y_x_seed_20260812.json", True),
+        ("gu_y_x_seed_20260813.json", True),
     ],
 )
 def test_r_golden_fixture_schema_is_complete(fixture_name, expected_has_sigma):

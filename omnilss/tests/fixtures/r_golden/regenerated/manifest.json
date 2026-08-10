@@ -4,17 +4,17 @@
     "formula": "y ~ x",
     "seed": 20260522,
     "n": 60,
-    "R_version": "R version 4.5.0 (2025-04-11)",
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
     "gamlss_version": "5.5.0",
     "gamlss_dist_version": "6.1.1",
-    "content_hash": "58264720"
+    "content_hash": "f11eb0e4"
   },
   "po_y_x_seed_20260523": {
     "family": "PO",
     "formula": "y ~ x",
     "seed": 20260523,
     "n": 80,
-    "R_version": "R version 4.5.0 (2025-04-11)",
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
     "gamlss_version": "5.5.0",
     "gamlss_dist_version": "6.1.1",
     "content_hash": "8f50eebe"
@@ -24,19 +24,69 @@
     "formula": "y ~ x",
     "seed": 20260524,
     "n": 90,
-    "R_version": "R version 4.5.0 (2025-04-11)",
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
     "gamlss_version": "5.5.0",
     "gamlss_dist_version": "6.1.1",
-    "content_hash": "83d749c5"
+    "content_hash": "85523b6b"
   },
   "ga_y_x_seed_20260525": {
     "family": "GA",
     "formula": "y ~ x",
     "seed": 20260525,
     "n": 85,
-    "R_version": "R version 4.5.0 (2025-04-11)",
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
     "gamlss_version": "5.5.0",
     "gamlss_dist_version": "6.1.1",
-    "content_hash": "9ea3e78d"
+    "content_hash": "ccd9af92"
+  },
+  "bi_y_x_seed_20260809": {
+    "family": "BI",
+    "formula": "y ~ x",
+    "seed": 20260809,
+    "n": 120,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "cfb82dd3"
+  },
+  "nbi_y_x_seed_20260810": {
+    "family": "NBI",
+    "formula": "y ~ x",
+    "seed": 20260810,
+    "n": 100,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "7ac91d9f"
+  },
+  "be_y_x_seed_20260811": {
+    "family": "BE",
+    "formula": "y ~ x",
+    "seed": 20260811,
+    "n": 90,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "82c0c193"
+  },
+  "zaga_y_x_seed_20260812": {
+    "family": "ZAGA",
+    "formula": "y ~ x",
+    "seed": 20260812,
+    "n": 120,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "021bcf9a"
+  },
+  "gu_y_x_seed_20260813": {
+    "family": "GU",
+    "formula": "y ~ x",
+    "seed": 20260813,
+    "n": 100,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "8535d394"
   }
 }
