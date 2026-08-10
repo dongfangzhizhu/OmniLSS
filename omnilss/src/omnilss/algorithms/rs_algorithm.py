@@ -928,11 +928,14 @@ def rs_fit(
             initial_value = _initial_parameter_value(
                 family, parameter, y, parameter_values["mu"], w
             )
-        warm_param = warm_start_result.initial_fitted.get(parameter)
-        if warm_param is not None:
-            warm_param = np.asarray(warm_param, dtype=np.float64)
-            if warm_param.shape == (n,):
-                initial_value = float(np.mean(warm_param))
+        # NOTE (Phase 2.1): family-aware initialisation (_initial_sigma /
+        # _initial_parameter_value) is the single source of truth for non-mu
+        # parameters.  The generic warm-start heuristic (mu=y_mean, sigma=y_sd,
+        # others=1.0) has no family context and its sigma/nu values can be far
+        # off the R initialisation (e.g. ZAGA: nu=1.0 -> logit(1.0)~36, and
+        # sigma=y_sd vs R's sigma=1), which corrupted the first RS step.
+        # warm_start_result is intentionally not consulted here; see NOTE above.
+        warm_param = None
 
         # Initialize linear predictor
         eta_init = np.full(

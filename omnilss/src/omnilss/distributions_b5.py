@@ -64,9 +64,12 @@ def _zaga_log_pdf_single(y_i: float, mu_i: float, sigma_i: float, nu_i: float) -
     # Ensure y is non-negative
     y_i = jnp.maximum(y_i, 0.0)
     
-    # dGA log pdf with numerical stability
+    # dGA log pdf with numerical stability.
+    # R (ZAGA.R) uses shape=1/sigma^2, scale=mu*sigma^2 without clipping the
+    # shape.  A hard clip of alpha (previously [0.1, 100]) distorted the
+    # density for sigma outside [0.1, 3.16] (e.g. sigma ~ 4 -> alpha clamped
+    # to 0.1), breaking both the likelihood and its gradients there.
     alpha = 1.0 / jnp.square(sigma_i)
-    alpha = jnp.clip(alpha, 0.1, 100.0)
     beta = mu_i / alpha
     beta = jnp.maximum(beta, eps * 10)
     

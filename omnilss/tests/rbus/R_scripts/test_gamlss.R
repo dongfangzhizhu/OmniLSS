@@ -60,9 +60,11 @@ gamlss_args <- list(
   trace = FALSE,
   control = gamlss.control(
     n.cyc = 50,
-    trace = FALSE,
-    gd.tol = 1,  # Much more tolerant
-    c.crit = 0.01
+    trace = FALSE
+    # NOTE (Phase 2.1): default convergence criteria (c.crit=0.001, gd.tol=inf)
+    # are used so the R reference is a properly converged fit.  The previous
+    # c.crit=0.01 / gd.tol=1 made R stop early and produced a loose baseline
+    # that failed against tightly converged Python fits (e.g. GU 0.65%).
   )
 )
 
