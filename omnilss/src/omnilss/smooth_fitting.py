@@ -60,6 +60,11 @@ class SmoothFitInfo:
     knots: Optional[np.ndarray] = None
     degree: Optional[int] = None
     order: Optional[int] = None
+    # Phase 3.1 (design.md Property 8): how lambda was determined.
+    # "user_fixed" (explicit lambda), "df_target" (from df), or
+    # "method_selected" (chosen by selection_method).  The saved Smooth Model
+    # State must retain this origin after any lambda/EDF update.
+    lambda_origin: Optional[str] = None
 
 
 @dataclass
@@ -268,6 +273,7 @@ def build_smooth_design(
                     basis_columns=(current_col, current_col + 1),
                     selection_method=cs_result.selection_method,
                     criterion_value=cs_result.criterion_value,
+                    lambda_origin="df_target",
                 )
             )
             current_col += 1
@@ -351,6 +357,13 @@ def build_smooth_design(
                 knots=np.asarray(getattr(result, "knots", []), dtype=np.float64),
                 degree=int(getattr(result, "degree", info.get("degree", 3))),
                 order=int(getattr(result, "order", info.get("order", 2))),
+                lambda_origin=(
+                    "user_fixed"
+                    if smooth_term.lambda_ is not None
+                    else "df_target"
+                    if smooth_term.df is not None
+                    else "method_selected"
+                ),
             )
         )
 
@@ -622,6 +635,7 @@ def update_smooth_lambdas(
                     knots=smooth.knots,
                     degree=smooth.degree,
                     order=smooth.order,
+                    lambda_origin=smooth.lambda_origin,
                 )
             )
         elif method == "GCV":
@@ -675,6 +689,7 @@ def update_smooth_lambdas(
                     knots=smooth.knots,
                     degree=smooth.degree,
                     order=smooth.order,
+                    lambda_origin=smooth.lambda_origin,
                 )
             )
 
@@ -729,6 +744,7 @@ def update_smooth_lambdas(
                     knots=smooth.knots,
                     degree=smooth.degree,
                     order=smooth.order,
+                    lambda_origin=smooth.lambda_origin,
                 )
             )
 
@@ -823,6 +839,7 @@ def update_smooth_lambdas(
                     knots=smooth.knots,
                     degree=smooth.degree,
                     order=smooth.order,
+                    lambda_origin=smooth.lambda_origin,
                 )
             )
 
