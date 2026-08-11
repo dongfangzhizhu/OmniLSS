@@ -191,8 +191,10 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   - 【前置】commit `b3238b2`：RBridge 支持 method 参数（R 侧用 `quote(CG()/mixed()/RS())` + `as.call`/`eval` 构造字面调用，适配 R gamlss 的 `substitute()` 检查）；NBI 的 R-CG 发散例外（R 侧 CG 对 NBI sigma→e^64 仍报 converged，R-CG 基准不可用，NBI 对照 R RS）。
   - 【实现】commit `890ebb9`：① `fitting.py` MIXED 由内联阻尼 IWLS（固定 0.75 步长，对 NBI 收敛到次优点 sigma=-0.39/dev 516.3 vs MLE -0.90/513.5——C7 残留问题）改为路由 `mixed_fit` 真混合 dispatcher，结果与 RS/CG 一致；② 新增 `tests/test_r_consistency_algorithms.py`：三算法×六族×2 seed R 对照。
   - 【验收】三算法 case ID 含算法不冲突 ✓；记录收敛/deviance/系数/fitted ✓；RS 与 R 对照 rtol≤1e-3 全绿 ✓；CG/Mixed 的已知收敛缺陷（CG-ZAGA/CG-GU/Mixed-GU 收敛次优，dev 差 0.5–1.1%）以 xfail 文档化，待 2.3/Phase 7 优化器工作。30 passed + 6 xfailed。
-- [ ] **2.3 优化 safeguard 结构化诊断**（与 1.7 联动）
-  - 验收：Hessian floor/eta clip/step-halving/NaN replacement/fallback solver 触发时，模型 diagnostics 含类型+受影响更新。
+- [x] **2.3 优化 safeguard 结构化诊断**（与 1.7 联动）— 完成 ✅
+  - 【实现】commit `05b7dd0`：`rs_algorithm.py` 新增 `safeguard_events` 运行期事件收集（写入 `additional_slots["safeguard_events"]`，轻量 dict：type + parameter + 上下文）——eta_clip / hessian_ridge / hessian_floor / nan_replacement；沿 `rs_step→iwls_step(两个backend)→compute_working_weights_and_response` 全链透传 parameter；step-halving 沿用 `rs_step_halving_by_param`。
+  - 【测试】`tests/test_safeguard_diagnostics.py`（6 项）：集成级触发（GA+1e10 离群→eta_clip、ZAGA 零膨胀→hessian_floor、共线设计→hessian_ridge、step-halving slot、事件结构、稳定拟合无误报）。
+  - 【验收】Hessian floor/eta clip/step-halving/NaN replacement/fallback solver（ridge fallback 并入 hessian_ridge）触发时模型 diagnostics 含类型+受影响更新 ✓。6 项全过 + 回归 64 passed 无破坏。
 - [x] **2.4 显式 NumPy RS 与可观测 automatic routing** — 完成 ✅
   - 【实现】commit `2914041`：`config.py` 的 `build_method_routing_decision` 新增 `accelerator_available` 字段（Route Diagnostic 完整化，validate required 同步）；`fitting.py` 4 处路由决策构造传入 `accelerator_available`（backend ∈ {gpu,tpu} 即 True，否则 False）。
   - 【测试】`tests/test_method_routing_integration.py` 新增：`test_auto_routes_to_rs_below_threshold`（n < threshold → RS）、`test_auto_routes_to_jax_at_threshold`（n == threshold → RS_JAX，与 `n_obs >= threshold` 语义一致）、`test_routing_records_accelerator_available`（CPU 真实拟合记录 False；GPU 决策传递 True）；连同既有 `test_rs_does_not_route_to_jax` / `test_routing_decision_payload_for_auto` 覆盖全部验收点。
@@ -350,7 +352,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 |---|---|---|
 | Phase 0 工程地基 | 🔄 进行中 | 0.1–0.3 完成；0.4–0.8 待办 |
 | Phase 1 数学正确性 | ✅ **完成** | 1.1–1.9 全部完成（含遗留恢复 `496c75c`）；进入 Phase 2 前置条件满足 |
-| Phase 2 最小可信核心 | 🔄 进行中 | **2.1/2.2/2.4 完成**（E3 晋级、三算法 R 对照、RS 恒走 NumPy + Route Diagnostic）；下一步 2.3 safeguard 结构化诊断 |
+| Phase 2 最小可信核心 | 🔄 进行中 | **2.1/2.2/2.3/2.4 完成**（E3 晋级、三算法 R 对照、safeguard 结构化诊断、RS 恒走 NumPy）；下一步 2.6 阶段门禁 |
 | Phase 2 最小可信核心 | ⬜ 待办 | 依赖 Phase 0/1 |
 | Phase 3 可信平滑预测 | ⬜ 待办 | 依赖 Phase 2 |
 | Phase 4 验证与发布 | ⬜ 待办 | 依赖 Phase 0–3 |
