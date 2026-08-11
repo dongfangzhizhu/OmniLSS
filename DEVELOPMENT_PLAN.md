@@ -224,8 +224,12 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   - 【测试】+5 项生命周期断言（ps 三输入产生不同且保持的 lambda；df_target EDF 跟踪目标 df（R 语义 edf=df+2）；user_fixed 保持精确值；不被迭代覆盖）。
 - [x] **3.3 `cs` 单一表示 + lambda/EDF 生命周期** — 完成 ✅ commit `5ae8b49`
   - 【实现】cs 的单一表示与 origin 由 3.1/3.2 覆盖；本任务补测试（cs EDF 随目标 df 单调（knots 推导近似，默认 df=3→edf 5）；cs df-targeted lambda 在 GCV 更新后保持）。
-- [ ] **3.4 RS 平滑器更新诊断**（old/new lambda、EDF、working-response/weight summary、solver status）
-- [ ] **3.5 saved-state `newdata` 重建成功契约**（仅由 Smooth Model State 重建，禁止隐式列对齐）
+- [x] **3.4 RS 平滑器更新诊断**（old/new lambda、EDF、working-response/weight summary、solver status）— 完成 ✅ commit `fdff22b`
+  - 【实现】`rs_fit` 每次平滑器 lambda 更新记录结构化诊断（`additional_slots["smooth_lambda_diagnostics"]`）：parameter/iteration/smoother/old_lambda/new_lambda/edf/lambda_origin/working_response+weights 摘要/solver_status（preserved=固定 origin、reestimated=method_selected、failed）；新增 `_summary_stats`。
+  - 【测试】`tests/test_smooth_diagnostics.py` 5 项（字段完整性、重估/保留/failed、跨迭代覆盖、无平滑无诊断）。
+- [x] **3.5 saved-state `newdata` 重建成功契约**（仅由 Smooth Model State 重建，禁止隐式列对齐）— 完成 ✅ commit `4ec135c`
+  - 【实现】`SmoothFitInfo.cs_state`（x/y/w/s/实际 spline degree k=5）保存 cs 完整重建状态；`prediction.py` cs 由 cs_state 重建 UnivariateSpline（不再拒绝），重建含占位列匹配训练 schema；`_jsonish_smooth_entry` 序列化 cs_state；ps/pb 沿用保存 knots/degree 重建。
+  - 【测试】`tests/test_smooth_newdata_rebuild.py` 11 项（ps/pb/cs 训练点预测复现 fitted、不同长度 newdata、缺列拒绝、cs_state 完整性）；2.5 基线 cs 预测测试更新为"重建成功"。
 - [ ] **3.6 严格 `PredictionSchemaError` 契约**（term id + expected/actual schema + state version）
 - [ ] **3.7 smoother admission 晋级与 E3/E4 指标；`UnsupportedSmootherError` fail-closed**（lo/random/re/ri/pcat/fp/bfp/cy/pvc/pbm/pbz/pbo/pbc/pbp/scs 未验证即拒绝）
 - [ ] **3.8 阶段 2 最终完成门禁**（对齐 .kiro 2.8；Release 1 完成条件）
@@ -361,7 +365,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 1 数学正确性 | ✅ **完成** | 1.1–1.9 全部完成（含遗留恢复 `496c75c`）；进入 Phase 2 前置条件满足 |
 | Phase 2 最小可信核心 | ✅ **完成** | 2.1–2.6 全部完成（E3 晋级、三算法 R 对照、safeguard 诊断、RS 路由、ps/cs 基线、stage1 门禁）；Phase 3 前置满足 |
 | Phase 2 最小可信核心 | ✅ 完成 | 见上 |
-| Phase 3 可信平滑预测 | 🔄 进行中 | 3.1/3.2/3.3 完成（单一 managed 表示 + lambda origin 生命周期）；下一步 3.4 RS 平滑器更新诊断 |
+| Phase 3 可信平滑预测 | 🔄 进行中 | 3.1–3.5 完成（单一表示、lambda 生命周期、更新诊断、newdata 重建）；下一步 3.6 严格 PredictionSchemaError 契约 |
 | Phase 4 验证与发布 | ⬜ 待办 | 依赖 Phase 0–3 |
 | Phase 5 服务层安全 | ⬜ 待办 | 公网部署前必须完成 |
 | Phase 6 在线层修复 | ⬜ 待办 | 可并行 |
