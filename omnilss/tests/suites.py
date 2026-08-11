@@ -181,6 +181,38 @@ SUITES: OrderedDict[str, list[str]] = OrderedDict(
             ],
         ),
         (
+            "stage1_gate",
+            [
+                # Phase 2.1: core eight families R consistency
+                "tests.test_r_consistency_no",
+                "tests.test_r_consistency_ga",
+                "tests.test_r_consistency_po",
+                "tests.test_r_consistency_bi",
+                "tests.test_r_consistency_nbi",
+                "tests.test_r_consistency_be",
+                "tests.test_r_consistency_zaga",
+                "tests.test_r_consistency_gu",
+                # Phase 2.2: per-algorithm (RS/CG/Mixed) R consistency
+                "tests.test_r_consistency_algorithms",
+                # Phase 2.4: method routing
+                "tests.test_method_routing_integration",
+                # Phase 2.1: fixed R golden artifacts
+                "tests.test_r_golden_fixture_no",
+                "tests.test_r_golden_fixture_ga",
+                "tests.test_r_golden_fixture_po",
+                "tests.test_r_golden_fixture_bi",
+                "tests.test_r_golden_fixture_nbi",
+                "tests.test_r_golden_fixture_be",
+                "tests.test_r_golden_fixture_zaga",
+                "tests.test_r_golden_fixture_gu",
+                "tests.test_r_golden_fixture_ig",
+                # ps/cs baseline (Phase 2.5)
+                "tests.test_ps",
+                "tests.test_cs",
+                "tests.test_r_consistency_smooth",
+            ],
+        ),
+        (
             "quick",
             [
                 "tests.test_operations",
@@ -277,6 +309,7 @@ SUITE_ALIASES = {
     "smoothers": "unit_smoothers",
     "consistency": "consistency_all",
     "phase0": "phase0_gate",
+    "stage1": "stage1_gate",
 }
 
 

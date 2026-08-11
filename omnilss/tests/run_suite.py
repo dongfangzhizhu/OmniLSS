@@ -79,6 +79,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Stop on first failure.",
     )
+    parser.add_argument(
+        "--require-r",
+        action="store_true",
+        dest="require_r",
+        help=(
+            "Phase gate (fail-closed): any skipped test or module is treated "
+            "as a failure.  Required-R suites must not pass with skips or "
+            "smoke-only results (DEVELOPMENT_PLAN 2.6 / .kiro 1.6)."
+        ),
+    )
     return parser
 
 
@@ -109,9 +119,9 @@ def resolve_requested_modules(args: argparse.Namespace) -> list[str]:
     return dedupe(requested)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.list:
         return list_suites()
@@ -138,11 +148,29 @@ def main() -> int:
             print(f"- {issue.module}: {issue.reason}")
         return 1
 
+    if args.require_r and skipped_modules:
+        print(
+            "ERROR: --require-r is fail-closed but the following modules were "
+            "skipped during loading (R unavailable?):"
+        )
+        for issue in skipped_modules:
+            print(f"- {issue.module}: {issue.reason}")
+        return 1
+
     runner = unittest.TextTestRunner(
         verbosity=2 if args.verbose else 1,
         failfast=args.failfast,
     )
     result = runner.run(suite)
+    if args.require_r and result.skipped:
+        print(
+            "ERROR: --require-r is fail-closed but {} test(s) were skipped "
+            "(R unavailable?):".format(len(result.skipped))
+        )
+        for test, reason in result.skipped[:20]:
+            print(f"- {test}: {reason}")
+        print("Phase gate NOT passed: skips are not allowed under --require-r.")
+        return 1
     if args.suites:
         requested_names = ", ".join(resolve_suite_name(name) for name in args.suites)
     elif args.modules:
