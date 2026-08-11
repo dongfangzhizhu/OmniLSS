@@ -213,6 +213,32 @@ SUITES: OrderedDict[str, list[str]] = OrderedDict(
             ],
         ),
         (
+            "stage2_gate",
+            [
+                # Phase 3: pb/ps/cs parsing, basis/penalty, lambda/EDF, fit,
+                # newdata prediction and admission (Release 1 completion gate).
+                "tests.test_bsplines",
+                "tests.test_pb",
+                "tests.test_ps",
+                "tests.test_cs",
+                "tests.test_formula",
+                "tests.test_smooth_fitting",
+                "tests.test_gamlss_with_smooths",
+                "tests.test_gamlss_ml_smooth",
+                "tests.test_smooth_lambda_origin",
+                "tests.test_smooth_diagnostics",
+                "tests.test_smooth_newdata_rebuild",
+                "tests.test_smooth_baseline",
+                "tests.test_smoother_admission",
+                "tests.test_prediction_schema_contract",
+                "tests.test_safeguard_diagnostics",
+                # Smoother R consistency + fixed-R artifact provenance
+                "tests.test_r_consistency_smooth",
+                "tests.test_r_golden_manifest",
+                "tests.test_r_golden_fixture_schema",
+            ],
+        ),
+        (
             "quick",
             [
                 "tests.test_operations",
@@ -310,6 +336,7 @@ SUITE_ALIASES = {
     "consistency": "consistency_all",
     "phase0": "phase0_gate",
     "stage1": "stage1_gate",
+    "stage2": "stage2_gate",
 }
 
 

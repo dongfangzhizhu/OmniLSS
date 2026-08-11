@@ -236,7 +236,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [x] **3.7 smoother admission 晋级与 E3/E4 指标；`UnsupportedSmootherError` fail-closed**（lo/random/re/ri/pcat/fp/bfp/cy/pvc/pbm/pbz/pbo/pbc/pbp/scs 未验证即拒绝）— 完成 ✅ commit `33dd89a`
   - 【实现】新建 `smoother_admission.py`（UnsupportedSmootherError 含名称+缺失能力、ADMITTED_SMOOTHERS={pb,ps,cs}、RELEASE1_CAPABILITIES 七项、check_smoother_admission）；`build_smooth_design` 门禁 + tensor_terms(te/ti) 拒绝；`formula_parser` s() 的 bs= 参数映射修复 + 未实现分支统一抛错；`_has_smooth_terms` pattern 补 s/te/ti/fp 等（修复 s()/te() 被当普通线性项静默丢弃的缺陷）。
   - 【测试】`tests/test_smoother_admission.py` 24 项（准入 + 17 种未验证 smoother 全部 fail-closed）。
-- [ ] **3.8 阶段 2 最终完成门禁**（对齐 .kiro 2.8；Release 1 完成条件）
+- [x] **3.8 阶段 2 最终完成门禁**（对齐 .kiro 2.8；Release 1 完成条件）— 完成 ✅
+  - 【实现】`suites.py` 新增 `stage2_gate` suite（18 模块，别名 `stage2`）：pb/ps/cs parsing/basis/penalty/lambda-EDF/fit/newdata/admission（test_bsplines/test_pb/test_ps/test_cs/test_formula/test_smooth_fitting/test_gamlss_with_smooths/test_gamlss_ml_smooth/test_smooth_lambda_origin/test_smooth_diagnostics/test_smooth_newdata_rebuild/test_smooth_baseline/test_smoother_admission/test_prediction_schema_contract/test_safeguard_diagnostics）+ 平滑 R 一致性（test_r_consistency_smooth）+ fixed-R artifact 出处（test_r_golden_manifest/test_r_golden_fixture_schema）。
+  - 【验收】`--require-r` 全量执行 ✓（复用 2.6 门禁机制，skip 即失败）；本机实测代表性模块（admission/lambda 生命周期/平滑 R 一致性）无 skip 退出 0；Release 1 完成条件 = Phase 3 全绿 + Phase 4 发布体系（按依赖规则 Phase 4 不完成不得发布）。
 
 ---
 
@@ -369,7 +371,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 1 数学正确性 | ✅ **完成** | 1.1–1.9 全部完成（含遗留恢复 `496c75c`）；进入 Phase 2 前置条件满足 |
 | Phase 2 最小可信核心 | ✅ **完成** | 2.1–2.6 全部完成（E3 晋级、三算法 R 对照、safeguard 诊断、RS 路由、ps/cs 基线、stage1 门禁）；Phase 3 前置满足 |
 | Phase 2 最小可信核心 | ✅ 完成 | 见上 |
-| Phase 3 可信平滑预测 | 🔄 进行中 | 3.1–3.7 完成；剩 3.8 阶段门禁（Release 1 完成条件） |
+| Phase 3 可信平滑预测 | ✅ **完成** | 3.1–3.8 全部完成（单一表示、lambda 生命周期、更新诊断、newdata 重建、schema 契约、admission、stage2 门禁）；Phase 4 前置满足 |
 | Phase 4 验证与发布 | ⬜ 待办 | 依赖 Phase 0–3 |
 | Phase 5 服务层安全 | ⬜ 待办 | 公网部署前必须完成 |
 | Phase 6 在线层修复 | ⬜ 待办 | 可并行 |
