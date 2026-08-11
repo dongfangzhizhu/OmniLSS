@@ -105,6 +105,10 @@ def test_prediction_schema_error_to_dict_envelope():
         "term": "factor(grp)",
         "reason": "unseen factor levels ['c']",
         "message": "bad prediction schema",
+        # Phase 3.6: structured schema context (None when not provided).
+        "expected_schema": None,
+        "actual_schema": None,
+        "state_version": None,
     }
 
 

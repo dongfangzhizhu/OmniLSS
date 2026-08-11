@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+import re
+
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
@@ -28,14 +30,22 @@ class PredictionSchemaError(ValueError):
         term: str | None = None,
         reason: str | None = None,
         code: str = "prediction_schema_error",
+        expected_schema: dict[str, object] | None = None,
+        actual_schema: dict[str, object] | None = None,
+        state_version: str | None = None,
     ) -> None:
         self.parameter = parameter
         self.term = term
         self.reason = reason or message
         self.code = code
+        # Phase 3.6 (design.md Property 11): identify both expected and actual
+        # schema plus the saved Smooth Model State version.
+        self.expected_schema = expected_schema
+        self.actual_schema = actual_schema
+        self.state_version = state_version
         super().__init__(message)
 
-    def to_dict(self) -> dict[str, str | None]:
+    def to_dict(self) -> dict[str, object]:
         """Return a stable client-facing error envelope."""
 
         return {
@@ -44,6 +54,9 @@ class PredictionSchemaError(ValueError):
             "term": self.term,
             "reason": self.reason,
             "message": str(self),
+            "expected_schema": self.expected_schema,
+            "actual_schema": self.actual_schema,
+            "state_version": self.state_version,
         }
 
 
@@ -60,6 +73,21 @@ def build_prediction_design_matrix(
     return _build_design_matrix_for_prediction(model, param, newdata)
 
 
+def _schema_variables(design_schema: dict[str, object]) -> list[str]:
+    """Extract the variable names expected by a saved design schema (Phase 3.6)."""
+    terms = design_schema.get("term_order") or []
+    variables: set[str] = set()
+    for term in terms:
+        smooth_match = re.match(r"^(\w+)\((.+)\)$", str(term))
+        if smooth_match:
+            variables.add(smooth_match.group(2).split(",")[0].strip())
+        else:
+            candidate = str(term).strip()
+            if candidate not in {"1", "-1", "0"}:
+                variables.add(candidate)
+    return sorted(variables)
+
+
 def _prediction_schema_error(
     message: str,
     *,
@@ -67,9 +95,19 @@ def _prediction_schema_error(
     term: str | None = None,
     reason: str | None = None,
     code: str = "prediction_schema_error",
+    expected_schema: dict[str, object] | None = None,
+    actual_schema: dict[str, object] | None = None,
+    state_version: str | None = None,
 ) -> PredictionSchemaError:
     return PredictionSchemaError(
-        message, parameter=parameter, term=term, reason=reason, code=code
+        message,
+        parameter=parameter,
+        term=term,
+        reason=reason,
+        code=code,
+        expected_schema=expected_schema,
+        actual_schema=actual_schema,
+        state_version=state_version,
     )
 
 
@@ -237,6 +275,7 @@ def _build_design_matrix_for_prediction(
     param_smooth_entries = _smooth_entries_for_parameter(smooth_infos, param)
     schema = ensure_model_design_schema(model)
     design_schema = (schema.get("parameters", {}) or {}).get(param, {})
+    state_version = schema.get("version")
     formula = design_schema.get("formula") or model.formulas.get(param, "")
     if not formula or "~" not in formula:
         raise _prediction_schema_error(
@@ -308,6 +347,9 @@ def _build_design_matrix_for_prediction(
                     term=term_str,
                     reason=f"missing variable {var_name!r}",
                     code="missing_variable",
+                    expected_schema={"variables": [var_name]},
+                    actual_schema={"variables": sorted(str(k) for k in newdata)},
+                    state_version=state_version,
                 )
 
             smoother_type = (
@@ -424,6 +466,9 @@ def _build_design_matrix_for_prediction(
                     term=term_str,
                     reason=str(exc),
                     code="term_evaluation_failed",
+                    expected_schema={"variables": _schema_variables(design_schema)},
+                    actual_schema={"variables": sorted(str(k) for k in newdata)},
+                    state_version=state_version,
                 ) from exc
 
     if not columns:
@@ -474,6 +519,9 @@ def _build_design_matrix_for_prediction(
             parameter=param,
             reason="prediction column count does not match saved schema",
             code="schema_column_mismatch",
+            expected_schema={"n_columns": int(expected_columns)},
+            actual_schema={"n_columns": int(X_new.shape[1])},
+            state_version=state_version,
         )
 
     if param in model.coefficients:
@@ -485,6 +533,9 @@ def _build_design_matrix_for_prediction(
                 parameter=param,
                 reason="prediction column count does not match coefficients",
                 code="coefficient_column_mismatch",
+                expected_schema={"n_columns": int(n_coefs)},
+                actual_schema={"n_columns": int(X_new.shape[1])},
+                state_version=state_version,
             )
 
     return X_new
