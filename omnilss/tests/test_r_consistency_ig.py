@@ -93,7 +93,7 @@ class TestIGConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_sigma_coef,
             r_sigma_coef,
-            rtol=0.05,
+            rtol=1e-3,
             atol=0.05,
             err_msg="Sigma coefficients differ between Python and R"
         )
@@ -159,7 +159,7 @@ class TestIGConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_mu_coef,
             r_mu_coef,
-            rtol=0.02,
+            rtol=1e-3,
             atol=0.01,
             err_msg="Mu coefficients differ between Python and R"
         )
@@ -171,7 +171,7 @@ class TestIGConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_mu_fitted,
             r_mu_fitted,
-            rtol=0.02,
+            rtol=1e-3,
             atol=0.01,
             err_msg="Fitted values differ between Python and R"
         )
@@ -232,10 +232,13 @@ class TestIGConsistency(unittest.TestCase):
         py_mu_coef = py_model.coefficients["mu"]
         r_mu_coef = np.array(r_result["coefficients"]["mu"])
         
+        # Phase 4.2: documented exception — IG multi-covariate coefficients
+        # differ from R by ~0.4% (deviance agrees to 1e-8); IG parameter
+        # sensitivity, tracked for the fitting engine work.
         np.testing.assert_allclose(
             py_mu_coef,
             r_mu_coef,
-            rtol=0.02,
+            rtol=1e-2,
             atol=0.01,
             err_msg="Mu coefficients differ for multiple predictors"
         )
@@ -247,16 +250,16 @@ class TestIGConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_mu_fitted,
             r_mu_fitted,
-            rtol=0.02,
+            rtol=1e-2,
             atol=0.01,
             err_msg="Fitted values differ for multiple predictors"
         )
         
-        # Compare deviance
+        # Compare deviance (Phase 4.2: tightened to 1e-3; measured 1.6e-8)
         np.testing.assert_allclose(
             deviance(py_model),
             r_result["deviance"],
-            rtol=0.01,
+            rtol=1e-3,
             atol=2.0
         )
         

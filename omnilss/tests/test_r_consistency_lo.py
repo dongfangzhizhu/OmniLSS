@@ -155,7 +155,7 @@ class TestLOConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_mu_coef,
             r_mu_coef,
-            rtol=0.02,
+            rtol=1e-3,
             atol=0.05,
             err_msg="Mu coefficients differ between Python and R"
         )
@@ -167,7 +167,7 @@ class TestLOConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_mu_fitted,
             r_mu_fitted,
-            rtol=0.02,
+            rtol=1e-3,
             atol=0.05,
             err_msg="Fitted values differ between Python and R"
         )
@@ -228,7 +228,7 @@ class TestLOConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_mu_coef,
             r_mu_coef,
-            rtol=0.02,
+            rtol=1e-3,
             atol=0.05,
             err_msg="Mu coefficients differ for multiple predictors"
         )
@@ -240,7 +240,7 @@ class TestLOConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_mu_fitted,
             r_mu_fitted,
-            rtol=0.02,
+            rtol=1e-3,
             atol=0.05,
             err_msg="Fitted values differ for multiple predictors"
         )

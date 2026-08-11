@@ -77,7 +77,7 @@ class TestBEINFConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_mu_coef,
             r_mu_coef,
-            rtol=1e-1,
+            rtol=1e-3,
             atol=1e-2,
             err_msg="Mu coefficients differ between Python and R"
         )
@@ -88,7 +88,7 @@ class TestBEINFConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_deviance,
             r_deviance,
-            rtol=1e-1,
+            rtol=1e-3,
             atol=1e-2,
             err_msg="Deviance differs between Python and R"
         )
@@ -134,7 +134,7 @@ class TestBEINFConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_mu_coef,
             r_mu_coef,
-            rtol=1e-1,
+            rtol=1e-3,
             atol=1e-2,
             err_msg="Mu coefficients differ between Python and R"
         )
@@ -145,7 +145,7 @@ class TestBEINFConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_deviance,
             r_deviance,
-            rtol=1e-1,
+            rtol=1e-3,
             atol=1e-2,
             err_msg="Deviance differs between Python and R"
         )

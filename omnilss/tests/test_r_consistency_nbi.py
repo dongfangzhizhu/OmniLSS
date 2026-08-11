@@ -96,7 +96,7 @@ class TestNBIConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_sigma_coef,
             r_sigma_coef,
-            rtol=0.25,
+            rtol=1e-3,
             atol=0.2,
             err_msg="Sigma coefficients differ between Python and R"
         )
@@ -162,7 +162,7 @@ class TestNBIConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_mu_coef,
             r_mu_coef,
-            rtol=0.02,
+            rtol=1e-3,
             atol=0.01,
             err_msg="Mu coefficients differ between Python and R"
         )
@@ -174,7 +174,7 @@ class TestNBIConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_mu_fitted,
             r_mu_fitted,
-            rtol=0.02,
+            rtol=1e-3,
             atol=0.01,
             err_msg="Fitted values differ between Python and R"
         )
@@ -238,7 +238,7 @@ class TestNBIConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_mu_coef,
             r_mu_coef,
-            rtol=0.02,
+            rtol=1e-3,
             atol=0.01,
             err_msg="Mu coefficients differ for multiple predictors"
         )
@@ -250,7 +250,7 @@ class TestNBIConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_mu_fitted,
             r_mu_fitted,
-            rtol=0.02,
+            rtol=1e-3,
             atol=0.01,
             err_msg="Fitted values differ for multiple predictors"
         )

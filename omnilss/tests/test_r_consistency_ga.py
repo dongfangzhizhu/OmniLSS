@@ -96,7 +96,7 @@ class TestGAConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_sigma_coef,
             r_sigma_coef,
-            rtol=1e-1,
+            rtol=1e-3,
             atol=1e-2,
             err_msg="Sigma coefficients differ between Python and R"
         )
@@ -120,7 +120,7 @@ class TestGAConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_sigma_fitted,
             r_sigma_fitted,
-            rtol=1e-1,
+            rtol=1e-3,
             atol=1e-2,
             err_msg="Sigma fitted values differ between Python and R"
         )
@@ -201,7 +201,7 @@ class TestGAConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_sigma_coef,
             r_sigma_coef,
-            rtol=1e-1,
+            rtol=1e-3,
             atol=1e-2
         )
     
