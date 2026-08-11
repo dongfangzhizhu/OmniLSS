@@ -93,6 +93,8 @@ class NumpySolverBackend(SolverBackend):
         hessian: np.ndarray,
         link_derivative: np.ndarray,
         offset: np.ndarray,
+        safeguard_events: list[dict[str, object]] | None = None,
+        parameter: str | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
         iter_w, z = compute_working_weights_and_response(
             y=state.fitted,
@@ -102,6 +104,8 @@ class NumpySolverBackend(SolverBackend):
             second_derivative=hessian,
             offset=offset,
             eta=state.eta,
+            safeguard_events=safeguard_events,
+            parameter=parameter,
         )
         return z, iter_w
 
@@ -164,6 +168,8 @@ class JaxSolverBackend(SolverBackend):
         hessian: np.ndarray,
         link_derivative: np.ndarray,
         offset: np.ndarray,
+        safeguard_events: list[dict[str, object]] | None = None,
+        parameter: str | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
         iter_w, z = compute_working_weights_and_response(
             y=state.fitted,
@@ -173,6 +179,8 @@ class JaxSolverBackend(SolverBackend):
             second_derivative=hessian,
             offset=offset,
             eta=state.eta,
+            safeguard_events=safeguard_events,
+            parameter=parameter,
         )
         return z, iter_w
 
@@ -255,6 +263,8 @@ def compute_working_weights_and_response(
     second_derivative: np.ndarray,
     offset: np.ndarray,
     eta: np.ndarray,
+    safeguard_events: list[dict[str, object]] | None = None,
+    parameter: str | None = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Compute working weights and working response for IRLS.
 
@@ -296,7 +306,14 @@ def compute_working_weights_and_response(
     This follows the GLIM algorithm as described in Rigby & Stasinopoulos (2005).
     """
     # Ensure second derivative is negative (for concave log-likelihood)
+    floor_applied = np.sum(second_derivative >= -1e-15)
     second_derivative = np.where(second_derivative < -1e-15, second_derivative, -1e-15)
+    if safeguard_events is not None and floor_applied > 0:
+        safeguard_events.append({
+            "type": "hessian_floor",
+            "parameter": parameter,
+            "n_floor": int(floor_applied),
+        })
 
     # Compute working weights
     # w = -(d²l/dθ²) / (dη/dμ)²
@@ -312,7 +329,14 @@ def compute_working_weights_and_response(
     )
 
     # Handle NaN values (can occur with mixed distributions)
+    n_nan = int(np.sum(np.isnan(working_response)))
     working_response = np.where(np.isnan(working_response), 0.0, working_response)
+    if safeguard_events is not None and n_nan > 0:
+        safeguard_events.append({
+            "type": "nan_replacement",
+            "parameter": parameter,
+            "n_replaced": n_nan,
+        })
 
     # R's glim.fit does NOT clip the working response; a hard ±1e6 clip
     # corrupted IRLS for zero-inflated data (e.g. y=0 in Poisson made the
@@ -347,6 +371,7 @@ def rs_step(
     verbose: bool = False,
     smooth_info=None,  # 新增：SmoothDesignInfo 或 None
     solver_backend: SolverBackend | None = None,
+    safeguard_events: list[dict[str, object]] | None = None,
 ) -> RSStepResult:
     """Perform one RS algorithm step for a single parameter.
 
@@ -486,6 +511,8 @@ def rs_step(
         hessian=second_deriv,
         link_derivative=link_deriv,
         offset=offset,
+        safeguard_events=safeguard_events,
+        parameter=parameter,
     )
 
     for iteration in range(max_iter):
@@ -538,6 +565,13 @@ def rs_step(
             gram = WX_np.T @ WX_np
             stabilized = stabilize_hessian(gram)
             last_condition_number = stabilized.condition_number
+            if (safeguard_events is not None) and stabilized.lambda_value > 0.0:
+                safeguard_events.append({
+                    "type": "hessian_ridge",
+                    "parameter": parameter,
+                    "iteration": iteration,
+                    "lambda": float(stabilized.lambda_value),
+                })
             coef = backend.wls_solve(
                 design=X,
                 working_response=working_response,
@@ -558,6 +592,14 @@ def rs_step(
         eta_clipped = np.clip(eta_candidate, eta_lo, eta_hi)
         if np.any(eta_clipped != eta_candidate):
             n_clipped = int(np.sum(eta_clipped != eta_candidate))
+            if safeguard_events is not None:
+                safeguard_events.append({
+                    "type": "eta_clip",
+                    "parameter": parameter,
+                    "iteration": iteration,
+                    "n_clipped": n_clipped,
+                    "total": int(len(eta_candidate)),
+                })
             warnings.warn(
                 f"eta clipped for parameter '{parameter}' (link='{link_name}'): {n_clipped}/{len(eta_candidate)} values out of [{eta_lo}, {eta_hi}]",
                 ConvergenceWarning,
@@ -634,6 +676,8 @@ def rs_step(
             hessian=second_deriv,
             link_derivative=link_deriv,
             offset=offset,
+            safeguard_events=safeguard_events,
+            parameter=parameter,
         )
 
     return RSStepResult(
@@ -1006,6 +1050,10 @@ def rs_fit(
     # Step sizes for each parameter
     step_sizes = {"mu": mu_step, "sigma": sigma_step, "nu": nu_step, "tau": tau_step}
 
+    # Phase 2.3: structured safeguard diagnostics collected during fitting
+    # (eta_clip / hessian_ridge / hessian_floor / nan_replacement / step_halving).
+    safeguard_events: list[dict[str, object]] = []
+
     # Outer loop: iterate until convergence
     iteration = 0
     converged = False
@@ -1058,6 +1106,7 @@ def rs_fit(
                 verbose=False,
                 smooth_info=param_smooth_info,  # 新增
                 solver_backend=solver_backend,
+                safeguard_events=safeguard_events,
             )
 
             # 记录 IRLS 工作向量，用于λ更新
@@ -1363,6 +1412,7 @@ def rs_fit(
             "warm_start_policy": warm_start.name,
             "warm_start_metadata": dict(warm_start_result.metadata),
             "solver_backend": solver_backend.name,
+            "safeguard_events": tuple(safeguard_events),
         },
     )
 
