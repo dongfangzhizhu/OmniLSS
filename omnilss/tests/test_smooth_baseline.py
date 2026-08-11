@@ -59,8 +59,9 @@ def test_ps_baseline_basis_expansion(smooth_data) -> None:
     fits = _smooth_fits(model)
     assert len(fits) == 1
     assert fits[0].smoother == "ps"
-    # Baseline defect: basis_columns=(1, 24) but the matrix has 24 columns
-    # starting at 0 (stale-ownership metadata mismatch, recorded as baseline).
+    # X = intercept (1 col) + B-spline basis (23 cols, ps_intervals=20,
+    # degree=3 -> 23 basis functions).  basis_columns=(1, 24) points at the
+    # basis columns and is consistent with the matrix (verified Phase 3.2).
     assert fits[0].basis_columns == (1, 24)
 
 

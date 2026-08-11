@@ -573,6 +573,14 @@ def update_smooth_lambdas(
     updated_fits = []
 
     for smooth in smooth_fits:
+        # Phase 3.2 / design.md Property 8: user-fixed and DF-targeted lambdas
+        # are not re-estimated during RS iterations — the user's lambda (or the
+        # lambda solving the target df) is the managed value.  Only
+        # method_selected lambdas are re-estimated (ML/GCV/GAIC/REML).
+        if smooth.lambda_origin in {"user_fixed", "df_target"}:
+            updated_fits.append(smooth)
+            continue
+
         start, end = smooth.basis_columns
 
         # Extract smooth basis columns
