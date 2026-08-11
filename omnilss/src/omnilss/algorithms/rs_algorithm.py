@@ -355,6 +355,20 @@ def compute_working_weights_and_response(
     return working_weights, working_response
 
 
+def _summary_stats(values: np.ndarray) -> dict[str, float]:
+    """Compact numeric summary used in smoother update diagnostics (Phase 3.4)."""
+    arr = np.asarray(values, dtype=np.float64)
+    if arr.size == 0:
+        return {"min": float("nan"), "mean": float("nan"), "max": float("nan"), "n_nonfinite": 0}
+    finite = arr[np.isfinite(arr)]
+    return {
+        "min": float(np.min(finite)) if finite.size else float("nan"),
+        "mean": float(np.mean(finite)) if finite.size else float("nan"),
+        "max": float(np.max(finite)) if finite.size else float("nan"),
+        "n_nonfinite": int(arr.size - finite.size),
+    }
+
+
 def rs_step(
     y: np.ndarray,
     X: np.ndarray,
@@ -1054,6 +1068,10 @@ def rs_fit(
     # (eta_clip / hessian_ridge / hessian_floor / nan_replacement / step_halving).
     safeguard_events: list[dict[str, object]] = []
 
+    # Phase 3.4: smoother lambda-update diagnostics (design.md Property 9) —
+    # old/new lambda, EDF, working-response/weight summary, solver status.
+    smooth_update_diagnostics: list[dict[str, object]] = []
+
     # Outer loop: iterate until convergence
     iteration = 0
     converged = False
@@ -1182,6 +1200,28 @@ def rs_fit(
                         smooth_fits=smooth_design.smooth_fits,
                         method="GCV",  # 默认用 GCV
                     )
+                    # Phase 3.4: record per-term smoother update diagnostics.
+                    for idx, (old_sf, new_sf) in enumerate(
+                        zip(smooth_design.smooth_fits, updated_fits)
+                    ):
+                        smooth_update_diagnostics.append(
+                            {
+                                "parameter": param_k,
+                                "iteration": iteration,
+                                "smoother": new_sf.smoother,
+                                "old_lambda": old_sf.lambda_,
+                                "new_lambda": new_sf.lambda_,
+                                "edf": new_sf.edf,
+                                "lambda_origin": new_sf.lambda_origin,
+                                "working_response": _summary_stats(z_k),
+                                "weights": _summary_stats(w_k),
+                                "solver_status": (
+                                    "preserved"
+                                    if new_sf.lambda_origin in {"user_fixed", "df_target"}
+                                    else "reestimated"
+                                ),
+                            }
+                        )
                     # 更新 smooth_infos 以便下轮使用新 λ
                     smooth_infos[param_k] = SmoothDesignInfo(
                         X=smooth_design.X,
@@ -1201,6 +1241,21 @@ def rs_fit(
                     )
                     lambda_update_failed_params.add(param_k)
                     lambda_update_warnings.append(msg)
+                    for sf in smooth_design.smooth_fits:
+                        smooth_update_diagnostics.append(
+                            {
+                                "parameter": param_k,
+                                "iteration": iteration,
+                                "smoother": sf.smoother,
+                                "old_lambda": sf.lambda_,
+                                "new_lambda": sf.lambda_,
+                                "edf": sf.edf,
+                                "lambda_origin": sf.lambda_origin,
+                                "working_response": _summary_stats(z_k),
+                                "weights": _summary_stats(w_k),
+                                "solver_status": "failed",
+                            }
+                        )
                     if raise_on_lambda_failure:
                         raise ConvergenceWarning(msg) from e
                     warnings.warn(msg, UserWarning, stacklevel=2)
@@ -1413,6 +1468,7 @@ def rs_fit(
             "warm_start_metadata": dict(warm_start_result.metadata),
             "solver_backend": solver_backend.name,
             "safeguard_events": tuple(safeguard_events),
+            "smooth_lambda_diagnostics": tuple(smooth_update_diagnostics),
         },
     )
 
