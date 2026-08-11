@@ -233,7 +233,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [x] **3.6 严格 `PredictionSchemaError` 契约**（term id + expected/actual schema + state version）— 完成 ✅ commit `be612d5`
   - 【实现】`PredictionSchemaError` 新增 `expected_schema`/`actual_schema`/`state_version`（to_dict 同步）；关键 raise 点补结构化上下文（missing_variable / schema_column_mismatch / coefficient_column_mismatch / term_evaluation_failed），state_version 取自设计 schema 顶层 version（SCHEMA_VERSION=2）；新增 `_schema_variables`。
   - 【测试】`tests/test_prediction_schema_contract.py` 5 项；`test_prediction_schema_errors.py` to_dict 断言更新。
-- [ ] **3.7 smoother admission 晋级与 E3/E4 指标；`UnsupportedSmootherError` fail-closed**（lo/random/re/ri/pcat/fp/bfp/cy/pvc/pbm/pbz/pbo/pbc/pbp/scs 未验证即拒绝）
+- [x] **3.7 smoother admission 晋级与 E3/E4 指标；`UnsupportedSmootherError` fail-closed**（lo/random/re/ri/pcat/fp/bfp/cy/pvc/pbm/pbz/pbo/pbc/pbp/scs 未验证即拒绝）— 完成 ✅ commit `33dd89a`
+  - 【实现】新建 `smoother_admission.py`（UnsupportedSmootherError 含名称+缺失能力、ADMITTED_SMOOTHERS={pb,ps,cs}、RELEASE1_CAPABILITIES 七项、check_smoother_admission）；`build_smooth_design` 门禁 + tensor_terms(te/ti) 拒绝；`formula_parser` s() 的 bs= 参数映射修复 + 未实现分支统一抛错；`_has_smooth_terms` pattern 补 s/te/ti/fp 等（修复 s()/te() 被当普通线性项静默丢弃的缺陷）。
+  - 【测试】`tests/test_smoother_admission.py` 24 项（准入 + 17 种未验证 smoother 全部 fail-closed）。
 - [ ] **3.8 阶段 2 最终完成门禁**（对齐 .kiro 2.8；Release 1 完成条件）
 
 ---
@@ -367,7 +369,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 1 数学正确性 | ✅ **完成** | 1.1–1.9 全部完成（含遗留恢复 `496c75c`）；进入 Phase 2 前置条件满足 |
 | Phase 2 最小可信核心 | ✅ **完成** | 2.1–2.6 全部完成（E3 晋级、三算法 R 对照、safeguard 诊断、RS 路由、ps/cs 基线、stage1 门禁）；Phase 3 前置满足 |
 | Phase 2 最小可信核心 | ✅ 完成 | 见上 |
-| Phase 3 可信平滑预测 | 🔄 进行中 | 3.1–3.6 完成；下一步 3.7 smoother admission fail-closed |
+| Phase 3 可信平滑预测 | 🔄 进行中 | 3.1–3.7 完成；剩 3.8 阶段门禁（Release 1 完成条件） |
 | Phase 4 验证与发布 | ⬜ 待办 | 依赖 Phase 0–3 |
 | Phase 5 服务层安全 | ⬜ 待办 | 公网部署前必须完成 |
 | Phase 6 在线层修复 | ⬜ 待办 | 可并行 |
