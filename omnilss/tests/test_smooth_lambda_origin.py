@@ -166,3 +166,37 @@ def test_ps_df_target_lambda_not_overwritten_during_fit(smooth_data) -> None:
         degree=3,
     )
     assert abs(fit.lambda_ - direct.lambda_) < 1e-6
+
+
+# --- Phase 3.3: cs single representation + lambda/EDF lifecycle ---
+
+def test_cs_edf_tracks_df(smooth_data) -> None:
+    """cs edf follows the requested df (knots-derived approximation)."""
+    default = gamlss("y ~ cs(x)", family="NO", data=smooth_data)
+    assert abs(_smooth_fits(default)[0].edf - 5.0) < 1e-6  # default df=3 -> edf 5
+
+    df7 = gamlss("y ~ cs(x, df=7)", family="NO", data=smooth_data)
+    # EDF is derived from the spline knot count, so it tracks df but is not
+    # exact; it must be monotone with the requested df.
+    assert _smooth_fits(df7)[0].edf > _smooth_fits(default)[0].edf
+
+
+def test_cs_lambda_not_overwritten_during_fit(smooth_data) -> None:
+    """cs df-targeted lambda is preserved (not re-estimated by GCV)."""
+    model = gamlss("y ~ cs(x)", family="NO", data=smooth_data)
+    fit = _smooth_fits(model)[0]
+    assert fit.lambda_origin == "df_target"
+
+    info = model.additional_slots.get("smooth_infos", {}).get("mu")
+    from omnilss.smooth_fitting import update_smooth_lambdas
+
+    X = np.asarray(model.design_matrices["mu"])
+    y = np.asarray(smooth_data["y"])
+    beta = np.asarray(model.coefficients["mu"])
+    updated = update_smooth_lambdas(
+        X=X, y=y, beta=beta, w=np.ones(len(y)),
+        smooth_fits=[fit], method="GCV",
+    )
+    assert updated[0].lambda_ == fit.lambda_
+    assert updated[0].edf == fit.edf
+    assert updated[0].lambda_origin == "df_target"
