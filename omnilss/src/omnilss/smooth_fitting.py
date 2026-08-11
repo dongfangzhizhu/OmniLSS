@@ -15,6 +15,12 @@ import jax.numpy as jnp
 import numpy as np
 
 from .formula_parser import build_design_matrix, parse_formula
+from .smoother_admission import (
+    ADMITTED_SMOOTHERS,
+    RELEASE1_CAPABILITIES,
+    UnsupportedSmootherError,
+    check_smoother_admission,
+)
 from .smoothers.pb import fit_pspline
 from .smoothers.penalties import effective_df
 
@@ -129,6 +135,11 @@ def build_smooth_design(
     # Parse formula
     parsed = parse_formula(formula)
 
+    # Phase 3.7: tensor-product smoothers (te/ti) are not Release-1 admitted;
+    # reject them fail-closed instead of silently dropping the term.
+    for tensor_term in getattr(parsed, "tensor_terms", ()) or ():
+        check_smoother_admission(getattr(tensor_term, "smoother", "te"))
+
     # Build design matrix
     X, smooth_info = build_design_matrix(parsed, data, fit_smooths=True)
 
@@ -163,11 +174,18 @@ def build_smooth_design(
 
         # For s() function, determine actual smoother to use
         if smoother_type == "s":
-            # Check if smoother was specified in kwargs or as attribute
+            # Check if smoother was specified in kwargs (as bs= or smoother=)
             if hasattr(smooth_term, "kwargs") and "smoother" in smooth_term.kwargs:
                 smoother_type = smooth_term.kwargs["smoother"]
+            elif hasattr(smooth_term, "kwargs") and "bs" in smooth_term.kwargs:
+                smoother_type = smooth_term.kwargs["bs"]
             else:
                 smoother_type = "pb"  # Default to pb
+
+        # Phase 3.7: Release 1 admission gate — pb/ps/cs only; every other
+        # smoother (lo/random/re/ri/pcat/fp/bfp/cy/pvc/pbm/pbz/pbo/pbc/pbp/scs)
+        # is rejected fail-closed until its full capability chain is validated.
+        check_smoother_admission(smoother_type)
 
         # Determine the method to use
         # If smooth_term has a method attribute (from s() function), use it

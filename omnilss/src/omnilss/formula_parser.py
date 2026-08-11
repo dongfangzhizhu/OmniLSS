@@ -675,6 +675,8 @@ def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
         # Check if smoother was specified in kwargs
         if 'smoother' in term.kwargs:
             actual_smoother = term.kwargs['smoother']
+        elif 'bs' in term.kwargs:
+            actual_smoother = term.kwargs['bs']
         else:
             actual_smoother = 'pb'  # Default to pb
     
@@ -851,6 +853,11 @@ def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
         }
     
     else:
+        # Phase 3.7: fail closed with the admission error (smoother name +
+        # missing capabilities) instead of a bare NotImplementedError.
+        from .smoother_admission import check_smoother_admission
+
+        check_smoother_admission(actual_smoother)
         raise NotImplementedError(f"Smoother '{actual_smoother}' not yet implemented")
 
 

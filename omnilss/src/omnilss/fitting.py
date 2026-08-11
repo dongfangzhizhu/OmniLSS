@@ -72,8 +72,15 @@ def _has_smooth_terms(formula: str) -> bool:
     """
     import re
 
-    # Pattern to match smooth terms: pb(...), ps(...), cs(...), random(...), re(...), lo(...)
-    smooth_pattern = r"\b(pb|ps|cs|random|re|lo)\s*\("
+    # Pattern to match smooth terms.  s() is the generic smoother entry point
+    # (defaults to pb) and must route through build_smooth_design so the
+    # Phase 3.7 admission gate rejects unverified smoothers fail-closed.
+    # Unimplemented/staged smoothers are listed so they are never silently
+    # dropped as unknown linear terms.
+    smooth_pattern = (
+        r"\b(pb|ps|cs|s|random|re|ri|lo|pcat|fp|bfp|cy|te|ti|"
+        r"pvc|pbm|pbz|pbo|pbc|pbp|scs)\s*\("
+    )
     return bool(re.search(smooth_pattern, formula))
 
 
