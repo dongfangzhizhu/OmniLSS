@@ -216,9 +216,14 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 
 ### 任务清单
 
-- [ ] **3.1 `pb` 单一 managed basis/penalty 状态**（design.md Property 8）
-- [ ] **3.2 `ps` 单一表示 + lambda/EDF 生命周期**（user_fixed / df_target / selection_method 三 origin 区分）
-- [ ] **3.3 `cs` 单一表示 + lambda/EDF 生命周期**
+- [x] **3.1 `pb` 单一 managed basis/penalty 状态**（design.md Property 8）— 完成 ✅ commit `759824b`
+  - 【实现】`SmoothFitInfo` 新增 `lambda_origin`（user_fixed / df_target / method_selected）；pb/ps 通用构造按公式参数判定、cs 恒为 df_target；ML/GCV/REML/GAIC lambda 更新路径保留原 origin。
+  - 【测试】`tests/test_smooth_lambda_origin.py` 9 项（三 origin 全覆盖、每项单一 SmoothFitInfo、更新后 origin 保留）。
+- [x] **3.2 `ps` 单一表示 + lambda/EDF 生命周期**（user_fixed / df_target / selection_method 三 origin 区分）— 完成 ✅ commit `32795cc`
+  - 【实现】`update_smooth_lambdas` 按 `lambda_origin` 分流：user_fixed/df_target 的 lambda 在 RS 迭代中不被重估（保留用户值/目标 df 求解值），仅 method_selected 参与 ML/GCV/REML/GAIC 重估；修复 ps 的 df/lambda 参数被每轮 GCV 无条件覆盖缺陷（df=5/10、lambda=0.8 原全部得 lambda=1.2036）。
+  - 【测试】+5 项生命周期断言（ps 三输入产生不同且保持的 lambda；df_target EDF 跟踪目标 df（R 语义 edf=df+2）；user_fixed 保持精确值；不被迭代覆盖）。
+- [x] **3.3 `cs` 单一表示 + lambda/EDF 生命周期** — 完成 ✅ commit `5ae8b49`
+  - 【实现】cs 的单一表示与 origin 由 3.1/3.2 覆盖；本任务补测试（cs EDF 随目标 df 单调（knots 推导近似，默认 df=3→edf 5）；cs df-targeted lambda 在 GCV 更新后保持）。
 - [ ] **3.4 RS 平滑器更新诊断**（old/new lambda、EDF、working-response/weight summary、solver status）
 - [ ] **3.5 saved-state `newdata` 重建成功契约**（仅由 Smooth Model State 重建，禁止隐式列对齐）
 - [ ] **3.6 严格 `PredictionSchemaError` 契约**（term id + expected/actual schema + state version）
@@ -356,7 +361,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 1 数学正确性 | ✅ **完成** | 1.1–1.9 全部完成（含遗留恢复 `496c75c`）；进入 Phase 2 前置条件满足 |
 | Phase 2 最小可信核心 | ✅ **完成** | 2.1–2.6 全部完成（E3 晋级、三算法 R 对照、safeguard 诊断、RS 路由、ps/cs 基线、stage1 门禁）；Phase 3 前置满足 |
 | Phase 2 最小可信核心 | ✅ 完成 | 见上 |
-| Phase 3 可信平滑预测 | ⬜ 待办 | 依赖 Phase 2 |
+| Phase 3 可信平滑预测 | 🔄 进行中 | 3.1/3.2/3.3 完成（单一 managed 表示 + lambda origin 生命周期）；下一步 3.4 RS 平滑器更新诊断 |
 | Phase 4 验证与发布 | ⬜ 待办 | 依赖 Phase 0–3 |
 | Phase 5 服务层安全 | ⬜ 待办 | 公网部署前必须完成 |
 | Phase 6 在线层修复 | ⬜ 待办 | 可并行 |
