@@ -199,9 +199,10 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   - 【实现】commit `2914041`：`config.py` 的 `build_method_routing_decision` 新增 `accelerator_available` 字段（Route Diagnostic 完整化，validate required 同步）；`fitting.py` 4 处路由决策构造传入 `accelerator_available`（backend ∈ {gpu,tpu} 即 True，否则 False）。
   - 【测试】`tests/test_method_routing_integration.py` 新增：`test_auto_routes_to_rs_below_threshold`（n < threshold → RS）、`test_auto_routes_to_jax_at_threshold`（n == threshold → RS_JAX，与 `n_obs >= threshold` 语义一致）、`test_routing_records_accelerator_available`（CPU 真实拟合记录 False；GPU 决策传递 True）；连同既有 `test_rs_does_not_route_to_jax` / `test_routing_decision_payload_for_auto` 覆盖全部验收点。
   - 【验收】`method="RS"` 恒走 CPU NumPy ✓；`method="auto"` 走路由策略并存 Route Diagnostic ✓；阈值下/等于/上边界测试 ✓；无加速器环境记录 `accelerator_available=False` ✓。method routing 15 项 + config 44 项全绿（`test_yaml_config_loading` 为预先存在的本机环境失败，非本次引入）。
-- [ ] **2.5 `ps`/`cs` 缺陷回归基线（修改实现前）**
+- [x] **2.5 `ps`/`cs` 缺陷回归基线（修改实现前）** — 完成 ✅
   - 【注】2026-08-09：上会话遗留的 ps"单一训练表示"探索重构（stash `c3b1c9fc`）已**弃用并丢弃**（`git stash drop`，可从 reflog 找回）：该实现将 450 行 B-spline P-spline 改为 180 行截断幂基半成品，签名与 `smooth_fitting.py` 调用不匹配（必然 TypeError），且截断幂基偏离 R 的 `PS.R`（B-spline + 差分惩罚）；HEAD 的 B-spline 实现保持可用（`fit_pspline_smooth` 拟合正常）。Phase 3.2（ps 单一表示）按设计文档正式实现，不复用该探索代码。
-  - 验收：精确刻画当前双列占位/追加/陈旧 ownership/newdata schema mismatch 行为，测试标记为修复基线。
+  - 【基线】commit `0d69d82`：新增 `tests/test_smooth_baseline.py`（8 项）精确刻画当前行为——ps/pb B-spline 24 列展开（基吸收截距）+ 预测 OK；cs 双列占位（intercept + ones 占位 + 拟合值列）+ 预测被拒（"not schema-safe yet"）；ps `basis_columns=(1,24)` 与实际 24 列错位（陈旧 ownership）；缺列抛 PredictionSchemaError。Phase 3 修复时对照更新。
+  - 验收：精确刻画当前双列占位/追加/陈旧 ownership/newdata schema mismatch 行为，测试标记为修复基线 ✓（8 项全过）。
 - [x] **2.6 阶段 1 准入/完成门禁**（对齐 .kiro 1.6）— 完成 ✅
   - 【实现】commit `91f9712`：① `suites.py` 新增 `stage1_gate` suite（22 模块：八核心族 R 一致性 + 三算法 R 对照 + method routing + 8 个 golden fixture replay + ps/cs 基线，别名 `stage1`）；② `run_suite.py` 新增 `--require-r`（fail-closed）：模块加载期 skip 或测试执行期 skip 均视为失败；`main()` 支持 argv 参数；③ `tests/test_run_suite_gate.py`（4 项门禁行为单测）。
   - 【验收】`--require-r` 全量执行 ✓（R 可用时无 skip 退出 0；skip 存在则退出 1）；任一失败保持未完成并阻塞 Phase 3 ✓（fail-closed 语义）。本机实测单模块 --require-r 通过。
@@ -353,8 +354,8 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 |---|---|---|
 | Phase 0 工程地基 | 🔄 进行中 | 0.1–0.3 完成；0.4–0.8 待办 |
 | Phase 1 数学正确性 | ✅ **完成** | 1.1–1.9 全部完成（含遗留恢复 `496c75c`）；进入 Phase 2 前置条件满足 |
-| Phase 2 最小可信核心 | 🔄 进行中 | **2.1–2.4、2.6 完成**；剩 2.5 ps/cs 基线；完成后满足 Phase 3 前置 |
-| Phase 2 最小可信核心 | ⬜ 待办 | 依赖 Phase 0/1 |
+| Phase 2 最小可信核心 | ✅ **完成** | 2.1–2.6 全部完成（E3 晋级、三算法 R 对照、safeguard 诊断、RS 路由、ps/cs 基线、stage1 门禁）；Phase 3 前置满足 |
+| Phase 2 最小可信核心 | ✅ 完成 | 见上 |
 | Phase 3 可信平滑预测 | ⬜ 待办 | 依赖 Phase 2 |
 | Phase 4 验证与发布 | ⬜ 待办 | 依赖 Phase 0–3 |
 | Phase 5 服务层安全 | ⬜ 待办 | 公网部署前必须完成 |
