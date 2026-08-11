@@ -65,6 +65,11 @@ class SmoothFitInfo:
     # "method_selected" (chosen by selection_method).  The saved Smooth Model
     # State must retain this origin after any lambda/EDF update.
     lambda_origin: Optional[str] = None
+    # Phase 3.5 (design.md Property 10): reconstruction state for cs().
+    # cs() stores fitted values as a single design column; prediction on
+    # newdata rebuilds the scipy UnivariateSpline from this saved state
+    # (x, y, w, s) instead of any implicit column alignment.
+    cs_state: Optional[dict[str, object]] = None
 
 
 @dataclass
@@ -274,6 +279,26 @@ def build_smooth_design(
                     selection_method=cs_result.selection_method,
                     criterion_value=cs_result.criterion_value,
                     lambda_origin="df_target",
+                    # Phase 3.5: saved state to rebuild the spline on newdata.
+                    cs_state={
+                        "x": np.asarray(x_smooth, dtype=np.float64).tolist(),
+                        "y": np.asarray(y, dtype=np.float64).tolist(),
+                        "w": (
+                            np.asarray(weights, dtype=np.float64).tolist()
+                            if weights is not None
+                            else None
+                        ),
+                        "s": float(cs_result.lambda_),
+                        # Actual spline degree (k); _fit_with_df uses k=5.
+                        # UnivariateSpline._data = (t, c, w, xb, xe, k, s, ...)
+                        "degree": int(
+                            getattr(
+                                getattr(cs_result, "spline", None), "_data", [0, 0, 0, 0, 0, 3]
+                            )[5]
+                            if getattr(cs_result, "spline", None) is not None
+                            else 3
+                        ),
+                    },
                 )
             )
             current_col += 1

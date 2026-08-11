@@ -79,6 +79,7 @@ def _jsonish_smooth_entry(smooth: Any) -> dict[str, Any]:
     if isinstance(smooth, dict):
         return dict(smooth)
     knots = getattr(smooth, "knots", None)
+    cs_state = getattr(smooth, "cs_state", None)
     return {
         "term_index": getattr(smooth, "term_index", None),
         "variable": getattr(smooth, "variable", getattr(smooth, "var", None)),
@@ -90,6 +91,7 @@ def _jsonish_smooth_entry(smooth: Any) -> dict[str, Any]:
         "knots": np.asarray(knots, dtype=np.float64) if knots is not None else None,
         "degree": getattr(smooth, "degree", None),
         "order": getattr(smooth, "order", None),
+        "cs_state": dict(cs_state) if cs_state is not None else None,
     }
 
 
@@ -315,7 +317,9 @@ def _build_design_matrix_for_prediction(
             )
             if smoother_type == "s":
                 smoother_type = "pb"
-            if smoother_type not in {"pb", "ps"}:
+            if smoother_type not in {"pb", "ps"} and not (
+                smoother_type == "cs" and smooth_info_for_var.get("cs_state")
+            ):
                 raise _prediction_schema_error(
                     f"Prediction for smoother {smoother_type!r} is not schema-safe yet",
                     parameter=param,
@@ -324,16 +328,41 @@ def _build_design_matrix_for_prediction(
                     code="unsupported_smoother",
                 )
             try:
-                from .smoothers.bsplines import bspline_basis
-
                 x_new = np.asarray(newdata[var_name], dtype=np.float64)
-                if smooth_info_for_var.get("knots") is None:
-                    raise ValueError("smooth metadata does not include knots")
-                knots = np.asarray(smooth_info_for_var["knots"], dtype=np.float64)
-                degree = int(smooth_info_for_var.get("degree") or 3)
-                basis_new = np.array(
-                    bspline_basis(jnp.array(x_new), jnp.array(knots), degree=degree)
-                )
+                if smoother_type == "cs":
+                    # Phase 3.5: rebuild the scipy UnivariateSpline from the
+                    # saved Smooth Model State (x, y, w, s) — no implicit
+                    # column alignment.
+                    from scipy.interpolate import UnivariateSpline
+
+                    cs_state = smooth_info_for_var["cs_state"]
+                    xs = np.asarray(cs_state["x"], dtype=np.float64)
+                    ys = np.asarray(cs_state["y"], dtype=np.float64)
+                    ws = (
+                        np.asarray(cs_state["w"], dtype=np.float64)
+                        if cs_state.get("w") is not None
+                        else None
+                    )
+                    s_val = float(cs_state["s"])
+                    spline = UnivariateSpline(
+                        xs, ys, w=ws, k=min(int(cs_state.get("degree", 3)), 5), s=s_val
+                    )
+                    # Training design = intercept + placeholder column + fitted
+                    # values (recorded in the Phase 2.5 baseline); rebuild the
+                    # same columns so the prediction schema matches.
+                    basis_new = np.column_stack(
+                        [np.ones(len(x_new), dtype=np.float64), spline(x_new)]
+                    )
+                else:
+                    from .smoothers.bsplines import bspline_basis
+
+                    if smooth_info_for_var.get("knots") is None:
+                        raise ValueError("smooth metadata does not include knots")
+                    knots = np.asarray(smooth_info_for_var["knots"], dtype=np.float64)
+                    degree = int(smooth_info_for_var.get("degree") or 3)
+                    basis_new = np.array(
+                        bspline_basis(jnp.array(x_new), jnp.array(knots), degree=degree)
+                    )
             except Exception as exc:
                 raise _prediction_schema_error(
                     f"Failed to rebuild smooth term {term_str!r}: {exc}",

@@ -81,11 +81,18 @@ def test_cs_baseline_single_column_placeholder(smooth_data) -> None:
 
 
 def test_cs_baseline_prediction_rejected_not_schema_safe(smooth_data) -> None:
-    """Baseline: cs prediction is explicitly rejected (not schema-safe yet)."""
+    """cs prediction now works via saved-state rebuild (Phase 3.5).
+
+    Baseline note: before Phase 3.5, cs() prediction was explicitly rejected
+    ("not schema-safe yet").  Phase 3.5 added cs_state (x, y, w, s, k) rebuild,
+    so prediction on compatible newdata now succeeds and reproduces the fitted
+    values on the training data.
+    """
     model = gamlss("y ~ cs(x)", family="NO", data=smooth_data)
-    with pytest.raises(Exception) as excinfo:
-        model.predict(newdata=smooth_data)
-    assert "not schema-safe" in str(excinfo.value)
+    pred = np.asarray(model.predict(newdata=smooth_data))
+    fitted = np.asarray(model.fitted_values["mu"])
+    assert pred.shape == fitted.shape
+    np.testing.assert_allclose(pred, fitted, rtol=1e-6, atol=1e-6)
 
 
 def test_ps_baseline_predict_same_length(smooth_data) -> None:
