@@ -279,8 +279,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [x] **5.1 认证：默认拒绝** — 完成 ✅ commit `d85f7b9`
   - 【实现】`api/grpc/server.py` 新增 `_validate_api_token`：token 未设置且绑定非回环接口 → 拒绝启动（default-deny）；`omnilss-server/main.py` 全部 6 端点加 `Depends(_check_auth)`（与 fastapi_server 同策略）；`docker-compose.yml` 两服务设 `OMNILSS_API_TOKEN`。
   - 【测试】`tests/test_server_security.py` 5 项（默认拒绝/回环允许/token 允许/compose token/FastAPI 全端点认证）。
-- [ ] **5.2 传输安全**
-  - 实现：gRPC/FastAPI 启用 TLS（证书可配置）；`omnilss-pro/client.py:42` 支持 TLS + 凭据注入。
+- [x] **5.2 传输安全** — 完成 ✅ commit `bf2d189`
+  - 【实现】gRPC server：`OMNILSS_TLS_CERT`/`OMNILSS_TLS_KEY` 设置时用 `grpc.ssl_server_credentials` + `add_secure_port`（无证书 insecure 回退，token 仍生效）；client：`tls`/`root_cert`/`api_token` 参数——TLS 用 secure_channel，api_token 注入 authorization Bearer metadata（6 个 stub 调用全覆盖，修复 client 无法向带 token server 认证缺口）；FastAPI 由 uvicorn `--ssl-*` 配置（部署层）。
+  - 【测试】`test_tls_support.py`（server 文本断言 2 项）+ `test_client_tls.py`（FakeChannel mock 行为 4 项）。
 - [x] **5.3 DoS 上限** — 完成 ✅ commit `531ebed`
   - 【实现】gRPC：MAX_SAMPLE_N=100k（Sample.n cap）、MAX_BATCH_FITS=100（BatchFit 超限拒绝）、MAX_ITER=1000（max_iter cap）、MAX_JSON_BODY_BYTES=1MiB（_from_json 预检查）、MAX_GRPC_MESSAGE_BYTES=64MiB（server 显式 receive/send 上限）；REST：HTTP 中间件（Content-Length>1MiB → 413、每客户端 60s/300 请求 → 429）。
   - 【测试】`tests/test_dos_limits.py` 8 项。
@@ -382,7 +383,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 2 最小可信核心 | ✅ 完成 | 见上 |
 | Phase 3 可信平滑预测 | ✅ **完成** | 3.1–3.8 全部完成（单一表示、lambda 生命周期、更新诊断、newdata 重建、schema 契约、admission、stage2 门禁）；Phase 4 前置满足 |
 | Phase 4 验证与发布 | ✅ **完成** | 4.1–4.6 全部完成（容差、golden 全流程、伪测试清理、CI 门禁、发布加固、Release 1 说明）；CI 实际执行与版本冻结待 GitHub Actions 环境 |
-| Phase 5 服务层安全 | 🔄 进行中 | 5.1/5.3/5.4/5.5/5.6/5.7 完成；剩 5.2 TLS（需证书环境） |
+| Phase 5 服务层安全 | ✅ **完成** | 5.1–5.7 全部完成（认证/DoS/脱敏/序列化/供应链/AutoML/TLS）；公网部署前提满足 |
 | Phase 6 在线层修复 | ⬜ 待办 | 可并行 |
 | Phase 7 性能规模化 | ⬜ 待办 | 依赖 Phase 1 |
 | Phase 8 商业闭环 | ⬜ 待办 | 依赖 Phase 4/5 |
