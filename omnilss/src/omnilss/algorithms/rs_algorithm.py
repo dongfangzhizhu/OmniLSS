@@ -116,15 +116,24 @@ class NumpySolverBackend(SolverBackend):
         working_response: np.ndarray,
         weights: np.ndarray,
         ridge: float | None = None,
+        skip_stabilize: bool = False,
     ) -> np.ndarray:
-        sqrt_w = np.sqrt(weights)
-        weighted_x = design * sqrt_w[:, None]
-        gram = weighted_x.T @ weighted_x
-        if ridge is None:
-            stabilized = stabilize_hessian(gram)
-            # Only apply the ridge when stabilization actually kicked in
-            # (lambda_value > 0); otherwise keep the pure lstsq path.
-            ridge = stabilized.lambda_value if stabilized.lambda_value > 0.0 else None
+        # Phase 7.3: the caller (rs_step) may already have run
+        # stabilize_hessian on the Gram for condition-number diagnostics; in
+        # that case skip the duplicate Gram + stabilization here.
+        if not skip_stabilize:
+            sqrt_w = np.sqrt(weights)
+            weighted_x = design * sqrt_w[:, None]
+            gram = weighted_x.T @ weighted_x
+            if ridge is None:
+                stabilized = stabilize_hessian(gram)
+                # Only apply the ridge when stabilization actually kicked in
+                # (lambda_value > 0); otherwise keep the pure lstsq path.
+                ridge = (
+                    stabilized.lambda_value
+                    if stabilized.lambda_value > 0.0
+                    else None
+                )
         return solve_weighted_least_squares_cholesky(
             X=design,
             z=working_response,
@@ -608,6 +617,8 @@ def rs_step(
                     if stabilized.lambda_value > 0.0
                     else None
                 ),
+                # Phase 7.3: Gram/stabilization already computed above.
+                skip_stabilize=True,
             )
 
         # Update linear predictor with damped step size
