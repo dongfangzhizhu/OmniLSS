@@ -276,8 +276,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 
 ### 任务清单
 
-- [ ] **5.1 认证：默认拒绝**
-  - 实现：`api/grpc/server.py:524,531-532` 改为 `OMNILSS_API_TOKEN` 未设置时拒绝启动（或仅监听 127.0.0.1）；`omnilss-server/main.py` 全端点加同策略认证（复用 `api/http/fastapi_server.py` 的 `_check_auth`）；`docker-compose.yml` 设置 token。
+- [x] **5.1 认证：默认拒绝** — 完成 ✅ commit `d85f7b9`
+  - 【实现】`api/grpc/server.py` 新增 `_validate_api_token`：token 未设置且绑定非回环接口 → 拒绝启动（default-deny）；`omnilss-server/main.py` 全部 6 端点加 `Depends(_check_auth)`（与 fastapi_server 同策略）；`docker-compose.yml` 两服务设 `OMNILSS_API_TOKEN`。
+  - 【测试】`tests/test_server_security.py` 5 项（默认拒绝/回环允许/token 允许/compose token/FastAPI 全端点认证）。
 - [ ] **5.2 传输安全**
   - 实现：gRPC/FastAPI 启用 TLS（证书可配置）；`omnilss-pro/client.py:42` 支持 TLS + 凭据注入。
 - [ ] **5.3 DoS 上限**
@@ -376,7 +377,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 2 最小可信核心 | ✅ 完成 | 见上 |
 | Phase 3 可信平滑预测 | ✅ **完成** | 3.1–3.8 全部完成（单一表示、lambda 生命周期、更新诊断、newdata 重建、schema 契约、admission、stage2 门禁）；Phase 4 前置满足 |
 | Phase 4 验证与发布 | ✅ **完成** | 4.1–4.6 全部完成（容差、golden 全流程、伪测试清理、CI 门禁、发布加固、Release 1 说明）；CI 实际执行与版本冻结待 GitHub Actions 环境 |
-| Phase 5 服务层安全 | ⬜ 待办 | 公网部署前必须完成 |
+| Phase 5 服务层安全 | 🔄 进行中 | 5.1 认证默认拒绝完成；下一步 5.3 DoS 上限 / 5.4 错误脱敏 / 5.5 序列化安全 |
 | Phase 6 在线层修复 | ⬜ 待办 | 可并行 |
 | Phase 7 性能规模化 | ⬜ 待办 | 依赖 Phase 1 |
 | Phase 8 商业闭环 | ⬜ 待办 | 依赖 Phase 4/5 |
