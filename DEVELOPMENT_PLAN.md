@@ -255,8 +255,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [x] **4.2 容差体系重建** — 完成 ✅ commit `071ee25`
   - 【实现】逐族收紧至 rtol=1e-3（拟合）：八核心 GA/ZAGA + IG/LO/NBI/BEINF（原 0.02–0.25/1e-1）；IG 多协变量文档化例外（系数/fitted 1e-2，deviance 1e-3）；新增 `tests/test_tolerance_audit.py` 容差审计门禁（grep 校验可执行化：rtol>0.01 仅在 EXEMPT_FILES=14 个非核心族，fail-closed 防新宽松容差）。
   - 【验收】grep 校验由审计测试执行 ✓（EXEMPT 清单外无 rtol>0.01）；非核心族差异（10–50%）为真实拟合缺陷，清单化待拟合引擎修复。
-- [ ] **4.3 Release-1 golden 全流程修复**
-  - 实现：`tools/run_release1_r_golden.py` 验证 OmniLSS 而非 scipy；`benchmarks/r_reference_results.json` 填充真实数据或从 CI 删除。
+- [x] **4.3 Release-1 golden 全流程修复** — 完成 ✅ commit `cabf4db`
+  - 【实现】① `omnilss/tools/run_release1_r_golden.py` python 侧密度由 scipy `norm.pdf` 改为 `omnilss NO().d`（artifact 证明 OmniLSS 本体，移除 scipy import，数值一致 1e-12 已验证）；② `benchmarks/r_reference_results.json` 占位(null)替换为真实 R 参考（R 4.6.0/gamlss 5.5.0 生成，status=generated_by_r），`validate_against_r.py` 验证 OmniLSS 一致通过。
+  - 【验收】runner 验证 OmniLSS ✓；r_reference_results.json 真实数据 ✓；fixed-R 用例受本机 Windows R 源包安装环境阻塞（CI Linux+R 执行）。
 - [x] **4.4 清理伪测试** — 完成 ✅ commit `b190c4b`
   - 【实现】① `test_zip_score_python.py` print-only → 4 项断言（对照 R 参考值，实测一致）；② `test_fisher_verification.py` print-only+超时 → jax.vmap 向量化 3 项断言（LOGNO2 解析 vs MC 3σ、PARETO2 MC 稳定性+候选公式不匹配待修、Hessian 有限性）；③ `test_slow_distributions.py` print-only → 8 项断言（JIT 阈值 + BE/ZAGA 拟合）；④ 错误契约修复：`make_zero_altered/inflated_family` 的 zero 参数与 base 的 nu 冲突（SICHEL → 重复 ("mu","sigma","nu","nu")）改用 tau，ZASICHEL/ZISICHEL/ZABNB/ZIBNB 参数元组唯一化，测试与 R 侧 dict 同步。
 - [ ] **4.5 发布流程加固**
@@ -372,7 +373,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 2 最小可信核心 | ✅ **完成** | 2.1–2.6 全部完成（E3 晋级、三算法 R 对照、safeguard 诊断、RS 路由、ps/cs 基线、stage1 门禁）；Phase 3 前置满足 |
 | Phase 2 最小可信核心 | ✅ 完成 | 见上 |
 | Phase 3 可信平滑预测 | ✅ **完成** | 3.1–3.8 全部完成（单一表示、lambda 生命周期、更新诊断、newdata 重建、schema 契约、admission、stage2 门禁）；Phase 4 前置满足 |
-| Phase 4 验证与发布 | 🔄 进行中 | 4.2 容差体系、4.4 伪测试清理完成；下一步 4.3 golden 全流程 |
+| Phase 4 验证与发布 | 🔄 进行中 | 4.2/4.3/4.4 完成；剩 4.1 CI（需 CI 环境）、4.5 发布加固、4.6 版本冻结 |
 | Phase 5 服务层安全 | ⬜ 待办 | 公网部署前必须完成 |
 | Phase 6 在线层修复 | ⬜ 待办 | 可并行 |
 | Phase 7 性能规模化 | ⬜ 待办 | 依赖 Phase 1 |
