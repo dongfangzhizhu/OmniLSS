@@ -121,8 +121,8 @@ def predict(req: PredictRequest, _: None = Depends(_check_auth)):
         }
     except PredictionSchemaError as exc:
         raise HTTPException(400, exc.to_dict()) from exc
-    except KeyError as exc:
-        raise HTTPException(400, f"Missing variable in newdata: {exc}") from exc
+    except KeyError:
+        raise HTTPException(400, "Missing variable in newdata") from None
     except Exception as exc:
         raise HTTPException(500, f"Prediction failed: {exc}") from exc
 
@@ -173,8 +173,9 @@ def distributions_select(
                     "iterations": int(model.iter),
                 }
             )
-        except Exception as exc:
-            rows.append({"family": family, "error": str(exc)})
+        except Exception:
+            # Phase 5.4: never leak raw exception text to clients.
+            rows.append({"family": family, "error": "fit_failed"})
 
     successful = [row for row in rows if "deviance" in row]
     if not successful:

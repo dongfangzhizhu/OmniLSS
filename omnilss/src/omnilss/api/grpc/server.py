@@ -253,7 +253,9 @@ def _error_text(exc: Exception) -> str:
         return _to_json(exc.to_dict())
     if isinstance(exc, PredictionSchemaError):
         return _to_json({"type": "prediction_schema_error", **exc.to_dict()})
-    return str(exc)
+    # Phase 5.4: never leak raw exception text to clients; return the error
+    # class name so operators can correlate logs without exposing internals.
+    return f"{type(exc).__name__} error"
 
 
 def _grpc_runtime_gaps() -> list[str]:

@@ -308,7 +308,7 @@ def validate_model_json(path: str | Path) -> dict[str, Any]:
                 try:
                     import io
 
-                    npz = np.load(io.BytesIO(zf.read("arrays.npz")))
+                    npz = np.load(io.BytesIO(zf.read("arrays.npz")), allow_pickle=False)
                     arrays = {name: npz[name] for name in npz.files}
                 except Exception as exc:
                     errors.append(
@@ -551,6 +551,7 @@ def _capability_snapshot_from_artifact(path: str | Path) -> dict[str, Any]:
     """Read the saved family capability snapshot from an artifact metadata file."""
 
     with zipfile.ZipFile(Path(path), "r") as zf:
+        _zip_bomb_guard(zf)
         meta = json.loads(zf.read("meta.json").decode("utf-8"))
     return dict(meta.get("family_capability", {}) or {})
 
@@ -642,6 +643,12 @@ def save_model_pickle(model: Any, path: str | Path) -> None:
 
 
 def load_model_pickle(path: str | Path) -> Any:
+    """Load a model from a cloudpickle file.
+
+    SECURITY (Phase 5.5): pickle is an arbitrary-code-execution surface.
+    Only load artifacts from trusted sources; use load_model_json (the
+    default ``load_model`` alias) for untrusted input.
+    """
     try:
         import cloudpickle  # type: ignore
     except ImportError as exc:
@@ -703,11 +710,26 @@ def save_model_json(
         zf.writestr("meta.json", json.dumps(meta, ensure_ascii=False, indent=2))
 
 
+_MAX_ZIP_ENTRIES = 1000
+_MAX_ZIP_UNCOMPRESSED_BYTES = 512 * 1024 * 1024  # 512 MiB
+
+
+def _zip_bomb_guard(zf: zipfile.ZipFile) -> None:
+    """Phase 5.5: reject archives with excessive entries or uncompressed size."""
+    infos = zf.infolist()
+    if len(infos) > _MAX_ZIP_ENTRIES:
+        raise ValueError(f"archive has too many entries: {len(infos)}")
+    total = sum(int(info.file_size) for info in infos)
+    if total > _MAX_ZIP_UNCOMPRESSED_BYTES:
+        raise ValueError(f"archive uncompressed size too large: {total}")
+
+
 def load_model_json(path: str | Path):
     from .distributions import resolve_family
     from .model import GAMLSSModel
 
     with zipfile.ZipFile(Path(path), "r") as zf:
+        _zip_bomb_guard(zf)
         meta = json.loads(zf.read("meta.json").decode("utf-8"))
         design_matrix_schema = meta.get("design_matrix_schema", {})
         if not isinstance(design_matrix_schema, dict):
@@ -736,7 +758,7 @@ def load_model_json(path: str | Path):
 
         import io
 
-        npz = np.load(io.BytesIO(zf.read("arrays.npz")))
+        npz = np.load(io.BytesIO(zf.read("arrays.npz")), allow_pickle=False)
         params = tuple(meta["parameters"])
         fitted = {p: npz[f"fit__{p}"] for p in params if f"fit__{p}" in npz}
         coeffs = {p: npz[f"coef__{p}"] for p in params if f"coef__{p}" in npz}
@@ -781,6 +803,8 @@ def load_model_json(path: str | Path):
     )
 
 
-# Backward-compatible aliases
+# Backward-compatible aliases.  Phase 5.5: load_model defaults to the safe
+# JSON loader; the pickle path is kept for trusted files only (documented on
+# load_model_pickle).
 save_model = save_model_pickle
-load_model = load_model_pickle
+load_model = load_model_json
