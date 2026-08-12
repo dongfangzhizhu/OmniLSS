@@ -357,8 +357,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 
 ### 任务清单
 
-- [ ] **8.1 L3 服务完备性**
-  - 实现：gRPC 服务增加 capability/版本/健康端点；Fit/Predict/Sample proto 契约冻结并文档化；`omnilss-pro` SDK 覆盖全端点。
+- [ ] **8.1 L3 服务完备性** — 部分完成
+  - 【已交付】commit `426341a`：`capability.proto` 新增 Version/Health 消息与 RPC（契约冻结）；server 实现 Version（__version__/x64/python 版本）与 Health（REGISTRY 模型数 + ok/degraded）；`tests/test_l3_service_contract.py` 6 项。
+  - 【待办】capability_pb2 需 grpcio-tools 重新生成（CI 的 generate_grpc_stubs.py）；`omnilss-pro` SDK 覆盖 capability/version/health 端点。
 - [ ] **8.2 Open-Core 边界明确**
   - 实现：按 `docs/architecture/core-pro-boundary.md` 明确开源核心（L1/L4）与商业层（L3 + AutoML + 托管）边界；商业层独立发布通道。
 - [ ] **8.3 用户文档与教程**
@@ -394,7 +395,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 5 服务层安全 | ✅ **完成** | 5.1–5.7 全部完成（认证/DoS/脱敏/序列化/供应链/AutoML/TLS）；公网部署前提满足 |
 | Phase 6 在线层修复 | ⬜ 待办 | 可并行 |
 | Phase 7 性能规模化 | 🔄 进行中 | 7.2 后端对齐（部分）、7.3 Gram 去重、7.5 缓存线程安全完成；7.1/7.2 剩余/7.4 待专项 |
-| Phase 8 商业闭环 | ⬜ 待办 | 依赖 Phase 4/5 |
+| Phase 8 商业闭环 | 🔄 进行中 | 8.1 gRPC 版本/健康端点完成（部分）；下一步 8.2 Open-Core 边界 / 8.5 收尾 |
 
 > **下一步建议**（下次会话入口）：
 > 1. 从 **Phase 0 任务 0.4**（CI 接真实 R）与 **Phase 1 任务 1.1**（qTF 修复）开始——两者互不依赖、可并行。
