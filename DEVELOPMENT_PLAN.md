@@ -281,8 +281,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   - 【测试】`tests/test_server_security.py` 5 项（默认拒绝/回环允许/token 允许/compose token/FastAPI 全端点认证）。
 - [ ] **5.2 传输安全**
   - 实现：gRPC/FastAPI 启用 TLS（证书可配置）；`omnilss-pro/client.py:42` 支持 TLS + 凭据注入。
-- [ ] **5.3 DoS 上限**
-  - 实现：`Sample.n` 上限、`BatchFit` 请求数上限、`max_iter` 上限、JSON body 大小限制、速率限制中间件；gRPC 消息大小显式配置。
+- [x] **5.3 DoS 上限** — 完成 ✅ commit `531ebed`
+  - 【实现】gRPC：MAX_SAMPLE_N=100k（Sample.n cap）、MAX_BATCH_FITS=100（BatchFit 超限拒绝）、MAX_ITER=1000（max_iter cap）、MAX_JSON_BODY_BYTES=1MiB（_from_json 预检查）、MAX_GRPC_MESSAGE_BYTES=64MiB（server 显式 receive/send 上限）；REST：HTTP 中间件（Content-Length>1MiB → 413、每客户端 60s/300 请求 → 429）。
+  - 【测试】`tests/test_dos_limits.py` 8 项。
 - [x] **5.4 错误信息脱敏** — 完成 ✅ commit `0cdc96c`
   - 【实现】`main.py` 候选族失败回传改 `"fit_failed"`、predict 缺变量不回传 KeyError 细节；`server.py _error_text` 通用错误回传类型名（结构化错误保留信封）。
   - 【测试】`test_security_hardening.py`：`_error_text` 不泄露原始异常、main.py 无 `str(exc)`。
@@ -379,7 +380,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 2 最小可信核心 | ✅ 完成 | 见上 |
 | Phase 3 可信平滑预测 | ✅ **完成** | 3.1–3.8 全部完成（单一表示、lambda 生命周期、更新诊断、newdata 重建、schema 契约、admission、stage2 门禁）；Phase 4 前置满足 |
 | Phase 4 验证与发布 | ✅ **完成** | 4.1–4.6 全部完成（容差、golden 全流程、伪测试清理、CI 门禁、发布加固、Release 1 说明）；CI 实际执行与版本冻结待 GitHub Actions 环境 |
-| Phase 5 服务层安全 | 🔄 进行中 | 5.1/5.4/5.5 完成；下一步 5.3 DoS 上限 / 5.6 供应链 / 5.7 AutoML |
+| Phase 5 服务层安全 | 🔄 进行中 | 5.1/5.3/5.4/5.5 完成；下一步 5.6 供应链 / 5.7 AutoML / 5.2 TLS |
 | Phase 6 在线层修复 | ⬜ 待办 | 可并行 |
 | Phase 7 性能规模化 | ⬜ 待办 | 依赖 Phase 1 |
 | Phase 8 商业闭环 | ⬜ 待办 | 依赖 Phase 4/5 |
