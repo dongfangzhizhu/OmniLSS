@@ -339,8 +339,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [ ] **7.2 后端选择策略修正** — 部分完成
   - 【已交付】`rs_algorithm._select_solver_backend` 移除硬编码 50K 阈值，改为与 `config.py` 设备策略对齐：CPU（及占位 inf 阈值）恒走 NumPy，GPU/TPU 且 n ≥ 配置 crossover 才用 JAX 后端；routing_decision 指定 `solver_backend` 仍优先。验证：CPU n=100k → numpy、routing 指定 jax → jax；method routing + 八核心回归通过。
   - 【待办】`gamlss()` 路由阶段的轻量形状探测（`_build_design_matrix` 取列数）与拟合时构建重复——合并涉及 method routing 逻辑重构（`test_method_routing_integration` 覆盖），收益小（探测 vs 拟合构建），留待性能专项。
-- [ ] **7.3 WLS/Gram 计算去重**
-  - 实现：`rs_algorithm.py:520-529` 与 `NumpySolverBackend.wls_solve` 只算一次 Gram。
+- [x] **7.3 WLS/Gram 计算去重** — 完成 ✅ commit `83e12c5`
+  - 【实现】`NumpySolverBackend.wls_solve` 新增 `skip_stabilize` 参数：rs_step 标准 WLS 分支已对 Gram 做 `stabilize_hessian`（condition 记录 + safeguard 事件），传 `skip_stabilize=True` 跳过 wls_solve 内重复的 Gram 构建与 stabilize（lambda=0 时此前 Gram 算两次）；其他调用方默认 False 行为不变。
+  - 【验证】NO/ZAGA R 一致性 + safeguard 诊断 + WLS 稳定性 15 项全绿。
 - [ ] **7.4 基准真实化**
   - 实现：`benchmarks/` 修复 12/42 失败（含 cs 3.24e+03 级错误，属 Phase 1/3 修复范畴的回归验证）；速度对比基准确立（当前 0.0–0.4× vs R，需给出合理性说明或优化目标）。
 - [ ] **7.5 内存优化验证**
@@ -391,7 +392,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 4 验证与发布 | ✅ **完成** | 4.1–4.6 全部完成（容差、golden 全流程、伪测试清理、CI 门禁、发布加固、Release 1 说明）；CI 实际执行与版本冻结待 GitHub Actions 环境 |
 | Phase 5 服务层安全 | ✅ **完成** | 5.1–5.7 全部完成（认证/DoS/脱敏/序列化/供应链/AutoML/TLS）；公网部署前提满足 |
 | Phase 6 在线层修复 | ⬜ 待办 | 可并行 |
-| Phase 7 性能规模化 | ⬜ 待办 | 依赖 Phase 1 |
+| Phase 7 性能规模化 | 🔄 进行中 | 7.2 后端对齐（部分）、7.3 Gram 去重完成；7.1 JIT 上提/7.4 基准真实化待专项 |
 | Phase 8 商业闭环 | ⬜ 待办 | 依赖 Phase 4/5 |
 
 > **下一步建议**（下次会话入口）：
