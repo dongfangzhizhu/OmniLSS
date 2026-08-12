@@ -283,10 +283,12 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   - 实现：gRPC/FastAPI 启用 TLS（证书可配置）；`omnilss-pro/client.py:42` 支持 TLS + 凭据注入。
 - [ ] **5.3 DoS 上限**
   - 实现：`Sample.n` 上限、`BatchFit` 请求数上限、`max_iter` 上限、JSON body 大小限制、速率限制中间件；gRPC 消息大小显式配置。
-- [ ] **5.4 错误信息脱敏**
-  - 实现：`main.py:111,159`、`server.py:256` 不再回传 `str(exc)` 原始异常。
-- [ ] **5.5 序列化安全**
-  - 实现：`serialization.py:311,739` 的 `np.load` 传 `allow_pickle=False`；`load_model` 默认别名改 JSON 版；pickle 路径文档标注仅限可信文件；zip-bomb 防护（解压大小/条目数上限）。
+- [x] **5.4 错误信息脱敏** — 完成 ✅ commit `0cdc96c`
+  - 【实现】`main.py` 候选族失败回传改 `"fit_failed"`、predict 缺变量不回传 KeyError 细节；`server.py _error_text` 通用错误回传类型名（结构化错误保留信封）。
+  - 【测试】`test_security_hardening.py`：`_error_text` 不泄露原始异常、main.py 无 `str(exc)`。
+- [x] **5.5 序列化安全** — 完成 ✅ commit `0cdc96c`
+  - 【实现】两处 `np.load` 加 `allow_pickle=False`（防 pickle RCE）；`load_model` 默认别名改 `load_model_json`（pickle 路径标注仅限可信文件）；新增 `_zip_bomb_guard`（条目 ≤1000、解压大小 ≤512MiB，load_model_json 与 capability_snapshot 共用）。
+  - 【测试】`test_security_hardening.py`：np.load 全 allow_pickle=False、load_model 默认 JSON、zip-bomb 条目/大小拒绝、JSON roundtrip。
 - [ ] **5.6 供应链与部署加固**
   - 实现：`requirements.txt`/`pyproject.toml` 精确 pin 版本；Dockerfile 非 root 用户 + digest pin；compose 加资源限制。
 - [ ] **5.7 AutoML 资源治理**
@@ -377,7 +379,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 2 最小可信核心 | ✅ 完成 | 见上 |
 | Phase 3 可信平滑预测 | ✅ **完成** | 3.1–3.8 全部完成（单一表示、lambda 生命周期、更新诊断、newdata 重建、schema 契约、admission、stage2 门禁）；Phase 4 前置满足 |
 | Phase 4 验证与发布 | ✅ **完成** | 4.1–4.6 全部完成（容差、golden 全流程、伪测试清理、CI 门禁、发布加固、Release 1 说明）；CI 实际执行与版本冻结待 GitHub Actions 环境 |
-| Phase 5 服务层安全 | 🔄 进行中 | 5.1 认证默认拒绝完成；下一步 5.3 DoS 上限 / 5.4 错误脱敏 / 5.5 序列化安全 |
+| Phase 5 服务层安全 | 🔄 进行中 | 5.1/5.4/5.5 完成；下一步 5.3 DoS 上限 / 5.6 供应链 / 5.7 AutoML |
 | Phase 6 在线层修复 | ⬜ 待办 | 可并行 |
 | Phase 7 性能规模化 | ⬜ 待办 | 依赖 Phase 1 |
 | Phase 8 商业闭环 | ⬜ 待办 | 依赖 Phase 4/5 |
