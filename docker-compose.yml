@@ -21,6 +21,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2g
 
   omnilss-core-http:
     build: ./omnilss-server
@@ -31,6 +36,11 @@ services:
       JAX_PLATFORMS: cpu
       JAX_ENABLE_X64: "true"
       OMNILSS_API_TOKEN: ${OMNILSS_API_TOKEN:-change-me}
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
 
   omnilss-pro-demo:
     build: ./omnilss-pro
