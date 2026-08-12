@@ -11,6 +11,12 @@ from .client import OmniLSSCoreClient
 
 RankMetric = Literal["deviance", "aic", "bic", "gaic"]
 
+# Phase 5.7: AutoML resource governance.
+MAX_BOOTSTRAP_SAMPLES = 500
+MAX_CANDIDATE_FAMILIES = 50
+MAX_TOTAL_FIT_REQUESTS = 10_000
+
+
 _DEFAULT_PARAMETER_COUNTS = {
     "NO": 2,
     "GA": 2,
@@ -83,6 +89,10 @@ def rank_candidate_families(
     counts = {**_DEFAULT_PARAMETER_COUNTS, **(parameter_counts or {})}
     n_obs = _response_length(data)
     family_list = list(families)
+    if len(family_list) > MAX_CANDIDATE_FAMILIES:
+        raise ValueError(
+            f"too many candidate families: {len(family_list)} > {MAX_CANDIDATE_FAMILIES}"
+        )
     batch_requests = [
         {
             "formula": formula,
@@ -163,15 +173,30 @@ def bootstrap_deviance_intervals(
 
     if n_bootstrap <= 0:
         raise ValueError("n_bootstrap must be positive")
+    if n_bootstrap > MAX_BOOTSTRAP_SAMPLES:
+        raise ValueError(
+            f"n_bootstrap too large: {n_bootstrap} > {MAX_BOOTSTRAP_SAMPLES}"
+        )
     if not 0.0 < confidence < 1.0:
         raise ValueError("confidence must be between 0 and 1")
+
+    family_list = list(families)
+    if len(family_list) > MAX_CANDIDATE_FAMILIES:
+        raise ValueError(
+            f"too many candidate families: {len(family_list)} > {MAX_CANDIDATE_FAMILIES}"
+        )
+    if len(family_list) * n_bootstrap > MAX_TOTAL_FIT_REQUESTS:
+        raise ValueError(
+            f"total fit requests too large: {len(family_list)} x {n_bootstrap} "
+            f"> {MAX_TOTAL_FIT_REQUESTS}"
+        )
 
     n_obs = _response_length(data)
     rng = np.random.default_rng(random_state)
     alpha = 1.0 - confidence
     family_results: dict[str, Any] = {}
 
-    for family in families:
+    for family in family_list:
         deviances: list[float] = []
         errors: list[str] = []
         batch_requests = []
