@@ -508,11 +508,27 @@ def create_service():
     )
 
 
+def _validate_api_token(host: str, token: str) -> None:
+    """Phase 5.1 default-deny: without a token, refuse non-loopback binds."""
+    if not token and host not in {"127.0.0.1", "localhost", "::1"}:
+        raise RuntimeError(
+            "OMNILSS_API_TOKEN is not set; refusing to start the gRPC server "
+            "on a non-loopback interface (Phase 5.1 default-deny). Set "
+            "OMNILSS_API_TOKEN or bind host to 127.0.0.1."
+        )
+
+
 def serve(host: str = "0.0.0.0", port: int = 50051):
     try:
         import grpc
     except Exception as exc:  # pragma: no cover
         raise RuntimeError("grpcio is required to run OmniLSS gRPC server") from exc
+
+    # Phase 5.1: authentication defaults to denied.  Without OMNILSS_API_TOKEN
+    # the server refuses to start on a non-loopback interface; set the token
+    # (or bind 127.0.0.1 explicitly) to run it.
+    api_token = os.getenv("OMNILSS_API_TOKEN", "")
+    _validate_api_token(host, api_token)
 
     (
         service,
@@ -521,7 +537,6 @@ def serve(host: str = "0.0.0.0", port: int = 50051):
         sample_pb2_grpc,
         capability_pb2_grpc,
     ) = create_service()
-    api_token = os.getenv("OMNILSS_API_TOKEN", "")
 
     class _TokenAuthInterceptor(grpc.ServerInterceptor):
         def __init__(self, token: str) -> None:

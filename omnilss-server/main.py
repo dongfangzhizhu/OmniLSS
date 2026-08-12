@@ -8,9 +8,10 @@ SQLite index lives at ``OMNILSS_MODEL_DB_PATH``.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, status
 from pydantic import BaseModel
 
 from omnilss import gamlss
@@ -18,6 +19,21 @@ from omnilss.api.grpc.server import REGISTRY
 from omnilss.prediction import PredictionSchemaError
 
 app = FastAPI(title="omnilss-server")
+
+# Phase 5.1: token authentication on every endpoint (same policy as
+# omnilss.api.http.fastapi_server._check_auth).  Production deployments must
+# set OMNILSS_API_TOKEN (docker-compose does); with no token configured the
+# API is open for local development only.
+_API_TOKEN = os.getenv("OMNILSS_API_TOKEN", "")
+
+
+def _check_auth(authorization: str = Header(default="")) -> None:
+    if not _API_TOKEN:
+        return
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    if authorization[7:] != _API_TOKEN:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
 
 class FitRequest(BaseModel):
@@ -86,14 +102,14 @@ def _load_or_404(model_id: str) -> Any:
 
 
 @app.post("/fit")
-def fit(req: FitRequest):
+def fit(req: FitRequest, _: None = Depends(_check_auth)):
     model = gamlss(**_model_kwargs(req))
     model_id = REGISTRY.save(model)
     return _model_summary(model_id, model)
 
 
 @app.post("/predict")
-def predict(req: PredictRequest):
+def predict(req: PredictRequest, _: None = Depends(_check_auth)):
     model = _load_or_404(req.model_id)
     try:
         params = model.predict_params(req.newdata)
@@ -112,18 +128,18 @@ def predict(req: PredictRequest):
 
 
 @app.get("/diagnostics/{model_id}")
-def diagnostics(model_id: str):
+def diagnostics(model_id: str, _: None = Depends(_check_auth)):
     model = _load_or_404(model_id)
     return {"deviance": float(model.g_dev), "iter": int(model.iter)}
 
 
 @app.get("/models")
-def list_models():
+def list_models(_: None = Depends(_check_auth)):
     return {"model_ids": REGISTRY.list_ids()}
 
 
 @app.delete("/models/{model_id}")
-def delete_model(model_id: str):
+def delete_model(model_id: str, _: None = Depends(_check_auth)):
     deleted = REGISTRY.delete(model_id)
     if not deleted:
         raise HTTPException(404, "model not found")
@@ -131,7 +147,9 @@ def delete_model(model_id: str):
 
 
 @app.post("/distributions/select")
-def distributions_select(req: DistributionSelectRequest):
+def distributions_select(
+    req: DistributionSelectRequest, _: None = Depends(_check_auth)
+):
     n_obs = max(
         (len(v) for v in req.data.values() if hasattr(v, "__len__")), default=1
     )

@@ -9,6 +9,9 @@ services:
     environment:
       JAX_PLATFORMS: cpu
       JAX_ENABLE_X64: "true"
+      # Phase 5.1: token authentication is mandatory in compose deployments;
+      # override per environment via OMNILSS_API_TOKEN.
+      OMNILSS_API_TOKEN: ${OMNILSS_API_TOKEN:-change-me}
     healthcheck:
       test:
         - CMD
@@ -27,6 +30,7 @@ services:
     environment:
       JAX_PLATFORMS: cpu
       JAX_ENABLE_X64: "true"
+      OMNILSS_API_TOKEN: ${OMNILSS_API_TOKEN:-change-me}
 
   omnilss-pro-demo:
     build: ./omnilss-pro
