@@ -239,7 +239,18 @@ def _to_json(obj: Any) -> str:
     return json.dumps(obj, ensure_ascii=False)
 
 
+# Phase 5.3: DoS limits (gRPC service).
+MAX_SAMPLE_N = 100_000
+MAX_BATCH_FITS = 100
+MAX_ITER = 1000
+MAX_JSON_BODY_BYTES = 1_000_000  # 1 MiB
+MAX_GRPC_MESSAGE_BYTES = 64 * 1024 * 1024  # 64 MiB
+
+
 def _from_json(text: str) -> dict[str, Any]:
+    # Phase 5.3: bound the JSON payload size before parsing.
+    if len(text.encode("utf-8")) > MAX_JSON_BODY_BYTES:
+        raise ValueError(f"JSON payload too large (>{MAX_JSON_BODY_BYTES} bytes)")
     parsed = json.loads(text) if text else {}
     if not isinstance(parsed, dict):
         raise ValueError("payload must be a JSON object")
@@ -386,7 +397,7 @@ def create_service():
                 kwargs.setdefault("parameter_formulas", {})["tau"] = request.tau_formula
             kwargs["method"] = method
             if request.max_iter > 0:
-                kwargs["max_iter"] = int(request.max_iter)
+                kwargs["max_iter"] = min(int(request.max_iter), MAX_ITER)
             kwargs["verbose"] = bool(request.verbose)
 
             model = gamlss(**kwargs)
@@ -412,6 +423,12 @@ def create_service():
 
         def BatchFit(self, request, context):  # noqa: N802, ARG002
             try:
+                if len(request.requests) > MAX_BATCH_FITS:
+                    return fit_pb2.BatchFitResponse(
+                        responses=[],
+                        success=False,
+                        error=f"batch too large: {len(request.requests)} > {MAX_BATCH_FITS}",
+                    )
                 responses = []
                 for fit_request in request.requests:
                     try:
@@ -466,7 +483,7 @@ def create_service():
                 import numpy as np
 
                 model = REGISTRY.load(request.model_id)
-                n = max(0, int(request.n))
+                n = min(max(0, int(request.n)), MAX_SAMPLE_N)
                 family = model.family
                 fitted = getattr(model, "fitted_values", {}) or {}
                 param_means = {
@@ -557,6 +574,10 @@ def serve(host: str = "0.0.0.0", port: int = 50051):
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=8),
         interceptors=[_TokenAuthInterceptor(api_token)],
+        options=[
+            ("grpc.max_receive_message_length", MAX_GRPC_MESSAGE_BYTES),
+            ("grpc.max_send_message_length", MAX_GRPC_MESSAGE_BYTES),
+        ],
     )
     fit_pb2_grpc.add_FitServiceServicer_to_server(service, server)
     predict_pb2_grpc.add_PredictServiceServicer_to_server(service, server)

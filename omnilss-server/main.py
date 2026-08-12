@@ -20,6 +20,47 @@ from omnilss.prediction import PredictionSchemaError
 
 app = FastAPI(title="omnilss-server")
 
+# Phase 5.3: DoS limits for the REST boundary.
+MAX_JSON_BODY_BYTES = 1_000_000  # 1 MiB
+RATE_LIMIT_WINDOW_SECONDS = 60
+RATE_LIMIT_MAX_REQUESTS = 300
+
+
+@app.middleware("http")
+async def _dos_guard(request, call_next):
+    """Reject oversized bodies and cap requests per client per window."""
+    # Body size guard (FastAPI reads the body on demand; Content-Length is a
+    # cheap pre-check for the common case).
+    content_length = request.headers.get("content-length")
+    if content_length and content_length.isdigit() and int(content_length) > MAX_JSON_BODY_BYTES:
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            content={"error": "request body too large"},
+        )
+
+    # Simple in-memory sliding-window rate limit per client IP.
+    import time
+
+    client = request.client.host if request.client else "unknown"
+    now = time.monotonic()
+    window = _RATE_LIMIT_STATE.setdefault(client, [])
+    window[:] = [t for t in window if now - t < RATE_LIMIT_WINDOW_SECONDS]
+    if len(window) >= RATE_LIMIT_MAX_REQUESTS:
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={"error": "rate limit exceeded"},
+        )
+    window.append(now)
+
+    return await call_next(request)
+
+
+_RATE_LIMIT_STATE: dict[str, list[float]] = {}
+
 # Phase 5.1: token authentication on every endpoint (same policy as
 # omnilss.api.http.fastapi_server._check_auth).  Production deployments must
 # set OMNILSS_API_TOKEN (docker-compose does); with no token configured the
