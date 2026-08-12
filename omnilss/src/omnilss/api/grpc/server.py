@@ -583,6 +583,19 @@ def serve(host: str = "0.0.0.0", port: int = 50051):
     predict_pb2_grpc.add_PredictServiceServicer_to_server(service, server)
     sample_pb2_grpc.add_SampleServiceServicer_to_server(service, server)
     capability_pb2_grpc.add_CapabilityServiceServicer_to_server(service, server)
-    server.add_insecure_port(f"{host}:{port}")
+
+    # Phase 5.2: TLS is enabled when the certificate/key env vars are set;
+    # otherwise the server binds insecurely (auth token still applies).
+    tls_cert = os.getenv("OMNILSS_TLS_CERT", "")
+    tls_key = os.getenv("OMNILSS_TLS_KEY", "")
+    if tls_cert and tls_key:
+        with open(tls_cert, "rb") as fh:
+            cert_bytes = fh.read()
+        with open(tls_key, "rb") as fh:
+            key_bytes = fh.read()
+        creds = grpc.ssl_server_credentials(((key_bytes, cert_bytes),))
+        server.add_secure_port(f"{host}:{port}", creds)
+    else:
+        server.add_insecure_port(f"{host}:{port}")
     server.start()
     return server

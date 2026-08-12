@@ -38,8 +38,20 @@ class OmniLSSCoreClient:
         host: str = "localhost",
         port: int = 50051,
         timeout: float = 60.0,
+        tls: bool = False,
+        root_cert: bytes | None = None,
+        api_token: str | None = None,
     ) -> None:
-        self._channel = grpc.insecure_channel(f"{host}:{port}")
+        # Phase 5.2: TLS + token injection.
+        if tls:
+            creds = grpc.ssl_channel_credentials(root_certificates=root_cert)
+            self._channel = grpc.secure_channel(f"{host}:{port}", creds)
+        else:
+            self._channel = grpc.insecure_channel(f"{host}:{port}")
+        self._api_token = api_token or ""
+        self._metadata = (
+            (("authorization", f"Bearer {self._api_token}"),) if self._api_token else ()
+        )
         self._fit_stub = fit_pb2_grpc.FitServiceStub(self._channel)
         self._predict_stub = predict_pb2_grpc.PredictServiceStub(self._channel)
         self._sample_stub = sample_pb2_grpc.SampleServiceStub(self._channel)
@@ -69,7 +81,7 @@ class OmniLSSCoreClient:
             max_iter=max_iter,
             verbose=verbose,
         )
-        response = self._fit_stub.Fit(request, timeout=self._timeout)
+        response = self._fit_stub.Fit(request, timeout=self._timeout, metadata=self._metadata)
         if not response.success:
             raise RuntimeError(f"Core server fit failed: {response.error}")
         return {
@@ -97,7 +109,9 @@ class OmniLSSCoreClient:
                 )
             )
         response = self._fit_stub.BatchFit(
-            fit_pb2.BatchFitRequest(requests=grpc_requests), timeout=self._timeout
+            fit_pb2.BatchFitRequest(requests=grpc_requests),
+            timeout=self._timeout,
+            metadata=self._metadata,
         )
         if response.error and not response.responses:
             raise RuntimeError(f"Core server batch fit failed: {response.error}")
@@ -116,7 +130,7 @@ class OmniLSSCoreClient:
     def list_models(self) -> list[str]:
         """List model ids currently registered by the Core server."""
         response = self._fit_stub.ListModels(
-            fit_pb2.ListModelsRequest(), timeout=self._timeout
+            fit_pb2.ListModelsRequest(), timeout=self._timeout, metadata=self._metadata
         )
         if not response.success:
             raise RuntimeError(f"Model listing failed: {response.error}")
@@ -125,7 +139,7 @@ class OmniLSSCoreClient:
     def delete_model(self, model_id: str) -> bool:
         """Delete a fitted model artifact from the Core server registry."""
         request = fit_pb2.DeleteModelRequest(model_id=model_id)
-        response = self._fit_stub.DeleteModel(request, timeout=self._timeout)
+        response = self._fit_stub.DeleteModel(request, timeout=self._timeout, metadata=self._metadata)
         if not response.success:
             raise RuntimeError(f"Model deletion failed: {response.error}")
         return bool(response.deleted)
@@ -142,7 +156,7 @@ class OmniLSSCoreClient:
             newdata_json=json.dumps(jsonable),
             newdata_columns=columns,
         )
-        response = self._predict_stub.Predict(request, timeout=self._timeout)
+        response = self._predict_stub.Predict(request, timeout=self._timeout, metadata=self._metadata)
         if not response.success:
             raise RuntimeError(f"Prediction failed: {response.error}")
         return json.loads(response.params_json)
@@ -150,7 +164,7 @@ class OmniLSSCoreClient:
     def sample(self, model_id: str, n: int) -> list[float]:
         """Sample from a fitted Core model."""
         request = sample_pb2.SampleRequest(model_id=model_id, n=n)
-        response = self._sample_stub.Sample(request, timeout=self._timeout)
+        response = self._sample_stub.Sample(request, timeout=self._timeout, metadata=self._metadata)
         if not response.success:
             raise RuntimeError(f"Sampling failed: {response.error}")
         return json.loads(response.samples_json)["samples"]
