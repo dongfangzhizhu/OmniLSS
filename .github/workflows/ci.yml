@@ -54,20 +54,30 @@ jobs:
         if: contains(matrix.group.name, 'R Consistency') && always() && !cancelled()
         run: |
           cd omnilss
-          # R-consistency tests must ACTUALLY run against R, never skip.
-          # Re-run one representative test with -rs; any skip fails the CI.
-          python -m pytest tests/test_r_consistency_tf.py -rs -q 2>&1 | tee /tmp/rcons.log
-          if grep -qE "SKIPPED|skipped" /tmp/rcons.log; then
+          # Phase 4.1: the R-consistency group must ACTUALLY run against R —
+          # re-run the whole R-consistency suite fail-closed: any skip fails the
+          # CI, and the executed assertion count must reach the required floor.
+          python -m pytest "tests/test_*r_consistency*.py" -rs -q 2>&1 | tee /tmp/rcons.log
+          if grep -qE "skipped|SKIPPED" /tmp/rcons.log; then
             echo "::error::R-consistency tests were skipped (R not usable in CI)"
             exit 1
           fi
-          echo "OK: R-consistency tests executed against real R"
+          PASSED=$(grep -oE "[0-9]+ passed" /tmp/rcons.log | grep -oE "[0-9]+" | head -1)
+          PASSED=${PASSED:-0}
+          if [ "$PASSED" -lt 300 ]; then
+            echo "::error::R-consistency assertion count ${PASSED} < 300 (required floor)"
+            exit 1
+          fi
+          echo "OK: R-consistency tests executed against real R (${PASSED} assertions)"
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           file: ./omnilss/coverage.xml
           flags: ${{ matrix.group.name }}
-          fail_ci_if_error: false
+          # Phase 4.5: coverage reporting failures fail the CI; the 0.70
+          # project target in codecov.yml is enforced via the codecov status
+          # check (required on main).
+          fail_ci_if_error: true
 
   lint:
     name: Code Quality

@@ -12,6 +12,56 @@ on:
         type: string
 
 jobs:
+  pre-release-gate:
+    name: Pre-release gate (full tests + required-R fail-closed)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up R (required-R gate needs real R + gamlss)
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.0'
+
+      - name: Install R packages
+        run: Rscript -e 'install.packages(c("gamlss", "gamlss.dist", "jsonlite"), repos = "https://cloud.r-project.org")'
+
+      - run: pip install uv
+
+      - name: Install dependencies
+        run: |
+          cd omnilss
+          uv pip install --system -e ".[dev]"
+
+      - name: Full test suite
+        env:
+          MPLBACKEND: Agg
+          JAX_PLATFORMS: cpu
+          JAX_ENABLE_X64: "true"
+        run: |
+          cd omnilss
+          python -m pytest tests/ -q
+
+      - name: Required-R gate (fail-closed, no skips)
+        env:
+          JAX_PLATFORMS: cpu
+          JAX_ENABLE_X64: "true"
+        run: |
+          cd omnilss
+          python -m pytest "tests/test_*r_consistency*.py" -rs -q 2>&1 | tee /tmp/rcons.log
+          if grep -qE "skipped|SKIPPED" /tmp/rcons.log; then
+            echo "::error::Required-R tests were skipped; release blocked (Phase 4.5)"
+            exit 1
+          fi
+          echo "OK: required-R tests executed against real R"
+
   build:
     name: Build distribution
     runs-on: ubuntu-latest
@@ -88,7 +138,7 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI
-    needs: [build, test-install]
+    needs: [build, test-install, pre-release-gate]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

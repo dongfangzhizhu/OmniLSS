@@ -18,6 +18,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 离线开发环境构建文档与 devcontainer bootstrap 补充一次性 build-time 依赖清单、镜像构建期依赖校验、发布/架构/R/gRPC 验证命令和维护规则，避免后续离线会话因缺少 `optax`、`build`、`twine`、R 包或 protobuf tooling 阻塞开发。
 
 
+## [0.4.0] - 2026-08-12 (Release 1)
+
+### Release 1 能力范围（覆盖范围 = 已验证能力）
+
+**核心分布（E3 晋级，八核心）**：NO / GA / PO / BI / NBI / BE / ZAGA / GU 的
+d/p/q/r、属性测试（hypothesis 100 examples/族）、R 一致性（rtol ≤ 1e-3）与
+固定 R golden artifact（replay rtol 2e-4）全部通过。
+
+**拟合算法**：RS（NumPy 恒走）、CG、MIXED（真混合路由，修复 NBI 次优收敛）
+三算法隔离 R 对照；路由诊断（Route Diagnostic 含 accelerator_available）。
+
+**数值地基**：x64 全局精度、IRLS working-response 无硬 clip、WLS 动态 ridge、
+ZAGA 密度无形状 clip、族感知初始化、safeguard 结构化诊断（eta_clip /
+hessian_ridge / hessian_floor / nan_replacement）。
+
+**平滑与预测（pb/ps/cs）**：单一 managed 表示 + lambda origin 生命周期
+（user_fixed / df_target / method_selected）、RS 平滑器更新诊断、saved-state
+newdata 重建契约（cs 由拒绝改为重建成功）、严格 PredictionSchemaError
+（term id + expected/actual schema + state version）、smoother admission
+fail-closed（UnsupportedSmootherError）。
+
+**验证体系**：`--require-r` fail-closed 门禁（stage1/stage2 gate suite）、
+容差体系重建（无 rtol > 0.01 残留，审计门禁）、golden runner 验证 OmniLSS
+本体、真实 R 参考结果。
+
+### Added
+- Phase 1 核心数学正确性修复（qTF/pIG/qIG/WEI3/BCCG-BCT-BCPE 截断归一化等）。
+- Phase 2 最小可信核心（八核心 E3 晋级、三算法 R 对照、safeguard 诊断、
+  RS 路由、ps/cs 基线、stage1 门禁）。
+- Phase 3 可信平滑与预测（3.1–3.8 全部完成）。
+- Phase 4 验证体系（4.2 容差、4.3 golden 全流程、4.4 伪测试清理、
+  4.1/4.5 CI 与发布门禁）。
+
+### Changed
+- MIXED 由内联阻尼 IWLS 改为真混合 dispatcher（修复收敛缺陷）。
+- 八核心族 R 对照容差收紧至 ≤ 1e-3（原 0.02–0.25）。
+- golden runner python 侧由 scipy 改为 OmniLSS 本体。
+- ZASICHEL/ZISICHEL/ZABNB/ZIBNB 参数元组去重（zero 参数改用 tau）。
+
+### Notes
+- 已知收敛缺陷（CG-ZAGA/CG-GU/Mixed-GU）与 14 个非核心族拟合差异已文档化
+  例外清单，列入拟合引擎后续工作。
+- ZASICHEL/ZISICHEL dpq NaN 与 fixed-R vendored 源包安装（Windows）为
+  预先存在/环境阻塞项。
+
 ## [0.3.0] - 2026-05-17
 
 ### Added
