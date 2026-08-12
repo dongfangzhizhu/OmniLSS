@@ -357,6 +357,46 @@ def create_service():
                     report_json="{}", success=False, error=_error_text(exc)
                 )
 
+        def Version(self, request, context):  # noqa: N802, ARG002
+            """Phase 8.1: report the server/runtime versions and x64 precision."""
+            try:
+                from ... import __version__
+                import sys as _sys
+
+                x64 = "true"
+                try:
+                    import jax
+
+                    x64 = "true" if bool(jax.config.jax_enable_x64) else "false"
+                except Exception:
+                    x64 = "unknown"
+                return capability_pb2.VersionResponse(
+                    version=str(__version__),
+                    python_version=f"{_sys.version_info.major}.{_sys.version_info.minor}.{_sys.version_info.micro}",
+                    jax_version="",
+                    x64_enabled=x64,
+                    success=True,
+                    error="",
+                )
+            except Exception as exc:
+                return capability_pb2.VersionResponse(
+                    version="", success=False, error=_error_text(exc)
+                )
+
+        def Health(self, request, context):  # noqa: N802, ARG002
+            """Phase 8.1: health probe with the registered model count."""
+            try:
+                return capability_pb2.HealthResponse(
+                    status="ok",
+                    model_count=int(len(REGISTRY.list_ids())),
+                    success=True,
+                    error="",
+                )
+            except Exception as exc:
+                return capability_pb2.HealthResponse(
+                    status="degraded", model_count=0, success=False, error=_error_text(exc)
+                )
+
         def ListModels(self, request, context):  # noqa: N802, ARG002
             try:
                 return fit_pb2.ListModelsResponse(
