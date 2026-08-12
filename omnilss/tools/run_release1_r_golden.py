@@ -18,7 +18,6 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 import numpy as np
-from scipy.stats import norm
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = ROOT.parent
@@ -204,7 +203,19 @@ def run_no_case(case: GoldenCase, output_root: Path) -> tuple[Path, Path, Path]:
     markdown_path = result_dir / "result.md"
     manifest = build_manifest(case, result_path, rscript)
     r_values = np.asarray(_run_r_no_case(rscript, library, case), dtype=float)
-    python_values = norm.pdf(np.asarray(case.parameters["x"], dtype=float), loc=float(case.parameters["mu"]), scale=float(case.parameters["sigma"]))
+    # Phase 4.3: validate OmniLSS itself, not scipy.  The NO density is the
+    # same normal parameterization, but the artifact must prove OmniLSS's dNO.
+    from omnilss.distributions import NO
+
+    no_family = NO()
+    python_values = np.asarray(
+        no_family.d(
+            np.asarray(case.parameters["x"], dtype=float),
+            mu=float(case.parameters["mu"]),
+            sigma=float(case.parameters["sigma"]),
+        ),
+        dtype=float,
+    )
     if not np.isfinite(r_values).all() or not np.isfinite(python_values).all() or r_values.shape != python_values.shape:
         raise RuntimeError("fixed NO result is non-finite or shape-incompatible")
     tolerance = float(case.tolerances["absolute"])
