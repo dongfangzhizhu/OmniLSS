@@ -257,8 +257,8 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   - 【验收】grep 校验由审计测试执行 ✓（EXEMPT 清单外无 rtol>0.01）；非核心族差异（10–50%）为真实拟合缺陷，清单化待拟合引擎修复。
 - [ ] **4.3 Release-1 golden 全流程修复**
   - 实现：`tools/run_release1_r_golden.py` 验证 OmniLSS 而非 scipy；`benchmarks/r_reference_results.json` 填充真实数据或从 CI 删除。
-- [ ] **4.4 清理伪测试**
-  - 实现：`test_zip_score_python.py`、`test_fisher_verification.py`、`test_slow_distributions.py` 补断言或删除；`test_basic_batch10.py:15` 的 `("mu","sigma","nu","nu")` 错误契约修正。
+- [x] **4.4 清理伪测试** — 完成 ✅ commit `b190c4b`
+  - 【实现】① `test_zip_score_python.py` print-only → 4 项断言（对照 R 参考值，实测一致）；② `test_fisher_verification.py` print-only+超时 → jax.vmap 向量化 3 项断言（LOGNO2 解析 vs MC 3σ、PARETO2 MC 稳定性+候选公式不匹配待修、Hessian 有限性）；③ `test_slow_distributions.py` print-only → 8 项断言（JIT 阈值 + BE/ZAGA 拟合）；④ 错误契约修复：`make_zero_altered/inflated_family` 的 zero 参数与 base 的 nu 冲突（SICHEL → 重复 ("mu","sigma","nu","nu")）改用 tau，ZASICHEL/ZISICHEL/ZABNB/ZIBNB 参数元组唯一化，测试与 R 侧 dict 同步。
 - [ ] **4.5 发布流程加固**
   - 实现：`release.yml` 发布前必须跑完整测试套件 + required-R 门禁；codecov 覆盖率门禁强制执行。
 - [ ] **4.6 Release 1 版本冻结与发布**
@@ -372,7 +372,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 2 最小可信核心 | ✅ **完成** | 2.1–2.6 全部完成（E3 晋级、三算法 R 对照、safeguard 诊断、RS 路由、ps/cs 基线、stage1 门禁）；Phase 3 前置满足 |
 | Phase 2 最小可信核心 | ✅ 完成 | 见上 |
 | Phase 3 可信平滑预测 | ✅ **完成** | 3.1–3.8 全部完成（单一表示、lambda 生命周期、更新诊断、newdata 重建、schema 契约、admission、stage2 门禁）；Phase 4 前置满足 |
-| Phase 4 验证与发布 | ⬜ 待办 | 依赖 Phase 0–3 |
+| Phase 4 验证与发布 | 🔄 进行中 | 4.2 容差体系、4.4 伪测试清理完成；下一步 4.3 golden 全流程 |
 | Phase 5 服务层安全 | ⬜ 待办 | 公网部署前必须完成 |
 | Phase 6 在线层修复 | ⬜ 待办 | 可并行 |
 | Phase 7 性能规模化 | ⬜ 待办 | 依赖 Phase 1 |
