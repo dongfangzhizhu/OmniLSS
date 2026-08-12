@@ -4,17 +4,11 @@ from .backend import RuntimeBackend
 from .errors import ConvergenceError, DistributionError, NumericalError, OmniLSSError, RuntimeExecutionError
 from .config import DeterministicPolicy, DTypePolicy, RuntimeTolerancePolicy, SeedManager
 from .optimizer import (
-    CGOptimizer,
     ConvergenceMonitor,
     ConvergenceStatus,
     ConvergenceThresholds,
-    NewtonOptimizer,
-    Optimizer,
-    OptimizerResult,
     OptimizerTrace,
     OptimizerTraceEntry,
-    RSOptimizer,
-    TrustRegionOptimizer,
 )
 
 __all__ = [
