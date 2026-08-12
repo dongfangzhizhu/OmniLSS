@@ -6,6 +6,7 @@ numpy ↔ JAX array conversions during model fitting.
 
 from __future__ import annotations
 
+import threading
 from typing import Any, Dict, Mapping
 
 import jax.numpy as jnp
@@ -29,6 +30,9 @@ class ArrayCache:
     def __init__(self):
         self._numpy_cache: Dict[str, np.ndarray] = {}
         self._jax_cache: Dict[str, jnp.ndarray] = {}
+        # Phase 7.5: the global cache singleton is shared across threads; all
+        # cache mutations are serialized through this lock.
+        self._lock = threading.Lock()
     
     def set_numpy(self, key: str, array: np.ndarray):
         """Store a numpy array.
@@ -40,10 +44,11 @@ class ArrayCache:
         array : np.ndarray
             Numpy array to store
         """
-        self._numpy_cache[key] = array
-        # Invalidate JAX cache for this key
-        if key in self._jax_cache:
-            del self._jax_cache[key]
+        with self._lock:
+            self._numpy_cache[key] = array
+            # Invalidate JAX cache for this key
+            if key in self._jax_cache:
+                del self._jax_cache[key]
     
     def set_jax(self, key: str, array: jnp.ndarray):
         """Store a JAX array.
@@ -55,10 +60,11 @@ class ArrayCache:
         array : jnp.ndarray
             JAX array to store
         """
-        self._jax_cache[key] = array
-        # Invalidate numpy cache for this key
-        if key in self._numpy_cache:
-            del self._numpy_cache[key]
+        with self._lock:
+            self._jax_cache[key] = array
+            # Invalidate numpy cache for this key
+            if key in self._numpy_cache:
+                del self._numpy_cache[key]
     
     def get_numpy(self, key: str) -> np.ndarray:
         """Get a numpy array, converting from JAX if necessary.
@@ -123,8 +129,9 @@ class ArrayCache:
     
     def clear(self):
         """Clear all cached arrays."""
-        self._numpy_cache.clear()
-        self._jax_cache.clear()
+        with self._lock:
+            self._numpy_cache.clear()
+            self._jax_cache.clear()
     
     def memory_usage(self) -> Dict[str, int]:
         """Get memory usage statistics.
