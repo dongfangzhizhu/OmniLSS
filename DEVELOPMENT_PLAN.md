@@ -304,6 +304,10 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 
 > **前置**：可并行（不阻塞 Phase 0–5）。
 > **目标**：修复审计 H9 与中危在线算法缺陷，补齐测试。
+>
+> **⚠️ 2026-08-12 决策**：`ondil/`、`gamlss-python/` 是**参考项目，不修改**（用户指示）。
+> 此前误在 ondil repo 的改动已回退（`git reset --hard f4235d3`）。Phase 6 全部任务
+> 涉及 ondil 代码——**标记为不执行**（参考项目仅用于对齐设计）。
 
 ### 任务清单
 
@@ -328,7 +332,8 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 
 ### 任务清单
 
-- [ ] **7.1 JIT 上提到模块级**
+- [ ] **7.1 JIT 上提到模块级** — ⚠️ 待性能专项
+  - 【注】2026-08-12：`jax_rs_core.py` 的 `@jax.jit _run` 定义在 `jax_rs_fit_core` 内部且数据（y/X/weights）捕获为常量 → 每次调用重编译（H2）。模块级重构（数据参数化 + `static_argnames`）尝试 3 次均因文件结构复杂（compute_gdev/_run 深嵌套）失败；jax 0.6.2 的 `jit` 要求 `fun` 位置参数（不支持无 fun 装饰器）。评估为**高风险重构**，需 GPU/CI 环境谨慎执行（当前实现功能正确，仅性能缺陷）。
   - 实现：`jax_rs_core.py:332-333,371`、`core/optimizer.py:240-258`、`core/lbfgs_optimizer.py:179-186` 改为模块级 `@jax.jit` + `static_argnames`；消除逐迭代 host sync。
   - 验收：相同 shape 数据二次调用无重编译（XLA cache 命中测试）；`test_jax_rs_core.py` 扩展。
 - [ ] **7.2 后端选择策略修正**
