@@ -290,8 +290,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [x] **5.5 序列化安全** — 完成 ✅ commit `0cdc96c`
   - 【实现】两处 `np.load` 加 `allow_pickle=False`（防 pickle RCE）；`load_model` 默认别名改 `load_model_json`（pickle 路径标注仅限可信文件）；新增 `_zip_bomb_guard`（条目 ≤1000、解压大小 ≤512MiB，load_model_json 与 capability_snapshot 共用）。
   - 【测试】`test_security_hardening.py`：np.load 全 allow_pickle=False、load_model 默认 JSON、zip-bomb 条目/大小拒绝、JSON roundtrip。
-- [ ] **5.6 供应链与部署加固**
-  - 实现：`requirements.txt`/`pyproject.toml` 精确 pin 版本；Dockerfile 非 root 用户 + digest pin；compose 加资源限制。
+- [x] **5.6 供应链与部署加固** — 完成 ✅ commit `b6c8472`
+  - 【实现】`omnilss-server/requirements.txt` 全部精确 pin（grpcio==1.80.0 对齐 uv.lock）；Dockerfile `USER appuser`（uid 10001 非 root）+ 基础镜像 digest pin 注释（docker 不可用环境标注 CI 验证后锁定）；docker-compose 两服务 deploy 资源限制（grpc 2 CPU/2g、http 1 CPU/1g）。
+  - 【测试】`tests/test_supply_chain.py` 4 项（全 == pin、非 root、digest 注释、compose 资源限制）。
 - [x] **5.7 AutoML 资源治理** — 完成 ✅ commit `ec4c2f5`
   - 【实现】`automl.py`：MAX_BOOTSTRAP_SAMPLES=500、MAX_CANDIDATE_FAMILIES=50、MAX_TOTAL_FIT_REQUESTS=10000（n_bootstrap×families 总请求数校验），rank_candidate_families 与 bootstrap_deviance_intervals 接入；单请求超时由 client（默认 60s）已有。
   - 【测试】`omnilss-pro/tests/test_automl_governance.py` 6 项（依赖缺失时模块级 skip）。
@@ -381,7 +382,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 2 最小可信核心 | ✅ 完成 | 见上 |
 | Phase 3 可信平滑预测 | ✅ **完成** | 3.1–3.8 全部完成（单一表示、lambda 生命周期、更新诊断、newdata 重建、schema 契约、admission、stage2 门禁）；Phase 4 前置满足 |
 | Phase 4 验证与发布 | ✅ **完成** | 4.1–4.6 全部完成（容差、golden 全流程、伪测试清理、CI 门禁、发布加固、Release 1 说明）；CI 实际执行与版本冻结待 GitHub Actions 环境 |
-| Phase 5 服务层安全 | 🔄 进行中 | 5.1/5.3/5.4/5.5/5.7 完成；剩 5.6 供应链 / 5.2 TLS |
+| Phase 5 服务层安全 | 🔄 进行中 | 5.1/5.3/5.4/5.5/5.6/5.7 完成；剩 5.2 TLS（需证书环境） |
 | Phase 6 在线层修复 | ⬜ 待办 | 可并行 |
 | Phase 7 性能规模化 | ⬜ 待办 | 依赖 Phase 1 |
 | Phase 8 商业闭环 | ⬜ 待办 | 依赖 Phase 4/5 |
