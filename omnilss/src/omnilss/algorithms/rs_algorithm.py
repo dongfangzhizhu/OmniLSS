@@ -210,9 +210,22 @@ def _select_solver_backend(
     n: int,
     routing_decision: Optional[Dict[str, Any]],
 ) -> SolverBackend:
-    backend_name = "jax" if n > 50_000 else "numpy"
-    if isinstance(routing_decision, dict):
-        backend_name = str(routing_decision.get("solver_backend", "numpy")).lower()
+    if isinstance(routing_decision, dict) and routing_decision.get("solver_backend"):
+        backend_name = str(routing_decision["solver_backend"]).lower()
+    else:
+        # Phase 7.2: align the automatic backend choice with config.py's
+        # device policy instead of a hard-coded 50k threshold — CPU (and
+        # placeholder-infinite thresholds) always stay on NumPy RS; only
+        # GPU/TPU with n above the configured crossover use the JAX backend.
+        from .. import config as _cfg
+
+        backend, _devices = _cfg._current_backend()
+        if backend in ("gpu", "tpu"):
+            table = _cfg.GPU_CROSSOVER_N if backend == "gpu" else _cfg.TPU_CROSSOVER_N
+            threshold = _cfg._get_crossover(table, family.name)
+            backend_name = "jax" if n >= threshold else "numpy"
+        else:
+            backend_name = "numpy"
     if backend_name == "jax":
         return JaxSolverBackend(family)
     return NumpySolverBackend(family)

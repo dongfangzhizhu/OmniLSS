@@ -336,8 +336,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   - 【注】2026-08-12：`jax_rs_core.py` 的 `@jax.jit _run` 定义在 `jax_rs_fit_core` 内部且数据（y/X/weights）捕获为常量 → 每次调用重编译（H2）。模块级重构（数据参数化 + `static_argnames`）尝试 3 次均因文件结构复杂（compute_gdev/_run 深嵌套）失败；jax 0.6.2 的 `jit` 要求 `fun` 位置参数（不支持无 fun 装饰器）。评估为**高风险重构**，需 GPU/CI 环境谨慎执行（当前实现功能正确，仅性能缺陷）。
   - 实现：`jax_rs_core.py:332-333,371`、`core/optimizer.py:240-258`、`core/lbfgs_optimizer.py:179-186` 改为模块级 `@jax.jit` + `static_argnames`；消除逐迭代 host sync。
   - 验收：相同 shape 数据二次调用无重编译（XLA cache 命中测试）；`test_jax_rs_core.py` 扩展。
-- [ ] **7.2 后端选择策略修正**
-  - 实现：`rs_algorithm.py:193` 的 n>50K 自动翻 JAX 与 `config.py` CPU 策略对齐；`gamlss()` 重复构建设计矩阵（`fitting.py:954,987,1258`）合并为一次。
+- [ ] **7.2 后端选择策略修正** — 部分完成
+  - 【已交付】`rs_algorithm._select_solver_backend` 移除硬编码 50K 阈值，改为与 `config.py` 设备策略对齐：CPU（及占位 inf 阈值）恒走 NumPy，GPU/TPU 且 n ≥ 配置 crossover 才用 JAX 后端；routing_decision 指定 `solver_backend` 仍优先。验证：CPU n=100k → numpy、routing 指定 jax → jax；method routing + 八核心回归通过。
+  - 【待办】`gamlss()` 路由阶段的轻量形状探测（`_build_design_matrix` 取列数）与拟合时构建重复——合并涉及 method routing 逻辑重构（`test_method_routing_integration` 覆盖），收益小（探测 vs 拟合构建），留待性能专项。
 - [ ] **7.3 WLS/Gram 计算去重**
   - 实现：`rs_algorithm.py:520-529` 与 `NumpySolverBackend.wls_solve` 只算一次 Gram。
 - [ ] **7.4 基准真实化**
