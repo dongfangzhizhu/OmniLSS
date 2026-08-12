@@ -43,9 +43,9 @@ class TestZASICHELConsistency(unittest.TestCase):
             ),
         ):
             with self.subTest(profile=profile_name):
-                r_d = self.bus.eval_family("ZASICHEL", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "nu": nu.tolist()})
-                r_p = self.bus.eval_family("ZASICHEL", "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "nu": nu.tolist()})
-                r_q = self.bus.eval_family("ZASICHEL", "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "nu": nu.tolist()})
+                r_d = self.bus.eval_family("ZASICHEL", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": nu.tolist()})
+                r_p = self.bus.eval_family("ZASICHEL", "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": nu.tolist()})
+                r_q = self.bus.eval_family("ZASICHEL", "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": nu.tolist()})
 
                 py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(nu)))
                 py_p = np.asarray(fam.p(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(nu)))

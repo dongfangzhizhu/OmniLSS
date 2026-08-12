@@ -1,84 +1,68 @@
-"""Test slow distributions with verbose output."""
+"""Slow-distribution JIT detection + BE/ZAGA fit smoke tests (Phase 4.4).
+
+Converts the previous print-only script into real assertions: should_use_jit
+behaviour across sample sizes, and BE/ZAGA fits converge with finite deviance.
+"""
+
+from __future__ import annotations
+
 import sys
-sys.path.insert(0, 'omnilss/src')
+from pathlib import Path
 
 import numpy as np
-import pandas as pd
+import pytest
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
 from omnilss import gamlss
 from omnilss.fitting_jit import should_use_jit
 
-# Test distributions
-distributions = {
-    'BE': 'Beta',
-    'ZAGA': 'Zero-Adjusted Gamma',
-    'BEINF': 'Beta Inflated',
-    'ZIP': 'Zero-Inflated Poisson',
-}
 
-print("="*70)
-print("Testing JIT Optimization Detection for Slow Distributions")
-print("="*70)
+@pytest.mark.parametrize(
+    "dist, n, expected_jit",
+    [
+        ("BE", 50, False),
+        ("BE", 500, True),
+        ("BE", 5000, True),
+        ("ZAGA", 50, False),
+        ("ZAGA", 500, True),
+        ("ZAGA", 5000, True),
+    ],
+)
+def test_jit_detection_thresholds(dist, n, expected_jit):
+    """JIT optimisation is enabled above the configured sample thresholds."""
+    assert should_use_jit(dist, n) is expected_jit
 
-for dist_name, dist_desc in distributions.items():
-    # Check if JIT would be used
-    use_jit_small = should_use_jit(dist_name, 50)
-    use_jit_medium = should_use_jit(dist_name, 500)
-    use_jit_large = should_use_jit(dist_name, 5000)
-    
-    print(f"\n{dist_name} ({dist_desc}):")
-    print(f"  n=50:   JIT={'✓ Enabled' if use_jit_small else '✗ Disabled'}")
-    print(f"  n=500:  JIT={'✓ Enabled' if use_jit_medium else '✗ Disabled'}")
-    print(f"  n=5000: JIT={'✓ Enabled' if use_jit_large else '✗ Disabled'}")
 
-print("\n" + "="*70)
-print("Testing BE distribution with verbose output")
-print("="*70)
+def test_be_fit_converges():
+    """BE model fits with finite deviance and reports convergence."""
+    np.random.seed(42)
+    n = 200
+    x1 = np.random.randn(n)
+    mu = 1 / (1 + np.exp(-(0.5 + 0.3 * x1)))
+    y = np.random.beta(mu * 10, (1 - mu) * 10)
+    model = gamlss("y ~ x1", family="BE", data={"y": y, "x1": x1})
 
-# Generate Beta data
-np.random.seed(42)
-n = 200
-x1 = np.random.randn(n)
-mu = 1 / (1 + np.exp(-(0.5 + 0.3 * x1)))
-y = np.random.beta(mu * 10, (1 - mu) * 10)
-data = pd.DataFrame({'y': y, 'x1': x1})
+    assert np.isfinite(model.deviance)
+    assert model.additional_slots.get("converged", False) is True
 
-model = gamlss('y ~ x1', family='BE', data=data, verbose=True)
 
-print(f'\n✓ BE model fitted successfully')
-print(f'  Deviance: {model.g_dev:.4f}')
-print(f'  Converged: {model.additional_slots.get("converged", False)}')
-print(f'  Iterations: {model.additional_slots.get("cycles", 0)}')
+def test_zaga_fit_converges():
+    """ZAGA (zero-altered) model fits with finite deviance."""
+    np.random.seed(42)
+    n = 200
+    x1 = np.random.randn(n)
+    pi = 1 / (1 + np.exp(-(-1 + 0.3 * x1)))
+    mu = np.exp(1.5 + 0.5 * x1)
+    sigma = 0.6
 
-print("\n" + "="*70)
-print("Testing ZAGA distribution with verbose output")
-print("="*70)
+    y = np.zeros(n)
+    for i in range(n):
+        if np.random.rand() < pi[i]:
+            y[i] = 0
+        else:
+            shape = 1 / sigma**2
+            y[i] = np.random.gamma(shape, mu[i] / shape)
 
-# Generate ZAGA data
-np.random.seed(42)
-n = 200
-x1 = np.random.randn(n)
-
-pi = 1 / (1 + np.exp(-(-1 + 0.3 * x1)))
-mu = np.exp(1.5 + 0.5 * x1)
-sigma = 0.6
-
-y = np.zeros(n)
-for i in range(n):
-    if np.random.rand() < pi[i]:
-        y[i] = 0
-    else:
-        shape = 1 / sigma**2
-        y[i] = np.random.gamma(shape, mu[i] / shape)
-
-data = pd.DataFrame({'y': y, 'x1': x1})
-
-model = gamlss('y ~ x1', family='ZAGA', data=data, verbose=True)
-
-print(f'\n✓ ZAGA model fitted successfully')
-print(f'  Deviance: {model.g_dev:.4f}')
-print(f'  Converged: {model.additional_slots.get("converged", False)}')
-print(f'  Iterations: {model.additional_slots.get("cycles", 0)}')
-
-print("\n" + "="*70)
-print("✓ All tests completed!")
-print("="*70)
+    model = gamlss("y ~ x1", family="ZAGA", data={"y": y, "x1": x1})
+    assert np.isfinite(model.deviance)

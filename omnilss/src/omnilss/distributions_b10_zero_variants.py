@@ -46,9 +46,12 @@ def make_zero_altered_family(base_name: str, base_log_pdf_func, base_params: tup
         
         return jnp.where(y <= 0, log_at0, log_cont)
     
-    # Add nu to parameters and links
-    za_params = base_params + ("nu",)
-    za_links = {**base_links, "nu": "logit"}
+    # Add the zero probability parameter.  R uses "nu" for the zero mass, but
+    # some base families already have a "nu" shape parameter (e.g. SICHEL),
+    # so use "tau" to keep the parameter tuple unique (Phase 4.4 contract fix).
+    zero_param = "tau" if "nu" in base_params else "nu"
+    za_params = base_params + (zero_param,)
+    za_links = {**base_links, zero_param: "logit"}
     
     from .links import log_link, log_inverse, log_derivative, identity_link, identity_inverse, identity_derivative
     
@@ -57,7 +60,7 @@ def make_zero_altered_family(base_name: str, base_log_pdf_func, base_params: tup
     link_derivs = {}
     
     for param in za_params:
-        if param == "nu":
+        if param == zero_param:
             link_funcs[param] = logit_link
             link_invs[param] = logit_inverse
             link_derivs[param] = logit_derivative
@@ -121,8 +124,9 @@ def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tu
         
         return jnp.where(y <= 0, log_at0, log_cont)
     
-    zi_params = base_params + ("nu",)
-    zi_links = {**base_links, "nu": "logit"}
+    zero_param = "tau" if "nu" in base_params else "nu"
+    zi_params = base_params + (zero_param,)
+    zi_links = {**base_links, zero_param: "logit"}
     
     from .links import log_link, log_inverse, log_derivative, identity_link, identity_inverse, identity_derivative
     
@@ -131,7 +135,7 @@ def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tu
     link_derivs = {}
     
     for param in zi_params:
-        if param == "nu":
+        if param == zero_param:
             link_funcs[param] = logit_link
             link_invs[param] = logit_inverse
             link_derivs[param] = logit_derivative

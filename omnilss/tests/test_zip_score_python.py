@@ -1,49 +1,50 @@
-"""Test ZIP score functions in Python."""
+"""ZIP score/Hessian functions against R reference values (Phase 4.4).
+
+Converts the previous print-only script into real assertions.  Expected
+values are the R gamlss.dist ZIP score/Hessian results recorded historically.
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
 
 import numpy as np
+import pytest
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
 import jax.numpy as jnp
-import sys
-sys.path.insert(0, 'src')
 
 from omnilss.distributions import ZIP
 
-# Test values
-y_vals = [0, 1, 2, 3]
-mu = 2.0
-sigma = 0.3
+MU = 2.0
+SIGMA = 0.3
 
-zip_family = ZIP()
+# (y, dldm, dlds, d2ldm2, d2lds2) — R reference values
+R_REFERENCE = [
+    (0, -0.2400, 2.1905, -0.0576, -4.7983),
+    (1, -0.5000, -1.4286, -0.2500, -2.0408),
+    (2, 0.0000, -1.4286, -0.0000, -2.0408),
+    (3, 0.5000, -1.4286, -0.2500, -2.0408),
+]
 
-print("Testing ZIP score functions in Python")
-print("=" * 70)
-print(f"\nParameters: mu = {mu}, sigma = {sigma}\n")
 
-for y in y_vals:
-    y_arr = jnp.array([y])
-    mu_arr = jnp.array([mu])
-    sigma_arr = jnp.array([sigma])
-    
-    # Score for mu
-    dldm_val = float(zip_family.score_functions["mu"](y_arr, mu_arr, sigma_arr)[0])
-    
-    # Score for sigma
-    dlds_val = float(zip_family.score_functions["sigma"](y_arr, mu_arr, sigma_arr)[0])
-    
-    # Hessian for mu
-    d2ldm2_val = float(zip_family.hessian_functions["mu"](y_arr, mu_arr, sigma_arr)[0])
-    
-    # Hessian for sigma
-    d2lds2_val = float(zip_family.hessian_functions["sigma"](y_arr, mu_arr, sigma_arr)[0])
-    
-    print(f"y = {y}:")
-    print(f"  dldm = {dldm_val:.6f}")
-    print(f"  dlds = {dlds_val:.6f}")
-    print(f"  d2ldm2 = {d2ldm2_val:.6f}")
-    print(f"  d2lds2 = {d2lds2_val:.6f}\n")
+@pytest.mark.parametrize(
+    "y, exp_dldm, exp_dlds, exp_d2ldm2, exp_d2lds2", R_REFERENCE
+)
+def test_zip_score_hessian_matches_r(
+    y, exp_dldm, exp_dlds, exp_d2ldm2, exp_d2lds2
+) -> None:
+    family = ZIP()
+    ya, ma, sa = jnp.array([y]), jnp.array([MU]), jnp.array([SIGMA])
 
-print("\nExpected from R:")
-print("-" * 70)
-print("y = 0: dldm = -0.240, dldd = 2.190, d2ldm2 = -0.058, d2ldd2 = -4.798")
-print("y = 1: dldm = -0.500, dldd = -1.429, d2ldm2 = -0.250, d2ldd2 = -2.041")
-print("y = 2: dldm = 0.000, dldd = -1.429, d2ldm2 = -0.000, d2ldd2 = -2.041")
-print("y = 3: dldm = 0.500, dldd = -1.429, d2ldm2 = -0.250, d2ldd2 = -2.041")
+    dldm = float(family.score_functions["mu"](ya, ma, sa)[0])
+    dlds = float(family.score_functions["sigma"](ya, ma, sa)[0])
+    d2ldm2 = float(family.hessian_functions["mu"](ya, ma, sa)[0])
+    d2lds2 = float(family.hessian_functions["sigma"](ya, ma, sa)[0])
+
+    np.testing.assert_allclose(dldm, exp_dldm, atol=1e-4, err_msg="dldm")
+    np.testing.assert_allclose(dlds, exp_dlds, atol=1e-4, err_msg="dlds")
+    np.testing.assert_allclose(d2ldm2, exp_d2ldm2, atol=1e-4, err_msg="d2ldm2")
+    np.testing.assert_allclose(d2lds2, exp_d2lds2, atol=1e-4, err_msg="d2lds2")

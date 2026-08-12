@@ -12,16 +12,17 @@ def test_zasichel_basic():
     """Test ZASICHEL distribution basic functionality."""
     family = ZASICHEL()
     assert family.name == "ZASICHEL"
-    assert family.parameters == ("mu", "sigma", "nu", "nu")  # base params + zero param
+    # Phase 4.4: unique parameter tuple (zero mass is "tau", not a dup "nu")
+    assert family.parameters == ("mu", "sigma", "nu", "tau")
     
     # Test PDF evaluation
     y = jnp.array([0.0, 1.0, 2.0, 5.0])
     mu = jnp.array([2.0, 2.0, 2.0, 2.0])
     sigma = jnp.array([0.5, 0.5, 0.5, 0.5])
     nu = jnp.array([0.0, 0.0, 0.0, 0.0])
-    nu_zero = jnp.array([0.3, 0.3, 0.3, 0.3])
+    tau = jnp.array([0.3, 0.3, 0.3, 0.3])
     
-    pdf = family.pdf(y, mu, sigma, nu, nu_zero)
+    pdf = family.pdf(y, mu, sigma, nu, tau)
     assert pdf.shape == y.shape
     assert jnp.all(jnp.isfinite(pdf))
     assert jnp.all(pdf >= 0)
@@ -31,15 +32,15 @@ def test_zisichel_basic():
     """Test ZISICHEL distribution basic functionality."""
     family = ZISICHEL()
     assert family.name == "ZISICHEL"
-    assert family.parameters == ("mu", "sigma", "nu", "nu")
+    assert family.parameters == ("mu", "sigma", "nu", "tau")
     
     y = jnp.array([0.0, 1.0, 2.0, 5.0])
     mu = jnp.array([2.0, 2.0, 2.0, 2.0])
     sigma = jnp.array([0.5, 0.5, 0.5, 0.5])
     nu = jnp.array([0.0, 0.0, 0.0, 0.0])
-    nu_zero = jnp.array([0.3, 0.3, 0.3, 0.3])
+    tau = jnp.array([0.3, 0.3, 0.3, 0.3])
     
-    pdf = family.pdf(y, mu, sigma, nu, nu_zero)
+    pdf = family.pdf(y, mu, sigma, nu, tau)
     assert pdf.shape == y.shape
     assert jnp.all(jnp.isfinite(pdf))
     assert jnp.all(pdf >= 0)
@@ -148,15 +149,15 @@ def test_zabnb_basic():
     """Test ZABNB distribution basic functionality."""
     family = ZABNB()
     assert family.name == "ZABNB"
-    assert family.parameters == ("mu", "sigma", "nu", "nu")
+    assert family.parameters == ("mu", "sigma", "nu", "tau")
     
     y = jnp.array([0.0, 1.0, 2.0, 5.0])
     mu = jnp.array([2.0, 2.0, 2.0, 2.0])
     sigma = jnp.array([0.5, 0.5, 0.5, 0.5])
     nu = jnp.array([1.0, 1.0, 1.0, 1.0])
-    nu_zero = jnp.array([0.3, 0.3, 0.3, 0.3])
+    tau = jnp.array([0.3, 0.3, 0.3, 0.3])
     
-    pdf = family.pdf(y, mu, sigma, nu, nu_zero)
+    pdf = family.pdf(y, mu, sigma, nu, tau)
     assert pdf.shape == y.shape
     assert jnp.all(jnp.isfinite(pdf))
     assert jnp.all(pdf >= 0)
@@ -166,15 +167,15 @@ def test_zibnb_basic():
     """Test ZIBNB distribution basic functionality."""
     family = ZIBNB()
     assert family.name == "ZIBNB"
-    assert family.parameters == ("mu", "sigma", "nu", "nu")
+    assert family.parameters == ("mu", "sigma", "nu", "tau")
     
     y = jnp.array([0.0, 1.0, 2.0, 5.0])
     mu = jnp.array([2.0, 2.0, 2.0, 2.0])
     sigma = jnp.array([0.5, 0.5, 0.5, 0.5])
     nu = jnp.array([1.0, 1.0, 1.0, 1.0])
-    nu_zero = jnp.array([0.3, 0.3, 0.3, 0.3])
+    tau = jnp.array([0.3, 0.3, 0.3, 0.3])
     
-    pdf = family.pdf(y, mu, sigma, nu, nu_zero)
+    pdf = family.pdf(y, mu, sigma, nu, tau)
     assert pdf.shape == y.shape
     assert jnp.all(jnp.isfinite(pdf))
     assert jnp.all(pdf >= 0)
