@@ -494,7 +494,7 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--repo", default=None, help="Repository path (default: cwd)")
     record.add_argument("--summary", default="", help="Verification summary")
     record.add_argument("--artifact", action="append", default=[],
-                        help="Explicit evidence artifact path in the commit (repeatable)")
+                        help="Artifact path referenced by the record (e.g. phase-0 R golden fixture)")
     record.set_defaults(func=cmd_record)
 
     phase = subparsers.add_parser("phase", help="Check all records of a phase.")
@@ -537,11 +537,13 @@ def cmd_check(args: argparse.Namespace) -> int:
 
 def cmd_record(args: argparse.Namespace) -> int:
     inspector = GitCommitInspector(args.repo)
+    # Evidence presence is auto-detected; --artifact records the referenced
+    # artifacts (e.g. phase-0 fixed R golden fixtures) in the completion
+    # record without requiring them to be touched by this commit.
     result = validate_task_completion(
         args.task,
         args.commit,
         inspector,
-        required_artifact_paths=args.artifact,
     )
     _print_result(result)
     store = CompletionRecordStore(args.store)

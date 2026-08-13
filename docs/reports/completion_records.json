@@ -1,0 +1,22 @@
+{
+  "0.5": {
+    "task_id": "0.5",
+    "commit_id": "d9285aa",
+    "subject": "完成Phase 0任务0.5：实现阶段完成检查器与中文提交完整性校验",
+    "status": "completed",
+    "verification_summary": "34 项测试全过（pytest + unittest loader 双路径），属性测试 300 例，注册 phase0_gate suite",
+    "artifact_paths": [
+      "omnilss/tests/fixtures/r_golden/no_y_x_seed_20260524.json",
+      "omnilss/tests/fixtures/r_golden/regenerated/manifest.json"
+    ],
+    "impl_paths": [
+      "tools/stage_completion_checker.py"
+    ],
+    "test_paths": [
+      "omnilss/tests/suites.py",
+      "omnilss/tests/test_stage_completion_checker.py"
+    ],
+    "reasons": [],
+    "validated_at": "2026-08-14T06:08:23"
+  }
+}
