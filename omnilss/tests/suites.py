@@ -178,6 +178,8 @@ SUITES: OrderedDict[str, list[str]] = OrderedDict(
                 "tests.consistency.test_stability_extreme_inputs",
                 "tests.test_rs_phase0_diagnostics",
                 "tests.test_optimizer_phase0_diagnostics",
+                # Phase 0.5: stage completion checker & Chinese-commit integrity
+                "tests.test_stage_completion_checker",
             ],
         ),
         (

@@ -1,0 +1,16 @@
+{
+  "task_id": "0.5",
+  "phase": "0",
+  "title": "阶段完成检查器与中文提交完整性校验",
+  "verification_summary": "新增 tools/stage_completion_checker.py（完成记录 JSON 持久化 + 中文提交完整性校验 + 阶段聚合检查 + CLI），测试 omnilss/tests/test_stage_completion_checker.py 34 项全过（pytest 与 run_suite.py unittest loader 双路径），含 hypothesis 属性测试 3 组 x100 例（>=100 次验收达成）；已注册进 phase0_gate suite。",
+  "test_command": ".venv/Scripts/python.exe -m pytest omnilss/tests/test_stage_completion_checker.py -q",
+  "test_result": "34 passed",
+  "property_test_examples": 300,
+  "validation_requirements": ["7.1", "7.2", "7.3", "7.4"],
+  "design_property": "Property 14: Phase completion records only verified Chinese commits",
+  "phase0_fixed_r_artifacts": [
+    "omnilss/tests/fixtures/r_golden/no_y_x_seed_20260524.json",
+    "omnilss/tests/fixtures/r_golden/regenerated/manifest.json"
+  ],
+  "created_at": "2026-08-14"
+}
