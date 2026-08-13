@@ -306,6 +306,7 @@ and
 
 ## Resources
 
+- [Tutorials](docs/tutorials/) — quickstart + 8 topic guides (families, algorithms, smoothers, prediction, model selection, R consistency, gRPC serving)
 - [Benchmarks](benchmarks/) — performance and consistency scripts
 - [R consistency coverage](docs/testing/r-consistency-coverage.md) — current R-backed d/p/q coverage map
 - [R GAMLSS coverage and plan](docs/development/r-gamlss-coverage-and-plan-2026-05-22.md) — gap audit and phased implementation plan
