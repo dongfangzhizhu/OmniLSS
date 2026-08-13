@@ -7,17 +7,6 @@ All notable changes to Omni GAMLSS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Added
-- 完成 CG full-Hessian correctness backend 的交叉导数实现闭环，并将 `CG_IRLS_CROSS` 推进为显式可选实验后端：新增 eta-scale derivative kernel、observed-information block extraction helpers、CG backend diagnostics、IRLS-cross global line search 与回归测试、验证矩阵与 smoke/reference artifact，确保 `method="CG"` 可审计地使用 cross-derivative 信息而不是静默退化为 RS。
-- 完成 CG full-Hessian correctness backend 的交叉导数实现闭环，并将 `CG_IRLS_CROSS` 推进为显式可选实验后端：新增 eta-scale derivative kernel、observed-information block extraction helpers、CG backend diagnostics、IRLS-cross global line search 与回归测试、验证矩阵与 smoke/reference artifact，确保 `method="CG"` 可审计地使用 cross-derivative 信息而不是静默退化为 RS。
-
-### Changed
-- 离线开发环境构建文档与 devcontainer bootstrap 补充一次性 build-time 依赖清单、镜像构建期依赖校验、发布/架构/R/gRPC 验证命令和维护规则，避免后续离线会话因缺少 `optax`、`build`、`twine`、R 包或 protobuf tooling 阻塞开发。
-- 离线开发环境构建文档与 devcontainer bootstrap 补充一次性 build-time 依赖清单、镜像构建期依赖校验、发布/架构/R/gRPC 验证命令和维护规则，避免后续离线会话因缺少 `optax`、`build`、`twine`、R 包或 protobuf tooling 阻塞开发。
-
-
 ## [0.4.0] - 2026-08-12 (Release 1)
 
 ### Release 1 能力范围（覆盖范围 = 已验证能力）
@@ -26,8 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 d/p/q/r、属性测试（hypothesis 100 examples/族）、R 一致性（rtol ≤ 1e-3）与
 固定 R golden artifact（replay rtol 2e-4）全部通过。
 
-**拟合算法**：RS（NumPy 恒走）、CG、MIXED（真混合路由，修复 NBI 次优收敛）
-三算法隔离 R 对照；路由诊断（Route Diagnostic 含 accelerator_available）。
+**拟合算法**：RS（NumPy 恒走）、CG（含 CG_IRLS_CROSS 交叉导数实验后端闭环：
+eta-scale derivative kernel、observed-information block extraction、IRLS-cross
+global line search、CG backend diagnostics 与验证矩阵）、MIXED（真混合路由，
+修复 NBI 次优收敛）三算法隔离 R 对照；路由诊断（Route Diagnostic 含
+accelerator_available）。
+
+**开发与发布**：离线开发环境构建文档补充一次性 build-time 依赖清单、镜像
+构建期依赖校验、发布/架构/R/gRPC 验证命令和维护规则（避免缺 optax/build/
+twine/R 包/protobuf tooling 阻塞）。
 
 **数值地基**：x64 全局精度、IRLS working-response 无硬 clip、WLS 动态 ridge、
 ZAGA 密度无形状 clip、族感知初始化、safeguard 结构化诊断（eta_clip /

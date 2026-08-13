@@ -8,7 +8,7 @@ from importlib.metadata import PackageNotFoundError, version
 try:
     __version__ = version("omnilss")
 except PackageNotFoundError:
-    __version__ = "0.3.0"
+    __version__ = "0.4.0"
 
 from . import config as _config
 from . import config  # public: omnilss.config.GPU_CROSSOVER_N etc.
