@@ -157,5 +157,35 @@
     ],
     "reasons": [],
     "validated_at": "2026-08-14T06:18:41"
+  },
+  "8.1": {
+    "task_id": "8.1",
+    "commit_id": "37cb9cf9e6a25f8ef026e853859b7ffa8a8e77de",
+    "subject": "完成Phase 8任务8.1：grpcio-tools重新生成capability stubs并补齐omnilss-pro SDK capability/version/health端点",
+    "status": "completed",
+    "verification_summary": "capability stubs 用 grpcio-tools 1.80.0 重新生成（Version/Health 入契约）+ omnilss-pro SDK 4 端点（capability_matrix/route_capability/version/health）+ 端到端冒烟通过",
+    "artifact_paths": [
+      "omnilss-pro/src/omnilss_pro/api/grpc/proto/capability.proto",
+      "omnilss-pro/src/omnilss_pro/api/grpc/generated/capability_pb2.py"
+    ],
+    "impl_paths": [
+      "omnilss-pro/src/omnilss_pro/api/grpc/generated/capability_pb2.py",
+      "omnilss-pro/src/omnilss_pro/api/grpc/generated/capability_pb2_grpc.py",
+      "omnilss-pro/src/omnilss_pro/client.py",
+      "omnilss/src/omnilss/api/grpc/generated/capability_pb2.py",
+      "omnilss/src/omnilss/api/grpc/generated/capability_pb2_grpc.py",
+      "omnilss/src/omnilss/api/grpc/generated/fit_pb2.py",
+      "omnilss/src/omnilss/api/grpc/generated/fit_pb2_grpc.py",
+      "omnilss/src/omnilss/api/grpc/generated/predict_pb2.py",
+      "omnilss/src/omnilss/api/grpc/generated/predict_pb2_grpc.py",
+      "omnilss/src/omnilss/api/grpc/generated/sample_pb2.py",
+      "omnilss/src/omnilss/api/grpc/generated/sample_pb2_grpc.py",
+      "omnilss/tools/generate_grpc_stubs.py"
+    ],
+    "test_paths": [
+      "omnilss-pro/tests/test_client_capability.py"
+    ],
+    "reasons": [],
+    "validated_at": "2026-08-14T06:55:50"
   }
 }

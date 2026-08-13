@@ -13,7 +13,7 @@
 > - 阶段任务原版：`.kiro/specs/r-gamlss-migration-plan/tasks.md`
 > - 审计基线：`docs/development/omnilss-r-gamlss-migration-comprehensive-audit-2026-07-22.md`
 >
-> **最近更新**：2026-08-14（Phase 0 全部完成：0.5 检查器 + 0.6 阶段 0 门禁闭环）
+> **最近更新**：2026-08-14（Phase 0 完成 + Phase 8.1 L3 服务完备性闭环）
 
 ---
 
@@ -361,9 +361,11 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 
 ### 任务清单
 
-- [ ] **8.1 L3 服务完备性** — 部分完成
+- [x] **8.1 L3 服务完备性** — 完成 ✅ commit `426341a`/`37cb9cf`
   - 【已交付】commit `426341a`：`capability.proto` 新增 Version/Health 消息与 RPC（契约冻结）；server 实现 Version（__version__/x64/python 版本）与 Health（REGISTRY 模型数 + ok/degraded）；`tests/test_l3_service_contract.py` 6 项。
-  - 【待办】capability_pb2 需 grpcio-tools 重新生成（CI 的 generate_grpc_stubs.py）；`omnilss-pro` SDK 覆盖 capability/version/health 端点。
+  - 【本次】commit `37cb9cf`：① `generate_grpc_stubs.py` 的 capability SERVICE_SPECS 补齐 Version/Health，用 grpcio-tools 1.80.0 重新生成全部 4 个 proto stubs（capability_pb2 现含 Version/Health 消息与 4 个 RPC；GRPC_GENERATED_VERSION=1.80.0 与 omnilss-server pin 对齐）；② `omnilss-pro` 拷贝 `capability.proto` 并生成独立 capability stubs（相对 import 修正）；③ `omnilss_pro/client.py` 新增 `capability_matrix()`/`route_capability()`/`version()`/`health()` 四端点（token metadata 注入复用 Phase 5.2 机制）；④ `omnilss-pro/pyproject.toml` grpcio 下限 1.50.0→1.80.0（与标准生成 stub 版本检查对齐）。
+  - 【测试】新增 `omnilss-pro/tests/test_client_capability.py` **10 项**（stub 创建、JSON 解析、参数传递、失败抛错、字段映射、degraded 返回、token metadata 四端点）全过；omnilss 侧 server 相关 47 passed（3 个失败为预存）；**端到端冒烟**：真实 in-process gRPC server + 新 client，Version/Health/CapabilityMatrix/RouteCapability 4 RPC 全部工作。
+  - 【验收】`capability_pb2` 重新生成含 Version/Health ✓（`grep` 与 import 验证）；omnilss-pro SDK 覆盖 capability/version/health 端点 ✓（mock 测试 + 端到端冒烟）；无新增失败 ✓。
 - [x] **8.2 Open-Core 边界明确** — 完成 ✅ commit `f21a7bb`
   - 【实现】`docs/architecture/core-pro-boundary.md`（中英双语）重写：核心（omnilss/，L1 统计引擎 + L4 验证交付，GPL-3.0）与商业层（omnilss-pro/，L3 托管 + AutoML + 编排）边界；四条规则（禁复制核心内部、进程边界、独立发布通道、验证归属核心）。
 - [ ] **8.3 用户文档与教程**
@@ -400,8 +402,8 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 5 服务层安全 | ✅ **完成** | 5.1–5.7 全部完成（认证/DoS/脱敏/序列化/供应链/AutoML/TLS）；公网部署前提满足 |
 | Phase 6 在线层修复 | ⬜ 待办 | 可并行 |
 | Phase 7 性能规模化 | 🔄 进行中 | 7.2 后端对齐（部分）、7.3 Gram 去重、7.5 缓存线程安全完成；7.1/7.2 剩余/7.4 待专项 |
-| Phase 8 商业闭环 | 🔄 进行中 | 8.2/8.3/8.4/8.5 死代码/8.6 版本冻结 0.4.0 完成；剩 8.1 SDK capability 端点、8.5 method 一致性+lint、8.7 发布检查 |
+| Phase 8 商业闭环 | 🔄 进行中 | 8.1/8.2/8.4/8.5 死代码/8.6 完成；剩 8.3 用户文档与教程、8.5 method 一致性+lint、8.7 发布检查 |
 
 > **下一步建议**（下次会话入口）：
-> 1. **Phase 8 任务 8.1**（L3 服务完备性剩余）：`capability_pb2` 由 grpcio-tools 重新生成 + `omnilss-pro` SDK 覆盖 capability/version/health 端点。
-> 2. 或 **Phase 8 任务 8.3**（用户文档与教程：API 参考 + 迁移对照表 + 8 篇教程）、**Phase 7 任务 7.4**（基准真实化）。
+> 1. **Phase 8 任务 8.3**（用户文档与教程：API 参考 + 迁移对照表 + 8 篇教程校准）。
+> 2. 或 **Phase 8 任务 8.5 剩余**（`gamlss()` method 名与行为一致性核对 + 全库 lint/type 检查）、**Phase 7 任务 7.4**（基准真实化）。
