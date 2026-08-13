@@ -5,6 +5,7 @@
 # ============================================================================
 ondil/
 R/
+gamlss-python/
 
 # ============================================================================
 # Virtual environments
@@ -212,3 +213,8 @@ SESSION_SUMMARY_*.md
 NEXT_SESSION_GUIDE_*.md
 CURRENT_STATUS.md
 CURRENT_SESSION_SUMMARY.md
+
+# ============================================================================
+# AI-assistant tool runtime data (Reasonix session state, not project files)
+# ============================================================================
+.reasonix/
