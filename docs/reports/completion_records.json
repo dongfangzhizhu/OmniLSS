@@ -97,6 +97,25 @@
     "reasons": [],
     "validated_at": "2026-08-14T06:08:23"
   },
+  "0.6": {
+    "task_id": "0.6",
+    "commit_id": "0a25750ed9349326766cdf97d99113644b558406",
+    "subject": "完成Phase 0任务0.6：实现阶段0准入/完成门禁（phase0_gate重构+artifact/完成记录校验+--require-r）",
+    "status": "completed",
+    "verification_summary": "阶段0准入/完成门禁：phase0_gate --require-r 全绿（63项）+ artifact 校验 + 8 任务完成记录校验",
+    "artifact_paths": [
+      "docs/reports/completion_records.json"
+    ],
+    "impl_paths": [
+      "tools/stage0_gate.py"
+    ],
+    "test_paths": [
+      "omnilss/tests/suites.py",
+      "omnilss/tests/test_stage0_gate.py"
+    ],
+    "reasons": [],
+    "validated_at": "2026-08-14T06:45:31"
+  },
   "0.7": {
     "task_id": "0.7",
     "commit_id": "108980f7e2ea2a983563dd9ea8f84d0d9906aca2",
