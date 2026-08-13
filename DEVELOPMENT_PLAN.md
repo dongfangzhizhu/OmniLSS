@@ -360,12 +360,12 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [ ] **8.1 L3 服务完备性** — 部分完成
   - 【已交付】commit `426341a`：`capability.proto` 新增 Version/Health 消息与 RPC（契约冻结）；server 实现 Version（__version__/x64/python 版本）与 Health（REGISTRY 模型数 + ok/degraded）；`tests/test_l3_service_contract.py` 6 项。
   - 【待办】capability_pb2 需 grpcio-tools 重新生成（CI 的 generate_grpc_stubs.py）；`omnilss-pro` SDK 覆盖 capability/version/health 端点。
-- [ ] **8.2 Open-Core 边界明确**
-  - 实现：按 `docs/architecture/core-pro-boundary.md` 明确开源核心（L1/L4）与商业层（L3 + AutoML + 托管）边界；商业层独立发布通道。
+- [x] **8.2 Open-Core 边界明确** — 完成 ✅ commit `f21a7bb`
+  - 【实现】`docs/architecture/core-pro-boundary.md`（中英双语）重写：核心（omnilss/，L1 统计引擎 + L4 验证交付，GPL-3.0）与商业层（omnilss-pro/，L3 托管 + AutoML + 编排）边界；四条规则（禁复制核心内部、进程边界、独立发布通道、验证归属核心）。
 - [ ] **8.3 用户文档与教程**
   - 实现：API 参考、迁移对照表（Python↔R 参数化）、8 篇核心教程（现有 `tutorials/` 校准）。
-- [ ] **8.4 商业化评估文档**
-  - 产出：从审计商业视角的变现矩阵落地为产品化路线（托管 API 定价、SLA、GPU 集群方案）。
+- [x] **8.4 商业化评估文档** — 完成 ✅ commit `a39c7c6`
+  - 【产出】`docs/commercialization-assessment.md`：价值主张、产品分层、变现矩阵（基础/按调用量/高级版/企业版）、SLA 与 GPU 集群方案、风险与依赖、结论；能力宣称以开源核心 R 证据/golden/能力矩阵为支撑。
 - [ ] **8.5 项目收尾** — 部分完成
   - 【已交付】commit `e39a235`：删除 4 个死代码文件（rs_jax/hessian_stabilization/trust_region/错位包装 base.py），更新 runtime 包导出；omnilss 可导入，22 项回归全绿（1 项 pNBI placeholder 检测为预先存在失败）。
   - 【待办】`gamlss()` method 名与行为一致性核对；全库 lint/type 检查（需 lint 工具环境）。
@@ -396,7 +396,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 5 服务层安全 | ✅ **完成** | 5.1–5.7 全部完成（认证/DoS/脱敏/序列化/供应链/AutoML/TLS）；公网部署前提满足 |
 | Phase 6 在线层修复 | ⬜ 待办 | 可并行 |
 | Phase 7 性能规模化 | 🔄 进行中 | 7.2 后端对齐（部分）、7.3 Gram 去重、7.5 缓存线程安全完成；7.1/7.2 剩余/7.4 待专项 |
-| Phase 8 商业闭环 | 🔄 进行中 | 8.1 gRPC 端点（部分）、8.5 死代码删除完成；下一步 8.2 Open-Core 边界 / 8.3 文档 / 8.4 商业化评估 |
+| Phase 8 商业闭环 | 🔄 进行中 | 8.1（部分）、8.2、8.4、8.5 死代码删除完成；剩 8.3 文档教程 / 8.5 method 一致性+lint |
 
 > **下一步建议**（下次会话入口）：
 > 1. 从 **Phase 0 任务 0.4**（CI 接真实 R）与 **Phase 1 任务 1.1**（qTF 修复）开始——两者互不依赖、可并行。
