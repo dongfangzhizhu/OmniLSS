@@ -28,6 +28,8 @@ SERVICE_SPECS = {
         (
             ("CapabilityMatrix", "CapabilityMatrixRequest", "CapabilityMatrixResponse"),
             ("RouteCapability", "RouteCapabilityRequest", "RouteCapabilityResponse"),
+            ("Version", "VersionRequest", "VersionResponse"),
+            ("Health", "HealthRequest", "HealthResponse"),
         ),
     ),
     "fit": (

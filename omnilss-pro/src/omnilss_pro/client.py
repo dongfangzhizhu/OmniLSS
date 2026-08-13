@@ -13,6 +13,8 @@ from typing import Any
 import grpc
 
 from .api.grpc.generated import (
+    capability_pb2,
+    capability_pb2_grpc,
     fit_pb2,
     fit_pb2_grpc,
     predict_pb2,
@@ -55,6 +57,8 @@ class OmniLSSCoreClient:
         self._fit_stub = fit_pb2_grpc.FitServiceStub(self._channel)
         self._predict_stub = predict_pb2_grpc.PredictServiceStub(self._channel)
         self._sample_stub = sample_pb2_grpc.SampleServiceStub(self._channel)
+        # Phase 8.1: capability / version / health contract.
+        self._capability_stub = capability_pb2_grpc.CapabilityServiceStub(self._channel)
         self._timeout = timeout
 
     def fit(
@@ -168,6 +172,63 @@ class OmniLSSCoreClient:
         if not response.success:
             raise RuntimeError(f"Sampling failed: {response.error}")
         return json.loads(response.samples_json)["samples"]
+
+    # ------------------------------------------------------------------
+    # Phase 8.1: capability / version / health endpoints
+    # ------------------------------------------------------------------
+    def capability_matrix(self) -> dict[str, Any]:
+        """Fetch the core capability matrix as a parsed JSON document."""
+        response = self._capability_stub.CapabilityMatrix(
+            capability_pb2.CapabilityMatrixRequest(),
+            timeout=self._timeout,
+            metadata=self._metadata,
+        )
+        if not response.success:
+            raise RuntimeError(f"Capability matrix request failed: {response.error}")
+        return json.loads(response.matrix_json)
+
+    def route_capability(
+        self, family: str, method: str = "RS", strict: bool = False
+    ) -> dict[str, Any]:
+        """Query whether a family/method route is admitted by the core gate."""
+        request = capability_pb2.RouteCapabilityRequest(
+            family=family, method=method, strict=strict
+        )
+        response = self._capability_stub.RouteCapability(
+            request, timeout=self._timeout, metadata=self._metadata
+        )
+        if not response.success:
+            raise RuntimeError(f"Route capability query failed: {response.error}")
+        return json.loads(response.report_json)
+
+    def version(self) -> dict[str, Any]:
+        """Fetch the core version, runtime versions and x64 precision."""
+        response = self._capability_stub.Version(
+            capability_pb2.VersionRequest(),
+            timeout=self._timeout,
+            metadata=self._metadata,
+        )
+        if not response.success:
+            raise RuntimeError(f"Version query failed: {response.error}")
+        return {
+            "version": response.version,
+            "python_version": response.python_version,
+            "jax_version": response.jax_version,
+            "x64_enabled": response.x64_enabled,
+        }
+
+    def health(self) -> dict[str, Any]:
+        """Probe core health; the caller inspects ``success`` / ``status``."""
+        response = self._capability_stub.Health(
+            capability_pb2.HealthRequest(),
+            timeout=self._timeout,
+            metadata=self._metadata,
+        )
+        return {
+            "status": response.status,
+            "model_count": response.model_count,
+            "success": response.success,
+        }
 
     def close(self) -> None:
         """Close the underlying gRPC channel."""
