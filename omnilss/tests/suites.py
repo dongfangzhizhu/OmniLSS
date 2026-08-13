@@ -162,24 +162,23 @@ SUITES: OrderedDict[str, list[str]] = OrderedDict(
         (
             "phase0_gate",
             [
+                # Phase 0 fixed-R evidence: R channel (NO/GA) + golden artifact system
                 "tests.test_r_consistency_no",
                 "tests.test_r_consistency_ga",
-                "tests.test_r_consistency_tf",
-                "tests.test_r_consistency_tf2",
-                "tests.test_r_consistency_st1234",
-                "tests.test_r_consistency_boxcox_untr_more",
-                "tests.test_r_consistency_centile_sk",
-                "tests.test_r_consistency_gig",
-                "tests.test_r_consistency_yule",
-                "tests.test_r_consistency_zinbf",
-                "tests.test_r_consistency_be",
-                "tests.test_r_consistency_zip",
+                "tests.test_r_golden_manifest",
+                "tests.test_r_golden_fixture_no",
+                "tests.test_r_golden_fixture_ga",
+                "tests.test_r_golden_fixture_po",
+                "tests.test_r_golden_fixture_ig",
+                # Phase 0 diagnostics
                 "tests.consistency.test_gradient_no_finite_difference",
                 "tests.consistency.test_stability_extreme_inputs",
                 "tests.test_rs_phase0_diagnostics",
                 "tests.test_optimizer_phase0_diagnostics",
                 # Phase 0.5: stage completion checker & Chinese-commit integrity
                 "tests.test_stage_completion_checker",
+                # Phase 0.6: stage-0 admission/completion gate
+                "tests.test_stage0_gate",
             ],
         ),
         (

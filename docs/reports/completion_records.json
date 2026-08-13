@@ -1,4 +1,82 @@
 {
+  "0.1": {
+    "task_id": "0.1",
+    "commit_id": "1a754ede62ef886333370a1f78ed6c152de2611c",
+    "subject": "完成阶段0.1：能力证据矩阵与范围门禁",
+    "status": "completed",
+    "verification_summary": "能力证据矩阵生成器：R 导出快照 + JSON/Markdown 矩阵 + 五项指标",
+    "artifact_paths": [
+      "docs/validation/r-gamlss-release1/r-export-coverage.json"
+    ],
+    "impl_paths": [
+      "omnilss/tools/generate_release1_evidence_matrix.py"
+    ],
+    "test_paths": [
+      "omnilss/tests/test_release1_evidence_matrix.py"
+    ],
+    "reasons": [],
+    "validated_at": "2026-08-14T06:18:34"
+  },
+  "0.2": {
+    "task_id": "0.2",
+    "commit_id": "04692b9a2b24dbd737ee83f9c100d90c3e4347bd",
+    "subject": "完成阶段0.2：family capability gate 与生产路由拒绝",
+    "status": "completed",
+    "verification_summary": "family capability gate 与生产路由拒绝 + 对照 case 证据",
+    "artifact_paths": [
+      "docs/validation/r-gamlss-release1/family-capability-gate-case.json"
+    ],
+    "impl_paths": [
+      "omnilss/src/omnilss/api/grpc/server.py",
+      "omnilss/src/omnilss/benchmarks/runner.py",
+      "omnilss/src/omnilss/family_capabilities.py",
+      "omnilss/src/omnilss/fitting.py",
+      "omnilss/tools/generate_family_capability_gate_evidence.py"
+    ],
+    "test_paths": [
+      "omnilss/tests/test_release1_family_capability_gate.py"
+    ],
+    "reasons": [],
+    "validated_at": "2026-08-14T06:18:34"
+  },
+  "0.3": {
+    "task_id": "0.3",
+    "commit_id": "55b4a49071c241ae20e1464345ccdad163251fe1",
+    "subject": "补充开发证据文档与 Release-1 golden runner 工具",
+    "status": "completed",
+    "verification_summary": "固定 R golden runner 与运行时 manifest（run_release1_r_golden + x64 启动检查）",
+    "artifact_paths": [
+      "docs/development/environment-baseline-2026-07-23.md"
+    ],
+    "impl_paths": [
+      "omnilss/tools/run_release1_r_golden.py",
+      "tools/generate_r_export_coverage.py"
+    ],
+    "test_paths": [
+      "omnilss/tests/test_release1_r_golden_runner.py"
+    ],
+    "reasons": [],
+    "validated_at": "2026-08-14T06:18:37"
+  },
+  "0.4": {
+    "task_id": "0.4",
+    "commit_id": "15e672713ef78f0e1a8e3c570dfcd467189d4754",
+    "subject": "完成阶段0任务0.4：CI接入真实R一致性执行",
+    "status": "completed",
+    "verification_summary": "required-R CI fail-closed（setup-r + gamlss + 跳过即失败）",
+    "artifact_paths": [
+      ".github/workflows/ci.yml"
+    ],
+    "impl_paths": [
+      ".github/workflows/ci.yml"
+    ],
+    "test_paths": [
+      "omnilss/tests/run_suite.py",
+      "omnilss/tests/test_run_suite_gate.py"
+    ],
+    "reasons": [],
+    "validated_at": "2026-08-14T06:18:37"
+  },
   "0.5": {
     "task_id": "0.5",
     "commit_id": "d9285aa",
@@ -18,5 +96,47 @@
     ],
     "reasons": [],
     "validated_at": "2026-08-14T06:08:23"
+  },
+  "0.7": {
+    "task_id": "0.7",
+    "commit_id": "108980f7e2ea2a983563dd9ea8f84d0d9906aca2",
+    "subject": "完成阶段0任务0.7：x64精度策略全局落地(C5)",
+    "status": "completed",
+    "verification_summary": "x64 精度策略全局落地（_precision.py + test_x64_precision 3 项）",
+    "artifact_paths": [
+      "omnilss/src/omnilss/_precision.py"
+    ],
+    "impl_paths": [
+      "omnilss/src/omnilss/_precision.py"
+    ],
+    "test_paths": [
+      "omnilss/tests/test_x64_precision.py"
+    ],
+    "reasons": [],
+    "validated_at": "2026-08-14T06:18:46"
+  },
+  "0.8": {
+    "task_id": "0.8",
+    "commit_id": "0b3305f02883e04dc62c0c37a719cf34daf18163",
+    "subject": "完成阶段0任务0.8：golden fixture出处与生成脚本",
+    "status": "completed",
+    "verification_summary": "golden fixture 出处与生成脚本（generate_golden.R + regenerated manifest）",
+    "artifact_paths": [
+      "omnilss/tests/fixtures/r_golden/generate_golden.R",
+      "omnilss/tests/fixtures/r_golden/regenerated/ga_y_x_seed_20260525.json",
+      "omnilss/tests/fixtures/r_golden/regenerated/ig_y_x_seed_20260522.json",
+      "omnilss/tests/fixtures/r_golden/regenerated/manifest.json",
+      "omnilss/tests/fixtures/r_golden/regenerated/no_y_x_seed_20260524.json",
+      "omnilss/tests/fixtures/r_golden/regenerated/po_y_x_seed_20260523.json",
+      "omnilss/tests/test_r_golden_manifest.py"
+    ],
+    "impl_paths": [
+      "omnilss/tests/fixtures/r_golden/generate_golden.R"
+    ],
+    "test_paths": [
+      "omnilss/tests/test_r_golden_manifest.py"
+    ],
+    "reasons": [],
+    "validated_at": "2026-08-14T06:18:41"
   }
 }
