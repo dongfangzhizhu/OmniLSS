@@ -13,7 +13,7 @@
 > - 阶段任务原版：`.kiro/specs/r-gamlss-migration-plan/tasks.md`
 > - 审计基线：`docs/development/omnilss-r-gamlss-migration-comprehensive-audit-2026-07-22.md`
 >
-> **最近更新**：2026-08-08（基于全库深度审计结果制定）
+> **最近更新**：2026-08-14（Phase 0 任务 0.5 阶段完成检查器落地）
 
 ---
 
@@ -115,9 +115,10 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [x] **0.4 required-R CI fail-closed 分类、报告发布、smoke-only 分支** ✅ commit `15e6727`
   - 【实现】`.github/workflows/ci.yml`：Group B（R Consistency）增加 `r-lib/actions/setup-r`（4.5.0）+ CRAN 安装 `gamlss/gamlss.dist/jsonlite`；新增 fail-closed 步骤（重跑 `test_r_consistency_tf.py -rs`，出现 skipped 即 CI 失败）。
   - 【验收】本机（WSL R 4.5.0 + gamlss）验证 R 一致性测试真实执行（无 skip，3 failed + 3 passed 为预先存在的 R 侧差异）；YAML 语法校验通过；`tools/run_release1_r_golden.py` 的 scipy 验证问题归入 4.3（Release-1 golden 全流程修复）。
-- [ ] **0.5 阶段完成检查器与中文提交完整性校验**
-  - 【实现】持久化任务验证摘要、artifact 路径、commit ID；校验提交主题含中文且识别任务、包含实现+测试+证据。
-  - 【验收】有通过/缺测试/缺证据/无效 commit/非中文主题的单元测试（≥100 次属性测试）。
+- [x] **0.5 阶段完成检查器与中文提交完整性校验** — 完成 ✅ commit `d9285aa`/`da25ee6`
+  - 【实现】新增 `tools/stage_completion_checker.py`：`CompletionRecord`/`CompletionRecordStore`（JSON 持久化验证摘要、artifact 路径、commit ID）；`GitCommitInspector`（真实 git，长短 sha/无效 id）+ `validate_task_completion`（校验 commit 有效、主题含中文、主题标识任务 `任务X.Y`、含实现/测试/证据，`--artifact` 显式路径可强制在本提交）；`check_phase_records` 阶段聚合（支持预期任务完整性）；CLI `check`/`record`/`phase`；**无校验通过绝不标记完成**（Requirement 7.3），dogfood：任务 0.5 自身完成记录已持久化于 `docs/reports/completion_records.json`（引用阶段 0 固定 R artifact）。
+  - 【测试】新增 `omnilss/tests/test_stage_completion_checker.py` **34 项全过**（pytest + `run_suite.py` unittest loader 双路径）：通过/缺测试/缺证据/缺实现/无效 commit/非中文主题/任务不匹配主题/无任务标识/显式 artifact/放宽前提、记录持久化与禁止自动完成、阶段聚合完整性、真实 git 集成、CLI 退出码；**hypothesis 属性测试 3 组 ×100 例（≥100 次验收达成）**；注册进 `phase0_gate` suite。
+  - 【验收】34 项全绿 ✓；属性测试 300 例 ✓；真实 git 集成验证中文主题提交通过、非中文/任务不匹配 fail-closed ✓；completion record 证据文件 `docs/reports/phase0-task-0.5-evidence.json` ✓。
 - [ ] **0.6 阶段 0 准入/完成门禁**
   - 【验收】以 `--require-r` 完整执行阶段 0 suite，禁止 smoke-only 准入；任一失败保持未完成并阻塞 Phase 2。
 - [x] **0.7 精度策略落地（x64）** — 与 C5 联动 ✅ commit `108980f`
@@ -387,7 +388,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 
 | 阶段 | 状态 | 备注 |
 |---|---|---|
-| Phase 0 工程地基 | 🔄 进行中 | 0.1–0.3 完成；0.4–0.8 待办 |
+| Phase 0 工程地基 | 🔄 进行中 | 0.1–0.4、0.5、0.7、0.8 完成；剩 0.6 准入/完成门禁（`--require-r` 全量 phase0_gate + 0.5 检查器联动） |
 | Phase 1 数学正确性 | ✅ **完成** | 1.1–1.9 全部完成（含遗留恢复 `496c75c`）；进入 Phase 2 前置条件满足 |
 | Phase 2 最小可信核心 | ✅ **完成** | 2.1–2.6 全部完成（E3 晋级、三算法 R 对照、safeguard 诊断、RS 路由、ps/cs 基线、stage1 门禁）；Phase 3 前置满足 |
 | Phase 2 最小可信核心 | ✅ 完成 | 见上 |
@@ -399,5 +400,5 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 8 商业闭环 | 🔄 进行中 | 8.2/8.3/8.4/8.5 死代码/8.6 版本冻结 0.4.0 完成；剩 8.1 SDK capability 端点、8.5 method 一致性+lint、8.7 发布检查 |
 
 > **下一步建议**（下次会话入口）：
-> 1. 从 **Phase 0 任务 0.4**（CI 接真实 R）与 **Phase 1 任务 1.1**（qTF 修复）开始——两者互不依赖、可并行。
-> 2. 修复时严格按"实现 → 测试 → R 对照证据 → 中文提交"闭环推进。
+> 1. **Phase 0 任务 0.6**（阶段 0 准入/完成门禁）：以 `--require-r` 完整执行 `phase0_gate` suite（已含 0.5 检查器测试），并用 `tools/stage_completion_checker.py phase --phase 0 --tasks 0.1,...,0.8` 校验阶段 0 全部任务完成记录；任一失败保持阶段 0 未完成。
+> 2. 或并行推进 **Phase 8 任务 8.1**（omnilss-pro SDK capability/version/health 端点）与 **Phase 7 任务 7.4**（基准真实化）。
