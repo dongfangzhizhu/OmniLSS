@@ -1,0 +1,25 @@
+# 统一换行符为 LF（跨平台确定性）
+# - 文本文件：规范化行尾为 LF
+# - 已知二进制扩展名：强制 binary，避免误改
+* text=auto eol=lf
+
+# 二进制文件显式声明，禁止换行转换 / 差异检测
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.parquet binary
+*.npy binary
+*.npz binary
+*.pkl binary
+*.whl binary
+*.sqlite binary
+*.db binary
+*.dll binary
+*.exe binary
+*.so binary
+*.bin binary
