@@ -5,10 +5,16 @@ from . import _precision as _precision  # noqa: F401  (side-effect import)
 
 from importlib.metadata import PackageNotFoundError, version
 
+# Source-of-truth version, kept in sync with pyproject.toml.  When running from
+# source (e.g. via PYTHONPATH) the installed dist-info may be stale, so prefer
+# the declared source version unless an actually newer install is present.
+__version__ = "0.4.0"
 try:
-    __version__ = version("omnilss")
+    _installed_version = version("omnilss")
+    if _installed_version and _installed_version > __version__:
+        __version__ = _installed_version
 except PackageNotFoundError:
-    __version__ = "0.4.0"
+    pass
 
 from . import config as _config
 from . import config  # public: omnilss.config.GPU_CROSSOVER_N etc.

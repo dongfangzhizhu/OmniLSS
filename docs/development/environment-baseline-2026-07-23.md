@@ -39,3 +39,36 @@ $env:JAX_ENABLE_X64 = 'True'
 
 This file should be referenced by CI jobs. Any deviation from these versions
 must be explicitly justified and recorded.
+
+## WSL Debian Environment (GPU / secondary dev)
+
+The primary development environment is Windows `.venv` (above). The WSL Debian
+environment (`debianjaxgpu/`) is the secondary GPU/performance environment.
+
+| Package | Version | Notes |
+|---------|---------|-------|
+| Python | 3.11.15 | debianjaxgpu/bin/python |
+| JAX | 0.10.0 | CUDA 12 (RTX 3060); use `JAX_PLATFORMS=cpu` for fast CPU-only runs |
+| R | 4.5.0 | System R in WSL |
+| gamlss | 5.5.0 | Vendored from `R/gamlss/` |
+| gamlss.dist | 6.1.1 | Vendored from `R/gamlss.dist/` |
+
+### Running from source in WSL
+
+`omnilss` is not pip-installed in `debianjaxgpu`.  Run from source by adding the
+source tree to `PYTHONPATH`:
+
+```bash
+export PYTHONPATH="$PWD/omnilss/src"
+./debianjaxgpu/bin/python -c "import omnilss; print(omnilss.__version__)"
+```
+
+### Version drift fix (A0.1)
+
+`omnilss/__init__.py` previously reported the version from the installed
+dist-info (`importlib.metadata.version`).  When a stale install (e.g. 0.3.0)
+was present, source runs reported the wrong version.  `__init__.py` now declares
+a source-of-truth version (0.4.0, kept in sync with `pyproject.toml`) and only
+adopts an installed version when it is strictly newer.  The Windows `.venv`
+editable install itself still needs upgrading to 0.4.0 (done on the Windows
+host).
