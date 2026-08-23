@@ -48,9 +48,9 @@ class TestST1234Consistency(unittest.TestCase):
         for profile in ("central", "tail", "ultra_tail"):
             with self.subTest(family=family_name, profile=profile):
                 x, mu, sigma, nu, tau, p = self._profile_inputs(profile)
-                r_d = self.bus.eval_family("ST3C", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
-                r_p = self.bus.eval_family("ST3C", "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
-                r_q = self.bus.eval_family("ST3C", "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
+                r_d = self.bus.eval_family(family_name, "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
+                r_p = self.bus.eval_family(family_name, "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
+                r_q = self.bus.eval_family(family_name, "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
 
                 py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
                 py_p = np.asarray(fam.p(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))

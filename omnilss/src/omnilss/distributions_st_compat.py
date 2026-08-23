@@ -96,36 +96,46 @@ def _build_st1_st2(name, family_class, log_pdf_func):
 
     # p via numerical integration of the density (R ST1.R/ST2.R use integrate too).
     def _st_p(q, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False):
+        import numpy as _np
         import jax.numpy as jnp
+        from scipy.integrate import quad
 
-        q_arr = jnp.asarray(q, dtype=jnp.float64)
-        mu_j = jnp.asarray(mu, dtype=jnp.float64)
-        sigma_j = jnp.asarray(sigma, dtype=jnp.float64)
-        nu_j = jnp.asarray(nu, dtype=jnp.float64)
-        tau_j = jnp.asarray(tau, dtype=jnp.float64)
+        q_arr = _np.atleast_1d(_np.asarray(q, dtype=_np.float64))
+        mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+        sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+        nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+        tau_arr = _np.atleast_1d(_np.asarray(tau, dtype=_np.float64))
+        n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
 
-        # Shared grid over the real line (transform -10..10 in z-space).
-        z_grid = jnp.linspace(-12.0, 12.0, 8192)
-        x_grid = mu_j + sigma_j * z_grid
-        d_grid = jnp.exp(log_pdf_func(x_grid, mu_j, sigma_j, nu_j, tau_j))
-        dz = 24.0 / (len(z_grid) - 1)
-        mass = (d_grid[:-1] + d_grid[1:]) * 0.5 * dz
-        cum = jnp.concatenate([jnp.zeros((1,)), jnp.cumsum(mass)], axis=0)
+        out = []
+        for i in range(n):
+            qi = float(q_arr[i % len(q_arr)])
+            mui = float(mu_arr[i % len(mu_arr)])
+            si = float(sigma_arr[i % len(sigma_arr)])
+            ni = float(nu_arr[i % len(nu_arr)])
+            ti = float(tau_arr[i % len(tau_arr)])
+            z_q = (qi - mui) / si
 
-        # Map q to z and interpolate the cumulative mass.
-        z_q = (q_arr - mu_j) / sigma_j
-        z_clip = jnp.clip(z_q, -12.0, 12.0)
-        idx = jnp.searchsorted(z_grid, z_clip, side="right") - 1
-        idx = jnp.clip(idx, 0, len(z_grid) - 2)
-        z0 = z_grid[idx]
-        frac = (z_clip - z0) / jnp.maximum(z_grid[idx + 1] - z0, 1e-12)
-        cdf = cum[idx] + frac * (cum[idx + 1] - cum[idx])
-        cdf = jnp.clip(cdf, 0.0, 1.0)
+            # Standardized (sigma=1, mu=0) log-density (R integrates dST1(x,0,1,nu,tau)).
+            def dens_log(z, _ni=ni, _ti=ti):
+                return float(
+                    _np.asarray(log_pdf_func(_np.array([z], dtype=_np.float64), 0.0, 1.0, _ni, _ti)).reshape(-1)[0]
+                )
+
+            if z_q <= -60.0:
+                val = 0.0
+            elif z_q >= 60.0:
+                val = 1.0
+            else:
+                val, _ = quad(lambda z: _np.exp(dens_log(z)), -_np.inf, z_q, limit=200)
+            out.append(float(min(max(val, 0.0), 1.0)))
+
+        cdf = _np.array(out)
         if not lower_tail:
             cdf = 1.0 - cdf
         if log_p:
-            cdf = jnp.log(cdf)
-        return cdf
+            cdf = _np.log(cdf)
+        return jnp.asarray(cdf, dtype=jnp.float64)
 
     def _st_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False):
         import numpy as np
