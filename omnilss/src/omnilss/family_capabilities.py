@@ -519,7 +519,7 @@ def _build_capability(name: str) -> FamilyCapability:
 
 
 _DEFAULT_CAPABILITIES: dict[str, FamilyCapability] = {
-    name: _build_capability(name) for name in _REGISTERED_FAMILIES
+    name.upper(): _build_capability(name) for name in _REGISTERED_FAMILIES
 }
 
 
