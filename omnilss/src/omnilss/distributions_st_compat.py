@@ -230,5 +230,148 @@ def ST3() -> FamilyDefinition:
     return _clone_with_name(ST3C(), "ST3", ST3Family)
 
 
+def _st4_log_pdf(y, mu, sigma, nu, tau):
+    """R ST4.R dST4: two-piece t with degrees of freedom nu (left) and tau (right).
+
+    k = C(tau)/C(nu), C(df)=Gamma((df+1)/2)/(sqrt(df*pi)*Gamma(df/2)).
+    loglik = dt(z, df=nu)        if y < mu
+           = dt(z, df=tau) + lk  if y >= mu   (lk = log(k))
+    + log(2/(1+k)) - log(sigma)
+    """
+    import jax.numpy as _jnp
+    from jax.scipy.stats import t as _jt
+    from jax.scipy.special import gammaln as _gl
+
+    eps = _jnp.finfo(_jnp.float64).eps
+    sigma = _jnp.maximum(sigma, eps)
+    nu = _jnp.maximum(nu, eps)
+    tau = _jnp.maximum(tau, eps)
+    z = (y - mu) / sigma
+
+    lk1 = _gl(0.5) + _gl(nu / 2.0) - _gl((nu + 1.0) / 2.0) + 0.5 * _jnp.log(nu)
+    lk1 = _jnp.where(nu < 1e6, lk1, 0.5 * _jnp.log(2.0 * _jnp.pi))
+    lk2 = _gl(0.5) + _gl(tau / 2.0) - _gl((tau + 1.0) / 2.0) + 0.5 * _jnp.log(tau)
+    lk2 = _jnp.where(tau < 1e6, lk2, 0.5 * _jnp.log(2.0 * _jnp.pi))
+    lk = lk2 - lk1
+    k = _jnp.exp(lk)
+
+    loglikb = -0.5 * _jnp.log(2.0 * _jnp.pi) - 0.5 * z * z
+    loglik1 = _jt.logpdf(z, nu)
+    loglik1 = _jnp.where(nu < 1e6, loglik1, loglikb)
+    loglik2 = _jt.logpdf(z, tau)
+    loglik2 = _jnp.where(tau < 1e6, loglik2, loglikb)
+
+    loglik = _jnp.where(y < mu, loglik1, loglik2 + lk)
+    loglik = loglik + _jnp.log(2.0 / (1.0 + k)) - _jnp.log(sigma)
+    return loglik
+
+
+def _st4_p(q, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False):
+    """R ST4.R pST4: cdf = ifelse(q<mu, 2*pt(z,nu), 1+2k*(pt(z,tau)-0.5)) / (1+k)."""
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import t as _spt
+    from scipy.special import gammaln as _gl
+
+    q_arr = _np.atleast_1d(_np.asarray(q, dtype=_np.float64))
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+    tau_arr = _np.atleast_1d(_np.asarray(tau, dtype=_np.float64))
+    n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+
+    out = []
+    for i in range(n):
+        qi = float(q_arr[i % len(q_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        ni = float(nu_arr[i % len(nu_arr)])
+        ti = float(tau_arr[i % len(tau_arr)])
+        lk1 = _gl(0.5) + _gl(ni / 2.0) - _gl((ni + 1.0) / 2.0) + 0.5 * _np.log(ni)
+        lk1 = lk1 if ni < 1e6 else 0.5 * _np.log(2.0 * _np.pi)
+        lk2 = _gl(0.5) + _gl(ti / 2.0) - _gl((ti + 1.0) / 2.0) + 0.5 * _np.log(ti)
+        lk2 = lk2 if ti < 1e6 else 0.5 * _np.log(2.0 * _np.pi)
+        k = _np.exp(lk2 - lk1)
+        z = (qi - mui) / si
+        cdf1 = 2.0 * _spt.cdf(z, ni)
+        cdf2 = 1.0 + 2.0 * k * (_spt.cdf(z, ti) - 0.5)
+        cdf = cdf1 if qi < mui else cdf2
+        cdf = cdf / (1.0 + k)
+        out.append(float(min(max(cdf, 0.0), 1.0)))
+
+    cdf = _np.array(out)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = _np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _st4_q(p, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False):
+    """R ST4.R qST4: q = ifelse(p<1/(1+k), mu+sigma*qt(p(1+k)/2,nu), mu+sigma*qt((p(1+k)-1)/(2k)+0.5,tau))."""
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import t as _spt
+    from scipy.special import gammaln as _gl
+
+    p_arr = _np.atleast_1d(_np.asarray(p, dtype=_np.float64))
+    if log_p:
+        p_arr = _np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr = _np.clip(p_arr, 1e-16, 1.0 - 1e-16)
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+    tau_arr = _np.atleast_1d(_np.asarray(tau, dtype=_np.float64))
+    n = max(len(p_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        ni = float(nu_arr[i % len(nu_arr)])
+        ti = float(tau_arr[i % len(tau_arr)])
+        lk1 = _gl(0.5) + _gl(ni / 2.0) - _gl((ni + 1.0) / 2.0) + 0.5 * _np.log(ni)
+        lk1 = lk1 if ni < 1e6 else 0.5 * _np.log(2.0 * _np.pi)
+        lk2 = _gl(0.5) + _gl(ti / 2.0) - _gl((ti + 1.0) / 2.0) + 0.5 * _np.log(ti)
+        lk2 = lk2 if ti < 1e6 else 0.5 * _np.log(2.0 * _np.pi)
+        k = _np.exp(lk2 - lk1)
+        if pi < 1.0 / (1.0 + k):
+            q = mui + si * _spt.ppf(pi * (1.0 + k) / 2.0, ni)
+        else:
+            q = mui + si * _spt.ppf((pi * (1.0 + k) - 1.0) / (2.0 * k) + 0.5, ti)
+        out.append(float(q))
+
+    res = _np.array(out)
+    return jnp.asarray(res, dtype=jnp.float64)
+
+
+def _st4_r(key, n, mu=0.0, sigma=1.0, nu=1.0, tau=10.0):
+    """R ST4.R rST4: inverse-CDF sampling."""
+    import jax.numpy as jnp
+    import jax.random as _jr
+
+    u = _jr.uniform(key, shape=(n,), dtype=jnp.float64)
+    return _st4_q(u, mu, sigma, nu, tau)
+
+
 def ST4() -> FamilyDefinition:
-    return _clone_with_name(ST3C(), "ST4", ST4Family)
+    """Skew t Type 4 (two-piece t with separate left/right df nu/tau)."""
+    from .ad import build_ad_family
+
+    return build_ad_family(
+        family_class=ST4Family,
+        name="ST4",
+        parameters=("mu", "sigma", "nu", "tau"),
+        log_pdf_func=_st4_log_pdf,
+        type_="Continuous",
+        p=_st4_p,
+        q=_st4_q,
+        r=_st4_r,
+        links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "log"},
+        link_functions={"mu": identity_link, "sigma": log_link, "nu": log_link, "tau": log_link},
+        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
+        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative, "tau": log_derivative},
+    )
