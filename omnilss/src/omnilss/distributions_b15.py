@@ -5,7 +5,9 @@ from __future__ import annotations
 """Batch 15: Final distributions - SEP, SST, EGB2, GB2, LQNO, etc."""
 from dataclasses import dataclass
 import jax.numpy as jnp
+import jax.random as jrandom
 from jax.scipy.special import gammaln, betaln
+from jax.scipy.stats import t as _jst, norm as _jnorm
 
 from .ad import build_ad_family
 from .families import FamilyDefinition
@@ -212,25 +214,84 @@ class ST3CFamily(FamilyDefinition):
 
 
 def _st3c_log_pdf(y, mu, sigma, nu, tau):
-    """ST3C log-PDF."""
+    """ST3C log-PDF (R `st3_dst3`, Jones & Faddy skew-t).
+
+    e = y - mu; z = e/sigma.
+    loglik = dt(nu*z, df=tau)                       if e < 0
+           = dt(e/(sigma*nu), df=tau)               if e >= 0
+    (with normal density substituted when tau >= 1e6)
+    + log(2*nu/(1+nu^2)) - log(sigma)
+    """
     eps = jnp.finfo(jnp.float64).eps
     sigma = jnp.maximum(sigma, eps)
-    tau = jnp.maximum(tau, 2.0 + eps)
-    
-    z = (y - mu) / sigma
-    
-    # Centred skew t
-    c = jnp.sqrt(tau / jnp.pi) * jnp.exp(gammaln((tau - 1.0) / 2.0) - gammaln(tau / 2.0))
-    z_adj = z + nu * c
-    
-    # t distribution
-    log_t = (
-        gammaln((tau + 1.0) / 2.0) - gammaln(tau / 2.0)
-        - 0.5 * jnp.log(tau * jnp.pi) - jnp.log(sigma)
-        - ((tau + 1.0) / 2.0) * jnp.log1p(z_adj * z_adj / tau)
-    )
-    
-    return log_t
+    nu = jnp.maximum(nu, eps)
+    tau = jnp.maximum(tau, 1.0 + eps)
+
+    e = y - mu
+    z = e / sigma
+
+    # t density branch (tau < 1e6) vs normal branch (tau >= 1e6)
+    use_t = tau < 1e6
+    # e<0 branch
+    l1_t = _jst.logpdf(nu * z, tau)
+    l1_n = _jnorm.logpdf(nu * z)
+    l1 = jnp.where(use_t, l1_t, l1_n)
+    # e>=0 branch
+    l2_t = _jst.logpdf(e / (sigma * nu), tau)
+    l2_n = _jnorm.logpdf(e / (sigma * nu))
+    l2 = jnp.where(use_t, l2_t, l2_n)
+
+    loglik = jnp.where(e < 0, l1, l2)
+    loglik = loglik + jnp.log(2.0 * nu / (1.0 + nu * nu)) - jnp.log(sigma)
+    return loglik
+
+
+def _st3c_p(q, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False):
+    """ST3C CDF (R `st3_pst3`, Jones & Faddy skew-t)."""
+    eps = jnp.finfo(jnp.float64).eps
+    q = jnp.asarray(q, dtype=jnp.float64)
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.maximum(sigma, eps)
+    nu = jnp.maximum(nu, eps)
+    tau = jnp.maximum(tau, 1.0 + eps)
+    nu2 = nu * nu
+    e = q - mu
+    # e<0 branch: cdf1 = 2*pt(nu*e/sigma, df=tau)
+    cdf1 = 2.0 * _jst.cdf(nu * e / sigma, tau)
+    # e>=0 branch: cdf2 = 1 + 2*nu^2*(pt(e/(sigma*nu), df=tau) - 0.5)
+    cdf2 = 1.0 + 2.0 * nu2 * (_jst.cdf(e / (sigma * nu), tau) - 0.5)
+    cdf = jnp.where(e < 0, cdf1, cdf2) / (1.0 + nu2)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = jnp.log(cdf)
+    return cdf
+
+
+def _st3c_q(p, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False):
+    """ST3C quantile (R `st3_qst3`)."""
+    eps = jnp.finfo(jnp.float64).eps
+    p_val = jnp.asarray(p, dtype=jnp.float64)
+    if log_p:
+        p_val = jnp.exp(p_val)
+    if not lower_tail:
+        p_val = 1.0 - p_val
+    sigma = jnp.maximum(sigma, eps)
+    nu = jnp.maximum(nu, eps)
+    tau = jnp.maximum(tau, 1.0 + eps)
+    nu2 = nu * nu
+    # xp < 1/(1+nu^2) branch
+    q1 = mu + (sigma / nu) * _jst.ppf(p_val * (1.0 + nu2) / 2.0, tau)
+    # otherwise
+    q2 = mu + (sigma * nu) * _jst.ppf((p_val * (1.0 + nu2) - 1.0) / (2.0 * nu2) + 0.5, tau)
+    q = jnp.where(p_val < (1.0 / (1.0 + nu2)), q1, q2)
+    return q
+
+
+def _st3c_r(key, n, mu=0.0, sigma=1.0, nu=1.0, tau=10.0):
+    """ST3C random generation via inverse-CDF sampling."""
+    u = jrandom.uniform(key, shape=(n,), dtype=jnp.float64)
+    return _st3c_q(u, mu, sigma, nu, tau)
 
 
 def ST3C():
@@ -241,6 +302,9 @@ def ST3C():
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_st3c_log_pdf,
         type_="Continuous",
+        p=_st3c_p,
+        q=_st3c_q,
+        r=_st3c_r,
         links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
         link_functions={
             "mu": identity_link,
