@@ -248,44 +248,46 @@ def _st3c_log_pdf(y, mu, sigma, nu, tau):
 
 def _st3c_p(q, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False):
     """ST3C CDF (R `st3_pst3`, Jones & Faddy skew-t)."""
-    eps = jnp.finfo(jnp.float64).eps
-    q = jnp.asarray(q, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.maximum(sigma, eps)
-    nu = jnp.maximum(nu, eps)
-    tau = jnp.maximum(tau, 1.0 + eps)
-    nu2 = nu * nu
-    e = q - mu
+    import numpy as _np
+    from scipy.stats import t as _spt
+    q_arr = _np.asarray(q, dtype=_np.float64)
+    mu_arr = _np.asarray(mu, dtype=_np.float64)
+    sigma_f = max(float(sigma), 1e-16)
+    nu_f = max(float(nu), 1e-16)
+    tau_f = max(float(tau), 1.0 + 1e-16)
+    nu2 = nu_f * nu_f
+    e = q_arr - mu_arr
     # e<0 branch: cdf1 = 2*pt(nu*e/sigma, df=tau)
-    cdf1 = 2.0 * _jst.cdf(nu * e / sigma, tau)
+    cdf1 = 2.0 * _spt.cdf(nu_f * e / sigma_f, tau_f)
     # e>=0 branch: cdf2 = 1 + 2*nu^2*(pt(e/(sigma*nu), df=tau) - 0.5)
-    cdf2 = 1.0 + 2.0 * nu2 * (_jst.cdf(e / (sigma * nu), tau) - 0.5)
-    cdf = jnp.where(e < 0, cdf1, cdf2) / (1.0 + nu2)
+    cdf2 = 1.0 + 2.0 * nu2 * (_spt.cdf(e / (sigma_f * nu_f), tau_f) - 0.5)
+    cdf = _np.where(e < 0, cdf1, cdf2) / (1.0 + nu2)
     if not lower_tail:
         cdf = 1.0 - cdf
     if log_p:
-        cdf = jnp.log(cdf)
-    return cdf
+        cdf = _np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
 
 
 def _st3c_q(p, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False):
     """ST3C quantile (R `st3_qst3`)."""
-    eps = jnp.finfo(jnp.float64).eps
-    p_val = jnp.asarray(p, dtype=jnp.float64)
+    import numpy as _np
+    from scipy.stats import t as _spt
+    p_arr = _np.asarray(p, dtype=_np.float64)
     if log_p:
-        p_val = jnp.exp(p_val)
+        p_arr = _np.exp(p_arr)
     if not lower_tail:
-        p_val = 1.0 - p_val
-    sigma = jnp.maximum(sigma, eps)
-    nu = jnp.maximum(nu, eps)
-    tau = jnp.maximum(tau, 1.0 + eps)
-    nu2 = nu * nu
+        p_arr = 1.0 - p_arr
+    sigma_f = max(float(sigma), 1e-16)
+    nu_f = max(float(nu), 1e-16)
+    tau_f = max(float(tau), 1.0 + 1e-16)
+    nu2 = nu_f * nu_f
     # xp < 1/(1+nu^2) branch
-    q1 = mu + (sigma / nu) * _jst.ppf(p_val * (1.0 + nu2) / 2.0, tau)
+    q1 = mu + (sigma_f / nu_f) * _spt.ppf(p_arr * (1.0 + nu2) / 2.0, tau_f)
     # otherwise
-    q2 = mu + (sigma * nu) * _jst.ppf((p_val * (1.0 + nu2) - 1.0) / (2.0 * nu2) + 0.5, tau)
-    q = jnp.where(p_val < (1.0 / (1.0 + nu2)), q1, q2)
-    return q
+    q2 = mu + (sigma_f * nu_f) * _spt.ppf((p_arr * (1.0 + nu2) - 1.0) / (2.0 * nu2) + 0.5, tau_f)
+    q = _np.where(p_arr < (1.0 / (1.0 + nu2)), q1, q2)
+    return jnp.asarray(q, dtype=jnp.float64)
 
 
 def _st3c_r(key, n, mu=0.0, sigma=1.0, nu=1.0, tau=10.0):
