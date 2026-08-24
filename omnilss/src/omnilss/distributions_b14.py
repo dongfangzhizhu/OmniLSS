@@ -190,45 +190,158 @@ def JSUo():
 
 
 # ============================================================================
-# ST5 - Skew t Type 5
+# ST5 - Skew t Type 5 (Jones & Faddy)
 # ============================================================================
 
 @dataclass(frozen=True)
 class ST5Family(FamilyDefinition):
-    """Skew t Type 5 family."""
+    """Skew t Type 5 family (Jones & Faddy)."""
     pass
 
 
 def _st5_log_pdf(y, mu, sigma, nu, tau):
-    """Skew t Type 5 log-PDF."""
+    """ST5 log-PDF matching R ST5.R dST5.
+
+    The Jones & Faddy skew-t distribution. R formula:
+      z = (x-mu)/sigma;  ve = 2/tau;  lam = 2*nu/(tau*sqrt(2*tau+nu^2))
+      a = (ve+lam)/2;  b = (ve-lam)/2
+      loglik = (a+.5)log(1+z/sqrt(a+b+z^2)) + (b+.5)log(1-z/sqrt(a+b+z^2))
+               - (a+b-1)log(2) - .5log(a+b) - lbeta(a,b) - log(sigma)
+    """
+    import jax.numpy as jnp
+    from jax.scipy.special import gammaln as _gl, betaln as _bl
+
     eps = jnp.finfo(jnp.float64).eps
     sigma = jnp.maximum(sigma, eps)
-    tau = jnp.maximum(tau, 2.0 + eps)  # df > 2
-    
+    tau = jnp.maximum(tau, eps)
+
     z = (y - mu) / sigma
-    
-    # Skew factor
-    skew_factor = jnp.exp(nu * z)
-    
-    # t distribution part
-    log_t = (
-        gammaln((tau + 1.0) / 2.0) - gammaln(tau / 2.0)
-        - 0.5 * jnp.log(tau * jnp.pi)
+    ve = 2.0 / tau
+    lam = 2.0 * nu / (tau * jnp.sqrt(2.0 * tau + nu * nu))
+    a = (ve + lam) / 2.0
+    b = (ve - lam) / 2.0
+    ab = a + b
+
+    sq = jnp.sqrt(ab + z * z)
+    log1p = jnp.log(1.0 + z / sq)
+    log1m = jnp.log(1.0 - z / sq)
+
+    loglik = (
+        (a + 0.5) * log1p
+        + (b + 0.5) * log1m
+        - (ab - 1.0) * jnp.log(2.0)
+        - 0.5 * jnp.log(ab)
+        - _bl(a, b)
         - jnp.log(sigma)
-        - ((tau + 1.0) / 2.0) * jnp.log1p(z * z / tau)
     )
-    
-    return log_t + jnp.log(skew_factor)
+    return loglik
+
+
+def _st5_p(q, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, lower_tail=True, log_p=False):
+    """ST5 CDF matching R ST5.R pST5.
+
+    p = pbeta(alpha, a, b) where alpha = (1+z/sqrt(a+b+z^2))/2.
+    """
+    import numpy as np
+    import jax.numpy as jnp
+    from scipy.special import betainc
+
+    q_arr = np.atleast_1d(np.asarray(q, dtype=np.float64))
+    mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
+    sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
+    nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
+    tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
+    n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+
+    out = []
+    for i in range(n):
+        qi = float(q_arr[i % len(q_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        ni = float(nu_arr[i % len(nu_arr)])
+        ti = float(tau_arr[i % len(tau_arr)])
+        if si <= 0 or ti <= 0:
+            out.append(np.nan)
+            continue
+        zi = (qi - mui) / si
+        ve = 2.0 / ti
+        lam = 2.0 * ni / (ti * np.sqrt(2.0 * ti + ni * ni))
+        a = (ve + lam) / 2.0
+        b = (ve - lam) / 2.0
+        alpha = (1.0 + zi / np.sqrt(a + b + zi * zi)) / 2.0
+        # pbeta = regularized incomplete beta
+        out.append(float(betainc(a, b, alpha)))
+
+    cdf = np.array(out)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _st5_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, lower_tail=True, log_p=False):
+    """ST5 quantile matching R ST5.R qST5.
+
+    Balpha = qbeta(p,a,b); zalpha = sqrt(a+b)*(2*Balpha-1)/(2*sqrt(Balpha*(1-Balpha))).
+    """
+    import numpy as np
+    import jax.numpy as jnp
+    from scipy.special import betaincinv
+
+    p_arr = np.atleast_1d(np.asarray(p, dtype=np.float64))
+    if log_p:
+        p_arr = np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr = np.clip(p_arr, 1e-16, 1.0 - 1e-16)
+    mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
+    sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
+    nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
+    tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
+    n = max(len(p_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        ni = float(nu_arr[i % len(nu_arr)])
+        ti = float(tau_arr[i % len(tau_arr)])
+        if si <= 0 or ti <= 0:
+            out.append(np.nan)
+            continue
+        ve = 2.0 / ti
+        lam = 2.0 * ni / (ti * np.sqrt(2.0 * ti + ni * ni))
+        a = (ve + lam) / 2.0
+        b = (ve - lam) / 2.0
+        Balpha = float(betaincinv(a, b, pi))
+        zalpha = np.sqrt(a + b) * (2.0 * Balpha - 1.0) / (2.0 * np.sqrt(Balpha * (1.0 - Balpha)))
+        out.append(float(mui + si * zalpha))
+
+    res = np.array(out)
+    return jnp.asarray(res, dtype=jnp.float64)
+
+
+def _st5_r(key, n, mu=0.0, sigma=1.0, nu=0.0, tau=1.0):
+    """ST5 random generation via inverse-CDF sampling."""
+    import jax.random as jr
+
+    u = jr.uniform(key, shape=(n,), dtype=jnp.float64)
+    return _st5_q(u, mu, sigma, nu, tau)
 
 
 def ST5():
-    """Skew t Type 5 distribution."""
+    """Skew t Type 5 (Jones & Faddy) distribution."""
     return build_ad_family(
         family_class=ST5Family,
         name="ST5",
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_st5_log_pdf,
         type_="Continuous",
+        p=_st5_p,
+        q=_st5_q,
+        r=_st5_r,
         links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
         link_functions={
             "mu": identity_link,
