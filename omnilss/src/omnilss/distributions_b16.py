@@ -15,6 +15,10 @@ from jax.scipy.special import ndtr
 from .ad import build_ad_family
 from .families import FamilyDefinition
 
+from .links import (
+    identity_link, identity_inverse, identity_derivative,
+    log_link, log_inverse, log_derivative,
+)
 eps = jnp.finfo(jnp.float64).eps
 
 
@@ -141,46 +145,162 @@ class SEPFamily(FamilyDefinition):
     """
 
 
-def _sep_log_pdf(y: Array, mu: Array, sigma: Array, nu: Array, tau: Array) -> Array:
-    """Log-PDF for SEP distribution.
-    
-    This is a simplified implementation. The full SEP distribution
-    involves complex normalizing constants and power exponential terms.
-    
-    For now, we use a simplified form similar to SEP1.
+def _sep_log_pdf(y, mu, sigma, nu, tau):
+    """SEP log-PDF matching R SEP.R dSEP.
+
+    z = (y-mu)/sigma
+    w = sign(z)*|z|^(tau/2)*nu*sqrt(2/tau)
+    loglik = log(pnorm(w)) - |z|^tau/tau - log(sigma) - lgamma(1/tau) - (1/tau-1)*log(tau)
     """
+    import jax.numpy as jnp
+    from jax.scipy.special import gammaln as _gl
+
+    eps = jnp.finfo(jnp.float64).eps
     sigma = jnp.maximum(sigma, eps)
-    nu = jnp.maximum(nu, eps)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
     tau = jnp.maximum(tau, eps)
-    
+
     z = (y - mu) / sigma
-    
-    # Simplified SEP: similar to power exponential with skewness
-    # Full implementation would require numerical integration for normalizing constant
-    
-    # Use asymmetric power exponential form
-    z_adj = jnp.where(z >= 0, z / nu, z * nu)
-    
-    log_pdf = -jnp.log(sigma) - 0.5 * jnp.log(2.0 * jnp.pi) - jnp.power(jnp.abs(z_adj), tau)
-    
-    return log_pdf
+    z_abs = jnp.abs(z)
+    w = jnp.sign(z) * jnp.power(z_abs, tau / 2.0) * nu * jnp.sqrt(2.0 / tau)
+
+    # log(pnorm(w)) - use jax.scipy.stats.norm.logcdf
+    from jax.scipy.stats import norm as _jn
+    lcdf = _jn.logcdf(w)
+
+    loglik = lcdf - jnp.power(z_abs, tau) / tau - jnp.log(sigma) - _gl(1.0 / tau) - (1.0 / tau - 1.0) * jnp.log(tau)
+    return loglik
+
+
+def _sep_p(q, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False):
+    """SEP CDF via numerical integration (R SEP.R pSEP)."""
+    import numpy as np
+    import jax.numpy as jnp
+    from scipy.integrate import quad
+
+    def _d_log(z, _mu, _si, _ni, _ti):
+        # Integrate dSEP(x, mu, sigma, nu, tau) = exp(loglik)
+        import numpy as _np
+        return float(_np.asarray(_sep_log_pdf(_np.array([z]), _mu, _si, _ni, _ti)).reshape(-1)[0])
+
+    q_arr = np.atleast_1d(np.asarray(q, dtype=np.float64))
+    mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
+    sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
+    nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
+    tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
+    n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+
+    out = []
+    for i in range(n):
+        qi = float(q_arr[i % len(q_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        ni = float(nu_arr[i % len(nu_arr)])
+        ti = float(tau_arr[i % len(tau_arr)])
+        if si <= 0 or ti <= 0:
+            out.append(np.nan)
+            continue
+        # Standardized: mu=0, sigma=1 for the integrand, shift the limit
+        z_lim = (qi - mui) / si
+        try:
+            val, _ = quad(lambda z: np.exp(_d_log(z, 0.0, 1.0, ni, ti)), -np.inf, z_lim, limit=300)
+            out.append(float(min(max(val, 0.0), 1.0)))
+        except Exception:
+            out.append(np.nan)
+
+    cdf = np.array(out)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _sep_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False):
+    """SEP quantile via root-finding (R SEP.R qSEP)."""
+    import numpy as np
+    import jax.numpy as jnp
+    from scipy.optimize import brentq
+
+    p_arr = np.atleast_1d(np.asarray(p, dtype=np.float64))
+    if log_p:
+        p_arr = np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr = np.clip(p_arr, 1e-10, 1.0 - 1e-10)
+    mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
+    sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
+    nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
+    tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
+    n = max(len(p_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        ni = float(nu_arr[i % len(nu_arr)])
+        ti = float(tau_arr[i % len(tau_arr)])
+        if si <= 0 or ti <= 0:
+            out.append(np.nan)
+            continue
+
+        def obj(x, _pi=pi, _mui=mui, _si=si, _ni=ni, _ti=ti):
+            return float(np.asarray(_sep_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(-1)[0]) - _pi
+
+        lo, hi = mui - 12.0 * si, mui + 12.0 * si
+        found = False
+        for _ in range(6):
+            try:
+                if obj(lo) * obj(hi) < 0.0:
+                    found = True
+                    break
+            except Exception:
+                pass
+            span = hi - lo
+            lo, hi = lo - 4.0 * span, hi + 4.0 * span
+        if not found:
+            lo, hi = mui - 1000.0 * si, mui + 1000.0 * si
+            try:
+                if obj(lo) * obj(hi) < 0.0:
+                    found = True
+            except Exception:
+                pass
+        if found:
+            try:
+                out.append(brentq(obj, lo, hi, xtol=1e-10))
+                continue
+            except Exception:
+                pass
+        out.append(np.nan)
+
+    res = np.array(out)
+    return jnp.asarray(res, dtype=jnp.float64)
+
+
+def _sep_r(key, n, mu=0.0, sigma=1.0, nu=0.0, tau=2.0):
+    """SEP random generation via inverse-CDF sampling."""
+    import jax.random as jr
+
+    u = jr.uniform(key, shape=(n,), dtype=jnp.float64)
+    return _sep_q(u, mu, sigma, nu, tau)
 
 
 def SEP() -> SEPFamily:
-    """Skew Exponential Power distribution (base).
-    
-    Note: This is a simplified implementation. SEP1-SEP4 variants
-    are already implemented in distributions_b15.py with more
-    specific parameterizations.
-    
-    Returns:
-        SEPFamily with automatic differentiation support
-    """
+    """Skew Exponential Power distribution (R SEP)."""
     return build_ad_family(
         family_class=SEPFamily,
         log_pdf_func=_sep_log_pdf,
         name="SEP",
         parameters=("mu", "sigma", "nu", "tau"),
+        type_="Continuous",
+        p=_sep_p,
+        q=_sep_q,
+        r=_sep_r,
+        links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
+        link_functions={"mu": identity_link, "sigma": log_link, "nu": identity_link, "tau": log_link},
+        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": identity_inverse, "tau": log_inverse},
+        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": identity_derivative, "tau": log_derivative},
     )
 
 

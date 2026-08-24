@@ -47,33 +47,162 @@ class SEP4Family(FamilyDefinition):
 
 
 def _sep1_log_pdf(y, mu, sigma, nu, tau):
-    """SEP1 log-PDF."""
+    """SEP1 log-PDF matching R SEP1.R dSEP1.
+
+    z = (y-mu)/sigma; w = nu*z
+    sz = |z|^tau/tau;  s = |w|^tau/tau
+    lpdf = (1-1/tau)log(tau) - sz - lgamma(1/tau) - log(2)
+    lcdf = log(0.5*(1 + pgamma(s, 1/tau, 1)*sign(w)))
+    loglik = lpdf + lcdf + log(2) - log(sigma)
+    """
+    import jax.numpy as jnp
+    from jax.scipy.special import gammaln as _gl, gammainc as _gic
+
     eps = jnp.finfo(jnp.float64).eps
     sigma = jnp.maximum(sigma, eps)
-    tau = jnp.clip(tau, 0.1, 10.0)
-    
+    tau = jnp.maximum(tau, eps)
+
     z = (y - mu) / sigma
-    
-    # Skew factor
-    skew = jnp.where(z < 0, jnp.exp(nu), jnp.exp(-nu))
-    
-    # Power exponential
-    log_pe = (
-        jnp.log(tau) - jnp.log(2.0 * sigma) - gammaln(1.0 / tau)
-        - jnp.power(jnp.abs(z) * skew, tau)
-    )
-    
-    return log_pe
+    w = nu * z
+    z_abs = jnp.abs(z)
+    sz = jnp.power(z_abs, tau) / tau
+    s = jnp.power(jnp.abs(w), tau) / tau
+
+    # R: lpdf = (1-1/tau)*log(tau) - sz - lgamma(1/tau) - log(2)
+    lpdf = (1.0 - 1.0 / tau) * jnp.log(tau) - sz - _gl(1.0 / tau) - jnp.log(2.0)
+    # pgamma(s, shape=1/tau, scale=1) = gammainc(1/tau, s)
+    pgamma_s = _gic(1.0 / tau, s)
+    lcdf = jnp.log(0.5 * (1.0 + pgamma_s * jnp.sign(w)))
+    # Handle s==0 case: R uses lcdf2 = log(0.5 + w*exp((1-1/tau)*log(tau) - lgamma(1/tau) - log(2)))
+    lcdf2 = jnp.log(0.5 + w * jnp.exp((1.0 - 1.0 / tau) * jnp.log(tau) - _gl(1.0 / tau) - jnp.log(2.0)))
+    lcdf = jnp.where(s == 0, lcdf2, lcdf)
+
+    loglik = lpdf + lcdf + jnp.log(2.0) - jnp.log(sigma)
+    return loglik
+
+
+def _sep1_p(q, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False):
+    """SEP1 CDF via numerical integration (R SEP1.R pSEP1)."""
+    import numpy as np
+    import jax.numpy as jnp
+    from scipy.integrate import quad
+
+    def _d_log(z, _ni, _ti):
+        return float(np.asarray(_sep1_log_pdf(np.array([z]), 0.0, 1.0, _ni, _ti)).reshape(-1)[0])
+
+    q_arr = np.atleast_1d(np.asarray(q, dtype=np.float64))
+    mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
+    sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
+    nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
+    tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
+    n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+
+    out = []
+    for i in range(n):
+        qi = float(q_arr[i % len(q_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        ni = float(nu_arr[i % len(nu_arr)])
+        ti = float(tau_arr[i % len(tau_arr)])
+        if si <= 0 or ti <= 0:
+            out.append(np.nan)
+            continue
+        z_lim = (qi - mui) / si
+        try:
+            val, _ = quad(lambda z: np.exp(_d_log(z, ni, ti)), -np.inf, z_lim, limit=300)
+            out.append(float(min(max(val, 0.0), 1.0)))
+        except Exception:
+            out.append(np.nan)
+
+    cdf = np.array(out)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _sep1_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False):
+    """SEP1 quantile via root-finding (R SEP1.R qSEP1)."""
+    import numpy as np
+    import jax.numpy as jnp
+    from scipy.optimize import brentq
+
+    p_arr = np.atleast_1d(np.asarray(p, dtype=np.float64))
+    if log_p:
+        p_arr = np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr = np.clip(p_arr, 1e-10, 1.0 - 1e-10)
+    mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
+    sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
+    nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
+    tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
+    n = max(len(p_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        ni = float(nu_arr[i % len(nu_arr)])
+        ti = float(tau_arr[i % len(tau_arr)])
+        if si <= 0 or ti <= 0:
+            out.append(np.nan)
+            continue
+
+        def obj(x, _pi=pi, _mui=mui, _si=si, _ni=ni, _ti=ti):
+            return float(np.asarray(_sep1_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(-1)[0]) - _pi
+
+        lo, hi = mui - 12.0 * si, mui + 12.0 * si
+        found = False
+        for _ in range(6):
+            try:
+                if obj(lo) * obj(hi) < 0.0:
+                    found = True
+                    break
+            except Exception:
+                pass
+            span = hi - lo
+            lo, hi = lo - 4.0 * span, hi + 4.0 * span
+        if not found:
+            lo, hi = mui - 1000.0 * si, mui + 1000.0 * si
+            try:
+                if obj(lo) * obj(hi) < 0.0:
+                    found = True
+            except Exception:
+                pass
+        if found:
+            try:
+                out.append(brentq(obj, lo, hi, xtol=1e-10))
+                continue
+            except Exception:
+                pass
+        out.append(np.nan)
+
+    res = np.array(out)
+    return jnp.asarray(res, dtype=jnp.float64)
+
+
+def _sep1_r(key, n, mu=0.0, sigma=1.0, nu=0.0, tau=2.0):
+    """SEP1 random generation via inverse-CDF sampling."""
+    import jax.random as jr
+
+    u = jr.uniform(key, shape=(n,), dtype=jnp.float64)
+    return _sep1_q(u, mu, sigma, nu, tau)
 
 
 def SEP1():
-    """Skew Exponential Power Type 1."""
+    """Skew Exponential Power Type 1 (R SEP1)."""
     return build_ad_family(
         family_class=SEP1Family,
         name="SEP1",
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_sep1_log_pdf,
         type_="Continuous",
+        p=_sep1_p,
+        q=_sep1_q,
+        r=_sep1_r,
         links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
         link_functions={
             "mu": identity_link,
@@ -96,50 +225,458 @@ def SEP1():
     )
 
 
-# SEP2, SEP3, SEP4 are similar with minor variations
-def _build_sep_alias(name: str, family_class):
-    """Build SEP compatibility aliases with distinct family names."""
-    return build_ad_family(
-        family_class=family_class,
-        name=name,
-        parameters=("mu", "sigma", "nu", "tau"),
-        log_pdf_func=_sep1_log_pdf,
-        type_="Continuous",
-        links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
-        link_functions={
-            "mu": identity_link,
-            "sigma": log_link,
-            "nu": identity_link,
-            "tau": log_link,
-        },
-        link_inverses={
-            "mu": identity_inverse,
-            "sigma": log_inverse,
-            "nu": identity_inverse,
-            "tau": log_inverse,
-        },
-        link_derivatives={
-            "mu": identity_derivative,
-            "sigma": log_derivative,
-            "nu": identity_derivative,
-            "tau": log_derivative,
-        },
-    )
+def _sep2_log_pdf(y, mu, sigma, nu, tau):
+    """SEP2 log-PDF (identical to SEP per R SEP2.R comment)."""
+    import jax.numpy as jnp
+    from jax.scipy.special import gammaln as _gl
+    from jax.scipy.stats import norm as _jn
+
+    eps = jnp.finfo(jnp.float64).eps
+    sigma = jnp.maximum(sigma, eps)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    tau = jnp.maximum(tau, eps)
+
+    z = (y - mu) / sigma
+    z_abs = jnp.abs(z)
+    w = jnp.sign(z) * jnp.power(z_abs, tau / 2.0) * nu * jnp.sqrt(2.0 / tau)
+
+    lcdf = _jn.logcdf(w)
+    loglik = lcdf - jnp.power(z_abs, tau) / tau - jnp.log(sigma) - _gl(1.0 / tau) - (1.0 / tau - 1.0) * jnp.log(tau)
+    return loglik
+
+
+def _sep3_log_pdf(y, mu, sigma, nu, tau):
+    """SEP3 log-PDF matching R SEP3.R dSEP3.
+
+    loglik = ifelse(x<mu, -0.5*(nu*|z|)^tau, -0.5*(|z|/nu)^tau)
+             - log(sigma) + log(nu) - log(1+nu^2) - log(2)/tau - lgamma(1+1/tau)
+    """
+    import jax.numpy as jnp
+    from jax.scipy.special import gammaln as _gl
+
+    eps = jnp.finfo(jnp.float64).eps
+    sigma = jnp.maximum(sigma, eps)
+    nu = jnp.maximum(nu, eps)
+    tau = jnp.maximum(tau, eps)
+
+    z = (y - mu) / sigma
+    z_abs = jnp.abs(z)
+    loglik1 = -0.5 * jnp.power(nu * z_abs, tau)
+    loglik2 = -0.5 * jnp.power(z_abs / nu, tau)
+    loglik = jnp.where(y < mu, loglik1, loglik2)
+    loglik = loglik - jnp.log(sigma) + jnp.log(nu) - jnp.log(1.0 + nu * nu) - jnp.log(2.0) / tau - _gl(1.0 + 1.0 / tau)
+    return loglik
+
+
+def _sep4_log_pdf(y, mu, sigma, nu, tau):
+    """SEP4 log-PDF matching R SEP4.R dSEP4.
+
+    k1 = gamma(1+1/nu); k2 = gamma(1+1/tau)
+    loglik = ifelse(x<mu, -|z|^nu, -|z|^tau) - log(k1+k2) - log(sigma)
+    """
+    import jax.numpy as jnp
+    from jax.scipy.special import gammaln as _gl
+
+    eps = jnp.finfo(jnp.float64).eps
+    sigma = jnp.maximum(sigma, eps)
+    nu = jnp.maximum(nu, eps)
+    tau = jnp.maximum(tau, eps)
+
+    z = (y - mu) / sigma
+    z_abs = jnp.abs(z)
+    lk1 = _gl(1.0 + 1.0 / nu)
+    lk2 = _gl(1.0 + 1.0 / tau)
+    loglik1 = -jnp.power(z_abs, nu)
+    loglik2 = -jnp.power(z_abs, tau)
+    loglik = jnp.where(y < mu, loglik1, loglik2)
+    loglik = loglik - jnp.log(jnp.exp(lk1) + jnp.exp(lk2)) - jnp.log(sigma)
+    return loglik
+
+
+# SEP3/SEP4 have closed-form p/q via pgamma/qgamma
+def _sep3_p(q, mu=0.0, sigma=1.0, nu=2.0, tau=2.0, lower_tail=True, log_p=False):
+    """SEP3 CDF matching R SEP3.R pSEP3."""
+    import numpy as np
+    import jax.numpy as jnp
+    from scipy.special import gammaincc, gammainc
+
+    q_arr = np.atleast_1d(np.asarray(q, dtype=np.float64))
+    mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
+    sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
+    nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
+    tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
+    n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+
+    out = []
+    for i in range(n):
+        qi = float(q_arr[i % len(q_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        ni = float(nu_arr[i % len(nu_arr)])
+        ti = float(tau_arr[i % len(tau_arr)])
+        if si <= 0 or ni <= 0 or ti <= 0:
+            out.append(np.nan)
+            continue
+        k = ni * ni
+        # z1 = nu*(q-mu)/(sigma*2^(1/tau)); s1 = |z1|^tau
+        z1 = ni * (qi - mui) / (si * np.power(2.0, 1.0 / ti))
+        z2 = (qi - mui) / (si * ni * np.power(2.0, 1.0 / ti))
+        s1 = np.power(np.abs(z1), ti)
+        s2 = np.power(np.abs(z2), ti)
+        # cdf1 = 1 - pgamma(s1, 1/tau, 1) = gammaincc(1/tau, s1)
+        cdf1 = float(gammaincc(1.0 / ti, s1))
+        # cdf2 = 1 + k*pgamma(s2, 1/tau, 1) = 1 + k*gammainc(1/tau, s2)
+        cdf2 = 1.0 + k * float(gammainc(1.0 / ti, s2))
+        cdf = cdf1 if qi < mui else cdf2
+        cdf = cdf / (1.0 + k)
+        # Handle tau > 10000 (limiting case)
+        if ti > 10000:
+            cdf = (qi - (mui - si / ni)) / (si * (1.0 / ni + ni))
+        out.append(float(min(max(cdf, 0.0), 1.0)))
+
+    cdf = np.array(out)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _sep3_q(p, mu=0.0, sigma=1.0, nu=2.0, tau=2.0, lower_tail=True, log_p=False):
+    """SEP3 quantile matching R SEP3.R qSEP3."""
+    import numpy as np
+    import jax.numpy as jnp
+    from scipy.special import gammaincinv, gammainccinv
+
+    p_arr = np.atleast_1d(np.asarray(p, dtype=np.float64))
+    if log_p:
+        p_arr = np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr = np.clip(p_arr, 1e-16, 1.0 - 1e-16)
+    mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
+    sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
+    nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
+    tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
+    n = max(len(p_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        ni = float(nu_arr[i % len(nu_arr)])
+        ti = float(tau_arr[i % len(tau_arr)])
+        if si <= 0 or ni <= 0 or ti <= 0:
+            out.append(np.nan)
+            continue
+        k = ni * ni
+        # q1 = mu - sigma*2^(1/tau)/nu * (qgamma(1-p*(1+k), 1/tau, 1))^(1/tau)
+        # qgamma(a, shape, scale) = gammaincinv(shape, a) * scale
+        # Note: qgamma gives lower quantile. 1-p*(1+k) is the survival probability.
+        qgamma1 = float(gammaincinv(1.0 / ti, 1.0 - pi * (1.0 + k)))
+        q1 = mui - si * np.power(2.0, 1.0 / ti) / ni * np.power(qgamma1, 1.0 / ti)
+        # q2 = mu + sigma*nu*2^(1/tau) * (qgamma(-1/k*(1-p*(1+k)), 1/tau, 1))^(1/tau)
+        arg2 = -1.0 / k * (1.0 - pi * (1.0 + k))
+        qgamma2 = float(gammaincinv(1.0 / ti, arg2))
+        q2 = mui + si * ni * np.power(2.0, 1.0 / ti) * np.power(qgamma2, 1.0 / ti)
+        q = q1 if pi < (1.0 / (1.0 + k)) else q2
+        out.append(float(q))
+
+    res = np.array(out)
+    if np.ndim(p) == 0:
+        return float(res[0])
+    return jnp.asarray(res, dtype=jnp.float64)
+
+
+def _sep3_r(key, n, mu=0.0, sigma=1.0, nu=2.0, tau=2.0):
+    """SEP3 random generation via inverse-CDF sampling."""
+    import jax.random as jr
+
+    u = jr.uniform(key, shape=(n,), dtype=jnp.float64)
+    return _sep3_q(u, mu, sigma, nu, tau)
+
+
+def _sep4_p(q, mu=0.0, sigma=1.0, nu=2.0, tau=2.0, lower_tail=True, log_p=False):
+    """SEP4 CDF matching R SEP4.R pSEP4."""
+    import numpy as np
+    import jax.numpy as jnp
+    from scipy.special import gammaincc, gammainc
+
+    q_arr = np.atleast_1d(np.asarray(q, dtype=np.float64))
+    mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
+    sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
+    nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
+    tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
+    n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+
+    out = []
+    for i in range(n):
+        qi = float(q_arr[i % len(q_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        ni = float(nu_arr[i % len(nu_arr)])
+        ti = float(tau_arr[i % len(tau_arr)])
+        if si <= 0 or ni <= 0 or ti <= 0:
+            out.append(np.nan)
+            continue
+        from scipy.special import gammaln as _sp_gammaln
+        lk1 = _sp_gammaln(1.0 + 1.0 / ni)
+        lk2 = _sp_gammaln(1.0 + 1.0 / ti)
+        k = np.exp(lk2 - lk1)
+        z = (qi - mui) / si
+        s1 = np.power(np.abs(z), ni)
+        s2 = np.power(np.abs(z), ti)
+        # cdf1 = 1 - pgamma(s1, 1/nu, 1) = gammaincc(1/nu, s1)
+        cdf1 = float(gammaincc(1.0 / ni, s1))
+        # cdf2 = 1 + k*pgamma(s2, 1/tau, 1) = 1 + k*gammainc(1/tau, s2)
+        cdf2 = 1.0 + k * float(gammainc(1.0 / ti, s2))
+        cdf = cdf1 if qi < mui else cdf2
+        cdf = cdf / (1.0 + k)
+        out.append(float(min(max(cdf, 0.0), 1.0)))
+
+    cdf = np.array(out)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _sep4_q(p, mu=0.0, sigma=1.0, nu=2.0, tau=2.0, lower_tail=True, log_p=False):
+    """SEP4 quantile via root-finding (R SEP4.R qSEP4 uses uniroot)."""
+    import numpy as np
+    import jax.numpy as jnp
+    from scipy.optimize import brentq
+
+    p_arr = np.atleast_1d(np.asarray(p, dtype=np.float64))
+    if log_p:
+        p_arr = np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr = np.clip(p_arr, 1e-10, 1.0 - 1e-10)
+    mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
+    sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
+    nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
+    tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
+    n = max(len(p_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        ni = float(nu_arr[i % len(nu_arr)])
+        ti = float(tau_arr[i % len(tau_arr)])
+        if si <= 0 or ni <= 0 or ti <= 0:
+            out.append(np.nan)
+            continue
+
+        def obj(x, _pi=pi, _mui=mui, _si=si, _ni=ni, _ti=ti):
+            return float(np.asarray(_sep4_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(-1)[0]) - _pi
+
+        lo, hi = mui - 12.0 * si, mui + 12.0 * si
+        found = False
+        for _ in range(6):
+            try:
+                if obj(lo) * obj(hi) < 0.0:
+                    found = True
+                    break
+            except Exception:
+                pass
+            span = hi - lo
+            lo, hi = lo - 4.0 * span, hi + 4.0 * span
+        if not found:
+            lo, hi = mui - 1000.0 * si, mui + 1000.0 * si
+            try:
+                if obj(lo) * obj(hi) < 0.0:
+                    found = True
+            except Exception:
+                pass
+        if found:
+            try:
+                out.append(brentq(obj, lo, hi, xtol=1e-10))
+                continue
+            except Exception:
+                pass
+        out.append(np.nan)
+
+    res = np.array(out)
+    return jnp.asarray(res, dtype=jnp.float64)
+
+
+def _sep4_r(key, n, mu=0.0, sigma=1.0, nu=2.0, tau=2.0):
+    """SEP4 random generation via inverse-CDF sampling."""
+    import jax.random as jr
+
+    u = jr.uniform(key, shape=(n,), dtype=jnp.float64)
+    return _sep4_q(u, mu, sigma, nu, tau)
+
+
+
+def _sep2_p(q, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False):
+    """SEP2 CDF (same as SEP: numerical integration)."""
+    import numpy as np
+    import jax.numpy as jnp
+    from scipy.integrate import quad
+
+    def _d_log(z, _ni, _ti):
+        return float(np.asarray(_sep2_log_pdf(np.array([z]), 0.0, 1.0, _ni, _ti)).reshape(-1)[0])
+
+    q_arr = np.atleast_1d(np.asarray(q, dtype=np.float64))
+    mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
+    sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
+    nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
+    tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
+    n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+
+    out = []
+    for i in range(n):
+        qi = float(q_arr[i % len(q_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        ni = float(nu_arr[i % len(nu_arr)])
+        ti = float(tau_arr[i % len(tau_arr)])
+        if si <= 0 or ti <= 0:
+            out.append(np.nan)
+            continue
+        z_lim = (qi - mui) / si
+        try:
+            val, _ = quad(lambda z: np.exp(_d_log(z, ni, ti)), -np.inf, z_lim, limit=300)
+            out.append(float(min(max(val, 0.0), 1.0)))
+        except Exception:
+            out.append(np.nan)
+
+    cdf = np.array(out)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _sep2_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False):
+    """SEP2 quantile (same as SEP: root-finding)."""
+    import numpy as np
+    import jax.numpy as jnp
+    from scipy.optimize import brentq
+
+    p_arr = np.atleast_1d(np.asarray(p, dtype=np.float64))
+    if log_p:
+        p_arr = np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr = np.clip(p_arr, 1e-10, 1.0 - 1e-10)
+    mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
+    sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
+    nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
+    tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
+    n = max(len(p_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        ni = float(nu_arr[i % len(nu_arr)])
+        ti = float(tau_arr[i % len(tau_arr)])
+        if si <= 0 or ti <= 0:
+            out.append(np.nan)
+            continue
+
+        def obj(x, _pi=pi, _mui=mui, _si=si, _ni=ni, _ti=ti):
+            return float(np.asarray(_sep2_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(-1)[0]) - _pi
+
+        lo, hi = mui - 12.0 * si, mui + 12.0 * si
+        found = False
+        for _ in range(6):
+            try:
+                if obj(lo) * obj(hi) < 0.0:
+                    found = True
+                    break
+            except Exception:
+                pass
+            span = hi - lo
+            lo, hi = lo - 4.0 * span, hi + 4.0 * span
+        if not found:
+            lo, hi = mui - 1000.0 * si, mui + 1000.0 * si
+            try:
+                if obj(lo) * obj(hi) < 0.0:
+                    found = True
+            except Exception:
+                pass
+        if found:
+            try:
+                out.append(brentq(obj, lo, hi, xtol=1e-10))
+                continue
+            except Exception:
+                pass
+        out.append(np.nan)
+
+    res = np.array(out)
+    return jnp.asarray(res, dtype=jnp.float64)
+
+
+def _sep2_r(key, n, mu=0.0, sigma=1.0, nu=0.0, tau=2.0):
+    """SEP2 random generation via inverse-CDF sampling."""
+    import jax.random as jr
+
+    u = jr.uniform(key, shape=(n,), dtype=jnp.float64)
+    return _sep2_q(u, mu, sigma, nu, tau)
 
 
 def SEP2():
-    """Skew Exponential Power Type 2."""
-    return _build_sep_alias("SEP2", SEP2Family)
+    """Skew Exponential Power Type 2 (same as SEP per R SEP2.R)."""
+    return build_ad_family(
+        family_class=SEP2Family,
+        name="SEP2",
+        parameters=("mu", "sigma", "nu", "tau"),
+        log_pdf_func=_sep2_log_pdf,
+        type_="Continuous",
+        p=_sep2_p,
+        q=_sep2_q,
+        r=_sep2_r,
+        links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
+        link_functions={"mu": identity_link, "sigma": log_link, "nu": identity_link, "tau": log_link},
+        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": identity_inverse, "tau": log_inverse},
+        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": identity_derivative, "tau": log_derivative},
+    )
 
 
 def SEP3():
-    """Skew Exponential Power Type 3."""
-    return _build_sep_alias("SEP3", SEP3Family)
+    """Skew Exponential Power Type 3 (R SEP3)."""
+    return build_ad_family(
+        family_class=SEP3Family,
+        name="SEP3",
+        parameters=("mu", "sigma", "nu", "tau"),
+        log_pdf_func=_sep3_log_pdf,
+        type_="Continuous",
+        p=_sep3_p,
+        q=_sep3_q,
+        r=_sep3_r,
+        links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "log"},
+        link_functions={"mu": identity_link, "sigma": log_link, "nu": log_link, "tau": log_link},
+        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
+        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative, "tau": log_derivative},
+    )
 
 
 def SEP4():
-    """Skew Exponential Power Type 4."""
-    return _build_sep_alias("SEP4", SEP4Family)
+    """Skew Exponential Power Type 4 (R SEP4)."""
+    return build_ad_family(
+        family_class=SEP4Family,
+        name="SEP4",
+        parameters=("mu", "sigma", "nu", "tau"),
+        log_pdf_func=_sep4_log_pdf,
+        type_="Continuous",
+        p=_sep4_p,
+        q=_sep4_q,
+        r=_sep4_r,
+        links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "log"},
+        link_functions={"mu": identity_link, "sigma": log_link, "nu": log_link, "tau": log_link},
+        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
+        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative, "tau": log_derivative},
+    )
 
 
 # ============================================================================
@@ -153,53 +690,147 @@ class SSTFamily(FamilyDefinition):
 
 
 def _sst_log_pdf(y, mu, sigma, nu, tau):
-    """SST log-PDF."""
+    """SST log-PDF matching R SST.R dSST.
+
+    Standardized skew-t: a location-scale reparameterization of ST3C.
+      m1 = 2*sqrt(tau)*(nu^2-1) / ((tau-1)*beta(1/2, tau/2)*nu)
+      m2 = tau*(nu^3+1/nu^3) / ((tau-2)*(nu+1/nu))
+      s1 = sqrt(m2 - m1^2)
+      mu1 = mu - sigma*m1/s1;  sigma1 = sigma/s1
+      fy = dST3(y, mu1, sigma1, nu, tau)
+    """
+    import jax.numpy as jnp
+    from jax.scipy.special import betaln, gammaln as _gl
+    from jax.scipy.stats import t as _jt
+
     eps = jnp.finfo(jnp.float64).eps
     sigma = jnp.maximum(sigma, eps)
+    nu = jnp.maximum(nu, eps)
     tau = jnp.maximum(tau, 2.0 + eps)
-    
-    z = (y - mu) / sigma
-    
-    # Skew transformation
-    z_skew = jnp.where(z < 0, z / (1.0 - nu), z / (1.0 + nu))
-    
-    # t distribution
-    log_t = (
-        gammaln((tau + 1.0) / 2.0) - gammaln(tau / 2.0)
-        - 0.5 * jnp.log(tau * jnp.pi) - jnp.log(sigma)
-        - ((tau + 1.0) / 2.0) * jnp.log1p(z_skew * z_skew / tau)
-    )
-    
-    return log_t
+
+    # beta(1/2, tau/2) = exp(betaln(0.5, tau/2))
+    beta_0_5_tau2 = jnp.exp(betaln(0.5, tau / 2.0))
+    m1 = 2.0 * jnp.sqrt(tau) * (nu * nu - 1.0) / ((tau - 1.0) * beta_0_5_tau2 * nu)
+    m2 = tau * (nu * nu * nu + 1.0 / (nu * nu * nu)) / ((tau - 2.0) * (nu + 1.0 / nu))
+    s1 = jnp.sqrt(m2 - m1 * m1)
+    s1 = jnp.maximum(s1, eps)
+
+    mu1 = mu - sigma * m1 / s1
+    sigma1 = sigma / s1
+
+    # Call ST3C log-density
+    from .distributions_b15 import _st3c_log_pdf
+    return _st3c_log_pdf(y, mu1, sigma1, nu, tau)
+
+
+def _sst_p(q, mu=0.0, sigma=1.0, nu=0.8, tau=7.0, lower_tail=True, log_p=False):
+    """SST CDF matching R SST.R pSST (transformation of pST3C)."""
+    import numpy as np
+    import jax.numpy as jnp
+    from .distributions_b15 import _st3c_p
+
+    q_arr = np.atleast_1d(np.asarray(q, dtype=np.float64))
+    mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
+    sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
+    nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
+    tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
+    n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+
+    out = []
+    for i in range(n):
+        qi = float(q_arr[i % len(q_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        ni = float(nu_arr[i % len(nu_arr)])
+        ti = float(tau_arr[i % len(tau_arr)])
+        if si <= 0 or ni <= 0 or ti <= 2.0:
+            out.append(np.nan)
+            continue
+        # Same transformation as in dSST
+        from scipy.special import beta as _beta
+        beta_0_5_t2 = _beta(0.5, ti / 2.0)
+        m1 = 2.0 * np.sqrt(ti) * (ni * ni - 1.0) / ((ti - 1.0) * beta_0_5_t2 * ni)
+        m2 = ti * (ni * ni * ni + 1.0 / (ni * ni * ni)) / ((ti - 2.0) * (ni + 1.0 / ni))
+        s1 = np.sqrt(m2 - m1 * m1)
+        mu1 = mui - si * m1 / s1
+        sigma1 = si / s1
+        out.append(float(np.asarray(_st3c_p(np.array([qi]), mu1, sigma1, ni, ti)).reshape(-1)[0]))
+
+    cdf = np.array(out)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _sst_q(p, mu=0.0, sigma=1.0, nu=0.8, tau=7.0, lower_tail=True, log_p=False):
+    """SST quantile matching R SST.R qSST (transformation of qST3C)."""
+    import numpy as np
+    import jax.numpy as jnp
+    from .distributions_b15 import _st3c_q
+
+    p_arr = np.atleast_1d(np.asarray(p, dtype=np.float64))
+    if log_p:
+        p_arr = np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr = np.clip(p_arr, 1e-16, 1.0 - 1e-16)
+    mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
+    sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
+    nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
+    tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
+    n = max(len(p_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        ni = float(nu_arr[i % len(nu_arr)])
+        ti = float(tau_arr[i % len(tau_arr)])
+        if si <= 0 or ni <= 0 or ti <= 2.0:
+            out.append(np.nan)
+            continue
+        from scipy.special import beta as _beta
+        beta_0_5_t2 = _beta(0.5, ti / 2.0)
+        m1 = 2.0 * np.sqrt(ti) * (ni * ni - 1.0) / ((ti - 1.0) * beta_0_5_t2 * ni)
+        m2 = ti * (ni * ni * ni + 1.0 / (ni * ni * ni)) / ((ti - 2.0) * (ni + 1.0 / ni))
+        s1 = np.sqrt(m2 - m1 * m1)
+        mu1 = mui - si * m1 / s1
+        sigma1 = si / s1
+        q_raw = float(np.asarray(_st3c_q(np.array([pi]), mu1, sigma1, ni, ti)).reshape(-1)[0])
+        out.append(float(q_raw))
+
+    res = np.array(out)
+    if np.ndim(p) == 0:
+        return float(res[0])
+    return jnp.asarray(res, dtype=jnp.float64)
+
+
+def _sst_r(key, n, mu=0.0, sigma=1.0, nu=0.8, tau=7.0):
+    """SST random generation via inverse-CDF sampling."""
+    import jax.random as jr
+
+    u = jr.uniform(key, shape=(n,), dtype=jnp.float64)
+    return _sst_q(u, mu, sigma, nu, tau)
 
 
 def SST():
-    """Skew Student t distribution."""
+    """Standardized Skew t distribution (R SST)."""
     return build_ad_family(
         family_class=SSTFamily,
         name="SST",
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_sst_log_pdf,
         type_="Continuous",
-        links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
-        link_functions={
-            "mu": identity_link,
-            "sigma": log_link,
-            "nu": identity_link,
-            "tau": log_link,
-        },
-        link_inverses={
-            "mu": identity_inverse,
-            "sigma": log_inverse,
-            "nu": identity_inverse,
-            "tau": log_inverse,
-        },
-        link_derivatives={
-            "mu": identity_derivative,
-            "sigma": log_derivative,
-            "nu": identity_derivative,
-            "tau": log_derivative,
-        },
+        p=_sst_p,
+        q=_sst_q,
+        r=_sst_r,
+        links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "logshiftto2"},
+        link_functions={"mu": identity_link, "sigma": log_link, "nu": log_link, "tau": log_link},
+        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
+        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative, "tau": log_derivative},
     )
 
 
