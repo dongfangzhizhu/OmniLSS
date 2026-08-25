@@ -94,17 +94,40 @@ def _st2_log_pdf(y, mu, sigma, nu, tau):
 def _build_st1_st2(name, family_class, log_pdf_func):
     from .ad import build_ad_family
 
-    # p via numerical integration of the density (R ST1.R/ST2.R use integrate too).
+    # Standardized (mu=0, sigma=1) density in pure scipy/numpy.  R's pST1/pST2
+    # integrate dST1(x, 0, 1, nu, tau) with integrate(); we do the same with quad
+    # but avoid per-evaluation JAX dispatch (much faster).
+    import scipy.stats as _sps
+    import numpy as _np
+
+    def _std_log_density(z, ni, ti, is_st2):
+        z_arr = _np.asarray(z, dtype=_np.float64)
+        ti_safe = max(float(ti), 1e-6)
+        if is_st2:
+            # ST2: w = nu*sqrt((tau+1)/(tau+z^2))*z ; df = tau+1
+            lam = (ti_safe + 1.0) / (ti_safe + z_arr * z_arr)
+            w = ni * _np.sqrt(lam) * z_arr
+            lcdf = _sps.t.logcdf(w, ti_safe + 1.0)
+        else:
+            # ST1: w = nu*z ; df = tau
+            w = ni * z_arr
+            lcdf = _sps.t.logcdf(w, ti_safe)
+        lpdf = _sps.t.logpdf(z_arr, ti_safe)
+        return _np.log(2.0) + lcdf + lpdf  # standardized sigma=1
+
+    def _density(z, _ni, _ti):
+        return _np.exp(_std_log_density(z, _ni, _ti, name == "ST2"))
+
     def _st_p(q, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False):
-        import numpy as _np
+        import numpy as np
         import jax.numpy as jnp
         from scipy.integrate import quad
 
-        q_arr = _np.atleast_1d(_np.asarray(q, dtype=_np.float64))
-        mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
-        sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
-        nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
-        tau_arr = _np.atleast_1d(_np.asarray(tau, dtype=_np.float64))
+        q_arr = np.atleast_1d(np.asarray(q, dtype=np.float64))
+        mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
+        sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
+        nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
+        tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
         n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
 
         out = []
@@ -116,18 +139,17 @@ def _build_st1_st2(name, family_class, log_pdf_func):
             ti = float(tau_arr[i % len(tau_arr)])
             z_q = (qi - mui) / si
 
-            # Standardized (sigma=1, mu=0) log-density (R integrates dST1(x,0,1,nu,tau)).
-            def dens_log(z, _ni=ni, _ti=ti):
-                return float(
-                    _np.asarray(log_pdf_func(_np.array([z], dtype=_np.float64), 0.0, 1.0, _ni, _ti)).reshape(-1)[0]
-                )
-
-            if z_q <= -60.0:
+            # R 的 integrate() 从 -Inf 积分无截断；重尾（tau 接近 1）时
+            # z 在 -60..-600 区间密度仍非零（如 ST1 z=-123 时 p~0.002）。
+            if z_q <= -600.0:
                 val = 0.0
-            elif z_q >= 60.0:
+            elif z_q >= 600.0:
                 val = 1.0
             else:
-                val, _ = quad(lambda z: _np.exp(dens_log(z)), -_np.inf, z_q, limit=200)
+                val, _ = quad(
+                    lambda z: _density(z, ni, ti), -np.inf, z_q,
+                    limit=400, epsabs=1e-12, epsrel=1e-12,
+                )
             out.append(float(min(max(val, 0.0), 1.0)))
 
         cdf = _np.array(out)
@@ -142,36 +164,73 @@ def _build_st1_st2(name, family_class, log_pdf_func):
         from scipy.optimize import brentq
 
         p_arr = np.atleast_1d(np.asarray(p, dtype=np.float64))
+        mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
+        sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
+        nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
+        tau_arr = np.atleast_1d(np.asarray(tau, dtype=np.float64))
         if log_p:
             p_arr = np.exp(p_arr)
         if not lower_tail:
             p_arr = 1.0 - p_arr
         p_arr = np.clip(p_arr, 1e-10, 1 - 1e-10)
+        n = max(len(p_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
         out = []
-        for pv in p_arr:
-            def obj(x, _pv=pv):
-                return float(np.asarray(_st_p(np.array([x]), mu, sigma, nu, tau)).reshape(-1)[0]) - _pv
-            # Adaptive bracket: expand until h changes sign (R ST1.R does the same).
-            lo, hi = mu - 12.0 * sigma, mu + 12.0 * sigma
+        for i in range(n):
+            pv = float(p_arr[i % len(p_arr)])
+            mui = float(mu_arr[i % len(mu_arr)])
+            si = float(sigma_arr[i % len(sigma_arr)])
+            ni = float(nu_arr[i % len(nu_arr)])
+            ti = float(tau_arr[i % len(tau_arr)])
+            if si <= 0 or ti <= 0:
+                out.append(np.nan)
+                continue
+
+            def obj(x, _pv=pv, _mui=mui, _si=si, _ni=ni, _ti=ti):
+                return float(np.asarray(_st_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(-1)[0]) - _pv
+
+            # R ST1.R/ST2.R strategy: start from mu and expand one sigma at a
+            # time until the bracket contains the root (mirrors uniroot usage).
+            try:
+                h_mu = obj(mui)
+            except Exception:
+                out.append(np.nan)
+                continue
             found = False
-            for _ in range(6):
-                try:
-                    if obj(lo) * obj(hi) < 0.0:
-                        found = True
+            if h_mu < 0.0:
+                # root is to the right of mu
+                lo, hi = mui, mui + si
+                j = 2
+                while True:
+                    try:
+                        h_hi = obj(hi)
+                    except Exception:
+                        h_hi = np.nan
+                    if h_hi >= 0.0 or (not np.isfinite(h_hi)):
+                        found = np.isfinite(h_hi)
                         break
-                except Exception:
-                    pass
-                lo, hi = mu - 40.0 * (hi - mu), mu + 40.0 * (mu - lo)
-            if not found:
-                try:
-                    lo, hi = mu - 1000.0 * sigma, mu + 1000.0 * sigma
-                    if obj(lo) * obj(hi) < 0.0:
-                        found = True
-                except Exception:
-                    pass
+                    hi = mui + j * si
+                    j += 1
+                    if j > 20000:
+                        break
+            else:
+                # root is to the left of mu
+                lo, hi = mui - si, mui
+                j = 2
+                while True:
+                    try:
+                        h_lo = obj(lo)
+                    except Exception:
+                        h_lo = np.nan
+                    if h_lo <= 0.0 or (not np.isfinite(h_lo)):
+                        found = np.isfinite(h_lo)
+                        break
+                    lo = mui - j * si
+                    j += 1
+                    if j > 20000:
+                        break
             if found:
                 try:
-                    out.append(brentq(obj, lo, hi, xtol=1e-8))
+                    out.append(brentq(obj, lo, hi, xtol=1e-10))
                     continue
                 except Exception:
                     pass
@@ -180,6 +239,13 @@ def _build_st1_st2(name, family_class, log_pdf_func):
         if np.ndim(p) == 0:
             return res[0]
         return res
+
+    def _st_r(key, n, mu=0.0, sigma=1.0, nu=0.0, tau=2.0):
+        import jax.numpy as _jnp
+        import jax.random as _jr
+
+        u = _jr.uniform(key, shape=(n,), dtype=_jnp.float64)
+        return _st_q(u, mu, sigma, nu, tau)
 
     return build_ad_family(
         family_class=family_class,
@@ -193,6 +259,7 @@ def _build_st1_st2(name, family_class, log_pdf_func):
         link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": identity_derivative, "tau": log_derivative},
         p=_st_p,
         q=_st_q,
+        r=_st_r,
     )
 
 

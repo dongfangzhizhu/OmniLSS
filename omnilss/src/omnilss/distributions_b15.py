@@ -881,18 +881,27 @@ def _st3c_p(q, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False
     """ST3C CDF (R `st3_pst3`, Jones & Faddy skew-t)."""
     import numpy as _np
     from scipy.stats import t as _spt
-    q_arr = _np.asarray(q, dtype=_np.float64)
-    mu_arr = _np.asarray(mu, dtype=_np.float64)
-    sigma_f = max(float(sigma), 1e-16)
-    nu_f = max(float(nu), 1e-16)
-    tau_f = max(float(tau), 1.0 + 1e-16)
-    nu2 = nu_f * nu_f
-    e = q_arr - mu_arr
-    # e<0 branch: cdf1 = 2*pt(nu*e/sigma, df=tau)
-    cdf1 = 2.0 * _spt.cdf(nu_f * e / sigma_f, tau_f)
-    # e>=0 branch: cdf2 = 1 + 2*nu^2*(pt(e/(sigma*nu), df=tau) - 0.5)
-    cdf2 = 1.0 + 2.0 * nu2 * (_spt.cdf(e / (sigma_f * nu_f), tau_f) - 0.5)
-    cdf = _np.where(e < 0, cdf1, cdf2) / (1.0 + nu2)
+    q_arr = _np.atleast_1d(_np.asarray(q, dtype=_np.float64))
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+    tau_arr = _np.atleast_1d(_np.asarray(tau, dtype=_np.float64))
+    n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+    out = []
+    for i in range(n):
+        qi = float(q_arr[i % len(q_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = max(float(sigma_arr[i % len(sigma_arr)]), 1e-16)
+        nui = max(float(nu_arr[i % len(nu_arr)]), 1e-16)
+        ti = max(float(tau_arr[i % len(tau_arr)]), 1.0 + 1e-16)
+        e = qi - mui
+        nu2 = nui * nui
+        if e < 0:
+            c = 2.0 * _spt.cdf(nui * e / si, ti)
+        else:
+            c = 1.0 + 2.0 * nu2 * (_spt.cdf(e / (si * nui), ti) - 0.5)
+        out.append(float(c / (1.0 + nu2)))
+    cdf = _np.array(out)
     if not lower_tail:
         cdf = 1.0 - cdf
     if log_p:
@@ -904,21 +913,32 @@ def _st3c_q(p, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False
     """ST3C quantile (R `st3_qst3`)."""
     import numpy as _np
     from scipy.stats import t as _spt
-    p_arr = _np.asarray(p, dtype=_np.float64)
+    p_arr = _np.atleast_1d(_np.asarray(p, dtype=_np.float64))
     if log_p:
         p_arr = _np.exp(p_arr)
     if not lower_tail:
         p_arr = 1.0 - p_arr
-    sigma_f = max(float(sigma), 1e-16)
-    nu_f = max(float(nu), 1e-16)
-    tau_f = max(float(tau), 1.0 + 1e-16)
-    nu2 = nu_f * nu_f
-    # xp < 1/(1+nu^2) branch
-    q1 = mu + (sigma_f / nu_f) * _spt.ppf(p_arr * (1.0 + nu2) / 2.0, tau_f)
-    # otherwise
-    q2 = mu + (sigma_f * nu_f) * _spt.ppf((p_arr * (1.0 + nu2) - 1.0) / (2.0 * nu2) + 0.5, tau_f)
-    q = _np.where(p_arr < (1.0 / (1.0 + nu2)), q1, q2)
-    return jnp.asarray(q, dtype=jnp.float64)
+    p_arr = _np.clip(p_arr, 1e-16, 1.0 - 1e-16)
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+    tau_arr = _np.atleast_1d(_np.asarray(tau, dtype=_np.float64))
+    n = max(len(p_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = max(float(sigma_arr[i % len(sigma_arr)]), 1e-16)
+        nui = max(float(nu_arr[i % len(nu_arr)]), 1e-16)
+        ti = max(float(tau_arr[i % len(tau_arr)]), 1.0 + 1e-16)
+        nu2 = nui * nui
+        if pi < 1.0 / (1.0 + nu2):
+            q = mui + (si / nui) * _spt.ppf(pi * (1.0 + nu2) / 2.0, ti)
+        else:
+            q = mui + (si * nui) * _spt.ppf((pi * (1.0 + nu2) - 1.0) / (2.0 * nu2) + 0.5, ti)
+        out.append(float(q))
+    q_arr = _np.array(out)
+    return jnp.asarray(q_arr, dtype=jnp.float64)
 
 
 def _st3c_r(key, n, mu=0.0, sigma=1.0, nu=1.0, tau=10.0):
