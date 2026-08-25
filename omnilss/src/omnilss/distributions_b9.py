@@ -92,6 +92,74 @@ def _lg_log_pdf(y, mu):
     return log_pdf
 
 
+def _lg_p(q, mu=0.5, lower_tail=True, log_p=False):
+    """R LG.R pLG: cumulative sum of dLG over 1..q (discrete)."""
+    import numpy as _np
+    import jax.numpy as jnp
+
+    q_arr = _np.atleast_1d(_np.asarray(q, dtype=_np.float64))
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    n = max(len(q_arr), len(mu_arr))
+    out = []
+    for i in range(n):
+        qi = int(round(float(q_arr[i % len(q_arr)])))
+        mui = float(mu_arr[i % len(mu_arr)])
+        if qi <= 0:
+            c = 0.0
+        else:
+            ks = _np.arange(1, qi + 1, dtype=_np.float64)
+            # dLG(k, mu) = mu^k / (k * (-log(1-mu)))
+            dens = _np.power(mui, ks) / (ks * (-_np.log1p(-mui)))
+            c = float(_np.sum(dens))
+        out.append(float(min(max(c, 0.0), 1.0)))
+    cdf = _np.array(out)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = _np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _lg_q(p, mu=0.5, lower_tail=True, log_p=False, max_value=10000):
+    """R LG.R qLG: walk up 1..max_value until CDF >= p."""
+    import numpy as _np
+    import jax.numpy as jnp
+
+    p_arr = _np.atleast_1d(_np.asarray(p, dtype=_np.float64))
+    if log_p:
+        p_arr = _np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr = _np.clip(p_arr, 1e-15, 1.0 - 1e-15)
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    n = max(len(p_arr), len(mu_arr))
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        cum = 0.0
+        qq = 0
+        if pi >= 1.0:
+            out.append(float('inf'))
+            continue
+        for j in range(1, max_value + 1):
+            cum += _np.power(mui, j) / (j * (-_np.log1p(-mui)))
+            qq = j
+            if pi <= cum:
+                break
+        out.append(float(qq))
+    res = _np.array(out)
+    return jnp.asarray(res, dtype=jnp.float64)
+
+
+def _lg_r(key, n, mu=0.5):
+    import jax.numpy as _jnp
+    import jax.random as _jr
+
+    u = _jr.uniform(key, shape=(n,), dtype=_jnp.float64)
+    return _lg_q(u, mu)
+
+
 def LG() -> LogarithmicFamily:
     """Logarithmic distribution.
     
@@ -126,6 +194,9 @@ def LG() -> LogarithmicFamily:
         parameters=("mu",),
         log_pdf_func=_lg_log_pdf,
         type_="Discrete",
+        p=_lg_p,
+        q=_lg_q,
+        r=_lg_r,
         links={"mu": "logit"},
         link_functions={"mu": logit_link},
         link_inverses={"mu": logit_inverse},

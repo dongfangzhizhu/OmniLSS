@@ -116,6 +116,82 @@ def _beinf0_log_pdf(y, mu, sigma, nu):
     return jnp.where(y <= 0.0, log_at0, log_cont)
 
 
+def _beinf0_p(q, mu=0.5, sigma=0.1, nu=0.1, lower_tail=True, log_p=False):
+    """R BEINF0.R pBEINF0: cdf = (nu + pbeta(q,a,b))/(1+nu) for q>0, 0 for q<=0."""
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import beta as _sbeta
+
+    q_arr = _np.atleast_1d(_np.asarray(q, dtype=_np.float64))
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+    n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr))
+    out = []
+    for i in range(n):
+        qi = float(q_arr[i % len(q_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        nui = float(nu_arr[i % len(nu_arr)])
+        a = mui * (1.0 - si * si) / (si * si)
+        b = a * (1.0 - mui) / mui
+        if qi > 0.0:
+            c = (nui + _sbeta.cdf(qi, a, b)) / (1.0 + nui)
+        elif qi == 0.0:
+            c = nui / (1.0 + nui)
+        else:
+            c = 0.0
+        out.append(float(min(max(c, 0.0), 1.0)))
+    cdf = _np.array(out)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = _np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _beinf0_q(p, mu=0.5, sigma=0.1, nu=0.1, lower_tail=True, log_p=False):
+    """R BEINF0.R qBEINF0: q=0 if p<=nu/(1+nu), else qbeta((p-nu/(1+nu))/(1/(1+nu)),a,b)."""
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import beta as _sbeta
+
+    p_arr = _np.atleast_1d(_np.asarray(p, dtype=_np.float64))
+    if log_p:
+        p_arr = _np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr = _np.clip(p_arr, 1e-15, 1.0 - 1e-15)
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+    n = max(len(p_arr), len(mu_arr), len(sigma_arr), len(nu_arr))
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        nui = float(nu_arr[i % len(nu_arr)])
+        a = mui * (1.0 - si * si) / (si * si)
+        b = a * (1.0 - mui) / mui
+        thr = nui / (1.0 + nui)
+        if pi <= thr:
+            out.append(0.0)
+        else:
+            pp = (pi - thr) / (1.0 / (1.0 + nui))
+            out.append(float(_sbeta.ppf(pp, a, b)))
+    res = _np.array(out)
+    return jnp.asarray(res, dtype=jnp.float64)
+
+
+def _beinf0_r(key, n, mu=0.5, sigma=0.1, nu=0.1):
+    import jax.numpy as _jnp
+    import jax.random as _jr
+
+    u = _jr.uniform(key, shape=(n,), dtype=_jnp.float64)
+    return _beinf0_q(u, mu, sigma, nu)
+
+
 def BEINF0() -> BetaInflated0Family:
     return build_ad_family(
         family_class=BetaInflated0Family,
@@ -123,6 +199,9 @@ def BEINF0() -> BetaInflated0Family:
         parameters=("mu", "sigma", "nu"),
         log_pdf_func=_beinf0_log_pdf,
         type_="Mixed",
+        p=_beinf0_p,
+        q=_beinf0_q,
+        r=_beinf0_r,
         links={"mu": "logit", "sigma": "logit", "nu": "log"},
         link_functions={"mu": logit_link, "sigma": logit_link, "nu": log_link},
         link_inverses={"mu": logit_inverse, "sigma": logit_inverse, "nu": log_inverse},
@@ -151,6 +230,81 @@ def _beinf1_log_pdf(y, mu, sigma, nu):
     return jnp.where(y >= 1.0, log_at1, log_cont)
 
 
+def _beinf1_p(q, mu=0.5, sigma=0.1, nu=0.1, lower_tail=True, log_p=False):
+    """R BEINF1.R pBEINF1: cdf = (pbeta(q,a,b))/(1+nu) for q<1, 1 for q>=1."""
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import beta as _sbeta
+
+    q_arr = _np.atleast_1d(_np.asarray(q, dtype=_np.float64))
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+    n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr))
+    out = []
+    for i in range(n):
+        qi = float(q_arr[i % len(q_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        nui = float(nu_arr[i % len(nu_arr)])
+        a = mui * (1.0 - si * si) / (si * si)
+        b = a * (1.0 - mui) / mui
+        if qi >= 1.0:
+            c = 1.0
+        elif qi > 0.0:
+            c = _sbeta.cdf(qi, a, b) / (1.0 + nui)
+        else:
+            c = 0.0
+        out.append(float(min(max(c, 0.0), 1.0)))
+    cdf = _np.array(out)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = _np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _beinf1_q(p, mu=0.5, sigma=0.1, nu=0.1, lower_tail=True, log_p=False):
+    """R BEINF1.R qBEINF1."""
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import beta as _sbeta
+
+    p_arr = _np.atleast_1d(_np.asarray(p, dtype=_np.float64))
+    if log_p:
+        p_arr = _np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr = _np.clip(p_arr, 1e-15, 1.0 - 1e-15)
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+    n = max(len(p_arr), len(mu_arr), len(sigma_arr), len(nu_arr))
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        nui = float(nu_arr[i % len(nu_arr)])
+        a = mui * (1.0 - si * si) / (si * si)
+        b = a * (1.0 - mui) / mui
+        thr = 1.0 / (1.0 + nui)
+        if pi >= thr:
+            out.append(1.0)
+        else:
+            out.append(float(_sbeta.ppf(pi * (1.0 + nui), a, b)))
+    res = _np.array(out)
+    return jnp.asarray(res, dtype=jnp.float64)
+
+
+def _beinf1_r(key, n, mu=0.5, sigma=0.1, nu=0.1):
+    import jax.numpy as _jnp
+    import jax.random as _jr
+
+    u = _jr.uniform(key, shape=(n,), dtype=_jnp.float64)
+    return _beinf1_q(u, mu, sigma, nu)
+
+
 def BEINF1() -> BetaInflated1Family:
     return build_ad_family(
         family_class=BetaInflated1Family,
@@ -158,6 +312,9 @@ def BEINF1() -> BetaInflated1Family:
         parameters=("mu", "sigma", "nu"),
         log_pdf_func=_beinf1_log_pdf,
         type_="Mixed",
+        p=_beinf1_p,
+        q=_beinf1_q,
+        r=_beinf1_r,
         links={"mu": "logit", "sigma": "logit", "nu": "log"},
         link_functions={"mu": logit_link, "sigma": logit_link, "nu": log_link},
         link_inverses={"mu": logit_inverse, "sigma": logit_inverse, "nu": log_inverse},
@@ -189,6 +346,82 @@ def _bezi_log_pdf(y, mu, sigma, nu):
     return jnp.where(y <= 0.0, log_at0, log_cont)
 
 
+def _bezi_p(q, mu=0.5, sigma=1.0, nu=0.1, lower_tail=True, log_p=False):
+    """R BEZI.R pBEZI: cdf = nu + (1-nu)*pbeta(q,a,b) for 0<q<1, 1 for q>=1."""
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import beta as _sbeta
+
+    q_arr = _np.atleast_1d(_np.asarray(q, dtype=_np.float64))
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+    n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr))
+    out = []
+    for i in range(n):
+        qi = float(q_arr[i % len(q_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        nui = float(nu_arr[i % len(nu_arr)])
+        a = mui * si
+        b = (1.0 - mui) * si
+        if qi >= 1.0:
+            c = 1.0
+        elif qi > 0.0:
+            c = nui + (1.0 - nui) * _sbeta.cdf(qi, a, b)
+        elif qi == 0.0:
+            c = nui
+        else:
+            c = 0.0
+        out.append(float(min(max(c, 0.0), 1.0)))
+    cdf = _np.array(out)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = _np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _bezi_q(p, mu=0.5, sigma=1.0, nu=0.1, lower_tail=True, log_p=False):
+    """R BEZI.R qBEZI: q=0 if nu>=p, else qbeta((p-nu)/(1-nu),a,b)."""
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import beta as _sbeta
+
+    p_arr = _np.atleast_1d(_np.asarray(p, dtype=_np.float64))
+    if log_p:
+        p_arr = _np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr = _np.clip(p_arr, 1e-15, 1.0 - 1e-15)
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+    n = max(len(p_arr), len(mu_arr), len(sigma_arr), len(nu_arr))
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        nui = float(nu_arr[i % len(nu_arr)])
+        a = mui * si
+        b = (1.0 - mui) * si
+        if nui >= pi:
+            out.append(0.0)
+        else:
+            out.append(float(_sbeta.ppf((pi - nui) / (1.0 - nui), a, b)))
+    res = _np.array(out)
+    return jnp.asarray(res, dtype=jnp.float64)
+
+
+def _bezi_r(key, n, mu=0.5, sigma=1.0, nu=0.1):
+    import jax.numpy as _jnp
+    import jax.random as _jr
+
+    u = _jr.uniform(key, shape=(n,), dtype=_jnp.float64)
+    return _bezi_q(u, mu, sigma, nu)
+
+
 def BEZI() -> BetaZeroInflatedFamily:
     return build_ad_family(
         family_class=BetaZeroInflatedFamily,
@@ -196,6 +429,9 @@ def BEZI() -> BetaZeroInflatedFamily:
         parameters=("mu", "sigma", "nu"),
         log_pdf_func=_bezi_log_pdf,
         type_="Mixed",
+        p=_bezi_p,
+        q=_bezi_q,
+        r=_bezi_r,
         links={"mu": "logit", "sigma": "log", "nu": "logit"},
         link_functions={"mu": logit_link, "sigma": log_link, "nu": logit_link},
         link_inverses={"mu": logit_inverse, "sigma": log_inverse, "nu": logit_inverse},
@@ -226,6 +462,80 @@ def _beoi_log_pdf(y, mu, sigma, nu):
     return jnp.where(y >= 1.0, log_at1, log_cont)
 
 
+def _beoi_p(q, mu=0.5, sigma=1.0, nu=0.1, lower_tail=True, log_p=False):
+    """R BEOI.R pBEOI: cdf = (1-nu)*pbeta(q,a,b) for 0<q<1, 1 for q>=1."""
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import beta as _sbeta
+
+    q_arr = _np.atleast_1d(_np.asarray(q, dtype=_np.float64))
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+    n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr))
+    out = []
+    for i in range(n):
+        qi = float(q_arr[i % len(q_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        nui = float(nu_arr[i % len(nu_arr)])
+        a = mui * si
+        b = (1.0 - mui) * si
+        if qi >= 1.0:
+            c = 1.0
+        elif qi > 0.0:
+            c = (1.0 - nui) * _sbeta.cdf(qi, a, b)
+        else:
+            c = 0.0
+        out.append(float(min(max(c, 0.0), 1.0)))
+    cdf = _np.array(out)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = _np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _beoi_q(p, mu=0.5, sigma=1.0, nu=0.1, lower_tail=True, log_p=False):
+    """R BEOI.R qBEOI: q=1 if p>=(1-nu), else qbeta(p/(1-nu),a,b)."""
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import beta as _sbeta
+
+    p_arr = _np.atleast_1d(_np.asarray(p, dtype=_np.float64))
+    if log_p:
+        p_arr = _np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr = _np.clip(p_arr, 1e-15, 1.0 - 1e-15)
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+    n = max(len(p_arr), len(mu_arr), len(sigma_arr), len(nu_arr))
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        nui = float(nu_arr[i % len(nu_arr)])
+        a = mui * si
+        b = (1.0 - mui) * si
+        if pi >= 1.0 - nui:
+            out.append(1.0)
+        else:
+            out.append(float(_sbeta.ppf(pi / (1.0 - nui), a, b)))
+    res = _np.array(out)
+    return jnp.asarray(res, dtype=jnp.float64)
+
+
+def _beoi_r(key, n, mu=0.5, sigma=1.0, nu=0.1):
+    import jax.numpy as _jnp
+    import jax.random as _jr
+
+    u = _jr.uniform(key, shape=(n,), dtype=_jnp.float64)
+    return _beoi_q(u, mu, sigma, nu)
+
+
 def BEOI() -> BetaOneInflatedFamily:
     return build_ad_family(
         family_class=BetaOneInflatedFamily,
@@ -233,6 +543,9 @@ def BEOI() -> BetaOneInflatedFamily:
         parameters=("mu", "sigma", "nu"),
         log_pdf_func=_beoi_log_pdf,
         type_="Mixed",
+        p=_beoi_p,
+        q=_beoi_q,
+        r=_beoi_r,
         links={"mu": "logit", "sigma": "log", "nu": "logit"},
         link_functions={"mu": logit_link, "sigma": log_link, "nu": logit_link},
         link_inverses={"mu": logit_inverse, "sigma": log_inverse, "nu": logit_inverse},

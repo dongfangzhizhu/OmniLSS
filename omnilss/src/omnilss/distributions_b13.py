@@ -11,7 +11,8 @@ from .ad import build_ad_family
 from .families import FamilyDefinition
 from .links import (
     log_link, log_inverse, log_derivative,
-    identity_link, identity_inverse, identity_derivative
+    identity_link, identity_inverse, identity_derivative,
+    logit_link, logit_inverse, logit_derivative,
 )
 
 
@@ -171,25 +172,94 @@ class LOGITNOFamily(FamilyDefinition):
 
 
 def _logitno_log_pdf(y, mu, sigma):
-    """Logit Normal log-PDF.
-    
-    If Y ~ LogitNormal(mu, sigma), then logit(Y) ~ Normal(mu, sigma).
+    """Logit Normal log-PDF (R LOGIT_NO.R dLOGITNO).
+
+    If Y ~ LogitNormal(mu, sigma) with mu in (0,1), then
+    logit(Y) ~ Normal(logit(mu), sigma).  R's dLOGITNO takes mu as the
+    probability-scale location and transforms internally.
     """
     eps = jnp.finfo(jnp.float64).eps
     y = jnp.clip(y, eps, 1.0 - eps)
+    mu = jnp.clip(mu, eps, 1.0 - eps)
     sigma = jnp.maximum(sigma, eps)
     
-    # logit(y) = log(y / (1-y))
+    # logit(y) = log(y / (1-y));  logit(mu) = log(mu / (1-mu))
     logit_y = jnp.log(y) - jnp.log1p(-y)
+    logit_mu = jnp.log(mu) - jnp.log1p(-mu)
     
     # Jacobian: d(logit(y))/dy = 1 / (y * (1-y))
     log_jacobian = -jnp.log(y) - jnp.log1p(-y)
     
     # Normal log-PDF for logit(y)
-    z = (logit_y - mu) / sigma
+    z = (logit_y - logit_mu) / sigma
     log_normal = -0.5 * jnp.log(2.0 * jnp.pi) - jnp.log(sigma) - 0.5 * z * z
     
     return log_normal + log_jacobian
+
+
+def _logitno_p(q, mu=0.5, sigma=1.0, lower_tail=True, log_p=False):
+    """R LOGIT_NO.R pLOGITNO: pnorm(logit(q), logit(mu), sigma)."""
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import norm as _sn
+
+    q_arr = _np.atleast_1d(_np.asarray(q, dtype=_np.float64))
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    n = max(len(q_arr), len(mu_arr), len(sigma_arr))
+    out = []
+    for i in range(n):
+        qi = float(q_arr[i % len(q_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        if qi <= 0.0:
+            c = 0.0
+        elif qi >= 1.0:
+            c = 1.0
+        else:
+            qz = _np.log(qi / (1.0 - qi))
+            c = _sn.cdf(qz, loc=_np.log(mui / (1.0 - mui)), scale=si)
+        out.append(float(min(max(c, 0.0), 1.0)))
+    cdf = _np.array(out)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = _np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _logitno_q(p, mu=0.5, sigma=1.0, lower_tail=True, log_p=False):
+    """R LOGIT_NO.R qLOGITNO: 1/(1+exp(-qnorm(p, logit(mu), sigma)))."""
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import norm as _sn
+
+    p_arr = _np.atleast_1d(_np.asarray(p, dtype=_np.float64))
+    if log_p:
+        p_arr = _np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr = _np.clip(p_arr, 1e-15, 1.0 - 1e-15)
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    n = max(len(p_arr), len(mu_arr), len(sigma_arr))
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        qz = _sn.ppf(pi, loc=_np.log(mui / (1.0 - mui)), scale=si)
+        out.append(float(1.0 / (1.0 + _np.exp(-qz))))
+    res = _np.array(out)
+    return jnp.asarray(res, dtype=jnp.float64)
+
+
+def _logitno_r(key, n, mu=0.5, sigma=1.0):
+    import jax.numpy as _jnp
+    import jax.random as _jr
+
+    u = _jr.uniform(key, shape=(n,), dtype=_jnp.float64)
+    return _logitno_q(u, mu, sigma)
 
 
 def LOGITNO():
@@ -200,10 +270,13 @@ def LOGITNO():
         parameters=("mu", "sigma"),
         log_pdf_func=_logitno_log_pdf,
         type_="Continuous",
-        links={"mu": "identity", "sigma": "log"},
-        link_functions={"mu": identity_link, "sigma": log_link},
-        link_inverses={"mu": identity_inverse, "sigma": log_inverse},
-        link_derivatives={"mu": identity_derivative, "sigma": log_derivative},
+        p=_logitno_p,
+        q=_logitno_q,
+        r=_logitno_r,
+        links={"mu": "logit", "sigma": "log"},
+        link_functions={"mu": logit_link, "sigma": log_link},
+        link_inverses={"mu": logit_inverse, "sigma": log_inverse},
+        link_derivatives={"mu": logit_derivative, "sigma": log_derivative},
     )
 
 

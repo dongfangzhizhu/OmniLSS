@@ -327,6 +327,120 @@ def _net_log_pdf(y, mu, sigma, nu, tau):
     return log_pdf
 
 
+def _net_p(q, mu=0.0, sigma=1.0, nu=1.5, tau=2.0, lower_tail=True, log_p=False):
+    """R NET.R pNET: piecewise analytic CDF of the Normal-Exponential-t."""
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import norm as _sn
+
+    q_arr = _np.atleast_1d(_np.asarray(q, dtype=_np.float64))
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+    tau_arr = _np.atleast_1d(_np.asarray(tau, dtype=_np.float64))
+    n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+    out = []
+    for i in range(n):
+        qi = float(q_arr[i % len(q_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        k1 = float(nu_arr[i % len(nu_arr)])
+        k2 = float(tau_arr[i % len(tau_arr)])
+        if si <= 0 or k1 <= 0 or k2 <= 0 or k2 < k1:
+            out.append(_np.nan)
+            continue
+        c1 = (1.0 - 2.0 * _sn.cdf(-k1)) * _np.sqrt(2.0 * _np.pi)
+        c2 = (2.0 / k1) * _np.exp(-(k1 * k1) / 2.0)
+        c3 = 2.0 * _np.exp(-k1 * k2 + (k1 * k1) / 2.0) / ((k1 * k2 - 1.0) * k1)
+        ct = 1.0 / (c1 + c2 + c3)
+        tc = (qi - mui) / si
+        # Fk2: cdf up to -k2
+        Fk2 = (ct * (k2 ** (k1 * k2)) / (k1 * k2 - 1.0)) * _np.exp(-k1 * k2 + (k1 * k1) / 2.0) * (
+            _np.abs(tc) ** (-k1 * k2 + 1.0) if tc != 0.0 else 1.0
+        )
+        cdf1 = (ct / (k1 * (k1 * k2 - 1.0))) * _np.exp(-k1 * k2 + (k1 * k1) / 2.0)
+        Fk1 = cdf1 + (ct / k1) * _np.exp(-k1 * _np.abs(tc) + (k1 * k1) / 2.0)
+        cdf2 = cdf1 + (ct / k1) * _np.exp(-(k1 * k1) / 2.0)
+        F0 = cdf2 + ct * _np.sqrt(2.0 * _np.pi) * (_sn.cdf(-_np.abs(tc)) - _sn.cdf(-k1))
+        if tc <= -k2:
+            c = Fk2
+        elif tc <= -k1:
+            c = Fk1
+        elif tc <= 0:
+            c = F0
+        elif tc <= k1:
+            c = 1.0 - F0
+        elif tc <= k2:
+            c = 1.0 - Fk1
+        else:
+            c = 1.0 - Fk2
+        out.append(float(min(max(c, 0.0), 1.0)))
+    cdf = _np.array(out)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = _np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _net_q(p, mu=0.0, sigma=1.0, nu=1.5, tau=2.0, lower_tail=True, log_p=False):
+    """R NET.R qNET: piecewise analytic quantile of the Normal-Exponential-t."""
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import norm as _sn
+
+    p_arr = _np.atleast_1d(_np.asarray(p, dtype=_np.float64))
+    if log_p:
+        p_arr = _np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr = _np.clip(p_arr, 1e-15, 1.0 - 1e-15)
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+    tau_arr = _np.atleast_1d(_np.asarray(tau, dtype=_np.float64))
+    n = max(len(p_arr), len(mu_arr), len(sigma_arr), len(nu_arr), len(tau_arr))
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        nu1 = float(nu_arr[i % len(nu_arr)])
+        tau1 = float(tau_arr[i % len(tau_arr)])
+        if si <= 0 or nu1 <= 0 or tau1 <= 0 or tau1 < nu1:
+            out.append(_np.nan)
+            continue
+        p2 = pi if pi <= 0.5 else 1.0 - pi
+        c1 = (1.0 - 2.0 * _sn.cdf(-nu1)) * _np.sqrt(2.0 * _np.pi)
+        c2 = (2.0 / nu1) * _np.exp(-(nu1 * nu1) / 2.0)
+        c3 = 2.0 * _np.exp(-nu1 * tau1 + (nu1 * nu1) / 2.0) / ((nu1 * tau1 - 1.0) * nu1)
+        ct = 1.0 / (c1 + c2 + c3)
+        b = (ct / (nu1 * (nu1 * tau1 - 1.0))) * _np.exp(-nu1 * tau1 + (nu1 * nu1) / 2.0)
+        p1 = p2
+        z1 = -(b * nu1 * (tau1 ** (nu1 * tau1)) / p1) ** (1.0 / (nu1 * tau1 - 1.0))
+        p1 = p1 if p1 >= (nu1 * tau1 * b) else 0.5
+        z2 = -(nu1 / 2.0) + (1.0 / nu1) * _np.log((nu1 / ct) * (p1 - b))
+        z3 = _sn.ppf(_sn.cdf(-nu1) + (1.0 / _np.sqrt(2.0 * _np.pi)) * ((p1 - b) / ct - (1.0 / nu1) * _np.exp(-(nu1 * nu1) / 2.0)))
+        if p2 <= (nu1 * tau1 * b):
+            q1 = z1
+        elif p1 <= (b + (ct / nu1) * _np.exp(-(nu1 * nu1) / 2.0)):
+            q1 = z2
+        else:
+            q1 = z3
+        qq = q1 if pi <= 0.5 else -q1
+        out.append(float(mui + si * qq))
+    res = _np.array(out)
+    return jnp.asarray(res, dtype=jnp.float64)
+
+
+def _net_r(key, n, mu=0.0, sigma=1.0, nu=1.5, tau=2.0):
+    import jax.numpy as _jnp
+    import jax.random as _jr
+
+    u = _jr.uniform(key, shape=(n,), dtype=_jnp.float64)
+    return _net_q(u, mu, sigma, nu, tau)
+
+
 def NET() -> NormalExponentialTFamily:
     return build_ad_family(
         family_class=NormalExponentialTFamily,
@@ -334,6 +448,9 @@ def NET() -> NormalExponentialTFamily:
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_net_log_pdf,
         type_="Continuous",
+        p=_net_p,
+        q=_net_q,
+        r=_net_r,
         links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "log"},
         link_functions={"mu": identity_link, "sigma": log_link, "nu": log_link, "tau": log_link},
         link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
@@ -365,6 +482,80 @@ def _lno_log_pdf(y, mu, sigma, nu=0.0):
     return log_pdf
 
 
+def _lno_p(q, mu=1.0, sigma=0.1, nu=0.0, lower_tail=True, log_p=False):
+    """R LNO.R pLNO: Box-Cox transform then pnorm."""
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import norm as _sn
+
+    q_arr = _np.atleast_1d(_np.asarray(q, dtype=_np.float64))
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+    n = max(len(q_arr), len(mu_arr), len(sigma_arr), len(nu_arr))
+    out = []
+    for i in range(n):
+        qi = float(q_arr[i % len(q_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        nui = float(nu_arr[i % len(nu_arr)])
+        if qi <= 0.0:
+            c = 0.0
+        else:
+            if abs(nui) > 1e-12:
+                z = (qi ** nui - 1.0) / nui
+            else:
+                z = _np.log(qi)
+            c = _sn.cdf(z, loc=mui, scale=si)
+        out.append(float(min(max(c, 0.0), 1.0)))
+    cdf = _np.array(out)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = _np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _lno_q(p, mu=1.0, sigma=0.1, nu=0.0, lower_tail=True, log_p=False):
+    """R LNO.R qLNO: inverse Box-Cox of mu + sigma*qnorm(p)."""
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import norm as _sn
+
+    p_arr = _np.atleast_1d(_np.asarray(p, dtype=_np.float64))
+    if log_p:
+        p_arr = _np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr = _np.clip(p_arr, 1e-15, 1.0 - 1e-15)
+    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
+    sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
+    nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
+    n = max(len(p_arr), len(mu_arr), len(sigma_arr), len(nu_arr))
+    out = []
+    for i in range(n):
+        pi = float(p_arr[i % len(p_arr)])
+        mui = float(mu_arr[i % len(mu_arr)])
+        si = float(sigma_arr[i % len(sigma_arr)])
+        nui = float(nu_arr[i % len(nu_arr)])
+        z = mui + si * _sn.ppf(pi)
+        if abs(nui) > 1e-12:
+            x = (nui * z + 1.0) ** (1.0 / nui)
+        else:
+            x = _np.exp(z)
+        out.append(float(x))
+    res = _np.array(out)
+    return jnp.asarray(res, dtype=jnp.float64)
+
+
+def _lno_r(key, n, mu=1.0, sigma=0.1, nu=0.0):
+    import jax.numpy as _jnp
+    import jax.random as _jr
+
+    u = _jr.uniform(key, shape=(n,), dtype=_jnp.float64)
+    return _lno_q(u, mu, sigma, nu)
+
+
 def LNO() -> LogNormalLocationFamily:
     return build_ad_family(
         family_class=LogNormalLocationFamily,
@@ -372,6 +563,9 @@ def LNO() -> LogNormalLocationFamily:
         parameters=("mu", "sigma"),
         log_pdf_func=_lno_log_pdf,
         type_="Continuous",
+        p=_lno_p,
+        q=_lno_q,
+        r=_lno_r,
         links={"mu": "identity", "sigma": "log"},
         link_functions={"mu": identity_link, "sigma": log_link},
         link_inverses={"mu": identity_inverse, "sigma": log_inverse},
