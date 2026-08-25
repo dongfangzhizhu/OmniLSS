@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-08-23T00:23:05.526581+00:00",
+  "generated_at": "2026-08-23T03:40:38.636945+00:00",
   "source_repo_root": "/mnt/d/AI/my/githubprojs/OmniLSS",
   "stats": {
     "total_registered": 145,
     "status_distribution": {
-      "experimental": 63,
-      "compat_alias": 29,
-      "placeholder": 52,
+      "experimental": 66,
+      "compat_alias": 25,
+      "placeholder": 53,
       "implemented": 1
     },
     "validated_count": 1,
-    "experimental_count": 63,
-    "compat_alias_count": 29,
-    "placeholder_count": 52,
+    "experimental_count": 66,
+    "compat_alias_count": 25,
+    "placeholder_count": 53,
     "missing_count": 0
   },
   "families": {
@@ -1016,33 +1016,6 @@
       "evidence_tier_fitting": "unknown"
     },
     "ST1": {
-      "implementation_status": "compat_alias",
-      "is_production_safe": false,
-      "has_dqr": false,
-      "has_fitting": false,
-      "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
-      "evidence_tier_fitting": "unknown"
-    },
-    "ST2": {
-      "implementation_status": "compat_alias",
-      "is_production_safe": false,
-      "has_dqr": false,
-      "has_fitting": false,
-      "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
-      "evidence_tier_fitting": "unknown"
-    },
-    "ST3": {
-      "implementation_status": "compat_alias",
-      "is_production_safe": false,
-      "has_dqr": false,
-      "has_fitting": false,
-      "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
-      "evidence_tier_fitting": "unknown"
-    },
-    "ST3C": {
       "implementation_status": "placeholder",
       "is_production_safe": false,
       "has_dqr": false,
@@ -1051,8 +1024,35 @@
       "evidence_tier_dpqr": "unknown",
       "evidence_tier_fitting": "unknown"
     },
+    "ST2": {
+      "implementation_status": "placeholder",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ST3": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
+    "ST3C": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
     "ST4": {
-      "implementation_status": "compat_alias",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,

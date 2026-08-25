@@ -12,6 +12,7 @@
 > - 架构设计：`.kiro/specs/r-gamlss-migration-plan/design.md`
 > - 阶段任务原版：`.kiro/specs/r-gamlss-migration-plan/tasks.md`
 > - 审计基线：`docs/development/omnilss-r-gamlss-migration-comprehensive-audit-2026-07-22.md`
+> - 全量迁移审计与路线图（Release 1 之后的范围）：`docs/development/full-gamlss-migration-audit-and-roadmap-2026-08-22.md`
 >
 > **最近更新**：2026-08-14（Phase 0 完成 + Phase 8.1 L3 服务完备性闭环）
 

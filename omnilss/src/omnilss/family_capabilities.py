@@ -166,10 +166,6 @@ _KNOWN_COMPAT_ALIAS_FAMILIES = frozenset(
         "DBI",
         "DBURR12",
         "MULTIN",
-        "ST1",
-        "ST2",
-        "ST3",
-        "ST4",
         "COUNT_1_31",
         "COUNT_1_22",
         "COUNT_2_32",
@@ -198,7 +194,6 @@ _COMPAT_FACTORY_MODULES = frozenset(
         "omnilss.distributions_count_compat",
         "omnilss.distributions_discrete_compat",
         "omnilss.distributions_gen_skeleton_compat",
-        "omnilss.distributions_st_compat",
     }
 )
 
