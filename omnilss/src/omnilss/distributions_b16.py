@@ -172,16 +172,30 @@ def _sep_log_pdf(y, mu, sigma, nu, tau):
     return loglik
 
 
+def _sep_std_log_density(z, ni, ti):
+    """SEP 标准化（mu=0, sigma=1）log 密度，纯 scipy（R SEP.R dSEP）。
+
+    z = x;  w = sign(z)*|z|^(tau/2)*nu*sqrt(2/tau)
+    loglik = log(pnorm(w)) - |z|^tau/tau - lgamma(1/tau) - (1/tau-1)*log(tau)
+    """
+    import numpy as _np
+    from scipy.stats import norm as _sn
+    from scipy.special import gammaln as _gl
+
+    z_arr = _np.asarray(z, dtype=_np.float64)
+    z_abs = _np.abs(z_arr)
+    w = _np.sign(z_arr) * _np.power(z_abs, ti / 2.0) * ni * _np.sqrt(2.0 / ti)
+    return _sn.logcdf(w) - _np.power(z_abs, ti) / ti - _gl(1.0 / ti) - (1.0 / ti - 1.0) * _np.log(ti)
+
+
 def _sep_p(q, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False):
     """SEP CDF via numerical integration (R SEP.R pSEP)."""
     import numpy as np
     import jax.numpy as jnp
     from scipy.integrate import quad
 
-    def _d_log(z, _mu, _si, _ni, _ti):
-        # Integrate dSEP(x, mu, sigma, nu, tau) = exp(loglik)
-        import numpy as _np
-        return float(_np.asarray(_sep_log_pdf(_np.array([z]), _mu, _si, _ni, _ti)).reshape(-1)[0])
+    def _density(z, _ni, _ti):
+        return np.exp(_sep_std_log_density(z, _ni, _ti))
 
     q_arr = np.atleast_1d(np.asarray(q, dtype=np.float64))
     mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
@@ -202,11 +216,18 @@ def _sep_p(q, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False):
             continue
         # Standardized: mu=0, sigma=1 for the integrand, shift the limit
         z_lim = (qi - mui) / si
-        try:
-            val, _ = quad(lambda z: np.exp(_d_log(z, 0.0, 1.0, ni, ti)), -np.inf, z_lim, limit=300)
+        if z_lim <= -200.0:
+            val = 0.0
+        elif z_lim >= 200.0:
+            val = 1.0
+        else:
+            try:
+                val, _ = quad(lambda z: _density(z, ni, ti), -np.inf, z_lim, limit=300)
+            except Exception:
+                val = np.nan
             out.append(float(min(max(val, 0.0), 1.0)))
-        except Exception:
-            out.append(np.nan)
+            continue
+        out.append(float(val))
 
     cdf = np.array(out)
     if not lower_tail:
@@ -248,24 +269,38 @@ def _sep_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False):
         def obj(x, _pi=pi, _mui=mui, _si=si, _ni=ni, _ti=ti):
             return float(np.asarray(_sep_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(-1)[0]) - _pi
 
-        lo, hi = mui - 12.0 * si, mui + 12.0 * si
+        try:
+            h_mu = obj(mui)
+        except Exception:
+            out.append(np.nan)
+            continue
         found = False
-        for _ in range(6):
-            try:
-                if obj(lo) * obj(hi) < 0.0:
-                    found = True
+        if h_mu < 0.0:
+            lo, hi = mui, mui + si
+            span = si
+            for _ in range(80):
+                try:
+                    h_hi = obj(hi)
+                except Exception:
+                    h_hi = np.nan
+                if h_hi >= 0.0 or (not np.isfinite(h_hi)):
+                    found = np.isfinite(h_hi)
                     break
-            except Exception:
-                pass
-            span = hi - lo
-            lo, hi = lo - 4.0 * span, hi + 4.0 * span
-        if not found:
-            lo, hi = mui - 1000.0 * si, mui + 1000.0 * si
-            try:
-                if obj(lo) * obj(hi) < 0.0:
-                    found = True
-            except Exception:
-                pass
+                span *= 2.0
+                hi = mui + span
+        else:
+            lo, hi = mui - si, mui
+            span = si
+            for _ in range(80):
+                try:
+                    h_lo = obj(lo)
+                except Exception:
+                    h_lo = np.nan
+                if h_lo <= 0.0 or (not np.isfinite(h_lo)):
+                    found = np.isfinite(h_lo)
+                    break
+                span *= 2.0
+                lo = mui - span
         if found:
             try:
                 out.append(brentq(obj, lo, hi, xtol=1e-10))

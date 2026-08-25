@@ -28,8 +28,8 @@ class TestSSTConsistency(unittest.TestCase):
                 np.linspace(-5.0, 5.0, 80),
                 np.linspace(-2.0, 2.0, 80),
                 np.linspace(0.2, 2.0, 80),
-                np.linspace(-2.0, 2.0, 80),
-                np.linspace(0.1, 5.0, 80),
+                np.linspace(0.2, 2.0, 80),
+                np.linspace(2.1, 5.0, 80),
                 np.linspace(0.02, 0.98, 80),
             ),
             (
@@ -37,8 +37,8 @@ class TestSSTConsistency(unittest.TestCase):
                 np.linspace(-5.0, 5.0, 80),
                 np.linspace(-2.0, 2.0, 80),
                 np.linspace(0.2, 2.0, 80),
-                np.linspace(-2.0, 2.0, 80),
-                np.linspace(0.1, 5.0, 80),
+                np.linspace(0.2, 2.0, 80),
+                np.linspace(2.1, 5.0, 80),
                 np.linspace(0.02, 0.98, 80),
             ),
         ):

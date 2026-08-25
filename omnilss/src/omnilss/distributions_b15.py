@@ -81,14 +81,37 @@ def _sep1_log_pdf(y, mu, sigma, nu, tau):
     return loglik
 
 
+def _sep1_std_log_density(z, ni, ti):
+    """SEP1 标准化（mu=0, sigma=1）log 密度，纯 scipy（R SEP1.R dSEP1）。
+
+    z = x; w = nu*z; sz = |z|^tau/tau; s = |w|^tau/tau
+    lpdf = (1-1/tau)log(tau) - sz - lgamma(1/tau) - log(2)
+    lcdf = log(0.5*(1 + pgamma(s, 1/tau, 1)*sign(w)))
+    loglik = lpdf + lcdf + log(2)
+    """
+    import numpy as _np
+    from scipy.special import gammaln as _gl, gammainc as _gic
+
+    z_arr = _np.asarray(z, dtype=_np.float64)
+    w = ni * z_arr
+    sz = _np.power(_np.abs(z_arr), ti) / ti
+    s = _np.power(_np.abs(w), ti) / ti
+    lpdf = (1.0 - 1.0 / ti) * _np.log(ti) - sz - _gl(1.0 / ti) - _np.log(2.0)
+    pgamma_s = _gic(1.0 / ti, s)
+    lcdf = _np.log(0.5 * (1.0 + pgamma_s * _np.sign(w)))
+    lcdf2 = _np.log(0.5 + w * _np.exp((1.0 - 1.0 / ti) * _np.log(ti) - _gl(1.0 / ti) - _np.log(2.0)))
+    lcdf = _np.where(s == 0, lcdf2, lcdf)
+    return lpdf + lcdf + _np.log(2.0)
+
+
 def _sep1_p(q, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False):
     """SEP1 CDF via numerical integration (R SEP1.R pSEP1)."""
     import numpy as np
     import jax.numpy as jnp
     from scipy.integrate import quad
 
-    def _d_log(z, _ni, _ti):
-        return float(np.asarray(_sep1_log_pdf(np.array([z]), 0.0, 1.0, _ni, _ti)).reshape(-1)[0])
+    def _density(z, _ni, _ti):
+        return np.exp(_sep1_std_log_density(z, _ni, _ti))
 
     q_arr = np.atleast_1d(np.asarray(q, dtype=np.float64))
     mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
@@ -108,11 +131,18 @@ def _sep1_p(q, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False)
             out.append(np.nan)
             continue
         z_lim = (qi - mui) / si
-        try:
-            val, _ = quad(lambda z: np.exp(_d_log(z, ni, ti)), -np.inf, z_lim, limit=300)
+        if z_lim <= -200.0:
+            val = 0.0
+        elif z_lim >= 200.0:
+            val = 1.0
+        else:
+            try:
+                val, _ = quad(lambda z: _density(z, ni, ti), -np.inf, z_lim, limit=300)
+            except Exception:
+                val = np.nan
             out.append(float(min(max(val, 0.0), 1.0)))
-        except Exception:
-            out.append(np.nan)
+            continue
+        out.append(float(val))
 
     cdf = np.array(out)
     if not lower_tail:
@@ -154,24 +184,38 @@ def _sep1_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False)
         def obj(x, _pi=pi, _mui=mui, _si=si, _ni=ni, _ti=ti):
             return float(np.asarray(_sep1_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(-1)[0]) - _pi
 
-        lo, hi = mui - 12.0 * si, mui + 12.0 * si
+        try:
+            h_mu = obj(mui)
+        except Exception:
+            out.append(np.nan)
+            continue
         found = False
-        for _ in range(6):
-            try:
-                if obj(lo) * obj(hi) < 0.0:
-                    found = True
+        if h_mu < 0.0:
+            lo, hi = mui, mui + si
+            span = si
+            for _ in range(80):
+                try:
+                    h_hi = obj(hi)
+                except Exception:
+                    h_hi = np.nan
+                if h_hi >= 0.0 or (not np.isfinite(h_hi)):
+                    found = np.isfinite(h_hi)
                     break
-            except Exception:
-                pass
-            span = hi - lo
-            lo, hi = lo - 4.0 * span, hi + 4.0 * span
-        if not found:
-            lo, hi = mui - 1000.0 * si, mui + 1000.0 * si
-            try:
-                if obj(lo) * obj(hi) < 0.0:
-                    found = True
-            except Exception:
-                pass
+                span *= 2.0
+                hi = mui + span
+        else:
+            lo, hi = mui - si, mui
+            span = si
+            for _ in range(80):
+                try:
+                    h_lo = obj(lo)
+                except Exception:
+                    h_lo = np.nan
+                if h_lo <= 0.0 or (not np.isfinite(h_lo)):
+                    found = np.isfinite(h_lo)
+                    break
+                span *= 2.0
+                lo = mui - span
         if found:
             try:
                 out.append(brentq(obj, lo, hi, xtol=1e-10))
@@ -475,24 +519,38 @@ def _sep4_q(p, mu=0.0, sigma=1.0, nu=2.0, tau=2.0, lower_tail=True, log_p=False)
         def obj(x, _pi=pi, _mui=mui, _si=si, _ni=ni, _ti=ti):
             return float(np.asarray(_sep4_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(-1)[0]) - _pi
 
-        lo, hi = mui - 12.0 * si, mui + 12.0 * si
+        try:
+            h_mu = obj(mui)
+        except Exception:
+            out.append(np.nan)
+            continue
         found = False
-        for _ in range(6):
-            try:
-                if obj(lo) * obj(hi) < 0.0:
-                    found = True
+        if h_mu < 0.0:
+            lo, hi = mui, mui + si
+            span = si
+            for _ in range(80):
+                try:
+                    h_hi = obj(hi)
+                except Exception:
+                    h_hi = np.nan
+                if h_hi >= 0.0 or (not np.isfinite(h_hi)):
+                    found = np.isfinite(h_hi)
                     break
-            except Exception:
-                pass
-            span = hi - lo
-            lo, hi = lo - 4.0 * span, hi + 4.0 * span
-        if not found:
-            lo, hi = mui - 1000.0 * si, mui + 1000.0 * si
-            try:
-                if obj(lo) * obj(hi) < 0.0:
-                    found = True
-            except Exception:
-                pass
+                span *= 2.0
+                hi = mui + span
+        else:
+            lo, hi = mui - si, mui
+            span = si
+            for _ in range(80):
+                try:
+                    h_lo = obj(lo)
+                except Exception:
+                    h_lo = np.nan
+                if h_lo <= 0.0 or (not np.isfinite(h_lo)):
+                    found = np.isfinite(h_lo)
+                    break
+                span *= 2.0
+                lo = mui - span
         if found:
             try:
                 out.append(brentq(obj, lo, hi, xtol=1e-10))
@@ -514,14 +572,26 @@ def _sep4_r(key, n, mu=0.0, sigma=1.0, nu=2.0, tau=2.0):
 
 
 
+def _sep2_std_log_density(z, ni, ti):
+    """SEP2 标准化 log 密度（与 SEP 相同，R SEP2.R 注释明确相同）。"""
+    import numpy as _np
+    from scipy.stats import norm as _sn
+    from scipy.special import gammaln as _gl
+
+    z_arr = _np.asarray(z, dtype=_np.float64)
+    z_abs = _np.abs(z_arr)
+    w = _np.sign(z_arr) * _np.power(z_abs, ti / 2.0) * ni * _np.sqrt(2.0 / ti)
+    return _sn.logcdf(w) - _np.power(z_abs, ti) / ti - _gl(1.0 / ti) - (1.0 / ti - 1.0) * _np.log(ti)
+
+
 def _sep2_p(q, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False):
     """SEP2 CDF (same as SEP: numerical integration)."""
     import numpy as np
     import jax.numpy as jnp
     from scipy.integrate import quad
 
-    def _d_log(z, _ni, _ti):
-        return float(np.asarray(_sep2_log_pdf(np.array([z]), 0.0, 1.0, _ni, _ti)).reshape(-1)[0])
+    def _density(z, _ni, _ti):
+        return np.exp(_sep2_std_log_density(z, _ni, _ti))
 
     q_arr = np.atleast_1d(np.asarray(q, dtype=np.float64))
     mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
@@ -541,11 +611,18 @@ def _sep2_p(q, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False)
             out.append(np.nan)
             continue
         z_lim = (qi - mui) / si
-        try:
-            val, _ = quad(lambda z: np.exp(_d_log(z, ni, ti)), -np.inf, z_lim, limit=300)
+        if z_lim <= -200.0:
+            val = 0.0
+        elif z_lim >= 200.0:
+            val = 1.0
+        else:
+            try:
+                val, _ = quad(lambda z: _density(z, ni, ti), -np.inf, z_lim, limit=300)
+            except Exception:
+                val = np.nan
             out.append(float(min(max(val, 0.0), 1.0)))
-        except Exception:
-            out.append(np.nan)
+            continue
+        out.append(float(val))
 
     cdf = np.array(out)
     if not lower_tail:
@@ -587,24 +664,38 @@ def _sep2_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False)
         def obj(x, _pi=pi, _mui=mui, _si=si, _ni=ni, _ti=ti):
             return float(np.asarray(_sep2_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(-1)[0]) - _pi
 
-        lo, hi = mui - 12.0 * si, mui + 12.0 * si
+        try:
+            h_mu = obj(mui)
+        except Exception:
+            out.append(np.nan)
+            continue
         found = False
-        for _ in range(6):
-            try:
-                if obj(lo) * obj(hi) < 0.0:
-                    found = True
+        if h_mu < 0.0:
+            lo, hi = mui, mui + si
+            span = si
+            for _ in range(80):
+                try:
+                    h_hi = obj(hi)
+                except Exception:
+                    h_hi = np.nan
+                if h_hi >= 0.0 or (not np.isfinite(h_hi)):
+                    found = np.isfinite(h_hi)
                     break
-            except Exception:
-                pass
-            span = hi - lo
-            lo, hi = lo - 4.0 * span, hi + 4.0 * span
-        if not found:
-            lo, hi = mui - 1000.0 * si, mui + 1000.0 * si
-            try:
-                if obj(lo) * obj(hi) < 0.0:
-                    found = True
-            except Exception:
-                pass
+                span *= 2.0
+                hi = mui + span
+        else:
+            lo, hi = mui - si, mui
+            span = si
+            for _ in range(80):
+                try:
+                    h_lo = obj(lo)
+                except Exception:
+                    h_lo = np.nan
+                if h_lo <= 0.0 or (not np.isfinite(h_lo)):
+                    found = np.isfinite(h_lo)
+                    break
+                span *= 2.0
+                lo = mui - span
         if found:
             try:
                 out.append(brentq(obj, lo, hi, xtol=1e-10))
