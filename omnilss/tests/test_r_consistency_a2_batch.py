@@ -39,6 +39,19 @@ class TestA2BatchConsistency(unittest.TestCase):
             sigma = np.linspace(0.2, 0.8, n)
             nu = np.linspace(0.0, 0.5, n)
             return x, mu, sigma, nu
+        if family == "BCCGo":
+            x = np.linspace(0.5, 5.0, n)
+            mu = np.linspace(1.0, 4.0, n)
+            sigma = np.linspace(0.2, 0.8, n)
+            nu = np.linspace(0.5, 2.0, n)
+            return x, mu, sigma, nu
+        if family in ("BCTO", "BCPEO"):
+            x = np.linspace(0.5, 5.0, n)
+            mu = np.linspace(1.0, 4.0, n)
+            sigma = np.linspace(0.2, 0.8, n)
+            nu = np.linspace(0.5, 2.0, n)
+            tau = np.linspace(2.0, 5.0, n)
+            return x, mu, sigma, nu, tau
         # NET
         x = np.linspace(-3.0, 3.0, n)
         mu = np.linspace(-1.0, 1.0, n)
@@ -47,8 +60,12 @@ class TestA2BatchConsistency(unittest.TestCase):
         tau = np.linspace(2.5, 5.0, n)
         return x, mu, sigma, nu, tau
 
+    # R 家族名映射：Python 大写 O（BCTO/BCPEO）对应 R 的小写 o（BCTo/BCPEo）
+    _R_NAME = {"BCTO": "BCTo", "BCPEO": "BCPEo"}
+
     def _assert_family(self, family: str, npar: int) -> None:
         fam = resolve(family)
+        r_family = self._R_NAME.get(family, family)
         with self.subTest(family=family):
             args = self._profile_inputs(family)
             x, mu, sigma = args[0], args[1], args[2]
@@ -57,24 +74,24 @@ class TestA2BatchConsistency(unittest.TestCase):
                 nu = args[3]
                 tau = args[4] if len(args) > 4 else None
                 if tau is not None:
-                    r_d = self.bus.eval_family(family, "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
-                    r_p = self.bus.eval_family(family, "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
-                    r_q = self.bus.eval_family(family, "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
+                    r_d = self.bus.eval_family(r_family, "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
+                    r_p = self.bus.eval_family(r_family, "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
+                    r_q = self.bus.eval_family(r_family, "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
                     py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
                     py_p = np.asarray(fam.p(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
                     py_q = np.asarray(fam.q(jnp.array(p), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
                 else:
-                    r_d = self.bus.eval_family(family, "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
-                    r_p = self.bus.eval_family(family, "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
-                    r_q = self.bus.eval_family(family, "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
+                    r_d = self.bus.eval_family(r_family, "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
+                    r_p = self.bus.eval_family(r_family, "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
+                    r_q = self.bus.eval_family(r_family, "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
                     py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu)))
                     py_p = np.asarray(fam.p(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu)))
                     py_q = np.asarray(fam.q(jnp.array(p), jnp.array(mu), jnp.array(sigma), jnp.array(nu)))
             else:
                 nu = args[3]
-                r_d = self.bus.eval_family(family, "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
-                r_p = self.bus.eval_family(family, "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
-                r_q = self.bus.eval_family(family, "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
+                r_d = self.bus.eval_family(r_family, "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
+                r_p = self.bus.eval_family(r_family, "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
+                r_q = self.bus.eval_family(r_family, "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
                 py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu)))
                 py_p = np.asarray(fam.p(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu)))
                 py_q = np.asarray(fam.q(jnp.array(p), jnp.array(mu), jnp.array(sigma), jnp.array(nu)))
@@ -100,6 +117,15 @@ class TestA2BatchConsistency(unittest.TestCase):
 
     def test_net_dpq(self) -> None:
         self._assert_family("NET", 4)
+
+    def test_bccgo_dpq(self) -> None:
+        self._assert_family("BCCGo", 3)
+
+    def test_bcto_dpq(self) -> None:
+        self._assert_family("BCTO", 4)
+
+    def test_bcpeo_dpq(self) -> None:
+        self._assert_family("BCPEO", 4)
 
 
 if __name__ == "__main__":

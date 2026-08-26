@@ -553,9 +553,19 @@ def BCCGo() -> BCCGoFamily:
     Returns:
         BCCGoFamily with automatic differentiation support
     """
+    from .dpqr_functions import pBCCG, qBCCG, rBCCG
+
     return build_ad_family(
         family_class=BCCGoFamily,
         log_pdf_func=_bccgo_log_pdf,
         name="BCCGo",
         parameters=("mu", "sigma", "nu"),
+        type_="Continuous",
+        p=pBCCG,
+        q=qBCCG,
+        r=rBCCG,
+        links={"mu": "log", "sigma": "log", "nu": "identity"},
+        link_functions={"mu": log_link, "sigma": log_link, "nu": identity_link},
+        link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": identity_inverse},
+        link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": identity_derivative},
     )

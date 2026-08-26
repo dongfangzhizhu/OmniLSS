@@ -375,42 +375,62 @@ class BCPEoFamily(FamilyDefinition):
 
 
 def _bcpeo_log_pdf(y, mu, sigma, nu, tau):
-    """BCPE Original log-PDF."""
+    """BCPE Original log-PDF (R BCPE.R dBCPE = dBCPEo).
+
+    z = ((y/mu)^nu - 1)/(nu*sigma)  or  log(y/mu)/sigma
+    f.T(t): log.c = 0.5*(-(2/tau)log(2) + lgamma(1/tau) - lgamma(3/tau))
+            c = exp(log.c);  log.lik = log(tau) - log.c
+                - 0.5*|t/c|^tau - (1+1/tau)log(2) - lgamma(1/tau)
+    F.T(t): s = 0.5*(|t/c|^tau);  cdf = 0.5*(1 + pgamma(s, 1/tau, 1)*sign(t))
+    loglik = (nu-1)log(y) - nu log(mu) - log(sigma)
+           + f.T(z, log=TRUE) - log(F.T(1/(sigma*|nu|)))
+    """
+    import jax.numpy as jnp
+    from jax.scipy.special import gammaln as _gl, gammainc as _gic
+
     eps = jnp.finfo(jnp.float64).eps
     y = jnp.maximum(y, eps)
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
-    tau = jnp.clip(tau, 0.1, 10.0)
-    
-    # Box-Cox transformation
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    tau = jnp.maximum(tau, eps)
+
+    ratio = y / mu
     z = jnp.where(
         jnp.abs(nu) > eps,
-        (jnp.power(y, nu) - 1.0) / nu,
-        jnp.log(y)
+        (jnp.power(ratio, nu) - 1.0) / (nu * sigma),
+        jnp.log(ratio) / sigma
     )
-    
-    z_std = (z - mu) / sigma
-    
-    # Power exponential
-    log_pe = (
-        jnp.log(tau) - jnp.log(2.0 * sigma) - gammaln(1.0 / tau)
-        - jnp.power(jnp.abs(z_std), tau)
-    )
-    
-    # Jacobian
-    log_jacobian = (nu - 1.0) * jnp.log(y)
-    
-    return log_pe + log_jacobian
+    logder = (nu - 1.0) * jnp.log(y) - nu * jnp.log(mu) - jnp.log(sigma)
+
+    # f.T(z, log=TRUE)
+    log_c = 0.5 * (-(2.0 / tau) * jnp.log(2.0) + _gl(1.0 / tau) - _gl(3.0 / tau))
+    log_fT = (jnp.log(tau) - log_c - 0.5 * jnp.power(jnp.abs(z) / jnp.exp(log_c), tau)
+              - (1.0 + 1.0 / tau) * jnp.log(2.0) - _gl(1.0 / tau))
+    # F.T(1/(sigma*|nu|))
+    t_trunc = 1.0 / (sigma * jnp.maximum(jnp.abs(nu), eps))
+    c = jnp.exp(log_c)
+    s_trunc = 0.5 * jnp.power(jnp.abs(t_trunc) / c, tau)
+    F_s = _gic(1.0 / tau, s_trunc)
+    log_FT = jnp.log(0.5 * (1.0 + F_s * jnp.sign(t_trunc)))
+
+    loglik = logder + log_fT - log_FT
+    return jnp.where(y > 0.0, loglik, -jnp.inf)
 
 
 def BCPEo():
     """Box-Cox Power Exponential with original parameterization."""
+    from .dpqr_functions import pBCPE, qBCPE, rBCPE
+
     return build_ad_family(
         family_class=BCPEoFamily,
         name="BCPEo",
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_bcpeo_log_pdf,
         type_="Continuous",
+        p=pBCPE,
+        q=qBCPE,
+        r=rBCPE,
         links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
         link_functions={
             "mu": identity_link,
@@ -444,43 +464,59 @@ class BCToFamily(FamilyDefinition):
 
 
 def _bcto_log_pdf(y, mu, sigma, nu, tau):
-    """BCT Original log-PDF."""
+    """BCT Original log-PDF (R BCT.R dBCT = dBCTo).
+
+    z = ((y/mu)^nu - 1)/(nu*sigma)  or  log(y/mu)/sigma
+    loglik = (nu-1)log(y) - nu log(mu) - log(sigma)
+           + [lgamma((tau+1)/2) - lgamma(tau/2) - 0.5 log(tau) - lgamma(0.5)
+              - ((tau+1)/2) log(1 + z^2/tau)]
+           - log(pt(1/(sigma|nu|), df=tau))
+    """
+    import jax.numpy as jnp
+    from jax.scipy.special import gammaln as _gl
+
     eps = jnp.finfo(jnp.float64).eps
     y = jnp.maximum(y, eps)
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
-    tau = jnp.maximum(tau, 2.0 + eps)
-    
-    # Box-Cox transformation
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    tau = jnp.maximum(tau, eps)
+
+    ratio = y / mu
     z = jnp.where(
         jnp.abs(nu) > eps,
-        (jnp.power(y, nu) - 1.0) / nu,
-        jnp.log(y)
+        (jnp.power(ratio, nu) - 1.0) / (nu * sigma),
+        jnp.log(ratio) / sigma
     )
-    
-    z_std = (z - mu) / sigma
-    
-    # t distribution
-    log_t = (
-        gammaln((tau + 1.0) / 2.0) - gammaln(tau / 2.0)
-        - 0.5 * jnp.log(tau * jnp.pi) - jnp.log(sigma)
-        - ((tau + 1.0) / 2.0) * jnp.log1p(z_std * z_std / tau)
-    )
-    
-    # Jacobian
-    log_jacobian = (nu - 1.0) * jnp.log(y)
-    
-    return log_t + log_jacobian
+    logder = (nu - 1.0) * jnp.log(y) - nu * jnp.log(mu) - jnp.log(sigma)
+    # t kernel without the log(sigma) factor (already in logder)
+    fTz = (_gl((tau + 1.0) / 2.0) - _gl(tau / 2.0) - 0.5 * jnp.log(tau) - _gl(0.5)
+           - ((tau + 1.0) / 2.0) * jnp.log1p(z * z / tau))
+    # truncation: -log(pt(1/(sigma*|nu|), df=tau))
+    # JAX t 无 logcdf，用不完全贝塔实现：P(T<=t)=1-0.5*I_x(df/2,1/2) (t>0)
+    from jax.scipy.special import betainc as _bic
+    trunc_arg = 1.0 / (sigma * jnp.maximum(jnp.abs(nu), eps))
+    xb = tau / (tau + trunc_arg * trunc_arg)
+    ib = _bic(tau / 2.0, 0.5, xb)
+    pt_val = jnp.where(trunc_arg > 0, 1.0 - 0.5 * ib, 0.5 * ib)
+    log_trunc = jnp.log(jnp.maximum(pt_val, eps))
+    loglik = logder + fTz - log_trunc
+    return jnp.where(y > 0.0, loglik, -jnp.inf)
 
 
 def BCTo():
     """Box-Cox t with original parameterization."""
+    from .dpqr_functions import pBCT, qBCT, rBCT
+
     return build_ad_family(
         family_class=BCToFamily,
         name="BCTo",
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_bcto_log_pdf,
         type_="Continuous",
+        p=pBCT,
+        q=qBCT,
+        r=rBCT,
         links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
         link_functions={
             "mu": identity_link,
