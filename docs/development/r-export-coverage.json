@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-08-23T03:40:38.636945+00:00",
-  "source_repo_root": "/mnt/d/AI/my/githubprojs/OmniLSS",
+  "generated_at": "2026-08-28T00:00:00+08:00",
+  "source_repo_root": "d:\\AI\\my\\githubprojs\\OmniLSS",
   "stats": {
     "total_registered": 145,
     "status_distribution": {
-      "experimental": 66,
+      "experimental": 83,
       "compat_alias": 25,
-      "placeholder": 53,
+      "placeholder": 36,
       "implemented": 1
     },
     "validated_count": 1,
-    "experimental_count": 66,
+    "experimental_count": 83,
     "compat_alias_count": 25,
-    "placeholder_count": 53,
+    "placeholder_count": 36,
     "missing_count": 0
   },
   "families": {
@@ -125,7 +125,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "BEINF0": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -134,7 +134,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "BEINF1": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -152,7 +152,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "BEOI": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -161,7 +161,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "BEZI": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -602,7 +602,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "LG": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -611,7 +611,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "LNO": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -629,7 +629,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "LOGITNO": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -746,7 +746,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "NET": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -890,7 +890,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "SEP": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -899,7 +899,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "SEP1": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -908,7 +908,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "SEP2": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -917,7 +917,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "SEP3": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -926,7 +926,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "SEP4": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -1007,7 +1007,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "SST": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -1016,7 +1016,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "ST1": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -1025,7 +1025,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "ST2": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -1061,7 +1061,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "ST5": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
