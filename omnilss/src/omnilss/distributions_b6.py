@@ -490,6 +490,86 @@ def _yule_log_pdf(y, mu):
     return log_pdf
 
 
+def _yule_p(q, mu=2.0, lower_tail=True, log_p=False):
+    """Yule CDF, equivalent to R's cumulative ``dYULE`` definition.
+
+    The survival probability has the closed form
+    ``lambda * beta(lambda, floor(q) + 2)``.  Using it avoids repeatedly
+    summing the heavy-tailed PMF and remains stable for large quantiles.
+    """
+    import numpy as _np
+    from scipy.special import betaln as _bl
+
+    q_arr, mu_arr = _np.broadcast_arrays(
+        _np.asarray(q, dtype=_np.float64), _np.asarray(mu, dtype=_np.float64)
+    )
+    if _np.any(mu_arr <= 0.0):
+        raise ValueError("mu must be > 0")
+
+    q_floor = _np.floor(q_arr)
+    lam = (mu_arr + 1.0) / mu_arr
+    survival = _np.exp(_np.log(lam) + _bl(lam, q_floor + 2.0))
+    with _np.errstate(divide="ignore", invalid="ignore"):
+        cdf = _np.where(q_arr < 0.0, 0.0, -_np.expm1(_np.log(survival)))
+    cdf = _np.where(_np.isposinf(q_arr), 1.0, _np.clip(cdf, 0.0, 1.0))
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        with _np.errstate(divide="ignore"):
+            cdf = _np.log(cdf)
+    return jnp.asarray(cdf, dtype=jnp.float64)
+
+
+def _yule_q(p, mu=2.0, lower_tail=True, log_p=False, max_value=10000):
+    """Yule quantile using binary search over the closed-form CDF."""
+    import numpy as _np
+    from scipy.special import betaln as _bl
+
+    p_arr = _np.asarray(p, dtype=_np.float64)
+    if log_p:
+        p_arr = _np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    p_arr, mu_arr = _np.broadcast_arrays(p_arr, _np.asarray(mu, dtype=_np.float64))
+    if _np.any(mu_arr <= 0.0):
+        raise ValueError("mu must be > 0")
+
+    result = _np.empty(p_arr.shape, dtype=_np.float64)
+    for index in _np.ndindex(p_arr.shape):
+        pi = float(p_arr[index])
+        mui = float(mu_arr[index])
+        if pi < 0.0 or pi > 1.0 or _np.isnan(pi):
+            result[index] = _np.nan
+            continue
+        if pi == 0.0:
+            result[index] = 0.0
+            continue
+        if pi == 1.0:
+            result[index] = _np.inf
+            continue
+
+        lam = (mui + 1.0) / mui
+        low, high = 0, int(max_value)
+        while low < high:
+            mid = (low + high) // 2
+            survival = _np.exp(_np.log(lam) + _bl(lam, mid + 2.0))
+            cdf = -_np.expm1(_np.log(survival))
+            if cdf >= pi:
+                high = mid
+            else:
+                low = mid + 1
+        result[index] = float(low)
+    return jnp.asarray(result, dtype=jnp.float64)
+
+
+def _yule_r(key, n, mu=2.0):
+    import jax.numpy as _jnp
+    import jax.random as _jr
+
+    u = _jr.uniform(key, shape=(n,), dtype=_jnp.float64)
+    return _yule_q(u, mu)
+
+
 def YULE() -> YuleFamily:
     return build_ad_family(
         family_class=YuleFamily,
@@ -497,6 +577,9 @@ def YULE() -> YuleFamily:
         parameters=("mu",),
         log_pdf_func=_yule_log_pdf,
         type_="Discrete",
+        p=_yule_p,
+        q=_yule_q,
+        r=_yule_r,
         links={"mu": "log"},
         link_functions={"mu": log_link},
         link_inverses={"mu": log_inverse},

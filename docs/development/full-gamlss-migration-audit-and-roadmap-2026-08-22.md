@@ -23,25 +23,25 @@
 | A1 偏态 t 与 SEP | ✅ 已完成 | commits `55c4a6f`–`bd566bb`；ST1–5/ST3C、SEP/SEP1–4/SST 已补真实 d/p/q/r，批内 R 对照通过 |
 | A2.1 有界混合与变换族 | ✅ 已完成 | commit `a43f5bc`；BEINF0/BEINF1/BEZI/BEOI/LNO/LOGITNO/NET/LG 已补真实 p/q/r，R 对照通过 |
 | A2.2 Box-Cox `o` 变体 | ✅ 已完成 | commit `18e01e8`；BCCGo/BCTo/BCPEo 已按 R 源码重写并补 p/q/r，R 对照通过 |
+| A3.1 YULE | ✅ 已完成（本轮交付） | YULE 使用闭式生存函数实现 p、二分搜索实现 q，并补 r、边界与真实 R 中心/尾部 d/p/q 对照 |
 
 ### 0.2 当前能力与下一步
 
-- **已提交代码基线（HEAD `18e01e8`）**：145 个注册家族，其中 1 implemented、
-  83 experimental、25 compat_alias、36 placeholder；相对 R 的 117 个家族为
-  1 implemented、81 experimental、2 compat_alias、33 placeholder、0 missing。
+- **当前代码基线（含 A3.1 待提交改动）**：145 个注册家族，其中 1 implemented、
+  84 experimental、25 compat_alias、35 placeholder；相对 R 的 117 个家族为
+  1 implemented、82 experimental、2 compat_alias、32 placeholder、0 missing。
 - **Tier 0**：A0.2–A0.4 已闭环；A0.1 仅剩根 `.venv` 恢复 `pip`。该环境问题
   不阻塞当前源码运行与 R 一致性测试，但不得继续标记为完全验收。
-- **Tier 1**：A1 已完成，A2 路线图所列家族已完成；下一执行批次为 **A3 离散与
-  零膨胀计数**。当前工作树已有 YULE p/q/r 的在途实现，尚未计入上述已提交基线。
+- **Tier 1**：A1 已完成，A2 路线图所列家族已完成；**A3.1 YULE 已完成**，下一项
+  为 A3 的 `WARING/DEL/DPO/SI` 离散家族。
 - **逐函数覆盖限制**：`docs/migration-progress.md` 仍是 2026-05-23 的人工快照，
   尚未形成可重复生成的 171 符号逐函数表；在生成器落地前不可据此宣称 Tier 3 完成率。
 
 ### 0.3 本轮执行顺序
 
-1. 完成并提交 YULE 的 d/p/q/r R 数值一致性与边界测试（A3.1）。
-2. 继续按依赖拆分 A3：`WARING/DEL/DPO/SI`，再处理
+1. 继续按依赖拆分 A3：`WARING/DEL/DPO/SI`，再处理
    `NBF/GPO/NBII/ZALG/ZIP/ZIP2/ZIPF`；每个可独立验收的家族或紧耦合小组单独提交。
-3. 每次家族状态变化后重跑 `tools/generate_r_export_coverage.py`，同步能力统计和
+2. 每次家族状态变化后重跑 `tools/generate_r_export_coverage.py`，同步能力统计和
    placeholder 队列；不得把“有构造器”替代 R d/p/q/r 对照证据。
 
 ---
