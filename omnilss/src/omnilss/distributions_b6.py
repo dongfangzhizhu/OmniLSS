@@ -311,6 +311,54 @@ def _dpo_log_pdf(y, mu, sigma):
     return raw_log_mass(y) + log_norm
 
 
+def _dpo_log_masses(mu, sigma, max_value=512):
+    """Return normalized DPO log masses on the numerical support grid."""
+    support = jnp.arange(max_value + 1, dtype=jnp.float64)
+    eps = jnp.finfo(jnp.float64).eps
+    mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), eps)
+    sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), eps)
+    k = support.reshape((-1,) + (1,) * mu.ndim)
+    log_k = jnp.where(k > 0.0, jnp.log(k), 0.0)
+    raw = (
+        -0.5 * jnp.log(sigma)
+        - mu / sigma
+        - gammaln(k + 1.0)
+        + k * log_k - k
+        + k * jnp.log(mu) / sigma + k / sigma
+        - k * log_k / sigma
+    )
+    return support, raw - logsumexp(raw, axis=0, keepdims=True)
+
+
+def _dpo_p(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
+    q, mu, sigma = jnp.broadcast_arrays(jnp.asarray(q, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64), jnp.asarray(sigma, dtype=jnp.float64))
+    support, log_mass = _dpo_log_masses(mu.reshape(-1), sigma.reshape(-1))
+    cdf = jnp.sum(jnp.where(support[:, None] <= jnp.floor(q).reshape(1, -1), jnp.exp(log_mass), 0.0), axis=0)
+    cdf = jnp.where(q.reshape(-1) < 0, 0.0, cdf)
+    cdf = jnp.where(jnp.isposinf(q.reshape(-1)), 1.0, cdf)
+    cdf = jnp.where(lower_tail, cdf, 1.0 - cdf)
+    cdf = jnp.where(log_p, jnp.log(cdf), cdf)
+    return cdf.reshape(q.shape)
+
+
+def _dpo_q(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False, max_value=512):
+    p, mu, sigma = jnp.broadcast_arrays(jnp.asarray(p, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64), jnp.asarray(sigma, dtype=jnp.float64))
+    prob = jnp.exp(p) if log_p else p
+    prob = jnp.where(lower_tail, prob, 1.0 - prob)
+    support, log_mass = _dpo_log_masses(mu.reshape(-1), sigma.reshape(-1), max_value)
+    cdf = jnp.cumsum(jnp.exp(log_mass), axis=0)
+    result = support[jnp.argmax(cdf >= prob.reshape(1, -1), axis=0)]
+    result = jnp.where(prob.reshape(-1) >= 1.0, jnp.inf, result)
+    result = jnp.where(prob.reshape(-1) == 0.0, 0.0, result)
+    result = jnp.where((prob.reshape(-1) < 0.0) | (prob.reshape(-1) > 1.0), jnp.nan, result)
+    return result.reshape(p.shape)
+
+
+def _dpo_r(key, n, mu=1.0, sigma=1.0):
+    import jax.random as _jr
+    return _dpo_q(_jr.uniform(key, shape=(n,), dtype=jnp.float64), mu, sigma)
+
+
 def DPO() -> DoublePoissonFamily:
     return build_ad_family(
         family_class=DoublePoissonFamily,
@@ -318,6 +366,9 @@ def DPO() -> DoublePoissonFamily:
         parameters=("mu", "sigma"),
         log_pdf_func=_dpo_log_pdf,
         type_="Discrete",
+        p=_dpo_p,
+        q=_dpo_q,
+        r=_dpo_r,
         links={"mu": "log", "sigma": "log"},
         link_functions={"mu": log_link, "sigma": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse},

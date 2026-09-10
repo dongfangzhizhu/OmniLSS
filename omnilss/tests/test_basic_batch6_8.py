@@ -73,6 +73,19 @@ class TestBatch6PDF(unittest.TestCase):
         pdf = DPO().pdf(y, np.full(5, 2.0), np.full(5, 1.0))
         self.assertTrue(np.all(np.isfinite(pdf)) and np.all(pdf >= 0))
 
+    def test_dpo_dpqr_api(self):
+        family = DPO()
+        x = jnp.arange(5.0)
+        pmf = np.asarray(family.d(x, 2.0, 1.0))
+        cdf = np.asarray(family.p(x, 2.0, 1.0))
+        quantiles = np.asarray(family.q(jnp.array([0.0, 0.5, 0.99]), 2.0, 1.0))
+        sample = np.asarray(family.r(jr.PRNGKey(20260911), 16, 2.0, 1.0))
+        self.assertTrue(np.all(np.isfinite(pmf)))
+        self.assertTrue(np.all(np.diff(cdf) >= 0.0))
+        self.assertEqual(quantiles[0], 0.0)
+        self.assertTrue(np.all(sample >= 0.0))
+        self.assertTrue(np.all(sample == np.floor(sample)))
+
     def test_waring_intercept_only_fit_is_finite(self):
         rng = np.random.default_rng(456)
         y = rng.geometric(0.3, 100)
