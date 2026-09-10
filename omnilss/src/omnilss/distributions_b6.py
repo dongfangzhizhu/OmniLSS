@@ -387,112 +387,107 @@ class DelaportFamily(FamilyDefinition):
     """Delaporte distribution (`DEL`)."""
 
 
-def _del_log_pdf(y, mu, sigma, nu):
-    """Delaporte distribution log-pdf.
-    
-    The Delaporte distribution is a shifted compound Poisson-Gamma distribution.
-    
-    R formula (from gamlss.dist):
-    logpy0 = -mu*nu - (1/sigma)*log(1 + mu*sigma*(1-nu))
-    logfy = logpy0 - lgamma(y+1) + sumlty
-    
-    where sumlty is computed via recursive formula (see tofydel2.c):
-    tofY[0] = mu*nu + mu*(1-nu)/(1 + mu*sigma*(1-nu))
-    tofY[j] = (j + mu*nu + 1/(sigma*(1-nu)) - (mu*nu*j)/tofY[j-1]) / (1 + 1/(mu*sigma*(1-nu)))
-    sumlty = sum(log(tofY[j-1])) for j=1 to y
+def _del_log_masses(mu, sigma, nu, max_value=10000):
+    """True DEL masses on 0..max_value; never renormalize truncated tails.
+
+    Uses the gamlss.dist tofydel2 ratio recurrence. Parameters require
+    mu > 0, sigma > 0 and 0 < nu < 1. As in R, sigma <= 1e-4
+    uses the Poisson approximation.
     """
-    eps = jnp.finfo(jnp.float64).eps
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    nu = jnp.clip(nu, eps, 1.0 - eps)  # nu must be in (0, 1)
-    y = jnp.maximum(y, 0.0)
-    
-    # Compute logpy0 = -mu*nu - (1/sigma)*log(1 + mu*sigma*(1-nu))
-    logpy0 = -mu * nu - (1.0 / sigma) * jnp.log(1.0 + mu * sigma * (1.0 - nu))
-    
-    # Compute sumlty via recursive formula using lax.scan
-    # tofY[0] = mu*nu + mu*(1-nu)/(1 + mu*sigma*(1-nu))
-    tofy_0 = mu * nu + mu * (1.0 - nu) / (1.0 + mu * sigma * (1.0 - nu))
-    
-    # For y=0, sumlty = 0
-    # For y>0, compute recursively using lax.scan
-    y_int = jnp.clip(jnp.round(y).astype(jnp.int32), 0, 100)
-    
-    def scan_fun(carry, j):
-        tofy_prev, sum_log = carry
-        j_float = j.astype(jnp.float64)
-        
-        # Clip tofy_prev to safe range to prevent extreme values
-        tofy_prev_safe = jnp.clip(tofy_prev, eps, 1e100)
-        
-        # dum = 1 + 1/(mu*sigma*(1-nu))
-        dum = 1.0 + 1.0 / (mu * sigma * (1.0 - nu))
-        
-        # tofY[j] = (j + mu*nu + 1/(sigma*(1-nu)) - (mu*nu*j)/tofY[j-1]) / dum
-        tofy_j = (j_float + mu * nu + 1.0 / (sigma * (1.0 - nu)) - 
-                  (mu * nu * j_float) / tofy_prev_safe) / dum
-        
-        # Clip tofy_j to safe range
-        tofy_j = jnp.clip(tofy_j, eps, 1e100)
-        
-        # Add log(tofY[j-1]) to sum using safe value
-        sum_log = sum_log + jnp.log(tofy_prev_safe)
-        return (tofy_j, sum_log), None
-    
-    # Initial state: (tofY[0], sumlty=0)
-    init_state = (tofy_0, 0.0)
-    
-    # Run scan from j=1 to y_int
-    # Create sequence of j values from 1 to 100
-    j_seq = jnp.arange(1, 101)
-    (_, sumlty), _ = jax.lax.scan(scan_fun, init_state, j_seq)
-    
-    # For y=0, sumlty should be 0
-    # For y>0, we need to extract the sum at position y_int
-    # Since scan runs for all 100 iterations, we need to recompute with proper masking
-    # Alternative: use conditional to only accumulate up to y_int
-    
-    def scan_fun_masked(carry, j):
-        tofy_prev, sum_log = carry
-        j_float = j.astype(jnp.float64)
-        
-        # Clip tofy_prev to safe range to prevent extreme values
-        tofy_prev_safe = jnp.clip(tofy_prev, eps, 1e100)
-        
-        # dum = 1 + 1/(mu*sigma*(1-nu))
-        dum = 1.0 + 1.0 / (mu * sigma * (1.0 - nu))
-        
-        # tofY[j] = (j + mu*nu + 1/(sigma*(1-nu)) - (mu*nu*j)/tofY[j-1]) / dum
-        tofy_j = (j_float + mu * nu + 1.0 / (sigma * (1.0 - nu)) - 
-                  (mu * nu * j_float) / tofy_prev_safe) / dum
-        
-        # Clip tofy_j to safe range
-        tofy_j = jnp.clip(tofy_j, eps, 1e100)
-        
-        # Only add to sum if j <= y_int
-        log_term = jnp.where(j <= y_int, jnp.log(tofy_prev_safe), 0.0)
-        sum_log = sum_log + log_term
-        
-        return (tofy_j, sum_log), None
-    
-    # Run scan with masking
-    (_, sumlty), _ = jax.lax.scan(scan_fun_masked, init_state, j_seq)
-    
-    # For y=0, sumlty should be 0
-    sumlty = jnp.where(y < 0.5, 0.0, sumlty)
-    
-    # Compute log-pdf
-    # logfy = logpy0 - lgamma(y+1) + sumlty
-    log_pdf = logpy0 - gammaln(y + 1.0) + sumlty
-    
-    # For very small sigma, use Poisson approximation
-    log_pdf = jnp.where(
-        sigma <= 0.0001,
-        y * jnp.log(mu) - mu - gammaln(y + 1.0),  # Poisson log-pdf
-        log_pdf
-    )
-    
-    return log_pdf
+    mu, sigma, nu = jnp.broadcast_arrays(*[
+        jnp.asarray(v, dtype=jnp.float64) for v in (mu, sigma, nu)
+    ])
+    valid = (mu > 0) & (sigma > 0) & (nu > 0) & (nu < 1)
+    valid &= jnp.isfinite(mu) & jnp.isfinite(sigma) & jnp.isfinite(nu)
+    mu = jnp.where(valid, mu, 1.0)
+    sigma = jnp.where(valid, sigma, 1.0)
+    nu = jnp.where(valid, nu, 0.5)
+    scale = mu * sigma * (1.0 - nu)
+    ratio = scale / (1.0 + scale)
+    lam = mu * nu
+    initial = lam + mu * (1.0 - nu) / (1.0 + scale)
+    log_zero = -lam - jnp.log1p(scale) / sigma
+
+    def step(state, j):
+        previous, log_mass = state
+        log_mass = log_mass + jnp.log(previous) - jnp.log(j)
+        current = ratio * (j + lam - lam * j / previous) + mu / (1.0 + scale)
+        return (current, log_mass), log_mass
+
+    support = jnp.arange(max_value + 1, dtype=jnp.float64)
+    _, rest = jax.lax.scan(step, (initial, log_zero), support[1:])
+    masses = jnp.concatenate((log_zero[None, ...], rest), axis=0)
+    x = support.reshape((-1,) + (1,) * mu.ndim)
+    poisson = x * jnp.log(mu) - mu - gammaln(x + 1.0)
+    masses = jnp.where(sigma <= 1e-4, poisson, masses)
+    return support, jnp.where(valid, masses, jnp.nan)
+
+
+def _del_log_pdf(y, mu, sigma, nu):
+    """DEL log PMF, differentiable in parameters, evaluated up to 10000.
+
+    Finite integer observations above the numerical limit return NaN,
+    rather than silently clipping to a different observation.
+    """
+    y, mu, sigma, nu = jnp.broadcast_arrays(*[
+        jnp.asarray(v, dtype=jnp.float64) for v in (y, mu, sigma, nu)
+    ])
+    _, masses = _del_log_masses(mu, sigma, nu)
+    index = jnp.clip(jnp.nan_to_num(y), 0, 10000).astype(jnp.int32)
+    result = jnp.take_along_axis(masses, index[None, ...], axis=0)[0]
+    result = jnp.where(y > 10000, jnp.nan, result)
+    result = jnp.where((y < 0) | (y != jnp.floor(y)) | jnp.isinf(y), -jnp.inf, result)
+    return jnp.where(jnp.isnan(y), jnp.nan, result)
+
+
+def _del_p(q, mu=1.0, sigma=1.0, nu=0.5, lower_tail=True, log_p=False):
+    """DEL CDF; finite queries above 10000 return NaN (numerical limit)."""
+    q, mu, sigma, nu = jnp.broadcast_arrays(*[
+        jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma, nu)
+    ])
+    _, masses = _del_log_masses(mu, sigma, nu)
+    cdf = jnp.cumsum(jnp.exp(masses), axis=0)
+    index = jnp.clip(jnp.nan_to_num(jnp.floor(q)), 0, 10000).astype(jnp.int32)
+    result = jnp.take_along_axis(cdf, index[None, ...], axis=0)[0]
+    result = jnp.clip(result, 0.0, 1.0)
+    result = jnp.where(q < 0, 0.0, result)
+    result = jnp.where(q >= 10001, jnp.nan, result)
+    result = jnp.where(jnp.isposinf(q), 1.0, result)
+    result = jnp.where(jnp.isnan(q), jnp.nan, result)
+    result = jnp.where(lower_tail, result, 1.0 - result)
+    return jnp.log(result) if log_p else result
+
+
+def _del_q(p, mu=1.0, sigma=1.0, nu=0.5, lower_tail=True, log_p=False, max_value=10000):
+    """First integer with CDF >= p; unresolved finite quantiles return NaN."""
+    p, mu, sigma, nu = jnp.broadcast_arrays(*[
+        jnp.asarray(v, dtype=jnp.float64) for v in (p, mu, sigma, nu)
+    ])
+    prob = jnp.exp(p) if log_p else p
+    prob = jnp.where(lower_tail, prob, 1.0 - prob)
+    support, masses = _del_log_masses(mu, sigma, nu, max_value)
+    reached = jnp.cumsum(jnp.exp(masses), axis=0) >= prob
+    result = support[jnp.argmax(reached, axis=0)]
+    result = jnp.where(jnp.any(reached, axis=0), result, jnp.nan)
+    result = jnp.where(prob == 0.0, 0.0, result)
+    result = jnp.where(prob == 1.0, jnp.inf, result)
+    return jnp.where((prob < 0) | (prob > 1) | jnp.isnan(prob), jnp.nan, result)
+
+
+def _del_r(key, n, mu=1.0, sigma=1.0, nu=0.5):
+    """Sample the Poisson-Gamma mixture without a finite support cutoff."""
+    import jax.random as jr
+    mu, sigma, nu = jnp.broadcast_arrays(*[
+        jnp.broadcast_to(jnp.asarray(v, dtype=jnp.float64), (n,))
+        for v in (mu, sigma, nu)
+    ])
+    gamma_key, poisson_key = jr.split(key)
+    mixing = jr.gamma(gamma_key, 1.0 / sigma) * mu * sigma * (1.0 - nu)
+    rate = jnp.where(sigma <= 1e-4, mu, mu * nu + mixing)
+    sample = jr.poisson(poisson_key, rate).astype(jnp.float64)
+    valid = (mu > 0) & (sigma > 0) & (nu > 0) & (nu < 1)
+    valid &= jnp.isfinite(mu) & jnp.isfinite(sigma) & jnp.isfinite(nu)
+    return jnp.where(valid, sample, jnp.nan)
 
 
 def DEL() -> DelaportFamily:
@@ -502,6 +497,9 @@ def DEL() -> DelaportFamily:
         parameters=("mu", "sigma", "nu"),
         log_pdf_func=_del_log_pdf,
         type_="Discrete",
+        p=_del_p,
+        q=_del_q,
+        r=_del_r,
         links={"mu": "log", "sigma": "log", "nu": "logit"},
         link_functions={"mu": log_link, "sigma": log_link, "nu": logit_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": logit_inverse},
