@@ -2,6 +2,8 @@
 
 import unittest
 import numpy as np
+import jax.numpy as jnp
+import jax.random as jr
 import sys
 from pathlib import Path
 
@@ -42,6 +44,20 @@ class TestBatch8Instantiation(unittest.TestCase):
 
 
 class TestBatch6PDF(unittest.TestCase):
+    def test_waring_dpqr_api(self):
+        family = WARING()
+        x = jnp.arange(5.0)
+        pmf = np.asarray(family.d(x, 2.0, 2.0))
+        cdf = np.asarray(family.p(x, 2.0, 2.0))
+        quantiles = np.asarray(family.q(jnp.array([0.0, 0.5, 0.99]), 2.0, 2.0))
+        sample = np.asarray(family.r(jr.PRNGKey(20260911), 32, 2.0, 2.0))
+        self.assertTrue(np.all(np.isfinite(pmf)))
+        self.assertTrue(np.all(np.diff(cdf) >= 0.0))
+        self.assertEqual(quantiles[0], 0.0)
+        self.assertTrue(np.all(np.isfinite(sample)))
+        self.assertTrue(np.all(sample >= 0.0))
+        self.assertTrue(np.all(sample == np.floor(sample)))
+
     def test_pig_pdf(self):
         y = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
         pdf = PIG().pdf(y, np.full(5, 2.0), np.full(5, 1.0))

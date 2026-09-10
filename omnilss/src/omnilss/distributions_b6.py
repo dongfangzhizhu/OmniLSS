@@ -622,6 +622,55 @@ def _waring_log_pdf(y, mu, sigma):
     return log_pdf
 
 
+def _waring_p(q, mu=2.0, sigma=2.0, lower_tail=True, log_p=False):
+    """CDF of WARING, following R's finite discrete summation.
+
+    R's implementation evaluates ``sum(dWARING(0:q))``.  The fixed scan keeps
+    this operation JAX-compatible while masking terms above each requested q.
+    ``10000`` is the same upper bound used by ``qWARING`` in the R source.
+    """
+    q, mu, sigma = jnp.broadcast_arrays(
+        jnp.asarray(q, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+    )
+    q_int = jnp.floor(q).astype(jnp.int32)
+    support = jnp.arange(10001, dtype=jnp.float64)
+    log_mass = _waring_log_pdf(support[:, None], mu.reshape(1, -1), sigma.reshape(1, -1))
+    mass = jnp.exp(log_mass)
+    cdf = jnp.sum(jnp.where(support[:, None] <= q_int.reshape(1, -1), mass, 0.0), axis=0)
+    cdf = jnp.where(q < 0, 0.0, cdf)
+    cdf = jnp.where(jnp.isposinf(q), 1.0, cdf)
+    cdf = jnp.where(lower_tail, cdf, 1.0 - cdf)
+    cdf = jnp.where(log_p, jnp.log(cdf), cdf)
+    return cdf.reshape(q.shape)
+
+
+def _waring_q(p, mu=2.0, sigma=2.0, lower_tail=True, log_p=False, max_value=10000):
+    """Discrete inverse CDF using the same first-crossing rule as R."""
+    p, mu, sigma = jnp.broadcast_arrays(
+        jnp.asarray(p, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+    )
+    prob = jnp.exp(p) if log_p else p
+    prob = jnp.where(lower_tail, prob, 1.0 - prob)
+    support = jnp.arange(max_value + 1, dtype=jnp.float64)
+    masses = jnp.exp(_waring_log_pdf(support[:, None], mu.reshape(1, -1), sigma.reshape(1, -1)))
+    cdf = jnp.cumsum(masses, axis=0)
+    first = jnp.argmax(cdf >= prob.reshape(1, -1), axis=0).astype(jnp.float64)
+    result = jnp.where(prob >= 1.0, jnp.inf, first)
+    result = jnp.where(prob == 0.0, 0.0, result)
+    result = jnp.where((prob < 0.0) | (prob > 1.0), jnp.nan, result)
+    return result.reshape(p.shape)
+
+
+def _waring_r(key, n, mu=2.0, sigma=2.0):
+    """Generate WARING variates by inverse transform sampling."""
+    import jax.random as _jr
+    return _waring_q(_jr.uniform(key, shape=(n,), dtype=jnp.float64), mu, sigma)
+
+
 def WARING() -> WaringFamily:
     """Waring distribution.
     
@@ -635,6 +684,9 @@ def WARING() -> WaringFamily:
         parameters=("mu", "sigma"),
         log_pdf_func=_waring_log_pdf,
         type_="Discrete",
+        p=_waring_p,
+        q=_waring_q,
+        r=_waring_r,
         links={"mu": "log", "sigma": "log"},
         link_functions={"mu": log_link, "sigma": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse},
