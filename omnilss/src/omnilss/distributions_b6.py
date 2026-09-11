@@ -106,6 +106,13 @@ def _sichel_log_pdf(y, mu, sigma, nu):
     from .bessel import log_bessel_kv
     
     eps = jnp.finfo(jnp.float64).eps
+    # This function is the scalar kernel consumed by build_ad_family's vmap.
+    # Do not accumulate with an array-shaped carry here: vmap supplies one
+    # observation and one parameter tuple per invocation.
+    y = jnp.asarray(y, dtype=jnp.float64)
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
     y = jnp.maximum(y, 0.0)
@@ -131,7 +138,7 @@ def _sichel_log_pdf(y, mu, sigma, nu):
     # For y=0, sumlty = 0
     # For y>0, we need to compute the recursive sum
     # Since inputs are already scalar (vmapped by ad.py), compute directly
-    y_int = jnp.clip(jnp.round(y).astype(jnp.int32), 0, 100)
+    y_int = jnp.clip(jnp.round(y).astype(jnp.int32), 0, 10000)
     
     def scan_fun_masked(carry, j):
         tofy_prev, sum_log = carry
@@ -153,10 +160,10 @@ def _sichel_log_pdf(y, mu, sigma, nu):
         return (tofy_j, sum_log), None
     
     # Initial state: (tofY[0], sumlty=0)
-    init_state = (tofy_0, 0.0)
+    init_state = (tofy_0, jnp.asarray(0.0, dtype=jnp.float64))
     
     # Run scan from j=1 to 100 with masking
-    j_seq = jnp.arange(1, 101)
+    j_seq = jnp.arange(1, 10001)
     (_, sumlty), _ = jax.lax.scan(scan_fun_masked, init_state, j_seq)
     
     # For y=0, sumlty should be 0
