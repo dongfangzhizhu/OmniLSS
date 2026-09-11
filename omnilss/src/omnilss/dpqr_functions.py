@@ -7510,46 +7510,20 @@ def pSICHEL(q, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     nu = jnp.asarray(nu, dtype=jnp.float64)
 
-    eps = jnp.finfo(jnp.float64).eps
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-
-    # Extract scalar values for use inside the loop
-    mu_scalar    = float(jnp.mean(mu))
-    sigma_scalar = float(jnp.mean(sigma))
-    nu_scalar    = float(jnp.mean(nu))
-
-    # Floor q to integer
-    q_int = jnp.floor(q)
-
-    # Sum PMF from 0 to q_int
-    def compute_cdf_scalar(q_val):
-        q_val = float(q_val)
-        if q_val < 0:
-            return 0.0
-
-        # Sum from 0 to min(q_val, reasonable upper bound)
-        max_x = min(int(q_val) + 1, 200)
-        x_vals = jnp.arange(0, max_x)
-        pmf_vals = dSICHEL(x_vals, mu_scalar, sigma_scalar, nu_scalar, log=False)
-        return float(jnp.sum(pmf_vals))
-
-    # Vectorize
-    q_array = jnp.atleast_1d(q_int)
-    cdf_list = [compute_cdf_scalar(q_val) for q_val in q_array]
-    cdf = jnp.array(cdf_list)
-
-    # Return scalar if input was scalar
-    if jnp.ndim(q) == 0:
-        cdf = cdf[0]
-
-    if not lower_tail:
-        cdf = 1.0 - cdf
-
-    if log_p:
-        cdf = jnp.log(cdf)
-
-    return cdf
+    q, mu, sigma, nu = jnp.broadcast_arrays(*[
+        jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma, nu)
+    ])
+    from .distributions_b6 import _sichel_log_pdf
+    support = jnp.arange(10001, dtype=jnp.float64)
+    def cdf_scalar(qq, mm, ss, nn):
+        masses = jax.vmap(_sichel_log_pdf, in_axes=(0, None, None, None))(support, mm, ss, nn)
+        return jnp.sum(jnp.where(support <= qq, jnp.exp(masses), 0.))
+    cdf = jax.vmap(cdf_scalar)(q.ravel(), mu.ravel(), sigma.ravel(), nu.ravel()).reshape(q.shape)
+    valid = (mu > 0) & (sigma > 0) & jnp.isfinite(mu) & jnp.isfinite(sigma) & jnp.isfinite(nu)
+    cdf = jnp.where(q < 0, 0., jnp.where(jnp.isposinf(q), 1., cdf))
+    cdf = jnp.where(lower_tail, cdf, 1. - cdf)
+    result = jnp.log(cdf) if log_p else cdf
+    return jnp.where(valid & ~jnp.isnan(q) & ~((q > 10000) & jnp.isfinite(q)), result, jnp.nan)
 
 
 def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
