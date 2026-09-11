@@ -7,6 +7,7 @@ by wrapping existing base distributions.
 from __future__ import annotations
 from dataclasses import dataclass, replace
 import jax.numpy as jnp
+import jax
 
 from .ad import build_ad_family
 from .families import FamilyDefinition
@@ -204,7 +205,12 @@ def ZASICHEL():
         f0 = pSICHEL(0., mu, sigma, nu)
         target = f0 + (1. - f0) * (prob - tau) / (1. - tau)
         return jnp.where(prob <= tau, 0., qSICHEL(target, mu, sigma, nu))
-    return replace(family, p=p, q=q)
+    def r(key, n, mu=1., sigma=.5, nu=-.5, tau=.5):
+        if not isinstance(n, int) or n < 0:
+            raise ValueError('n must be a nonnegative integer')
+        mu, sigma, nu, tau = jnp.broadcast_arrays(*map(jnp.asarray, (mu, sigma, nu, tau)))
+        return q(jax.random.uniform(key, (n,) + mu.shape), mu, sigma, nu, tau)
+    return replace(family, p=p, q=q, r=r)
 
 # ZISICHEL - Zero-Inflated Sichel  
 def ZISICHEL():
@@ -229,7 +235,12 @@ def ZISICHEL():
         threshold = tau + (1. - tau) * f0
         target = (prob - tau) / (1. - tau)
         return jnp.where(prob <= threshold, 0., qSICHEL(target, mu, sigma, nu))
-    return replace(family, p=p, q=q)
+    def r(key, n, mu=1., sigma=.5, nu=-.5, tau=.5):
+        if not isinstance(n, int) or n < 0:
+            raise ValueError('n must be a nonnegative integer')
+        mu, sigma, nu, tau = jnp.broadcast_arrays(*map(jnp.asarray, (mu, sigma, nu, tau)))
+        return q(jax.random.uniform(key, (n,) + mu.shape), mu, sigma, nu, tau)
+    return replace(family, p=p, q=q, r=r)
 
 # ZAPIG - Zero-Altered Poisson Inverse Gaussian
 def ZAPIG():
