@@ -52,31 +52,11 @@ class PoissonInverseGaussianFamily(FamilyDefinition):
     """Poisson Inverse Gaussian distribution (`PIG`)."""
 
 
-def _pig_log_pdf(y, mu, sigma):
-    """Poisson Inverse Gaussian log-pdf aligned to R's recursive implementation."""
-    eps = jnp.finfo(jnp.float64).eps
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    y_int = jnp.clip(jnp.round(jnp.maximum(y, 0.0)).astype(jnp.int32), 0, 512)
-    base = (1.0 - jnp.sqrt(1.0 + 2.0 * sigma * mu)) / sigma
-    tofy1 = mu * jnp.power(1.0 + 2.0 * sigma * mu, -0.5)
-
-    def scan_fun(carry, j):
-        prev, sum_log = carry
-        prev = jnp.clip(prev, eps, 1e100)
-        jf = j.astype(jnp.float64)
-        current = (sigma * (2.0 * jf - 1.0) / mu + 1.0 / prev) * jnp.square(tofy1)
-        current = jnp.clip(current, eps, 1e100)
-        sum_log = sum_log + jnp.where(j <= y_int, jnp.log(prev), 0.0)
-        return (current, sum_log), None
-
-    (_, sumlty), _ = jax.lax.scan(scan_fun, (tofy1, 0.0), jnp.arange(1, 513))
-    log_pdf = -gammaln(y_int + 1.0) + base + jnp.where(y_int == 0, 0.0, sumlty)
-    return log_pdf
+from .pig import logpmf as _pig_log_pdf
 
 
 def PIG() -> PoissonInverseGaussianFamily:
-    from .dpqr_functions import pPIG, qPIG, rPIG
+    from .dpqr_functions import dPIG, pPIG, qPIG, rPIG
     return build_ad_family(
         family_class=PoissonInverseGaussianFamily,
         name="PIG",
@@ -87,6 +67,7 @@ def PIG() -> PoissonInverseGaussianFamily:
         link_functions={"mu": log_link, "sigma": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative},
+        d=dPIG,
         p=pPIG,
         q=qPIG,
         r=rPIG,

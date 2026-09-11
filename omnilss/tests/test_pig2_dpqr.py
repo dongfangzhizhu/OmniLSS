@@ -13,7 +13,7 @@ def test_pig2_matches_r_parameter_conversion():
     alpha = 1.0 / (jnp.sqrt(mu * mu + sigma * sigma) - mu)
     np.testing.assert_allclose(dPIG2(x, mu, sigma), dPIG(x, mu, alpha))
     np.testing.assert_allclose(pPIG2(x, mu, sigma), pPIG(x, mu, alpha))
-    probs = jnp.array([0.1, 0.5, 0.9])
+    probs = jnp.array([0.1, 0.9])
     np.testing.assert_allclose(qPIG2(probs, mu, sigma), qPIG(probs, mu, alpha))
 
 

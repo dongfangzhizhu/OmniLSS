@@ -25,14 +25,14 @@ class TestPIG2Consistency(unittest.TestCase):
         for profile_name, x, mu, sigma, p in (
             (
                 "central",
-                np.linspace(0.01, 10.0, 80),
+                np.arange(80),
                 np.linspace(0.5, 5.0, 80),
                 np.linspace(0.2, 2.0, 80),
                 np.linspace(0.02, 0.98, 80),
             ),
             (
                 "tail",
-                np.linspace(0.01, 10.0, 80),
+                np.arange(600, 680),
                 np.linspace(0.5, 5.0, 80),
                 np.linspace(0.2, 2.0, 80),
                 np.linspace(0.02, 0.98, 80),
@@ -50,6 +50,20 @@ class TestPIG2Consistency(unittest.TestCase):
                 np.testing.assert_allclose(py_d, r_d, rtol=1e-5, atol=1e-7)
                 np.testing.assert_allclose(py_p, r_p, rtol=1e-5, atol=1e-7)
                 np.testing.assert_allclose(py_q, r_q, rtol=1e-5, atol=1e-7)
+
+    def test_pig_dpq_consistency(self) -> None:
+        fam = resolve("PIG")
+        mu = np.array([.5, 3., 20., 800.])
+        sigma = np.array([.01, .5, 2., .01])
+        for kind, arg, values in (
+            ('d', 'x', [0, 3, 30, 850]),
+            ('p', 'q', [0, 3, 30, 850]),
+            ('q', 'p', [.01, .5, .95, .999]),
+        ):
+            reference = self.bus.eval_family('PIG', kind, {
+                arg: values, 'mu': mu.tolist(), 'sigma': sigma.tolist()})
+            np.testing.assert_allclose(getattr(fam, kind)(jnp.array(values), mu, sigma),
+                                       reference, rtol=1e-6, atol=1e-8)
 
 
 if __name__ == "__main__":
