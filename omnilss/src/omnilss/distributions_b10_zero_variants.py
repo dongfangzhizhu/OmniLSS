@@ -185,22 +185,38 @@ def _binomial_log_pdf(y, mu):
 # ZASICHEL - Zero-Altered Sichel
 def ZASICHEL():
     """Zero-Altered Sichel distribution."""
-    return make_zero_altered_family(
+    family = make_zero_altered_family(
         "SICHEL",
         _sichel_log_pdf,
         ("mu", "sigma", "nu"),
         {"mu": "log", "sigma": "log", "nu": "identity"}
     )
+    from .dpqr_functions import pSICHEL
+    def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
+        base = pSICHEL(q, mu, sigma, nu)
+        f0 = pSICHEL(0., mu, sigma, nu)
+        value = jnp.where(q < 0, 0., tau + (1. - tau) * (base - f0) / (1. - f0))
+        value = jnp.where(lower_tail, value, 1. - value)
+        return jnp.log(value) if log_p else value
+    return family.__class__(**{**family.__dict__, "p": p})
 
 # ZISICHEL - Zero-Inflated Sichel  
 def ZISICHEL():
     """Zero-Inflated Sichel distribution."""
-    return make_zero_inflated_family(
+    family = make_zero_inflated_family(
         "SICHEL",
         _sichel_log_pdf,
         ("mu", "sigma", "nu"),
         {"mu": "log", "sigma": "log", "nu": "identity"}
     )
+    from .dpqr_functions import pSICHEL
+    def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
+        base = pSICHEL(q, mu, sigma, nu)
+        f = tau + (1. - tau) * base
+        value = jnp.where(q < 0, 0., f)
+        value = jnp.where(lower_tail, value, 1. - value)
+        return jnp.log(value) if log_p else value
+    return family.__class__(**{**family.__dict__, "p": p})
 
 # ZAPIG - Zero-Altered Poisson Inverse Gaussian
 def ZAPIG():
