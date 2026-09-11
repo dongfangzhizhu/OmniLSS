@@ -204,9 +204,10 @@ def ZASICHEL():
         prob = jnp.exp(prob) if log_p else jnp.asarray(prob)
         prob = prob if lower_tail else 1. - prob
         f0 = pSICHEL(0., mu, sigma, nu)
-        target = f0 + (1. - f0) * (prob - tau) / (1. - tau)
-        return jnp.where((tau >= 0) & (tau <= 1) & jnp.isfinite(tau),
-                         jnp.where(prob <= tau, 0., qSICHEL(target, mu, sigma, nu)), jnp.nan)
+        denom = jnp.where(tau == 1., 1., 1. - tau)
+        target = f0 + (1. - f0) * (prob - tau) / denom
+        valid = (tau >= 0) & (tau <= 1) & jnp.isfinite(tau) & (prob >= 0) & (prob <= 1)
+        return jnp.where(valid, jnp.where(prob <= tau, 0., qSICHEL(target, mu, sigma, nu)), jnp.nan)
     def r(key, n, mu=1., sigma=.5, nu=-.5, tau=.5):
         if not isinstance(n, int) or n < 0:
             raise ValueError('n must be a nonnegative integer')
@@ -239,9 +240,10 @@ def ZISICHEL():
         prob = prob if lower_tail else 1. - prob
         f0 = pSICHEL(0., mu, sigma, nu)
         threshold = tau + (1. - tau) * f0
-        target = (prob - tau) / (1. - tau)
-        return jnp.where((tau >= 0) & (tau <= 1) & jnp.isfinite(tau),
-                         jnp.where(prob <= threshold, 0., qSICHEL(target, mu, sigma, nu)), jnp.nan)
+        denom = jnp.where(tau == 1., 1., 1. - tau)
+        target = (prob - tau) / denom
+        valid = (tau >= 0) & (tau <= 1) & jnp.isfinite(tau) & (prob >= 0) & (prob <= 1)
+        return jnp.where(valid, jnp.where(prob <= threshold, 0., qSICHEL(target, mu, sigma, nu)), jnp.nan)
     def r(key, n, mu=1., sigma=.5, nu=-.5, tau=.5):
         if not isinstance(n, int) or n < 0:
             raise ValueError('n must be a nonnegative integer')

@@ -30,3 +30,14 @@ def test_zero_sichel_broadcast_jit_and_random_generation():
         assert samples.shape == (8, 2)
         assert np.isfinite(samples).all()
         assert np.equal(samples, np.floor(samples)).all()
+
+
+def test_zero_sichel_probability_boundaries():
+    for name in ("ZASICHEL", "ZISICHEL"):
+        fam = resolve(name)
+        np.testing.assert_array_equal(fam.q(jnp.array([0., 1.]), 1., .5, .2, 1.), [0., 0.])
+        assert np.isposinf(fam.q(1., 1., .5, .2, 0.))
+        np.testing.assert_array_equal(fam.q(jnp.array([0., 1.]), 1., .5, .2, .3,
+                                                       lower_tail=False), [np.inf, 0.])
+        assert np.isnan(fam.q(-.1, 1., .5, .2, .3))
+        assert np.isnan(fam.q(1.1, 1., .5, .2, .3))
