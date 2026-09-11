@@ -1,4 +1,4 @@
-"""R consistency checks for DELAPORT distribution (d/p/q)."""
+"""Python DELAPORT compatibility spelling versus R's actual DEL API."""
 
 from __future__ import annotations
 
@@ -28,22 +28,22 @@ class TestDELAPORTConsistency(unittest.TestCase):
                 np.arange(0, 50),
                 np.linspace(0.5, 10.0, 50),
                 np.linspace(0.2, 2.0, 50),
-                np.linspace(0.1, 5.0, 50),
+                np.linspace(0.1, 0.9, 50),
                 np.linspace(0.02, 0.98, 50),
             ),
             (
                 "tail",
-                np.arange(0, 50),
-                np.linspace(0.5, 10.0, 50),
+                np.arange(100, 150),
+                np.linspace(30.0, 150.0, 50),
                 np.linspace(0.2, 2.0, 50),
-                np.linspace(0.1, 5.0, 50),
-                np.linspace(0.02, 0.98, 50),
+                np.linspace(0.1, 0.9, 50),
+                np.linspace(0.9, 0.99, 50),
             ),
         ):
             with self.subTest(profile=profile_name):
-                r_d = self.bus.eval_family("DELAPORT", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
-                r_p = self.bus.eval_family("DELAPORT", "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
-                r_q = self.bus.eval_family("DELAPORT", "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
+                r_d = self.bus.eval_family("DEL", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
+                r_p = self.bus.eval_family("DEL", "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
+                r_q = self.bus.eval_family("DEL", "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
 
                 py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu)))
                 py_p = np.asarray(fam.p(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu)))

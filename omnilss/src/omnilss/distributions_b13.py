@@ -339,60 +339,41 @@ class DELAPORTFamily(FamilyDefinition):
 
 
 def _delaport_log_pdf(y, mu, sigma, nu):
-    """Delaport log-PDF (Poisson + Shifted Gamma mixture)."""
-    eps = jnp.finfo(jnp.float64).eps
-    y = jnp.maximum(y, 0.0)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    nu = jnp.maximum(nu, eps)
-    
-    # Delaport = Poisson(lambda) + Gamma(alpha, beta)
-    # Parameterization: mu = lambda + alpha*beta, sigma, nu
-    lambda_ = mu / (1.0 + sigma * nu)
-    alpha = 1.0 / (sigma * sigma)
-    beta = sigma * sigma * nu
-    
-    # For integer y, sum over k from 0 to y
-    # Approximation: use dominant term
-    k = jnp.floor(y / 2.0)
-    
-    # Poisson part
-    log_pois = k * jnp.log(lambda_) - lambda_ - gammaln(k + 1.0)
-    
-    # Gamma part for (y - k)
-    y_minus_k = y - k
-    log_gamma = (
-        (alpha - 1.0) * jnp.log(jnp.maximum(y_minus_k, eps))
-        - y_minus_k / beta
-        - alpha * jnp.log(beta)
-        - gammaln(alpha)
-    )
-    
-    return log_pois + log_gamma
+    """Compatibility spelling of the GAMLSS DEL log PMF."""
+    from .distributions_b6 import _del_log_pdf
+    return _del_log_pdf(y, mu, sigma, nu)
 
 
 def DELAPORT():
-    """Delaport distribution."""
+    """DEL compatibility spelling: mu > 0, sigma > 0, 0 < nu < 1.
+
+    Replaces the former unnormalized approximation. Uses DEL's numerical
+    limits and Poisson approximation; the old unrestricted nu is unsupported.
+    """
+    from .distributions_b6 import _del_p, _del_q, _del_r
     return build_ad_family(
         family_class=DELAPORTFamily,
         name="DELAPORT",
         parameters=("mu", "sigma", "nu"),
         log_pdf_func=_delaport_log_pdf,
         type_="Discrete",
-        links={"mu": "log", "sigma": "log", "nu": "log"},
+        p=_del_p,
+        q=_del_q,
+        r=_del_r,
+        links={"mu": "log", "sigma": "log", "nu": "logit"},
         link_functions={
             "mu": log_link,
             "sigma": log_link,
-            "nu": log_link,
+            "nu": logit_link,
         },
         link_inverses={
             "mu": log_inverse,
             "sigma": log_inverse,
-            "nu": log_inverse,
+            "nu": logit_inverse,
         },
         link_derivatives={
             "mu": log_derivative,
             "sigma": log_derivative,
-            "nu": log_derivative,
+            "nu": logit_derivative,
         },
     )

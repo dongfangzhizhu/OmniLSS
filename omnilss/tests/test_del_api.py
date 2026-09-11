@@ -7,6 +7,7 @@ import pytest
 from scipy.stats import nbinom, poisson
 
 from omnilss.distributions_b6 import DEL, _del_log_pdf
+from omnilss.distribution_registry import resolve
 
 
 @pytest.fixture(scope="module")
@@ -81,6 +82,25 @@ def test_sampling(family):
     assert abs(sample.var() - (4 + 16 * .5 * .7**2)) < .6
     assert family.r(key, 0).shape == (0,)
     assert family.r(key, 3, jnp.array([1., 2., 3.])).shape == (3,)
+
+
+def test_delaport_registry_alias():
+    family = resolve("DELAPORT")
+    from omnilss.distributions_b13 import DELAPORT
+    direct = DELAPORT()
+    assert family.name == direct.name == "DELAPORT"
+    assert family.links["nu"] == direct.links["nu"] == "logit"
+    np.testing.assert_allclose(
+        family.d(jnp.arange(4.), 2., 1., .5),
+        DEL().d(jnp.arange(4.), 2., 1., .5),
+    )
+    base = DEL()
+    for entry in (family, direct):
+        for method, values in (("p", jnp.arange(4.)), ("q", jnp.array([.1, .5, .9]))):
+            np.testing.assert_allclose(getattr(entry, method)(values, 2., 1., .5), getattr(base, method)(values, 2., 1., .5))
+        key = jax.random.PRNGKey(123)
+        np.testing.assert_array_equal(entry.r(key, 12), base.r(key, 12))
+        assert np.isnan(entry.d(2., 2., 1., 2.))
 
 
 def test_r_del_dpq(family):
