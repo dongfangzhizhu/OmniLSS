@@ -68,32 +68,14 @@ class PIG2Family(FamilyDefinition):
 
 
 def _pig2_log_pdf(y, mu, sigma):
-    """PIG Type 2 log-PDF with alternative parameterization."""
-    from .bessel import log_bessel_kv
-    
-    eps = jnp.finfo(jnp.float64).eps
-    y = jnp.maximum(y, 0.0)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    
-    # Type 2: different relationship between parameters
-    lambda_ = 1.0 / sigma
-    theta = mu * sigma
-    
-    sqrt_term = jnp.sqrt(lambda_ * (lambda_ + 2.0 * theta * y))
-    log_bessel = log_bessel_kv(y - 0.5, sqrt_term)
-    
-    return (
-        0.5 * jnp.log(lambda_) - 0.5 * jnp.log(2.0 * jnp.pi)
-        + y * jnp.log(theta) - gammaln(y + 1.0)
-        - lambda_ - theta * y
-        + log_bessel
-        + (y - 0.5) * (jnp.log(lambda_) - jnp.log(lambda_ + 2.0 * theta * y)) / 2.0
-    )
+    """PIG2 log-PMF using the parameterization defined by R's PIG2."""
+    from .dpqr_functions import dPIG2
+    return dPIG2(y, mu, sigma, log=True)
 
 
 def PIG2():
     """Poisson Inverse Gaussian Type 2 distribution."""
+    from .dpqr_functions import dPIG2, pPIG2, qPIG2, rPIG2
     return build_ad_family(
         family_class=PIG2Family,
         name="PIG2",
@@ -104,6 +86,10 @@ def PIG2():
         link_functions={"mu": log_link, "sigma": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative},
+        d=dPIG2,
+        p=pPIG2,
+        q=qPIG2,
+        r=rPIG2,
     )
 
 

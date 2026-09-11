@@ -7670,6 +7670,37 @@ def rPIG(key, n, mu=1.0, sigma=1.0):
     return samples
 
 
+def _pig2_alpha(mu, sigma):
+    """Convert PIG2's sigma to the alpha parameter used by PIG in R."""
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    return 1.0 / (jnp.sqrt(mu * mu + sigma * sigma) - mu)
+
+
+def dPIG2(x, mu=1.0, sigma=1.0, log=False):
+    """PIG2 PMF, matching R's dPIG2 parameter conversion."""
+    return dPIG(x, mu, _pig2_alpha(mu, sigma), log=log)
+
+
+def pPIG2(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
+    """PIG2 CDF, matching R's pPIG2 parameter conversion."""
+    result = pPIG(q, mu, _pig2_alpha(mu, sigma), lower_tail=lower_tail, log_p=log_p)
+    return jnp.where(jnp.asarray(q) < 0, 0.0 if not log_p else -jnp.inf, result)
+
+
+def qPIG2(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
+    """PIG2 quantile, matching R's qPIG2 parameter conversion."""
+    p_arr = jnp.exp(p) if log_p else jnp.asarray(p)
+    result = qPIG(p, mu, _pig2_alpha(mu, sigma), lower_tail=lower_tail, log_p=log_p)
+    return jnp.where(p_arr < 0, jnp.nan, jnp.where(p_arr > 1, jnp.nan,
+        jnp.where(p_arr == 0, 0.0, jnp.where(p_arr == 1, jnp.inf, result))))
+
+
+def rPIG2(key, n, mu=1.0, sigma=1.0):
+    """PIG2 random generation, matching R's rPIG2 parameter conversion."""
+    return rPIG(key, n, mu, _pig2_alpha(mu, sigma))
+
+
 # ------------------------------------------------------------------------------
 # SICHEL - 3 parameters (simplified version)
 # ------------------------------------------------------------------------------
