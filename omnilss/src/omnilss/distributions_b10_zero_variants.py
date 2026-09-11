@@ -196,18 +196,22 @@ def ZASICHEL():
     def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
         base = pSICHEL(q, mu, sigma, nu)
         f0 = pSICHEL(0., mu, sigma, nu)
+        valid = (tau >= 0) & (tau <= 1) & jnp.isfinite(tau)
         value = jnp.where(q < 0, 0., tau + (1. - tau) * (base - f0) / (1. - f0))
         value = jnp.where(lower_tail, value, 1. - value)
-        return jnp.log(value) if log_p else value
+        return jnp.where(valid, jnp.log(value) if log_p else value, jnp.nan)
     def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False):
         prob = jnp.exp(prob) if log_p else jnp.asarray(prob)
         prob = prob if lower_tail else 1. - prob
         f0 = pSICHEL(0., mu, sigma, nu)
         target = f0 + (1. - f0) * (prob - tau) / (1. - tau)
-        return jnp.where(prob <= tau, 0., qSICHEL(target, mu, sigma, nu))
+        return jnp.where((tau >= 0) & (tau <= 1) & jnp.isfinite(tau),
+                         jnp.where(prob <= tau, 0., qSICHEL(target, mu, sigma, nu)), jnp.nan)
     def r(key, n, mu=1., sigma=.5, nu=-.5, tau=.5):
         if not isinstance(n, int) or n < 0:
             raise ValueError('n must be a nonnegative integer')
+        if not bool(jnp.all((jnp.asarray(tau) >= 0) & (jnp.asarray(tau) <= 1))):
+            raise ValueError('tau must be in [0, 1]')
         mu, sigma, nu, tau = jnp.broadcast_arrays(*map(jnp.asarray, (mu, sigma, nu, tau)))
         return q(jax.random.uniform(key, (n,) + mu.shape), mu, sigma, nu, tau)
     return replace(family, p=p, q=q, r=r)
@@ -227,17 +231,21 @@ def ZISICHEL():
         f = tau + (1. - tau) * base
         value = jnp.where(q < 0, 0., f)
         value = jnp.where(lower_tail, value, 1. - value)
-        return jnp.log(value) if log_p else value
+        return jnp.where((tau >= 0) & (tau <= 1) & jnp.isfinite(tau),
+                         jnp.log(value) if log_p else value, jnp.nan)
     def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False):
         prob = jnp.exp(prob) if log_p else jnp.asarray(prob)
         prob = prob if lower_tail else 1. - prob
         f0 = pSICHEL(0., mu, sigma, nu)
         threshold = tau + (1. - tau) * f0
         target = (prob - tau) / (1. - tau)
-        return jnp.where(prob <= threshold, 0., qSICHEL(target, mu, sigma, nu))
+        return jnp.where((tau >= 0) & (tau <= 1) & jnp.isfinite(tau),
+                         jnp.where(prob <= threshold, 0., qSICHEL(target, mu, sigma, nu)), jnp.nan)
     def r(key, n, mu=1., sigma=.5, nu=-.5, tau=.5):
         if not isinstance(n, int) or n < 0:
             raise ValueError('n must be a nonnegative integer')
+        if not bool(jnp.all((jnp.asarray(tau) >= 0) & (jnp.asarray(tau) <= 1))):
+            raise ValueError('tau must be in [0, 1]')
         mu, sigma, nu, tau = jnp.broadcast_arrays(*map(jnp.asarray, (mu, sigma, nu, tau)))
         return q(jax.random.uniform(key, (n,) + mu.shape), mu, sigma, nu, tau)
     return replace(family, p=p, q=q, r=r)
