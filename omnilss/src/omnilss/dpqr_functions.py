@@ -7598,21 +7598,16 @@ def rSICHEL(key, n, mu=1.0, sigma=1.0, nu=-0.5):
     2. Compute q = quantile(u)
     3. Return q
     """
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    nu = jnp.asarray(nu, dtype=jnp.float64)
-
-    eps = jnp.finfo(jnp.float64).eps
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-
-    # Generate uniform samples
-    u = jrandom.uniform(key, shape=(n,))
-
-    # Convert to SICHEL samples using quantile function
+    if not isinstance(n, int) or n < 0:
+        raise ValueError('n must be a nonnegative integer')
+    mu, sigma, nu = jnp.broadcast_arrays(*[
+        jnp.asarray(v, dtype=jnp.float64) for v in (mu, sigma, nu)
+    ])
+    u = jrandom.uniform(key, shape=(n,) + mu.shape, dtype=jnp.float64)
     samples = qSICHEL(u, mu, sigma, nu)
-
-    return samples
+    valid = ((mu > 0) & (sigma > 0) & jnp.isfinite(mu)
+             & jnp.isfinite(sigma) & jnp.isfinite(nu))
+    return jnp.where(valid[None, ...], samples, jnp.nan)
 
 
 # ------------------------------------------------------------------------------
