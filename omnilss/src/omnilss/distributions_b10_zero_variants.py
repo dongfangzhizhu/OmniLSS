@@ -5,7 +5,7 @@ by wrapping existing base distributions.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import jax.numpy as jnp
 
 from .ad import build_ad_family
@@ -191,14 +191,20 @@ def ZASICHEL():
         ("mu", "sigma", "nu"),
         {"mu": "log", "sigma": "log", "nu": "identity"}
     )
-    from .dpqr_functions import pSICHEL
+    from .dpqr_functions import pSICHEL, qSICHEL
     def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
         base = pSICHEL(q, mu, sigma, nu)
         f0 = pSICHEL(0., mu, sigma, nu)
         value = jnp.where(q < 0, 0., tau + (1. - tau) * (base - f0) / (1. - f0))
         value = jnp.where(lower_tail, value, 1. - value)
         return jnp.log(value) if log_p else value
-    return family.__class__(**{**family.__dict__, "p": p})
+    def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False):
+        prob = jnp.exp(prob) if log_p else jnp.asarray(prob)
+        prob = prob if lower_tail else 1. - prob
+        f0 = pSICHEL(0., mu, sigma, nu)
+        target = f0 + (1. - f0) * (prob - tau) / (1. - tau)
+        return jnp.where(prob <= tau, 0., qSICHEL(target, mu, sigma, nu))
+    return replace(family, p=p, q=q)
 
 # ZISICHEL - Zero-Inflated Sichel  
 def ZISICHEL():
@@ -209,14 +215,21 @@ def ZISICHEL():
         ("mu", "sigma", "nu"),
         {"mu": "log", "sigma": "log", "nu": "identity"}
     )
-    from .dpqr_functions import pSICHEL
+    from .dpqr_functions import pSICHEL, qSICHEL
     def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
         base = pSICHEL(q, mu, sigma, nu)
         f = tau + (1. - tau) * base
         value = jnp.where(q < 0, 0., f)
         value = jnp.where(lower_tail, value, 1. - value)
         return jnp.log(value) if log_p else value
-    return family.__class__(**{**family.__dict__, "p": p})
+    def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False):
+        prob = jnp.exp(prob) if log_p else jnp.asarray(prob)
+        prob = prob if lower_tail else 1. - prob
+        f0 = pSICHEL(0., mu, sigma, nu)
+        threshold = tau + (1. - tau) * f0
+        target = (prob - tau) / (1. - tau)
+        return jnp.where(prob <= threshold, 0., qSICHEL(target, mu, sigma, nu))
+    return replace(family, p=p, q=q)
 
 # ZAPIG - Zero-Altered Poisson Inverse Gaussian
 def ZAPIG():
