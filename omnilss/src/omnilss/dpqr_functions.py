@@ -7457,8 +7457,8 @@ def dSICHEL(x, mu=1.0, sigma=1.0, nu=-0.5, log=False):
 
     Notes
     -----
-    This is a simplified implementation. The full Sichel distribution
-    requires modified Bessel functions of the second kind.
+    Uses the family Bessel-K recurrence with numerical support 0..10000.
+    Invalid parameters and counts beyond that range return NaN.
 
     For nu = -0.5, the Sichel distribution reduces to PIG.
 
@@ -7476,34 +7476,7 @@ def dSICHEL(x, mu=1.0, sigma=1.0, nu=-0.5, log=False):
     flat_log = jax.vmap(_sichel_log_pdf)(x.ravel(), mu.ravel(),
                                          sigma.ravel(), nu.ravel())
     log_value = flat_log.reshape(x.shape)
-    valid = ((x >= 0) & (x <= 10000) & (x == jnp.floor(x)) & jnp.isfinite(x)
-             & (mu > 0) & (sigma > 0) & jnp.isfinite(mu)
-             & jnp.isfinite(sigma) & jnp.isfinite(nu))
-    log_value = jnp.where(valid, log_value, -jnp.inf)
     return log_value if log else jnp.exp(log_value)
-
-    eps = jnp.finfo(jnp.float64).eps
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-
-    # For nu ≈ -0.5, use PIG as approximation
-    if jnp.abs(nu + 0.5) < 0.1:
-        return dPIG(x, mu, sigma, log=log)
-
-    # Simplified approximation using Negative Binomial
-    # This is not exact but provides a reasonable approximation
-    # Convert to NB parameters
-    size = 1.0 / sigma
-    prob = size / (size + mu)
-
-    from scipy.stats import nbinom
-    pmf = nbinom.pmf(x, n=size, p=prob)
-
-    if log:
-        return jnp.log(pmf)
-    else:
-        return pmf
-
 
 def pSICHEL(q, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
     """CDF for Sichel distribution.

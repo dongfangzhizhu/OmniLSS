@@ -113,9 +113,14 @@ def _sichel_log_pdf(y, mu, sigma, nu):
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     nu = jnp.asarray(nu, dtype=jnp.float64)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    y = jnp.maximum(y, 0.0)
+    valid = ((mu > 0) & (sigma > 0) & jnp.isfinite(mu)
+             & jnp.isfinite(sigma) & jnp.isfinite(nu))
+    support = (y >= 0) & jnp.isfinite(y) & (y == jnp.floor(y))
+    undefined = jnp.isnan(y) | (support & (y > 10000))
+    mu = jnp.where(valid, mu, 1.)
+    sigma = jnp.where(valid, sigma, 1.)
+    nu = jnp.where(valid, nu, -.5)
+    y = jnp.where(support & ~undefined, y, 0.)
     
     # Compute c = K_{nu+1}(1/sigma) / K_nu(1/sigma)
     inv_sigma = 1.0 / sigma
@@ -162,7 +167,7 @@ def _sichel_log_pdf(y, mu, sigma, nu):
     # Initial state: (tofY[0], sumlty=0)
     init_state = (tofy_0, jnp.asarray(0.0, dtype=jnp.float64))
     
-    # Run scan from j=1 to 100 with masking
+    # Run scan from j=1 to 10000 with masking
     j_seq = jnp.arange(1, 10001)
     (_, sumlty), _ = jax.lax.scan(scan_fun_masked, init_state, j_seq)
     
@@ -179,7 +184,8 @@ def _sichel_log_pdf(y, mu, sigma, nu):
         - log_k_nu
     )
     
-    return log_pdf
+    log_pdf = jnp.where(support, log_pdf, -jnp.inf)
+    return jnp.where(valid & ~undefined, log_pdf, jnp.nan)
 
 
 def SICHEL() -> SichelFamily:
