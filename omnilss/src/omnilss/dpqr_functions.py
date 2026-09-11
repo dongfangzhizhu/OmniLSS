@@ -7468,10 +7468,19 @@ def dSICHEL(x, mu=1.0, sigma=1.0, nu=-0.5, log=False):
     suited to represent long-tailed frequency data. In Proceedings of the
     Third Symposium on Mathematical Statistics (pp. 51-97).
     """
-    x = jnp.asarray(x, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    nu = jnp.asarray(nu, dtype=jnp.float64)
+    from .distributions_b6 import _sichel_log_pdf
+
+    x, mu, sigma, nu = jnp.broadcast_arrays(*[
+        jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu)
+    ])
+    flat_log = jax.vmap(_sichel_log_pdf)(x.ravel(), mu.ravel(),
+                                         sigma.ravel(), nu.ravel())
+    log_value = flat_log.reshape(x.shape)
+    valid = ((x >= 0) & (x <= 10000) & (x == jnp.floor(x)) & jnp.isfinite(x)
+             & (mu > 0) & (sigma > 0) & jnp.isfinite(mu)
+             & jnp.isfinite(sigma) & jnp.isfinite(nu))
+    log_value = jnp.where(valid, log_value, -jnp.inf)
+    return log_value if log else jnp.exp(log_value)
 
     eps = jnp.finfo(jnp.float64).eps
     mu = jnp.maximum(mu, eps)
