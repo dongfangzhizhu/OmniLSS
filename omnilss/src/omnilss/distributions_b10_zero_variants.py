@@ -214,7 +214,10 @@ def ZASICHEL():
             raise ValueError('tau must be in [0, 1]')
         mu, sigma, nu, tau = jnp.broadcast_arrays(*map(jnp.asarray, (mu, sigma, nu, tau)))
         return q(jax.random.uniform(key, (n,) + mu.shape), mu, sigma, nu, tau)
-    return replace(family, p=p, q=q, r=r)
+    def d(x, mu=1., sigma=1., nu=-.5, tau=.5, log=False):
+        mass = p(x, mu, sigma, nu, tau) - p(x - 1, mu, sigma, nu, tau)
+        return jnp.log(mass) if log else mass
+    return replace(family, d=d, p=p, q=q, r=r)
 
 # ZISICHEL - Zero-Inflated Sichel  
 def ZISICHEL():
@@ -248,7 +251,10 @@ def ZISICHEL():
             raise ValueError('tau must be in [0, 1]')
         mu, sigma, nu, tau = jnp.broadcast_arrays(*map(jnp.asarray, (mu, sigma, nu, tau)))
         return q(jax.random.uniform(key, (n,) + mu.shape), mu, sigma, nu, tau)
-    return replace(family, p=p, q=q, r=r)
+    def d(x, mu=1., sigma=1., nu=-.5, tau=.5, log=False):
+        mass = p(x, mu, sigma, nu, tau) - p(x - 1, mu, sigma, nu, tau)
+        return jnp.log(mass) if log else mass
+    return replace(family, d=d, p=p, q=q, r=r)
 
 # ZAPIG - Zero-Altered Poisson Inverse Gaussian
 def ZAPIG():
