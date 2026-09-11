@@ -7554,48 +7554,20 @@ def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
     The quantile is found by searching for the smallest x such that
     P(X <= x) >= p.
     """
-    p = jnp.asarray(p, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    nu = jnp.asarray(nu, dtype=jnp.float64)
-
-    if log_p:
-        p = jnp.exp(p)
-
-    if not lower_tail:
-        p = 1.0 - p
-
-    eps = jnp.finfo(jnp.float64).eps
-    p = jnp.clip(p, eps, 1.0 - eps)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-
-    # Extract scalar values for use inside the loop
-    mu_scalar    = float(jnp.mean(mu))
-    sigma_scalar = float(jnp.mean(sigma))
-    nu_scalar    = float(jnp.mean(nu))
-
-    # Find quantile by searching
-    def find_quantile(p_val):
-        # Search from 0 upward
-        max_search = int(mu_scalar * 10 + 100)
-        for x in range(max_search):
-            cdf_val = pSICHEL(float(x), mu_scalar, sigma_scalar, nu_scalar,
-                              lower_tail=True, log_p=False)
-            if cdf_val >= p_val:
-                return float(x)
-        return float(max_search - 1)
-
-    # Vectorize
-    p_array = jnp.atleast_1d(p)
-    q_list = [find_quantile(float(p_val)) for p_val in p_array]
-    q = jnp.array(q_list)
-
-    # Return scalar if input was scalar
-    if jnp.ndim(p) == 0:
-        return q[0]
-
-    return q
+    p, mu, sigma, nu = jnp.broadcast_arrays(*[
+        jnp.asarray(v, dtype=jnp.float64) for v in (p, mu, sigma, nu)
+    ])
+    target = jnp.exp(p) if log_p else p
+    target = target if lower_tail else 1. - target
+    valid = ((target >= 0) & (target <= 1) & jnp.isfinite(target)
+             & (mu > 0) & (sigma > 0) & jnp.isfinite(mu)
+             & jnp.isfinite(sigma) & jnp.isfinite(nu))
+    def step(i, found):
+        cdf = pSICHEL(i, mu, sigma, nu)
+        return jnp.where((found < 0) & (cdf >= target), i, found)
+    found = jax.lax.fori_loop(0, 10001, step, jnp.full(p.shape, -1., dtype=jnp.float64))
+    result = jnp.where(target == 0, 0., jnp.where(target == 1, jnp.inf, found))
+    return jnp.where(valid & (found >= 0), result, jnp.nan)
 
 
 def rSICHEL(key, n, mu=1.0, sigma=1.0, nu=-0.5):
