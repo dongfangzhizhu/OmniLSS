@@ -210,8 +210,6 @@ def ZASICHEL():
     def r(key, n, mu=1., sigma=.5, nu=-.5, tau=.5):
         if not isinstance(n, int) or n < 0:
             raise ValueError('n must be a nonnegative integer')
-        if not bool(jnp.all((jnp.asarray(tau) >= 0) & (jnp.asarray(tau) <= 1))):
-            raise ValueError('tau must be in [0, 1]')
         mu, sigma, nu, tau = jnp.broadcast_arrays(*map(jnp.asarray, (mu, sigma, nu, tau)))
         return q(jax.random.uniform(key, (n,) + mu.shape), mu, sigma, nu, tau)
     def d(x, mu=1., sigma=1., nu=-.5, tau=.5, log=False):
@@ -247,8 +245,6 @@ def ZISICHEL():
     def r(key, n, mu=1., sigma=.5, nu=-.5, tau=.5):
         if not isinstance(n, int) or n < 0:
             raise ValueError('n must be a nonnegative integer')
-        if not bool(jnp.all((jnp.asarray(tau) >= 0) & (jnp.asarray(tau) <= 1))):
-            raise ValueError('tau must be in [0, 1]')
         mu, sigma, nu, tau = jnp.broadcast_arrays(*map(jnp.asarray, (mu, sigma, nu, tau)))
         return q(jax.random.uniform(key, (n,) + mu.shape), mu, sigma, nu, tau)
     def d(x, mu=1., sigma=1., nu=-.5, tau=.5, log=False):
