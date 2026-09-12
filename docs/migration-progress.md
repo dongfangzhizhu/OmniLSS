@@ -880,7 +880,7 @@
 | `ZIP2.R` | `ZIP2` 零膨胀 Poisson 2 | ✅ | ✅ 已实现 | `omnilss.distributions_b5.ZIP2` |
 | `ZAP.R` | `ZAP` 零截断 Poisson | ✅ | ✅ 已实现 | `omnilss.distributions_b5.ZAP` |
 | `ZAGA.R` | `ZAGA` 零截断 Gamma | ✅ | ✅ 已实现 | `omnilss.distributions_b5.ZAGA` |
-| `ZAGA.R` | `plotZAGA()` / `meanZAGA()` | — | ❌ 未实现 | — |
+| `ZAGA.R` | `plotZAGA()` / `meanZAGA()` | — | ⚠️ 部分实现（`meanZAGA`） | `omnilss.meanZAGA` |
 | `ZAIG.R` | `ZAIG` 零截断逆高斯 | ✅ | ✅ 已实现 | `omnilss.distributions_b5.ZAIG` |
 | `ZAIG.R` | `plotZAIG()` / `meanZAIG()` | — | ❌ 未实现 | — |
 | `ZINBI.R` | `ZINBI` 零膨胀负二项 I | ✅ | ✅ 已实现 | `omnilss.distributions_b5.ZINBI` |

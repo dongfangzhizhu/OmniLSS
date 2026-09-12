@@ -8332,6 +8332,26 @@ def fittedMN(*params):
                      + (1.0 / denominator,), axis=-1)
 
 
+def meanZAGA(obj):
+    """Return fitted means for a ZAGA model.
+
+    This mirrors ``gamlss.dist::meanZAGA``: the continuous Gamma component
+    has mean ``mu`` and is selected with probability ``1 - nu``.
+    """
+    family = getattr(obj, "family", None)
+    family_name = getattr(family, "name", family)
+    if isinstance(family_name, (tuple, list)):
+        family_name = family_name[0] if family_name else None
+    if family_name != "ZAGA":
+        raise ValueError("the object does not have a ZAGA distribution")
+    values = getattr(obj, "fitted_values", None)
+    if values is None or "mu" not in values or "nu" not in values:
+        raise ValueError("ZAGA model fitted_values must contain 'mu' and 'nu'")
+    return (1.0 - jnp.asarray(values["nu"], dtype=jnp.float64)) * jnp.asarray(
+        values["mu"], dtype=jnp.float64
+    )
+
+
 def rNET(key, n, mu=0.0, sigma=1.0, nu=2.0, tau=4.0):
     """Random generation for Normal-Exponential-t distribution.
 
