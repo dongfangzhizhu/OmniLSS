@@ -35,7 +35,7 @@ class PDFPlotEntry:
             return 0.0
         if self.family == "BEINF":
             return self.parameters["nu"] / (1.0 + self.parameters["nu"] + self.parameters["tau"])
-        if self.family in {"BEINF0", "BEINF1"}:
+        if self.family == "BEINF0":
             return self.parameters["nu"] / (1.0 + self.parameters["nu"])
         return 0.0
 
