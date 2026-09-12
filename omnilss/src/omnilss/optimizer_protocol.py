@@ -39,7 +39,7 @@ class RSOptimizerAdapter:
         model = context["model"]
         slots = model.additional_slots
         diagnostics = {
-            "loss": float(model.g_dev),
+            "loss": float(getattr(model, "g_dev", float("nan"))),
             "gradient_norm": float(slots.get("gradient_norm", float("nan"))),
             "step_size": slots.get("step_size_by_param", {}),
             "condition_number": float(slots.get("condition_number", float("nan"))),
