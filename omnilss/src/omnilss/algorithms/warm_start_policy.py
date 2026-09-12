@@ -32,6 +32,7 @@ class WarmStartPolicy(Protocol):
         y: np.ndarray,
         parameter_names: tuple[str, ...],
         family_name: str | None = None,
+        family_name: str | None = None,
     ) -> WarmStartResult:
         """Return initial eta/fitted vectors for each estimable parameter."""
 
