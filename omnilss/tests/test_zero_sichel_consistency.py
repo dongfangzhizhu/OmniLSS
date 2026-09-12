@@ -81,3 +81,37 @@ def test_zero_sichel_log_upper_tail_preserves_small_probabilities():
         actual = fam.q(upper, 2., .7, .2, .35,
                        lower_tail=False, log_p=True)
         np.testing.assert_array_equal(actual, x)
+
+
+def test_zero_sichel_extreme_tails_and_roundtrips():
+    for name in ("ZASICHEL", "ZISICHEL"):
+        fam = resolve(name)
+        x = jnp.array([0., 3., 100.])[:, None]
+        tau = jnp.array([0., .35])
+        for lower_tail in (True, False):
+            log_prob = jax.jit(lambda v: fam.p(
+                v, 2., .7, .2, tau, lower_tail=lower_tail, log_p=True))(x)
+            assert np.isfinite(log_prob[1:]).all()
+            if not lower_tail:
+                assert (np.asarray(log_prob[-1]) < -40).all()
+            # Lower-tail probabilities at x=100 round to one, so invert
+            # central points there; the upper log tail retains all points.
+            points = slice(None, 2) if lower_tail else slice(None)
+            actual = jax.jit(lambda v: fam.q(
+                v, 2., .7, .2, tau, lower_tail=lower_tail, log_p=True))(log_prob[points])
+            np.testing.assert_array_equal(actual, np.broadcast_to(x[points], actual.shape))
+
+
+def test_zero_sichel_cdf_support_and_invalid_parameters():
+    for name in ("ZASICHEL", "ZISICHEL"):
+        fam = resolve(name)
+        for lower_tail in (True, False):
+            expected = [0., 0., 1., 1.] if lower_tail else [1., 1., 0., 0.]
+            np.testing.assert_array_equal(fam.p(
+                [-np.inf, -1., 0., np.inf], tau=1., lower_tail=lower_tail), expected)
+            np.testing.assert_allclose(fam.p([0., .5], tau=.3, lower_tail=lower_tail),
+                                       fam.p(0., tau=.3, lower_tail=lower_tail))
+        assert np.isnan(fam.p([np.nan, 10001.])).all()
+        assert np.isnan(fam.p(np.inf, sigma=-1.))
+        assert np.isnan(fam.q(0., sigma=-1., tau=1.))
+        assert np.isnan(fam.q([.1, np.nan, np.inf], log_p=True)).all()

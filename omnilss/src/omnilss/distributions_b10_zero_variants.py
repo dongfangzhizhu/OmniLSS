@@ -217,6 +217,53 @@ def _zero_sichel_density(x, mu, sigma, nu, tau, *, altered, log):
     return values if log else jnp.exp(values)
 
 
+def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
+                             lower_tail, log_p, quantile=False):
+    """Evaluate tails/invert them directly, without probability complements.
+
+    Like SICHEL, the numerical support is limited to 0..10000. Quantile
+    scans use linear space rather than a square cumulative-sum matrix.
+    """
+    args = jnp.broadcast_arrays(*[
+        jnp.asarray(v, dtype=jnp.float64) for v in (value, mu, sigma, nu, tau)
+    ])
+    support = jnp.arange(10001, dtype=jnp.float64)
+
+    def scalar(v, mm, ss, nn, tt):
+        mass = jax.vmap(lambda x: _zero_sichel_log_pdf(
+            x, mm, ss, nn, tt, altered=altered))(support)
+        valid = ((mm > 0) & (ss > 0) & jnp.isfinite(mm)
+                 & jnp.isfinite(ss) & jnp.isfinite(nn)
+                 & (tt >= 0) & (tt <= 1) & ~jnp.isnan(v))
+        if quantile:
+            valid = valid & ((v <= 0) if log_p else ((v >= 0) & (v <= 1)))
+            target = v if log_p else jnp.log(v)
+            if lower_tail:
+                cumulative = jax.lax.associative_scan(jnp.logaddexp, mass)
+            else:
+                inclusive = jax.lax.associative_scan(jnp.logaddexp, mass, reverse=True)
+                cumulative = jnp.concatenate((inclusive[1:], jnp.array([-jnp.inf])))
+            # Only compensate for floating-point roundoff at discrete jumps.
+            tolerance = 8 * jnp.finfo(jnp.float64).eps * jnp.maximum(1., jnp.abs(target))
+            tolerance = jnp.where(jnp.isfinite(target), tolerance, 0.)
+            reached = (cumulative >= target - tolerance) if lower_tail else (cumulative <= target + tolerance)
+            result = jnp.where(jnp.any(reached), jnp.argmax(reached).astype(jnp.float64), jnp.nan)
+            at_zero = jnp.isneginf(target) if lower_tail else (target == 0)
+            at_infinity = (target == 0) if lower_tail else jnp.isneginf(target)
+            result = jnp.where(at_zero | (tt == 1), 0., jnp.where(at_infinity, jnp.inf, result))
+        else:
+            selected = (support <= v) if lower_tail else (support > v)
+            result = jax.scipy.special.logsumexp(jnp.where(selected, mass, -jnp.inf))
+            result = jnp.minimum(result, 0.)
+            result = jnp.where(v < 0, -jnp.inf if lower_tail else 0., result)
+            result = jnp.where(jnp.isposinf(v), 0. if lower_tail else -jnp.inf, result)
+            valid = valid & ~((v > 10000) & jnp.isfinite(v))
+            result = result if log_p else jnp.exp(result)
+        return jnp.where(valid, result, jnp.nan)
+
+    return jax.vmap(scalar)(*(v.ravel() for v in args)).reshape(args[0].shape)
+
+
 # ZASICHEL - Zero-Altered Sichel
 def ZASICHEL():
     """Zero-Altered Sichel distribution."""
@@ -226,34 +273,12 @@ def ZASICHEL():
         ("mu", "sigma", "nu"),
         {"mu": "log", "sigma": "log", "nu": "identity"}
     )
-    from .dpqr_functions import pSICHEL, qSICHEL
     def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
-        base_log = pSICHEL(q, mu, sigma, nu, log_p=True)
-        f0_log = pSICHEL(0., mu, sigma, nu, log_p=True)
-        valid = (tau >= 0) & (tau <= 1) & jnp.isfinite(tau)
-        f0 = jnp.exp(f0_log)
-        base = jnp.exp(base_log)
-        value = jnp.where(q < 0, 0., tau + (1. - tau) * (base - f0) / (1. - f0))
-        value = jnp.where(q >= jnp.inf, 1., value)
-        if not lower_tail:
-            value = jnp.where(q <= 0, 1. - tau, (1. - tau) * (1. - base) / (1. - f0))
-        return jnp.where(valid, jnp.log(value) if log_p else value, jnp.nan)
+        return _zero_sichel_probability(q, mu, sigma, nu, tau, altered=True,
+                                        lower_tail=lower_tail, log_p=log_p)
     def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False):
-        raw_prob = jnp.asarray(prob)
-        # Convert an upper-tail log probability without subtractive
-        # cancellation (important for very small survival probabilities).
-        prob = jnp.exp(raw_prob) if log_p else raw_prob
-        prob = jnp.where(
-            lower_tail,
-            prob,
-            -jnp.expm1(raw_prob) if log_p else 1. - prob,
-        )
-        f0 = pSICHEL(0., mu, sigma, nu)
-        denom = jnp.where(tau == 1., 1., 1. - tau)
-        target = f0 + (1. - f0) * (prob - tau) / denom
-        target = jnp.where(prob == 1., 1., target)
-        valid = (tau >= 0) & (tau <= 1) & jnp.isfinite(tau) & (prob >= 0) & (prob <= 1)
-        return jnp.where(valid, jnp.where(prob <= tau, 0., qSICHEL(target, mu, sigma, nu)), jnp.nan)
+        return _zero_sichel_probability(prob, mu, sigma, nu, tau, altered=True,
+                                        lower_tail=lower_tail, log_p=log_p, quantile=True)
     def r(key, n, mu=1., sigma=.5, nu=-.5, tau=.5):
         if not isinstance(n, int) or n < 0:
             raise ValueError('n must be a nonnegative integer')
@@ -272,32 +297,12 @@ def ZISICHEL():
         ("mu", "sigma", "nu"),
         {"mu": "log", "sigma": "log", "nu": "identity"}
     )
-    from .dpqr_functions import pSICHEL, qSICHEL
     def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
-        base_log = pSICHEL(q, mu, sigma, nu, log_p=True)
-        base = jnp.exp(base_log)
-        value = jnp.where(q < 0, 0., tau + (1. - tau) * base)
-        value = jnp.where(q >= jnp.inf, 1., value)
-        if not lower_tail:
-            value = jnp.where(q < 0, 1., (1. - tau) * (1. - base))
-        return jnp.where((tau >= 0) & (tau <= 1) & jnp.isfinite(tau),
-                         jnp.log(value) if log_p else value, jnp.nan)
+        return _zero_sichel_probability(q, mu, sigma, nu, tau, altered=False,
+                                        lower_tail=lower_tail, log_p=log_p)
     def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False):
-        raw_prob = jnp.asarray(prob)
-        # Keep the upper-tail log-probability conversion in log space.
-        prob = jnp.exp(raw_prob) if log_p else raw_prob
-        prob = jnp.where(
-            lower_tail,
-            prob,
-            -jnp.expm1(raw_prob) if log_p else 1. - prob,
-        )
-        f0 = pSICHEL(0., mu, sigma, nu)
-        threshold = tau + (1. - tau) * f0
-        denom = jnp.where(tau == 1., 1., 1. - tau)
-        target = (prob - tau) / denom
-        target = jnp.where(prob == 1., 1., target)
-        valid = (tau >= 0) & (tau <= 1) & jnp.isfinite(tau) & (prob >= 0) & (prob <= 1)
-        return jnp.where(valid, jnp.where(prob <= threshold, 0., qSICHEL(target, mu, sigma, nu)), jnp.nan)
+        return _zero_sichel_probability(prob, mu, sigma, nu, tau, altered=False,
+                                        lower_tail=lower_tail, log_p=log_p, quantile=True)
     def r(key, n, mu=1., sigma=.5, nu=-.5, tau=.5):
         if not isinstance(n, int) or n < 0:
             raise ValueError('n must be a nonnegative integer')
