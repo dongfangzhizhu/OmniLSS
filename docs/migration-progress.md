@@ -864,7 +864,7 @@
 | `MN4.R` | `MN4` 多项分布（4 类） | ✅ | ✅ 已实现 | `omnilss.distributions_b7.MN4` |
 | `MN5.R` | `MN5` 多项分布（5 类） | ✅ | ✅ 已实现 | `omnilss.distributions_b7.MN5` |
 | `multin-23-09-12.R` | `MULTIN` 通用多项分布 | ✅ | ✅ 已实现 | `omnilss.distributions_discrete_compat.MULTIN` |
-| `multin-23-09-12.R` | `fittedMN()` 多项拟合值 | — | ❌ 未实现 | — |
+| `multin-23-09-12.R` | `fittedMN()` 多项拟合值 | — | ✅ 已实现 | `omnilss.dpqr_functions.fittedMN` |
 | `ZIPF.R` | `ZIPF` Zipf 分布 | ✅ | ✅ 已实现 | `omnilss.distributions_b9.ZIPF` |
 | `ZIPF.R` | `zetaP()` Zeta 函数 | — | ✅ 已实现 | `omnilss.dpqr_functions.zetaP` |
 | `IGA.R` | `IGAMMA` 逆 Gamma | ✅ | ✅ 已实现 | `omnilss.distributions_b1.IGAMMA` |
@@ -943,7 +943,7 @@
 | R 函数 | 说明 | 状态 | Python 位置 |
 |--------|------|------|-------------|
 | `MULTIN()` | 通用多项分布构造器 | ✅ 已实现 | `omnilss.distributions_discrete_compat.MULTIN` |
-| `fittedMN()` | 多项拟合值 | ❌ 未实现 | — |
+| `fittedMN()` | 多项拟合值 | ✅ 已实现 | `omnilss.dpqr_functions.fittedMN` |
 
 **R 文件：`PlottingDistributions.R`（分布绘图骨架）**
 

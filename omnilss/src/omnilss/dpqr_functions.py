@@ -2504,6 +2504,7 @@ __all__ = [
     'dNBII', 'pNBII', 'qNBII', 'rNBII',
     'dNO2', 'pNO2', 'qNO2', 'rNO2',
     'pZIP', 'qZIP', 'rZIP',
+    'fittedMN',
 ]
 
 
@@ -8283,6 +8284,8 @@ def qNET(p, mu=0.0, sigma=1.0, nu=2.0, tau=4.0, lower_tail=True, log_p=False):
         try:
             result = brentq(objective, lower, upper, xtol=1e-8)
             return result
+
+
         except:
             # Fallback to bisection
             for _ in range(50):
@@ -8307,6 +8310,26 @@ def qNET(p, mu=0.0, sigma=1.0, nu=2.0, tau=4.0, lower_tail=True, log_p=False):
         return q[0]
 
     return q
+
+
+def fittedMN(*params):
+    """Convert fitted MN parameters (or a ``GAMLSSModel``) to probabilities."""
+    if len(params) == 1 and hasattr(params[0], "fitted_values"):
+        model = params[0]
+        names = tuple(getattr(model, "parameters", ())) or tuple(
+            getattr(model, "par", ())
+        )
+        values = getattr(model, "fitted_values", {})
+        params = tuple(values[name] for name in names if name in values)
+    if not 1 <= len(params) <= 4:
+        raise ValueError("fittedMN requires between one and four parameters")
+    arrays = jnp.broadcast_arrays(*(jnp.asarray(param, dtype=jnp.float64)
+                                    for param in params))
+    if len(arrays) == 1:
+        return jnp.stack((arrays[0], 1.0 - arrays[0]), axis=-1)
+    denominator = 1.0 + sum(arrays)
+    return jnp.stack(tuple(param / denominator for param in arrays)
+                     + (1.0 / denominator,), axis=-1)
 
 
 def rNET(key, n, mu=0.0, sigma=1.0, nu=2.0, tau=4.0):

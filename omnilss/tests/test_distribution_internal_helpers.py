@@ -1,4 +1,4 @@
-"""R gamlss.dist internal distribution helpers: tofyS, zetaP, GetBI_C, get_C.
+"""R gamlss.dist internal distribution helpers.
 
 Golden constants were generated with R 4.6.0 / gamlss.dist 6.1.1 at full
 double precision.  get_C is validated elementwise because R's wrapper does
@@ -13,11 +13,73 @@ import pytest
 from omnilss.dpqr_functions import (
     GetBI_C,
     SI_TOFY_MAX_COUNT,
+    fittedMN,
     get_C,
     tofyS,
     tofySICHEL,
     zetaP,
 )
+
+
+def test_fitted_mn_matches_r_parameterization():
+    mu = jnp.array([1.2, 3.4])
+    sigma = jnp.array([0.5, 2.5])
+    nu = jnp.array([0.75, 1.5])
+    tau = jnp.array([0.2, 0.9])
+
+    # R's fittedMN has a special two-category branch: cbind(mu, 1 - mu).
+    np.testing.assert_allclose(
+        fittedMN(mu),
+        [[1.2, -0.2], [3.4, -2.4]],
+        rtol=1e-14,
+        atol=1e-14,
+    )
+    np.testing.assert_allclose(
+        fittedMN(mu, sigma),
+        [[0.4444444444444444, 0.18518518518518517, 0.37037037037037035],
+         [0.4927536231884058, 0.36231884057971014, 0.14492753623188406]],
+        rtol=1e-14,
+        atol=1e-14,
+    )
+    np.testing.assert_allclose(
+        fittedMN(mu, sigma, nu),
+        [[0.34782608695652173, 0.14492753623188406,
+          0.21739130434782608, 0.2898550724637681],
+         [0.40476190476190477, 0.2976190476190476,
+          0.17857142857142858, 0.11904761904761904]],
+        rtol=1e-14,
+        atol=1e-14,
+    )
+    np.testing.assert_allclose(
+        fittedMN(mu, sigma, nu, tau),
+        [[0.3287671232876712, 0.136986301369863,
+          0.2054794520547945, 0.0547945205479452,
+          0.273972602739726],
+         [0.3655913978494624, 0.26881720430107525,
+          0.16129032258064516, 0.0967741935483871,
+          0.10752688172043011]],
+        rtol=1e-14,
+        atol=1e-14,
+    )
+
+
+def test_fitted_mn_broadcasts_jits_and_validates_arity():
+    mu = jnp.array([[1.0], [2.0]])
+    sigma = jnp.array([0.5, 1.5, 2.5])
+    actual = jax.jit(fittedMN)(mu, sigma)
+    assert actual.shape == (2, 3, 3)
+    np.testing.assert_allclose(np.sum(actual, axis=-1), 1.0)
+    np.testing.assert_allclose(
+        actual,
+        fittedMN(mu, sigma),
+        rtol=1e-14,
+        atol=1e-14,
+    )
+    assert np.isfinite(jax.grad(lambda value: fittedMN(value, 0.5)[0])(1.0))
+    with pytest.raises(ValueError):
+        fittedMN()
+    with pytest.raises(ValueError):
+        fittedMN(1.0, 2.0, 3.0, 4.0, 5.0)
 
 
 def test_tofy_s_matches_r():
