@@ -32,7 +32,6 @@ class WarmStartPolicy(Protocol):
         y: np.ndarray,
         parameter_names: tuple[str, ...],
         family_name: str | None = None,
-        family_name: str | None = None,
     ) -> WarmStartResult:
         """Return initial eta/fitted vectors for each estimable parameter."""
 
@@ -68,6 +67,7 @@ class FamilyHeuristicInit:
         *,
         y: np.ndarray,
         parameter_names: tuple[str, ...],
+        family_name: str | None = None,
     ) -> WarmStartResult:
         n = y.shape[0]
         y_mean = float(np.mean(y)) if n else 0.0
