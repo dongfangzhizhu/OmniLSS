@@ -20,9 +20,11 @@ def test_search_cap_preserves_upper_tail(name):
             p, lower_tail=False, log_p=log_p, max_value=0))(values)
         np.testing.assert_allclose(capped, jnp.where(full == 0, 0., jnp.nan))
         assert np.isnan(capped[-1])
-    for invalid in (-1, 10001, 1000000, 1.5, True):
+    for invalid in (-1, 100001, 1000000, 1.5, True):
         with pytest.raises(ValueError, match="max_value"):
             quantile(.5, max_value=invalid)
+    # Interior caps above the historical 10000 are now valid candidates.
+    quantile(.5, max_value=10001)
 
 
 @pytest.mark.parametrize("name", ["ZASICHEL", "ZISICHEL"])

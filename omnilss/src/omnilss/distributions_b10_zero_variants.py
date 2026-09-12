@@ -206,7 +206,9 @@ def _zero_sichel_log_pdf(x, mu, sigma, nu, tau, *, altered):
     value = jnp.where(support, value, -jnp.inf)
     # The point mass needs no base-density approximation or support cutoff.
     value = jnp.where(tau == 1, jnp.where(x == 0, 0., -jnp.inf), value)
-    undefined = jnp.isnan(x) | (support & (x > 10000) & (tau != 1))
+    from .distributions_b6 import SICHEL_DENSITY_MAX_COUNT
+    undefined = (jnp.isnan(x) | (support & (x > SICHEL_DENSITY_MAX_COUNT)
+                                 & (tau != 1)))
     return jnp.where(valid & ~undefined, value, jnp.nan)
 
 
@@ -217,6 +219,29 @@ def _zero_sichel_density(x, mu, sigma, nu, tau, *, altered, log):
     values = jax.vmap(lambda *v: _zero_sichel_log_pdf(*v, altered=altered))(
         *(v.ravel() for v in args)).reshape(args[0].shape)
     return values if log else jnp.exp(values)
+
+
+def _zero_sichel_log_mass_sequence(mu, sigma, nu, tau, *, altered, max_count):
+    """Log PMF of a zero variant for counts 0..max_count in one base scan.
+
+    Equivalent to calling `_zero_sichel_log_pdf` on every count, but the
+    base SICHEL recursion runs once instead of once per candidate, which
+    keeps probability/quantile scans linear in the support budget.
+    """
+    from .distributions_b6 import _sichel_log_pmf_sequence
+    base = _sichel_log_pmf_sequence(mu, sigma, nu, max_count)
+    log_f0 = base[0]
+    log_positive = jnp.log1p(-tau) + base
+    if altered:
+        log_positive = log_positive - jnp.log(-jnp.expm1(log_f0))
+        at_zero = jnp.log(tau)
+    else:
+        at_zero = jnp.logaddexp(jnp.log(tau), jnp.log1p(-tau) + log_f0)
+    counts = jnp.arange(max_count + 1, dtype=jnp.float64)
+    mass = jnp.concatenate((jnp.reshape(at_zero, (1,)), log_positive[1:]))
+    # A tau of 1 collapses everything onto the point mass at zero.
+    mass = jnp.where(tau == 1, jnp.where(counts == 0, 0., -jnp.inf), mass)
+    return mass
 
 
 def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
@@ -240,8 +265,8 @@ def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
     support = jnp.arange((max_value if lower_tail else SICHEL_PROBABILITY_MAX_COUNT) + 1, dtype=jnp.float64)
 
     def scalar(v, mm, ss, nn, tt):
-        mass = jax.vmap(lambda x: _zero_sichel_log_pdf(
-            x, mm, ss, nn, tt, altered=altered))(support)
+        mass = _zero_sichel_log_mass_sequence(
+            mm, ss, nn, tt, altered=altered, max_count=support.shape[0] - 1)
         valid = ((mm > 0) & (ss > 0) & jnp.isfinite(mm)
                  & jnp.isfinite(ss) & jnp.isfinite(nn)
                  & (tt >= 0) & (tt <= 1) & ~jnp.isnan(v))

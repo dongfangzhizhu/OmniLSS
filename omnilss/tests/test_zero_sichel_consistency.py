@@ -30,8 +30,13 @@ def test_point_mass_beyond_numerical_support():
                 np.testing.assert_allclose(actual, expected)
         assert np.isnan(fam.d(10001., tau=1., sigma=-1.))
         assert np.isnan(fam.p(10001., tau=1., sigma=-1.))
-        assert np.isnan(fam.d(10001., tau=.5))
-        assert np.isnan(fam.p(10001., tau=.5))
+        # The zero variants share the base SICHEL support budget, so
+        # interior counts above the historical 10000 stay valid while
+        # counts beyond the budget are undefined.
+        assert np.isfinite(fam.d(10001., tau=.5))
+        assert np.isfinite(fam.p(10001., tau=.5))
+        assert np.isnan(fam.d(100001., tau=.5))
+        assert np.isnan(fam.p(100001., tau=.5))
 
 
 def test_stable_density_support_and_likelihood():
@@ -40,7 +45,7 @@ def test_stable_density_support_and_likelihood():
         outside = jnp.array([-1., .5, jnp.inf, -jnp.inf])
         np.testing.assert_array_equal(fam.d(outside), 0.)
         np.testing.assert_array_equal(fam.d(outside, log=True), -np.inf)
-        assert np.isnan(fam.d(jnp.array([jnp.nan, 10001.]))).all()
+        assert np.isnan(fam.d(jnp.array([jnp.nan, 100001.]))).all()
         for tau in (-.1, 1.1, np.nan):
             assert np.isnan(fam.d(0., tau=tau))
         assert np.isnan(fam.d(0., sigma=-1.))
@@ -142,7 +147,7 @@ def test_zero_sichel_cdf_support_and_invalid_parameters():
                 [-np.inf, -1., 0., np.inf], tau=1., lower_tail=lower_tail), expected)
             np.testing.assert_allclose(fam.p([0., .5], tau=.3, lower_tail=lower_tail),
                                        fam.p(0., tau=.3, lower_tail=lower_tail))
-        assert np.isnan(fam.p([np.nan, 10001.])).all()
+        assert np.isnan(fam.p([np.nan, 100001.])).all()
         assert np.isnan(fam.p(np.inf, sigma=-1.))
         assert np.isnan(fam.q(0., sigma=-1., tau=1.))
         assert np.isnan(fam.q([.1, np.nan, np.inf], log_p=True)).all()
