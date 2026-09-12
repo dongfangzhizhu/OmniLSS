@@ -11,3 +11,5 @@ def test_plot_beinf1_returns_vectorized_curves():
     assert all(np.all(np.isfinite(entry.density)) for entry in result.entries)
     assert result.entries[0].parameters["nu"] == 0.2
     assert result.entries[1].parameters["nu"] == 0.8
+    assert result.entries[0].point_mass_zero == 0.0
+    assert result.entries[0].point_mass_one == 0.2 / 1.2

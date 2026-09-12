@@ -12,6 +12,8 @@ def test_plot_beinf_returns_curve_and_parameters():
     assert entry.density.shape == (51,)
     assert np.all(np.isfinite(entry.density))
     assert entry.parameters == {"mu": 0.4, "sigma": 0.3, "nu": 0.2, "tau": 0.6}
+    assert entry.point_mass_zero == pytest.approx(0.2 / 1.8)
+    assert entry.point_mass_one == pytest.approx(0.6 / 1.8)
 
 
 def test_plot_beinf_validates_grid():

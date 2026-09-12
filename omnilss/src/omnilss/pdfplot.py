@@ -26,6 +26,28 @@ class PDFPlotEntry:
     density: np.ndarray
     parameters: dict[str, float]
     observed_value: float | None
+    family: str = ""
+
+    @property
+    def point_mass_zero(self) -> float:
+        """Probability mass at zero for the beta-inflated families."""
+        if "nu" not in self.parameters or self.parameters.get("nu", 0.0) <= 0:
+            return 0.0
+        if self.family == "BEINF":
+            return self.parameters["nu"] / (1.0 + self.parameters["nu"] + self.parameters["tau"])
+        if self.family in {"BEINF0", "BEINF1"}:
+            return self.parameters["nu"] / (1.0 + self.parameters["nu"])
+        return 0.0
+
+    @property
+    def point_mass_one(self) -> float:
+        """Probability mass at one for the beta-inflated families."""
+        if self.family == "BEINF":
+            tau = self.parameters["tau"]
+            return tau / (1.0 + self.parameters.get("nu", 0.0) + tau)
+        if self.family == "BEINF1":
+            return self.parameters["nu"] / (1.0 + self.parameters["nu"])
+        return 0.0
 
 
 @dataclass(frozen=True)
@@ -133,6 +155,7 @@ def pdf_plot_data(
                     density=_staged_density_curve(resolved_family, y_grid, parameter_values),
                     parameters=parameter_values,
                     observed_value=float(observed[zero_index]),
+                        family=str(resolved_family.name),
                 )
             )
     else:
@@ -159,6 +182,7 @@ def pdf_plot_data(
                     density=_staged_density_curve(resolved_family, y_grid, parameter_values),
                     parameters=parameter_values,
                     observed_value=None,
+                    family=str(resolved_family.name),
                 )
             )
 
