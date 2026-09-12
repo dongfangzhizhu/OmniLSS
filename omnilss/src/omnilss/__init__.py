@@ -182,7 +182,7 @@ from .logLik import logLik
 from .loglogSurv import logSurv0
 from .loglogplot import loglogplot, LogLogPlotResult
 from .plotCentileSK import PlotCentileSKResult, plotCentileSK
-from .pdfplot import PDFPlotEntry, PDFPlotResult, pdf_plot, pdf_plot_data, plotBEINF
+from .pdfplot import PDFPlotEntry, PDFPlotResult, pdf_plot, pdf_plot_data, plotBEINF, plotBEINF0
 from .lpred import lpred as lpred_exact
 from .momentSK import MomentSKResult, momentSK, momentSkew
 from .methods import (
