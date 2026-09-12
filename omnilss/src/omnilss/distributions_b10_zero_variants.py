@@ -224,9 +224,10 @@ def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
                              max_value=100000):
     """Evaluate tails/invert them directly, without probability complements.
 
-    Like SICHEL, the numerical support is limited to 0..10000. Quantile
-    scans use linear space rather than a square cumulative-sum matrix.
-    max_value is a static Python integer in [0, 10000] limiting candidates,
+    Like SICHEL, the numerical support is limited to the configured
+    probability budget. Quantile scans use linear space rather than a square
+    cumulative-sum matrix. max_value is a static Python integer in the same
+    configured range limiting candidates,
     not upper-tail summation. Unresolved interior probabilities return NaN.
     """
     from .distributions_b6 import SICHEL_PROBABILITY_MAX_COUNT
@@ -288,7 +289,7 @@ def ZASICHEL():
     def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
         return _zero_sichel_probability(q, mu, sigma, nu, tau, altered=True,
                                         lower_tail=lower_tail, log_p=log_p)
-    def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False, max_value=10000):
+    def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False, max_value=100000):
         return _zero_sichel_probability(prob, mu, sigma, nu, tau, altered=True,
                                         lower_tail=lower_tail, log_p=log_p, quantile=True, max_value=max_value)
     def r(key, n, mu=1., sigma=.5, nu=-.5, tau=.5):
@@ -312,7 +313,7 @@ def ZISICHEL():
     def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
         return _zero_sichel_probability(q, mu, sigma, nu, tau, altered=False,
                                         lower_tail=lower_tail, log_p=log_p)
-    def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False, max_value=10000):
+    def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False, max_value=100000):
         return _zero_sichel_probability(prob, mu, sigma, nu, tau, altered=False,
                                         lower_tail=lower_tail, log_p=log_p, quantile=True, max_value=max_value)
     def r(key, n, mu=1., sigma=.5, nu=-.5, tau=.5):
