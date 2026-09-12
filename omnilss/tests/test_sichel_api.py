@@ -5,6 +5,18 @@ import numpy as np
 from omnilss.dpqr_functions import dSICHEL
 from omnilss.distributions_b6 import SICHEL
 from omnilss.dpqr_functions import rSICHEL
+from omnilss.dpqr_functions import qSICHEL
+
+
+def test_quantile_endpoints():
+    for lower_tail in (True, False):
+        for log_p in (True, False):
+            probs = jnp.array([-jnp.inf, 0.]) if log_p else jnp.array([0., 1.])
+            expected = [0., np.inf] if lower_tail else [np.inf, 0.]
+            quantile = jax.jit(lambda p, sigma: qSICHEL(
+                p, 1., sigma, .2, lower_tail=lower_tail, log_p=log_p))
+            np.testing.assert_array_equal(quantile(probs, .5), expected)
+            assert np.isnan(quantile(probs, -1.)).all()
 
 
 def test_density_broadcast_jit():

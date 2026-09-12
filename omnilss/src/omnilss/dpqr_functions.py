@@ -7567,7 +7567,9 @@ def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
         return jnp.where((found < 0) & (cdf >= target), i, found)
     found = jax.lax.fori_loop(0, 10001, step, jnp.full(p.shape, -1., dtype=jnp.float64))
     result = jnp.where(target == 0, 0., jnp.where(target == 1, jnp.inf, found))
-    return jnp.where(valid & (found >= 0), result, jnp.nan)
+    # Endpoints do not require a finite quantile to be found by the search.
+    resolved = (found >= 0) | (target == 0) | (target == 1)
+    return jnp.where(valid & resolved, result, jnp.nan)
 
 
 def rSICHEL(key, n, mu=1.0, sigma=1.0, nu=-0.5):

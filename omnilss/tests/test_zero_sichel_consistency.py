@@ -41,3 +41,9 @@ def test_zero_sichel_probability_boundaries():
                                                        lower_tail=False), [np.inf, 0.])
         assert np.isnan(fam.q(-.1, 1., .5, .2, .3))
         assert np.isnan(fam.q(1.1, 1., .5, .2, .3))
+        for lower_tail in (True, False):
+            expected = [0., np.inf] if lower_tail else [np.inf, 0.]
+            actual = jax.jit(lambda v: fam.q(
+                v, 1., .5, .2, .3, lower_tail=lower_tail, log_p=True
+            ))(jnp.array([-jnp.inf, 0.]))
+            np.testing.assert_array_equal(actual, expected)
