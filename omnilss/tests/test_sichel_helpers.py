@@ -52,7 +52,10 @@ def test_tofy_sichel_broadcast_jit_and_gradient():
 def test_tofy_sichel_boundaries():
     x = jnp.array([-1., .5, jnp.inf, -jnp.inf, jnp.nan, 10001., 0.])
     actual = tofySICHEL(x, 1., .5, .2)
-    assert np.isnan(actual[:5]).all()
+    assert np.isnan(actual[jnp.array([0, 2, 3, 4])]).all()
+    # Non-integer counts truncate like R (floor); interior and boundary
+    # integer counts stay valid within the budget.
+    np.testing.assert_allclose(actual[1], tofySICHEL(0., 1., .5, .2))
     assert np.isfinite(actual[5])
     assert np.isfinite(actual[6])
     assert np.isnan(tofySICHEL(0., sigma=-1.))

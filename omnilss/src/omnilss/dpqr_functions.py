@@ -7701,7 +7701,6 @@ def tofySICHEL(y, mu=1.0, sigma=1.0, nu=-0.5):
         valid = ((mu_i > 0) & (sigma_i > 0) & jnp.isfinite(mu_i)
                  & jnp.isfinite(sigma_i) & jnp.isfinite(nu_i))
         support = ((y_i >= 0) & jnp.isfinite(y_i)
-                   & (y_i == jnp.floor(y_i))
                    & (y_i <= SICHEL_DENSITY_MAX_COUNT))
         # R indexes tofY[y] via int truncation of y + 1, i.e. floor(y).
         y_idx = jnp.clip(jnp.floor(y_i).astype(jnp.int32), 0,
@@ -7779,6 +7778,271 @@ def VSICHEL(mu=1.0, sigma=1.0, nu=-0.5):
     var_y = mu_safe + jnp.square(mu_safe) * (
         (2.0 * sigma_safe * (nu_safe + 1.0)) / c + 1.0 / jnp.square(c) - 1.0)
     return jnp.where(valid, var_y, jnp.nan)
+
+
+# Static support budget for the SI "tofy" recursion, aligned with the SI
+# family's density scan length (see distributions_b6._si_log_pdf).
+SI_TOFY_MAX_COUNT = 512
+
+
+def tofyS(y, mu=1.0, sigma=1.0, nu=-0.5, max_count=SI_TOFY_MAX_COUNT):
+    """R `tofyS` fitted-value recursion for the SI family (tofySI1.c).
+
+    The SI analogue of `tofySICHEL`: the GAMLSS "tofy" quantity consumed by
+    the SI mu-score.  The recursion returns ``tofY[y]`` where
+
+    - ``tofY[0] = mu * (1 + 2*sigma*mu)^(-0.5) * exp(lbes)``
+    - ``alpha = sqrt(1 + 2*sigma*mu) / sigma``
+    - ``lbes = log K_{nu+1}(alpha) - log K_nu(alpha)``
+    - ``tofY[j] = (sigma * 2*(j+nu)/mu + 1/tofY[j-1]) * (mu/(sigma*alpha))^2``
+
+    R's exported wrapper carries an unused ``what`` argument; it is dropped
+    here.  It is *not* the distribution mean.
+
+    Parameters
+    ----------
+    y : array_like
+        Counts at which the recursion stops (y >= 0, floor-truncated like R).
+    mu : array_like
+        Mean parameter (mu > 0)
+    sigma : array_like
+        Dispersion parameter (sigma > 0)
+    nu : array_like
+        Shape parameter
+    max_count : int
+        Static recursion budget (defaults to the SI support of 512).
+
+    Returns
+    -------
+    array_like
+        The recursion value ``tofY[y]``; NaN for invalid parameters or
+        counts beyond ``max_count``.
+    """
+    if isinstance(max_count, bool) or not isinstance(max_count, int) or max_count < 0:
+        raise ValueError("max_count must be a nonnegative integer")
+    from .bessel import log_bessel_kv
+
+    eps = jnp.finfo(jnp.float64).eps
+    y = jnp.asarray(y, dtype=jnp.float64)
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    y, mu, sigma, nu = jnp.broadcast_arrays(y, mu, sigma, nu)
+
+    def scalar(y_i, mu_i, sigma_i, nu_i):
+        valid = ((mu_i > 0) & (sigma_i > 0) & jnp.isfinite(mu_i)
+                 & jnp.isfinite(sigma_i) & jnp.isfinite(nu_i))
+        support = ((y_i >= 0) & jnp.isfinite(y_i) & (y_i <= max_count))
+        # R indexes tofY[y] via int truncation of y + 1, i.e. floor(y).
+        y_idx = jnp.clip(jnp.floor(y_i).astype(jnp.int32), 0, max_count)
+        mu_i = jnp.where(valid, mu_i, 1.)
+        sigma_i = jnp.where(valid, sigma_i, 1.)
+        nu_i = jnp.where(valid, nu_i, -.5)
+
+        alpha = jnp.sqrt(1.0 + 2.0 * sigma_i * mu_i) / sigma_i
+        lbes = (log_bessel_kv(nu_i + 1.0, alpha)
+                - log_bessel_kv(nu_i, alpha))
+        tofy_0 = (mu_i * jnp.power(1.0 + 2.0 * sigma_i * mu_i, -0.5)
+                  * jnp.exp(lbes))
+        ratio = jnp.square(mu_i / (sigma_i * alpha))
+
+        def scan_fun(carry, j):
+            prev, out = carry
+            prev_safe = jnp.clip(prev, eps, 1e100)
+            jf = j.astype(jnp.float64)
+            current = (sigma_i * (2.0 * (jf + nu_i) / mu_i)
+                       + 1.0 / prev_safe) * ratio
+            current = jnp.clip(current, eps, 1e100)
+            out = jnp.where(j == y_idx, current, out)
+            return (current, out), None
+
+        init = (tofy_0, tofy_0)
+        (_, result), _ = jax.lax.scan(scan_fun, init,
+                                      jnp.arange(1, max_count + 1))
+        return jnp.where(valid & support, result, jnp.nan)
+
+    flat = jax.vmap(scalar)(y.ravel(), mu.ravel(), sigma.ravel(), nu.ravel())
+    return flat.reshape(y.shape)
+
+
+def zetaP(x):
+    """Riemann zeta via R `zetaP` (direct sum + Euler-Maclaurin tail).
+
+    Sums ``n = 1..12`` directly and closes the tail with eight Bernoulli
+    correction terms, matching gamlss.dist's helper used to normalize the
+    ZIPF distribution.  Accurate for ``x >= ~12`` (R warns below 11);
+    below that the returned value degrades gracefully.
+
+    Parameters
+    ----------
+    x : array_like
+        Zeta argument(s), typically ``>= 12``.
+
+    Returns
+    -------
+    array_like
+        Approximation of ``zeta(x)``.
+    """
+    x = jnp.asarray(x, dtype=jnp.float64)
+    aa = 12.0
+    base = 1.0 + aa
+    bernoulli2 = jnp.array([1 / 6, -1 / 30, 1 / 42, -1 / 30, 5 / 66,
+                            -691 / 2730, 7 / 6, -3617 / 510],
+                           dtype=jnp.float64)
+    direct = jnp.sum(
+        jnp.power(1.0 + jnp.arange(aa), -x[..., None]), axis=-1
+    ).reshape(x.shape)
+    tail = (1.0 / ((x - 1.0) * jnp.power(base, x - 1.0))
+            + 0.5 / jnp.power(base, x))
+    term = (x / 2.0) / jnp.power(base, x + 1.0)
+    tail = tail + term * bernoulli2[0]
+    for mm in range(2, bernoulli2.shape[0] + 1):
+        term = term * ((x + 2 * mm - 3.0) * (x + 2 * mm - 2.0)
+                       / ((2 * mm - 1) * (2 * mm) * base * base))
+        tail = tail + term * bernoulli2[mm - 1]
+    return direct + tail
+
+
+def GetBI_C(mu, sigma, bd):
+    """R `GetBI_C` normalization constant for the BI family (getBI_C2.c).
+
+    Computes ``log(1 / sum_j exp(ss_j))`` over ``j = 0..bd`` where
+
+    ``ss_j = lchoose(bd, j) + (j*log<j> + (bd-j)*log<bd-j>) * (1 - sigma)
+             + bd*log<bd> * (sigma - 1)
+             + (j*log(mu) + (bd-j)*log(1-mu)) * sigma``
+
+    with ``log<t> = 1`` at ``t = 0`` (the C code's ``ifelse`` guard).
+
+    R's exported wrapper inverts ``sigma`` (``sigma <- 1/sigma``) before
+    calling ``getBI_C2``; this implementation reproduces that
+    parameterization, so ``ss_j`` uses the inverted value.
+
+    Parameters
+    ----------
+    mu : array_like
+        Binomial probability parameter (0 < mu < 1)
+    sigma : array_like
+        Power-transformation parameter (sigma > 0; inverted internally
+        exactly like the R wrapper)
+    bd : array_like
+        Binomial denominator (nonnegative integer)
+
+    Returns
+    -------
+    array_like
+        Log normalization constant; NaN for invalid parameters.
+    """
+    from jax.scipy.special import gammaln
+
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    bd = jnp.asarray(bd, dtype=jnp.float64)
+    mu, sigma, bd = jnp.broadcast_arrays(mu, sigma, bd)
+
+    def scalar(mu_i, sigma_i, bd_i):
+        valid = ((mu_i > 0) & (mu_i < 1) & (sigma_i > 0)
+                 & jnp.isfinite(mu_i) & jnp.isfinite(sigma_i)
+                 & jnp.isfinite(bd_i) & (bd_i >= 0) & (bd_i == jnp.floor(bd_i)))
+        mu_i = jnp.where(valid, mu_i, .5)
+        sigma_i = jnp.where(valid, 1.0 / sigma_i, 1.)
+        n = jnp.floor(bd_i).astype(jnp.int32)
+        n = jnp.where(valid, n, 0)
+        sm1 = sigma_i - 1.0
+        s_1 = 1.0 - sigma_i
+        nlogn = n * jnp.where(n == 0, 1.0,
+                              jnp.log(n.astype(jnp.float64)))
+
+        def cond(state):
+            j, _ = state
+            return j <= n
+
+        def body(state):
+            j, sum_c = state
+            jf = j.astype(jnp.float64)
+            bdj = n - j
+            bdjf = bdj.astype(jnp.float64)
+            log_choose = (gammaln(n + 1.0) - gammaln(jf + 1.0)
+                          - gammaln(bdjf + 1.0))
+            y_log_of_y = jf * jnp.where(j == 0, 1.0, jnp.log(jf))
+            ny_log_of_ny = bdjf * jnp.where(bdj == 0, 1.0, jnp.log(bdjf))
+            ss = (log_choose + (y_log_of_y + ny_log_of_ny) * s_1
+                  + nlogn * sm1
+                  + (jf * jnp.log(mu_i) + bdjf * jnp.log1p(-mu_i)) * sigma_i)
+            return (j + 1, sum_c + jnp.exp(ss))
+
+        _, sum_c = jax.lax.while_loop(cond, body, (0, 0.0))
+        return jnp.where(valid, -jnp.log(sum_c), jnp.nan)
+
+    flat = jax.vmap(scalar)(mu.ravel(), sigma.ravel(), bd.ravel())
+    return flat.reshape(mu.shape)
+
+
+def get_C(x, mu=1.0, sigma=1.0, max_value=None):
+    """R `get_C` log normalization constant for the DPO family.
+
+    Mirrors gamlss.dist's ``dDPOgetC5_C``: the double-Poisson normalizer is
+
+    ``C = 1 / sum_{j=0..maxV} exp(ls - lgamma(j+1) + y*log<y> + j*lmus
+                                    + (1/sigma)*(j - y*log<y>))``
+
+    with ``log<y> = 1`` at ``y = 0``, ``ls = -0.5*log(sigma) - mu/sigma``
+    and ``lmus = log(mu)/sigma - 1``.  R's wrapper returns ``log(C)``.
+
+    R's wrapper does not recycle scalar ``mu``/``sigma`` against vector
+    ``x`` (long vectors read out of bounds and produce NaN); this
+    implementation broadcasts correctly.  ``x`` only influences the default
+    truncation ``maxV = max(3*max(x), 500)``.
+
+    Parameters
+    ----------
+    x : array_like
+        Support values used to derive the default truncation.
+    mu : array_like
+        Double-Poisson location parameter (mu > 0)
+    sigma : array_like
+        Double-Poisson dispersion parameter (sigma > 0)
+    max_value : int, optional
+        Explicit static truncation (overrides the value derived from ``x``).
+
+    Returns
+    -------
+    array_like
+        Log normalization constant; NaN for invalid parameters.
+    """
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    x = jnp.asarray(x, dtype=jnp.float64)
+    x, mu, sigma = jnp.broadcast_arrays(x, mu, sigma)
+    if max_value is None:
+        x_host = np.asarray(x)
+        if not np.issubdtype(x_host.dtype, np.number):
+            raise ValueError("x must be numeric")
+        max_value = int(max(3 * int(np.max(x_host)), 500))
+    if isinstance(max_value, bool) or not isinstance(max_value, int) or max_value < 0:
+        raise ValueError("max_value must be a nonnegative integer")
+
+    counts = jnp.arange(max_value + 1, dtype=jnp.float64)
+    count_safe = jnp.maximum(counts, 1.0)
+    log_of_count = jnp.where(counts == 0, 1.0, jnp.log(count_safe))
+    y_log_of_y = counts * log_of_count
+    log_factorial = jax.scipy.special.gammaln(counts + 1.0)
+    y_minus_y_log_y = counts - y_log_of_y
+
+    def scalar(mu_i, sigma_i):
+        valid = ((mu_i > 0) & (sigma_i > 0) & jnp.isfinite(mu_i)
+                 & jnp.isfinite(sigma_i))
+        mu_i = jnp.where(valid, mu_i, 1.)
+        sigma_i = jnp.where(valid, sigma_i, 1.)
+        ls = -0.5 * jnp.log(sigma_i) - mu_i / sigma_i
+        lmus = jnp.log(mu_i) / sigma_i - 1.0
+        invs = 1.0 / sigma_i
+        sum_c = jnp.sum(jnp.exp(ls - log_factorial + y_log_of_y
+                                + counts * lmus + invs * y_minus_y_log_y))
+        return jnp.where(valid, -jnp.log(sum_c), jnp.nan)
+
+    flat = jax.vmap(scalar)(mu.ravel(), sigma.ravel())
+    return flat.reshape(mu.shape)
 
 
 # ------------------------------------------------------------------------------

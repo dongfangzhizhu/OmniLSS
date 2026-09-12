@@ -841,10 +841,10 @@
 | `BB.R` | `BB` Beta-二项分布 | ✅ | ✅ 已实现 | `omnilss.distributions_b7.BB` |
 | `BNB.R` | `BNB` Beta-负二项分布 | ✅ | ✅ 已实现 | `omnilss.distributions_b7.BNB` |
 | `DoubleBinomial.R` | `DBI` 双二项分布 | ✅ | ✅ 已实现 | `omnilss.distributions_b11.DBI` |
-| `DoubleBinomial.R` | `GetBI_C()` 内部 C 函数 | — | ❌ 未实现 | — |
+| `DoubleBinomial.R` | `GetBI_C()` 内部 C 函数 | — | ✅ 已实现 | `omnilss.dpqr_functions.GetBI_C` |
 | `DoublePoisson-30-12-14.R` | `DPO` 双 Poisson 分布 | ✅ | ✅ 已实现 | `omnilss.distributions_b6.DPO` |
 | `DoublePoisson-30-12-14.R` | `DPO1` 双 Poisson（另一参数化） | ✅ | ✅ 已实现 | `omnilss.distributions_b16.DPO1` |
-| `DoublePoisson-30-12-14.R` | `get_C()` 归一化常数 | — | ❌ 未实现 | — |
+| `DoublePoisson-30-12-14.R` | `get_C()` 归一化常数 | — | ✅ 已实现 | `omnilss.dpqr_functions.get_C` |
 | `GEOM.R` | `GEOM` 几何分布 | ✅ | ✅ 已实现 | `omnilss.distributions.GEOM` |
 | `GEOMo.R` | `GEOMo` 几何（原始参数化） | ✅ | ✅ 已实现 | `omnilss.distributions_b12.GEOMo` |
 | `PIG.R` | `PIG` Poisson-逆高斯 | ✅ | ✅ 已实现 | `omnilss.distributions_b6.PIG` |
@@ -853,7 +853,7 @@
 | `SICHEL-10-09-12.R` | `tofySICHEL()` 变换辅助 | — | ✅ 已实现 | `omnilss.dpqr_functions.tofySICHEL` |
 | `SICHEL-10-09-12.R` | `VSICHEL()` 方差函数 | — | ✅ 已实现 | `omnilss.dpqr_functions.VSICHEL` |
 | `SI.R` | `SI` Sichel（简化） | ✅ | ✅ 已实现 | `omnilss.distributions_b6.SI` |
-| `SI.R` | `tofyS()` 变换辅助 | — | ❌ 未实现 | — |
+| `SI.R` | `tofyS()` 变换辅助 | — | ✅ 已实现 | `omnilss.dpqr_functions.tofyS` |
 | `DELAPORT.R` | `DEL` Delaporte 分布 | ✅ | ✅ 已实现 | `omnilss.distributions_b6.DEL` |
 | `DELAPORT.R` | `DELAPORT` Delaporte（别名） | ✅ | ✅ 已实现 | `omnilss.distributions_b13.DELAPORT` |
 | `LG.R` | `LG` 对数分布 | ✅ | ✅ 已实现 | `omnilss.distributions_b9.LG` |
@@ -866,7 +866,7 @@
 | `multin-23-09-12.R` | `MULTIN` 通用多项分布 | ✅ | ✅ 已实现 | `omnilss.distributions_discrete_compat.MULTIN` |
 | `multin-23-09-12.R` | `fittedMN()` 多项拟合值 | — | ❌ 未实现 | — |
 | `ZIPF.R` | `ZIPF` Zipf 分布 | ✅ | ✅ 已实现 | `omnilss.distributions_b9.ZIPF` |
-| `ZIPF.R` | `zetaP()` Zeta 函数 | — | ❌ 未实现 | — |
+| `ZIPF.R` | `zetaP()` Zeta 函数 | — | ✅ 已实现 | `omnilss.dpqr_functions.zetaP` |
 | `IGA.R` | `IGAMMA` 逆 Gamma | ✅ | ✅ 已实现 | `omnilss.distributions_b1.IGAMMA` |
 | `GeneralisedPoisson.R` | `GPO` 广义 Poisson（离散） | ✅ | ✅ 已实现 | `omnilss.distributions_b15.GPO` |
 | `GeneralisedPoisson.R` | `GP` 广义 Pareto | ✅ | ❌ 未实现 | — |
