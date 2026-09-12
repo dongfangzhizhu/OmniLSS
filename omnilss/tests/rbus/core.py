@@ -42,6 +42,8 @@ class RTestBus:
                 check=True,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
             )
         except (subprocess.SubprocessError, FileNotFoundError) as exc:
             logger.warning("Rscript or required R packages are unavailable.")
@@ -68,6 +70,8 @@ class RTestBus:
                 ["Rscript", str(script_path), arg_file_path],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 check=True,
             )
             # The R script is expected to print the JSON result to stdout.
