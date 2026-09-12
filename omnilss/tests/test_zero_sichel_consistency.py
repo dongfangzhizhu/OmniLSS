@@ -3,6 +3,30 @@ import jax.numpy as jnp
 import numpy as np
 
 from omnilss.distribution_registry import resolve
+from omnilss.dpqr_functions import dSICHEL
+
+
+def test_stable_density_support_and_likelihood():
+    for name in ("ZASICHEL", "ZISICHEL"):
+        fam = resolve(name)
+        outside = jnp.array([-1., .5, jnp.inf, -jnp.inf])
+        np.testing.assert_array_equal(fam.d(outside), 0.)
+        np.testing.assert_array_equal(fam.d(outside, log=True), -np.inf)
+        assert np.isnan(fam.d(jnp.array([jnp.nan, 10001.]))).all()
+        for tau in (-.1, 1.1, np.nan):
+            assert np.isnan(fam.d(0., tau=tau))
+        assert np.isnan(fam.d(0., sigma=-1.))
+        x = jnp.array([0., 1., 100.])
+        for tau in (0., .3, 1.):
+            actual = fam.d(x, 1., .5, .2, tau, log=True)
+            np.testing.assert_allclose(fam.g_dev_inc(x, 1., .5, .2, tau), -2*actual)
+        expected = np.log1p(-.3) + dSICHEL(100., 1., .5, .2, log=True)
+        if name == "ZASICHEL":
+            expected -= np.log(-np.expm1(dSICHEL(0., 1., .5, .2, log=True)))
+        actual = fam.d(100., 1., .5, .2, .3, log=True)
+        assert np.isfinite(actual)
+        np.testing.assert_allclose(actual, expected)
+        np.testing.assert_array_equal(fam.d([0., 1.], tau=1.), [1., 0.])
 
 
 def test_zero_sichel_mass_and_cdf_consistency():

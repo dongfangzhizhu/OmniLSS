@@ -28,6 +28,8 @@ def make_zero_altered_family(base_name: str, base_log_pdf_func, base_params: tup
     
     def za_log_pdf(y, *params):
         """Zero-altered log-PDF."""
+        if base_name == "SICHEL":
+            return _zero_sichel_log_pdf(y, *params, altered=True)
         # Last parameter is nu (zero probability)
         base_params_vals = params[:-1]
         nu = params[-1]
@@ -107,6 +109,8 @@ def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tu
     
     def zi_log_pdf(y, *params):
         """Zero-inflated log-PDF."""
+        if base_name == "SICHEL":
+            return _zero_sichel_log_pdf(y, *params, altered=False)
         base_params_vals = params[:-1]
         nu = params[-1]
         
@@ -183,6 +187,36 @@ def _binomial_log_pdf(y, mu):
     mu = jnp.clip(mu, eps, 1.0 - eps)
     return y * jnp.log(mu) + (1.0 - y) * jnp.log1p(-mu)
 
+def _zero_sichel_log_pdf(x, mu, sigma, nu, tau, *, altered):
+    """Shared scalar PMF kernel for density and family likelihoods."""
+    x, mu, sigma, nu, tau = map(jnp.asarray, (x, mu, sigma, nu, tau))
+    valid = ((mu > 0) & (sigma > 0) & jnp.isfinite(mu)
+             & jnp.isfinite(sigma) & jnp.isfinite(nu)
+             & (tau >= 0) & (tau <= 1))
+    log_base = _sichel_log_pdf(x, mu, sigma, nu)
+    log_f0 = _sichel_log_pdf(0., mu, sigma, nu)
+    positive = jnp.log1p(-tau) + log_base
+    if altered:
+        positive = positive - jnp.log(-jnp.expm1(log_f0))
+        at_zero = jnp.log(tau)
+    else:
+        at_zero = jnp.logaddexp(jnp.log(tau), jnp.log1p(-tau) + log_f0)
+    value = jnp.where(x == 0, at_zero, positive)
+    support = (x >= 0) & jnp.isfinite(x) & (x == jnp.floor(x))
+    value = jnp.where(support, value, -jnp.inf)
+    undefined = jnp.isnan(x) | (support & (x > 10000))
+    return jnp.where(valid & ~undefined, value, jnp.nan)
+
+
+def _zero_sichel_density(x, mu, sigma, nu, tau, *, altered, log):
+    args = jnp.broadcast_arrays(*[
+        jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu, tau)
+    ])
+    values = jax.vmap(lambda *v: _zero_sichel_log_pdf(*v, altered=altered))(
+        *(v.ravel() for v in args)).reshape(args[0].shape)
+    return values if log else jnp.exp(values)
+
+
 # ZASICHEL - Zero-Altered Sichel
 def ZASICHEL():
     """Zero-Altered Sichel distribution."""
@@ -215,8 +249,7 @@ def ZASICHEL():
         mu, sigma, nu, tau = jnp.broadcast_arrays(*map(jnp.asarray, (mu, sigma, nu, tau)))
         return q(jax.random.uniform(key, (n,) + mu.shape), mu, sigma, nu, tau)
     def d(x, mu=1., sigma=1., nu=-.5, tau=.5, log=False):
-        mass = p(x, mu, sigma, nu, tau) - p(x - 1, mu, sigma, nu, tau)
-        return jnp.log(mass) if log else mass
+        return _zero_sichel_density(x, mu, sigma, nu, tau, altered=True, log=log)
     return replace(family, d=d, p=p, q=q, r=r)
 
 # ZISICHEL - Zero-Inflated Sichel  
@@ -252,8 +285,7 @@ def ZISICHEL():
         mu, sigma, nu, tau = jnp.broadcast_arrays(*map(jnp.asarray, (mu, sigma, nu, tau)))
         return q(jax.random.uniform(key, (n,) + mu.shape), mu, sigma, nu, tau)
     def d(x, mu=1., sigma=1., nu=-.5, tau=.5, log=False):
-        mass = p(x, mu, sigma, nu, tau) - p(x - 1, mu, sigma, nu, tau)
-        return jnp.log(mass) if log else mass
+        return _zero_sichel_density(x, mu, sigma, nu, tau, altered=False, log=log)
     return replace(family, d=d, p=p, q=q, r=r)
 
 # ZAPIG - Zero-Altered Poisson Inverse Gaussian
