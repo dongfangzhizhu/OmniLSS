@@ -239,8 +239,15 @@ def ZASICHEL():
             value = jnp.where(q <= 0, 1. - tau, (1. - tau) * (1. - base) / (1. - f0))
         return jnp.where(valid, jnp.log(value) if log_p else value, jnp.nan)
     def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False):
-        prob = jnp.exp(prob) if log_p else jnp.asarray(prob)
-        prob = prob if lower_tail else 1. - prob
+        raw_prob = jnp.asarray(prob)
+        # Convert an upper-tail log probability without subtractive
+        # cancellation (important for very small survival probabilities).
+        prob = jnp.exp(raw_prob) if log_p else raw_prob
+        prob = jnp.where(
+            lower_tail,
+            prob,
+            -jnp.expm1(raw_prob) if log_p else 1. - prob,
+        )
         f0 = pSICHEL(0., mu, sigma, nu)
         denom = jnp.where(tau == 1., 1., 1. - tau)
         target = f0 + (1. - f0) * (prob - tau) / denom
@@ -276,8 +283,14 @@ def ZISICHEL():
         return jnp.where((tau >= 0) & (tau <= 1) & jnp.isfinite(tau),
                          jnp.log(value) if log_p else value, jnp.nan)
     def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False):
-        prob = jnp.exp(prob) if log_p else jnp.asarray(prob)
-        prob = prob if lower_tail else 1. - prob
+        raw_prob = jnp.asarray(prob)
+        # Keep the upper-tail log-probability conversion in log space.
+        prob = jnp.exp(raw_prob) if log_p else raw_prob
+        prob = jnp.where(
+            lower_tail,
+            prob,
+            -jnp.expm1(raw_prob) if log_p else 1. - prob,
+        )
         f0 = pSICHEL(0., mu, sigma, nu)
         threshold = tau + (1. - tau) * f0
         denom = jnp.where(tau == 1., 1., 1. - tau)

@@ -71,3 +71,13 @@ def test_zero_sichel_probability_boundaries():
                 v, 1., .5, .2, .3, lower_tail=lower_tail, log_p=True
             ))(jnp.array([-jnp.inf, 0.]))
             np.testing.assert_array_equal(actual, expected)
+
+
+def test_zero_sichel_log_upper_tail_preserves_small_probabilities():
+    for name in ("ZASICHEL", "ZISICHEL"):
+        fam = resolve(name)
+        x = jnp.array([1., 2., 3.])
+        upper = fam.p(x, 2., .7, .2, .35, lower_tail=False, log_p=True)
+        actual = fam.q(upper, 2., .7, .2, .35,
+                       lower_tail=False, log_p=True)
+        np.testing.assert_array_equal(actual, x)
