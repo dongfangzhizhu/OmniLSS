@@ -7662,6 +7662,125 @@ def rSICHEL(key, n, mu=1.0, sigma=1.0, nu=-0.5):
     return jnp.where(valid[None, ...], samples, jnp.nan)
 
 
+def tofySICHEL(y, mu=1.0, sigma=1.0, nu=-0.5):
+    """R `tofySICHEL` fitted-value recursion (tofySICHEL1.c).
+
+    This is the GAMLSS "tofy" quantity consumed by the SICHEL mu-score,
+    ``dldm = (y - tofy) / mu``.  It is *not* the distribution mean: the
+    recursion tracks ``tofY[j]`` for ``j = 1..y`` and returns ``tofY[y]``,
+    exactly like R's ``.C("tofySICHEL1", ...)`` call.
+
+    Parameters
+    ----------
+    y : array_like
+        Counts at which the recursion stops (y >= 0, truncated like R).
+    mu : array_like
+        Mean parameter (mu > 0)
+    sigma : array_like
+        Dispersion parameter (sigma > 0)
+    nu : array_like
+        Shape parameter
+
+    Returns
+    -------
+    array_like
+        The recursion value ``tofY[y]``; NaN for invalid parameters or
+        counts beyond the configured SICHEL support budget.
+    """
+    from .bessel import log_bessel_kv
+    from .distributions_b6 import SICHEL_DENSITY_MAX_COUNT
+
+    eps = jnp.finfo(jnp.float64).eps
+    y = jnp.asarray(y, dtype=jnp.float64)
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    y, mu, sigma, nu = jnp.broadcast_arrays(y, mu, sigma, nu)
+
+    def scalar(y_i, mu_i, sigma_i, nu_i):
+        valid = ((mu_i > 0) & (sigma_i > 0) & jnp.isfinite(mu_i)
+                 & jnp.isfinite(sigma_i) & jnp.isfinite(nu_i))
+        support = ((y_i >= 0) & jnp.isfinite(y_i)
+                   & (y_i == jnp.floor(y_i))
+                   & (y_i <= SICHEL_DENSITY_MAX_COUNT))
+        # R indexes tofY[y] via int truncation of y + 1, i.e. floor(y).
+        y_idx = jnp.clip(jnp.floor(y_i).astype(jnp.int32), 0,
+                         SICHEL_DENSITY_MAX_COUNT)
+        mu_i = jnp.where(valid, mu_i, 1.)
+        sigma_i = jnp.where(valid, sigma_i, 1.)
+        nu_i = jnp.where(valid, nu_i, -.5)
+
+        inv_sigma = 1.0 / sigma_i
+        log_k_nu = log_bessel_kv(nu_i, inv_sigma)
+        cvec = jnp.exp(log_bessel_kv(nu_i + 1.0, inv_sigma) - log_k_nu)
+        alpha = jnp.sqrt(1.0 + 2.0 * sigma_i * mu_i / cvec) / sigma_i
+        lbes = (log_bessel_kv(nu_i + 1.0, alpha)
+                - log_bessel_kv(nu_i, alpha))
+        tofy_0 = ((mu_i / cvec)
+                  * jnp.power(1.0 + 2.0 * sigma_i * mu_i / cvec, -0.5)
+                  * jnp.exp(lbes))
+        ratio = jnp.square(mu_i / (sigma_i * alpha * cvec))
+
+        def scan_fun(carry, j):
+            prev, out = carry
+            prev_safe = jnp.clip(prev, eps, 1e100)
+            jf = j.astype(jnp.float64)
+            current = (cvec * sigma_i * (2.0 * (jf + nu_i) / mu_i)
+                       + 1.0 / prev_safe) * ratio
+            current = jnp.clip(current, eps, 1e100)
+            out = jnp.where(j == y_idx, current, out)
+            return (current, out), None
+
+        init = (tofy_0, tofy_0)
+        (_, result), _ = jax.lax.scan(scan_fun, init,
+                                      jnp.arange(1, SICHEL_DENSITY_MAX_COUNT + 1))
+        return jnp.where(valid & support, result, jnp.nan)
+
+    flat = jax.vmap(scalar)(y.ravel(), mu.ravel(), sigma.ravel(), nu.ravel())
+    return flat.reshape(y.shape)
+
+
+def VSICHEL(mu=1.0, sigma=1.0, nu=-0.5):
+    """Variance of the Sichel distribution (R `VSICHEL`).
+
+    R's ``VSICHEL(obj)`` extracts fitted ``mu``/``sigma``/``nu`` from a
+    fitted gamlss object; here they are passed directly:
+
+    ``varY = mu + mu^2 * ((2 * sigma * (nu + 1)) / c + 1 / c^2 - 1)``
+    with ``c = K_{nu+1}(1/sigma) / K_nu(1/sigma)``.
+
+    Parameters
+    ----------
+    mu : array_like
+        Mean parameter (mu > 0)
+    sigma : array_like
+        Dispersion parameter (sigma > 0)
+    nu : array_like
+        Shape parameter
+
+    Returns
+    -------
+    array_like
+        Distribution variance; NaN for invalid parameters.
+    """
+    from .bessel import log_bessel_kv
+
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    mu, sigma, nu = jnp.broadcast_arrays(mu, sigma, nu)
+    valid = ((mu > 0) & (sigma > 0) & jnp.isfinite(mu)
+             & jnp.isfinite(sigma) & jnp.isfinite(nu))
+    mu_safe = jnp.where(valid, mu, 1.)
+    sigma_safe = jnp.where(valid, sigma, 1.)
+    nu_safe = jnp.where(valid, nu, -.5)
+    c = jnp.exp(log_bessel_kv(nu_safe + 1.0, 1.0 / sigma_safe)
+                - log_bessel_kv(nu_safe, 1.0 / sigma_safe))
+    var_y = mu_safe + jnp.square(mu_safe) * (
+        (2.0 * sigma_safe * (nu_safe + 1.0)) / c + 1.0 / jnp.square(c) - 1.0)
+    return jnp.where(valid, var_y, jnp.nan)
+
+
 # ------------------------------------------------------------------------------
 # NET (Normal-Exponential-t) - 4 parameters
 # ------------------------------------------------------------------------------

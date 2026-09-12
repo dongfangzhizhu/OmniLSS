@@ -850,8 +850,8 @@
 | `PIG.R` | `PIG` Poisson-逆高斯 | ✅ | ✅ 已实现 | `omnilss.distributions_b6.PIG` |
 | `PIG2.R` | `PIG2` Poisson-逆高斯 2 | ✅ | ✅ 已实现 | `omnilss.distributions_b13.PIG2` |
 | `SICHEL-10-09-12.R` | `SICHEL` Sichel 分布 | ✅ | ✅ 已实现 | `omnilss.distributions_b6.SICHEL` |
-| `SICHEL-10-09-12.R` | `tofySICHEL()` 变换辅助 | — | ❌ 未实现 | — |
-| `SICHEL-10-09-12.R` | `VSICHEL()` 方差函数 | — | ❌ 未实现 | — |
+| `SICHEL-10-09-12.R` | `tofySICHEL()` 变换辅助 | — | ✅ 已实现 | `omnilss.dpqr_functions.tofySICHEL` |
+| `SICHEL-10-09-12.R` | `VSICHEL()` 方差函数 | — | ✅ 已实现 | `omnilss.dpqr_functions.VSICHEL` |
 | `SI.R` | `SI` Sichel（简化） | ✅ | ✅ 已实现 | `omnilss.distributions_b6.SI` |
 | `SI.R` | `tofyS()` 变换辅助 | — | ❌ 未实现 | — |
 | `DELAPORT.R` | `DEL` Delaporte 分布 | ✅ | ✅ 已实现 | `omnilss.distributions_b6.DEL` |
