@@ -7519,7 +7519,8 @@ def pSICHEL(q, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
         jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma, nu)
     ])
     from .distributions_b6 import _sichel_log_pdf
-    support = jnp.arange(10001, dtype=jnp.float64)
+    from .distributions_b6 import SICHEL_PROBABILITY_MAX_COUNT
+    support = jnp.arange(SICHEL_PROBABILITY_MAX_COUNT + 1, dtype=jnp.float64)
     def logprob_scalar(qq, mm, ss, nn):
         log_mass = jax.vmap(_sichel_log_pdf, in_axes=(0, None, None, None))(
             support, mm, ss, nn
@@ -7542,11 +7543,11 @@ def pSICHEL(q, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
         jnp.isposinf(q), jnp.where(lower_tail, 0., -jnp.inf), log_probability
     )
     result = log_probability if log_p else jnp.exp(log_probability)
-    return jnp.where(valid & ~jnp.isnan(q) & ~((q > 10000) & jnp.isfinite(q)), result, jnp.nan)
+    return jnp.where(valid & ~jnp.isnan(q) & ~((q > SICHEL_PROBABILITY_MAX_COUNT) & jnp.isfinite(q)), result, jnp.nan)
 
 
 def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False,
-            max_value=10000):
+            max_value=100000):
     """Quantile function for Sichel distribution.
 
     Parameters
@@ -7574,8 +7575,9 @@ def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False,
     The quantile is found by searching for the smallest x such that
     P(X <= x) >= p.
     """
-    if isinstance(max_value, bool) or not isinstance(max_value, int) or not 0 <= max_value <= 10000:
-        raise ValueError("max_value must be an integer in [0, 10000]")
+    from .distributions_b6 import SICHEL_PROBABILITY_MAX_COUNT
+    if isinstance(max_value, bool) or not isinstance(max_value, int) or not 0 <= max_value <= SICHEL_PROBABILITY_MAX_COUNT:
+        raise ValueError(f"max_value must be an integer in [0, {SICHEL_PROBABILITY_MAX_COUNT}]")
     p, mu, sigma, nu = jnp.broadcast_arrays(*[
         jnp.asarray(v, dtype=jnp.float64) for v in (p, mu, sigma, nu)
     ])
@@ -7588,7 +7590,7 @@ def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False,
              & jnp.isfinite(sigma) & jnp.isfinite(nu))
     from .distributions_b6 import _sichel_log_pdf
     # A search cap must not truncate the tail used to test a candidate.
-    support = jnp.arange((max_value if lower_tail else 10000) + 1, dtype=jnp.float64)
+    support = jnp.arange((max_value if lower_tail else SICHEL_PROBABILITY_MAX_COUNT) + 1, dtype=jnp.float64)
 
     def cumulative_scalar(mm, ss, nn):
         log_mass = jax.vmap(_sichel_log_pdf, in_axes=(0, None, None, None))(

@@ -221,7 +221,7 @@ def _zero_sichel_density(x, mu, sigma, nu, tau, *, altered, log):
 
 def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
                              lower_tail, log_p, quantile=False,
-                             max_value=10000):
+                             max_value=100000):
     """Evaluate tails/invert them directly, without probability complements.
 
     Like SICHEL, the numerical support is limited to 0..10000. Quantile
@@ -229,13 +229,14 @@ def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
     max_value is a static Python integer in [0, 10000] limiting candidates,
     not upper-tail summation. Unresolved interior probabilities return NaN.
     """
-    if isinstance(max_value, bool) or not isinstance(max_value, int) or not 0 <= max_value <= 10000:
-        raise ValueError("max_value must be an integer in [0, 10000]")
+    from .distributions_b6 import SICHEL_PROBABILITY_MAX_COUNT
+    if isinstance(max_value, bool) or not isinstance(max_value, int) or not 0 <= max_value <= SICHEL_PROBABILITY_MAX_COUNT:
+        raise ValueError(f"max_value must be an integer in [0, {SICHEL_PROBABILITY_MAX_COUNT}]")
     args = jnp.broadcast_arrays(*[
         jnp.asarray(v, dtype=jnp.float64) for v in (value, mu, sigma, nu, tau)
     ])
     # Upper tails still need masses beyond the candidate search cap.
-    support = jnp.arange((max_value if lower_tail else 10000) + 1, dtype=jnp.float64)
+    support = jnp.arange((max_value if lower_tail else SICHEL_PROBABILITY_MAX_COUNT) + 1, dtype=jnp.float64)
 
     def scalar(v, mm, ss, nn, tt):
         mass = jax.vmap(lambda x: _zero_sichel_log_pdf(

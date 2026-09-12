@@ -88,6 +88,9 @@ class SichelFamily(FamilyDefinition):
 # Static upper bound for the JAX scan.  It is deliberately a module constant:
 # changing it requires recompilation, but keeps the kernel JIT-compatible.
 SICHEL_DENSITY_MAX_COUNT = 100000
+# Static support budget used by probability recursion.  Keep this separate
+# from qSICHEL's candidate search cap.
+SICHEL_PROBABILITY_MAX_COUNT = SICHEL_DENSITY_MAX_COUNT
 
 
 def _sichel_log_pdf(y, mu, sigma, nu):
