@@ -7573,7 +7573,7 @@ def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False,
     The quantile is found by searching for the smallest x such that
     P(X <= x) >= p.
     """
-    from .distributions_b6 import SICHEL_PROBABILITY_MAX_COUNT
+    from .distributions_b6 import SICHEL_PROBABILITY_MAX_COUNT, _sichel_log_pmf_sequence
     if isinstance(max_value, bool) or not isinstance(max_value, int) or not 0 <= max_value <= SICHEL_PROBABILITY_MAX_COUNT:
         raise ValueError(f"max_value must be an integer in [0, {SICHEL_PROBABILITY_MAX_COUNT}]")
     p, mu, sigma, nu = jnp.broadcast_arrays(*[
