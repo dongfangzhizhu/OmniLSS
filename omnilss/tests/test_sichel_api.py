@@ -19,6 +19,16 @@ def test_quantile_endpoints():
             assert np.isnan(quantile(probs, -1.)).all()
 
 
+def test_upper_log_probability_quantile_avoids_complement_cancellation():
+    # The upper-tail probability is tiny, while its log is close to zero.
+    # Inverting through 1 - exp(log_p) would round the target to zero.
+    q = qSICHEL(1e-12, 1., .5, .2, lower_tail=False)
+    q_log = qSICHEL(np.log(1e-12), 1., .5, .2,
+                    lower_tail=False, log_p=True)
+    np.testing.assert_array_equal(q_log, q)
+    assert q_log > 0
+
+
 def test_density_broadcast_jit():
     x = jnp.arange(3.)[:, None]
     mu = jnp.array([1., 3.])

@@ -7571,8 +7571,12 @@ def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
     p, mu, sigma, nu = jnp.broadcast_arrays(*[
         jnp.asarray(v, dtype=jnp.float64) for v in (p, mu, sigma, nu)
     ])
-    target = jnp.exp(p) if log_p else p
-    target = target if lower_tail else 1. - target
+    if log_p:
+        # For an upper-tail log probability, avoid 1 - exp(log_p): this
+        # rounds to zero for probabilities close to one and breaks inversion.
+        target = jnp.exp(p) if lower_tail else -jnp.expm1(p)
+    else:
+        target = p if lower_tail else 1. - p
     valid = ((target >= 0) & (target <= 1) & jnp.isfinite(target)
              & (mu > 0) & (sigma > 0) & jnp.isfinite(mu)
              & jnp.isfinite(sigma) & jnp.isfinite(nu))
