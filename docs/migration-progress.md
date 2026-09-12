@@ -809,7 +809,7 @@
 | `BEOI.r` | `BEOI` Beta 一膨胀 | ✅ | ✅ 已实现 | `omnilss.distributions_b4.BEOI` |
 | `BEZI.r` | `BEZI` Beta 零膨胀 | ✅ | ✅ 已实现 | `omnilss.distributions_b4.BEZI` |
 | `BEINF.R` | `plotBEINF()` | — | ❌ 未实现 | — |
-| `BEINF.R` | `meanBEINF()` | — | ❌ 未实现 | — |
+| `BEINF.R` | `meanBEINF()` | — | ✅ 已实现 | `omnilss.meanBEINF` |
 | `BEINF0.R` | `plotBEINF0()` / `meanBEINF0()` | — | ❌ 未实现 | — |
 | `BEINF1.R` | `plotBEINF1()` / `meanBEINF1()` | — | ❌ 未实现 | — |
 

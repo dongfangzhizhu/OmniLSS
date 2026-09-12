@@ -8368,6 +8368,23 @@ def meanZAIG(obj):
     )
 
 
+def meanBEINF(obj):
+    """Return fitted means for a BEINF model, matching R ``meanBEINF``."""
+    family = getattr(obj, "family", None)
+    family_name = getattr(family, "name", family)
+    if isinstance(family_name, (tuple, list)):
+        family_name = family_name[0] if family_name else None
+    if family_name != "BEINF":
+        raise ValueError("the object does not have a BEINF distribution")
+    values = getattr(obj, "fitted_values", None)
+    if values is None or not all(name in values for name in ("mu", "nu", "tau")):
+        raise ValueError("BEINF model fitted_values must contain 'mu', 'nu', and 'tau'")
+    mu = jnp.asarray(values["mu"], dtype=jnp.float64)
+    nu = jnp.asarray(values["nu"], dtype=jnp.float64)
+    tau = jnp.asarray(values["tau"], dtype=jnp.float64)
+    return (tau + mu) / (1.0 + nu + tau)
+
+
 def rNET(key, n, mu=0.0, sigma=1.0, nu=2.0, tau=4.0):
     """Random generation for Normal-Exponential-t distribution.
 
