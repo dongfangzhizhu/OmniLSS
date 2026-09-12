@@ -38,6 +38,21 @@ class TestGPFitting(unittest.TestCase):
         self.assertTrue(all(np.isfinite(np.asarray(v)).all() for v in model.fitted_values.values()))
         self.assertTrue(all((np.asarray(v) > 0.0).all() for v in model.fitted_values.values()))
 
+    def test_cg_fit_consumes_gp_hessian(self):
+        model = self._fit(np.array([0.05, 0.15, 0.3, 0.55, 0.9, 1.4, 2.1, 3.0]))
+        # CG currently performs an RS warm start before its joint update.  The
+        # public result must nevertheless retain finite, positive GP parameters.
+        cg_model = gamlss(
+            "y ~ x", sigma_formula="~ 1", family="GP",
+            data={"y": np.array([0.05, 0.15, 0.3, 0.55, 0.9, 1.4, 2.1, 3.0]),
+                  "x": np.linspace(-1.0, 1.0, 8)}, method="CG")
+        self.assertTrue(np.isfinite(model.deviance))
+        self.assertTrue(np.isfinite(cg_model.deviance))
+        for fitted in cg_model.fitted_values.values():
+            values = np.asarray(fitted)
+            self.assertTrue(np.isfinite(values).all())
+            self.assertTrue((values > 0.0).all())
+
 
 if __name__ == "__main__":
     unittest.main()
