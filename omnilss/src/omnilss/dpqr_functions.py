@@ -7580,13 +7580,28 @@ def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
     valid = ((target >= 0) & (target <= 1) & jnp.isfinite(target)
              & (mu > 0) & (sigma > 0) & jnp.isfinite(mu)
              & jnp.isfinite(sigma) & jnp.isfinite(nu))
-    def step(i, found):
-        cdf = pSICHEL(i, mu, sigma, nu)
-        return jnp.where((found < 0) & (cdf >= target), i, found)
-    found = jax.lax.fori_loop(0, 10001, step, jnp.full(p.shape, -1., dtype=jnp.float64))
+    from .distributions_b6 import _sichel_log_pdf
+    support = jnp.arange(10001, dtype=jnp.float64)
+
+    def cumulative_scalar(mm, ss, nn):
+        log_mass = jax.vmap(_sichel_log_pdf, in_axes=(0, None, None, None))(
+            support, mm, ss, nn
+        )
+        return jax.scipy.special.logsumexp(
+            jnp.where(support[:, None] <= support[None, :], log_mass[:, None], -jnp.inf),
+            axis=0,
+        )
+
+    cumulative_log_probability = jax.vmap(cumulative_scalar)(
+        mu.ravel(), sigma.ravel(), nu.ravel()
+    )
+    reached = cumulative_log_probability >= jnp.log(target).ravel()[:, None]
+    found = jnp.argmax(reached, axis=1).astype(jnp.float64)
+    resolved = jnp.any(reached, axis=1)
+    found = found.reshape(p.shape)
     result = jnp.where(target == 0, 0., jnp.where(target == 1, jnp.inf, found))
     # Endpoints do not require a finite quantile to be found by the search.
-    resolved = (found >= 0) | (target == 0) | (target == 1)
+    resolved = resolved.reshape(p.shape) | (target == 0) | (target == 1)
     return jnp.where(valid & resolved, result, jnp.nan)
 
 
