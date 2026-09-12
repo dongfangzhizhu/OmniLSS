@@ -1,0 +1,28 @@
+{
+  "generated_at_utc": "2026-09-12T07:21:30.559770+00:00",
+  "platform": {
+    "system": "Windows",
+    "release": "10",
+    "machine": "AMD64"
+  },
+  "python": {
+    "version": "3.10.16",
+    "executable": "D:\\AI\\my\\githubprojs\\OmniLSS\\.venv\\Scripts\\python.exe"
+  },
+  "packages": {
+    "jax": "0.6.2",
+    "jaxlib": "0.6.2",
+    "numpy": "2.2.6",
+    "scipy": "1.15.3"
+  },
+  "r": {
+    "available": true,
+    "version": "R version 4.6.0 (2026-04-24 ucrt)\ngamlss = 5.5.0 \ngamlss.dist = 6.1.1"
+  },
+  "wsl": {
+    "available": false
+  },
+  "jax_devices": [
+    "TFRT_CPU_0"
+  ]
+}
