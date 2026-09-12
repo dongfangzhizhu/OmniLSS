@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import unittest
 
+import numpy as np
+from scipy.integrate import quad
+
 import jax
 import jax.numpy as jnp
 
@@ -11,6 +14,15 @@ from omnilss.distributions_gp_compat import dGP, pGP, qGP, rGP
 
 
 class TestGPUnit(unittest.TestCase):
+    def test_density_is_cdf_derivative_and_normalized(self):
+        for mu, sigma in ((2.0, 0.7), (0.4, 3.0), (5.0, 1.0)):
+            y = jnp.array([0.01, 0.5, 3.0, 20.0])
+            derivative = jax.vmap(jax.grad(lambda x: pGP(x, mu, sigma)))(y)
+            np.testing.assert_allclose(dGP(y, mu, sigma), derivative, rtol=1e-10, atol=1e-15)
+            density = jax.jit(lambda x: dGP(x, mu, sigma))
+            integral, _ = quad(lambda x: float(density(x)), 0, np.inf)
+            self.assertAlmostEqual(integral, 1.0, places=8)
+
     def test_density_log_density_and_support(self):
         y = jnp.array([0.1, 1.0, 10.0])
         log_density = dGP(y, 2.0, 0.7, log=True)

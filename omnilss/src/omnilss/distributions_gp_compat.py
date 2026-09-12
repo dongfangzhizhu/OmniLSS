@@ -1,6 +1,7 @@
 """Compatibility constructor for `GP` alias.
 
-R reference: `gamlss.dist/R/GP.R::GP`.
+R reference: `gamlss.dist/R/GeneralisedPareto.R::GP`.
+Survival: ``(1 + y / mu)**(-sigma)`` for positive mu and sigma.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ class GPFamily(FamilyDefinition):
 
 def _log_pdf(y, mu, sigma):
     y, mu, sigma = (jnp.asarray(v, dtype=jnp.float64) for v in (y, mu, sigma))
-    value = jnp.log(sigma) - jnp.log(mu) - (1.0 + sigma) * jnp.log1p(sigma * y / mu)
+    value = jnp.log(sigma) - jnp.log(mu) - (1.0 + sigma) * jnp.log1p(y / mu)
     return jnp.where((y > 0) & (mu > 0) & (sigma > 0), value, -jnp.inf)
 
 
@@ -34,10 +35,10 @@ def dGP(x, mu=1.0, sigma=1.0, log=False):
 def pGP(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     q, mu, sigma = (jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma))
     valid = (mu > 0) & (sigma > 0)
-    log_survival = -sigma * jnp.log1p(sigma * jnp.maximum(q, 0) / mu)
+    log_survival = -sigma * jnp.log1p(jnp.maximum(q, 0) / mu)
     log_result = jnp.where(q <= 0, -jnp.inf if lower_tail else 0.0,
                            jnp.log(-jnp.expm1(log_survival)) if lower_tail else log_survival)
-    result = log_result if log_p else jnp.exp(log_result)
+    result = log_result if log_p else (-jnp.expm1(log_survival) if lower_tail else jnp.exp(log_survival))
     return jnp.where(valid, result, jnp.nan)
 
 
@@ -47,7 +48,7 @@ def qGP(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     probability = jnp.exp(p) if log_p else p
     probability = jnp.where(lower_tail, probability, 1.0 - probability)
     log_one_minus_p = jnp.log1p(-probability)
-    result = mu / sigma * jnp.expm1(-log_one_minus_p / sigma)
+    result = mu * jnp.expm1(-log_one_minus_p / sigma)
     result = jnp.where(probability <= 0, 0.0, jnp.where(probability >= 1, jnp.inf, result))
     return jnp.where(valid & (probability >= 0) & (probability <= 1), result, jnp.nan)
 
