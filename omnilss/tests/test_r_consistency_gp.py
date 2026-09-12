@@ -25,16 +25,16 @@ class TestGPConsistency(unittest.TestCase):
         for profile_name, x, mu, sigma, p in (
             (
                 "central",
-                np.arange(0, 50),
+                np.linspace(0.05, 20.0, 50),
                 np.linspace(0.5, 10.0, 50),
-                np.linspace(-0.5, 0.5, 50),
+                np.linspace(0.1, 2.0, 50),
                 np.linspace(0.02, 0.98, 50),
             ),
             (
                 "tail",
-                np.arange(0, 50),
+                np.geomspace(0.01, 1.0e4, 50),
                 np.linspace(0.5, 10.0, 50),
-                np.linspace(-0.5, 0.5, 50),
+                np.geomspace(0.01, 10.0, 50),
                 np.linspace(0.02, 0.98, 50),
             ),
         ):
