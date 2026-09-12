@@ -56,6 +56,14 @@ def test_log_quantile_rejects_invalid_and_preserves_tiny_lower_targets():
     assert np.isnan(actual[1:]).all()
 
 
+def test_quantile_configurable_max_value():
+    assert np.isnan(qSICHEL(.5, max_value=0))
+    with np.testing.assert_raises(ValueError):
+        qSICHEL(.5, max_value=-1)
+    with np.testing.assert_raises(ValueError):
+        qSICHEL(.5, max_value=1.5)
+
+
 def test_density_broadcast_jit():
     x = jnp.arange(3.)[:, None]
     mu = jnp.array([1., 3.])
