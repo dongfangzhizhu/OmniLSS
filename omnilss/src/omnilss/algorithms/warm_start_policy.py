@@ -31,6 +31,7 @@ class WarmStartPolicy(Protocol):
         *,
         y: np.ndarray,
         parameter_names: tuple[str, ...],
+        family_name: str | None = None,
     ) -> WarmStartResult:
         """Return initial eta/fitted vectors for each estimable parameter."""
 
@@ -70,6 +71,13 @@ class FamilyHeuristicInit:
         n = y.shape[0]
         y_mean = float(np.mean(y)) if n else 0.0
         y_sd = float(np.std(y)) if n else 1.0
+        if family_name is not None and str(family_name).upper() == "GP" and n:
+            # GP is heavy-tailed; robust starts avoid an extreme observation
+            # dominating both positive log-link parameters.
+            positive = y[np.isfinite(y) & (y > 0)]
+            if positive.size:
+                y_mean = float(np.median(positive))
+                y_sd = float(np.subtract(*np.percentile(positive, (75, 25))) / 1.349)
         y_sd = max(y_sd, 1e-6)
 
         eta: dict[str, np.ndarray] = {}

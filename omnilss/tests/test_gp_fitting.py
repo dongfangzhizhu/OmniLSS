@@ -7,9 +7,16 @@ import unittest
 import numpy as np
 
 from omnilss import gamlss
+from omnilss.algorithms.warm_start_policy import FamilyHeuristicInit
 
 
 class TestGPFitting(unittest.TestCase):
+    def test_gp_warm_start_is_robust_to_tail_outlier(self):
+        result = FamilyHeuristicInit().initialize(
+            y=np.array([0.1, 0.2, 0.3, 0.4, 1000.0]),
+            parameter_names=("mu", "sigma"), family_name="GP")
+        self.assertLess(result.initial_fitted["mu"][0], 1.0)
+        self.assertLess(result.initial_fitted["sigma"][0], 1.0)
     def _fit(self, y: np.ndarray):
         x = np.linspace(-1.0, 1.0, y.size)
         return gamlss(

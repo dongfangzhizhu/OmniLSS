@@ -931,6 +931,7 @@ def rs_fit(
     warm_start_result = warm_start.initialize(
         y=y,
         parameter_names=tuple(family.estimable_parameters),
+        family_name=family.name,
     )
     solver_backend = _select_solver_backend(family, n, routing_decision)
 
