@@ -85,6 +85,11 @@ class SichelFamily(FamilyDefinition):
     """Sichel distribution (`SICHEL`)."""
 
 
+# Static upper bound for the JAX scan.  It is deliberately a module constant:
+# changing it requires recompilation, but keeps the kernel JIT-compatible.
+SICHEL_DENSITY_MAX_COUNT = 100000
+
+
 def _sichel_log_pdf(y, mu, sigma, nu):
     """Sichel distribution log-pdf.
     
@@ -116,7 +121,7 @@ def _sichel_log_pdf(y, mu, sigma, nu):
     valid = ((mu > 0) & (sigma > 0) & jnp.isfinite(mu)
              & jnp.isfinite(sigma) & jnp.isfinite(nu))
     support = (y >= 0) & jnp.isfinite(y) & (y == jnp.floor(y))
-    undefined = jnp.isnan(y) | (support & (y > 10000))
+    undefined = jnp.isnan(y) | (support & (y > SICHEL_DENSITY_MAX_COUNT))
     mu = jnp.where(valid, mu, 1.)
     sigma = jnp.where(valid, sigma, 1.)
     nu = jnp.where(valid, nu, -.5)
@@ -143,7 +148,7 @@ def _sichel_log_pdf(y, mu, sigma, nu):
     # For y=0, sumlty = 0
     # For y>0, we need to compute the recursive sum
     # Since inputs are already scalar (vmapped by ad.py), compute directly
-    y_int = jnp.clip(jnp.round(y).astype(jnp.int32), 0, 10000)
+    y_int = jnp.clip(jnp.round(y).astype(jnp.int32), 0, SICHEL_DENSITY_MAX_COUNT)
     
     def scan_fun_masked(carry, j):
         tofy_prev, sum_log = carry
@@ -167,8 +172,8 @@ def _sichel_log_pdf(y, mu, sigma, nu):
     # Initial state: (tofY[0], sumlty=0)
     init_state = (tofy_0, jnp.asarray(0.0, dtype=jnp.float64))
     
-    # Run scan from j=1 to 10000 with masking
-    j_seq = jnp.arange(1, 10001)
+    # Run scan with a static bound; terms after y are masked out.
+    j_seq = jnp.arange(1, SICHEL_DENSITY_MAX_COUNT + 1)
     (_, sumlty), _ = jax.lax.scan(scan_fun_masked, init_state, j_seq)
     
     # For y=0, sumlty should be 0

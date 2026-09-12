@@ -79,7 +79,8 @@ def test_density_family_boundaries():
     x = jnp.array([-1., .5, jnp.inf, -jnp.inf, jnp.nan, 10001., 0., 2.])
     actual = dSICHEL(x, 1., .5, .2)
     np.testing.assert_array_equal(actual[:4], 0.)
-    assert np.isnan(actual[4:6]).all()
+    assert np.isnan(actual[4])
+    assert np.isfinite(actual[5])
     np.testing.assert_allclose(actual, SICHEL().d(x, 1., .5, .2))
     assert np.isnan(dSICHEL(0., sigma=-1.))
     assert np.isnan(dSICHEL(0., nu=np.inf))
@@ -91,6 +92,12 @@ def test_density_normalization_and_gradient():
     np.testing.assert_allclose(mass.sum(), 1., atol=1e-6)
     gradient = jax.grad(lambda m: dSICHEL(2., m, .5, .2, log=True))(1.)
     assert np.isfinite(gradient)
+
+
+def test_density_supports_counts_above_10000():
+    value = dSICHEL(10001., 1., .5, .2)
+    assert np.isfinite(value)
+    assert value >= 0.
 
 
 def test_random_generation_broadcast_and_jit():
