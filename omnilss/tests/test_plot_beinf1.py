@@ -9,5 +9,5 @@ def test_plot_beinf1_returns_vectorized_curves():
     assert len(result.entries) == 2
     assert all(entry.y.shape == (41,) for entry in result.entries)
     assert all(np.all(np.isfinite(entry.density)) for entry in result.entries)
-    assert result.entries[0].parameters["tau"] == 0.2
-    assert result.entries[1].parameters["tau"] == 0.8
+    assert result.entries[0].parameters["nu"] == 0.2
+    assert result.entries[1].parameters["nu"] == 0.8
