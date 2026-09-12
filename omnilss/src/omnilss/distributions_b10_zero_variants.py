@@ -231,8 +231,12 @@ def ZASICHEL():
         base = pSICHEL(q, mu, sigma, nu)
         f0 = pSICHEL(0., mu, sigma, nu)
         valid = (tau >= 0) & (tau <= 1) & jnp.isfinite(tau)
-        value = jnp.where(q < 0, 0., tau + (1. - tau) * (base - f0) / (1. - f0))
+        denom = jnp.where(f0 == 1., 1., 1. - f0)
+        positive = (base - f0) / denom
+        value = jnp.where(q < 0, 0., tau + (1. - tau) * positive)
+        value = jnp.where(q >= jnp.inf, 1., value)
         value = jnp.where(lower_tail, value, 1. - value)
+        value = jnp.clip(value, 0., 1.)
         return jnp.where(valid, jnp.log(value) if log_p else value, jnp.nan)
     def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False):
         prob = jnp.exp(prob) if log_p else jnp.asarray(prob)
@@ -266,7 +270,9 @@ def ZISICHEL():
         base = pSICHEL(q, mu, sigma, nu)
         f = tau + (1. - tau) * base
         value = jnp.where(q < 0, 0., f)
+        value = jnp.where(q >= jnp.inf, 1., value)
         value = jnp.where(lower_tail, value, 1. - value)
+        value = jnp.clip(value, 0., 1.)
         return jnp.where((tau >= 0) & (tau <= 1) & jnp.isfinite(tau),
                          jnp.log(value) if log_p else value, jnp.nan)
     def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False):
