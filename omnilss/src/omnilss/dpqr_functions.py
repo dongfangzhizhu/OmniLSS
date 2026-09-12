@@ -7030,6 +7030,11 @@ def qBB(p, mu=0.5, sigma=1.0, bd=10, lower_tail=True, log_p=False):
     -----
     The quantile is found by searching for the smallest x such that
     P(X <= x) >= p.
+    max_value is a static Python integer in [0, 10000] limiting candidate
+    quantiles, not the upper-tail summation range. Unresolved interior
+    probabilities return NaN. Under jit, close over this option or mark it
+    static. The underlying density still has numerical support 0..10000;
+    this option does not extend that support.
     """
     p = jnp.asarray(p, dtype=jnp.float64)
     mu = jnp.asarray(mu, dtype=jnp.float64)
@@ -7569,8 +7574,8 @@ def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False,
     The quantile is found by searching for the smallest x such that
     P(X <= x) >= p.
     """
-    if not isinstance(max_value, int) or not 0 <= max_value <= 1000000:
-        raise ValueError("max_value must be an integer in [0, 1000000]")
+    if isinstance(max_value, bool) or not isinstance(max_value, int) or not 0 <= max_value <= 10000:
+        raise ValueError("max_value must be an integer in [0, 10000]")
     p, mu, sigma, nu = jnp.broadcast_arrays(*[
         jnp.asarray(v, dtype=jnp.float64) for v in (p, mu, sigma, nu)
     ])
@@ -7582,7 +7587,8 @@ def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False,
              & (mu > 0) & (sigma > 0) & jnp.isfinite(mu)
              & jnp.isfinite(sigma) & jnp.isfinite(nu))
     from .distributions_b6 import _sichel_log_pdf
-    support = jnp.arange(max_value + 1, dtype=jnp.float64)
+    # A search cap must not truncate the tail used to test a candidate.
+    support = jnp.arange((max_value if lower_tail else 10000) + 1, dtype=jnp.float64)
 
     def cumulative_scalar(mm, ss, nn):
         log_mass = jax.vmap(_sichel_log_pdf, in_axes=(0, None, None, None))(
@@ -7604,6 +7610,7 @@ def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False,
     tolerance = tolerance.ravel()[:, None]
     reached = (cumulative_log_probability >= target - tolerance) if lower_tail else (
         cumulative_log_probability <= target + tolerance)
+    reached = reached & (support <= max_value)
     found = jnp.argmax(reached, axis=1).astype(jnp.float64)
     resolved = jnp.any(reached, axis=1)
     found = found.reshape(p.shape)

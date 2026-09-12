@@ -226,13 +226,16 @@ def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
 
     Like SICHEL, the numerical support is limited to 0..10000. Quantile
     scans use linear space rather than a square cumulative-sum matrix.
+    max_value is a static Python integer in [0, 10000] limiting candidates,
+    not upper-tail summation. Unresolved interior probabilities return NaN.
     """
-    if not isinstance(max_value, int) or not 0 <= max_value <= 1000000:
-        raise ValueError("max_value must be an integer in [0, 1000000]")
+    if isinstance(max_value, bool) or not isinstance(max_value, int) or not 0 <= max_value <= 10000:
+        raise ValueError("max_value must be an integer in [0, 10000]")
     args = jnp.broadcast_arrays(*[
         jnp.asarray(v, dtype=jnp.float64) for v in (value, mu, sigma, nu, tau)
     ])
-    support = jnp.arange(max_value + 1, dtype=jnp.float64)
+    # Upper tails still need masses beyond the candidate search cap.
+    support = jnp.arange((max_value if lower_tail else 10000) + 1, dtype=jnp.float64)
 
     def scalar(v, mm, ss, nn, tt):
         mass = jax.vmap(lambda x: _zero_sichel_log_pdf(
@@ -252,6 +255,7 @@ def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
             tolerance = 8 * jnp.finfo(jnp.float64).eps * jnp.maximum(1., jnp.abs(target))
             tolerance = jnp.where(jnp.isfinite(target), tolerance, 0.)
             reached = (cumulative >= target - tolerance) if lower_tail else (cumulative <= target + tolerance)
+            reached = reached & (support <= max_value)
             result = jnp.where(jnp.any(reached), jnp.argmax(reached).astype(jnp.float64), jnp.nan)
             at_zero = jnp.isneginf(target) if lower_tail else (target == 0)
             at_infinity = (target == 0) if lower_tail else jnp.isneginf(target)
