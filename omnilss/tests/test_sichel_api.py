@@ -29,6 +29,14 @@ def test_upper_log_probability_quantile_avoids_complement_cancellation():
     assert q_log > 0
 
 
+def test_quantile_prefix_search_handles_broadcast_parameters():
+    x = jnp.array([1., 2., 3.])
+    p = jax.jit(lambda value, mu: qSICHEL(
+        value, mu, .5, .2))(jnp.array([.2, .5, .8]), jnp.array([1., 2., 3.]))
+    np.testing.assert_array_equal(p, qSICHEL(
+        jnp.array([.2, .5, .8]), jnp.array([1., 2., 3.]), .5, .2))
+
+
 def test_density_broadcast_jit():
     x = jnp.arange(3.)[:, None]
     mu = jnp.array([1., 3.])

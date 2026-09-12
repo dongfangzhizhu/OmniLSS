@@ -7587,15 +7587,15 @@ def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
         log_mass = jax.vmap(_sichel_log_pdf, in_axes=(0, None, None, None))(
             support, mm, ss, nn
         )
-        return jax.scipy.special.logsumexp(
-            jnp.where(support[:, None] <= support[None, :], log_mass[:, None], -jnp.inf),
-            axis=0,
-        )
+        # A prefix scan has linear memory; the previous broadcasted
+        # comparison materialized a 10001 x 10001 matrix per parameter set.
+        return jax.lax.associative_scan(jnp.logaddexp, log_mass)
 
     cumulative_log_probability = jax.vmap(cumulative_scalar)(
         mu.ravel(), sigma.ravel(), nu.ravel()
     )
-    reached = cumulative_log_probability >= jnp.log(target).ravel()[:, None]
+    target_log = jnp.where(target == 0, -jnp.inf, jnp.log(target))
+    reached = cumulative_log_probability >= target_log.ravel()[:, None]
     found = jnp.argmax(reached, axis=1).astype(jnp.float64)
     resolved = jnp.any(reached, axis=1)
     found = found.reshape(p.shape)
