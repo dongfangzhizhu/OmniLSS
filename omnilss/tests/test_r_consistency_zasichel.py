@@ -22,12 +22,11 @@ class TestZASICHELConsistency(unittest.TestCase):
     def test_zasichel_dpq_consistency(self) -> None:
         fam = resolve("ZASICHEL")
 
-        for profile_name, x, mu, sigma, nu, nu, p in (
+        for profile_name, x, mu, sigma, nu, p in (
             (
                 "central",
                 np.arange(0, 50),
                 np.linspace(0.5, 10.0, 50),
-                np.linspace(0.2, 2.0, 50),
                 np.linspace(0.1, 0.9, 50),
                 np.linspace(0.1, 0.9, 50),
                 np.linspace(0.02, 0.98, 50),
@@ -37,7 +36,6 @@ class TestZASICHELConsistency(unittest.TestCase):
                 np.arange(0, 50),
                 np.linspace(0.5, 10.0, 50),
                 np.linspace(0.2, 2.0, 50),
-                np.linspace(0.1, 0.9, 50),
                 np.linspace(0.1, 0.9, 50),
                 np.linspace(0.02, 0.98, 50),
             ),
@@ -54,6 +52,18 @@ class TestZASICHELConsistency(unittest.TestCase):
                 np.testing.assert_allclose(py_d, r_d, rtol=1e-5, atol=1e-7)
                 np.testing.assert_allclose(py_p, r_p, rtol=1e-5, atol=1e-7)
                 np.testing.assert_allclose(py_q, r_q, rtol=1e-5, atol=1e-7)
+
+    def test_zasichel_tail_and_log_probability(self) -> None:
+        fam = resolve("ZASICHEL")
+        x = jnp.arange(0., 8.)
+        args = {"q": x.tolist(), "mu": 2., "sigma": .7, "nu": .2, "tau": .35}
+        for lower_tail in (True, False):
+            r = self.bus.eval_family("ZASICHEL", "p", {**args, "lower.tail": lower_tail})
+            py = np.asarray(fam.p(x, 2., .7, .2, .35, lower_tail=lower_tail))
+            np.testing.assert_allclose(py, r, rtol=1e-5, atol=1e-7)
+        r_log = self.bus.eval_family("ZASICHEL", "p", {**args, "log.p": True})
+        np.testing.assert_allclose(np.asarray(fam.p(x, 2., .7, .2, .35, log_p=True)), r_log,
+                                   rtol=1e-5, atol=1e-7)
 
 
 if __name__ == "__main__":
