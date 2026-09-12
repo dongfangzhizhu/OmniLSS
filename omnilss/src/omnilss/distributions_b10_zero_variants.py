@@ -220,16 +220,19 @@ def _zero_sichel_density(x, mu, sigma, nu, tau, *, altered, log):
 
 
 def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
-                             lower_tail, log_p, quantile=False):
+                             lower_tail, log_p, quantile=False,
+                             max_value=10000):
     """Evaluate tails/invert them directly, without probability complements.
 
     Like SICHEL, the numerical support is limited to 0..10000. Quantile
     scans use linear space rather than a square cumulative-sum matrix.
     """
+    if not isinstance(max_value, int) or not 0 <= max_value <= 1000000:
+        raise ValueError("max_value must be an integer in [0, 1000000]")
     args = jnp.broadcast_arrays(*[
         jnp.asarray(v, dtype=jnp.float64) for v in (value, mu, sigma, nu, tau)
     ])
-    support = jnp.arange(10001, dtype=jnp.float64)
+    support = jnp.arange(max_value + 1, dtype=jnp.float64)
 
     def scalar(v, mm, ss, nn, tt):
         mass = jax.vmap(lambda x: _zero_sichel_log_pdf(
@@ -261,7 +264,7 @@ def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
             result = jnp.where(jnp.isposinf(v), 0. if lower_tail else -jnp.inf, result)
             point_mass = jnp.where(v < 0, -jnp.inf, 0.) if lower_tail else jnp.where(v < 0, 0., -jnp.inf)
             result = jnp.where(tt == 1, point_mass, result)
-            valid = valid & ~((v > 10000) & jnp.isfinite(v) & (tt != 1))
+            valid = valid & ~((v > max_value) & jnp.isfinite(v) & (tt != 1))
             result = result if log_p else jnp.exp(result)
         return jnp.where(valid, result, jnp.nan)
 
@@ -280,9 +283,9 @@ def ZASICHEL():
     def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
         return _zero_sichel_probability(q, mu, sigma, nu, tau, altered=True,
                                         lower_tail=lower_tail, log_p=log_p)
-    def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False):
+    def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False, max_value=10000):
         return _zero_sichel_probability(prob, mu, sigma, nu, tau, altered=True,
-                                        lower_tail=lower_tail, log_p=log_p, quantile=True)
+                                        lower_tail=lower_tail, log_p=log_p, quantile=True, max_value=max_value)
     def r(key, n, mu=1., sigma=.5, nu=-.5, tau=.5):
         if not isinstance(n, int) or n < 0:
             raise ValueError('n must be a nonnegative integer')
@@ -304,9 +307,9 @@ def ZISICHEL():
     def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
         return _zero_sichel_probability(q, mu, sigma, nu, tau, altered=False,
                                         lower_tail=lower_tail, log_p=log_p)
-    def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False):
+    def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False, max_value=10000):
         return _zero_sichel_probability(prob, mu, sigma, nu, tau, altered=False,
-                                        lower_tail=lower_tail, log_p=log_p, quantile=True)
+                                        lower_tail=lower_tail, log_p=log_p, quantile=True, max_value=max_value)
     def r(key, n, mu=1., sigma=.5, nu=-.5, tau=.5):
         if not isinstance(n, int) or n < 0:
             raise ValueError('n must be a nonnegative integer')
