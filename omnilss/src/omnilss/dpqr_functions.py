@@ -8352,6 +8352,22 @@ def meanZAGA(obj):
     )
 
 
+def meanZAIG(obj):
+    """Return fitted means for a ZAIG model, matching R ``meanZAIG``."""
+    family = getattr(obj, "family", None)
+    family_name = getattr(family, "name", family)
+    if isinstance(family_name, (tuple, list)):
+        family_name = family_name[0] if family_name else None
+    if family_name != "ZAIG":
+        raise ValueError("the object does not have a ZAIG distribution")
+    values = getattr(obj, "fitted_values", None)
+    if values is None or "mu" not in values or "nu" not in values:
+        raise ValueError("ZAIG model fitted_values must contain 'mu' and 'nu'")
+    return (1.0 - jnp.asarray(values["nu"], dtype=jnp.float64)) * jnp.asarray(
+        values["mu"], dtype=jnp.float64
+    )
+
+
 def rNET(key, n, mu=0.0, sigma=1.0, nu=2.0, tau=4.0):
     """Random generation for Normal-Exponential-t distribution.
 

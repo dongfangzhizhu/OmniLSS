@@ -882,7 +882,7 @@
 | `ZAGA.R` | `ZAGA` 零截断 Gamma | ✅ | ✅ 已实现 | `omnilss.distributions_b5.ZAGA` |
 | `ZAGA.R` | `plotZAGA()` / `meanZAGA()` | — | ⚠️ 部分实现（`meanZAGA`） | `omnilss.meanZAGA` |
 | `ZAIG.R` | `ZAIG` 零截断逆高斯 | ✅ | ✅ 已实现 | `omnilss.distributions_b5.ZAIG` |
-| `ZAIG.R` | `plotZAIG()` / `meanZAIG()` | — | ❌ 未实现 | — |
+| `ZAIG.R` | `plotZAIG()` / `meanZAIG()` | — | ⚠️ 部分实现（`meanZAIG`） | `omnilss.meanZAIG` |
 | `ZINBI.R` | `ZINBI` 零膨胀负二项 I | ✅ | ✅ 已实现 | `omnilss.distributions_b5.ZINBI` |
 | `ZANBI.R` | `ZANBI` 零截断负二项 I | ✅ | ✅ 已实现 | `omnilss.distributions_b10_zero_variants.ZANBI` |
 | `ZIBI.R` | `ZIBI` 零膨胀二项 | ✅ | ✅ 已实现 | `omnilss.distributions_b10_zero_variants.ZIBI` |
