@@ -107,7 +107,7 @@ from .distributions_b15 import (
     ZINBF,
 )
 from .distributions_b16 import DPO1, PARETO1, SEP, BCCGo, LOGSHASHo, PARETO1o
-from .dpqr_functions import fittedMN, meanBEINF, meanZAGA, meanZAIG
+from .dpqr_functions import fittedMN, meanBEINF, meanBEINF0, meanZAGA, meanZAIG
 from .distributions_st_compat import ST1, ST2, ST3, ST4
 from .distributions_count_compat import DBI
 from .distributions_discrete_compat import DBURR12
