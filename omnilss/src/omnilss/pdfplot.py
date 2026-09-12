@@ -171,6 +171,14 @@ def pdf_plot_data(
     )
 
 
+def plotBEINF(mu=0.5, sigma=0.5, nu=0.5, tau=0.5,
+              from_value=0.001, to_value=0.999, n=101):
+    """Return structured density data for R ``plotBEINF``."""
+    return pdf_plot_data(family="BEINF", mu=mu, sigma=sigma, nu=nu,
+                         tau=tau, from_value=from_value,
+                         to_value=to_value, no_points=n)
+
+
 pdf_plot = pdf_plot_data
 
 __all__ = [
@@ -178,4 +186,5 @@ __all__ = [
     "PDFPlotResult",
     "pdf_plot",
     "pdf_plot_data",
+    "plotBEINF",
 ]

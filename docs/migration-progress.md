@@ -808,7 +808,7 @@
 | `BEINF1.R` | `BEINF1` Beta 膨胀（1） | ✅ | ✅ 已实现 | `omnilss.distributions_b4.BEINF1` |
 | `BEOI.r` | `BEOI` Beta 一膨胀 | ✅ | ✅ 已实现 | `omnilss.distributions_b4.BEOI` |
 | `BEZI.r` | `BEZI` Beta 零膨胀 | ✅ | ✅ 已实现 | `omnilss.distributions_b4.BEZI` |
-| `BEINF.R` | `plotBEINF()` | — | ❌ 未实现 | — |
+| `BEINF.R` | `plotBEINF()` | — | ⚠️ 部分实现（结构化曲线数据） | `omnilss.plotBEINF` |
 | `BEINF.R` | `meanBEINF()` | — | ✅ 已实现 | `omnilss.meanBEINF` |
 | `BEINF0.R` | `plotBEINF0()` / `meanBEINF0()` | — | ⚠️ 部分实现（`meanBEINF0`） | `omnilss.meanBEINF0` |
 | `BEINF1.R` | `plotBEINF1()` / `meanBEINF1()` | — | ⚠️ 部分实现（`meanBEINF1`） | `omnilss.meanBEINF1` |
