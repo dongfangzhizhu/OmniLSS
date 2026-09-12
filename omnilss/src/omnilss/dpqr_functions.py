@@ -7571,13 +7571,11 @@ def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
     p, mu, sigma, nu = jnp.broadcast_arrays(*[
         jnp.asarray(v, dtype=jnp.float64) for v in (p, mu, sigma, nu)
     ])
-    if log_p:
-        # For an upper-tail log probability, avoid 1 - exp(log_p): this
-        # rounds to zero for probabilities close to one and breaks inversion.
-        target = jnp.exp(p) if lower_tail else -jnp.expm1(p)
-    else:
-        target = p if lower_tail else 1. - p
-    valid = ((target >= 0) & (target <= 1) & jnp.isfinite(target)
+    # Compare the requested tail directly in log space. Taking a complement
+    # rounds tiny upper tails to one; exponentiating loses tiny log targets.
+    target_log = p if log_p else jnp.log(p)
+    valid_probability = (p <= 0) if log_p else ((p >= 0) & (p <= 1))
+    valid = (valid_probability & ~jnp.isnan(p)
              & (mu > 0) & (sigma > 0) & jnp.isfinite(mu)
              & jnp.isfinite(sigma) & jnp.isfinite(nu))
     from .distributions_b6 import _sichel_log_pdf
@@ -7589,19 +7587,28 @@ def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
         )
         # A prefix scan has linear memory; the previous broadcasted
         # comparison materialized a 10001 x 10001 matrix per parameter set.
-        return jax.lax.associative_scan(jnp.logaddexp, log_mass)
+        if lower_tail:
+            return jax.lax.associative_scan(jnp.logaddexp, log_mass)
+        inclusive = jax.lax.associative_scan(jnp.logaddexp, log_mass, reverse=True)
+        return jnp.concatenate((inclusive[1:], jnp.array([-jnp.inf])))
 
     cumulative_log_probability = jax.vmap(cumulative_scalar)(
         mu.ravel(), sigma.ravel(), nu.ravel()
     )
-    target_log = jnp.where(target == 0, -jnp.inf, jnp.log(target))
-    reached = cumulative_log_probability >= target_log.ravel()[:, None]
+    tolerance = 8 * jnp.finfo(jnp.float64).eps * jnp.maximum(1., jnp.abs(target_log))
+    tolerance = jnp.where(jnp.isfinite(target_log), tolerance, 0.)
+    target = target_log.ravel()[:, None]
+    tolerance = tolerance.ravel()[:, None]
+    reached = (cumulative_log_probability >= target - tolerance) if lower_tail else (
+        cumulative_log_probability <= target + tolerance)
     found = jnp.argmax(reached, axis=1).astype(jnp.float64)
     resolved = jnp.any(reached, axis=1)
     found = found.reshape(p.shape)
-    result = jnp.where(target == 0, 0., jnp.where(target == 1, jnp.inf, found))
+    at_zero = jnp.isneginf(target_log) if lower_tail else (target_log == 0)
+    at_infinity = (target_log == 0) if lower_tail else jnp.isneginf(target_log)
+    result = jnp.where(at_zero, 0., jnp.where(at_infinity, jnp.inf, found))
     # Endpoints do not require a finite quantile to be found by the search.
-    resolved = resolved.reshape(p.shape) | (target == 0) | (target == 1)
+    resolved = resolved.reshape(p.shape) | at_zero | at_infinity
     return jnp.where(valid & resolved, result, jnp.nan)
 
 

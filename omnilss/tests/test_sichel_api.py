@@ -6,6 +6,7 @@ from omnilss.dpqr_functions import dSICHEL
 from omnilss.distributions_b6 import SICHEL
 from omnilss.dpqr_functions import rSICHEL
 from omnilss.dpqr_functions import qSICHEL
+from omnilss.dpqr_functions import pSICHEL
 
 
 def test_quantile_endpoints():
@@ -35,6 +36,24 @@ def test_quantile_prefix_search_handles_broadcast_parameters():
         value, mu, .5, .2))(jnp.array([.2, .5, .8]), jnp.array([1., 2., 3.]))
     np.testing.assert_array_equal(p, qSICHEL(
         jnp.array([.2, .5, .8]), jnp.array([1., 2., 3.]), .5, .2))
+
+
+def test_extreme_upper_tail_quantile_roundtrip():
+    x = jnp.array([3., 100.])[:, None]
+    mu = jnp.array([1., 2.])
+    log_tail = pSICHEL(x, mu, .7, .2, lower_tail=False, log_p=True)
+    assert (np.asarray(log_tail[-1]) < -40).all()
+    for log_p in (False, True):
+        value = log_tail if log_p else jnp.exp(log_tail)
+        actual = jax.jit(lambda v: qSICHEL(
+            v, mu, .7, .2, lower_tail=False, log_p=log_p))(value)
+        np.testing.assert_array_equal(actual, np.broadcast_to(x, actual.shape))
+
+
+def test_log_quantile_rejects_invalid_and_preserves_tiny_lower_targets():
+    actual = qSICHEL(jnp.array([-1000., .1, np.nan, np.inf]), log_p=True)
+    assert actual[0] == 0.
+    assert np.isnan(actual[1:]).all()
 
 
 def test_density_broadcast_jit():
