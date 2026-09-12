@@ -928,11 +928,13 @@ def rs_fit(
     timing_split = {"warm_start": 0.0, "core_rs": 0.0, "host_device_sync": 0.0}
     warm_start_t0 = time.perf_counter()
     warm_start = warm_start_policy or FamilyHeuristicInit()
-    warm_start_result = warm_start.initialize(
-        y=y,
-        parameter_names=tuple(family.estimable_parameters),
-        family_name=family.name,
-    )
+    warm_start_kwargs = {
+        "y": y,
+        "parameter_names": tuple(family.estimable_parameters),
+    }
+    if isinstance(warm_start, FamilyHeuristicInit):
+        warm_start_kwargs["family_name"] = family.name
+    warm_start_result = warm_start.initialize(**warm_start_kwargs)
     solver_backend = _select_solver_backend(family, n, routing_decision)
 
     # Initialize parameter values
