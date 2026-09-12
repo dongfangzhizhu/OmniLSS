@@ -7518,13 +7518,11 @@ def pSICHEL(q, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
     q, mu, sigma, nu = jnp.broadcast_arrays(*[
         jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma, nu)
     ])
-    from .distributions_b6 import _sichel_log_pdf
     from .distributions_b6 import SICHEL_PROBABILITY_MAX_COUNT
+    from .distributions_b6 import _sichel_log_pmf_sequence
     support = jnp.arange(SICHEL_PROBABILITY_MAX_COUNT + 1, dtype=jnp.float64)
     def logprob_scalar(qq, mm, ss, nn):
-        log_mass = jax.vmap(_sichel_log_pdf, in_axes=(0, None, None, None))(
-            support, mm, ss, nn
-        )
+        log_mass = _sichel_log_pmf_sequence(mm, ss, nn, SICHEL_PROBABILITY_MAX_COUNT)
         lower = jax.scipy.special.logsumexp(
             jnp.where(support <= qq, log_mass, -jnp.inf)
         )
@@ -7593,8 +7591,8 @@ def qSICHEL(p, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False,
     support = jnp.arange((max_value if lower_tail else SICHEL_PROBABILITY_MAX_COUNT) + 1, dtype=jnp.float64)
 
     def cumulative_scalar(mm, ss, nn):
-        log_mass = jax.vmap(_sichel_log_pdf, in_axes=(0, None, None, None))(
-            support, mm, ss, nn
+        log_mass = _sichel_log_pmf_sequence(
+            mm, ss, nn, support.shape[0] - 1
         )
         # A prefix scan has linear memory; the previous broadcasted
         # comparison materialized a 10001 x 10001 matrix per parameter set.

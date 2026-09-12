@@ -93,6 +93,34 @@ SICHEL_DENSITY_MAX_COUNT = 100000
 SICHEL_PROBABILITY_MAX_COUNT = SICHEL_DENSITY_MAX_COUNT
 
 
+def _sichel_log_pmf_sequence(mu, sigma, nu, max_count):
+    """Return log PMFs for counts 0..max_count using one static scan."""
+    from .bessel import log_bessel_kv
+    eps = jnp.finfo(jnp.float64).eps
+    inv_sigma = 1.0 / sigma
+    log_k_nu = log_bessel_kv(nu, inv_sigma)
+    c = jnp.exp(log_bessel_kv(nu + 1.0, inv_sigma) - log_k_nu)
+    alpha = jnp.sqrt(1.0 + 2.0 * sigma * mu / c) / sigma
+    log_k_alpha = log_bessel_kv(nu, alpha)
+    lbes = log_bessel_kv(nu + 1.0, alpha) - log_k_alpha
+    tofy0 = (mu / c) * jnp.power(1.0 + 2.0 * sigma * mu / c, -0.5) * jnp.exp(lbes)
+    base = -nu * jnp.log(sigma * alpha) + log_k_alpha - log_k_nu
+    log0 = base
+
+    def step(carry, j):
+        prev, log_mass = carry
+        prev = jnp.clip(prev, eps, 1e100)
+        jf = j.astype(jnp.float64)
+        current = (c * sigma * (2.0 * (jf + nu) / mu) + 1.0 / prev)
+        current = current * jnp.square(mu / (sigma * alpha * c))
+        current = jnp.clip(current, eps, 1e100)
+        next_log = log_mass + jnp.log(prev) - jnp.log(jf)
+        return (current, next_log), next_log
+
+    (_, _), tail = jax.lax.scan(step, (tofy0, log0), jnp.arange(1, max_count + 1))
+    return jnp.concatenate((jnp.reshape(log0, (1,)), tail))
+
+
 def _sichel_log_pdf(y, mu, sigma, nu):
     """Sichel distribution log-pdf.
     
