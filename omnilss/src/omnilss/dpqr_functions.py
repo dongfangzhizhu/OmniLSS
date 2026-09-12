@@ -8401,6 +8401,22 @@ def meanBEINF0(obj):
     return mu / (1.0 + nu)
 
 
+def meanBEINF1(obj):
+    """Return fitted means for a BEINF1 model, matching R ``meanBEINF1``."""
+    family = getattr(obj, "family", None)
+    family_name = getattr(family, "name", family)
+    if isinstance(family_name, (tuple, list)):
+        family_name = family_name[0] if family_name else None
+    if family_name != "BEINF1":
+        raise ValueError("the object does not have a BEINF1 distribution")
+    values = getattr(obj, "fitted_values", None)
+    if values is None or not all(name in values for name in ("mu", "nu")):
+        raise ValueError("BEINF1 model fitted_values must contain 'mu' and 'nu'")
+    mu = jnp.asarray(values["mu"], dtype=jnp.float64)
+    nu = jnp.asarray(values["nu"], dtype=jnp.float64)
+    return (nu + mu) / (1.0 + nu)
+
+
 def rNET(key, n, mu=0.0, sigma=1.0, nu=2.0, tau=4.0):
     """Random generation for Normal-Exponential-t distribution.
 

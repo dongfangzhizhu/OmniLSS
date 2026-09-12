@@ -811,7 +811,7 @@
 | `BEINF.R` | `plotBEINF()` | — | ❌ 未实现 | — |
 | `BEINF.R` | `meanBEINF()` | — | ✅ 已实现 | `omnilss.meanBEINF` |
 | `BEINF0.R` | `plotBEINF0()` / `meanBEINF0()` | — | ⚠️ 部分实现（`meanBEINF0`） | `omnilss.meanBEINF0` |
-| `BEINF1.R` | `plotBEINF1()` / `meanBEINF1()` | — | ❌ 未实现 | — |
+| `BEINF1.R` | `plotBEINF1()` / `meanBEINF1()` | — | ⚠️ 部分实现（`meanBEINF1`） | `omnilss.meanBEINF1` |
 
 ### 2.4 Box-Cox 变换族
 
