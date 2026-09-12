@@ -204,7 +204,9 @@ def _zero_sichel_log_pdf(x, mu, sigma, nu, tau, *, altered):
     value = jnp.where(x == 0, at_zero, positive)
     support = (x >= 0) & jnp.isfinite(x) & (x == jnp.floor(x))
     value = jnp.where(support, value, -jnp.inf)
-    undefined = jnp.isnan(x) | (support & (x > 10000))
+    # The point mass needs no base-density approximation or support cutoff.
+    value = jnp.where(tau == 1, jnp.where(x == 0, 0., -jnp.inf), value)
+    undefined = jnp.isnan(x) | (support & (x > 10000) & (tau != 1))
     return jnp.where(valid & ~undefined, value, jnp.nan)
 
 
@@ -257,7 +259,9 @@ def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
             result = jnp.minimum(result, 0.)
             result = jnp.where(v < 0, -jnp.inf if lower_tail else 0., result)
             result = jnp.where(jnp.isposinf(v), 0. if lower_tail else -jnp.inf, result)
-            valid = valid & ~((v > 10000) & jnp.isfinite(v))
+            point_mass = jnp.where(v < 0, -jnp.inf, 0.) if lower_tail else jnp.where(v < 0, 0., -jnp.inf)
+            result = jnp.where(tt == 1, point_mass, result)
+            valid = valid & ~((v > 10000) & jnp.isfinite(v) & (tt != 1))
             result = result if log_p else jnp.exp(result)
         return jnp.where(valid, result, jnp.nan)
 

@@ -6,6 +6,34 @@ from omnilss.distribution_registry import resolve
 from omnilss.dpqr_functions import dSICHEL
 
 
+def test_point_mass_beyond_numerical_support():
+    # Boundary support is a project extension: R rejects tau=0 and tau=1.
+    x = jnp.array([-np.inf, -1., 0., .5, 10001., 1e9, np.inf, np.nan])
+    for name in ("ZASICHEL", "ZISICHEL"):
+        fam = resolve(name)
+        for log in (False, True):
+            density = jax.jit(lambda v: fam.d(v, tau=1., log=log))(x)
+            expected = np.array([0., 0., 1., 0., 0., 0., 0., np.nan])
+            if log:
+                with np.errstate(divide="ignore"):
+                    expected = np.log(expected)
+            np.testing.assert_allclose(density, expected)
+            for lower_tail in (False, True):
+                expected = np.array([0., 0., 1., 1., 1., 1., 1., np.nan])
+                if not lower_tail:
+                    expected = 1. - expected
+                if log:
+                    with np.errstate(divide="ignore"):
+                        expected = np.log(expected)
+                actual = jax.jit(lambda v: fam.p(
+                    v, tau=1., lower_tail=lower_tail, log_p=log))(x)
+                np.testing.assert_allclose(actual, expected)
+        assert np.isnan(fam.d(10001., tau=1., sigma=-1.))
+        assert np.isnan(fam.p(10001., tau=1., sigma=-1.))
+        assert np.isnan(fam.d(10001., tau=.5))
+        assert np.isnan(fam.p(10001., tau=.5))
+
+
 def test_stable_density_support_and_likelihood():
     for name in ("ZASICHEL", "ZISICHEL"):
         fam = resolve(name)
