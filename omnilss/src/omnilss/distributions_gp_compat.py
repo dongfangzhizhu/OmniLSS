@@ -33,16 +33,23 @@ def dGP(x, mu=1.0, sigma=1.0, log=False):
 
 def pGP(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     q, mu, sigma = (jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma))
-    survival = jnp.power(1.0 + sigma * q / mu, -sigma)
-    result = jnp.where(q <= 0, 0.0 if lower_tail else 1.0, 1.0 - survival if lower_tail else survival)
-    return jnp.log(result) if log_p else result
+    valid = (mu > 0) & (sigma > 0)
+    log_survival = -sigma * jnp.log1p(sigma * jnp.maximum(q, 0) / mu)
+    log_result = jnp.where(q <= 0, -jnp.inf if lower_tail else 0.0,
+                           jnp.log(-jnp.expm1(log_survival)) if lower_tail else log_survival)
+    result = log_result if log_p else jnp.exp(log_result)
+    return jnp.where(valid, result, jnp.nan)
 
 
 def qGP(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     p, mu, sigma = (jnp.asarray(v, dtype=jnp.float64) for v in (p, mu, sigma))
-    p = jnp.exp(p) if log_p else p
-    p = jnp.where(lower_tail, p, 1.0 - p)
-    return jnp.where(p <= 0, 0.0, jnp.where(p >= 1, jnp.inf, mu / sigma * (jnp.power(1.0 - p, -1.0 / sigma) - 1.0)))
+    valid = (mu > 0) & (sigma > 0)
+    probability = jnp.exp(p) if log_p else p
+    probability = jnp.where(lower_tail, probability, 1.0 - probability)
+    log_one_minus_p = jnp.log1p(-probability)
+    result = mu / sigma * jnp.expm1(-log_one_minus_p / sigma)
+    result = jnp.where(probability <= 0, 0.0, jnp.where(probability >= 1, jnp.inf, result))
+    return jnp.where(valid & (probability >= 0) & (probability <= 1), result, jnp.nan)
 
 
 def rGP(key, n, mu=1.0, sigma=1.0):
