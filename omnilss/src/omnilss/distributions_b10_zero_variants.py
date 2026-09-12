@@ -228,15 +228,15 @@ def ZASICHEL():
     )
     from .dpqr_functions import pSICHEL, qSICHEL
     def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
-        base = pSICHEL(q, mu, sigma, nu)
-        f0 = pSICHEL(0., mu, sigma, nu)
+        base_log = pSICHEL(q, mu, sigma, nu, log_p=True)
+        f0_log = pSICHEL(0., mu, sigma, nu, log_p=True)
         valid = (tau >= 0) & (tau <= 1) & jnp.isfinite(tau)
-        denom = jnp.where(f0 == 1., 1., 1. - f0)
-        positive = (base - f0) / denom
-        value = jnp.where(q < 0, 0., tau + (1. - tau) * positive)
+        f0 = jnp.exp(f0_log)
+        base = jnp.exp(base_log)
+        value = jnp.where(q < 0, 0., tau + (1. - tau) * (base - f0) / (1. - f0))
         value = jnp.where(q >= jnp.inf, 1., value)
-        value = jnp.where(lower_tail, value, 1. - value)
-        value = jnp.clip(value, 0., 1.)
+        if not lower_tail:
+            value = jnp.where(q <= 0, 1. - tau, (1. - tau) * (1. - base) / (1. - f0))
         return jnp.where(valid, jnp.log(value) if log_p else value, jnp.nan)
     def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False):
         prob = jnp.exp(prob) if log_p else jnp.asarray(prob)
@@ -267,12 +267,12 @@ def ZISICHEL():
     )
     from .dpqr_functions import pSICHEL, qSICHEL
     def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
-        base = pSICHEL(q, mu, sigma, nu)
-        f = tau + (1. - tau) * base
-        value = jnp.where(q < 0, 0., f)
+        base_log = pSICHEL(q, mu, sigma, nu, log_p=True)
+        base = jnp.exp(base_log)
+        value = jnp.where(q < 0, 0., tau + (1. - tau) * base)
         value = jnp.where(q >= jnp.inf, 1., value)
-        value = jnp.where(lower_tail, value, 1. - value)
-        value = jnp.clip(value, 0., 1.)
+        if not lower_tail:
+            value = jnp.where(q < 0, 1., (1. - tau) * (1. - base))
         return jnp.where((tau >= 0) & (tau <= 1) & jnp.isfinite(tau),
                          jnp.log(value) if log_p else value, jnp.nan)
     def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False):

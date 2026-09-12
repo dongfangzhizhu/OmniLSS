@@ -7515,14 +7515,28 @@ def pSICHEL(q, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
     ])
     from .distributions_b6 import _sichel_log_pdf
     support = jnp.arange(10001, dtype=jnp.float64)
-    def cdf_scalar(qq, mm, ss, nn):
-        masses = jax.vmap(_sichel_log_pdf, in_axes=(0, None, None, None))(support, mm, ss, nn)
-        return jnp.sum(jnp.where(support <= qq, jnp.exp(masses), 0.))
-    cdf = jax.vmap(cdf_scalar)(q.ravel(), mu.ravel(), sigma.ravel(), nu.ravel()).reshape(q.shape)
+    def logprob_scalar(qq, mm, ss, nn):
+        log_mass = jax.vmap(_sichel_log_pdf, in_axes=(0, None, None, None))(
+            support, mm, ss, nn
+        )
+        lower = jax.scipy.special.logsumexp(
+            jnp.where(support <= qq, log_mass, -jnp.inf)
+        )
+        upper = jax.scipy.special.logsumexp(
+            jnp.where(support > qq, log_mass, -jnp.inf)
+        )
+        return jnp.where(lower_tail, lower, upper)
+    log_probability = jax.vmap(logprob_scalar)(
+        q.ravel(), mu.ravel(), sigma.ravel(), nu.ravel()
+    ).reshape(q.shape)
     valid = (mu > 0) & (sigma > 0) & jnp.isfinite(mu) & jnp.isfinite(sigma) & jnp.isfinite(nu)
-    cdf = jnp.where(q < 0, 0., jnp.where(jnp.isposinf(q), 1., cdf))
-    cdf = jnp.where(lower_tail, cdf, 1. - cdf)
-    result = jnp.log(cdf) if log_p else cdf
+    log_probability = jnp.where(
+        q < 0, jnp.where(lower_tail, -jnp.inf, 0.), log_probability
+    )
+    log_probability = jnp.where(
+        jnp.isposinf(q), jnp.where(lower_tail, 0., -jnp.inf), log_probability
+    )
+    result = log_probability if log_p else jnp.exp(log_probability)
     return jnp.where(valid & ~jnp.isnan(q) & ~((q > 10000) & jnp.isfinite(q)), result, jnp.nan)
 
 
