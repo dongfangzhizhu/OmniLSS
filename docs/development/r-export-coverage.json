@@ -1,23 +1,23 @@
 {
-  "generated_at": "2026-08-27T22:09:41.690679+00:00",
+  "generated_at": "2026-09-12T07:30:53.112855+00:00",
   "source_repo_root": "D:\\AI\\my\\githubprojs\\OmniLSS",
   "stats": {
     "total_registered": 145,
     "status_distribution": {
-      "experimental": 84,
+      "placeholder": 32,
+      "experimental": 87,
       "compat_alias": 25,
-      "placeholder": 35,
       "implemented": 1
     },
     "validated_count": 1,
-    "experimental_count": 84,
+    "experimental_count": 87,
     "compat_alias_count": 25,
-    "placeholder_count": 35,
+    "placeholder_count": 32,
     "missing_count": 0
   },
   "families": {
     "BB": {
-      "implementation_status": "experimental",
+      "implementation_status": "placeholder",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -377,7 +377,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "DEL": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -386,7 +386,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "DELAPORT": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -395,7 +395,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "DPO": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -854,7 +854,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "PIG2": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -971,7 +971,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "SICHEL": {
-      "implementation_status": "experimental",
+      "implementation_status": "placeholder",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -1088,7 +1088,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "WARING": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,

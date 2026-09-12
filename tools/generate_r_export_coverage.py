@@ -5,6 +5,7 @@ This is the single source of truth for implementation status, replacing hand-mai
 completion rates. Run with JAX_ENABLE_X64=True to match R parity test environment.
 """
 
+import argparse
 import json
 import sys
 from datetime import datetime, timezone
@@ -14,6 +15,10 @@ REPO_ROOT = Path(__file__).parent.parent
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, default=REPO_ROOT / "docs" / "development" / "r-export-coverage.json")
+    parser.add_argument("--markdown", type=Path, help="Optional Markdown registry summary")
+    args = parser.parse_args()
     # Add omnilss src to path
     sys.path.insert(0, str(REPO_ROOT / "omnilss" / "src"))
 
@@ -73,11 +78,24 @@ def main():
     coverage["stats"]["placeholder_count"] = status_counts.get("placeholder", 0)
     coverage["stats"]["missing_count"] = status_counts.get("missing", 0)
 
-    output_path = REPO_ROOT / "docs" / "development" / "r-export-coverage.json"
+    output_path = args.output
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(coverage, f, indent=2, ensure_ascii=False)
+
+    if args.markdown is not None:
+        lines = [
+            "# OmniLSS registry implementation inventory", "",
+            "Registry metadata only: this report does not establish R export coverage or numerical parity.",
+            "", "| Family | Implementation status |", "|---|---|",
+        ]
+        lines.extend(
+            f"| {name} | {info.get('implementation_status', 'missing')} |"
+            for name, info in coverage["families"].items()
+        )
+        args.markdown.parent.mkdir(parents=True, exist_ok=True)
+        args.markdown.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     print(f"Generated: {output_path}")
     print(f"Total registered: {coverage['stats']['total_registered']}")
