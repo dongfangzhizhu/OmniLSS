@@ -9,7 +9,6 @@ from dataclasses import dataclass
 
 import jax.numpy as jnp
 import jax.random as random
-from jax.scipy.special import gammaln
 
 from .ad import build_ad_family
 from .links import log_derivative, log_inverse, log_link
@@ -23,7 +22,7 @@ class GPFamily(FamilyDefinition):
 
 def _log_pdf(y, mu, sigma):
     y, mu, sigma = (jnp.asarray(v, dtype=jnp.float64) for v in (y, mu, sigma))
-    value = -jnp.log(mu) + gammaln(1.0 + sigma) - gammaln(sigma) - (1.0 + sigma) * jnp.log1p(y / mu)
+    value = jnp.log(sigma) - jnp.log(mu) - (1.0 + sigma) * jnp.log1p(sigma * y / mu)
     return jnp.where((y > 0) & (mu > 0) & (sigma > 0), value, -jnp.inf)
 
 
