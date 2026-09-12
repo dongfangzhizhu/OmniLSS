@@ -23,7 +23,8 @@ class GPFamily(FamilyDefinition):
 
 def _log_pdf(y, mu, sigma):
     y, mu, sigma = (jnp.asarray(v, dtype=jnp.float64) for v in (y, mu, sigma))
-    return -jnp.log(mu) + gammaln(1.0 + sigma) - gammaln(sigma) - (1.0 + sigma) * jnp.log1p(y / mu)
+    value = -jnp.log(mu) + gammaln(1.0 + sigma) - gammaln(sigma) - (1.0 + sigma) * jnp.log1p(y / mu)
+    return jnp.where((y > 0) & (mu > 0) & (sigma > 0), value, -jnp.inf)
 
 
 def dGP(x, mu=1.0, sigma=1.0, log=False):
