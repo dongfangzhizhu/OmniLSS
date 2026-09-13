@@ -70,7 +70,8 @@ class TestDPQRFunctions(unittest.TestCase):
             "PIG": {"params": (1.0, 1.0), "x": 5.0, "type": "discrete"},
             "SICHEL": {"params": (1.0, 1.0, -0.5), "x": 5.0, "type": "discrete"},
             "DPO": {"params": (1.0, 1.0), "x": 5.0, "type": "discrete"},
-            "DEL": {"params": (1.0, 1.0, 1.0), "x": 5.0, "type": "discrete"},
+            # DEL requires 0 < nu < 1; nu=1 is outside the R family support.
+            "DEL": {"params": (1.0, 1.0, 0.5), "x": 5.0, "type": "discrete"},
             "YULE": {"params": (1.0,), "x": 5.0, "type": "discrete"},
             "WARING": {"params": (1.0, 1.0), "x": 5.0, "type": "discrete"},
             

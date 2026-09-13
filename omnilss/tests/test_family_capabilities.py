@@ -109,6 +109,16 @@ def test_sichel_boundary_nan_handling_is_not_placeholder_behavior():
     assert implementation_status_for_family("SICHEL") is ImplementationStatus.EXPERIMENTAL
 
 
+def test_del_explicit_dpqr_is_experimental_not_placeholder():
+    """DEL has a real finite-support implementation, but remains experimental."""
+    for family_name in ("DEL", "DELAPORT"):
+        capability = get_family_capability(family_name)
+        assert capability.implementation_status is ImplementationStatus.EXPERIMENTAL
+        assert implementation_status_for_family(family_name) is ImplementationStatus.EXPERIMENTAL
+        assert capability.status("r_consistency") is CapabilityStatus.VALIDATED
+        assert capability.status("production_safe") is CapabilityStatus.EXPERIMENTAL
+
+
 def test_unsupported_jax_route_is_reported():
     capability = get_family_capability("GB2")
     assert capability.status("rs_jax_fit") is CapabilityStatus.UNSUPPORTED

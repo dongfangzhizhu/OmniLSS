@@ -121,6 +121,8 @@ _R_CONSISTENCY_EVIDENCE = frozenset(
         "BE",
         "BEINF",
         "BI",
+        "DEL",
+        "DELAPORT",
         "EXP",
         "GA",
         "GEOM",
