@@ -20,8 +20,11 @@ from dataclasses import dataclass
 from functools import lru_cache
 import math
 
+import jax
 import jax.numpy as jnp
+import jax.random as jrandom
 from jax.scipy.special import gammaln
+from jax.scipy.stats import poisson
 from jax import jit, vmap
 
 from .ad import build_ad_family
@@ -202,22 +205,92 @@ def ZAIG() -> ZeroAlteredInverseGaussianFamily:
 @dataclass(frozen=True)
 class ZeroInflatedPoisson2Family(FamilyDefinition):
     """Zero-Inflated Poisson type 2 (`ZIP2`).
-    
-    R gamlss.dist parameters: mu, sigma (dummy), nu.
+
+    R ``gamlss.dist`` parameters are ``mu`` (the mixture mean) and ``sigma``
+    (the extra-zero probability).
     """
 
 
 def _zip2_log_pdf(y, mu, sigma):
-    eps = jnp.finfo(jnp.float64).eps
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.clip(sigma, eps, 1.0 - eps)
-    y = jnp.maximum(y, 0.0)
-
     # R parameterization keeps mu as the mean and uses mus=lambda=mu/(1-sigma).
-    mus = mu / (1.0 - sigma)
-    log_at0 = jnp.log(sigma + (1.0 - sigma) * jnp.exp(-mus))
-    log_cont = (1.0 - y) * jnp.log1p(-sigma) - mus + y * jnp.log(mu) - gammaln(y + 1.0)
-    return jnp.where(y <= 0.0, log_at0, log_cont)
+    valid = (mu > 0.0) & (sigma > 0.0) & (sigma < 1.0)
+    safe_mu = jnp.where(valid, mu, 1.0)
+    safe_sigma = jnp.where(valid, sigma, 0.5)
+    mus = safe_mu / (1.0 - safe_sigma)
+    log_at0 = jnp.log(safe_sigma + (1.0 - safe_sigma) * jnp.exp(-mus))
+    log_cont = (
+        (1.0 - y) * jnp.log1p(-safe_sigma)
+        - mus
+        + y * jnp.log(safe_mu)
+        - gammaln(y + 1.0)
+    )
+    result = jnp.where(y == 0.0, log_at0, log_cont)
+    result = jnp.where(y < 0.0, -jnp.inf, result)
+    return jnp.where(valid, result, jnp.nan)
+
+
+def _zip2_p(q, mu=5.0, sigma=0.1, lower_tail=True, log_p=False):
+    """CDF matching R ``pZIP2`` with standard tail/log boundary semantics."""
+    q, mu, sigma = jnp.broadcast_arrays(*[
+        jnp.asarray(value, dtype=jnp.float64) for value in (q, mu, sigma)
+    ])
+    valid = (mu > 0.0) & (sigma > 0.0) & (sigma < 1.0)
+    safe_mu = jnp.where(valid, mu, 1.0)
+    safe_sigma = jnp.where(valid, sigma, 0.5)
+    mus = safe_mu / (1.0 - safe_sigma)
+    cdf = safe_sigma + (1.0 - safe_sigma) * poisson.cdf(q, mus)
+    cdf = jnp.where(q < 0.0, 0.0, cdf)
+    probability = jnp.where(lower_tail, cdf, 1.0 - cdf)
+    result = jnp.log(probability) if log_p else probability
+    return jnp.where(valid, result, jnp.nan)
+
+
+ZIP2_QUANTILE_MAX_COUNT = 10_000
+
+
+def _zip2_q(p, mu=5.0, sigma=0.1, lower_tail=True, log_p=False,
+            max_value=ZIP2_QUANTILE_MAX_COUNT):
+    """Quantile function for ZIP2 using the adjusted Poisson probability."""
+    p, mu, sigma = jnp.broadcast_arrays(*[
+        jnp.asarray(value, dtype=jnp.float64) for value in (p, mu, sigma)
+    ])
+    probability = jnp.exp(p) if log_p else p
+    probability = jnp.where(lower_tail, probability, 1.0 - probability)
+    valid_parameters = (mu > 0.0) & (sigma > 0.0) & (sigma < 1.0)
+    valid_probability = (probability >= 0.0) & (probability <= 1.0)
+    safe_mu = jnp.where(valid_parameters, mu, 1.0)
+    safe_sigma = jnp.where(valid_parameters, sigma, 0.5)
+    mus = safe_mu / (1.0 - safe_sigma)
+    adjusted = (probability - safe_sigma) / (1.0 - safe_sigma) - 1e-10
+    support = jnp.arange(max_value + 1, dtype=jnp.float64)
+
+    def one(pi, adjusted_i, musi):
+        reached = poisson.cdf(support, musi) >= adjusted_i
+        result = jnp.where(adjusted_i <= 0.0, 0.0, jnp.argmax(reached)).astype(jnp.float64)
+        result = jnp.where((adjusted_i > 0.0) & ~jnp.any(reached), jnp.nan, result)
+        result = jnp.where(pi == 0.0, 0.0, result)
+        return jnp.where(pi == 1.0, jnp.inf, result)
+
+    result = jax.vmap(one)(
+        probability.reshape(-1), adjusted.reshape(-1), mus.reshape(-1)
+    ).reshape(p.shape)
+    valid = valid_parameters & valid_probability & ~jnp.isnan(probability)
+    return jnp.where(valid, result, jnp.nan)
+
+
+def _zip2_r(key, n, mu=5.0, sigma=0.1):
+    """Generate ZIP2 variates directly from its zero/Poisson mixture."""
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    valid = (mu > 0.0) & (sigma > 0.0) & (sigma < 1.0)
+    safe_mu = jnp.where(valid, mu, 1.0)
+    safe_sigma = jnp.where(valid, sigma, 0.5)
+    zero_key, poisson_key = jrandom.split(key)
+    output_shape = (n,) if mu.ndim == 0 and sigma.ndim == 0 else jnp.broadcast_shapes(mu.shape, sigma.shape)
+    structural_zero = jrandom.bernoulli(zero_key, safe_sigma, shape=output_shape)
+    counts = jrandom.poisson(poisson_key, safe_mu / (1.0 - safe_sigma), shape=output_shape)
+    result = jnp.where(structural_zero, 0.0, counts.astype(jnp.float64))
+    return jnp.where(valid, result, jnp.nan)
 
 
 def ZIP2() -> ZeroInflatedPoisson2Family:
@@ -231,6 +304,9 @@ def ZIP2() -> ZeroInflatedPoisson2Family:
         link_functions={"mu": log_link, "sigma": logit_link},
         link_inverses={"mu": log_inverse, "sigma": logit_inverse},
         link_derivatives={"mu": log_derivative, "sigma": logit_derivative},
+        p=_zip2_p,
+        q=_zip2_q,
+        r=_zip2_r,
     )
 
 

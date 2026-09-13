@@ -1,8 +1,13 @@
 # OmniLSS 完成度与环境需求说明
 
-更新时间：2026-09-13
+更新时间：2026-09-14
 
 ## 1. 本轮交付
+
+- 完成 `ZIP2` 的 R-compatible DPQR：修复负值 PMF 边界，加入 Poisson 混合 CDF、分位数、直接混合采样、upper-tail、`log_p`、广播和无效参数处理。
+- 增加 `tests/test_zip2_dpqr_contract.py`，覆盖 R golden PMF/CDF、分位数、零膨胀边界、尾部、日志概率、广播、链接、参数校验和采样矩特征。
+- `ZIP2` 实际 R 拟合回归通过，并通过综合 DPQR 中 ZIP2 的 5 项测试。
+- 刷新代码派生的覆盖数据和 placeholder 队列。
 
 - 修复 `SI`（Sichel 简化分布）公开 DPQR 不完整的问题。此前只有 log-PMF，公开 `p/q/r` 走 placeholder 并返回 `NaN`。
 - 增加基于 R-SI 递推核的离散概率网格、CDF、首个交叉点分位数和逆变换采样。
@@ -25,23 +30,23 @@ python -m pytest tests/test_si_dpqr_contract.py tests/test_family_capabilities.p
 | 状态 | 数量 | 含义 |
 |---|---:|---|
 | implemented | 1 | 当前生产级证据最完整的基线家族 |
-| experimental | 94 | 有真实代码/接口，但仍需更完整 R golden、拟合或性能证据 |
+| experimental | 95 | 有真实代码/接口，但仍需更完整 R golden、拟合或性能证据 |
 | compat_alias | 25 | 兼容层/别名，不计为独立 R 数学实现 |
-| placeholder | 25 | 生产路由应拒绝，仍需真实数值实现或明确不支持理由 |
+| placeholder | 24 | 生产路由应拒绝，仍需真实数值实现或明确不支持理由 |
 
-`SI` 与 `NBF` 已从 placeholder 队列移出并进入 experimental；这不等于已达到 production-safe。
+`SI`、`NBF`、`GPO` 与 `ZIP2` 已从 placeholder 队列移出并进入 experimental；这不等于已达到 production-safe。
 
 ## 3. 距离全部完成仍缺失的功能
 
 ### 3.1 直接影响分布正常使用
 
-以下 25 个家族仍是 placeholder，当前不应宣称可用于生产拟合或预测：
+以下 24 个家族仍是 placeholder，当前不应宣称可用于生产拟合或预测：
 
-`BB`、`DPO1`、`EGB2`、`EXGAUS`、`GAF`、`GB1`、`GB2`、`GIG`、`IGA`、`LOGSHASH`、`LQNO`、`MN3`、`MN4`、`MN5`、`NO2`、`NOF`、`PARETO`、`PARETO1`、`PE2`、`RGE`、`WEI2`、`ZALG`、`ZIP`、`ZIP2`、`ZIPF`。
+`BB`、`DPO1`、`EGB2`、`EXGAUS`、`GAF`、`GB1`、`GB2`、`GIG`、`IGA`、`LOGSHASH`、`LQNO`、`MN3`、`MN4`、`MN5`、`NO2`、`NOF`、`PARETO`、`PARETO1`、`PE2`、`RGE`、`WEI2`、`ZALG`、`ZIP`、`ZIPF`。
 
 其中应优先处理：
 
-1. `NBF/GPO/NBII` 等离散计数族及 `ZIP/ZIP2/ZIPF` 零膨胀族；
+1. `NBF/GPO/NBII` 等离散计数族及 `ZIP/ZIPF` 零膨胀族；
 2. `BCCG/BCT/BCPE` 及其变体的截断归一化；
 3. 正实数族 `GB1/GB2/GIG/WEI2/PARETO`；
 4. `MN3/MN4/MN5` 等尚无完整概率契约的族。
@@ -98,9 +103,9 @@ python -m pytest tests/test_si_dpqr_contract.py tests/test_family_capabilities.p
 
 ## 5. 建议后续顺序
 
-1. 为 `ZIP/ZIP2/ZIPF` 建立真实 d/p/q/r 与边界契约，逐族单独验收。
+1. 为 `ZIP/ZIPF` 建立真实 d/p/q/r 与边界契约，逐族单独验收。
 2. 优化 ST1/ST2 及离散族概率计算，加入 profile 基准，避免全套 R 测试超时。
-3. 完成 25 个 placeholder 的迁移并为每族生成 R golden artifact。
+3. 完成剩余 24 个 placeholder 的迁移并为每族生成 R golden artifact。
 4. 逐族完成 RS/CG/MIXED 拟合对照，再晋级 capability 状态。
 5. 收尾在线层、性能/GPU 基准、method 审计、lint/type、API 文档和发布矩阵。
 

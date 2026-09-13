@@ -54,7 +54,7 @@
 | [x] | `NBII` | `NBII` | experimental | 状态已离开 placeholder（experimental） |
 | [ ] | `ZALG` | `ZALG` | 占位 |  |
 | [ ] | `ZIP` | `ZIP` | 占位 |  |
-| [ ] | `ZIP2` | `ZIP2` | 占位 |  |
+| [x] | `ZIP2` | `ZIP2` | experimental | 状态已离开 placeholder（experimental） |
 | [ ] | `ZIPF` | `ZIPF` | 占位 |  |
 
 ## A4 正实数与其余连续
@@ -85,4 +85,4 @@
 
 ## 附录：尚未在任何批次中的状态
 
-当前 placeholder 家族总数（批次内）：22
+当前 placeholder 家族总数（批次内）：21
