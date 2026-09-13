@@ -144,7 +144,7 @@ Registry metadata only: this report does not establish R export coverage or nume
 | ZIBNB | experimental |
 | ZINBF | experimental |
 | ZINBI | experimental |
-| ZIP | placeholder |
+| ZIP | experimental |
 | ZIP2 | experimental |
 | ZIPF | placeholder |
 | ZIPIG | experimental |

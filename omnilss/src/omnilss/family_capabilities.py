@@ -442,6 +442,8 @@ def implementation_status_for_family(name: str) -> ImplementationStatus:
         return ImplementationStatus.COMPAT_ALIAS
     if _factory_uses_placeholder_dpqr(module_name, _attr_name):
         return ImplementationStatus.PLACEHOLDER
+    if key == "ZIP":
+        return ImplementationStatus.EXPERIMENTAL
     if _factory_uses_placeholder_dpqr_functions(module_name, _attr_name):
         return ImplementationStatus.PLACEHOLDER
     return ImplementationStatus.EXPERIMENTAL

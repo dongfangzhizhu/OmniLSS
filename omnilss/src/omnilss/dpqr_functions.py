@@ -2390,89 +2390,85 @@ def qNBII(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
 
 def rNBII(key, n, mu=1.0, sigma=1.0):
     """Random generation for NBII using gamma-Poisson mixture."""
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    
-    key1, key2 = jrandom.split(key)
-    size = mu / sigma
-    scale = sigma
-    
-    lambda_vals = jrandom.gamma(key1, size, shape=(n,)) * scale
-    return jrandom.poisson(key2, lambda_vals)
-
-
 # For ZIP - Zero-Inflated Poisson
+ZIP_QUANTILE_MAX_COUNT = 10_000
+
+
+def dZIP(x, mu=1.0, sigma=0.1, log=False):
+    """Probability mass function for R's zero-inflated Poisson."""
+    x, mu, sigma = jnp.broadcast_arrays(*[
+        jnp.asarray(value, dtype=jnp.float64) for value in (x, mu, sigma)
+    ])
+    valid = (mu > 0.0) & (sigma > 0.0) & (sigma < 1.0)
+    safe_mu = jnp.where(valid, mu, 1.0)
+    safe_sigma = jnp.where(valid, sigma, 0.5)
+    log_zero = jnp.log(safe_sigma + (1.0 - safe_sigma) * jnp.exp(-safe_mu))
+    log_positive = (
+        jnp.log1p(-safe_sigma) - safe_mu + x * jnp.log(safe_mu)
+        - gammaln(x + 1.0)
+    )
+    log_mass = jnp.where(x == 0.0, log_zero, log_positive)
+    log_mass = jnp.where(x < 0.0, -jnp.inf, log_mass)
+    result = log_mass if log else jnp.exp(log_mass)
+    return jnp.where(valid, result, jnp.nan)
+
+
 def pZIP(q, mu=1.0, sigma=0.1, lower_tail=True, log_p=False):
-    """CDF for ZIP."""
-    q = jnp.asarray(q, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    sigma = jnp.clip(sigma, 1e-10, 1.0 - 1e-10)
-    
-    # P(X <= q) = sigma + (1-sigma) * P_Poisson(X <= q)
-    from jax.scipy.stats import poisson
-    
-    poisson_cdf = poisson.cdf(q, mu)
-    cdf = sigma + (1.0 - sigma) * poisson_cdf
-    
-    # For q < 0, CDF = 0
-    cdf = jnp.where(q < 0, 0.0, cdf)
-    
-    if not lower_tail:
-        cdf = 1.0 - cdf
-    
-    if log_p:
-        cdf = jnp.log(cdf)
-    
-    return cdf
+    """CDF for ZIP with R-compatible tails and parameter validation."""
+    q, mu, sigma = jnp.broadcast_arrays(*[
+        jnp.asarray(value, dtype=jnp.float64) for value in (q, mu, sigma)
+    ])
+    valid = (mu > 0.0) & (sigma > 0.0) & (sigma < 1.0)
+    safe_mu = jnp.where(valid, mu, 1.0)
+    safe_sigma = jnp.where(valid, sigma, 0.5)
+    cdf = safe_sigma + (1.0 - safe_sigma) * poisson.cdf(q, safe_mu)
+    cdf = jnp.where(q < 0.0, 0.0, cdf)
+    probability = jnp.where(lower_tail, cdf, 1.0 - cdf)
+    result = jnp.log(probability) if log_p else probability
+    return jnp.where(valid, result, jnp.nan)
 
 
-def qZIP(p, mu=1.0, sigma=0.1, lower_tail=True, log_p=False):
-    """Quantile for ZIP using numerical search."""
-    p = jnp.asarray(p, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    
-    if log_p:
-        p = jnp.exp(p)
-    
-    if not lower_tail:
-        p = 1.0 - p
-    
-    # If p <= sigma, quantile is 0
-    # Otherwise, use Poisson quantile adjusted
-    from jax.scipy.stats import poisson
-    
-    # Approximate: use Poisson quantile for (p - sigma) / (1 - sigma)
-    p_adjusted = (p - sigma) / (1.0 - sigma)
-    p_adjusted = jnp.clip(p_adjusted, 0.0, 1.0)
-    
-    # Use normal approximation for Poisson quantile
-    z = norm_ppf(p_adjusted)
-    q = mu + jnp.sqrt(mu) * z
-    q = jnp.maximum(jnp.floor(q), 0.0)
-    
-    # If p <= sigma, return 0
-    q = jnp.where(p <= sigma, 0.0, q)
-    
-    return q
+def qZIP(p, mu=1.0, sigma=0.1, lower_tail=True, log_p=False,
+         max_value=ZIP_QUANTILE_MAX_COUNT):
+    """Exact discrete ZIP quantile via the first CDF crossing."""
+    p, mu, sigma = jnp.broadcast_arrays(*[
+        jnp.asarray(value, dtype=jnp.float64) for value in (p, mu, sigma)
+    ])
+    probability = jnp.exp(p) if log_p else p
+    probability = jnp.where(lower_tail, probability, 1.0 - probability)
+    valid_parameters = (mu > 0.0) & (sigma > 0.0) & (sigma < 1.0)
+    valid_probability = (probability >= 0.0) & (probability <= 1.0)
+    safe_mu = jnp.where(valid_parameters, mu, 1.0)
+    safe_sigma = jnp.where(valid_parameters, sigma, 0.5)
+    adjusted = (probability - safe_sigma) / (1.0 - safe_sigma) - 1e-10
+    support = jnp.arange(max_value + 1, dtype=jnp.float64)
+
+    def one(pi, adjusted_i, mui):
+        reached = poisson.cdf(support, mui) >= adjusted_i
+        result = jnp.where(adjusted_i <= 0.0, 0.0, jnp.argmax(reached)).astype(jnp.float64)
+        result = jnp.where((adjusted_i > 0.0) & ~jnp.any(reached), jnp.nan, result)
+        result = jnp.where(pi == 0.0, 0.0, result)
+        return jnp.where(pi == 1.0, jnp.inf, result)
+
+    result = jax.vmap(one)(probability.reshape(-1), adjusted.reshape(-1), safe_mu.reshape(-1))
+    result = result.reshape(p.shape)
+    valid = valid_parameters & valid_probability & ~jnp.isnan(probability)
+    return jnp.where(valid, result, jnp.nan)
 
 
 def rZIP(key, n, mu=1.0, sigma=0.1):
-    """Random generation for ZIP."""
+    """Generate ZIP variates directly from its zero/Poisson mixture."""
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    
-    key1, key2 = jrandom.split(key)
-    
-    # Generate Bernoulli for zero-inflation
-    is_zero = jrandom.uniform(key1, shape=(n,)) < sigma
-    
-    # Generate Poisson
-    poisson_vals = jrandom.poisson(key2, mu, shape=(n,))
-    
-    # Combine: if is_zero, return 0, else return Poisson
-    return jnp.where(is_zero, 0, poisson_vals).astype(jnp.float64)
+    valid = (mu > 0.0) & (sigma > 0.0) & (sigma < 1.0)
+    safe_mu = jnp.where(valid, mu, 1.0)
+    safe_sigma = jnp.where(valid, sigma, 0.5)
+    output_shape = (n,) if mu.ndim == 0 and sigma.ndim == 0 else jnp.broadcast_shapes(mu.shape, sigma.shape)
+    zero_key, poisson_key = jrandom.split(key)
+    is_zero = jrandom.bernoulli(zero_key, safe_sigma, shape=output_shape)
+    counts = jrandom.poisson(poisson_key, safe_mu, shape=output_shape)
+    result = jnp.where(is_zero, 0.0, counts.astype(jnp.float64))
+    return jnp.where(valid, result, jnp.nan)
 
 
 # Export the new functions
@@ -2493,7 +2489,7 @@ __all__ = [
     'dNBI', 'pNBI', 'qNBI', 'rNBI',
     'dNBII', 'pNBII', 'qNBII', 'rNBII',
     'dNO2', 'pNO2', 'qNO2', 'rNO2',
-    'pZIP', 'qZIP', 'rZIP',
+    'dZIP', 'pZIP', 'qZIP', 'rZIP',
     'fittedMN',
 ]
 

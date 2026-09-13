@@ -55,7 +55,7 @@ from .dpqr_functions import (
     dBCPE, pBCPE, qBCPE, rBCPE,
     dJSU, pJSU, qJSU, rJSU,
     dBCCG, pBCCG, qBCCG, rBCCG,
-    pZIP, qZIP, rZIP,
+    dZIP, pZIP, qZIP, rZIP,
 )
 
 
@@ -1354,7 +1354,7 @@ def ZIP() -> ZeroInflatedPoissonFamily:
         link_derivatives={"mu": log_derivative, "sigma": logit_derivative},
         score_functions={"mu": dldm, "sigma": dlds},
         hessian_functions={"mu": d2ldm2, "sigma": d2lds2},
-        d=lambda x, mu, sigma, log=False: -0.5 * g_dev_inc(x, mu, sigma) if log else jnp.exp(-0.5 * g_dev_inc(x, mu, sigma)),
+        d=dZIP,
         p=pZIP,
         q=qZIP,
         r=rZIP,

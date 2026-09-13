@@ -53,7 +53,7 @@
 | [x] | `GPO` | `GPO` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `NBII` | `NBII` | experimental | 状态已离开 placeholder（experimental） |
 | [ ] | `ZALG` | `ZALG` | 占位 |  |
-| [ ] | `ZIP` | `ZIP` | 占位 |  |
+| [x] | `ZIP` | `ZIP` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `ZIP2` | `ZIP2` | experimental | 状态已离开 placeholder（experimental） |
 | [ ] | `ZIPF` | `ZIPF` | 占位 |  |
 
@@ -85,4 +85,4 @@
 
 ## 附录：尚未在任何批次中的状态
 
-当前 placeholder 家族总数（批次内）：21
+当前 placeholder 家族总数（批次内）：20
