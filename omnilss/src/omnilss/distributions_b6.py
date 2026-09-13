@@ -290,7 +290,100 @@ def _si_log_pdf(y, mu, sigma, nu=-0.5):
     return log_pdf
 
 
+SI_PROBABILITY_MAX_COUNT = 10000
+
+
+def _si_log_pmf_grid(mu, sigma, nu):
+    """Return SI log-PMFs from the recurrence used by ``gamlss.dist``.
+
+    The masses are deliberately not renormalized: R computes the same raw
+    recurrence, and normalizing a finite prefix changes every CDF value.
+    """
+    from .bessel import log_bessel_kv
+
+    eps = jnp.finfo(jnp.float64).eps
+    valid = (mu > 0.0) & (sigma > 0.0)
+    safe_mu = jnp.where(valid, mu, 1.0)
+    safe_sigma = jnp.where(valid, sigma, 1.0)
+    alpha = jnp.sqrt(1.0 + 2.0 * safe_sigma * safe_mu) / safe_sigma
+    lbes = log_bessel_kv(nu + 1.0, alpha) - log_bessel_kv(nu, alpha)
+    initial_ratio = safe_mu * jnp.power(1.0 + 2.0 * safe_sigma * safe_mu, -0.5) * jnp.exp(lbes)
+    log_zero = (
+        -nu * jnp.log(safe_sigma * alpha)
+        + log_bessel_kv(nu, alpha)
+        - log_bessel_kv(nu, 1.0 / safe_sigma)
+    )
+
+    def step(state, count):
+        previous_ratio, previous_log_mass = state
+        count_float = count.astype(jnp.float64)
+        log_mass = previous_log_mass + jnp.log(jnp.maximum(previous_ratio, eps)) - jnp.log(count_float)
+        ratio = (
+            safe_sigma * (2.0 * (count_float + nu) / safe_mu)
+            + 1.0 / jnp.maximum(previous_ratio, eps)
+        ) * jnp.square(safe_mu / (safe_sigma * alpha))
+        return (ratio, log_mass), log_mass
+
+    support = jnp.arange(SI_PROBABILITY_MAX_COUNT + 1, dtype=jnp.float64)
+    _, remaining = jax.lax.scan(step, (initial_ratio, log_zero), support[1:])
+    log_mass = jnp.concatenate((log_zero[None], remaining))
+    return support, jnp.where(valid, log_mass, jnp.nan)
+
+
+def _si_p(q, mu=0.5, sigma=0.02, nu=-0.5, lower_tail=True, log_p=False):
+    """CDF for SI using the discrete first-support convention of R."""
+    q, mu, sigma, nu = jnp.broadcast_arrays(*[
+        jnp.asarray(value, dtype=jnp.float64) for value in (q, mu, sigma, nu)
+    ])
+    flat_q = q.reshape(-1)
+    flat_mu, flat_sigma, flat_nu = (value.reshape(-1) for value in (mu, sigma, nu))
+    support = jnp.arange(SI_PROBABILITY_MAX_COUNT + 1, dtype=jnp.float64)
+
+    def one(qi, mui, sigmai, nui):
+        _, log_mass = _si_log_pmf_grid(mui, sigmai, nui)
+        cdf = jnp.sum(jnp.where(support <= jnp.floor(qi), jnp.exp(log_mass), 0.0))
+        cdf = jnp.where(qi < 0.0, 0.0, cdf)
+        cdf = jnp.where((qi > SI_PROBABILITY_MAX_COUNT) & jnp.isfinite(qi), jnp.nan, cdf)
+        cdf = jnp.where(jnp.isposinf(qi), 1.0, cdf)
+        return cdf
+
+    cdf = jax.vmap(one)(flat_q, flat_mu, flat_sigma, flat_nu).reshape(q.shape)
+    cdf = jnp.where(lower_tail, cdf, 1.0 - cdf)
+    return jnp.log(cdf) if log_p else cdf
+
+
+def _si_q(p, mu=0.5, sigma=0.02, nu=-0.5, lower_tail=True, log_p=False,
+          max_value=SI_PROBABILITY_MAX_COUNT):
+    """Quantile for SI: smallest non-negative integer with CDF >= p."""
+    p, mu, sigma, nu = jnp.broadcast_arrays(*[
+        jnp.asarray(value, dtype=jnp.float64) for value in (p, mu, sigma, nu)
+    ])
+    prob = jnp.exp(p) if log_p else p
+    prob = jnp.where(lower_tail, prob, 1.0 - prob)
+    support = jnp.arange(max_value + 1, dtype=jnp.float64)
+
+    def one(pi, mui, sigmai, nui):
+        _, log_mass = _si_log_pmf_grid(mui, sigmai, nui)
+        cdf = jnp.cumsum(jnp.exp(log_mass[: max_value + 1]))
+        reached = cdf >= pi
+        result = jnp.argmax(reached).astype(jnp.float64)
+        result = jnp.where(jnp.any(reached), result, jnp.nan)
+        result = jnp.where(pi == 0.0, 0.0, result)
+        result = jnp.where(pi >= 1.0, jnp.inf, result)
+        result = jnp.where((pi < 0.0) | (pi > 1.0) | jnp.isnan(pi), jnp.nan, result)
+        return result
+
+    return jax.vmap(one)(prob.reshape(-1), mu.reshape(-1), sigma.reshape(-1), nu.reshape(-1)).reshape(p.shape)
+
+
+def _si_r(key, n, mu=0.5, sigma=0.02, nu=-0.5):
+    """Generate SI variates by inverse transform sampling."""
+    import jax.random as jr
+    return _si_q(jr.uniform(key, shape=(n,), dtype=jnp.float64), mu, sigma, nu)
+
+
 def SI() -> SkellamFamily:
+    """R-compatible Sichel (simplified) family with complete DPQR wiring."""
     return build_ad_family(
         family_class=SkellamFamily,
         name="SI",
@@ -301,6 +394,9 @@ def SI() -> SkellamFamily:
         link_functions={"mu": log_link, "sigma": log_link, "nu": identity_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": identity_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": identity_derivative},
+        p=_si_p,
+        q=_si_q,
+        r=_si_r,
     )
 
 
