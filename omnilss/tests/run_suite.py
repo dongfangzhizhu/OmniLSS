@@ -122,8 +122,21 @@ def check_environment() -> int:
         expr = "cat(R.version.string, '\\n'); for (p in c('gamlss','gamlss.dist','jsonlite')) cat(p, '=', requireNamespace(p, quietly=TRUE), '\\n', sep='')"
         result = subprocess.run([rscript, "-e", expr], capture_output=True, text=True, check=False)
         print(result.stdout.rstrip())
+    distro = "debianjaxgpu"
+    wsl = shutil.which("wsl.exe") or shutil.which("wsl")
+    print(f"wsl: {wsl or 'MISSING'}")
+    if not wsl:
+        print("wsl_status: unavailable")
+    else:
+        result = subprocess.run([wsl, "-d", distro, "--", "python", "-c", "import jax; print(jax.devices())"], capture_output=True, text=True, check=False)
+        if result.returncode == 0:
+            print("wsl_jax_status: available")
+            print(f"wsl_jax_devices: {result.stdout.strip()}")
+        elif "not found" in (result.stderr or "").lower() or "no distribution" in (result.stderr or "").lower():
+            print("wsl_jax_status: distribution-unavailable")
+        else:
+            print(f"wsl_jax_status: error ({result.stderr.strip() or result.returncode})")
     print(f"platform: {platform.platform()}")
-    print(f"wsl_gpu_environment: {(ROOT.parent / 'debianjaxgpu').exists()}")
     return 0
 
 

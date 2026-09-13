@@ -62,3 +62,22 @@ def test_missing_module_returns_usage_error():
 def test_empty_selection_does_not_discover_everything():
     with mock.patch.object(run_suite, "resolve_requested_modules", return_value=[]):
         assert run_suite.main([]) == 5
+
+
+def test_check_env_reports_wsl_gpu(monkeypatch, capsys):
+    class Result:
+        returncode = 0
+        stdout = "[CudaDevice(id=0)]\n"
+        stderr = ""
+    monkeypatch.setattr(run_suite.shutil, "which", lambda name: "wsl.exe" if name == "wsl.exe" else None)
+    monkeypatch.setattr(run_suite.subprocess, "run", lambda *args, **kwargs: Result())
+    assert run_suite.main(["--check-env"]) == 0
+    output = capsys.readouterr().out
+    assert "wsl_jax_status: available" in output
+    assert "CudaDevice" in output
+
+
+def test_check_env_reports_unavailable_wsl(monkeypatch, capsys):
+    monkeypatch.setattr(run_suite.shutil, "which", lambda name: None)
+    assert run_suite.main(["--check-env"]) == 0
+    assert "wsl_status: unavailable" in capsys.readouterr().out
