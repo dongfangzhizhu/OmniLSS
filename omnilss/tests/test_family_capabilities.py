@@ -54,7 +54,7 @@ def test_known_core_family_statuses_are_case_insensitive():
 
 
 def test_known_compat_alias_families_are_marked_separately_from_evidence():
-    for family_name in ("ST1", "DBI", "DBURR12", "BCCGUNTR", "COUNT_1_31"):
+    for family_name in ("DBI", "DBURR12", "BCCGUNTR", "COUNT_1_31"):
         capability = get_family_capability(family_name)
         assert capability.implementation_status is ImplementationStatus.COMPAT_ALIAS
         assert implementation_status_for_family(family_name) is (
@@ -64,7 +64,7 @@ def test_known_compat_alias_families_are_marked_separately_from_evidence():
 
 
 def test_ad_families_without_explicit_dpqr_are_marked_placeholder():
-    for family_name in ("GB2", "GIG", "SEP1"):
+    for family_name in ("GB2", "GIG"):
         capability = get_family_capability(family_name)
         assert capability.implementation_status is ImplementationStatus.PLACEHOLDER
         assert implementation_status_for_family(family_name) is (
@@ -75,26 +75,12 @@ def test_ad_families_without_explicit_dpqr_are_marked_placeholder():
 
 def test_dpqr_placeholder_helpers_are_marked_placeholder():
     for helper_name in (
-        "pNBI",
-        "qNBI",
-        "pNBII",
-        "qNBII",
-        "qTF",
         "generic_p_not_implemented",
     ):
         assert _dpqr_function_uses_placeholder(helper_name) is True
 
-    for family_name in ("NBI", "NBII", "TF"):
-        capability = get_family_capability(family_name)
-        assert capability.implementation_status is ImplementationStatus.PLACEHOLDER
-        assert implementation_status_for_family(family_name) is (
-            ImplementationStatus.PLACEHOLDER
-        )
-        assert any("placeholder numerical behavior" in note for note in capability.notes)
-
-
 def test_ad_families_with_explicit_dpqr_are_not_false_placeholder():
-    for family_name in ("BE", "WEI", "IG"):
+    for family_name in ("BE", "WEI", "IG", "NBI", "NBII", "SEP1", "ST1", "TF"):
         capability = get_family_capability(family_name)
         assert capability.implementation_status is ImplementationStatus.EXPERIMENTAL
         assert implementation_status_for_family(family_name) is (
@@ -199,13 +185,13 @@ def test_method_route_capability_report_supports_service_admission():
     assert unknown_family["code"] == "unknown_family"
     assert unknown_family["feature"] == "rs_fit"
 
-    compat = method_route_capability_report("ST1", "RS")
+    compat = method_route_capability_report("DBI", "RS")
     assert compat["ok"] is False
     assert compat["code"] == "compat_alias_requires_opt_in"
     assert compat["implementation_status"] == "compat_alias"
 
     compat_opt_in = method_route_capability_report(
-        "ST1", "RS", allow_compat_alias=True
+        "DBI", "RS", allow_compat_alias=True
     )
     assert compat_opt_in["ok"] is True
     assert compat_opt_in["implementation_status"] == "compat_alias"
@@ -228,7 +214,7 @@ def test_capability_matrix_is_machine_readable():
     }
     assert "NO" in matrix["families"]
     assert matrix["families"]["NO"]["implementation_status"] == "implemented"
-    assert matrix["families"]["ST1"]["implementation_status"] == "compat_alias"
+    assert matrix["families"]["ST1"]["implementation_status"] == "experimental"
     assert matrix["families"]["GB2"]["implementation_status"] == "placeholder"
     assert matrix["families"]["NO"]["features"]["production_safe"] == "validated"
 
