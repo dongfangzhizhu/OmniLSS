@@ -1,79 +1,64 @@
-"""Phase 2.6: run_suite --require-r phase-gate behaviour (fail-closed)."""
-
+"""Real pytest execution contracts for the named suite runner."""
 from __future__ import annotations
 
 import argparse
-import unittest.mock as mock
-from pathlib import Path
+import os
+import subprocess
 import sys
+from unittest import mock
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import pytest
+from tests import run_suite
 
-from tests import run_suite  # noqa: E402
 
-
-def _args(**overrides) -> argparse.Namespace:
-    defaults = dict(
-        suites=None,
-        modules=["tests.test_operations"],
-        list=False,
-        verbose=False,
-        failfast=False,
-        require_r=False,
+@pytest.mark.parametrize("source,required,expected", [
+    ("def test_ok(): assert True", False, 0),
+    ("def test_bad(): assert False", False, 1),
+    ("import pytest\ndef test_skip(): pytest.skip('R unavailable')", False, 0),
+    ("import pytest\ndef test_skip(): pytest.skip('R unavailable')", True, 1),
+    ("import pytest\npytest.skip('R unavailable', allow_module_level=True)", True, 1),
+    ("def test_ok(): assert True", True, 0),
+    ("VALUE = 1", False, 5),
+    ("raise RuntimeError('collection failed')", False, 2),
+])
+def test_real_execution(tmp_path, source, required, expected):
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_sample.py").write_text(source + "\n", encoding="utf-8")
+    argv = ["--module", "tests.test_sample"]
+    if required:
+        argv.append("--require-r")
+    code = (
+        "from pathlib import Path; from tests import run_suite; "
+        f"run_suite.ROOT = Path({str(tmp_path)!r}); "
+        f"raise SystemExit(run_suite.main({argv!r}))"
     )
-    defaults.update(overrides)
-    return argparse.Namespace(**defaults)
+    env = dict(os.environ, PYTEST_DISABLE_PLUGIN_AUTOLOAD="1", PYTHONPATH=str(run_suite.ROOT))
+    result = subprocess.run(
+        [sys.executable, "-c", code], cwd=tmp_path, env=env,
+        capture_output=True, text=True, timeout=60,
+    )
+    assert result.returncode == expected, result.stdout + result.stderr
+    if required and "skip" in source:
+        assert "fail-closed" in result.stdout
 
 
-def _call_main(argv: list[str]) -> int:
-    """Run main() with explicit argv and a stubbed unittest runner."""
-    with mock.patch.object(run_suite, "unittest") as uni:
-        uni.defaultTestLoader = unittest.defaultTestLoader
-        uni.TestSuite = unittest.TestSuite
-        uni.TextTestRunner = mock.MagicMock()
-        return run_suite.main(argv)
+def test_selection_is_ordered_and_deduplicated():
+    args = argparse.Namespace(suites=["quick"], modules=["tests.extra", "tests.extra"])
+    with mock.patch.object(run_suite, "get_suite_modules", return_value=["tests.b", "tests.a"]):
+        assert run_suite.resolve_requested_modules(args) == ["tests.b", "tests.a", "tests.extra"]
 
 
-def _fake_result(skipped=(), successful=True):
-    result = mock.MagicMock()
-    result.skipped = list(skipped)
-    result.wasSuccessful.return_value = successful
-    return result
+def test_flags_and_absolute_module_paths():
+    with mock.patch("pytest.main", return_value=0) as main:
+        assert run_suite.main(["--module", "tests.test_operations", "--verbose", "--failfast"]) == 0
+    assert main.call_args.args[0] == [str(run_suite.ROOT / "tests/test_operations.py"), "-v", "-x"]
 
 
-def _stub_pytest(exit_code=0):
-    pytest = mock.MagicMock()
-    pytest.main.return_value = exit_code
-    return mock.patch.dict(sys.modules, {"pytest": pytest})
+def test_missing_module_returns_usage_error():
+    assert run_suite.main(["--module", "tests.does_not_exist"]) == 4
 
 
-def test_require_r_fails_when_tests_skipped(capsys) -> None:
-    """--require-r treats any skipped test as a gate failure."""
-    with _stub_pytest(1):
-        import pytest
-        code = run_suite.main(["--module", "tests.test_operations", "--require-r"])
-    assert code == 1
-    assert code == 1
-
-
-def test_require_r_passes_without_skips() -> None:
-    """--require-r passes when nothing is skipped and all tests succeed."""
-    with _stub_pytest(0):
-        code = run_suite.main(["--module", "tests.test_operations", "--require-r"])
-    assert code == 0
-
-
-def test_without_require_r_skips_are_allowed() -> None:
-    """Without --require-r, skipped tests do not fail the run."""
-    with _stub_pytest(0):
-        code = run_suite.main(["--module", "tests.test_operations"])
-    assert code == 0
-
-
-def test_require_r_fails_when_module_load_skipped(capsys) -> None:
-    """--require-r fails when a module is skipped during loading."""
-    with _stub_pytest(2):
-        import pytest
-        code = run_suite.main(["--module", "tests.test_operations", "--require-r"])
-    assert code == 1
-    assert pytest.main.called
+def test_empty_selection_does_not_discover_everything():
+    with mock.patch.object(run_suite, "resolve_requested_modules", return_value=[]):
+        assert run_suite.main([]) == 5

@@ -5,8 +5,6 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-import unittest
-from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,17 +18,19 @@ except ModuleNotFoundError:
     from tests.suites import SUITES, get_suite_modules, resolve_suite_name
 
 
-@dataclass
-class ModuleLoadIssue:
-    module: str
-    reason: str
+class RequiredRGate:
+    """Track collection and runtime skips without importing test modules."""
 
+    def __init__(self) -> None:
+        self.skipped: list[str] = []
 
-def _is_skip_like_exception(exc: BaseException) -> bool:
-    if isinstance(exc, unittest.SkipTest):
-        return True
-    name = exc.__class__.__name__.lower()
-    return "skip" in name
+    def pytest_collectreport(self, report) -> None:
+        if report.skipped:
+            self.skipped.append(report.nodeid)
+
+    def pytest_runtest_logreport(self, report) -> None:
+        if report.skipped:
+            self.skipped.append(report.nodeid)
 
 
 
@@ -50,7 +50,7 @@ def configure_environment() -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run named unittest suites for OmniLSS.",
+        description="Run named pytest suites for OmniLSS.",
     )
     parser.add_argument(
         "--suite",
@@ -127,20 +127,33 @@ def main(argv: list[str] | None = None) -> int:
         return list_suites()
 
     configure_environment()
-    modules = resolve_requested_modules(args)
+    try:
+        modules = resolve_requested_modules(args)
+    except (KeyError, ValueError) as exc:
+        parser.error(str(exc))
+    if not modules:
+        print("ERROR: no test modules selected.")
+        return 5
     try:
         import pytest
     except ImportError:
         print("ERROR: pytest is required; install the project's dev dependencies.")
         return 1
-    pytest_args = list(modules)
+    pytest_args = [str(ROOT.joinpath(*module.split('.')).with_suffix('.py')) for module in modules]
     if args.verbose:
         pytest_args.append("-v")
     if args.failfast:
         pytest_args.append("-x")
     if args.require_r:
         pytest_args.append("-rs")
-    exit_code = int(pytest.main(pytest_args))
+    gate = RequiredRGate()
+    exit_code = int(pytest.main(pytest_args, plugins=[gate] if args.require_r else []))
+    if args.require_r and gate.skipped:
+        print("ERROR: --require-r is fail-closed: skipped tests/modules are not allowed:")
+        for nodeid in gate.skipped:
+            print(f"- {nodeid}")
+        if exit_code in (0, 5):
+            exit_code = 1
     if args.suites:
         requested_names = ", ".join(resolve_suite_name(name) for name in args.suites)
     elif args.modules:
@@ -150,7 +163,7 @@ def main(argv: list[str] | None = None) -> int:
     print("")
     print(f"Executed suites/modules: {requested_names}")
     print(f"Module count: {len(modules)}")
-    return 0 if exit_code == 0 else 1
+    return exit_code
 
 
 if __name__ == "__main__":
