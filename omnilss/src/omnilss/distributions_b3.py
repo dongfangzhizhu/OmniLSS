@@ -104,6 +104,13 @@ def _sn1_q(p, mu=0.0, sigma=1.0, nu=0.0, lower_tail=True, log_p=False):
     return jnp.asarray(vals, dtype=jnp.float64)
 
 
+def _sn1_r(key, n, mu=0.0, sigma=1.0, nu=0.0):
+    """Generate SN1 variates using inverse-CDF sampling."""
+    import jax.random as random
+
+    return _sn1_q(random.uniform(key, shape=(n,), dtype=jnp.float64), mu, sigma, nu)
+
+
 def _attach_numeric_real_line_dpq(family_class: type[FamilyDefinition], log_pdf_func):
     """Attach simple numerical d/p/q helpers for continuous real-line families."""
 
@@ -323,17 +330,47 @@ def _sn2_log_pdf(y, mu, sigma, nu):
     return loglik - jnp.log(sigma) + jnp.log(nu) - jnp.log(1.0 + jnp.square(nu)) - 0.5 * math.log(2.0) - gammaln(1.5)
 
 
+def _sn2_p(x, mu=0.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
+    """CDF of the two-piece normal, matching R ``pSN2``."""
+    x, mu, sigma, nu = [jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu)]
+    eps = jnp.finfo(jnp.float64).eps
+    sigma = jnp.maximum(sigma, eps)
+    nu = jnp.maximum(nu, eps)
+    z = (x - mu) / sigma
+    left = 2.0 * norm.cdf(nu * z) / (1.0 + nu * nu)
+    right = (nu * nu - 1.0 + 2.0 * nu * nu * norm.cdf(z / nu)) / (1.0 + nu * nu)
+    result = jnp.where(x < mu, left, right)
+    # R's implementation also bounds the numerical CDF to its probability
+    # domain when the limiting ``nu=0`` smoke-test value is supplied.
+    result = jnp.clip(result, 0.0, 1.0)
+    result = jnp.where(lower_tail, result, 1.0 - result)
+    return jnp.log(result) if log_p else result
+
+
+def _sn2_q(p, mu=0.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
+    """Quantile of the two-piece normal, matching R ``qSN2``."""
+    p, mu, sigma, nu = [jnp.asarray(v, dtype=jnp.float64) for v in (p, mu, sigma, nu)]
+    if log_p:
+        p = jnp.exp(p)
+    p = jnp.where(lower_tail, p, 1.0 - p)
+    eps = jnp.finfo(jnp.float64).eps
+    p = jnp.clip(p, eps, 1.0 - eps)
+    nu = jnp.maximum(nu, eps)
+    threshold = 1.0 / (1.0 + nu * nu)
+    left_p = p * (1.0 + nu * nu) / 2.0
+    right_p = (p * (1.0 + nu * nu) - (nu * nu - 1.0)) / (2.0 * nu * nu)
+    z = jnp.where(p < threshold, norm.ppf(left_p) / nu, nu * norm.ppf(right_p))
+    return mu + sigma * z
+
+
+def _sn2_r(key, n, mu=0.0, sigma=1.0, nu=1.0):
+    """Generate SN2 variates using inverse-CDF sampling."""
+    import jax.random as random
+
+    return _sn2_q(random.uniform(key, shape=(n,), dtype=jnp.float64), mu, sigma, nu)
+
+
 def SN2() -> SkewNormal2Family:
-    _attach_numeric_real_line_dpq(SkewNormal2Family, _sn2_log_pdf)
-    _p_method = SkewNormal2Family.p
-    _q_method = SkewNormal2Family.q
-
-    def _p_standalone(x, *params, lower_tail=True, log_p=False):
-        return _p_method(None, x, *params)
-
-    def _q_standalone(probs, *params, lower_tail=True, log_p=False):
-        return _q_method(None, probs, *params)
-
     return build_ad_family(
         family_class=SkewNormal2Family,
         name="SN2",
@@ -344,8 +381,9 @@ def SN2() -> SkewNormal2Family:
         link_functions={"mu": identity_link, "sigma": log_link, "nu": log_link},
         link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse},
         link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative},
-        p=_p_standalone,
-        q=_q_standalone,
+        p=_sn2_p,
+        q=_sn2_q,
+        r=_sn2_r,
     )
 
 
@@ -442,4 +480,5 @@ def SN1() -> SkewNormal1Family:
         link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": identity_derivative},
         p=_sn1_p,
         q=_sn1_q,
+        r=_sn1_r,
     )
