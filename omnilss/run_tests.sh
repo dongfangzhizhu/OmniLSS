@@ -29,7 +29,9 @@ print_error() {
 }
 
 resolve_python() {
-    for candidate in "$PWD/.venv/Scripts/python.exe" "$PWD/.venv/bin/python" "$PWD/../.venv/Scripts/python.exe" "$PWD/../.venv/bin/python"; do
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+    for candidate in "$PROJECT_ROOT/.venv/Scripts/python.exe" "$PROJECT_ROOT/.venv/bin/python" "$SCRIPT_DIR/.venv/Scripts/python.exe" "$SCRIPT_DIR/.venv/bin/python"; do
         if [ -x "$candidate" ]; then
             echo "$candidate"
             return 0
@@ -99,7 +101,7 @@ check_environment() {
 
 # 设置环境变量
 setup_env() {
-    export PYTHONPATH="$PWD/src"
+    export PYTHONPATH="$PROJECT_ROOT/omnilss/src"
     export JAX_PLATFORMS="cpu"
     export JAX_ENABLE_X64="true"
     print_info "PYTHONPATH=$PYTHONPATH"
@@ -206,9 +208,9 @@ main() {
             exit 1
         }
         if [ "$CHECK_ENV" = true ]; then
-            "$PYTHON_EXE" -m tests.run_suite --check-env
+            (cd "$SCRIPT_DIR" && "$PYTHON_EXE" -m tests.run_suite --check-env)
         else
-            "$PYTHON_EXE" -m tests.run_suite --list
+            (cd "$SCRIPT_DIR" && "$PYTHON_EXE" -m tests.run_suite --list)
         fi
         exit $?
     fi

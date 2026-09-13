@@ -41,14 +41,16 @@ function Write-Error {
 }
 
 function Get-WorkspacePython {
+    # The repository root is the parent of the directory containing this script.
+    # debianjaxgpu is a separate WSL environment and must never be selected here.
+    $sharedPython = Join-Path (Split-Path $PSScriptRoot -Parent) ".venv\\Scripts\\python.exe"
+    if (Test-Path $sharedPython) {
+        return $sharedPython
+    }
+
     $localPython = Join-Path $PSScriptRoot ".venv\\Scripts\\python.exe"
     if (Test-Path $localPython) {
         return $localPython
-    }
-
-    $sharedPython = Join-Path $PSScriptRoot "..\\.venv\\Scripts\\python.exe"
-    if (Test-Path $sharedPython) {
-        return $sharedPython
     }
 
     $pathPython = Get-Command python -ErrorAction SilentlyContinue
@@ -177,8 +179,10 @@ function Main {
             exit 1
         }
         $diagnosticArg = if ($CheckEnv) { "--check-env" } else { "--list" }
-        & $script:PythonExe -m tests.run_suite $diagnosticArg
-        exit $LASTEXITCODE
+        Push-Location $PSScriptRoot
+        try { & $script:PythonExe -m tests.run_suite $diagnosticArg; $result = $LASTEXITCODE }
+        finally { Pop-Location }
+        exit $result
     }
 
     if ($Suite.Count -gt 0) {
