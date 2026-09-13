@@ -1,4 +1,4 @@
-"""Command line runner for named unittest suites."""
+"""Deterministic command line runner for pytest-configured test suites."""
 
 from __future__ import annotations
 
@@ -128,49 +128,19 @@ def main(argv: list[str] | None = None) -> int:
 
     configure_environment()
     modules = resolve_requested_modules(args)
-    loader = unittest.defaultTestLoader
-    suite = unittest.TestSuite()
-    skipped_modules: list[ModuleLoadIssue] = []
-    failed_modules: list[ModuleLoadIssue] = []
-    for module in modules:
-        try:
-            suite.addTests(loader.loadTestsFromName(module))
-        except BaseException as exc:  # pragma: no cover - defensive for pytest skip outcomes
-            issue = ModuleLoadIssue(module=module, reason=f"{exc.__class__.__name__}: {exc}")
-            if _is_skip_like_exception(exc):
-                skipped_modules.append(issue)
-                continue
-            failed_modules.append(issue)
-
-    if failed_modules:
-        print("Failed to load test modules:")
-        for issue in failed_modules:
-            print(f"- {issue.module}: {issue.reason}")
+    try:
+        import pytest
+    except ImportError:
+        print("ERROR: pytest is required; install the project's dev dependencies.")
         return 1
-
-    if args.require_r and skipped_modules:
-        print(
-            "ERROR: --require-r is fail-closed but the following modules were "
-            "skipped during loading (R unavailable?):"
-        )
-        for issue in skipped_modules:
-            print(f"- {issue.module}: {issue.reason}")
-        return 1
-
-    runner = unittest.TextTestRunner(
-        verbosity=2 if args.verbose else 1,
-        failfast=args.failfast,
-    )
-    result = runner.run(suite)
-    if args.require_r and result.skipped:
-        print(
-            "ERROR: --require-r is fail-closed but {} test(s) were skipped "
-            "(R unavailable?):".format(len(result.skipped))
-        )
-        for test, reason in result.skipped[:20]:
-            print(f"- {test}: {reason}")
-        print("Phase gate NOT passed: skips are not allowed under --require-r.")
-        return 1
+    pytest_args = list(modules)
+    if args.verbose:
+        pytest_args.append("-v")
+    if args.failfast:
+        pytest_args.append("-x")
+    if args.require_r:
+        pytest_args.append("-rs")
+    exit_code = int(pytest.main(pytest_args))
     if args.suites:
         requested_names = ", ".join(resolve_suite_name(name) for name in args.suites)
     elif args.modules:
@@ -180,11 +150,7 @@ def main(argv: list[str] | None = None) -> int:
     print("")
     print(f"Executed suites/modules: {requested_names}")
     print(f"Module count: {len(modules)}")
-    if skipped_modules:
-        print("Skipped test modules during loading:")
-        for issue in skipped_modules:
-            print(f"- {issue.module}: {issue.reason}")
-    return 0 if result.wasSuccessful() else 1
+    return 0 if exit_code == 0 else 1
 
 
 if __name__ == "__main__":
