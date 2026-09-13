@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import argparse
 import os
+import importlib.util
+import platform
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -69,6 +73,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="List available suites and exit.",
     )
+    parser.add_argument("--check-env", action="store_true", help="Print the local test environment and exit.")
     parser.add_argument(
         "--verbose",
         action="store_true",
@@ -99,6 +104,29 @@ def list_suites() -> int:
     return 0
 
 
+def check_environment() -> int:
+    """Report actionable Python, JAX, R, and WSL environment information."""
+    print(f"python: {sys.executable}")
+    print(f"python_version: {platform.python_version()}")
+    print(f"pytest: {__import__('pytest').__version__ if importlib.util.find_spec('pytest') else 'MISSING'}")
+    try:
+        import jax
+        print(f"jax: {jax.__version__}")
+        print(f"jax_backend: {jax.default_backend()}")
+        print(f"jax_devices: {', '.join(str(device) for device in jax.devices())}")
+    except Exception as exc:
+        print(f"jax: ERROR ({exc})")
+    rscript = shutil.which("Rscript")
+    print(f"rscript: {rscript or 'MISSING'}")
+    if rscript:
+        expr = "cat(R.version.string, '\\n'); for (p in c('gamlss','gamlss.dist','jsonlite')) cat(p, '=', requireNamespace(p, quietly=TRUE), '\\n', sep='')"
+        result = subprocess.run([rscript, "-e", expr], capture_output=True, text=True, check=False)
+        print(result.stdout.rstrip())
+    print(f"platform: {platform.platform()}")
+    print(f"wsl_gpu_environment: {(ROOT.parent / 'debianjaxgpu').exists()}")
+    return 0
+
+
 def dedupe(items: list[str]) -> list[str]:
     seen: set[str] = set()
     ordered: list[str] = []
@@ -125,6 +153,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.list:
         return list_suites()
+    if args.check_env:
+        return check_environment()
 
     configure_environment()
     try:

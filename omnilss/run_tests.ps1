@@ -10,6 +10,7 @@ param(
     [string[]]$Suite = @(),
     [string[]]$Module = @(),
     [switch]$ListSuites = $false,
+    [switch]$CheckEnv = $false,
     [switch]$FailFast = $false,
     [switch]$Verbose = $false,
     [switch]$Help = $false
@@ -73,6 +74,7 @@ function Show-Help {
     Write-Host "  -Suite <name>        指定一个或多个套件，可重复传入"
     Write-Host "  -Module <module>     指定单个测试模块，可重复传入"
     Write-Host "  -ListSuites          列出所有可用套件"
+    Write-Host "  -CheckEnv            检查 Python/JAX/R/WSL 环境"
     Write-Host "  -FailFast            首个失败后停止"
     Write-Host "  -Verbose             详细输出"
     Write-Host "  -Help                显示帮助信息"
@@ -168,13 +170,14 @@ function Main {
     $selectedSuites = @()
     $selectedModules = @($Module)
 
-    if ($ListSuites) {
+    if ($ListSuites -or $CheckEnv) {
         $script:PythonExe = Get-WorkspacePython
         if (-not $script:PythonExe) {
             Write-Error "未找到可用 Python，请先在工作区根目录准备共享 .venv"
             exit 1
         }
-        & $script:PythonExe -m tests.run_suite --list
+        $diagnosticArg = if ($CheckEnv) { "--check-env" } else { "--list" }
+        & $script:PythonExe -m tests.run_suite $diagnosticArg
         exit $LASTEXITCODE
     }
 

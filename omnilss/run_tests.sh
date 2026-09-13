@@ -61,6 +61,7 @@ show_help() {
     echo "  --suite <name>        指定一个或多个套件，可重复传入"
     echo "  --module <module>     指定单个测试模块，可重复传入"
     echo "  --list-suites         列出所有可用套件"
+    echo "  --check-env           检查 Python/JAX/R/WSL 环境"
     echo "  --failfast            首个失败后停止"
     echo "  --verbose             详细输出"
     echo "  --help                显示帮助信息"
@@ -135,6 +136,7 @@ main() {
     RUN_SMOOTHERS=false
     QUICK_MODE=false
     LIST_SUITES=false
+    CHECK_ENV=false
     FAIL_FAST=false
     VERBOSE_FLAG=""
     SELECTED_SUITES=()
@@ -174,6 +176,10 @@ main() {
                 LIST_SUITES=true
                 shift
                 ;;
+            --check-env)
+                CHECK_ENV=true
+                shift
+                ;;
             --failfast)
                 FAIL_FAST=true
                 shift
@@ -194,12 +200,16 @@ main() {
         esac
     done
 
-    if [ "$LIST_SUITES" = true ]; then
+    if [ "$LIST_SUITES" = true ] || [ "$CHECK_ENV" = true ]; then
         PYTHON_EXE="$(resolve_python)" || {
             print_error "未找到可用 Python，请先在工作区根目录准备共享 .venv"
             exit 1
         }
-        "$PYTHON_EXE" -m tests.run_suite --list
+        if [ "$CHECK_ENV" = true ]; then
+            "$PYTHON_EXE" -m tests.run_suite --check-env
+        else
+            "$PYTHON_EXE" -m tests.run_suite --list
+        fi
         exit $?
     fi
 
