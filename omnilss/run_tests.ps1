@@ -40,14 +40,14 @@ function Write-Error {
 }
 
 function Get-WorkspacePython {
-    $sharedPython = Join-Path $PSScriptRoot "..\\.venv\\Scripts\\python.exe"
-    if (Test-Path $sharedPython) {
-        return $sharedPython
-    }
-
     $localPython = Join-Path $PSScriptRoot ".venv\\Scripts\\python.exe"
     if (Test-Path $localPython) {
         return $localPython
+    }
+
+    $sharedPython = Join-Path $PSScriptRoot "..\\.venv\\Scripts\\python.exe"
+    if (Test-Path $sharedPython) {
+        return $sharedPython
     }
 
     $pathPython = Get-Command python -ErrorAction SilentlyContinue

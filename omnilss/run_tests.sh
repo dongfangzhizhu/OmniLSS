@@ -29,14 +29,12 @@ print_error() {
 }
 
 resolve_python() {
-    if [ -x "$PWD/../.venv/Scripts/python.exe" ]; then
-        echo "$PWD/../.venv/Scripts/python.exe"
-        return 0
-    fi
-    if [ -x "$PWD/.venv/bin/python" ]; then
-        echo "$PWD/.venv/bin/python"
-        return 0
-    fi
+    for candidate in "$PWD/.venv/Scripts/python.exe" "$PWD/.venv/bin/python" "$PWD/../.venv/Scripts/python.exe" "$PWD/../.venv/bin/python"; do
+        if [ -x "$candidate" ]; then
+            echo "$candidate"
+            return 0
+        fi
+    done
     if command -v python >/dev/null 2>&1; then
         command -v python
         return 0
