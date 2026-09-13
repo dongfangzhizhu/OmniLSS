@@ -2351,21 +2351,18 @@ def rNO2(key, n, mu=0.0, sigma=1.0):
 
 # For NBII - use negative binomial with adjusted parameterization
 def pNBII(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
-    """CDF for NBII using normal approximation."""
-    q = jnp.asarray(q, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    
-    # Use normal approximation
-    mean = mu
-    var = mu + sigma * mu * mu
-    std = jnp.sqrt(var)
-    
-    # Continuity correction for discrete distribution
-    q_corrected = q + 0.5
-    
-    cdf = jax_norm.cdf(q_corrected, loc=mean, scale=std)
-    cdf = jnp.clip(cdf, 0.0, 1.0)
+    """CDF for NBII using its exact negative-binomial parameterization.
+
+    NBII has ``size = mu / sigma`` and mean ``mu``.  The previous normal
+    approximation was not reliable in the tails and did not match ``dNBII``.
+    """
+    q = np.asarray(q, dtype=np.float64)
+    mu = np.asarray(mu, dtype=np.float64)
+    sigma = np.asarray(sigma, dtype=np.float64)
+    size = np.maximum(mu / np.maximum(sigma, 1e-10), 1e-10)
+    p_param = np.clip(size / (size + np.maximum(mu, 1e-10)), 1e-10, 1.0 - 1e-10)
+    cdf = _nbinom_dist.cdf(np.floor(q), size, p_param)
+    cdf = np.where(q < 0, 0.0, np.minimum(cdf, 1.0))
     
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -2377,25 +2374,18 @@ def pNBII(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
 
 
 def qNBII(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
-    """Quantile for NBII using normal approximation."""
-    p = jnp.asarray(p, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    
+    """Quantile for NBII using its exact negative-binomial parameterization."""
+    p = np.asarray(p, dtype=np.float64)
+    mu = np.asarray(mu, dtype=np.float64)
+    sigma = np.asarray(sigma, dtype=np.float64)
     if log_p:
-        p = jnp.exp(p)
-    
+        p = np.exp(p)
     if not lower_tail:
         p = 1.0 - p
-    
-    mean = mu
-    var = mu + sigma * mu * mu
-    std = jnp.sqrt(var)
-    
-    z = norm_ppf(p)
-    q = mean + z * std
-    
-    return jnp.maximum(jnp.floor(q), 0.0)
+    p = np.clip(p, 1e-10, 1.0 - 1e-10)
+    size = np.maximum(mu / np.maximum(sigma, 1e-10), 1e-10)
+    p_param = np.clip(size / (size + np.maximum(mu, 1e-10)), 1e-10, 1.0 - 1e-10)
+    return np.maximum(np.floor(_nbinom_dist.ppf(p, size, p_param)), 0.0)
 
 
 def rNBII(key, n, mu=1.0, sigma=1.0):
