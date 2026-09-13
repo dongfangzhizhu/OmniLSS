@@ -137,16 +137,20 @@ def _sep1_p(q, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False)
             val = 1.0
         else:
             try:
-                val, _ = quad(lambda z: _density(z, ni, ti), -np.inf, z_lim, limit=300)
+                # Integrating the requested tail directly avoids losing all
+                # precision when an upper-tail probability is formed as
+                # ``1 - lower_tail`` (R's lower.tail=FALSE semantics).
+                if lower_tail:
+                    val, _ = quad(lambda z: _density(z, ni, ti), -np.inf, z_lim, limit=300)
+                else:
+                    val, _ = quad(lambda z: _density(z, ni, ti), z_lim, np.inf, limit=300)
             except Exception:
                 val = np.nan
             out.append(float(min(max(val, 0.0), 1.0)))
             continue
-        out.append(float(val))
+        out.append(float(1.0 - val if not lower_tail else val))
 
     cdf = np.array(out)
-    if not lower_tail:
-        cdf = 1.0 - cdf
     if log_p:
         cdf = np.log(cdf)
     return jnp.asarray(cdf, dtype=jnp.float64)
@@ -163,7 +167,6 @@ def _sep1_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False)
         p_arr = np.exp(p_arr)
     if not lower_tail:
         p_arr = 1.0 - p_arr
-    p_arr = np.clip(p_arr, 1e-10, 1.0 - 1e-10)
     mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
     sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
     nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
@@ -179,6 +182,15 @@ def _sep1_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False)
         ti = float(tau_arr[i % len(tau_arr)])
         if si <= 0 or ti <= 0:
             out.append(np.nan)
+            continue
+        if not 0.0 <= pi <= 1.0 or not np.isfinite(pi):
+            out.append(np.nan)
+            continue
+        if pi == 0.0:
+            out.append(-np.inf)
+            continue
+        if pi == 1.0:
+            out.append(np.inf)
             continue
 
         def obj(x, _pi=pi, _mui=mui, _si=si, _ni=ni, _ti=ti):
