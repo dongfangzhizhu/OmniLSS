@@ -409,7 +409,6 @@ def _sep3_q(p, mu=0.0, sigma=1.0, nu=2.0, tau=2.0, lower_tail=True, log_p=False)
         p_arr = np.exp(p_arr)
     if not lower_tail:
         p_arr = 1.0 - p_arr
-    p_arr = np.clip(p_arr, 1e-16, 1.0 - 1e-16)
     mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
     sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
     nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
@@ -423,8 +422,14 @@ def _sep3_q(p, mu=0.0, sigma=1.0, nu=2.0, tau=2.0, lower_tail=True, log_p=False)
         si = float(sigma_arr[i % len(sigma_arr)])
         ni = float(nu_arr[i % len(nu_arr)])
         ti = float(tau_arr[i % len(tau_arr)])
-        if si <= 0 or ni <= 0 or ti <= 0:
+        if not np.isfinite(pi) or pi < 0.0 or pi > 1.0 or si <= 0 or ti <= 0:
             out.append(np.nan)
+            continue
+        if pi == 0.0:
+            out.append(-np.inf)
+            continue
+        if pi == 1.0:
+            out.append(np.inf)
             continue
         k = ni * ni
         # q1 = mu - sigma*2^(1/tau)/nu * (qgamma(1-p*(1+k), 1/tau, 1))^(1/tau)
@@ -510,7 +515,6 @@ def _sep4_q(p, mu=0.0, sigma=1.0, nu=2.0, tau=2.0, lower_tail=True, log_p=False)
         p_arr = np.exp(p_arr)
     if not lower_tail:
         p_arr = 1.0 - p_arr
-    p_arr = np.clip(p_arr, 1e-10, 1.0 - 1e-10)
     mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
     sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
     nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
@@ -524,8 +528,14 @@ def _sep4_q(p, mu=0.0, sigma=1.0, nu=2.0, tau=2.0, lower_tail=True, log_p=False)
         si = float(sigma_arr[i % len(sigma_arr)])
         ni = float(nu_arr[i % len(nu_arr)])
         ti = float(tau_arr[i % len(tau_arr)])
-        if si <= 0 or ni <= 0 or ti <= 0:
+        if not np.isfinite(pi) or pi < 0.0 or pi > 1.0 or si <= 0 or ni <= 0 or ti <= 0:
             out.append(np.nan)
+            continue
+        if pi == 0.0:
+            out.append(-np.inf)
+            continue
+        if pi == 1.0:
+            out.append(np.inf)
             continue
 
         def obj(x, _pi=pi, _mui=mui, _si=si, _ni=ni, _ti=ti):
@@ -655,7 +665,6 @@ def _sep2_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False)
         p_arr = np.exp(p_arr)
     if not lower_tail:
         p_arr = 1.0 - p_arr
-    p_arr = np.clip(p_arr, 1e-10, 1.0 - 1e-10)
     mu_arr = np.atleast_1d(np.asarray(mu, dtype=np.float64))
     sigma_arr = np.atleast_1d(np.asarray(sigma, dtype=np.float64))
     nu_arr = np.atleast_1d(np.asarray(nu, dtype=np.float64))
@@ -669,8 +678,14 @@ def _sep2_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False)
         si = float(sigma_arr[i % len(sigma_arr)])
         ni = float(nu_arr[i % len(nu_arr)])
         ti = float(tau_arr[i % len(tau_arr)])
-        if si <= 0 or ti <= 0:
+        if not np.isfinite(pi) or pi < 0.0 or pi > 1.0 or si <= 0 or ti <= 0:
             out.append(np.nan)
+            continue
+        if pi == 0.0:
+            out.append(-np.inf)
+            continue
+        if pi == 1.0:
+            out.append(np.inf)
             continue
 
         def obj(x, _pi=pi, _mui=mui, _si=si, _ni=ni, _ti=ti):
