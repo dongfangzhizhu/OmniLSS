@@ -140,6 +140,17 @@ class TestSN1Basic(unittest.TestCase):
         probs = np.array([0.1, 0.25, 0.5, 0.75, 0.9])
         q = self.family.q(probs, self.mu, self.sigma, self.nu)
         self.assertTrue(np.all(np.isfinite(q)))
+
+    def test_cdf_is_monotone_and_quantile_inverts_for_both_skews(self):
+        """Test the two-piece join and both sides of the skew parameter."""
+        x = np.linspace(-4.0, 4.0, 161)
+        probabilities = np.array([0.1, 0.25, 0.5, 0.75, 0.9])
+        for nu in (0.3, 1.0, 3.0):
+            cdf = np.asarray(self.family.p(x, self.mu, self.sigma, nu))
+            self.assertTrue(np.all(np.diff(cdf) >= -1e-12))
+            quantiles = np.asarray(self.family.q(probabilities, self.mu, self.sigma, nu))
+            recovered = np.asarray(self.family.p(quantiles, self.mu, self.sigma, nu))
+            np.testing.assert_allclose(recovered, probabilities, rtol=1e-10, atol=1e-10)
     
     def test_reduces_to_normal(self):
         """Test that nu=0 gives normal distribution."""

@@ -338,7 +338,8 @@ def _sn2_p(x, mu=0.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
     nu = jnp.maximum(nu, eps)
     z = (x - mu) / sigma
     left = 2.0 * norm.cdf(nu * z) / (1.0 + nu * nu)
-    right = (nu * nu - 1.0 + 2.0 * nu * nu * norm.cdf(z / nu)) / (1.0 + nu * nu)
+    # The left-hand mass is 1/(1+nu^2); preserve it at the join x=mu.
+    right = (1.0 - nu * nu + 2.0 * nu * nu * norm.cdf(z / nu)) / (1.0 + nu * nu)
     result = jnp.where(x < mu, left, right)
     # R's implementation also bounds the numerical CDF to its probability
     # domain when the limiting ``nu=0`` smoke-test value is supplied.
@@ -358,7 +359,7 @@ def _sn2_q(p, mu=0.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
     nu = jnp.maximum(nu, eps)
     threshold = 1.0 / (1.0 + nu * nu)
     left_p = p * (1.0 + nu * nu) / 2.0
-    right_p = (p * (1.0 + nu * nu) - (nu * nu - 1.0)) / (2.0 * nu * nu)
+    right_p = (p * (1.0 + nu * nu) - (1.0 - nu * nu)) / (2.0 * nu * nu)
     z = jnp.where(p < threshold, norm.ppf(left_p) / nu, nu * norm.ppf(right_p))
     return mu + sigma * z
 
