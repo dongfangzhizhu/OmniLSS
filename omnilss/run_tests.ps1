@@ -50,6 +50,11 @@ function Get-WorkspacePython {
         return $localPython
     }
 
+    $pathPython = Get-Command python -ErrorAction SilentlyContinue
+    if ($pathPython) {
+        return $pathPython.Source
+    }
+
     return $null
 }
 
