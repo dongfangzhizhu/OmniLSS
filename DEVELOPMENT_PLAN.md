@@ -387,6 +387,10 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   - 【实现】`distributions_b15.py` 为 NBF 接入 R 三参数负二项参数化的精确 `d/p/q/r`；`sigma1=sigma*mu**(nu-2)`、`size=1/sigma1`，包含 R 的小离散度 Poisson 分支，并实现离散边界、upper-tail、log-p、广播和逆变换采样。
   - 【测试】新增 `tests/test_nbf_dpqr_contract.py` 3 项；NBF 与 SI 契约测试共 6 项通过，综合 DPQR 测试 100% 完成（包含预期跳过项）。
   - 【数据】重新生成覆盖 JSON/Markdown 和 placeholder 队列；当前注册 145 个，状态为 1 implemented、93 experimental、25 compat_alias、26 placeholder，NBF 已为 experimental。
+- [x] **A3-GPO DPQR 契约补齐** — 完成 ✅ 本轮
+  - 【实现】`distributions_b15.py` 按 R `gamlss.dist` 的 GPO 参数化实现 PMF、CDF、分位数和逆变换采样；支持 `sigma < 1e-4` 的 Poisson 分支、离散边界、upper-tail、log-p 和广播，参数链接修正为 `log/log`。
+  - 【测试】新增 `tests/test_gpo_dpqr_contract.py`，包含 R 4.6.0 / `gamlss.dist` 6.1.1 golden、边界、Poisson 分支、广播和采样验证。
+  - 【数据】重新生成覆盖 JSON/Markdown 和 2026-09-14 placeholder 队列；当前注册 145 个，状态为 1 implemented、94 experimental、25 compat_alias、25 placeholder。
 
 ---
 

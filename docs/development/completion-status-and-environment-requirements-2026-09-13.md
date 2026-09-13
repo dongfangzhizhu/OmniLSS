@@ -25,9 +25,9 @@ python -m pytest tests/test_si_dpqr_contract.py tests/test_family_capabilities.p
 | 状态 | 数量 | 含义 |
 |---|---:|---|
 | implemented | 1 | 当前生产级证据最完整的基线家族 |
-| experimental | 93 | 有真实代码/接口，但仍需更完整 R golden、拟合或性能证据 |
+| experimental | 94 | 有真实代码/接口，但仍需更完整 R golden、拟合或性能证据 |
 | compat_alias | 25 | 兼容层/别名，不计为独立 R 数学实现 |
-| placeholder | 26 | 生产路由应拒绝，仍需真实数值实现或明确不支持理由 |
+| placeholder | 25 | 生产路由应拒绝，仍需真实数值实现或明确不支持理由 |
 
 `SI` 与 `NBF` 已从 placeholder 队列移出并进入 experimental；这不等于已达到 production-safe。
 
@@ -35,9 +35,9 @@ python -m pytest tests/test_si_dpqr_contract.py tests/test_family_capabilities.p
 
 ### 3.1 直接影响分布正常使用
 
-以下 26 个家族仍是 placeholder，当前不应宣称可用于生产拟合或预测：
+以下 25 个家族仍是 placeholder，当前不应宣称可用于生产拟合或预测：
 
-`BB`、`DPO1`、`EGB2`、`EXGAUS`、`GAF`、`GB1`、`GB2`、`GIG`、`GPO`、`IGA`、`LOGSHASH`、`LQNO`、`MN3`、`MN4`、`MN5`、`NO2`、`NOF`、`PARETO`、`PARETO1`、`PE2`、`RGE`、`WEI2`、`ZALG`、`ZIP`、`ZIP2`、`ZIPF`。
+`BB`、`DPO1`、`EGB2`、`EXGAUS`、`GAF`、`GB1`、`GB2`、`GIG`、`IGA`、`LOGSHASH`、`LQNO`、`MN3`、`MN4`、`MN5`、`NO2`、`NOF`、`PARETO`、`PARETO1`、`PE2`、`RGE`、`WEI2`、`ZALG`、`ZIP`、`ZIP2`、`ZIPF`。
 
 其中应优先处理：
 
@@ -49,6 +49,7 @@ python -m pytest tests/test_si_dpqr_contract.py tests/test_family_capabilities.p
 ### 3.3 本轮新增交付
 
 - `NBF` 已接入精确三参数 DPQR：按 R 源码计算 `sigma1=sigma*mu**(nu-2)`，映射为 `size=1/sigma1`，并实现 R 的小离散度 Poisson 分支、upper-tail、log-probability、广播和逆变换采样。
+- `GPO` 已接入 R 参数化 DPQR：实现广义 Poisson PMF/CDF/quantile/random generation，包含小 `sigma` Poisson 分支及完整离散概率契约。
 - 新增 `tests/test_nbf_dpqr_contract.py`；NBF/SI 契约测试共 6 项通过，综合 DPQR 测试 100% 完成（预期 placeholder 跳过项除外）。
 
 ### 3.2 影响拟合可靠性的功能
@@ -97,9 +98,9 @@ python -m pytest tests/test_si_dpqr_contract.py tests/test_family_capabilities.p
 
 ## 5. 建议后续顺序
 
-1. 为 `NBF/GPO/ZIP/ZIP2/ZIPF` 建立真实 d/p/q/r 与边界契约，逐族单独验收。
+1. 为 `ZIP/ZIP2/ZIPF` 建立真实 d/p/q/r 与边界契约，逐族单独验收。
 2. 优化 ST1/ST2 及离散族概率计算，加入 profile 基准，避免全套 R 测试超时。
-3. 完成 27 个 placeholder 的迁移并为每族生成 R golden artifact。
+3. 完成 25 个 placeholder 的迁移并为每族生成 R golden artifact。
 4. 逐族完成 RS/CG/MIXED 拟合对照，再晋级 capability 状态。
 5. 收尾在线层、性能/GPU 基准、method 审计、lint/type、API 文档和发布矩阵。
 

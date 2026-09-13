@@ -61,7 +61,7 @@ Registry metadata only: this report does not establish R export coverage or nume
 | GG | experimental |
 | GIG | placeholder |
 | GP | experimental |
-| GPO | placeholder |
+| GPO | experimental |
 | GT | experimental |
 | GU | experimental |
 | IG | experimental |

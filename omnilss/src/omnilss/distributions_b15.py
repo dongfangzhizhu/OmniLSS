@@ -4,6 +4,7 @@ from __future__ import annotations
 
 """Batch 15: Final distributions - SEP, SST, EGB2, GB2, LQNO, etc."""
 from dataclasses import dataclass
+import jax
 import jax.numpy as jnp
 import jax.random as jrandom
 from jax.scipy.special import gammaln, betaln
@@ -1472,22 +1473,78 @@ class GPOFamily(FamilyDefinition):
     pass
 
 
+GPO_PROBABILITY_MAX_COUNT = 10000
+
+
 def _gpo_log_pdf(y, mu, sigma):
-    """GPO log-PDF (alternative to GP/GeneralisedPoisson)."""
-    eps = jnp.finfo(jnp.float64).eps
-    y = jnp.maximum(y, 0.0)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.clip(sigma, -0.99, 0.99)
-    
-    # Alternative parameterization
-    theta = mu * (1.0 - sigma)
-    lambda_ = mu * sigma
-    
-    return (
-        jnp.log(theta) + (y - 1.0) * jnp.log(theta + lambda_ * y)
-        - theta - lambda_ * y
-        - gammaln(y + 1.0)
+    """R ``GPO`` log-PMF for positive ``mu`` and ``sigma``."""
+    valid = (mu > 0.0) & (sigma > 0.0) & jnp.isfinite(mu) & jnp.isfinite(sigma)
+    support = (y >= 0.0) & (y == jnp.floor(y))
+    safe_y = jnp.where(support, y, 0.0)
+    safe_mu = jnp.where(mu > 0.0, mu, 1.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    denominator = 1.0 + safe_sigma * safe_mu
+    log_mass = (
+        safe_y * jnp.log(safe_mu / denominator)
+        + (safe_y - 1.0) * jnp.log1p(safe_sigma * safe_y)
+        - safe_mu * (1.0 + safe_sigma * safe_y) / denominator
+        - gammaln(safe_y + 1.0)
     )
+    poisson_log_mass = -safe_mu + safe_y * jnp.log(safe_mu) - gammaln(safe_y + 1.0)
+    result = jnp.where(safe_sigma < 1e-4, poisson_log_mass, log_mass)
+    result = jnp.where(support, result, -jnp.inf)
+    return jnp.where(valid, result, jnp.nan)
+
+
+def _gpo_log_mass_grid(mu, sigma, max_value=GPO_PROBABILITY_MAX_COUNT):
+    support = jnp.arange(max_value + 1, dtype=jnp.float64)
+    return support, _gpo_log_pdf(support, mu, sigma)
+
+
+def _gpo_p(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
+    q, mu, sigma = jnp.broadcast_arrays(*[
+        jnp.asarray(value, dtype=jnp.float64) for value in (q, mu, sigma)
+    ])
+    flat_q, flat_mu, flat_sigma = (value.reshape(-1) for value in (q, mu, sigma))
+    support = jnp.arange(GPO_PROBABILITY_MAX_COUNT + 1, dtype=jnp.float64)
+
+    def one(qi, mui, sigmai):
+        _, log_mass = _gpo_log_mass_grid(mui, sigmai)
+        cdf = jnp.sum(jnp.where(support <= jnp.floor(qi), jnp.exp(log_mass), 0.0))
+        cdf = jnp.where(qi < 0.0, 0.0, cdf)
+        cdf = jnp.where((qi > GPO_PROBABILITY_MAX_COUNT) & jnp.isfinite(qi), jnp.nan, cdf)
+        return jnp.where(jnp.isposinf(qi), 1.0, cdf)
+
+    probability = jax.vmap(one)(flat_q, flat_mu, flat_sigma).reshape(q.shape)
+    probability = jnp.where(lower_tail, probability, 1.0 - probability)
+    result = jnp.log(probability) if log_p else probability
+    valid = (mu > 0.0) & (sigma > 0.0) & jnp.isfinite(mu) & jnp.isfinite(sigma)
+    return jnp.where(valid, result, jnp.nan)
+
+
+def _gpo_q(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False,
+           max_value=GPO_PROBABILITY_MAX_COUNT):
+    p, mu, sigma = jnp.broadcast_arrays(*[
+        jnp.asarray(value, dtype=jnp.float64) for value in (p, mu, sigma)
+    ])
+    probability = jnp.exp(p) if log_p else p
+    probability = jnp.where(lower_tail, probability, 1.0 - probability)
+
+    def one(pi, mui, sigmai):
+        support, log_mass = _gpo_log_mass_grid(mui, sigmai, max_value)
+        reached = jnp.cumsum(jnp.exp(log_mass)) >= pi
+        result = jnp.where(jnp.any(reached), jnp.argmax(reached), jnp.nan).astype(jnp.float64)
+        result = jnp.where(pi == 0.0, 0.0, result)
+        result = jnp.where(pi >= 1.0, jnp.inf, result)
+        return jnp.where((pi < 0.0) | (pi > 1.0) | jnp.isnan(pi), jnp.nan, result)
+
+    result = jax.vmap(one)(probability.reshape(-1), mu.reshape(-1), sigma.reshape(-1)).reshape(p.shape)
+    valid = (mu > 0.0) & (sigma > 0.0) & jnp.isfinite(mu) & jnp.isfinite(sigma)
+    return jnp.where(valid, result, jnp.nan)
+
+
+def _gpo_r(key, n, mu=1.0, sigma=1.0):
+    return _gpo_q(jrandom.uniform(key, shape=(n,), dtype=jnp.float64), mu, sigma)
 
 
 def GPO():
@@ -1498,8 +1555,11 @@ def GPO():
         parameters=("mu", "sigma"),
         log_pdf_func=_gpo_log_pdf,
         type_="Discrete",
-        links={"mu": "log", "sigma": "identity"},
-        link_functions={"mu": log_link, "sigma": identity_link},
-        link_inverses={"mu": log_inverse, "sigma": identity_inverse},
-        link_derivatives={"mu": log_derivative, "sigma": identity_derivative},
+        links={"mu": "log", "sigma": "log"},
+        link_functions={"mu": log_link, "sigma": log_link},
+        link_inverses={"mu": log_inverse, "sigma": log_inverse},
+        link_derivatives={"mu": log_derivative, "sigma": log_derivative},
+        p=_gpo_p,
+        q=_gpo_q,
+        r=_gpo_r,
     )
