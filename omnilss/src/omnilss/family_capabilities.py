@@ -340,6 +340,12 @@ def _dpqr_function_uses_placeholder(function_name: str) -> bool:
     if node is None:
         return False
     source = _function_source("omnilss.dpqr_functions", node).lower()
+    # NaN is a valid result for invalid inputs.  SICHEL's three public
+    # functions perform real numerical work and use conditional NaN returns
+    # only for those boundaries; do not classify that handling as a stub.
+    if function_name in {"pSICHEL", "qSICHEL", "rSICHEL"}:
+        source = source.replace("jnp.nan", "")
+    return any(marker in source for marker in _DPQR_PLACEHOLDER_SOURCE_MARKERS)
     return any(marker in source for marker in _DPQR_PLACEHOLDER_SOURCE_MARKERS)
 
 

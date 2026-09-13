@@ -102,6 +102,13 @@ def test_ad_families_with_explicit_dpqr_are_not_false_placeholder():
         )
 
 
+def test_sichel_boundary_nan_handling_is_not_placeholder_behavior():
+    """Invalid-input NaN returns must not mask a complete SICHEL dpqr wiring."""
+    capability = get_family_capability("SICHEL")
+    assert capability.implementation_status is ImplementationStatus.EXPERIMENTAL
+    assert implementation_status_for_family("SICHEL") is ImplementationStatus.EXPERIMENTAL
+
+
 def test_unsupported_jax_route_is_reported():
     capability = get_family_capability("GB2")
     assert capability.status("rs_jax_fit") is CapabilityStatus.UNSUPPORTED
