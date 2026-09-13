@@ -4,14 +4,14 @@ R reference: `gamlss.dist` exports `ST1`, `ST2`, `ST3`, `ST4`.
 
 - ST1: Azzalini type 1: loglik = log(2) + pt(nu*z, df=tau) + dt(z, df=tau) - log(sigma)
 - ST2: Azzalini type 2: same with w = nu*sqrt((tau+1)/(tau+z^2))*z, pt(w, df=tau+1)
-- ST3/ST4: routed to the ST3C numeric kernel (distinct names preserved).
+- ST3: two-piece skew-t with reciprocal scales on the two sides.
+- ST4: two-piece skew-t with separate left/right degrees of freedom.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .distributions_b15 import ST3C
 from .families import FamilyDefinition
 from .links import identity_derivative, identity_inverse, identity_link, log_derivative, log_inverse, log_link
 
@@ -294,7 +294,98 @@ def ST2() -> FamilyDefinition:
 
 
 def ST3() -> FamilyDefinition:
-    return _clone_with_name(ST3C(), "ST3", ST3Family)
+    from .ad import build_ad_family
+
+    return build_ad_family(
+        family_class=ST3Family,
+        name="ST3",
+        parameters=("mu", "sigma", "nu", "tau"),
+        log_pdf_func=_st3_log_pdf,
+        type_="Continuous",
+        p=_st3_p,
+        q=_st3_q,
+        r=_st3_r,
+        links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "log"},
+        link_functions={"mu": identity_link, "sigma": log_link, "nu": log_link, "tau": log_link},
+        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
+        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative, "tau": log_derivative},
+    )
+
+
+def _st3_log_pdf(y, mu, sigma, nu, tau):
+    """R ST3.R dST3: reciprocal scales left/right of ``mu``."""
+    import jax.numpy as _jnp
+    from jax.scipy.stats import t as _jt
+
+    sigma = _jnp.maximum(_jnp.asarray(sigma, dtype=_jnp.float64), _jnp.finfo(_jnp.float64).eps)
+    nu = _jnp.maximum(_jnp.asarray(nu, dtype=_jnp.float64), _jnp.finfo(_jnp.float64).eps)
+    tau = _jnp.maximum(_jnp.asarray(tau, dtype=_jnp.float64), _jnp.finfo(_jnp.float64).eps)
+    y = _jnp.asarray(y, dtype=_jnp.float64)
+    mu = _jnp.asarray(mu, dtype=_jnp.float64)
+    z = (y - mu) / sigma
+    log_norm = _jnp.log(2.0 * nu / (1.0 + nu * nu)) - _jnp.log(sigma)
+    return _jnp.where(y < mu, _jt.logpdf(nu * z, tau) + log_norm,
+                      _jt.logpdf(z / nu, tau) + log_norm)
+
+
+def _st3_p(q, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False):
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import t as _spt
+
+    q_arr, mu_arr, sigma_arr, nu_arr, tau_arr = [_np.atleast_1d(_np.asarray(v, dtype=_np.float64))
+        for v in (q, mu, sigma, nu, tau)]
+    n = max(map(len, (q_arr, mu_arr, sigma_arr, nu_arr, tau_arr)))
+    out = []
+    for i in range(n):
+        qi, mi, si, ni, ti = [float(v[i % len(v)]) for v in (q_arr, mu_arr, sigma_arr, nu_arr, tau_arr)]
+        z = (qi - mi) / si
+        if qi < mi:
+            value = 2.0 * _spt.cdf(ni * z, ti) / (1.0 + ni * ni)
+        else:
+            value = (1.0 + 2.0 * ni * ni * (_spt.cdf(z / ni, ti) - 0.5)) / (1.0 + ni * ni)
+        out.append(value)
+    result = _np.asarray(out)
+    if not lower_tail:
+        result = 1.0 - result
+    if log_p:
+        result = _np.log(result)
+    return jnp.asarray(result, dtype=jnp.float64)
+
+
+def _st3_q(p, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False):
+    import numpy as _np
+    import jax.numpy as jnp
+    from scipy.stats import t as _spt
+
+    p_arr, mu_arr, sigma_arr, nu_arr, tau_arr = [_np.atleast_1d(_np.asarray(v, dtype=_np.float64))
+        for v in (p, mu, sigma, nu, tau)]
+    if log_p:
+        p_arr = _np.exp(p_arr)
+    if not lower_tail:
+        p_arr = 1.0 - p_arr
+    n = max(map(len, (p_arr, mu_arr, sigma_arr, nu_arr, tau_arr)))
+    out = []
+    for i in range(n):
+        pi, mi, si, ni, ti = [float(v[i % len(v)]) for v in (p_arr, mu_arr, sigma_arr, nu_arr, tau_arr)]
+        if pi == 0.0:
+            value = -_np.inf
+        elif pi == 1.0:
+            value = _np.inf
+        elif not _np.isfinite(pi) or pi < 0.0 or pi > 1.0:
+            value = _np.nan
+        elif pi < 1.0 / (1.0 + ni * ni):
+            value = mi + (si / ni) * _spt.ppf(pi * (1.0 + ni * ni) / 2.0, ti)
+        else:
+            value = mi + (si * ni) * _spt.ppf((pi * (1.0 + ni * ni) - 1.0) / (2.0 * ni * ni) + 0.5, ti)
+        out.append(value)
+    return jnp.asarray(out, dtype=jnp.float64)
+
+
+def _st3_r(key, n, mu=0.0, sigma=1.0, nu=1.0, tau=10.0):
+    import jax.numpy as jnp
+    import jax.random as _jr
+    return _st3_q(_jr.uniform(key, shape=(n,), dtype=jnp.float64), mu, sigma, nu, tau)
 
 
 def _st4_log_pdf(y, mu, sigma, nu, tau):
@@ -386,7 +477,6 @@ def _st4_q(p, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False)
         p_arr = _np.exp(p_arr)
     if not lower_tail:
         p_arr = 1.0 - p_arr
-    p_arr = _np.clip(p_arr, 1e-16, 1.0 - 1e-16)
     mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
     sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
     nu_arr = _np.atleast_1d(_np.asarray(nu, dtype=_np.float64))
@@ -405,7 +495,13 @@ def _st4_q(p, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False)
         lk2 = _gl(0.5) + _gl(ti / 2.0) - _gl((ti + 1.0) / 2.0) + 0.5 * _np.log(ti)
         lk2 = lk2 if ti < 1e6 else 0.5 * _np.log(2.0 * _np.pi)
         k = _np.exp(lk2 - lk1)
-        if pi < 1.0 / (1.0 + k):
+        if pi == 0.0:
+            q = -_np.inf
+        elif pi == 1.0:
+            q = _np.inf
+        elif not _np.isfinite(pi) or pi < 0.0 or pi > 1.0:
+            q = _np.nan
+        elif pi < 1.0 / (1.0 + k):
             q = mui + si * _spt.ppf(pi * (1.0 + k) / 2.0, ni)
         else:
             q = mui + si * _spt.ppf((pi * (1.0 + k) - 1.0) / (2.0 * k) + 0.5, ti)

@@ -376,6 +376,9 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [ ] **8.5 项目收尾** — 部分完成
   - 【已交付】commit `e39a235`：删除 4 个死代码文件（rs_jax/hessian_stabilization/trust_region/错位包装 base.py），更新 runtime 包导出；omnilss 可导入，22 项回归全绿（1 项 pNBI placeholder 检测为预先存在失败）。
   - 【待办】`gamlss()` method 名与行为一致性核对；全库 lint/type 检查（需 lint 工具环境）。
+- [x] **A1-ST3/4 DPQR 契约补齐** — 完成 ✅ commit 待提交
+  - 【实现】ST3 改为 R `ST3.R` 的 reciprocal-scale two-piece t 实现，不再克隆 ST3C；ST4 q() 遵循 0/1/非法概率边界及 upper-tail/log-p 语义。
+  - 【测试】`tests/test_st34_dpqr_contract.py` 6 项通过；ST3/ST4 R 一致性筛选通过；编译与 `git diff --check` 通过。
 
 ---
 
