@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import jax.numpy as jnp
 import jax.random as jrandom
 from jax.scipy.special import gammaln, betaln
+from scipy.stats import nbinom as _nbinom
+from scipy.stats import poisson as _poisson
 from jax.scipy.stats import t as _jst, norm as _jnorm
 
 from .ad import build_ad_family
@@ -1238,22 +1240,84 @@ class NBFFamily(FamilyDefinition):
     pass
 
 
-def _nbf_log_pdf(y, mu, sigma):
-    """NBF log-PDF (Famoye parameterization)."""
+def _nbf_log_pdf(y, mu, sigma, nu):
+    """R ``NBF`` log-PMF with ``sigma1 = sigma * mu**(nu - 2)``."""
     eps = jnp.finfo(jnp.float64).eps
-    y = jnp.maximum(y, 0.0)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    
-    # Famoye: different variance function
-    # Var(Y) = mu + sigma * mu
-    alpha = 1.0 / sigma
-    
-    return (
-        gammaln(y + alpha) - gammaln(alpha) - gammaln(y + 1.0)
-        + alpha * jnp.log(alpha / (alpha + mu))
-        + y * jnp.log(mu / (alpha + mu))
+    valid = (mu > 0.0) & (sigma > 0.0) & jnp.isfinite(nu)
+    support = (y >= 0.0) & (y == jnp.floor(y))
+    safe_y = jnp.where(support, y, 0.0)
+    safe_mu = jnp.where(mu > 0.0, mu, 1.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    sigma1 = safe_sigma * jnp.power(safe_mu, nu - 2.0)
+    size = 1.0 / jnp.maximum(sigma1, eps)
+    nb_log_mass = (
+        gammaln(safe_y + size) - gammaln(size) - gammaln(safe_y + 1.0)
+        + size * jnp.log(size / (size + safe_mu))
+        + safe_y * jnp.log(safe_mu / (size + safe_mu))
     )
+    poisson_log_mass = -safe_mu + safe_y * jnp.log(safe_mu) - gammaln(safe_y + 1.0)
+    result = jnp.where(sigma1 < 1e-4, poisson_log_mass, nb_log_mass)
+    result = jnp.where(support, result, -jnp.inf)
+    return jnp.where(valid, result, jnp.nan)
+
+
+def _nbf_parameters(mu, sigma, nu):
+    """Return SciPy's ``(n, p)`` parameters for the R NBF parameterization."""
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    sigma1 = sigma * jnp.power(mu, nu - 2.0)
+    n = 1.0 / sigma1
+    p = n / (n + mu)
+    return sigma1, n, p
+
+
+def dNBF(x, mu=1.0, sigma=1.0, nu=2.0, log=False):
+    """NBF PMF using the exact negative-binomial parameterization."""
+    x, mu, sigma, nu = (jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu))
+    sigma1, n, p = _nbf_parameters(mu, sigma, nu)
+    nb = _nbinom.logpmf(x, n, p) if log else _nbinom.pmf(x, n, p)
+    pois = _poisson.logpmf(x, mu) if log else _poisson.pmf(x, mu)
+    result = jnp.where(sigma1 < 1e-4, pois, nb)
+    result = jnp.where((x >= 0) & (x == jnp.floor(x)), result, -jnp.inf if log else 0.0)
+    return jnp.where((mu > 0) & (sigma > 0) & jnp.isfinite(nu), result, jnp.nan)
+
+
+def pNBF(q, mu=1.0, sigma=1.0, nu=2.0, lower_tail=True, log_p=False):
+    """NBF CDF/survival function with R-compatible tail and log options."""
+    q, mu, sigma, nu = (jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma, nu))
+    sigma1, n, p = _nbf_parameters(mu, sigma, nu)
+    nb = _nbinom.cdf(q, n, p) if lower_tail else _nbinom.sf(q, n, p)
+    pois = _poisson.cdf(q, mu) if lower_tail else _poisson.sf(q, mu)
+    probability = jnp.where(sigma1 < 1e-4, pois, nb)
+    result = jnp.log(probability) if log_p else probability
+    valid = (mu > 0) & (sigma > 0) & jnp.isfinite(nu)
+    return jnp.where(valid, result, jnp.nan)
+
+
+def qNBF(probability, mu=1.0, sigma=1.0, nu=2.0, lower_tail=True, log_p=False):
+    """NBF discrete quantile (smallest integer with CDF >= probability)."""
+    probability, mu, sigma, nu = (jnp.asarray(v, dtype=jnp.float64) for v in (probability, mu, sigma, nu))
+    sigma1, n, p = _nbf_parameters(mu, sigma, nu)
+    probability = jnp.exp(probability) if log_p else probability
+    probability = jnp.where(lower_tail, probability, 1.0 - probability)
+    result = jnp.where(
+        sigma1 < 1e-4,
+        _poisson.ppf(probability, mu),
+        _nbinom.ppf(probability, n, p),
+    )
+    # Count distributions have a finite lower support boundary.
+    result = jnp.where(probability == 0.0, 0.0, result)
+    result = jnp.where(probability == 1.0, jnp.inf, result)
+    valid = ((mu > 0) & (sigma > 0) & jnp.isfinite(nu)
+             & (probability >= 0) & (probability <= 1))
+    return jnp.where(valid, result, jnp.nan)
+
+
+def rNBF(key, n, mu=1.0, sigma=1.0, nu=2.0):
+    """Generate NBF variates by inverse-transform sampling."""
+    uniforms = jrandom.uniform(key, shape=(n,), dtype=jnp.float64)
+    return qNBF(uniforms, mu, sigma, nu)
 
 
 def NBF():
@@ -1261,13 +1325,17 @@ def NBF():
     return build_ad_family(
         family_class=NBFFamily,
         name="NBF",
-        parameters=("mu", "sigma"),
+        parameters=("mu", "sigma", "nu"),
         log_pdf_func=_nbf_log_pdf,
         type_="Discrete",
-        links={"mu": "log", "sigma": "log"},
-        link_functions={"mu": log_link, "sigma": log_link},
-        link_inverses={"mu": log_inverse, "sigma": log_inverse},
-        link_derivatives={"mu": log_derivative, "sigma": log_derivative},
+        links={"mu": "log", "sigma": "log", "nu": "log"},
+        link_functions={"mu": log_link, "sigma": log_link, "nu": log_link},
+        link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": log_inverse},
+        link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": log_derivative},
+        d=dNBF,
+        p=pNBF,
+        q=qNBF,
+        r=rNBF,
     )
 
 

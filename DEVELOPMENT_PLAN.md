@@ -379,6 +379,14 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [x] **A1-ST3/4 DPQR 契约补齐** — 完成 ✅ commit 待提交
   - 【实现】ST3 改为 R `ST3.R` 的 reciprocal-scale two-piece t 实现，不再克隆 ST3C；ST4 q() 遵循 0/1/非法概率边界及 upper-tail/log-p 语义。
   - 【测试】`tests/test_st34_dpqr_contract.py` 6 项通过；ST3/ST4 R 一致性筛选通过；编译与 `git diff --check` 通过。
+- [x] **A3-SI DPQR 契约补齐** — 完成 ✅ 本轮
+  - 【实现】`distributions_b6.py` 为 SI 接入 R-SI 递推核的离散 CDF、首个交叉点 quantile 和逆变换 random generation；修复 `log_p` 概率未解码导致的 NaN 风险。
+  - 【测试】新增 `tests/test_si_dpqr_contract.py`；SI 与 capability 回归共 21 项通过，Python 编译检查和 `git diff --check` 通过。
+  - 【数据】重新生成 `docs/development/r-export-coverage.json`、`r-export-coverage.md` 与 `placeholder-migration-queue-2026-09-13.md`；当前注册 145 个，placeholder 26 个，SI 已为 experimental。
+- [x] **A3-NBF DPQR 契约补齐** — 完成 ✅ 本轮
+  - 【实现】`distributions_b15.py` 为 NBF 接入 R 三参数负二项参数化的精确 `d/p/q/r`；`sigma1=sigma*mu**(nu-2)`、`size=1/sigma1`，包含 R 的小离散度 Poisson 分支，并实现离散边界、upper-tail、log-p、广播和逆变换采样。
+  - 【测试】新增 `tests/test_nbf_dpqr_contract.py` 3 项；NBF 与 SI 契约测试共 6 项通过，综合 DPQR 测试 100% 完成（包含预期跳过项）。
+  - 【数据】重新生成覆盖 JSON/Markdown 和 placeholder 队列；当前注册 145 个，状态为 1 implemented、93 experimental、25 compat_alias、26 placeholder，NBF 已为 experimental。
 
 ---
 

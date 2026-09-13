@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-09-12T07:30:53.112855+00:00",
+  "generated_at": "2026-09-13T08:08:23.335740+00:00",
   "source_repo_root": "D:\\AI\\my\\githubprojs\\OmniLSS",
   "stats": {
     "total_registered": 145,
     "status_distribution": {
-      "placeholder": 32,
-      "experimental": 87,
+      "placeholder": 26,
+      "experimental": 93,
       "compat_alias": 25,
       "implemented": 1
     },
     "validated_count": 1,
-    "experimental_count": 87,
+    "experimental_count": 93,
     "compat_alias_count": 25,
-    "placeholder_count": 32,
+    "placeholder_count": 26,
     "missing_count": 0
   },
   "families": {
@@ -719,7 +719,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "NBF": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -737,7 +737,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "NBII": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -962,7 +962,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "SI": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -971,7 +971,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "SICHEL": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -989,7 +989,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "SN1": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -998,7 +998,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "SN2": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
