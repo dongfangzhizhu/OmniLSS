@@ -458,18 +458,66 @@ def _zalg_log_pdf(y, mu, nu):
     return jnp.where(y <= 0, log_at0, log_cont)
 
 
+def _zalg_p(q, mu=0.5, sigma=0.1, lower_tail=True, log_p=False):
+    """CDF of R's zero-adjusted logarithmic distribution."""
+    q = jnp.asarray(q, dtype=jnp.float64)
+    mu = jnp.clip(jnp.asarray(mu, dtype=jnp.float64), 1e-15, 1.0 - 1e-15)
+    sigma = jnp.clip(jnp.asarray(sigma, dtype=jnp.float64), 1e-15, 1.0 - 1e-15)
+    k = jnp.arange(1, 10001, dtype=jnp.float64)
+    terms = mu[..., None] ** k / (k * (-jnp.log1p(-mu[..., None])))
+    cdf = sigma + (1.0 - sigma) * jnp.sum(
+        jnp.where(k <= jnp.floor(q)[..., None], terms, 0.0), axis=-1
+    )
+    cdf = jnp.where(q < 0, 0.0, cdf)
+    cdf = jnp.where(q >= 10000, 1.0, cdf)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    return jnp.log(cdf) if log_p else cdf
+
+
+def _zalg_q(p, mu=0.5, sigma=0.1, lower_tail=True, log_p=False, max_value=10000):
+    """Inverse CDF for ZALG, with R-compatible finite search cap."""
+    p, mu, sigma = jnp.broadcast_arrays(
+        jnp.asarray(p, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64)
+    )
+    if log_p:
+        p = jnp.exp(p)
+    if not lower_tail:
+        p = 1.0 - p
+    k = jnp.arange(0, max_value + 1, dtype=jnp.float64)
+    positive = jnp.arange(1, 10001, dtype=jnp.float64)
+    terms = mu[..., None] ** positive / (positive * (-jnp.log1p(-mu[..., None])))
+    cdf = sigma[..., None] + (1.0 - sigma[..., None]) * jnp.cumsum(
+        terms, axis=-1
+    )
+    cdf = jnp.concatenate((sigma[..., None], cdf), axis=-1)
+    crossed = cdf >= p[..., None]
+    result = jnp.argmax(crossed, axis=-1).astype(jnp.float64)
+    result = jnp.where(jnp.any(crossed, axis=-1), result, float(max_value))
+    result = jnp.where(p >= 1.0, jnp.inf, result)
+    return jnp.where((p >= 0.0) & (p <= 1.0), result, jnp.nan)
+
+
+def _zalg_r(key, n, mu=0.5, sigma=0.1):
+    return _zalg_q(jrandom.uniform(key, shape=(n,), dtype=jnp.float64), mu, sigma)
+
+
 def ZALG() -> ZeroAlteredLogarithmicFamily:
     """Zero-Altered Logarithmic distribution."""
     return build_ad_family(
         family_class=ZeroAlteredLogarithmicFamily,
         name="ZALG",
-        parameters=("mu", "nu"),
+        parameters=("mu", "sigma"),
         log_pdf_func=_zalg_log_pdf,
         type_="Discrete",
-        links={"mu": "logit", "nu": "logit"},
-        link_functions={"mu": logit_link, "nu": logit_link},
-        link_inverses={"mu": logit_inverse, "nu": logit_inverse},
-        link_derivatives={"mu": logit_derivative, "nu": logit_derivative},
+        p=_zalg_p,
+        q=_zalg_q,
+        r=_zalg_r,
+        links={"mu": "logit", "sigma": "logit"},
+        link_functions={"mu": logit_link, "sigma": logit_link},
+        link_inverses={"mu": logit_inverse, "sigma": logit_inverse},
+        link_derivatives={"mu": logit_derivative, "sigma": logit_derivative},
     )
 
 
