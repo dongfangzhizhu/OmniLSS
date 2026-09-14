@@ -1376,6 +1376,43 @@ def _zinbf_log_pdf(y, mu, sigma, nu):
     return jnp.where(y <= 0, log_at0, log_cont)
 
 
+def dZINBF(x, mu=1.0, sigma=1.0, nu=0.1, log=False):
+    x, mu, sigma, nu = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu)])
+    alpha = 1.0 / sigma
+    base = gammaln(x + alpha) - gammaln(alpha) - gammaln(x + 1) + alpha*jnp.log(alpha/(alpha+mu)) + x*jnp.log(mu/(alpha+mu))
+    base0 = alpha*jnp.log(alpha/(alpha+mu))
+    value = jnp.where(x == 0, jnp.logaddexp(jnp.log(nu) , jnp.log1p(-nu) + base0), jnp.log1p(-nu) + base)
+    value = jnp.where((x >= 0) & (x == jnp.floor(x)), value, -jnp.inf)
+    return value if log else jnp.exp(value)
+
+
+def pZINBF(q, mu=1.0, sigma=1.0, nu=0.1, lower_tail=True, log_p=False):
+    q, mu, sigma, nu = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma, nu)])
+    alpha = 1.0 / sigma
+    base = _nbinom.cdf(q, alpha, alpha/(alpha+mu))
+    value = jnp.where(q < 0, 0.0, nu + (1.0 - nu) * base)
+    value = jnp.where(q >= 0, value, 0.0)
+    value = jnp.where(lower_tail, value, 1.0 - value)
+    return jnp.log(value) if log_p else value
+
+
+def qZINBF(probability, mu=1.0, sigma=1.0, nu=0.1, lower_tail=True, log_p=False):
+    probability, mu, sigma, nu = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64) for v in (probability, mu, sigma, nu)])
+    p = jnp.exp(probability) if log_p else probability
+    p = jnp.where(lower_tail, p, 1.0 - p)
+    threshold = nu + (1.0 - nu) * jnp.exp((1.0/sigma)*jnp.log((1.0/sigma)/(1.0/sigma+mu)))
+    base_p = (p - nu) / (1.0 - nu)
+    alpha = 1.0 / sigma
+    return jnp.where(p <= nu, 0.0, _nbinom.ppf(base_p, alpha, alpha/(alpha+mu)))
+
+
+def rZINBF(key, n, mu=1.0, sigma=1.0, nu=0.1):
+    zero_key, base_key = jrandom.split(key)
+    mu, sigma, nu = [jnp.asarray(v, dtype=jnp.float64) for v in (mu, sigma, nu)]
+    shape = (n,) if all(v.ndim == 0 for v in (mu, sigma, nu)) else jnp.broadcast_shapes(mu.shape, sigma.shape, nu.shape)
+    return jnp.where(jrandom.bernoulli(zero_key, nu, shape=shape), 0.0, qNBF(jrandom.uniform(base_key, shape=shape), mu, sigma, 2.0))
+
+
 def ZINBF():
     """Zero-Inflated Negative Binomial Famoye distribution."""
     return build_ad_family(
@@ -1400,6 +1437,10 @@ def ZINBF():
             "sigma": log_derivative,
             "nu": logit_derivative,
         },
+        d=dZINBF,
+        p=pZINBF,
+        q=qZINBF,
+        r=rZINBF,
     )
 
 
