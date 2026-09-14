@@ -17,7 +17,9 @@ from dataclasses import dataclass
 import math
 
 import jax.numpy as jnp
+import jax.random as jrandom
 from jax.scipy.special import gammaln
+from jax.scipy.special import zeta
 
 from .ad import build_ad_family
 from .families import FamilyDefinition
@@ -238,33 +240,92 @@ class ZipfFamily(FamilyDefinition):
     """
 
 
-def _zeta_scipy(s):
-    """Compute Riemann zeta function using scipy."""
-    import numpy as np
-    from scipy.special import zeta
-    s_np = np.asarray(s, dtype=np.float64)
-    return zeta(s_np)
-
-
 def _zipf_log_pdf(y, mu):
-    """Log-PDF of Zipf distribution using exact zeta function."""
-    import jax
-    
+    """Log-PDF of the R-compatible Zipf distribution."""
     eps = jnp.finfo(jnp.float64).eps
-    mu = jnp.maximum(mu, eps)
+    mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), eps)
+    y = jnp.asarray(y, dtype=jnp.float64)
     y_safe = jnp.maximum(y, 1.0)
-    
-    # Use scipy's zeta via pure_callback
-    result_shape = jax.ShapeDtypeStruct(jnp.shape(mu), jnp.float64)
-    log_zeta = jnp.log(jax.pure_callback(
-        _zeta_scipy,
-        result_shape,
-        mu + 1.0,
-        vmap_method='sequential'
-    ))
-    
+    log_zeta = jnp.log(zeta(mu + 1.0, 1.0))
     log_pdf = -(mu + 1.0) * jnp.log(y_safe) - log_zeta
-    return jnp.where(y <= 0, -jnp.inf, log_pdf)
+    return jnp.where(y < 1.0, -jnp.inf, log_pdf)
+
+
+def _zipf_d(x, mu=1.0, log=False):
+    """R ``dZIPF``: the support starts at one, but accepts real x >= 1."""
+    log_mass = _zipf_log_pdf(x, mu)
+    return log_mass if log else jnp.exp(log_mass)
+
+
+def _zipf_tail(shape, a):
+    """R ``pZIPF``'s Euler--Maclaurin tail approximation after ``a``."""
+    bernoulli = jnp.asarray(
+        [1.0 / 6.0, -1.0 / 30.0, 1.0 / 42.0, -1.0 / 30.0,
+         5.0 / 66.0, -691.0 / 2730.0, 7.0 / 6.0, -3617.0 / 510.0],
+        dtype=jnp.float64,
+    )
+    # R calls this helper with ``a = floor(q) + 1`` and uses ``1 + a``.
+    a = a + 1.0
+    result = 1.0 / ((shape - 1.0) * a ** (shape - 1.0))
+    result = result + 0.5 / a**shape
+    term = (shape / 2.0) / a ** (shape + 1.0)
+    result = result + term * bernoulli[0]
+    for index in range(1, 8):
+        order = index + 1
+        term = term * (shape + 2.0 * order - 3.0) * (shape + 2.0 * order - 2.0)
+        term = term / ((2.0 * order - 1.0) * 2.0 * order * a**2)
+        result = result + term * bernoulli[index]
+    return result
+
+
+def _zipf_cdf(q, mu):
+    """Return R's lower-tail CDF before optional tail/log transformations."""
+    q, mu = jnp.broadcast_arrays(
+        jnp.asarray(q, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64)
+    )
+    shape = mu + 1.0
+    k = jnp.arange(1, 12, dtype=jnp.float64)
+    head = jnp.sum(jnp.where(k <= jnp.floor(q)[..., None], k**(-shape[..., None]), 0.0), axis=-1)
+    qfloor = jnp.floor(q)
+    tail = _zipf_tail(shape, qfloor + 1.0)
+    cdf = jnp.where(qfloor >= 11.0, zeta(shape, 1.0) - tail, head)
+    cdf = cdf / zeta(shape, 1.0)
+    cdf = jnp.where(q < 1.0, 0.0, cdf)
+    cdf = jnp.where(jnp.isposinf(q), 1.0, cdf)
+    return cdf
+
+
+def _zipf_p(q, mu=1.0, lower_tail=True, log_p=False):
+    """R ``pZIPF`` using the floor of q for the discrete CDF."""
+    cdf = _zipf_cdf(q, mu)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    return jnp.log(cdf) if log_p else cdf
+
+
+def _zipf_q(p, mu=1.0, lower_tail=True, log_p=False, max_value=10000):
+    """R ``qZIPF``: first exact CDF crossing, capped at ``max_value``."""
+    p, mu = jnp.broadcast_arrays(
+        jnp.asarray(p, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64)
+    )
+    if log_p:
+        p = jnp.exp(p)
+    if not lower_tail:
+        p = 1.0 - p
+    valid = (p >= 0.0) & (p <= 1.0)
+    k = jnp.arange(1, max_value + 1, dtype=jnp.float64)
+    # qZIPF calls pZIPF for each integer; use the same R tail approximation.
+    cdf = _zipf_cdf(k, mu[..., None])
+    crossed = cdf >= p[..., None]
+    crossing = jnp.argmax(crossed, axis=-1) + 1.0
+    result = jnp.where(jnp.any(crossed, axis=-1), crossing, float(max_value))
+    result = jnp.where(p >= 1.0, jnp.inf, result)
+    return jnp.where(valid, result, jnp.nan)
+
+
+def _zipf_r(key, n, mu=1.0):
+    """Generate Zipf variates by inverse CDF, matching R's qZIPF limit."""
+    return _zipf_q(jrandom.uniform(key, shape=(n,), dtype=jnp.float64), mu)
 
 
 def ZIPF() -> ZipfFamily:
@@ -303,6 +364,10 @@ def ZIPF() -> ZipfFamily:
         parameters=("mu",),
         log_pdf_func=_zipf_log_pdf,
         type_="Discrete",
+        d=_zipf_d,
+        p=_zipf_p,
+        q=_zipf_q,
+        r=_zipf_r,
         links={"mu": "log"},
         link_functions={"mu": log_link},
         link_inverses={"mu": log_inverse},
