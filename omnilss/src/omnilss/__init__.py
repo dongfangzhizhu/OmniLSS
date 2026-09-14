@@ -73,7 +73,7 @@ from .distributions_b5 import ZAGA, ZAIG, ZAP, ZIP2, ZINBI
 from .distributions_b6 import DEL, DPO, PIG, SI, SICHEL, WARING, YULE
 from .distributions_b7 import BB, BNB, MN3, MN4, MN5
 from .distributions_b8 import GB2, GG, LNO, NET, PARETO
-from .distributions_b9 import LG, ZALG, ZIPF
+from .distributions_b9 import LG, ZALG, ZILG, ZIPF
 from .distributions_b10_zero_variants import (
     ZABB,
     ZABI,

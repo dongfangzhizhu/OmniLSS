@@ -425,10 +425,7 @@ def create_zero_inflated_family(base_family_func, base_name, new_name):
     Example:
         >>> ZILG = create_zero_inflated_family(LG, "LG", "ZILG")
     """
-    # This is a template - full implementation would require
-    # wrapping the base distribution's log_pdf with zero-inflated logic
-    # Similar to how ZIP wraps PO
-    pass
+    raise NotImplementedError("Generic zero-inflated construction is not yet supported")
 
 
 # ------------------------------------------------------------------
@@ -522,10 +519,42 @@ def ZALG() -> ZeroAlteredLogarithmicFamily:
 
 
 # ------------------------------------------------------------------
-# Zero-Inflated Logarithmic (ZILG) - if needed
-# Note: LG already has no mass at 0, so ZI doesn't make sense
-# But we can define it for completeness
+# Zero-Inflated Logarithmic (ZILG)
 # ------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class ZeroInflatedLogarithmicFamily(FamilyDefinition):
+    """Zero-inflated logarithmic distribution (R ``gamlss.dist::ZILG``)."""
+
+
+def _zilg_log_pdf(y, mu, nu):
+    """ZILG mass: P(Y=0)=nu and P(Y=y)=(1-nu) dLG(y; mu)."""
+    return _zalg_log_pdf(y, mu, nu)
+
+
+def _zilg_p(q, mu=0.5, nu=0.1, lower_tail=True, log_p=False):
+    return _zalg_p(q, mu, nu, lower_tail=lower_tail, log_p=log_p)
+
+
+def _zilg_q(p, mu=0.5, nu=0.1, lower_tail=True, log_p=False, max_value=10000):
+    return _zalg_q(p, mu, nu, lower_tail=lower_tail, log_p=log_p, max_value=max_value)
+
+
+def _zilg_r(key, n, mu=0.5, nu=0.1):
+    return _zalg_r(key, n, mu, nu)
+
+
+def ZILG() -> ZeroInflatedLogarithmicFamily:
+    """Zero-inflated logarithmic distribution with R parameters ``mu, nu``."""
+    return build_ad_family(
+        family_class=ZeroInflatedLogarithmicFamily,
+        name="ZILG", parameters=("mu", "nu"), log_pdf_func=_zilg_log_pdf,
+        type_="Discrete", p=_zilg_p, q=_zilg_q, r=_zilg_r,
+        links={"mu": "logit", "nu": "logit"},
+        link_functions={"mu": logit_link, "nu": logit_link},
+        link_inverses={"mu": logit_inverse, "nu": logit_inverse},
+        link_derivatives={"mu": logit_derivative, "nu": logit_derivative},
+    )
 
 # ------------------------------------------------------------------
 # Additional simple distributions from gamlss.dist

@@ -130,6 +130,7 @@ _BUILTIN_FAMILY_FACTORIES: dict[str, tuple[str, str]] = {
     "LG": ("omnilss.distributions_b9", "LG"),
     "ZIPF": ("omnilss.distributions_b9", "ZIPF"),
     "ZALG": ("omnilss.distributions_b9", "ZALG"),
+    "ZILG": ("omnilss.distributions_b9", "ZILG"),
     "IGA": ("omnilss.distributions_b13", "IGA"),
     "PIG2": ("omnilss.distributions_b13", "PIG2"),
     "PE2": ("omnilss.distributions_b13", "PE2"),
