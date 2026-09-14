@@ -19,6 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import lru_cache
 import math
+from scipy.stats import nbinom as _nbinom
 
 import jax
 import jax.numpy as jnp
@@ -40,6 +41,7 @@ from .links import (
     logit_inverse,
     logit_link,
 )
+from .dpqr_functions import qNBI
 
 # ------------------------------------------------------------------
 # 1. ZAGA — Zero-Altered Gamma (Continuous Hurdle)
@@ -338,6 +340,35 @@ def _zinbi_log_pdf(y, mu, sigma, nu):
     log_at0 = jnp.log(nu + (1.0 - nu) * nbi_at0)
     log_cont = jnp.log1p(-nu) + log_nbi
     return jnp.where(y <= 0.0, log_at0, log_cont)
+
+def _zinbi_args(mu, sigma):
+    size = 1.0 / sigma
+    return size, size / (size + mu)
+
+def dZINBI(x, mu=1.0, sigma=1.0, nu=0.3, log=False):
+    x, mu, sigma, nu = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu)])
+    size, prob = _zinbi_args(mu, sigma)
+    base = _nbinom.logpmf(x, size, prob); base0 = _nbinom.logpmf(0, size, prob)
+    value = jnp.where(x == 0, jnp.logaddexp(jnp.log(nu), jnp.log1p(-nu)+base0), jnp.log1p(-nu)+base)
+    value = jnp.where((x >= 0) & (x == jnp.floor(x)), value, -jnp.inf)
+    return value if log else jnp.exp(value)
+
+def pZINBI(q, mu=1.0, sigma=1.0, nu=0.3, lower_tail=True, log_p=False):
+    q, mu, sigma, nu = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma, nu)])
+    size, prob = _zinbi_args(mu, sigma)
+    value = jnp.where(q < 0, 0.0, nu + (1-nu)*_nbinom.cdf(q, size, prob))
+    value = jnp.where(lower_tail, value, 1-value)
+    return jnp.log(value) if log_p else value
+
+def qZINBI(p, mu=1.0, sigma=1.0, nu=0.3, lower_tail=True, log_p=False):
+    p, mu, sigma, nu = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64) for v in (p, mu, sigma, nu)])
+    p = jnp.exp(p) if log_p else p; p = jnp.where(lower_tail, p, 1-p)
+    size, prob = _zinbi_args(mu, sigma); cutoff = nu + (1-nu)*_nbinom.pmf(0, size, prob)
+    return jnp.where(p <= cutoff, 0.0, _nbinom.ppf(jnp.clip((p-nu)/(1-nu), 0, 1), size, prob))
+
+def rZINBI(key, n, mu=1.0, sigma=1.0, nu=0.3):
+    k0, k1 = jrandom.split(key); shape = (n,) if all(jnp.asarray(v).ndim == 0 for v in (mu,sigma,nu)) else jnp.broadcast_shapes(jnp.shape(mu),jnp.shape(sigma),jnp.shape(nu))
+    return jnp.where(jrandom.bernoulli(k0, nu, shape=shape), 0.0, qNBI(jrandom.uniform(k1, shape=shape), mu, sigma))
 
 
 def ZINBI() -> ZeroInflatedNegativeBinomial1Family:
