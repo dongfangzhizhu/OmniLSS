@@ -22,13 +22,14 @@ class TestZINBFConsistency(unittest.TestCase):
     def test_zinbf_dpq_consistency(self) -> None:
         fam = resolve("ZINBF")
 
-        for profile_name, x, mu, sigma, nu, p in (
+        for profile_name, x, mu, sigma, nu, tau, p in (
             (
                 "central",
                 np.arange(0, 80),
                 np.linspace(0.5, 15.0, 80),
                 np.linspace(0.2, 1.5, 80),
                 np.linspace(0.02, 0.35, 80),
+                np.full(80, 0.1),
                 np.linspace(0.02, 0.98, 80),
             ),
             (
@@ -37,6 +38,7 @@ class TestZINBFConsistency(unittest.TestCase):
                 np.linspace(0.2, 40.0, 120),
                 np.linspace(0.1, 2.5, 120),
                 np.linspace(1e-3, 0.55, 120),
+                np.full(120, 0.1),
                 np.concatenate([
                     np.geomspace(1e-5, 1e-2, 60),
                     1.0 - np.geomspace(1e-2, 1e-5, 60),
@@ -48,14 +50,15 @@ class TestZINBFConsistency(unittest.TestCase):
                     "mu": mu.tolist(),
                     "sigma": sigma.tolist(),
                     "nu": nu.tolist(),
+                    "tau": tau.tolist(),
                 }
                 r_d = self.bus.eval_family("ZINBF", "d", {"x": x.tolist(), **params})
                 r_p = self.bus.eval_family("ZINBF", "p", {"q": x.tolist(), **params})
                 r_q = self.bus.eval_family("ZINBF", "q", {"p": p.tolist(), **params})
 
-                py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu)))
-                py_p = np.asarray(fam.p(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu)))
-                py_q = np.asarray(fam.q(jnp.array(p), jnp.array(mu), jnp.array(sigma), jnp.array(nu)))
+                py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
+                py_p = np.asarray(fam.p(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
+                py_q = np.asarray(fam.q(jnp.array(p), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
 
                 np.testing.assert_allclose(py_d, r_d, rtol=1e-5, atol=1e-7)
                 np.testing.assert_allclose(py_p, r_p, rtol=1e-5, atol=1e-7)

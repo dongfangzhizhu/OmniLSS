@@ -1350,16 +1350,16 @@ class ZINBFFamily(FamilyDefinition):
     pass
 
 
-def _zinbf_log_pdf(y, mu, sigma, nu):
+def _zinbf_log_pdf(y, mu, sigma, nu, tau=0.1):
     """ZINBF log-PDF."""
     eps = jnp.finfo(jnp.float64).eps
     y = jnp.maximum(y, 0.0)
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
-    nu = jnp.clip(nu, eps, 1.0 - eps)
+    tau = jnp.clip(tau, eps, 1.0 - eps)
     
     # Base NBF log-PDF
-    alpha = 1.0 / sigma
+    alpha = 1.0 / (sigma * jnp.power(mu, nu - 2.0))
     log_base = (
         gammaln(y + alpha) - gammaln(alpha) - gammaln(y + 1.0)
         + alpha * jnp.log(alpha / (alpha + mu))
@@ -1370,47 +1370,51 @@ def _zinbf_log_pdf(y, mu, sigma, nu):
     log_f0 = alpha * jnp.log(alpha / (alpha + mu))
     
     # Zero-inflated probabilities
-    log_at0 = jnp.log(nu + (1.0 - nu) * jnp.exp(log_f0))
-    log_cont = jnp.log1p(-nu) + log_base
+    log_at0 = jnp.log(tau + (1.0 - tau) * jnp.exp(log_f0))
+    log_cont = jnp.log1p(-tau) + log_base
     
     return jnp.where(y <= 0, log_at0, log_cont)
 
 
-def dZINBF(x, mu=1.0, sigma=1.0, nu=0.1, log=False):
-    x, mu, sigma, nu = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu)])
+def dZINBF(x, mu=1.0, sigma=1.0, nu=2.0, tau=0.1, log=False):
+    x, mu, sigma, nu, tau = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu, tau)])
     alpha = 1.0 / sigma
+    sigma1 = sigma * jnp.power(mu, nu - 2.0); alpha = 1.0 / sigma1
     base = gammaln(x + alpha) - gammaln(alpha) - gammaln(x + 1) + alpha*jnp.log(alpha/(alpha+mu)) + x*jnp.log(mu/(alpha+mu))
     base0 = alpha*jnp.log(alpha/(alpha+mu))
-    value = jnp.where(x == 0, jnp.logaddexp(jnp.log(nu) , jnp.log1p(-nu) + base0), jnp.log1p(-nu) + base)
+    value = jnp.where(x == 0, jnp.logaddexp(jnp.log(tau), jnp.log1p(-tau) + base0), jnp.log1p(-tau) + base)
     value = jnp.where((x >= 0) & (x == jnp.floor(x)), value, -jnp.inf)
     return value if log else jnp.exp(value)
 
 
-def pZINBF(q, mu=1.0, sigma=1.0, nu=0.1, lower_tail=True, log_p=False):
-    q, mu, sigma, nu = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma, nu)])
-    alpha = 1.0 / sigma
+def pZINBF(q, mu=1.0, sigma=1.0, nu=2.0, tau=0.1, lower_tail=True, log_p=False):
+    q, mu, sigma, nu, tau = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma, nu, tau)])
+    alpha = 1.0 / (sigma * jnp.power(mu, nu - 2.0))
     base = _nbinom.cdf(q, alpha, alpha/(alpha+mu))
-    value = jnp.where(q < 0, 0.0, nu + (1.0 - nu) * base)
-    value = jnp.where(q >= 0, value, 0.0)
+    value = jnp.where(q < 0, 0.0, tau + (1.0 - tau) * base)
+    value = jnp.where(q < 0, 0.0 if lower_tail else 1.0, value)
     value = jnp.where(lower_tail, value, 1.0 - value)
     return jnp.log(value) if log_p else value
 
 
-def qZINBF(probability, mu=1.0, sigma=1.0, nu=0.1, lower_tail=True, log_p=False):
-    probability, mu, sigma, nu = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64) for v in (probability, mu, sigma, nu)])
+def qZINBF(probability, mu=1.0, sigma=1.0, nu=2.0, tau=0.1, lower_tail=True, log_p=False):
+    probability, mu, sigma, nu, tau = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64) for v in (probability, mu, sigma, nu, tau)])
     p = jnp.exp(probability) if log_p else probability
     p = jnp.where(lower_tail, p, 1.0 - p)
-    threshold = nu + (1.0 - nu) * jnp.exp((1.0/sigma)*jnp.log((1.0/sigma)/(1.0/sigma+mu)))
-    base_p = (p - nu) / (1.0 - nu)
-    alpha = 1.0 / sigma
-    return jnp.where(p <= nu, 0.0, _nbinom.ppf(base_p, alpha, alpha/(alpha+mu)))
+    f0 = jnp.exp((1.0 / (sigma * jnp.power(mu, nu - 2.0))) * jnp.log(
+        (1.0 / (sigma * jnp.power(mu, nu - 2.0))) /
+        (1.0 / (sigma * jnp.power(mu, nu - 2.0)) + mu)))
+    zero_cutoff = tau + (1.0 - tau) * f0
+    base_p = jnp.clip((p - tau) / (1.0 - tau), 0.0, 1.0)
+    alpha = 1.0 / (sigma * jnp.power(mu, nu - 2.0))
+    return jnp.where(p <= zero_cutoff, 0.0, _nbinom.ppf(base_p, alpha, alpha/(alpha+mu)))
 
 
-def rZINBF(key, n, mu=1.0, sigma=1.0, nu=0.1):
+def rZINBF(key, n, mu=1.0, sigma=1.0, nu=2.0, tau=0.1):
     zero_key, base_key = jrandom.split(key)
-    mu, sigma, nu = [jnp.asarray(v, dtype=jnp.float64) for v in (mu, sigma, nu)]
-    shape = (n,) if all(v.ndim == 0 for v in (mu, sigma, nu)) else jnp.broadcast_shapes(mu.shape, sigma.shape, nu.shape)
-    return jnp.where(jrandom.bernoulli(zero_key, nu, shape=shape), 0.0, qNBF(jrandom.uniform(base_key, shape=shape), mu, sigma, 2.0))
+    mu, sigma, nu, tau = [jnp.asarray(v, dtype=jnp.float64) for v in (mu, sigma, nu, tau)]
+    shape = (n,) if all(v.ndim == 0 for v in (mu, sigma, nu, tau)) else jnp.broadcast_shapes(mu.shape, sigma.shape, nu.shape, tau.shape)
+    return jnp.where(jrandom.bernoulli(zero_key, tau, shape=shape), 0.0, qNBF(jrandom.uniform(base_key, shape=shape), mu, sigma, nu))
 
 
 def ZINBF():
@@ -1418,24 +1422,27 @@ def ZINBF():
     return build_ad_family(
         family_class=ZINBFFamily,
         name="ZINBF",
-        parameters=("mu", "sigma", "nu"),
+        parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_zinbf_log_pdf,
         type_="Discrete",
-        links={"mu": "log", "sigma": "log", "nu": "logit"},
+        links={"mu": "log", "sigma": "log", "nu": "log", "tau": "logit"},
         link_functions={
             "mu": log_link,
             "sigma": log_link,
-            "nu": logit_link,
+            "nu": log_link,
+            "tau": logit_link,
         },
         link_inverses={
             "mu": log_inverse,
             "sigma": log_inverse,
-            "nu": logit_inverse,
+            "nu": log_inverse,
+            "tau": logit_inverse,
         },
         link_derivatives={
             "mu": log_derivative,
             "sigma": log_derivative,
-            "nu": logit_derivative,
+            "nu": log_derivative,
+            "tau": logit_derivative,
         },
         d=dZINBF,
         p=pZINBF,
