@@ -7236,11 +7236,30 @@ def pBNB(q, mu=1.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
 
     q, mu, sigma, nu = jnp.broadcast_arrays(q, mu, sigma, nu)
     q_int = jnp.floor(q)
-    x = jnp.arange(1001, dtype=jnp.float64)
-    pmf = dBNB(x, mu[..., None], sigma[..., None], nu[..., None])
-    cdf = jnp.sum(jnp.where(x <= q_int[..., None], pmf, 0.0), axis=-1)
+    # Accumulate only through the requested count.  A lax loop keeps the
+    # operation JIT-compatible without allocating a fixed (and often huge)
+    # support axis for every broadcasted parameter value.
+    finite_q = jnp.where(jnp.isfinite(q_int), jnp.maximum(q_int, -1.0), -1.0)
+    total = jnp.zeros_like(q_int)
+    x = jnp.array(0.0, dtype=jnp.float64)
+
+    def cond(carry):
+        current_x, _ = carry
+        return current_x <= jnp.max(finite_q, initial=-1.0)
+
+    def body(carry):
+        current_x, current_total = carry
+        contribution = dBNB(current_x, mu, sigma, nu)
+        current_total = current_total + jnp.where(
+            current_x <= finite_q, contribution, 0.0
+        )
+        return current_x + 1.0, current_total
+
+    _, cdf = jax.lax.while_loop(cond, body, (x, total))
+    cdf = jnp.clip(cdf, 0.0, 1.0)
     cdf = jnp.where(q < 0, 0.0, cdf)
     cdf = jnp.where(jnp.isposinf(q), 1.0, cdf)
+    cdf = jnp.where(jnp.isnan(q), jnp.nan, cdf)
 
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -7300,9 +7319,11 @@ def qBNB(p, mu=1.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
     sigma = jnp.maximum(sigma, eps)
     nu = jnp.maximum(nu, eps)
 
-    x = jnp.arange(1001, dtype=jnp.float64)
-    cdf = pBNB(x, mu[..., None], sigma[..., None], nu[..., None])
+    x = jnp.arange(10001, dtype=jnp.float64)
+    cdf = jnp.cumsum(dBNB(x, mu[..., None], sigma[..., None], nu[..., None]), axis=-1)
     result = jnp.argmax(cdf >= p[..., None], axis=-1).astype(jnp.float64)
+    # A finite support window must not silently map unresolved tails to zero.
+    result = jnp.where(cdf[..., -1] < p, jnp.nan, result)
     result = jnp.where(at_zero, 0.0, result)
     result = jnp.where(at_one, jnp.inf, result)
     result = jnp.where(invalid, jnp.nan, result)
