@@ -94,6 +94,29 @@ def test_compute_confidence_intervals_with_nan():
     assert jnp.all(lower_ci < upper_ci)
 
 
+def test_compute_confidence_intervals_bca_with_jackknife():
+    """BCa intervals support the acceleration calculated from jackknife fits."""
+    boot = jnp.array([[0.8], [0.9], [1.0], [1.1], [1.4], [1.8]])
+    jack = jnp.array([[0.7], [0.9], [1.0], [1.1], [1.2]])
+    lower, upper = compute_confidence_intervals(
+        boot, alpha=0.2, method="bca", original_estimate=jnp.array([1.0]),
+        jackknife_estimates=jack,
+    )
+    assert lower.shape == (1,)
+    assert upper.shape == (1,)
+    assert jnp.all(jnp.isfinite(jnp.array([lower, upper])))
+    assert lower[0] <= upper[0]
+
+
+def test_compute_confidence_intervals_bca_without_jackknife():
+    """BCa remains usable with the documented zero-acceleration fallback."""
+    boot = jnp.arange(20.0).reshape(10, 2)
+    lower, upper = compute_confidence_intervals(boot, method="bca")
+    assert lower.shape == (2,)
+    assert upper.shape == (2,)
+    assert jnp.all(lower <= upper)
+
+
 def test_nonparametric_bootstrap_basic():
     """Test basic non-parametric bootstrap."""
     np.random.seed(42)
