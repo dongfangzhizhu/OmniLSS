@@ -175,10 +175,14 @@ def compute_confidence_intervals(
     method : str, default='percentile'
         Method for computing CI:
         - 'percentile': Simple percentile method
-        - 'bca': Bias-corrected and accelerated. ``original_estimate`` and
-          ``jackknife_estimates`` may be supplied for the standard BCa
-          acceleration term; without jackknife estimates the acceleration is
-          zero (bias-corrected percentile intervals).
+        - 'bca': Bias-corrected and accelerated. Requires ``original_estimate``.
+          Without jackknife estimates the acceleration is zero, giving a
+          bias-corrected (BC), not fully accelerated BCa, interval.
+    original_estimate : array_like, optional
+        Finite statistic from the original data, shape (n_params,).
+    jackknife_estimates : array_like, optional
+        Complete finite leave-one-out statistics, shape (n_jackknife, n_params),
+        with at least two rows. Failed jackknife fits cannot be discarded.
         
     Returns
     -------
@@ -191,16 +195,40 @@ def compute_confidence_intervals(
     -----
     The percentile method computes CI as the alpha/2 and 1-alpha/2
     quantiles of the bootstrap distribution.
+    Bootstrap rows containing any non-finite value are excluded. If no rows
+    remain, both bounds are NaN. Bias correction uses midranks for ties and
+    clips extreme proportions to half a bootstrap observation. Constant
+    jackknife columns use zero acceleration. This post-processing function
+    uses data-dependent filtering and is not JIT-compatible.
     """
     if not 0 < alpha < 1:
         raise ValueError("alpha must be between 0 and 1")
     boot_estimates = jnp.asarray(boot_estimates)
     if boot_estimates.ndim != 2:
         raise ValueError("boot_estimates must be a two-dimensional array")
+    if method not in ('percentile', 'bca'):
+        raise ValueError(f"Unknown method: {method}")
+    if method == 'bca':
+        if original_estimate is None:
+            raise ValueError("original_estimate is required for bca intervals")
+        theta_hat = jnp.asarray(original_estimate)
+        if theta_hat.shape != (boot_estimates.shape[1],):
+            raise ValueError("original_estimate must have shape (n_params,)")
+        if not bool(jnp.all(jnp.isfinite(theta_hat))):
+            raise ValueError("original_estimate must be finite")
+        if jackknife_estimates is not None:
+            jack = jnp.asarray(jackknife_estimates)
+            if jack.ndim != 2 or jack.shape[1] != boot_estimates.shape[1] or jack.shape[0] < 2:
+                raise ValueError("jackknife_estimates must have shape (n_jackknife, n_params) with at least two rows")
+            if not bool(jnp.all(jnp.isfinite(jack))):
+                raise ValueError("jackknife_estimates must be finite")
 
-    # Filter out NaN values
-    valid_mask = ~jnp.isnan(boot_estimates).any(axis=1)
+    # Exclude failed fits as complete rows, preserving joint parameter samples.
+    valid_mask = jnp.isfinite(boot_estimates).all(axis=1)
     valid_estimates = boot_estimates[valid_mask]
+    if valid_estimates.shape[0] == 0:
+        missing = jnp.full((boot_estimates.shape[1],), jnp.nan)
+        return missing, missing
     
     if method == 'percentile':
         lower_percentile = alpha / 2 * 100
@@ -210,24 +238,13 @@ def compute_confidence_intervals(
         upper_ci = jnp.percentile(valid_estimates, upper_percentile, axis=0)
         
     elif method == 'bca':
-        if valid_estimates.shape[0] == 0:
-            return jnp.full((boot_estimates.shape[1],), jnp.nan), jnp.full(
-                (boot_estimates.shape[1],), jnp.nan
-            )
-        theta_hat = (jnp.mean(valid_estimates, axis=0)
-                     if original_estimate is None else jnp.asarray(original_estimate))
-        if theta_hat.shape != (boot_estimates.shape[1],):
-            raise ValueError("original_estimate must have shape (n_params,)")
-        proportion = jnp.mean(valid_estimates < theta_hat, axis=0)
+        proportion = (jnp.mean(valid_estimates < theta_hat, axis=0)
+                      + 0.5 * jnp.mean(valid_estimates == theta_hat, axis=0))
         eps = 0.5 / valid_estimates.shape[0]
         z0 = jax.scipy.special.ndtri(jnp.clip(proportion, eps, 1 - eps))
         if jackknife_estimates is None:
             acceleration = jnp.zeros_like(z0)
         else:
-            jack = jnp.asarray(jackknife_estimates)
-            if jack.ndim != 2 or jack.shape[1] != boot_estimates.shape[1]:
-                raise ValueError("jackknife_estimates must have shape (n_jackknife, n_params)")
-            jack = jack[~jnp.isnan(jack).any(axis=1)]
             center = jnp.mean(jack, axis=0)
             delta = center - jack
             denominator = 6 * jnp.sum(delta ** 2, axis=0) ** 1.5

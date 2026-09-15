@@ -111,10 +111,74 @@ def test_compute_confidence_intervals_bca_with_jackknife():
 def test_compute_confidence_intervals_bca_without_jackknife():
     """BCa remains usable with the documented zero-acceleration fallback."""
     boot = jnp.arange(20.0).reshape(10, 2)
-    lower, upper = compute_confidence_intervals(boot, method="bca")
+    lower, upper = compute_confidence_intervals(
+        boot, method="bca", original_estimate=jnp.array([9.0, 10.0])
+    )
     assert lower.shape == (2,)
     assert upper.shape == (2,)
     assert jnp.all(lower <= upper)
+
+
+def test_bca_matches_scipy_reference():
+    from scipy.stats import bootstrap
+
+    data = np.array([0.0, 0.0, 1.0, 2.0, 3.0, 9.0, 18.0])
+    reference = bootstrap(
+        (data,), np.mean, confidence_level=0.9, n_resamples=999,
+        random_state=42, method="BCa",
+    )
+    jack = np.array([np.mean(np.delete(data, i)) for i in range(data.size)])
+    actual = compute_confidence_intervals(
+        reference.bootstrap_distribution[:, None], alpha=0.1, method="bca",
+        original_estimate=np.array([data.mean()]), jackknife_estimates=jack[:, None],
+    )
+    np.testing.assert_allclose(
+        np.asarray(actual)[:, 0], reference.confidence_interval, rtol=1e-6,
+    )
+
+
+def test_bca_ties_use_midrank_bias_correction():
+    boot = np.array([[0.0], [1.0], [1.0], [1.0], [2.0]])
+    actual = compute_confidence_intervals(
+        boot, alpha=0.2, method="bca", original_estimate=np.array([1.0]),
+    )
+    np.testing.assert_allclose(np.asarray(actual)[:, 0], np.quantile(boot, [0.1, 0.9]))
+
+
+@pytest.mark.parametrize("method", ["percentile", "bca"])
+def test_confidence_intervals_nonfinite_and_empty(method):
+    kwargs = dict(method=method, original_estimate=np.array([1.0, 2.0]))
+    good = np.array([[0.0, 1.0], [2.0, 3.0]])
+    contaminated = np.vstack([good, [np.inf, 0.0], [0.0, np.nan], [-np.inf, 0.0]])
+    np.testing.assert_allclose(
+        compute_confidence_intervals(contaminated, **kwargs),
+        compute_confidence_intervals(good, **kwargs),
+    )
+    for empty in (np.empty((0, 2)), np.full((3, 2), np.nan)):
+        assert np.isnan(compute_confidence_intervals(empty, **kwargs)).all()
+
+
+@pytest.mark.parametrize("jack", [np.empty((0, 1)), [[1.0]], [[1.0], [np.nan]], [[1.0], [np.inf]], [[1.0, 2.0], [2.0, 3.0]]])
+def test_bca_rejects_invalid_jackknife(jack):
+    with pytest.raises(ValueError, match="jackknife_estimates"):
+        compute_confidence_intervals(
+            np.ones((5, 1)), method="bca", original_estimate=np.array([1.0]),
+            jackknife_estimates=jack,
+        )
+
+
+@pytest.mark.parametrize("original", [None, [np.nan], [np.inf], [1.0, 2.0]])
+def test_bca_requires_valid_original_statistic(original):
+    with pytest.raises(ValueError, match="original_estimate"):
+        compute_confidence_intervals(np.ones((5, 1)), method="bca", original_estimate=original)
+
+
+def test_bca_constant_statistics():
+    actual = compute_confidence_intervals(
+        np.ones((5, 2)), method="bca", original_estimate=np.ones(2),
+        jackknife_estimates=np.ones((4, 2)),
+    )
+    np.testing.assert_array_equal(actual, np.ones((2, 2)))
 
 
 def test_nonparametric_bootstrap_basic():
