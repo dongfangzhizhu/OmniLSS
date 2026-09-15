@@ -7296,7 +7296,12 @@ def qBNB(p, mu=1.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
     Notes
     -----
     The quantile is found by searching for the smallest x such that
-    P(X <= x) >= p.
+    P(X <= x) >= p. Support is scanned adaptively in blocks of 256 counts,
+    with a work budget of 1,048,576 counts (0 through 1,048,575). Unresolved
+    interior probabilities return NaN rather than an incorrect quantile.
+    Extremely heavy tails can exhaust this budget. Accumulation uses the
+    lower-tail PMF sum, so probabilities very close to one are also subject
+    to floating-point summation error.
     """
     p = jnp.asarray(p, dtype=jnp.float64)
     mu = jnp.asarray(mu, dtype=jnp.float64)
@@ -7319,11 +7324,34 @@ def qBNB(p, mu=1.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
     sigma = jnp.maximum(sigma, eps)
     nu = jnp.maximum(nu, eps)
 
-    x = jnp.arange(10001, dtype=jnp.float64)
-    cdf = jnp.cumsum(dBNB(x, mu[..., None], sigma[..., None], nu[..., None]), axis=-1)
-    result = jnp.argmax(cdf >= p[..., None], axis=-1).astype(jnp.float64)
-    # A finite support window must not silently map unresolved tails to zero.
-    result = jnp.where(cdf[..., -1] < p, jnp.nan, result)
+    # Search successive fixed-size blocks instead of materialising the entire
+    # support or repeatedly summing it in a CDF-based binary search. Memory is
+    # O(batch size * 256); work stops once all interior probabilities resolve.
+    # A finite work budget prevents pathological heavy tails from hanging.
+    offsets = jnp.arange(256, dtype=jnp.float64)
+    active = ~(invalid | at_zero | at_one)
+    active = active & jnp.isfinite(mu) & jnp.isfinite(sigma) & jnp.isfinite(nu)
+
+    def cond(state):
+        start, _, _, pending = state
+        return (start < 1048576) & jnp.any(pending)
+
+    def body(state):
+        start, total, result, pending = state
+        support = start + offsets
+        cumulative = total[..., None] + jnp.cumsum(
+            dBNB(support, mu[..., None], sigma[..., None], nu[..., None]),
+            axis=-1,
+        )
+        crossed = cumulative >= p[..., None]
+        found = pending & jnp.any(crossed, axis=-1)
+        result = jnp.where(found, start + jnp.argmax(crossed, axis=-1), result)
+        return start + 256, cumulative[..., -1], result, pending & ~found
+
+    _, _, result, _ = jax.lax.while_loop(
+        cond, body,
+        (jnp.array(0), jnp.zeros_like(p), jnp.full_like(p, jnp.nan), active),
+    )
     result = jnp.where(at_zero, 0.0, result)
     result = jnp.where(at_one, jnp.inf, result)
     result = jnp.where(invalid, jnp.nan, result)

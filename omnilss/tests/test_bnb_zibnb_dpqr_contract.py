@@ -60,6 +60,44 @@ def test_bnb_cdf_special_values() -> None:
     assert np.asarray(family.p(np.array([]))).shape == (0,)
 
 
+def test_bnb_dynamic_quantiles_match_r_pmf_reference() -> None:
+    # R gamlss.dist: first count with cumsum(dBNB(0:300000, ...)) >= p.
+    # Using a PMF reference avoids the very slow repeated CDF calls in R qBNB.
+    family = resolve("BNB")
+    probability = np.array([0.95, 0.99, 0.999, 0.9])
+    mu = np.array([2500.0, 2500.0, 2500.0, 20000.0])
+    sigma = np.array([1.5, 1.5, 1.5, 0.4])
+    nu = np.array([0.8, 0.8, 0.8, 1.5])
+    expected = np.array([8211.0, 23956.0, 99732.0, 49362.0])
+    np.testing.assert_array_equal(family.q(probability, mu, sigma, nu), expected)
+    np.testing.assert_array_equal(jax.jit(family.q)(probability, mu, sigma, nu), expected)
+    np.testing.assert_array_equal(
+        family.q(np.log1p(-probability), mu, sigma, nu, lower_tail=False, log_p=True),
+        expected,
+    )
+
+
+def test_bnb_dynamic_search_empty_invalid_and_block_edges() -> None:
+    family = resolve("BNB")
+    assert jax.jit(family.q)(np.array([])).shape == (0,)
+    np.testing.assert_allclose(
+        jax.jit(family.q)(np.array([0, 1, -0.1, 1.1, np.nan])),
+        [0, np.inf, np.nan, np.nan, np.nan],
+    )
+    # Targets strictly between successive CDF values avoid rounding ambiguity.
+    counts = np.array([0.0, 255.0, 256.0, 511.0, 512.0])
+    params = (500.0, 0.5, 1.0)
+    probability = (family.p(counts, *params) + family.p(counts - 1, *params)) / 2
+    np.testing.assert_array_equal(jax.jit(family.q)(probability, *params), counts)
+
+
+def test_zibnb_dynamic_quantile_inherits_base_search() -> None:
+    family = resolve("ZIBNB")
+    probability = 0.3 + 0.7 * np.array([0.99, 0.999])
+    actual = jax.jit(family.q)(probability, 2500.0, 1.5, 0.8, 0.3)
+    np.testing.assert_array_equal(actual, [23956.0, 99732.0])
+
+
 def test_zibnb_zero_mass_boundaries_and_sampling_shape() -> None:
     family = resolve("ZIBNB")
     params = (2.5, 0.4, 1.5)
