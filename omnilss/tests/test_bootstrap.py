@@ -423,6 +423,30 @@ def test_bootstrap_with_failures():
     assert jnp.all(jnp.isfinite(result.std))
 
 
+def test_bootstrap_min_success_rate():
+    def fit(d):
+        return jnp.array([jnp.mean(d['y'])])
+    data = {'y': jnp.arange(10.0)}
+    with pytest.raises(ValueError):
+        nonparametric_bootstrap(fit, data, jax.random.PRNGKey(0), n_boots=4, min_success_rate=1.1)
+    calls = [0]
+    def intermittent_fit(d):
+        calls[0] += 1
+        if calls[0] % 2 == 0:
+            raise ValueError("fail")
+        return jnp.array([jnp.mean(d['y'])])
+    with pytest.raises(RuntimeError, match="success rate"):
+        nonparametric_bootstrap(
+            intermittent_fit, data,
+            jax.random.PRNGKey(0), n_boots=4, parallel=False,
+            min_success_rate=0.75,
+        )
+
+
+def test_bootstrap_summary_handles_zero_boots():
+    assert "0.0%" in BootstrapResult(coefficients=jnp.empty((0, 1))).summary()
+
+
 def test_bootstrap_reproducibility():
     """Test that bootstrap results are reproducible with same seed."""
     np.random.seed(42)

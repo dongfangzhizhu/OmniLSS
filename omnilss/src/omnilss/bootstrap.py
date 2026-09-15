@@ -74,7 +74,7 @@ class BootstrapResult:
             "=" * 60,
             f"Method: {self.method}",
             f"Number of bootstrap samples: {self.n_boots}",
-            f"Successful fits: {self.n_successful} ({self.n_successful/self.n_boots*100:.1f}%)",
+            f"Successful fits: {self.n_successful} ({self.n_successful/self.n_boots*100 if self.n_boots else 0:.1f}%)",
             f"Confidence level: {(1-self.alpha)*100:.0f}%",
             "",
             "Coefficient Statistics:",
@@ -271,7 +271,8 @@ def nonparametric_bootstrap(
     n_boots: int = 1000,
     alpha: float = 0.05,
     parallel: bool = True,
-    handle_failures: bool = True
+    handle_failures: bool = True,
+    min_success_rate: float = 0.0,
 ) -> BootstrapResult:
     """Perform non-parametric bootstrap for GAMLSS models.
     
@@ -321,6 +322,8 @@ def nonparametric_bootstrap(
     If memory is limited, consider using smaller n_boots or implementing
     a batched version using jax.lax.map.
     """
+    if not 0 <= min_success_rate <= 1:
+        raise ValueError("min_success_rate must be between 0 and 1")
     n_obs = len(data['y'])
     
     # Generate all bootstrap indices at once
@@ -353,6 +356,11 @@ def nonparametric_bootstrap(
     # Compute statistics
     valid_mask = ~jnp.isnan(boot_coefficients).any(axis=1)
     n_successful = jnp.sum(valid_mask)
+    if int(n_successful) / n_boots < min_success_rate:
+        raise RuntimeError(
+            f"Bootstrap success rate {int(n_successful) / n_boots:.1%} is below "
+            f"min_success_rate {min_success_rate:.1%}"
+        )
     
     mean_estimate = jnp.nanmean(boot_coefficients, axis=0)
     std_estimate = jnp.nanstd(boot_coefficients, axis=0)
@@ -383,7 +391,8 @@ def parametric_bootstrap(
     key: jax.random.PRNGKey,
     n_boots: int = 1000,
     alpha: float = 0.05,
-    parallel: bool = True
+    parallel: bool = True,
+    min_success_rate: float = 0.0
 ) -> BootstrapResult:
     """Perform parametric bootstrap for GAMLSS models.
     
@@ -434,6 +443,8 @@ def parametric_bootstrap(
     misspecified. Use diagnostic plots to verify model fit before
     relying on parametric bootstrap results.
     """
+    if not 0 <= min_success_rate <= 1:
+        raise ValueError("min_success_rate must be between 0 and 1")
     # Split keys for each bootstrap sample
     keys = jax.random.split(key, n_boots)
     
@@ -461,6 +472,8 @@ def parametric_bootstrap(
     # Compute statistics
     valid_mask = ~jnp.isnan(boot_coefficients).any(axis=1)
     n_successful = jnp.sum(valid_mask)
+    if int(n_successful) / n_boots < min_success_rate:
+        raise RuntimeError(f"Bootstrap success rate {int(n_successful) / n_boots:.1%} is below min_success_rate {min_success_rate:.1%}")
     
     mean_estimate = jnp.nanmean(boot_coefficients, axis=0)
     std_estimate = jnp.nanstd(boot_coefficients, axis=0)
@@ -491,7 +504,8 @@ def residual_bootstrap(
     key: jax.random.PRNGKey,
     n_boots: int = 1000,
     alpha: float = 0.05,
-    parallel: bool = True
+    parallel: bool = True,
+    min_success_rate: float = 0.0
 ) -> BootstrapResult:
     """Perform residual bootstrap for GAMLSS models.
     
@@ -530,6 +544,8 @@ def residual_bootstrap(
     2. Residuals are exchangeable
     3. Heteroscedasticity is captured by the model
     """
+    if not 0 <= min_success_rate <= 1:
+        raise ValueError("min_success_rate must be between 0 and 1")
     n_obs = len(residuals)
     
     # Generate bootstrap indices for residuals
@@ -562,6 +578,8 @@ def residual_bootstrap(
     # Compute statistics
     valid_mask = ~jnp.isnan(boot_coefficients).any(axis=1)
     n_successful = jnp.sum(valid_mask)
+    if int(n_successful) / n_boots < min_success_rate:
+        raise RuntimeError(f"Bootstrap success rate {int(n_successful) / n_boots:.1%} is below min_success_rate {min_success_rate:.1%}")
     
     mean_estimate = jnp.nanmean(boot_coefficients, axis=0)
     std_estimate = jnp.nanstd(boot_coefficients, axis=0)
