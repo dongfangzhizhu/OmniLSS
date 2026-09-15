@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 import jax.numpy as jnp
 import jax
+import jax.random as jrandom
 
 from .ad import build_ad_family
 from .families import FamilyDefinition
