@@ -22,7 +22,7 @@ class TestZIBNBConsistency(unittest.TestCase):
     def test_zibnb_dpq_consistency(self) -> None:
         fam = resolve("ZIBNB")
 
-        for profile_name, x, mu, sigma, nu, nu, p in (
+        for profile_name, x, mu, sigma, nu, tau, p in (
             (
                 "central",
                 np.arange(0, 50),
@@ -43,13 +43,14 @@ class TestZIBNBConsistency(unittest.TestCase):
             ),
         ):
             with self.subTest(profile=profile_name):
-                r_d = self.bus.eval_family("ZIBNB", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "nu": nu.tolist()})
-                r_p = self.bus.eval_family("ZIBNB", "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "nu": nu.tolist()})
-                r_q = self.bus.eval_family("ZIBNB", "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "nu": nu.tolist()})
+                params = {"mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()}
+                r_d = self.bus.eval_family("ZIBNB", "d", {"x": x.tolist(), **params})
+                r_p = self.bus.eval_family("ZIBNB", "p", {"q": x.tolist(), **params})
+                r_q = self.bus.eval_family("ZIBNB", "q", {"p": p.tolist(), **params})
 
-                py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(nu)))
-                py_p = np.asarray(fam.p(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(nu)))
-                py_q = np.asarray(fam.q(jnp.array(p), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(nu)))
+                py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
+                py_p = np.asarray(fam.p(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
+                py_q = np.asarray(fam.q(jnp.array(p), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))
 
                 np.testing.assert_allclose(py_d, r_d, rtol=1e-5, atol=1e-7)
                 np.testing.assert_allclose(py_p, r_p, rtol=1e-5, atol=1e-7)
