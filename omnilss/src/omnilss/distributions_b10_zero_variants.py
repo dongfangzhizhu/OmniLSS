@@ -179,11 +179,16 @@ def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tu
             tau = jnp.clip(params[-1], 0.0, 1.0)
             prob = jnp.exp(p) if log_p else p
             prob = 1.0 - prob if not lower_tail else prob
+            invalid = (prob < 0) | (prob > 1) | jnp.isnan(prob)
+            at_zero = prob == 0
+            at_one = prob == 1
             base0 = pBNB(0.0, *base)
             zi0 = tau + (1.0 - tau) * base0
             base_prob = (prob - tau) / (1.0 - tau)
-            return jnp.where(prob <= zi0, 0.0,
-                             qBNB(base_prob, *base))
+            result = jnp.where(prob <= zi0, 0.0, qBNB(base_prob, *base))
+            result = jnp.where(at_zero, 0.0, result)
+            result = jnp.where(at_one, jnp.inf, result)
+            return jnp.where(invalid, jnp.nan, result)
 
         def zi_r(key, n, *params):
             base = params[:-1]
