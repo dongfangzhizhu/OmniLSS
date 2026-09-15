@@ -159,6 +159,44 @@ def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tu
                 link_invs[param] = identity_inverse
                 link_derivs[param] = identity_derivative
     
+    extra = {}
+    if base_name == "BNB":
+        from .dpqr_functions import pBNB, qBNB, rBNB
+
+        def zi_p(q, *params, lower_tail=True, log_p=False):
+            base = params[:-1]
+            tau = jnp.clip(params[-1], 0.0, 1.0)
+            prob = pBNB(q, *base, lower_tail=True, log_p=False)
+            f0 = pBNB(0.0, *base, lower_tail=True, log_p=False)
+            out = jnp.where(q < 0, 0.0, jnp.where(q < 0.5, tau + (1-tau)*f0, tau + (1-tau)*prob))
+            if not lower_tail:
+                out = 1.0 - out
+            return jnp.log(out) if log_p else out
+
+        def zi_q(p, *params, lower_tail=True, log_p=False):
+            base = params[:-1]
+            tau = jnp.clip(params[-1], 0.0, 1.0)
+            prob = jnp.exp(p) if log_p else p
+            prob = 1.0 - prob if not lower_tail else prob
+            base0 = pBNB(0.0, *base)
+            zi0 = tau + (1.0 - tau) * base0
+            base_prob = (prob - tau) / (1.0 - tau)
+            return jnp.where(prob <= zi0, 0.0,
+                             qBNB(base_prob, *base))
+
+        def zi_r(key, n, *params):
+            base = params[:-1]
+            tau = jnp.clip(params[-1], 0.0, 1.0)
+            tau = jnp.asarray(tau)
+            batch_shape = jnp.broadcast_shapes(*[jnp.asarray(v).shape for v in (*base, tau)])
+            base = jnp.broadcast_arrays(*[jnp.asarray(v) for v in base])
+            tau = jnp.broadcast_to(tau, batch_shape)
+            k1, k2 = jrandom.split(key)
+            inflated = jrandom.uniform(k1, (n,) + batch_shape) < tau
+            base_samples = rBNB(k2, n, *base)
+            return jnp.where(inflated | (tau == 1), 0, base_samples)
+        extra = {"p": zi_p, "q": zi_q, "r": zi_r}
+
     return build_ad_family(
         family_class=ZeroInflatedFamily,
         name=f"ZI{base_name}",
@@ -169,6 +207,7 @@ def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tu
         link_functions=link_funcs,
         link_inverses=link_invs,
         link_derivatives=link_derivs,
+        **extra,
     )
 
 

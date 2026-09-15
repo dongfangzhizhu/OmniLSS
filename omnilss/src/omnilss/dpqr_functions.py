@@ -7129,7 +7129,7 @@ def rBB(key, n, mu=0.5, sigma=1.0, bd=10):
 # BNB (Beta-Negative Binomial) - 3 parameters (simplified to 2: mu, sigma)
 # ------------------------------------------------------------------------------
 
-def dBNB(x, mu=1.0, sigma=1.0, log=False):
+def dBNB(x, mu=1.0, sigma=1.0, nu=1.0, log=False):
     """Density function for Beta-Negative Binomial distribution.
 
     The Beta-Negative Binomial is a compound distribution that generalizes
@@ -7176,10 +7176,11 @@ def dBNB(x, mu=1.0, sigma=1.0, log=False):
     sigma = jnp.maximum(sigma, eps)
 
     # Simplified parameterization (nu = 1)
-    nu = 1.0
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    nu = jnp.maximum(nu, eps)
     m = (1.0 / sigma) + 1.0
     n = (mu * nu) / sigma
-    k = 1.0 / nu  # k = 1
+    k = 1.0 / nu
 
     # log p(x)
     log_pdf = (
@@ -7233,34 +7234,13 @@ def pBNB(q, mu=1.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
     sigma = jnp.maximum(sigma, eps)
     nu = jnp.maximum(nu, eps)
 
-    # Extract scalar values for use inside the loop
-    mu_scalar    = float(jnp.mean(mu))
-    sigma_scalar = float(jnp.mean(sigma))
-    nu_scalar    = float(jnp.mean(nu))
-
-    # Floor q to integer
+    q, mu, sigma, nu = jnp.broadcast_arrays(q, mu, sigma, nu)
     q_int = jnp.floor(q)
-
-    # Sum PMF from 0 to q_int
-    def compute_cdf_scalar(q_val):
-        q_val = float(q_val)
-        if q_val < 0:
-            return 0.0
-
-        # Sum from 0 to min(q_val, reasonable upper bound)
-        max_x = min(int(q_val) + 1, 1000)  # Limit for computational efficiency
-        x_vals = jnp.arange(0, max_x)
-        pmf_vals = dBNB(x_vals, mu_scalar, sigma_scalar, log=False)
-        return float(jnp.sum(pmf_vals))
-
-    # Vectorize
-    q_array = jnp.atleast_1d(q_int)
-    cdf_list = [compute_cdf_scalar(q_val) for q_val in q_array]
-    cdf = jnp.array(cdf_list)
-
-    # Return scalar if input was scalar
-    if jnp.ndim(q) == 0:
-        cdf = cdf[0]
+    x = jnp.arange(1001, dtype=jnp.float64)
+    pmf = dBNB(x, mu[..., None], sigma[..., None], nu[..., None])
+    cdf = jnp.sum(jnp.where(x <= q_int[..., None], pmf, 0.0), axis=-1)
+    cdf = jnp.where(q < 0, 0.0, cdf)
+    cdf = jnp.where(jnp.isposinf(q), 1.0, cdf)
 
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -7310,38 +7290,23 @@ def qBNB(p, mu=1.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
     if not lower_tail:
         p = 1.0 - p
 
+    p, mu, sigma, nu = jnp.broadcast_arrays(p, mu, sigma, nu)
     eps = jnp.finfo(jnp.float64).eps
+    invalid = (p < 0) | (p > 1) | jnp.isnan(p)
+    at_zero = p == 0
+    at_one = p == 1
     p = jnp.clip(p, eps, 1.0 - eps)
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
     nu = jnp.maximum(nu, eps)
 
-    # Extract scalar values for use inside the loop
-    mu_scalar    = float(jnp.mean(mu))
-    sigma_scalar = float(jnp.mean(sigma))
-    nu_scalar    = float(jnp.mean(nu))
-
-    # Find quantile by searching
-    def find_quantile(p_val):
-        # Search from 0 upward
-        max_search = int(mu_scalar * 10 + 100)  # Reasonable upper bound
-        for x in range(max_search):
-            cdf_val = pBNB(float(x), mu_scalar, sigma_scalar, nu_scalar,
-                           lower_tail=True, log_p=False)
-            if cdf_val >= p_val:
-                return float(x)
-        return float(max_search - 1)
-
-    # Vectorize
-    p_array = jnp.atleast_1d(p)
-    q_list = [find_quantile(float(p_val)) for p_val in p_array]
-    q = jnp.array(q_list)
-
-    # Return scalar if input was scalar
-    if jnp.ndim(p) == 0:
-        return q[0]
-
-    return q
+    x = jnp.arange(1001, dtype=jnp.float64)
+    cdf = pBNB(x, mu[..., None], sigma[..., None], nu[..., None])
+    result = jnp.argmax(cdf >= p[..., None], axis=-1).astype(jnp.float64)
+    result = jnp.where(at_zero, 0.0, result)
+    result = jnp.where(at_one, jnp.inf, result)
+    result = jnp.where(invalid, jnp.nan, result)
+    return result
 
 
 def rBNB(key, n, mu=1.0, sigma=1.0, nu=1.0):
@@ -7374,8 +7339,12 @@ def rBNB(key, n, mu=1.0, sigma=1.0, nu=1.0):
     sigma = jnp.maximum(sigma, eps)
     nu = jnp.maximum(nu, eps)
 
-    # Generate uniform samples
-    u = jrandom.uniform(key, shape=(n,))
+    # Keep the sample dimension first and broadcast parameters over the
+    # remaining dimensions.  This is both useful for vectorized prediction
+    # and avoids the old (n,) vs. batch-shape broadcasting failure.
+    batch_shape = jnp.broadcast_shapes(mu.shape, sigma.shape, nu.shape)
+    mu, sigma, nu = jnp.broadcast_arrays(mu, sigma, nu)
+    u = jrandom.uniform(key, shape=(n,) + batch_shape)
 
     # Convert to BNB samples using quantile function
     samples = qBNB(u, mu, sigma, nu)
