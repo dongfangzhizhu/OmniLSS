@@ -325,6 +325,12 @@ def nonparametric_bootstrap(
     if not 0 <= min_success_rate <= 1:
         raise ValueError("min_success_rate must be between 0 and 1")
     n_obs = len(data['y'])
+    try:
+        parameter_template = jnp.asarray(fit_function(data))
+    except Exception as exc:
+        if not handle_failures:
+            raise
+        raise RuntimeError("Unable to infer bootstrap parameter shape from the original fit") from exc
     
     # Generate all bootstrap indices at once
     boot_indices = generate_bootstrap_indices(key, n_obs, n_boots)
@@ -339,7 +345,7 @@ def nonparametric_bootstrap(
         except Exception as e:
             if handle_failures:
                 # Return NaN for failed fits
-                return jnp.full_like(fit_function(data), jnp.nan)
+                return jnp.full_like(parameter_template, jnp.nan)
             else:
                 raise e
     

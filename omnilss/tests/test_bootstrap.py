@@ -443,6 +443,21 @@ def test_bootstrap_min_success_rate():
         )
 
 
+def test_nonparametric_failure_does_not_retry_failed_original_fit():
+    calls = [0]
+    def fit(d):
+        calls[0] += 1
+        if calls[0] > 1:
+            raise ValueError("bootstrap failure")
+        return jnp.array([jnp.mean(d['y'])])
+    result = nonparametric_bootstrap(
+        fit, {'y': jnp.arange(5.0)}, jax.random.PRNGKey(0),
+        n_boots=3, parallel=False, min_success_rate=0.0,
+    )
+    assert result.n_successful == 0
+    assert jnp.isnan(result.coefficients).all()
+
+
 def test_bootstrap_summary_handles_zero_boots():
     assert "0.0%" in BootstrapResult(coefficients=jnp.empty((0, 1))).summary()
 
