@@ -18,6 +18,7 @@ Series C (Applied Statistics), 54(3), 507-554.
 from __future__ import annotations
 
 import json
+import warnings
 from typing import Dict, Tuple, Optional, Callable, Any
 from dataclasses import dataclass
 
@@ -292,6 +293,30 @@ def _classify_nonfinite_failures(
     return all_failure_mask
 
 
+def _warn_bootstrap_failures(
+    method: str,
+    n_boots: int,
+    n_successful: int,
+    failure_reasons: Dict[str, int],
+) -> None:
+    """Warn when a bootstrap result contains failed fits."""
+    n_failed = n_boots - n_successful
+    if not n_failed:
+        return
+    if failure_reasons:
+        reasons = ", ".join(
+            f"{name}={count}" for name, count in sorted(failure_reasons.items())
+        )
+    else:
+        reasons = "unknown"
+    warnings.warn(
+        f"{method} bootstrap completed with {n_failed} failed fits out of "
+        f"{n_boots} ({n_failed / n_boots:.1%}); failure reasons: {reasons}",
+        RuntimeWarning,
+        stacklevel=3,
+    )
+
+
 def compute_confidence_intervals(
     boot_estimates: jnp.ndarray,
     alpha: float = 0.05,
@@ -513,6 +538,9 @@ def nonparametric_bootstrap(
             f"Bootstrap success rate {int(n_successful) / n_boots:.1%} is below "
             f"min_success_rate {min_success_rate:.1%}"
         )
+    _warn_bootstrap_failures(
+        "nonparametric", n_boots, int(n_successful), failure_reasons
+    )
     
     mean_estimate = jnp.nanmean(boot_coefficients, axis=0)
     std_estimate = jnp.nanstd(boot_coefficients, axis=0)
@@ -651,6 +679,9 @@ def parametric_bootstrap(
     failure_indices = jnp.where(~valid_mask)[0]
     if int(n_successful) / n_boots < min_success_rate:
         raise RuntimeError(f"Bootstrap success rate {int(n_successful) / n_boots:.1%} is below min_success_rate {min_success_rate:.1%}")
+    _warn_bootstrap_failures(
+        "parametric", n_boots, int(n_successful), failure_reasons
+    )
     
     mean_estimate = jnp.nanmean(boot_coefficients, axis=0)
     std_estimate = jnp.nanstd(boot_coefficients, axis=0)
@@ -793,6 +824,9 @@ def residual_bootstrap(
     failure_indices = jnp.where(~valid_mask)[0]
     if int(n_successful) / n_boots < min_success_rate:
         raise RuntimeError(f"Bootstrap success rate {int(n_successful) / n_boots:.1%} is below min_success_rate {min_success_rate:.1%}")
+    _warn_bootstrap_failures(
+        "residual", n_boots, int(n_successful), failure_reasons
+    )
     
     mean_estimate = jnp.nanmean(boot_coefficients, axis=0)
     std_estimate = jnp.nanstd(boot_coefficients, axis=0)

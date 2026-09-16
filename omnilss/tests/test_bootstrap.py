@@ -658,6 +658,29 @@ def test_bootstrap_nonfinite_fits_obey_min_success_rate():
         )
 
 
+@pytest.mark.parametrize("method", ["nonparametric", "parametric", "residual"])
+def test_bootstrap_warns_with_failure_summary(method):
+    data = {'y': jnp.arange(4.0)}
+    fit = lambda d: jnp.array([jnp.nan])
+    key = jax.random.PRNGKey(2)
+
+    with pytest.warns(RuntimeWarning, match=r"3 failed fits out of 3") as caught:
+        if method == "nonparametric":
+            nonparametric_bootstrap(fit, data, key, n_boots=3, parallel=False)
+        elif method == "parametric":
+            parametric_bootstrap(
+                fit, lambda params, k: jnp.zeros(4), data, jnp.array([1.0]),
+                key, n_boots=3, parallel=False,
+            )
+        else:
+            residual_bootstrap(
+                fit, data, jnp.zeros(4), jnp.zeros(4), key,
+                n_boots=3, parallel=False,
+            )
+
+    assert "nonfinite_parameters=3" in str(caught[0].message)
+
+
 def test_bootstrap_reproducibility():
     """Test that bootstrap results are reproducible with same seed."""
     np.random.seed(42)
