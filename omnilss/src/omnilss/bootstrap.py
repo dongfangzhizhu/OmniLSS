@@ -511,7 +511,8 @@ def parametric_bootstrap(
     n_boots: int = 1000,
     alpha: float = 0.05,
     parallel: bool = True,
-    min_success_rate: float = 0.0
+    min_success_rate: float = 0.0,
+    handle_failures: bool = True
 ) -> BootstrapResult:
     """Perform parametric bootstrap for GAMLSS models.
     
@@ -563,21 +564,33 @@ def parametric_bootstrap(
     relying on parametric bootstrap results.
     """
     _validate_bootstrap_inputs(data, n_boots, alpha, min_success_rate)
+    fitted_params = jnp.asarray(fitted_params)
+    if fitted_params.ndim != 1:
+        raise ValueError("fitted_params must be a one-dimensional parameter vector")
     # Split keys for each bootstrap sample
     keys = jax.random.split(key, n_boots)
     
     # Define single bootstrap iteration
+    failure_reasons = {}
+
     def single_parametric_fit(k):
         """Generate data and refit model."""
-        # Generate new response from fitted distribution
-        y_boot = sample_function(fitted_params, k)
-        
-        # Create new data dict with bootstrapped response
-        boot_data = {**data, 'y': y_boot}
-        
-        # Refit model
-        params = fit_function(boot_data)
-        return params
+        try:
+            # Generate new response from fitted distribution
+            y_boot = sample_function(fitted_params, k)
+
+            # Create new data dict with bootstrapped response
+            boot_data = {**data, 'y': y_boot}
+
+            # Refit model
+            params = fit_function(boot_data)
+            return params
+        except Exception as exc:
+            if not handle_failures:
+                raise
+            name = type(exc).__name__
+            failure_reasons[name] = failure_reasons.get(name, 0) + 1
+            return jnp.full_like(fitted_params, jnp.nan)
     
     # Parallel bootstrap using vmap
     if parallel:
@@ -614,6 +627,7 @@ def parametric_bootstrap(
         alpha=alpha,
         method='parametric',
         failure_indices=failure_indices,
+        failure_reasons=failure_reasons or None,
     )
 
 
@@ -626,7 +640,8 @@ def residual_bootstrap(
     n_boots: int = 1000,
     alpha: float = 0.05,
     parallel: bool = True,
-    min_success_rate: float = 0.0
+    min_success_rate: float = 0.0,
+    handle_failures: bool = True
 ) -> BootstrapResult:
     """Perform residual bootstrap for GAMLSS models.
     
@@ -673,24 +688,42 @@ def residual_bootstrap(
     if fitted_values.shape[0] != n_obs or residuals.shape[0] != n_obs:
         raise ValueError("fitted_values and residuals must match data['y'] length")
     
+    try:
+        parameter_template = jnp.asarray(fit_function(data))
+    except Exception as exc:
+        if not handle_failures:
+            raise
+        raise RuntimeError("Unable to infer bootstrap parameter shape from the original fit") from exc
+    if parameter_template.ndim != 1:
+        raise ValueError("fit_function must return a one-dimensional parameter vector")
+
     # Generate bootstrap indices for residuals
     boot_indices = generate_bootstrap_indices(key, n_obs, n_boots)
     
     # Define single bootstrap iteration
+    failure_reasons = {}
+
     def single_residual_fit(indices):
         """Resample residuals and refit."""
-        # Resample residuals
-        boot_residuals = residuals[indices]
-        
-        # Create new response
-        y_boot = fitted_values + boot_residuals
-        
-        # Create new data dict
-        boot_data = {**data, 'y': y_boot}
-        
-        # Refit model
-        params = fit_function(boot_data)
-        return params
+        try:
+            # Resample residuals
+            boot_residuals = residuals[indices]
+
+            # Create new response
+            y_boot = fitted_values + boot_residuals
+
+            # Create new data dict
+            boot_data = {**data, 'y': y_boot}
+
+            # Refit model
+            params = fit_function(boot_data)
+            return params
+        except Exception as exc:
+            if not handle_failures:
+                raise
+            name = type(exc).__name__
+            failure_reasons[name] = failure_reasons.get(name, 0) + 1
+            return jnp.full_like(parameter_template, jnp.nan)
     
     # Parallel bootstrap using vmap
     if parallel:
@@ -727,6 +760,7 @@ def residual_bootstrap(
         alpha=alpha,
         method='residual',
         failure_indices=failure_indices,
+        failure_reasons=failure_reasons or None,
     )
 
 

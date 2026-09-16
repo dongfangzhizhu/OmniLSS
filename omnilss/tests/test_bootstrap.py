@@ -301,6 +301,10 @@ def test_parametric_bootstrap():
     assert result.n_successful == 100  # Should all succeed
     assert result.coefficients.shape == (100, 2)
     assert result.method == 'parametric'
+    assert result.fitted_values is None
+    assert result.predictions is None
+    assert result.failure_indices.shape == (0,)
+    assert result.failure_reasons is None
     
     # Check estimates are reasonable
     assert jnp.abs(result.mean[0] - true_mu) < 1.0
@@ -349,12 +353,46 @@ def test_residual_bootstrap():
     assert result.n_successful > 90
     assert result.coefficients.shape == (100, 2)
     assert result.method == 'residual'
-    
+    assert result.fitted_values is None
+    assert result.predictions is None
+    assert result.failure_indices.shape == (0,)
+    assert result.failure_reasons is None
+
     # Check estimates
     assert jnp.abs(result.mean[0] - 1.0) < 0.5
     assert jnp.abs(result.mean[1] - 2.0) < 0.5
 
 
+def test_parametric_and_residual_bootstrap_collect_failure_diagnostics():
+    data = {'y': jnp.arange(5.0)}
+    fitted_params = jnp.array([1.0])
+    calls = [0]
+
+    def failing_fit(d):
+        calls[0] += 1
+        if calls[0] in (2, 4):
+            raise ValueError("simulated failure")
+        return jnp.array([jnp.mean(d['y'])])
+
+    def sample(_params, key):
+        return jax.random.normal(key, shape=(5,))
+
+    parametric = parametric_bootstrap(
+        failing_fit, sample, data, fitted_params, jax.random.PRNGKey(0),
+        n_boots=4, parallel=False,
+    )
+    assert parametric.n_successful == 2
+    assert parametric.failure_reasons == {"ValueError": 2}
+    np.testing.assert_array_equal(np.asarray(parametric.failure_indices), [1, 3])
+
+    calls[0] = -1  # residual bootstrap performs one original fit for shape inference
+    residual = residual_bootstrap(
+        failing_fit, data, jnp.ones(5), jnp.zeros(5), jax.random.PRNGKey(0),
+        n_boots=4, parallel=False,
+    )
+    assert residual.n_successful == 2
+    assert residual.failure_reasons == {"ValueError": 2}
+    np.testing.assert_array_equal(np.asarray(residual.failure_indices), [1, 3])
 def test_bootstrap_result_summary():
     """Test BootstrapResult summary method."""
     result = BootstrapResult(
