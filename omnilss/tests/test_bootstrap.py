@@ -810,6 +810,52 @@ def test_warning_policy_with_mixed_failures(method, policy, threshold, expected)
         assert caught[0].filename == __file__
 
 
+@pytest.mark.parametrize("method", ["nonparametric", "parametric", "residual"])
+@pytest.mark.parametrize("outcome", ["success", "mixed", "exception"])
+def test_parallel_retry_matches_sequential_diagnostics(method, outcome):
+    data = {'y': jnp.arange(8.0)}
+    key = jax.random.PRNGKey(42)
+
+    def fit(d):
+        if d is data:
+            return jnp.array([3.5])
+        # Ordinary Python control flow is intentionally not vmap-compatible.
+        first = float(d['y'][0])
+        if outcome == "exception" or (outcome == "mixed" and first < 3):
+            raise ValueError("fit failed")
+        if outcome == "mixed" and first < 5:
+            return jnp.array([jnp.nan])
+        return jnp.array([jnp.mean(d['y'])])
+
+    def run(parallel, handle_failures=True):
+        kwargs = dict(n_boots=24, parallel=parallel,
+                      handle_failures=handle_failures, failure_warning="never")
+        if method == "nonparametric":
+            return nonparametric_bootstrap(fit, data, key, **kwargs)
+        if method == "parametric":
+            return parametric_bootstrap(
+                fit, lambda p, k: jax.random.randint(k, (8,), 0, 8).astype(float),
+                data, jnp.array([3.5]), key, **kwargs,
+            )
+        return residual_bootstrap(
+            fit, data, jnp.zeros(8), data['y'], key, **kwargs,
+        )
+
+    expected = run(False)
+    actual = run(True)
+    np.testing.assert_allclose(actual.coefficients, expected.coefficients, equal_nan=True)
+    np.testing.assert_array_equal(actual.failure_indices, expected.failure_indices)
+    assert actual.failure_reasons == expected.failure_reasons
+    assert actual.n_successful == expected.n_successful
+    assert sum((actual.failure_reasons or {}).values()) == 24 - actual.n_successful
+    if outcome == "mixed":
+        assert actual.failure_reasons["ValueError"] > 0
+        assert actual.failure_reasons["nonfinite_parameters"] > 0
+        assert actual.n_successful > 0
+    with pytest.raises(jax.errors.ConcretizationTypeError):
+        run(True, handle_failures=False)
+
+
 def test_bootstrap_reproducibility():
     """Test that bootstrap results are reproducible with same seed."""
     np.random.seed(42)

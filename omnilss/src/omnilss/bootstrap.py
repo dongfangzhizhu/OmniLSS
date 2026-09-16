@@ -297,6 +297,21 @@ def _validate_bootstrap_output(coefficients: jnp.ndarray, n_boots: int) -> None:
         )
 
 
+def _run_bootstrap_fits(fit, inputs, parallel, handle_failures):
+    """Try vectorization, then diagnose individual fits on the same inputs.
+
+    Callbacks must be pure: a failed vectorization attempt can invoke them
+    before sequential retry. Strict mode preserves the original exception.
+    """
+    if parallel:
+        try:
+            return vmap(fit)(inputs)
+        except Exception:
+            if not handle_failures:
+                raise
+    return jnp.array([fit(value, i) for i, value in enumerate(inputs)])
+
+
 def _classify_nonfinite_failures(
     coefficients: jnp.ndarray,
     failure_reasons: Dict[str, int],
@@ -550,6 +565,11 @@ def nonparametric_bootstrap(
     
     If memory is limited, consider using smaller n_boots or implementing
     a batched version using jax.lax.map.
+
+    With ``handle_failures=True``, vectorization exceptions trigger sequential
+    retry using the same resamples, so failure diagnostics describe individual
+    fits rather than tracing errors. Callbacks must be free of side effects
+    because retry can invoke them again. Strict mode propagates exceptions.
     """
     n_obs = _validate_bootstrap_inputs(data, n_boots, alpha, min_success_rate)
     _validate_failure_warning_options(failure_warning, warning_failure_rate)
@@ -573,7 +593,7 @@ def nonparametric_bootstrap(
             params = fit_function(resampled_data)
             return params
         except Exception as e:
-            if handle_failures:
+            if handle_failures and index is not None:
                 failure_reasons[type(e).__name__] = failure_reasons.get(type(e).__name__, 0) + 1
                 if index is not None:
                     failure_indices.append(index)
@@ -583,14 +603,9 @@ def nonparametric_bootstrap(
                 raise e
     
     # Parallel bootstrap using vmap
-    if parallel:
-        # Use vmap for maximum parallelization
-        boot_coefficients = vmap(single_bootstrap_fit)(boot_indices)
-    else:
-        # Sequential fallback (slower but uses less memory)
-        boot_coefficients = jnp.array([
-            single_bootstrap_fit(indices, i) for i, indices in enumerate(boot_indices)
-        ])
+    boot_coefficients = _run_bootstrap_fits(
+        single_bootstrap_fit, boot_indices, parallel, handle_failures
+    )
     _validate_bootstrap_output(boot_coefficients, n_boots)
     
     # Compute statistics
@@ -702,6 +717,10 @@ def parametric_bootstrap(
     assumption is correct, but can be misleading if the model is
     misspecified. Use diagnostic plots to verify model fit before
     relying on parametric bootstrap results.
+
+    When failure handling is enabled, vectorization exceptions trigger
+    sequential retry with the same random keys. Both fitting and sampling
+    callbacks must be free of side effects because they can be invoked again.
     """
     _validate_bootstrap_inputs(data, n_boots, alpha, min_success_rate)
     _validate_failure_warning_options(failure_warning, warning_failure_rate)
@@ -728,7 +747,7 @@ def parametric_bootstrap(
             params = fit_function(boot_data)
             return params
         except Exception as exc:
-            if not handle_failures:
+            if not handle_failures or index is None:
                 raise
             name = type(exc).__name__
             failure_reasons[name] = failure_reasons.get(name, 0) + 1
@@ -737,12 +756,9 @@ def parametric_bootstrap(
             return jnp.full_like(fitted_params, jnp.nan)
     
     # Parallel bootstrap using vmap
-    if parallel:
-        boot_coefficients = vmap(single_parametric_fit)(keys)
-    else:
-        boot_coefficients = jnp.array([
-            single_parametric_fit(k, i) for i, k in enumerate(keys)
-        ])
+    boot_coefficients = _run_bootstrap_fits(
+        single_parametric_fit, keys, parallel, handle_failures
+    )
     _validate_bootstrap_output(boot_coefficients, n_boots)
     
     # Compute statistics
@@ -881,7 +897,7 @@ def residual_bootstrap(
             params = fit_function(boot_data)
             return params
         except Exception as exc:
-            if not handle_failures:
+            if not handle_failures or index is None:
                 raise
             name = type(exc).__name__
             failure_reasons[name] = failure_reasons.get(name, 0) + 1
@@ -890,12 +906,9 @@ def residual_bootstrap(
             return jnp.full_like(parameter_template, jnp.nan)
     
     # Parallel bootstrap using vmap
-    if parallel:
-        boot_coefficients = vmap(single_residual_fit)(boot_indices)
-    else:
-        boot_coefficients = jnp.array([
-            single_residual_fit(indices, i) for i, indices in enumerate(boot_indices)
-        ])
+    boot_coefficients = _run_bootstrap_fits(
+        single_residual_fit, boot_indices, parallel, handle_failures
+    )
     _validate_bootstrap_output(boot_coefficients, n_boots)
     
     # Compute statistics
