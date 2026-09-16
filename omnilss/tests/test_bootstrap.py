@@ -589,14 +589,73 @@ def test_bootstrap_rejects_scalar_or_wrong_shape_fit_result():
 
 def test_bootstrap_failure_diagnostics_for_nonfinite_fit():
     def fit(d):
-        return jnp.array([jnp.inf if d['y'][0] == 0 else 1.0])
+        return jnp.array([jnp.inf])
     result = nonparametric_bootstrap(
         fit, {'y': jnp.arange(4.0)}, jax.random.PRNGKey(3),
         n_boots=5, parallel=False,
     )
-    expected = np.flatnonzero(~np.isfinite(np.asarray(result.coefficients)).all(axis=1))
+    expected = np.arange(5)
     np.testing.assert_array_equal(np.asarray(result.failure_indices), expected)
-    assert result.failure_reasons is None
+    assert result.failure_reasons == {"nonfinite_parameters": len(expected)}
+
+
+@pytest.mark.parametrize("method", ["nonparametric", "parametric", "residual"])
+def test_bootstrap_nonfinite_fit_can_be_rejected(method):
+    data = {'y': jnp.arange(4.0)}
+    fit = lambda d: jnp.array([jnp.inf])
+    key = jax.random.PRNGKey(0)
+
+    if method == "nonparametric":
+        call = lambda: nonparametric_bootstrap(
+            fit, data, key, n_boots=3, parallel=False, handle_failures=False,
+        )
+    elif method == "parametric":
+        call = lambda: parametric_bootstrap(
+            fit, lambda params, k: jnp.zeros(4), data, jnp.array([1.0]),
+            key, n_boots=3, parallel=False, handle_failures=False,
+        )
+    else:
+        call = lambda: residual_bootstrap(
+            fit, data, jnp.zeros(4), jnp.zeros(4), key,
+            n_boots=3, parallel=False, handle_failures=False,
+        )
+
+    with pytest.raises(RuntimeError, match="non-finite fitted parameters"):
+        call()
+
+
+@pytest.mark.parametrize("method", ["nonparametric", "parametric", "residual"])
+def test_bootstrap_all_nonfinite_fits_report_zero_success(method):
+    data = {'y': jnp.arange(4.0)}
+    fit = lambda d: jnp.array([jnp.nan])
+    key = jax.random.PRNGKey(1)
+
+    if method == "nonparametric":
+        result = nonparametric_bootstrap(fit, data, key, n_boots=3, parallel=False)
+    elif method == "parametric":
+        result = parametric_bootstrap(
+            fit, lambda params, k: jnp.zeros(4), data, jnp.array([1.0]),
+            key, n_boots=3, parallel=False,
+        )
+    else:
+        result = residual_bootstrap(
+            fit, data, jnp.zeros(4), jnp.zeros(4), key,
+            n_boots=3, parallel=False,
+        )
+
+    assert result.n_successful == 0
+    assert result.failure_reasons == {"nonfinite_parameters": 3}
+    assert np.isnan(np.asarray(result.mean)).all()
+    assert np.isnan(np.asarray(result.lower_ci)).all()
+
+
+def test_bootstrap_nonfinite_fits_obey_min_success_rate():
+    with pytest.raises(RuntimeError, match="success rate"):
+        nonparametric_bootstrap(
+            lambda d: jnp.array([jnp.nan]), {'y': jnp.arange(4.0)},
+            jax.random.PRNGKey(0), n_boots=2, parallel=False,
+            min_success_rate=0.1,
+        )
 
 
 def test_bootstrap_reproducibility():

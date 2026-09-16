@@ -265,6 +265,33 @@ def _validate_bootstrap_output(coefficients: jnp.ndarray, n_boots: int) -> None:
         )
 
 
+def _classify_nonfinite_failures(
+    coefficients: jnp.ndarray,
+    failure_reasons: Dict[str, int],
+    known_failure_indices: list,
+    handle_failures: bool,
+) -> jnp.ndarray:
+    """Classify fitted parameter rows containing non-finite values.
+
+    Exception failures are already recorded by the sequential execution path;
+    exclude those rows so one fit is not assigned two failure reasons.
+    """
+    all_failure_mask = ~jnp.isfinite(coefficients).all(axis=1)
+    nonfinite_mask = all_failure_mask
+    if known_failure_indices:
+        known = jnp.zeros((coefficients.shape[0],), dtype=bool)
+        known = known.at[jnp.asarray(known_failure_indices)].set(True)
+        nonfinite_mask = all_failure_mask & ~known
+    nonfinite_count = int(jnp.sum(nonfinite_mask))
+    if nonfinite_count:
+        if not handle_failures:
+            raise RuntimeError("Bootstrap produced non-finite fitted parameters")
+        failure_reasons["nonfinite_parameters"] = (
+            failure_reasons.get("nonfinite_parameters", 0) + nonfinite_count
+        )
+    return all_failure_mask
+
+
 def compute_confidence_intervals(
     boot_estimates: jnp.ndarray,
     alpha: float = 0.05,
@@ -444,7 +471,7 @@ def nonparametric_bootstrap(
     # Define single bootstrap iteration
     failure_reasons = {}
     failure_indices = []
-    def single_bootstrap_fit(indices):
+    def single_bootstrap_fit(indices, index=None):
         """Fit model on resampled data."""
         try:
             resampled_data = resample_data(data, indices)
@@ -453,6 +480,8 @@ def nonparametric_bootstrap(
         except Exception as e:
             if handle_failures:
                 failure_reasons[type(e).__name__] = failure_reasons.get(type(e).__name__, 0) + 1
+                if index is not None:
+                    failure_indices.append(index)
                 # Return NaN for failed fits
                 return jnp.full_like(parameter_template, jnp.nan)
             else:
@@ -465,12 +494,18 @@ def nonparametric_bootstrap(
     else:
         # Sequential fallback (slower but uses less memory)
         boot_coefficients = jnp.array([
-            single_bootstrap_fit(indices) for indices in boot_indices
+            single_bootstrap_fit(indices, i) for i, indices in enumerate(boot_indices)
         ])
     _validate_bootstrap_output(boot_coefficients, n_boots)
     
     # Compute statistics
-    valid_mask = jnp.isfinite(boot_coefficients).all(axis=1)
+    nonfinite_mask = _classify_nonfinite_failures(
+        boot_coefficients, failure_reasons, failure_indices, handle_failures
+    )
+    boot_coefficients = jnp.where(
+        nonfinite_mask[:, None], jnp.nan, boot_coefficients
+    )
+    valid_mask = ~nonfinite_mask
     n_successful = jnp.sum(valid_mask)
     failure_indices = jnp.where(~valid_mask)[0]
     if int(n_successful) / n_boots < min_success_rate:
@@ -572,8 +607,9 @@ def parametric_bootstrap(
     
     # Define single bootstrap iteration
     failure_reasons = {}
+    exception_failure_indices = []
 
-    def single_parametric_fit(k):
+    def single_parametric_fit(k, index=None):
         """Generate data and refit model."""
         try:
             # Generate new response from fitted distribution
@@ -590,6 +626,8 @@ def parametric_bootstrap(
                 raise
             name = type(exc).__name__
             failure_reasons[name] = failure_reasons.get(name, 0) + 1
+            if index is not None:
+                exception_failure_indices.append(index)
             return jnp.full_like(fitted_params, jnp.nan)
     
     # Parallel bootstrap using vmap
@@ -597,12 +635,18 @@ def parametric_bootstrap(
         boot_coefficients = vmap(single_parametric_fit)(keys)
     else:
         boot_coefficients = jnp.array([
-            single_parametric_fit(k) for k in keys
+            single_parametric_fit(k, i) for i, k in enumerate(keys)
         ])
     _validate_bootstrap_output(boot_coefficients, n_boots)
     
     # Compute statistics
-    valid_mask = jnp.isfinite(boot_coefficients).all(axis=1)
+    nonfinite_mask = _classify_nonfinite_failures(
+        boot_coefficients, failure_reasons, exception_failure_indices, handle_failures
+    )
+    boot_coefficients = jnp.where(
+        nonfinite_mask[:, None], jnp.nan, boot_coefficients
+    )
+    valid_mask = ~nonfinite_mask
     n_successful = jnp.sum(valid_mask)
     failure_indices = jnp.where(~valid_mask)[0]
     if int(n_successful) / n_boots < min_success_rate:
@@ -702,8 +746,9 @@ def residual_bootstrap(
     
     # Define single bootstrap iteration
     failure_reasons = {}
+    exception_failure_indices = []
 
-    def single_residual_fit(indices):
+    def single_residual_fit(indices, index=None):
         """Resample residuals and refit."""
         try:
             # Resample residuals
@@ -723,6 +768,8 @@ def residual_bootstrap(
                 raise
             name = type(exc).__name__
             failure_reasons[name] = failure_reasons.get(name, 0) + 1
+            if index is not None:
+                exception_failure_indices.append(index)
             return jnp.full_like(parameter_template, jnp.nan)
     
     # Parallel bootstrap using vmap
@@ -730,12 +777,18 @@ def residual_bootstrap(
         boot_coefficients = vmap(single_residual_fit)(boot_indices)
     else:
         boot_coefficients = jnp.array([
-            single_residual_fit(indices) for indices in boot_indices
+            single_residual_fit(indices, i) for i, indices in enumerate(boot_indices)
         ])
     _validate_bootstrap_output(boot_coefficients, n_boots)
     
     # Compute statistics
-    valid_mask = jnp.isfinite(boot_coefficients).all(axis=1)
+    nonfinite_mask = _classify_nonfinite_failures(
+        boot_coefficients, failure_reasons, exception_failure_indices, handle_failures
+    )
+    boot_coefficients = jnp.where(
+        nonfinite_mask[:, None], jnp.nan, boot_coefficients
+    )
+    valid_mask = ~nonfinite_mask
     n_successful = jnp.sum(valid_mask)
     failure_indices = jnp.where(~valid_mask)[0]
     if int(n_successful) / n_boots < min_success_rate:
