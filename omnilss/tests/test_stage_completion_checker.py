@@ -50,7 +50,10 @@ except ImportError:  # pragma: no cover
 
     def given(*args, **kwargs):  # type: ignore[misc]
         def deco(fn):
-            return fn
+            def skipped(self, *test_args, **test_kwargs):
+                self.skipTest("hypothesis not available")
+
+            return skipped
 
         return deco
 
@@ -60,7 +63,16 @@ except ImportError:  # pragma: no cover
 
         return deco
 
-    st = None  # type: ignore[assignment]
+    class _UnavailableStrategies:
+        """Import-time stand-in so skipped property tests can be collected."""
+
+        def composite(self, fn):
+            return lambda *args, **kwargs: None
+
+        def __getattr__(self, name):
+            return lambda *args, **kwargs: None
+
+    st = _UnavailableStrategies()  # type: ignore[assignment]
     _HYPOTHESIS_AVAILABLE = False
 
 
