@@ -2,6 +2,7 @@
 
 import jax
 import jax.numpy as jnp
+import json
 import numpy as np
 import pytest
 from omnilss.bootstrap import (
@@ -468,6 +469,48 @@ def test_nonparametric_failure_does_not_retry_failed_original_fit():
 
 def test_bootstrap_summary_handles_zero_boots():
     assert "0.0%" in BootstrapResult(coefficients=jnp.empty((0, 1))).summary()
+
+
+def test_bootstrap_result_to_dict_exports_diagnostics():
+    result = BootstrapResult(
+        coefficients=jnp.array([[1.0, 2.0], [jnp.nan, jnp.inf]]),
+        fitted_values=jnp.array([[3.0], [4.0]]),
+        predictions=jnp.array([[5.0]]),
+        mean=jnp.array([1.0, jnp.nan]),
+        std=jnp.array([0.1, jnp.inf]),
+        lower_ci=jnp.array([0.8, 1.8]),
+        upper_ci=jnp.array([1.2, 2.2]),
+        n_boots=2,
+        n_successful=1,
+        alpha=np.float64(0.05),
+        method="residual",
+        failure_indices=jnp.array([1]),
+    )
+
+    exported = result.to_dict()
+
+    assert exported["method"] == "residual"
+    assert exported["n_failed"] == 1
+    assert exported["failure_rate"] == 0.5
+    assert exported["coefficients"] == [[1.0, 2.0], [None, None]]
+    assert exported["mean"] == [1.0, None]
+    assert exported["std"] == [0.1, None]
+    assert exported["failure_indices"] == [1]
+    assert exported["failure_reasons"] == {}
+    json.loads(json.dumps(exported))
+
+
+def test_bootstrap_result_to_json_accepts_json_options():
+    result = BootstrapResult(
+        coefficients=jnp.array([[1.0]]),
+        n_boots=1,
+        n_successful=1,
+    )
+
+    exported = json.loads(result.to_json(indent=None, sort_keys=True))
+
+    assert exported["coefficients"] == [[1.0]]
+    assert exported["failure_reasons"] == {}
 
 
 @pytest.mark.parametrize("n_boots", [0, -1, 1.5, True])

@@ -17,6 +17,7 @@ Series C (Applied Statistics), 54(3), 507-554.
 
 from __future__ import annotations
 
+import json
 from typing import Dict, Tuple, Optional, Callable, Any
 from dataclasses import dataclass
 
@@ -78,6 +79,59 @@ class BootstrapResult:
     def failure_rate(self) -> float:
         """Fraction of bootstrap fits that failed."""
         return self.n_failed / self.n_boots if self.n_boots else 0.0
+
+    @staticmethod
+    def _json_safe(value: Any) -> Any:
+        """Convert JAX/NumPy values to objects supported by ``json``.
+
+        Non-finite floating-point values are represented as ``None`` because
+        ``NaN`` and infinities are not valid JSON values.
+        """
+        if value is None or isinstance(value, (str, int, bool)):
+            return value
+        if isinstance(value, (float, np.floating)):
+            return float(value) if np.isfinite(value) else None
+        if isinstance(value, (np.ndarray, jax.Array)):
+            return BootstrapResult._json_safe(np.asarray(value).tolist())
+        if isinstance(value, (list, tuple)):
+            return [BootstrapResult._json_safe(item) for item in value]
+        if isinstance(value, dict):
+            return {
+                str(key): BootstrapResult._json_safe(item)
+                for key, item in value.items()
+            }
+        if hasattr(value, "item"):
+            return BootstrapResult._json_safe(value.item())
+        return value
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Return bootstrap results as a JSON-safe dictionary."""
+        return self._json_safe({
+            "method": self.method,
+            "n_boots": self.n_boots,
+            "n_successful": self.n_successful,
+            "n_failed": self.n_failed,
+            "failure_rate": self.failure_rate,
+            "alpha": self.alpha,
+            "coefficients": self.coefficients,
+            "fitted_values": self.fitted_values,
+            "predictions": self.predictions,
+            "mean": self.mean,
+            "std": self.std,
+            "lower_ci": self.lower_ci,
+            "upper_ci": self.upper_ci,
+            "failure_indices": self.failure_indices,
+            "failure_reasons": self.failure_reasons or {},
+        })
+
+    def to_json(self, **kwargs: Any) -> str:
+        """Serialize bootstrap results to a JSON string.
+
+        Keyword arguments are forwarded to :func:`json.dumps`; an indented
+        representation is used by default for readable diagnostic reports.
+        """
+        kwargs.setdefault("indent", 2)
+        return json.dumps(self.to_dict(), **kwargs)
     
     def summary(self) -> str:
         """Generate summary string."""
