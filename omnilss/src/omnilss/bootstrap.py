@@ -174,6 +174,43 @@ def resample_data(
             for k, v in data.items()}
 
 
+def _validate_bootstrap_inputs(
+    data: Dict[str, jnp.ndarray],
+    n_boots: int,
+    alpha: float,
+    min_success_rate: float,
+) -> int:
+    """Validate arguments shared by all bootstrap implementations."""
+    if not isinstance(n_boots, (int, np.integer)) or isinstance(n_boots, bool) or n_boots <= 0:
+        raise ValueError("n_boots must be a positive integer")
+    if not np.isfinite(alpha) or not 0 < alpha < 1:
+        raise ValueError("alpha must be between 0 and 1")
+    if not np.isfinite(min_success_rate) or not 0 <= min_success_rate <= 1:
+        raise ValueError("min_success_rate must be between 0 and 1")
+    if not isinstance(data, dict) or 'y' not in data:
+        raise ValueError("data must be a dictionary containing 'y'")
+    y = jnp.asarray(data['y'])
+    if y.ndim == 0 or y.shape[0] == 0:
+        raise ValueError("data['y'] must be a non-empty array")
+    n_obs = y.shape[0]
+    for name, value in data.items():
+        if isinstance(value, (jnp.ndarray, np.ndarray)) and value.ndim > 0:
+            if value.shape[0] != n_obs:
+                raise ValueError(
+                    f"data['{name}'] has length {value.shape[0]}, expected {n_obs}"
+                )
+    return n_obs
+
+
+def _validate_bootstrap_output(coefficients: jnp.ndarray, n_boots: int) -> None:
+    """Validate the common shape contract for fitted parameter samples."""
+    if coefficients.ndim != 2 or coefficients.shape[0] != n_boots:
+        raise ValueError(
+            f"fit_function must return a one-dimensional parameter vector; "
+            f"bootstrap coefficients must have shape ({n_boots}, n_params)"
+        )
+
+
 def compute_confidence_intervals(
     boot_estimates: jnp.ndarray,
     alpha: float = 0.05,
@@ -339,9 +376,7 @@ def nonparametric_bootstrap(
     If memory is limited, consider using smaller n_boots or implementing
     a batched version using jax.lax.map.
     """
-    if not 0 <= min_success_rate <= 1:
-        raise ValueError("min_success_rate must be between 0 and 1")
-    n_obs = len(data['y'])
+    n_obs = _validate_bootstrap_inputs(data, n_boots, alpha, min_success_rate)
     try:
         parameter_template = jnp.asarray(fit_function(data))
     except Exception as exc:
@@ -378,6 +413,7 @@ def nonparametric_bootstrap(
         boot_coefficients = jnp.array([
             single_bootstrap_fit(indices) for indices in boot_indices
         ])
+    _validate_bootstrap_output(boot_coefficients, n_boots)
     
     # Compute statistics
     valid_mask = jnp.isfinite(boot_coefficients).all(axis=1)
@@ -472,8 +508,7 @@ def parametric_bootstrap(
     misspecified. Use diagnostic plots to verify model fit before
     relying on parametric bootstrap results.
     """
-    if not 0 <= min_success_rate <= 1:
-        raise ValueError("min_success_rate must be between 0 and 1")
+    _validate_bootstrap_inputs(data, n_boots, alpha, min_success_rate)
     # Split keys for each bootstrap sample
     keys = jax.random.split(key, n_boots)
     
@@ -497,6 +532,7 @@ def parametric_bootstrap(
         boot_coefficients = jnp.array([
             single_parametric_fit(k) for k in keys
         ])
+    _validate_bootstrap_output(boot_coefficients, n_boots)
     
     # Compute statistics
     valid_mask = jnp.isfinite(boot_coefficients).all(axis=1)
@@ -575,9 +611,13 @@ def residual_bootstrap(
     2. Residuals are exchangeable
     3. Heteroscedasticity is captured by the model
     """
-    if not 0 <= min_success_rate <= 1:
-        raise ValueError("min_success_rate must be between 0 and 1")
-    n_obs = len(residuals)
+    n_obs = _validate_bootstrap_inputs(data, n_boots, alpha, min_success_rate)
+    fitted_values = jnp.asarray(fitted_values)
+    residuals = jnp.asarray(residuals)
+    if fitted_values.ndim == 0 or residuals.ndim == 0:
+        raise ValueError("fitted_values and residuals must be non-scalar arrays")
+    if fitted_values.shape[0] != n_obs or residuals.shape[0] != n_obs:
+        raise ValueError("fitted_values and residuals must match data['y'] length")
     
     # Generate bootstrap indices for residuals
     boot_indices = generate_bootstrap_indices(key, n_obs, n_boots)
@@ -605,6 +645,7 @@ def residual_bootstrap(
         boot_coefficients = jnp.array([
             single_residual_fit(indices) for indices in boot_indices
         ])
+    _validate_bootstrap_output(boot_coefficients, n_boots)
     
     # Compute statistics
     valid_mask = jnp.isfinite(boot_coefficients).all(axis=1)

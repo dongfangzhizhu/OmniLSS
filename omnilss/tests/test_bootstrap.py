@@ -470,6 +470,42 @@ def test_bootstrap_summary_handles_zero_boots():
     assert "0.0%" in BootstrapResult(coefficients=jnp.empty((0, 1))).summary()
 
 
+@pytest.mark.parametrize("n_boots", [0, -1, 1.5, True])
+def test_bootstrap_rejects_invalid_boot_count(n_boots):
+    fit = lambda d: jnp.array([jnp.mean(d['y'])])
+    with pytest.raises(ValueError, match="n_boots"):
+        nonparametric_bootstrap(fit, {'y': jnp.arange(3.0)}, jax.random.PRNGKey(0), n_boots=n_boots)
+
+
+@pytest.mark.parametrize("alpha", [0.0, 1.0, -0.1, np.nan])
+def test_bootstrap_rejects_invalid_alpha(alpha):
+    fit = lambda d: jnp.array([jnp.mean(d['y'])])
+    with pytest.raises(ValueError, match="alpha"):
+        nonparametric_bootstrap(fit, {'y': jnp.arange(3.0)}, jax.random.PRNGKey(0), alpha=alpha)
+
+
+def test_bootstrap_rejects_inconsistent_data_and_residual_lengths():
+    fit = lambda d: jnp.array([jnp.mean(d['y'])])
+    with pytest.raises(ValueError, match=r"data\['x'\]"):
+        nonparametric_bootstrap(
+            fit, {'y': jnp.arange(3.0), 'x': jnp.arange(2.0)},
+            jax.random.PRNGKey(0), n_boots=2,
+        )
+    with pytest.raises(ValueError, match="fitted_values and residuals"):
+        residual_bootstrap(
+            fit, {'y': jnp.arange(3.0)}, jnp.ones(2), jnp.ones(3),
+            jax.random.PRNGKey(0), n_boots=2,
+        )
+
+
+def test_bootstrap_rejects_scalar_or_wrong_shape_fit_result():
+    data = {'y': jnp.arange(3.0)}
+    with pytest.raises(ValueError, match="one-dimensional"):
+        nonparametric_bootstrap(lambda d: jnp.array(1.0), data, jax.random.PRNGKey(0), n_boots=2)
+    with pytest.raises(ValueError, match="one-dimensional"):
+        nonparametric_bootstrap(lambda d: jnp.ones((2, 1)), data, jax.random.PRNGKey(0), n_boots=2)
+
+
 def test_bootstrap_failure_diagnostics_for_nonfinite_fit():
     def fit(d):
         return jnp.array([jnp.inf if d['y'][0] == 0 else 1.0])
