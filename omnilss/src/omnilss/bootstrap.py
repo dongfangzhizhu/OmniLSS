@@ -66,6 +66,18 @@ class BootstrapResult:
     n_successful: int = 0
     alpha: float = 0.05
     method: str = 'nonparametric'
+    failure_indices: Optional[jnp.ndarray] = None
+    failure_reasons: Optional[Dict[str, int]] = None
+
+    @property
+    def n_failed(self) -> int:
+        """Number of bootstrap fits that did not return finite parameters."""
+        return self.n_boots - self.n_successful
+
+    @property
+    def failure_rate(self) -> float:
+        """Fraction of bootstrap fits that failed."""
+        return self.n_failed / self.n_boots if self.n_boots else 0.0
     
     def summary(self) -> str:
         """Generate summary string."""
@@ -75,11 +87,16 @@ class BootstrapResult:
             f"Method: {self.method}",
             f"Number of bootstrap samples: {self.n_boots}",
             f"Successful fits: {self.n_successful} ({self.n_successful/self.n_boots*100 if self.n_boots else 0:.1f}%)",
+            f"Failed fits: {self.n_failed} ({self.failure_rate*100:.1f}%)",
             f"Confidence level: {(1-self.alpha)*100:.0f}%",
             "",
             "Coefficient Statistics:",
             "-" * 60,
         ]
+        if self.failure_reasons:
+            lines.append("Failure reasons: " + ", ".join(
+                f"{name}={count}" for name, count in sorted(self.failure_reasons.items())
+            ))
         
         if self.mean is not None and self.std is not None:
             for i, (m, s) in enumerate(zip(self.mean, self.std)):
@@ -336,6 +353,8 @@ def nonparametric_bootstrap(
     boot_indices = generate_bootstrap_indices(key, n_obs, n_boots)
     
     # Define single bootstrap iteration
+    failure_reasons = {}
+    failure_indices = []
     def single_bootstrap_fit(indices):
         """Fit model on resampled data."""
         try:
@@ -344,6 +363,7 @@ def nonparametric_bootstrap(
             return params
         except Exception as e:
             if handle_failures:
+                failure_reasons[type(e).__name__] = failure_reasons.get(type(e).__name__, 0) + 1
                 # Return NaN for failed fits
                 return jnp.full_like(parameter_template, jnp.nan)
             else:
@@ -360,8 +380,9 @@ def nonparametric_bootstrap(
         ])
     
     # Compute statistics
-    valid_mask = ~jnp.isnan(boot_coefficients).any(axis=1)
+    valid_mask = jnp.isfinite(boot_coefficients).all(axis=1)
     n_successful = jnp.sum(valid_mask)
+    failure_indices = jnp.where(~valid_mask)[0]
     if int(n_successful) / n_boots < min_success_rate:
         raise RuntimeError(
             f"Bootstrap success rate {int(n_successful) / n_boots:.1%} is below "
@@ -385,7 +406,9 @@ def nonparametric_bootstrap(
         n_boots=n_boots,
         n_successful=int(n_successful),
         alpha=alpha,
-        method='nonparametric'
+        method='nonparametric',
+        failure_indices=failure_indices,
+        failure_reasons=failure_reasons or None,
     )
 
 
@@ -476,8 +499,9 @@ def parametric_bootstrap(
         ])
     
     # Compute statistics
-    valid_mask = ~jnp.isnan(boot_coefficients).any(axis=1)
+    valid_mask = jnp.isfinite(boot_coefficients).all(axis=1)
     n_successful = jnp.sum(valid_mask)
+    failure_indices = jnp.where(~valid_mask)[0]
     if int(n_successful) / n_boots < min_success_rate:
         raise RuntimeError(f"Bootstrap success rate {int(n_successful) / n_boots:.1%} is below min_success_rate {min_success_rate:.1%}")
     
@@ -498,7 +522,8 @@ def parametric_bootstrap(
         n_boots=n_boots,
         n_successful=int(n_successful),
         alpha=alpha,
-        method='parametric'
+        method='parametric',
+        failure_indices=failure_indices,
     )
 
 
@@ -582,8 +607,9 @@ def residual_bootstrap(
         ])
     
     # Compute statistics
-    valid_mask = ~jnp.isnan(boot_coefficients).any(axis=1)
+    valid_mask = jnp.isfinite(boot_coefficients).all(axis=1)
     n_successful = jnp.sum(valid_mask)
+    failure_indices = jnp.where(~valid_mask)[0]
     if int(n_successful) / n_boots < min_success_rate:
         raise RuntimeError(f"Bootstrap success rate {int(n_successful) / n_boots:.1%} is below min_success_rate {min_success_rate:.1%}")
     
@@ -604,7 +630,8 @@ def residual_bootstrap(
         n_boots=n_boots,
         n_successful=int(n_successful),
         alpha=alpha,
-        method='residual'
+        method='residual',
+        failure_indices=failure_indices,
     )
 
 

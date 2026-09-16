@@ -375,6 +375,7 @@ def test_bootstrap_result_summary():
     assert 'nonparametric' in summary
     assert 'Number of bootstrap samples: 3' in summary
     assert 'Successful fits: 3' in summary
+    assert 'Failed fits: 0' in summary
     assert '95%' in summary
 
 
@@ -421,6 +422,13 @@ def test_bootstrap_with_failures():
     # Results should still be valid
     assert jnp.all(jnp.isfinite(result.mean))
     assert jnp.all(jnp.isfinite(result.std))
+    assert result.n_failed == result.n_boots - result.n_successful
+    assert result.failure_rate > 0
+    np.testing.assert_array_equal(
+        np.asarray(result.failure_indices),
+        np.flatnonzero(np.isnan(np.asarray(result.coefficients)).any(axis=1)),
+    )
+    assert result.failure_reasons == {"ValueError": result.n_failed}
 
 
 def test_bootstrap_min_success_rate():
@@ -460,6 +468,18 @@ def test_nonparametric_failure_does_not_retry_failed_original_fit():
 
 def test_bootstrap_summary_handles_zero_boots():
     assert "0.0%" in BootstrapResult(coefficients=jnp.empty((0, 1))).summary()
+
+
+def test_bootstrap_failure_diagnostics_for_nonfinite_fit():
+    def fit(d):
+        return jnp.array([jnp.inf if d['y'][0] == 0 else 1.0])
+    result = nonparametric_bootstrap(
+        fit, {'y': jnp.arange(4.0)}, jax.random.PRNGKey(3),
+        n_boots=5, parallel=False,
+    )
+    expected = np.flatnonzero(~np.isfinite(np.asarray(result.coefficients)).all(axis=1))
+    np.testing.assert_array_equal(np.asarray(result.failure_indices), expected)
+    assert result.failure_reasons is None
 
 
 def test_bootstrap_reproducibility():
