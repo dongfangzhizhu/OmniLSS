@@ -5,6 +5,7 @@ import jax.numpy as jnp
 import json
 import numpy as np
 import pytest
+import warnings
 from omnilss.bootstrap import (
     generate_bootstrap_indices,
     resample_data,
@@ -679,6 +680,134 @@ def test_bootstrap_warns_with_failure_summary(method):
             )
 
     assert "nonfinite_parameters=3" in str(caught[0].message)
+
+
+def test_bootstrap_failure_warning_can_be_disabled():
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        result = nonparametric_bootstrap(
+            lambda d: jnp.array([jnp.nan]),
+            {'y': jnp.arange(4.0)},
+            jax.random.PRNGKey(3), n_boots=2, parallel=False,
+            failure_warning="never",
+        )
+
+    assert not [warning for warning in caught if warning.category is RuntimeWarning]
+    assert result.has_failures
+    assert result.primary_failure_reason == "nonfinite_parameters"
+    assert result.failure_summary == {
+        "n_failed": 2,
+        "failure_rate": 1.0,
+        "primary_reason": "nonfinite_parameters",
+        "reasons": {"nonfinite_parameters": 2},
+    }
+
+
+def test_bootstrap_threshold_warning_only_warns_at_threshold():
+    fit_calls = [0]
+
+    def fit(data):
+        fit_calls[0] += 1
+        return jnp.array([jnp.nan if fit_calls[0] == 2 else 1.0])
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        result = nonparametric_bootstrap(
+            fit, {'y': jnp.arange(4.0)}, jax.random.PRNGKey(4),
+            n_boots=2, parallel=False, failure_warning="threshold",
+            warning_failure_rate=0.5,
+        )
+
+    assert len([warning for warning in caught if warning.category is RuntimeWarning]) == 1
+    assert result.n_successful == 1
+
+    fit_calls[0] = 0
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        nonparametric_bootstrap(
+            fit, {'y': jnp.arange(4.0)}, jax.random.PRNGKey(4),
+            n_boots=2, parallel=False, failure_warning="threshold",
+            warning_failure_rate=0.6,
+        )
+    assert not [warning for warning in caught if warning.category is RuntimeWarning]
+
+
+@pytest.mark.parametrize("failure_warning", ["invalid", None, 1])
+def test_bootstrap_rejects_invalid_failure_warning_policy(failure_warning):
+    with pytest.raises(ValueError, match="failure_warning"):
+        nonparametric_bootstrap(
+            lambda d: jnp.array([1.0]), {'y': jnp.arange(3.0)},
+            jax.random.PRNGKey(0), n_boots=1,
+            failure_warning=failure_warning,
+        )
+
+
+@pytest.mark.parametrize("warning_failure_rate", [-0.1, 1.1, np.nan])
+def test_bootstrap_rejects_invalid_warning_failure_rate(warning_failure_rate):
+    with pytest.raises(ValueError, match="warning_failure_rate"):
+        nonparametric_bootstrap(
+            lambda d: jnp.array([1.0]), {'y': jnp.arange(3.0)},
+            jax.random.PRNGKey(0), n_boots=1,
+            warning_failure_rate=warning_failure_rate,
+        )
+
+
+def test_bootstrap_result_primary_failure_reason_is_deterministic():
+    result = BootstrapResult(
+        coefficients=jnp.full((4, 1), jnp.nan),
+        n_boots=4,
+        n_successful=0,
+        failure_reasons={"ValueError": 2, "TypeError": 2},
+    )
+
+    assert result.primary_failure_reason == "TypeError"
+    exported = result.to_dict()
+    assert exported["has_failures"] is True
+    assert exported["primary_failure_reason"] == "TypeError"
+    assert exported["failure_summary"]["reasons"] == {
+        "ValueError": 2, "TypeError": 2,
+    }
+
+
+@pytest.mark.parametrize("method", ["nonparametric", "parametric", "residual"])
+@pytest.mark.parametrize("policy,threshold,expected", [
+    ("always", 1.0, 1), ("never", 0.0, 0),
+    ("threshold", 0.5, 1), ("threshold", 0.75, 0),
+])
+def test_warning_policy_with_mixed_failures(method, policy, threshold, expected):
+    data = {'y': jnp.arange(4.0)}
+    outcomes = iter([ValueError("fit failed"), jnp.nan, 1.0, 2.0])
+
+    def fit(d):
+        if d is data:
+            return jnp.array([1.0])
+        value = next(outcomes)
+        if isinstance(value, Exception):
+            raise value
+        return jnp.array([value])
+
+    kwargs = dict(n_boots=4, parallel=False, failure_warning=policy,
+                  warning_failure_rate=threshold)
+    key = jax.random.PRNGKey(0)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        if method == "nonparametric":
+            result = nonparametric_bootstrap(fit, data, key, **kwargs)
+        elif method == "parametric":
+            result = parametric_bootstrap(
+                fit, lambda p, k: data['y'], data, jnp.array([1.0]), key, **kwargs,
+            )
+        else:
+            result = residual_bootstrap(
+                fit, data, data['y'], jnp.zeros(4), key, **kwargs,
+            )
+    assert len(caught) == expected
+    assert result.failure_reasons == {"ValueError": 1, "nonfinite_parameters": 1}
+    assert result.n_successful == 2
+    assert json.loads(result.to_json())["failure_summary"] == result.failure_summary
+    if expected:
+        assert "2 failed fits out of 4 (50.0%)" in str(caught[0].message)
+        assert caught[0].filename == __file__
 
 
 def test_bootstrap_reproducibility():

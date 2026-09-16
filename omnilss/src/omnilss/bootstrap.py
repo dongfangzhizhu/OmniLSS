@@ -81,6 +81,34 @@ class BootstrapResult:
         """Fraction of bootstrap fits that failed."""
         return self.n_failed / self.n_boots if self.n_boots else 0.0
 
+    @property
+    def has_failures(self) -> bool:
+        """Whether any bootstrap fits failed."""
+        return self.n_failed > 0
+
+    @property
+    def primary_failure_reason(self) -> Optional[str]:
+        """Most frequently observed failure reason, if any.
+
+        Ties are resolved alphabetically so reports are deterministic.
+        """
+        if not self.failure_reasons:
+            return None
+        return min(
+            self.failure_reasons,
+            key=lambda name: (-self.failure_reasons[name], name),
+        )
+
+    @property
+    def failure_summary(self) -> Dict[str, Any]:
+        """Return structured failure diagnostics for programmatic consumers."""
+        return {
+            "n_failed": self.n_failed,
+            "failure_rate": self.failure_rate,
+            "primary_reason": self.primary_failure_reason,
+            "reasons": dict(self.failure_reasons or {}),
+        }
+
     @staticmethod
     def _json_safe(value: Any) -> Any:
         """Convert JAX/NumPy values to objects supported by ``json``.
@@ -123,6 +151,9 @@ class BootstrapResult:
             "upper_ci": self.upper_ci,
             "failure_indices": self.failure_indices,
             "failure_reasons": self.failure_reasons or {},
+            "has_failures": self.has_failures,
+            "primary_failure_reason": self.primary_failure_reason,
+            "failure_summary": self.failure_summary,
         })
 
     def to_json(self, **kwargs: Any) -> str:
@@ -313,8 +344,37 @@ def _warn_bootstrap_failures(
         f"{method} bootstrap completed with {n_failed} failed fits out of "
         f"{n_boots} ({n_failed / n_boots:.1%}); failure reasons: {reasons}",
         RuntimeWarning,
-        stacklevel=3,
+        stacklevel=4,
     )
+
+
+def _validate_failure_warning_options(
+    failure_warning: str,
+    warning_failure_rate: float,
+) -> None:
+    """Validate the common policy controlling bootstrap failure warnings."""
+    if failure_warning not in ("always", "never", "threshold"):
+        raise ValueError(
+            "failure_warning must be one of 'always', 'never', or 'threshold'"
+        )
+    if not np.isfinite(warning_failure_rate) or not 0 <= warning_failure_rate <= 1:
+        raise ValueError("warning_failure_rate must be between 0 and 1")
+
+
+def _maybe_warn_bootstrap_failures(
+    method: str,
+    n_boots: int,
+    n_successful: int,
+    failure_reasons: Dict[str, int],
+    failure_warning: str,
+    warning_failure_rate: float,
+) -> None:
+    """Emit a failure warning according to the configured policy."""
+    failure_rate = (n_boots - n_successful) / n_boots if n_boots else 0.0
+    if failure_warning == "always" or (
+        failure_warning == "threshold" and failure_rate >= warning_failure_rate
+    ):
+        _warn_bootstrap_failures(method, n_boots, n_successful, failure_reasons)
 
 
 def compute_confidence_intervals(
@@ -433,6 +493,9 @@ def nonparametric_bootstrap(
     parallel: bool = True,
     handle_failures: bool = True,
     min_success_rate: float = 0.0,
+    *,
+    failure_warning: str = "always",
+    warning_failure_rate: float = 0.0,
 ) -> BootstrapResult:
     """Perform non-parametric bootstrap for GAMLSS models.
     
@@ -457,6 +520,12 @@ def nonparametric_bootstrap(
         Whether to use vmap for parallel computation
     handle_failures : bool, default=True
         Whether to handle failed fits by marking them as NaN
+    failure_warning : {'always', 'never', 'threshold'}, default='always'
+        Warn for failed fits, suppress warnings, or warn at the failure threshold.
+        Does not override min_success_rate or handle_failures.
+    warning_failure_rate : float, default=0.0
+        Failure fraction in [0, 1]. Warn at or above this threshold, but never
+        when all fits succeed.
         
     Returns
     -------
@@ -483,6 +552,7 @@ def nonparametric_bootstrap(
     a batched version using jax.lax.map.
     """
     n_obs = _validate_bootstrap_inputs(data, n_boots, alpha, min_success_rate)
+    _validate_failure_warning_options(failure_warning, warning_failure_rate)
     try:
         parameter_template = jnp.asarray(fit_function(data))
     except Exception as exc:
@@ -538,8 +608,9 @@ def nonparametric_bootstrap(
             f"Bootstrap success rate {int(n_successful) / n_boots:.1%} is below "
             f"min_success_rate {min_success_rate:.1%}"
         )
-    _warn_bootstrap_failures(
-        "nonparametric", n_boots, int(n_successful), failure_reasons
+    _maybe_warn_bootstrap_failures(
+        "nonparametric", n_boots, int(n_successful), failure_reasons,
+        failure_warning, warning_failure_rate,
     )
     
     mean_estimate = jnp.nanmean(boot_coefficients, axis=0)
@@ -575,9 +646,15 @@ def parametric_bootstrap(
     alpha: float = 0.05,
     parallel: bool = True,
     min_success_rate: float = 0.0,
-    handle_failures: bool = True
+    handle_failures: bool = True,
+    *,
+    failure_warning: str = "always",
+    warning_failure_rate: float = 0.0,
 ) -> BootstrapResult:
     """Perform parametric bootstrap for GAMLSS models.
+
+    ``failure_warning`` and ``warning_failure_rate`` follow the policy documented
+    in :func:`nonparametric_bootstrap`, without relaxing minimum success checks.
     
     This method assumes the fitted distribution is correct and generates
     new data from it. It's more efficient when the distributional
@@ -627,6 +704,7 @@ def parametric_bootstrap(
     relying on parametric bootstrap results.
     """
     _validate_bootstrap_inputs(data, n_boots, alpha, min_success_rate)
+    _validate_failure_warning_options(failure_warning, warning_failure_rate)
     fitted_params = jnp.asarray(fitted_params)
     if fitted_params.ndim != 1:
         raise ValueError("fitted_params must be a one-dimensional parameter vector")
@@ -679,8 +757,9 @@ def parametric_bootstrap(
     failure_indices = jnp.where(~valid_mask)[0]
     if int(n_successful) / n_boots < min_success_rate:
         raise RuntimeError(f"Bootstrap success rate {int(n_successful) / n_boots:.1%} is below min_success_rate {min_success_rate:.1%}")
-    _warn_bootstrap_failures(
-        "parametric", n_boots, int(n_successful), failure_reasons
+    _maybe_warn_bootstrap_failures(
+        "parametric", n_boots, int(n_successful), failure_reasons,
+        failure_warning, warning_failure_rate,
     )
     
     mean_estimate = jnp.nanmean(boot_coefficients, axis=0)
@@ -716,9 +795,15 @@ def residual_bootstrap(
     alpha: float = 0.05,
     parallel: bool = True,
     min_success_rate: float = 0.0,
-    handle_failures: bool = True
+    handle_failures: bool = True,
+    *,
+    failure_warning: str = "always",
+    warning_failure_rate: float = 0.0,
 ) -> BootstrapResult:
     """Perform residual bootstrap for GAMLSS models.
+
+    ``failure_warning`` and ``warning_failure_rate`` follow the policy documented
+    in :func:`nonparametric_bootstrap`, without relaxing minimum success checks.
     
     This method resamples residuals and adds them to fitted values,
     which is appropriate when the model structure is correct but
@@ -756,6 +841,7 @@ def residual_bootstrap(
     3. Heteroscedasticity is captured by the model
     """
     n_obs = _validate_bootstrap_inputs(data, n_boots, alpha, min_success_rate)
+    _validate_failure_warning_options(failure_warning, warning_failure_rate)
     fitted_values = jnp.asarray(fitted_values)
     residuals = jnp.asarray(residuals)
     if fitted_values.ndim == 0 or residuals.ndim == 0:
@@ -824,8 +910,9 @@ def residual_bootstrap(
     failure_indices = jnp.where(~valid_mask)[0]
     if int(n_successful) / n_boots < min_success_rate:
         raise RuntimeError(f"Bootstrap success rate {int(n_successful) / n_boots:.1%} is below min_success_rate {min_success_rate:.1%}")
-    _warn_bootstrap_failures(
-        "residual", n_boots, int(n_successful), failure_reasons
+    _maybe_warn_bootstrap_failures(
+        "residual", n_boots, int(n_successful), failure_reasons,
+        failure_warning, warning_failure_rate,
     )
     
     mean_estimate = jnp.nanmean(boot_coefficients, axis=0)
