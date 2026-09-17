@@ -56,3 +56,30 @@ def test_bb_random_generation_respects_support() -> None:
 
     assert samples.shape == (1000,)
     assert jnp.all((samples >= 0) & (samples <= bd))
+
+
+def test_bb_cdf_and_quantile_broadcast_each_parameter() -> None:
+    q = jnp.array([2.0, 5.0, 8.0])
+    mu = jnp.array([0.2, 0.5, 0.8])
+    sigma = jnp.array([0.2, 0.5, 0.8])
+    bd = jnp.array([5.0, 10.0, 15.0])
+    cdf = pBB(q, mu, sigma, bd)
+    quantiles = qBB(cdf, mu, sigma, bd)
+    assert cdf.shape == q.shape
+    assert jnp.all(quantiles == q)
+
+
+def test_bb_quantile_probability_boundaries_and_log_upper_tail() -> None:
+    p = jnp.array([0.0, 0.2, 0.8, 1.0])
+    expected = qBB(p, 0.4, 0.3, 10)
+    assert expected[0] == 0
+    assert expected[-1] == 10
+    upper_log = pBB(3, 0.4, 0.3, 10, lower_tail=False, log_p=True)
+    assert jnp.isclose(jnp.exp(upper_log), pBB(3, 0.4, 0.3, 10, lower_tail=False))
+
+
+def test_bb_sampling_does_not_reuse_one_binomial_random_draw() -> None:
+    samples = rBB(jrandom.PRNGKey(123), 2000, 0.5, 0.5, 10)
+    # A repeated key in the old implementation yielded an extreme duplicate
+    # rate; independent vectorized draws should produce varied counts.
+    assert jnp.unique(samples).size > 5

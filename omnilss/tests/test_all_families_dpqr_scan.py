@@ -56,6 +56,8 @@ def _default_params(name: str) -> dict | None:
         p = {"mu": 3.0, "sigma": 0.3}
     elif name in {"BE", "BEO", "BEINF", "BEZI", "BEOI", "SIMPLEX"}:
         p = {"mu": 0.3, "sigma": 0.2}
+    elif name == "BB":
+        p = {"mu": 0.5, "sigma": 0.2, "bd": 10.0}
     elif name in {"GU", "LO"}:
         p = {"mu": 0.0, "sigma": 1.0}
     elif name in {"BCCG", "BCT", "BCPE", "BCCGo", "BCTo", "BCPEo"}:

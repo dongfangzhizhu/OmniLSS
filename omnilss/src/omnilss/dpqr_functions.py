@@ -22,6 +22,7 @@ from scipy.stats import nbinom as _nbinom_dist
 from scipy.stats import poisson as _pois_dist
 from scipy.stats import gamma as _gamma_dist
 from scipy.stats import t as _t_dist
+from scipy.stats import betabinom as _betabinom_dist, binom as _binom_dist
 
 
 # =============================================================================
@@ -6935,59 +6936,25 @@ def pBB(q, mu=0.5, sigma=1.0, bd=10, lower_tail=True, log_p=False):
     -----
     The CDF is computed by summing the PMF from 0 to floor(q).
     """
-    q = jnp.asarray(q, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    bd = jnp.asarray(bd, dtype=jnp.float64)
-
-    eps = jnp.finfo(jnp.float64).eps
-    mu = jnp.clip(mu, eps, 1.0 - eps)
-    sigma = jnp.maximum(sigma, eps)
-    bd = jnp.maximum(bd, 1.0)
-
-    # Floor q to integer
-    q_int = jnp.floor(q)
-
-    # Vectorize with scalar extraction
-    q_array = np.asarray(q_int).flatten()
-    mu_arr = np.asarray(mu).flatten()
-    sigma_arr = np.asarray(sigma).flatten()
-    bd_arr = np.asarray(bd).flatten()
-    n = q_array.size
-    if mu_arr.size == 1: mu_arr = np.repeat(mu_arr, n)
-    if sigma_arr.size == 1: sigma_arr = np.repeat(sigma_arr, n)
-    if bd_arr.size == 1: bd_arr = np.repeat(bd_arr, n)
-
-    cdf_list = []
-    for i, q_val in enumerate(q_array):
-        q_f = float(q_val)
-        bd_f = float(bd_arr[i])
-        mu_f = float(mu_arr[i])
-        sigma_f = float(sigma_arr[i])
-        if q_f < 0:
-            cdf_list.append(0.0)
-        elif q_f >= bd_f:
-            cdf_list.append(1.0)
-        else:
-            x_vals = jnp.arange(0, int(q_f) + 1)
-            pmf_vals = dBB(x_vals,
-                           jnp.array([mu_f]), jnp.array([sigma_f]),
-                           jnp.array([bd_f]), log=False)
-            cdf_list.append(float(jnp.sum(pmf_vals)))
-
-    cdf = jnp.asarray(cdf_list, dtype=jnp.float64)
-    if jnp.ndim(q) == 0:
-        cdf = cdf[0]
-    else:
-        cdf = cdf.reshape(jnp.asarray(q).shape)
-
-    if not lower_tail:
-        cdf = 1.0 - cdf
-
-    if log_p:
-        cdf = jnp.log(cdf)
-
-    return cdf
+    q, mu, sigma, bd = np.broadcast_arrays(
+        *[np.asarray(value, dtype=float) for value in (q, mu, sigma, bd)]
+    )
+    method = ("logcdf" if log_p else "cdf") if lower_tail else (
+        "logsf" if log_p else "sf"
+    )
+    # As in R, use the binomial limit below sigma=0.0001. Only evaluate
+    # the selected branch to avoid cancellation at enormous beta shapes.
+    result = np.full(q.shape, np.nan)
+    valid = (mu > 0) & (mu < 1) & (sigma > 0) & np.isfinite(sigma)
+    valid &= (bd >= 0) & np.isfinite(bd) & (bd == np.floor(bd))
+    small = valid & (sigma < 0.0001)
+    regular = valid & ~small
+    result[small] = getattr(_binom_dist, method)(q[small], bd[small], mu[small])
+    result[regular] = getattr(_betabinom_dist, method)(
+        q[regular], bd[regular], mu[regular] / sigma[regular],
+        (1 - mu[regular]) / sigma[regular],
+    )
+    return jnp.asarray(result, dtype=jnp.float64)
 
 
 def qBB(p, mu=0.5, sigma=1.0, bd=10, lower_tail=True, log_p=False):
@@ -7017,54 +6984,29 @@ def qBB(p, mu=0.5, sigma=1.0, bd=10, lower_tail=True, log_p=False):
     -----
     The quantile is found by searching for the smallest x such that
     P(X <= x) >= p.
-    max_value is a static Python integer in [0, 10000] limiting candidate
-    quantiles, not the upper-tail summation range. Unresolved interior
-    probabilities return NaN. Under jit, close over this option or mark it
-    static. The underlying density still has numerical support 0..10000;
-    this option does not extend that support.
+    Parameters follow NumPy broadcasting. This is a CPU quantile routine,
+    with the same binomial limit (sigma < 0.0001) as R gamlss.dist.
     """
-    p = jnp.asarray(p, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    bd = jnp.asarray(bd, dtype=jnp.float64)
-
+    p, mu, sigma, bd = np.broadcast_arrays(
+        *[np.asarray(value, dtype=float) for value in (p, mu, sigma, bd)]
+    )
     if log_p:
-        p = jnp.exp(p)
-
-    if not lower_tail:
+        p = np.exp(p) if lower_tail else -np.expm1(p)
+    elif not lower_tail:
         p = 1.0 - p
-
-    eps = jnp.finfo(jnp.float64).eps
-    p = jnp.clip(p, eps, 1.0 - eps)
-    mu = jnp.clip(mu, eps, 1.0 - eps)
-    sigma = jnp.maximum(sigma, eps)
-    bd = jnp.maximum(bd, 1.0)
-
-    # Extract scalar values for use inside the loop
-    mu_scalar    = float(jnp.mean(mu))
-    sigma_scalar = float(jnp.mean(sigma))
-    bd_scalar    = float(jnp.mean(bd))
-
-    # Find quantile by searching
-    def find_quantile(p_val):
-        # Search from 0 to bd
-        for x in range(int(bd_scalar) + 1):
-            cdf_val = pBB(float(x), mu_scalar, sigma_scalar, bd_scalar,
-                          lower_tail=True, log_p=False)
-            if cdf_val >= p_val:
-                return float(x)
-        return float(bd_scalar)
-
-    # Vectorize
-    p_array = jnp.atleast_1d(p)
-    q_list = [find_quantile(float(p_val)) for p_val in p_array]
-    q = jnp.array(q_list)
-
-    # Return scalar if input was scalar
-    if jnp.ndim(p) == 0:
-        return q[0]
-
-    return q
+    result = np.full(p.shape, np.nan)
+    valid = (p >= 0) & (p <= 1) & (mu > 0) & (mu < 1)
+    valid &= (sigma > 0) & np.isfinite(sigma)
+    valid &= (bd >= 0) & np.isfinite(bd) & (bd == np.floor(bd))
+    small = valid & (sigma < 0.0001)
+    regular = valid & ~small
+    result[small] = _binom_dist.ppf(p[small], bd[small], mu[small])
+    result[regular] = _betabinom_dist.ppf(
+        p[regular], bd[regular], mu[regular] / sigma[regular],
+        (1 - mu[regular]) / sigma[regular],
+    )
+    result = np.where(valid & (p == 0), 0.0, result)
+    return jnp.asarray(result, dtype=jnp.float64)
 
 
 def rBB(key, n, mu=0.5, sigma=1.0, bd=10):
@@ -7115,12 +7057,10 @@ def rBB(key, n, mu=0.5, sigma=1.0, bd=10):
     # Generate Beta samples
     p_samples = jrandom.beta(key1, alpha, beta, shape=(n,))
 
-    # Generate Binomial samples
-    bd_int = int(bd)
-    samples = jnp.array([
-        jnp.sum(jrandom.uniform(key2, shape=(bd_int,)) < p_samples[i])
-        for i in range(n)
-    ])
+    # One vectorized draw supplies independent randomness for every observation;
+    # reusing key2 inside a Python loop made the old samples correlated.
+    probabilities = jnp.where(sigma < 0.0001, mu, p_samples)
+    samples = jrandom.binomial(key2, n=bd, p=probabilities, shape=(n,))
 
     return samples
 
