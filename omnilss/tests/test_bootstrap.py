@@ -620,6 +620,44 @@ def test_bootstrap_rejects_scalar_or_wrong_shape_fit_result():
         nonparametric_bootstrap(lambda d: jnp.ones((2, 1)), data, jax.random.PRNGKey(0), n_boots=2)
 
 
+def test_bootstrap_rejects_inconsistent_parameter_shape():
+    data = {'y': jnp.arange(3.0)}
+    calls = [0]
+
+    def fit(sample):
+        if sample is data:
+            return jnp.ones(2)
+        calls[0] += 1
+        return jnp.ones(1 if calls[0] == 1 else 2)
+
+    with pytest.raises(ValueError, match=r"shape \(2,\).*iteration"):
+        nonparametric_bootstrap(
+            fit, data, jax.random.PRNGKey(0), n_boots=2, parallel=False,
+        )
+
+
+@pytest.mark.parametrize("method", ["parametric", "residual"])
+def test_bootstrap_rejects_wrong_observation_shape(method):
+    data = {'y': jnp.arange(3.0)}
+    fit = lambda sample: jnp.array([jnp.mean(sample['y'])])
+    key = jax.random.PRNGKey(0)
+
+    if method == "parametric":
+        call = lambda: parametric_bootstrap(
+            fit, lambda params, k: jnp.zeros(2), data, jnp.array([1.0]),
+            key, n_boots=2, parallel=False,
+        )
+        message = "sample_function result"
+    else:
+        call = lambda: residual_bootstrap(
+            fit, data, jnp.ones(2), jnp.ones(3), key, n_boots=2,
+        )
+        message = "fitted_values and residuals"
+
+    with pytest.raises(ValueError, match=message):
+        call()
+
+
 def test_bootstrap_failure_diagnostics_for_nonfinite_fit():
     def fit(d):
         return jnp.array([jnp.inf])

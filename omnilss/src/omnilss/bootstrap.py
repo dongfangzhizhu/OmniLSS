@@ -28,6 +28,10 @@ import numpy as np
 from jax import vmap, jit
 
 
+class _BootstrapShapeError(ValueError):
+    """Raised for invalid callback output shapes (not a failed model fit)."""
+
+
 @dataclass
 class BootstrapResult:
     """Results from bootstrap analysis.
@@ -293,10 +297,37 @@ def _validate_bootstrap_inputs(
 def _validate_bootstrap_output(coefficients: jnp.ndarray, n_boots: int) -> None:
     """Validate the common shape contract for fitted parameter samples."""
     if coefficients.ndim != 2 or coefficients.shape[0] != n_boots:
-        raise ValueError(
+        raise _BootstrapShapeError(
             f"fit_function must return a one-dimensional parameter vector; "
             f"bootstrap coefficients must have shape ({n_boots}, n_params)"
         )
+
+
+def _validate_parameter_vector(
+    parameters: Any,
+    expected_shape: tuple,
+    method: str,
+    index: Optional[int] = None,
+) -> jnp.ndarray:
+    """Convert one fit result and enforce the original parameter shape."""
+    value = jnp.asarray(parameters)
+    context = f" at bootstrap iteration {index}" if index is not None else ""
+    if value.ndim != 1 or value.shape != expected_shape:
+        raise _BootstrapShapeError(
+            f"{method} fit_function must return a one-dimensional parameter "
+            f"vector with shape {expected_shape}{context}; got shape {value.shape}"
+        )
+    return value
+
+
+def _validate_observation_shape(value: Any, expected_shape: tuple, name: str) -> jnp.ndarray:
+    """Convert a generated observation vector and enforce its shape."""
+    converted = jnp.asarray(value)
+    if converted.shape != expected_shape:
+        raise _BootstrapShapeError(
+            f"{name} must have shape {expected_shape}, got {converted.shape}"
+        )
+    return converted
 
 
 def _run_bootstrap_fits(fit, inputs, parallel, handle_failures):
@@ -581,6 +612,8 @@ def nonparametric_bootstrap(
         if not handle_failures:
             raise
         raise RuntimeError("Unable to infer bootstrap parameter shape from the original fit") from exc
+    if parameter_template.ndim != 1:
+        raise ValueError("nonparametric fit_function must return a one-dimensional parameter vector")
     
     # Generate all bootstrap indices at once
     boot_indices = generate_bootstrap_indices(key, n_obs, n_boots)
@@ -593,7 +626,11 @@ def nonparametric_bootstrap(
         try:
             resampled_data = resample_data(data, indices)
             params = fit_function(resampled_data)
-            return params
+            return _validate_parameter_vector(
+                params, parameter_template.shape, "nonparametric", index
+            )
+        except _BootstrapShapeError:
+            raise
         except Exception as e:
             if handle_failures and index is not None:
                 failure_reasons[type(e).__name__] = failure_reasons.get(type(e).__name__, 0) + 1
@@ -740,14 +777,22 @@ def parametric_bootstrap(
         """Generate data and refit model."""
         try:
             # Generate new response from fitted distribution
-            y_boot = sample_function(fitted_params, k)
+            y_boot = _validate_observation_shape(
+                sample_function(fitted_params, k),
+                jnp.asarray(data["y"]).shape,
+                "sample_function result",
+            )
 
             # Create new data dict with bootstrapped response
             boot_data = {**data, 'y': y_boot}
 
             # Refit model
             params = fit_function(boot_data)
-            return params
+            return _validate_parameter_vector(
+                params, fitted_params.shape, "parametric", index
+            )
+        except _BootstrapShapeError:
+            raise
         except Exception as exc:
             if not handle_failures or index is None:
                 raise
@@ -860,12 +905,17 @@ def residual_bootstrap(
     """
     n_obs = _validate_bootstrap_inputs(data, n_boots, alpha, min_success_rate)
     _validate_failure_warning_options(failure_warning, warning_failure_rate)
-    fitted_values = jnp.asarray(fitted_values)
-    residuals = jnp.asarray(residuals)
-    if fitted_values.ndim == 0 or residuals.ndim == 0:
-        raise ValueError("fitted_values and residuals must be non-scalar arrays")
-    if fitted_values.shape[0] != n_obs or residuals.shape[0] != n_obs:
-        raise ValueError("fitted_values and residuals must match data['y'] length")
+    response_shape = jnp.asarray(data["y"]).shape
+    try:
+        fitted_values = _validate_observation_shape(
+            fitted_values, response_shape, "fitted_values"
+        )
+        residuals = _validate_observation_shape(residuals, response_shape, "residuals")
+    except _BootstrapShapeError as exc:
+        raise _BootstrapShapeError(
+            f"fitted_values and residuals must match data['y'] shape "
+            f"{response_shape}; {exc}"
+        ) from exc
     
     try:
         parameter_template = jnp.asarray(fit_function(data))
@@ -897,7 +947,11 @@ def residual_bootstrap(
 
             # Refit model
             params = fit_function(boot_data)
-            return params
+            return _validate_parameter_vector(
+                params, parameter_template.shape, "residual", index
+            )
+        except _BootstrapShapeError:
+            raise
         except Exception as exc:
             if not handle_failures or index is None:
                 raise
