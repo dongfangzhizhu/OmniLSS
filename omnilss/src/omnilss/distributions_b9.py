@@ -458,21 +458,27 @@ def _zalg_log_pdf(y, mu, nu):
     log_at0 = jnp.log(nu)
     log_cont = jnp.log1p(-nu) + log_lg
     
-    return jnp.where(y <= 0, log_at0, log_cont)
+    # R dZALG assigns no mass to negative values; only y == 0 is the
+    # zero-adjustment atom.  Keep the non-integral positive convention of LG.
+    return jnp.where(y < 0, -jnp.inf, jnp.where(y == 0, log_at0, log_cont))
 
 
 def _zalg_p(q, mu=0.5, sigma=0.1, lower_tail=True, log_p=False):
     """CDF of R's zero-adjusted logarithmic distribution."""
-    q = jnp.asarray(q, dtype=jnp.float64)
-    mu = jnp.clip(jnp.asarray(mu, dtype=jnp.float64), 1e-15, 1.0 - 1e-15)
-    sigma = jnp.clip(jnp.asarray(sigma, dtype=jnp.float64), 1e-15, 1.0 - 1e-15)
+    q, mu, sigma = jnp.broadcast_arrays(
+        jnp.asarray(q, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+    )
+    mu = jnp.clip(mu, 1e-15, 1.0 - 1e-15)
+    sigma = jnp.clip(sigma, 1e-15, 1.0 - 1e-15)
     k = jnp.arange(1, 10001, dtype=jnp.float64)
     terms = mu[..., None] ** k / (k * (-jnp.log1p(-mu[..., None])))
     cdf = sigma + (1.0 - sigma) * jnp.sum(
         jnp.where(k <= jnp.floor(q)[..., None], terms, 0.0), axis=-1
     )
     cdf = jnp.where(q < 0, 0.0, cdf)
-    cdf = jnp.where(q >= 10000, 1.0, cdf)
+    cdf = jnp.where(jnp.isposinf(q), 1.0, cdf)
     if not lower_tail:
         cdf = 1.0 - cdf
     return jnp.log(cdf) if log_p else cdf
@@ -499,6 +505,7 @@ def _zalg_q(p, mu=0.5, sigma=0.1, lower_tail=True, log_p=False, max_value=10000)
     result = jnp.argmax(crossed, axis=-1).astype(jnp.float64)
     result = jnp.where(jnp.any(crossed, axis=-1), result, float(max_value))
     result = jnp.where(p >= 1.0, jnp.inf, result)
+    result = jnp.where(p == 0.0, 0.0, result)
     return jnp.where((p >= 0.0) & (p <= 1.0), result, jnp.nan)
 
 

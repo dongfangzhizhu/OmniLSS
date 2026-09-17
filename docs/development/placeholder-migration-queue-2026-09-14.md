@@ -52,7 +52,7 @@
 | [x] | `NBF` | `NBF` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `GPO` | `GPO` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `NBII` | `NBII` | experimental | 状态已离开 placeholder（experimental） |
-| [ ] | `ZALG` | `ZALG` | 占位 |  |
+| [x] | `ZALG` | `ZALG` | experimental | 已完成真实 d/p/q/r、R 对照与边界契约 |
 | [x] | `ZIP` | `ZIP` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `ZIP2` | `ZIP2` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `ZIPF` | `ZIPF` | experimental | 已完成真实 d/p/q/r、R 边界语义与采样契约 |

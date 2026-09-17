@@ -32,3 +32,19 @@ def test_zalg_log_probability_broadcast_and_sampling() -> None:
     samples = np.asarray(family.r(__import__("jax").random.PRNGKey(4), 100, 0.4, 0.2))
     assert samples.shape == (100,)
     assert np.all(samples >= 0)
+
+
+def test_zalg_negative_density_and_vectorized_parameter_broadcast() -> None:
+    family = resolve("ZALG")
+    np.testing.assert_allclose(family.d([-1.0, 0.0, 1.0], 0.4, 0.2), [0.0, 0.2, 0.8 * 0.4 / -np.log1p(-0.4)])
+    values = np.asarray(family.p([0.0, 1.0, 2.0], [0.2, 0.4, 0.8], [0.1, 0.2, 0.3]))
+    assert values.shape == (3,)
+    assert np.all((values >= 0.0) & (values <= 1.0))
+
+
+def test_zalg_upper_tail_and_quantile_zero_boundary() -> None:
+    family = resolve("ZALG")
+    lower = family.p([0.0, 1.0, 2.0], 0.4, 0.2)
+    upper = family.p([0.0, 1.0, 2.0], 0.4, 0.2, lower_tail=False)
+    np.testing.assert_allclose(lower + upper, 1.0)
+    assert family.q(0.0, 0.4, 0.2) == 0.0

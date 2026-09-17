@@ -39,9 +39,9 @@ class TestZALGConsistency(unittest.TestCase):
             ),
         ):
             with self.subTest(profile=profile_name):
-                r_d = self.bus.eval_family("ZALG", "d", {"x": x.tolist(), "mu": mu.tolist(), "nu": nu.tolist()})
-                r_p = self.bus.eval_family("ZALG", "p", {"q": x.tolist(), "mu": mu.tolist(), "nu": nu.tolist()})
-                r_q = self.bus.eval_family("ZALG", "q", {"p": p.tolist(), "mu": mu.tolist(), "nu": nu.tolist()})
+                r_d = self.bus.eval_family("ZALG", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": nu.tolist()})
+                r_p = self.bus.eval_family("ZALG", "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": nu.tolist()})
+                r_q = self.bus.eval_family("ZALG", "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": nu.tolist()})
 
                 py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(nu)))
                 py_p = np.asarray(fam.p(jnp.array(x), jnp.array(mu), jnp.array(nu)))
