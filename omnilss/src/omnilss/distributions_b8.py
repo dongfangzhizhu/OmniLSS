@@ -154,13 +154,11 @@ def _gb2_log_pdf(y, mu, sigma, nu, tau):
     - Use log-space computation: sigma * log(y/mu) instead of log((y/mu)^sigma)
     """
     eps = jnp.finfo(jnp.float64).eps
-    y = jnp.maximum(y, eps)
-    mu = jnp.maximum(mu, eps)
-    # Clip sigma to reasonable range to prevent overflow
-    sigma = jnp.clip(sigma, 0.1, 10.0)
-    nu = jnp.maximum(nu, eps)
-    # Clip tau to prevent explosion (tau < 100)
-    tau = jnp.clip(tau, eps, 100.0)
+    y = jnp.asarray(y, dtype=jnp.float64)
+    mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), eps)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    nu = jnp.maximum(jnp.asarray(nu, dtype=jnp.float64), eps)
+    tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), eps)
     
     # Use log-space computation to avoid overflow in power operations
     # Instead of: (y/mu)^sigma, compute: exp(sigma * log(y/mu))
@@ -187,12 +185,17 @@ def GB2() -> GeneralizedBeta2Family:
     
     All parameters use log link to ensure positivity.
     """
+    from .dpqr_functions import dGB2, pGB2, qGB2, rGB2
     return build_ad_family(
         family_class=GeneralizedBeta2Family,
         name="GB2",
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_gb2_log_pdf,
         type_="Continuous",
+        d=dGB2,
+        p=pGB2,
+        q=qGB2,
+        r=rGB2,
         links={"mu": "log", "sigma": "log", "nu": "log", "tau": "log"},
         link_functions={"mu": log_link, "sigma": log_link, "nu": log_link, "tau": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},

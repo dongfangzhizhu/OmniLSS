@@ -5852,11 +5852,11 @@ def dGB2(x, mu=1.0, sigma=1.0, nu=1.0, tau=1.0, log=False):
     tau = jnp.asarray(tau, dtype=jnp.float64)
 
     eps = jnp.finfo(jnp.float64).eps
-    x = jnp.maximum(x, eps)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.clip(sigma, 0.1, 10.0)  # Prevent overflow
-    nu = jnp.maximum(nu, eps)
-    tau = jnp.clip(tau, eps, 100.0)  # Prevent explosion
+    x = jnp.asarray(x, dtype=jnp.float64)
+    mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), eps)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    nu = jnp.maximum(jnp.asarray(nu, dtype=jnp.float64), eps)
+    tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), eps)
 
     # Use log-space computation
     log_ratio = jnp.log(x / mu)
@@ -5867,7 +5867,7 @@ def dGB2(x, mu=1.0, sigma=1.0, nu=1.0, tau=1.0, log=False):
         (sigma * nu - 1.0) * jnp.log(x) -
         sigma * nu * jnp.log(mu) -
         betaln(nu, tau) -
-        (nu + tau) * jnp.log1p(jnp.exp(sigma * log_ratio))
+        (nu + tau) * jnp.logaddexp(0.0, sigma * log_ratio)
     )
 
     # Handle x <= 0
@@ -5917,19 +5917,24 @@ def pGB2(q, mu=1.0, sigma=1.0, nu=1.0, tau=1.0, lower_tail=True, log_p=False):
     tau = jnp.asarray(tau, dtype=jnp.float64)
 
     eps = jnp.finfo(jnp.float64).eps
-    q = jnp.maximum(q, eps)
+    q, mu, sigma, nu, tau = jnp.broadcast_arrays(
+        jnp.asarray(q, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64), jnp.asarray(nu, dtype=jnp.float64),
+        jnp.asarray(tau, dtype=jnp.float64)
+    )
+    q_safe = jnp.maximum(q, eps)
     mu = jnp.maximum(mu, eps)
-    sigma = jnp.clip(sigma, 0.1, 10.0)
+    sigma = jnp.where(sigma == 0, eps, sigma)
     nu = jnp.maximum(nu, eps)
-    tau = jnp.clip(tau, eps, 100.0)
+    tau = jnp.maximum(tau, eps)
 
     # Compute z = (q/μ)^σ / [1 + (q/μ)^σ]
-    ratio_power = jnp.power(q / mu, sigma)
-    z = ratio_power / (1.0 + ratio_power)
+    log_power = sigma * jnp.log(q_safe / mu)
+    z = jax.nn.sigmoid(log_power)
 
     # Use incomplete beta function
-    from scipy.stats import beta as sp_beta
-    cdf = sp_beta.cdf(z, nu, tau)
+    from scipy.special import betainc
+    cdf = jnp.asarray(betainc(np.asarray(nu), np.asarray(tau), np.asarray(z)))
 
     # Handle q <= 0
     cdf = jnp.where(q <= 0, 0.0, cdf)
@@ -5974,11 +5979,11 @@ def qGB2(p, mu=1.0, sigma=1.0, nu=1.0, tau=1.0, lower_tail=True, log_p=False):
     z = I^(-1)_p(ν, τ) (inverse incomplete beta)
     q = μ * [z / (1 - z)]^(1/σ)
     """
-    p = jnp.asarray(p, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    nu = jnp.asarray(nu, dtype=jnp.float64)
-    tau = jnp.asarray(tau, dtype=jnp.float64)
+    p, mu, sigma, nu, tau = jnp.broadcast_arrays(
+        jnp.asarray(p, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64), jnp.asarray(nu, dtype=jnp.float64),
+        jnp.asarray(tau, dtype=jnp.float64)
+    )
 
     if log_p:
         p = jnp.exp(p)
@@ -5987,21 +5992,24 @@ def qGB2(p, mu=1.0, sigma=1.0, nu=1.0, tau=1.0, lower_tail=True, log_p=False):
         p = 1.0 - p
 
     eps = jnp.finfo(jnp.float64).eps
-    p = jnp.clip(p, eps, 1.0 - eps)
+    valid = (p >= 0) & (p <= 1) & (mu > 0) & (sigma != 0) & (nu > 0) & (tau > 0)
+    p_safe = jnp.clip(p, eps, 1.0 - eps)
     mu = jnp.maximum(mu, eps)
-    sigma = jnp.clip(sigma, 0.1, 10.0)
+    sigma = jnp.where(sigma == 0, eps, sigma)
     nu = jnp.maximum(nu, eps)
-    tau = jnp.clip(tau, eps, 100.0)
+    tau = jnp.maximum(tau, eps)
 
     # Get z from inverse incomplete beta
-    from scipy.stats import beta as sp_beta
-    z = sp_beta.ppf(p, nu, tau)
+    from scipy.special import betaincinv
+    z = jnp.asarray(betaincinv(np.asarray(nu), np.asarray(tau), np.asarray(p_safe)))
     z = jnp.clip(z, eps, 1.0 - eps)
 
     # Transform: q = μ * [z / (1 - z)]^(1/σ)
-    q = mu * jnp.power(z / (1.0 - z), 1.0 / sigma)
+    q = mu * jnp.exp(jnp.log(z / (1.0 - z)) / sigma)
+    q = jnp.where(p == 0, 0.0, q)
+    q = jnp.where(p == 1, jnp.inf, q)
 
-    return q
+    return jnp.where(valid, q, jnp.nan)
 
 
 def rGB2(key, n, mu=1.0, sigma=1.0, nu=1.0, tau=1.0):
@@ -6041,9 +6049,9 @@ def rGB2(key, n, mu=1.0, sigma=1.0, nu=1.0, tau=1.0):
 
     eps = jnp.finfo(jnp.float64).eps
     mu = jnp.maximum(mu, eps)
-    sigma = jnp.clip(sigma, 0.1, 10.0)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
     nu = jnp.maximum(nu, eps)
-    tau = jnp.clip(tau, eps, 100.0)
+    tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), eps)
 
     # Generate uniform samples
     u = jrandom.uniform(key, shape=(n,))
