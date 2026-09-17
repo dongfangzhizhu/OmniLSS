@@ -54,6 +54,38 @@ def test_resample_data():
     assert resampled['constant'] == 42
 
 
+def test_resample_data_resamples_numpy_arrays():
+    data = {
+        'y': np.array([1.0, 2.0, 3.0]),
+        'x': np.array([10.0, 20.0, 30.0]),
+        'constant': 42,
+    }
+
+    resampled = resample_data(data, jnp.array([2, 0, 2]))
+
+    np.testing.assert_array_equal(resampled['y'], [3.0, 1.0, 3.0])
+    np.testing.assert_array_equal(resampled['x'], [30.0, 10.0, 30.0])
+    assert resampled['constant'] == 42
+
+
+def test_nonparametric_bootstrap_resamples_numpy_covariates():
+    data = {
+        'y': np.array([1.0, 2.0, 4.0, 8.0]),
+        'x': np.array([10.0, 20.0, 40.0, 80.0]),
+    }
+
+    def fit(sample):
+        assert np.array_equal(np.asarray(sample['y']) * 10, np.asarray(sample['x']))
+        return jnp.array([jnp.mean(sample['y'])])
+
+    result = nonparametric_bootstrap(
+        fit, data, jax.random.PRNGKey(7), n_boots=8, parallel=False,
+        failure_warning="never",
+    )
+
+    assert result.n_successful == 8
+
+
 def test_compute_confidence_intervals():
     """Test confidence interval computation."""
     np.random.seed(42)

@@ -256,8 +256,10 @@ def resample_data(
     dict
         Resampled data dictionary
     """
-    return {k: v[indices] if isinstance(v, jnp.ndarray) else v 
-            for k, v in data.items()}
+    return {
+        k: v[indices] if isinstance(v, (jnp.ndarray, np.ndarray)) else v
+        for k, v in data.items()
+    }
 
 
 def _validate_bootstrap_inputs(
