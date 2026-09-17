@@ -41,7 +41,7 @@ KNOWN_NAN_PLACEHOLDER = {
     "SEP3", "SEP4", "SHASHO2", "SI", "SST", "ST3", "ST3C", "ST4", "ST5",
     "WARING", "WEI2", "YULE", "ZABB", "ZABI", "ZABNB", "ZALG", "ZANBI",
     "ZAP", "ZAPIG", "ZASICHEL", "ZAZIPF", "ZIBB", "ZIBI", "ZIBNB", "ZINBF",
-    "ZINBI", "ZIP2", "ZIPF", "ZIPIG", "ZISICHEL",
+    "ZINBI", "ZIP2", "ZIPIG", "ZISICHEL",
 }
 
 

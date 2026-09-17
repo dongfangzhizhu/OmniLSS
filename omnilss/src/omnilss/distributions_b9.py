@@ -253,7 +253,10 @@ def _zipf_log_pdf(y, mu):
 
 def _zipf_d(x, mu=1.0, log=False):
     """R ``dZIPF``: the support starts at one, but accepts real x >= 1."""
+    x = jnp.asarray(x, dtype=jnp.float64)
     log_mass = _zipf_log_pdf(x, mu)
+    # Match the explicit boundary assignments in R's dZIPF implementation.
+    log_mass = jnp.where((x <= 0.0) | jnp.isposinf(x), -jnp.inf, log_mass)
     return log_mass if log else jnp.exp(log_mass)
 
 
@@ -320,6 +323,9 @@ def _zipf_q(p, mu=1.0, lower_tail=True, log_p=False, max_value=10000):
     crossing = jnp.argmax(crossed, axis=-1) + 1.0
     result = jnp.where(jnp.any(crossed, axis=-1), crossing, float(max_value))
     result = jnp.where(p >= 1.0, jnp.inf, result)
+    # R's generalized inverse returns zero at p == 0, before the first
+    # positive support point.
+    result = jnp.where(p == 0.0, 0.0, result)
     return jnp.where(valid, result, jnp.nan)
 
 

@@ -31,7 +31,8 @@ def test_zipf_r_support_and_r_parameterization() -> None:
 def test_zipf_quantiles_tails_broadcasting_and_sampling() -> None:
     family = resolve("ZIPF")
     probabilities = np.array([0.0, 0.1, 0.5, 0.9, 1.0])
-    np.testing.assert_array_equal(family.q(probabilities, 1.0), [1.0, 1.0, 1.0, 6.0, np.inf])
+    # R qZIPF returns zero at p == 0, before the positive support starts.
+    np.testing.assert_array_equal(family.q(probabilities, 1.0), [0.0, 1.0, 1.0, 6.0, np.inf])
     np.testing.assert_array_equal(family.q(np.log(np.array([0.1, 0.5])), 1.0, log_p=True), [1.0, 1.0])
     assert np.isnan(float(family.q(-0.1, 1.0)))
     assert np.asarray(family.d([1, 2, 3], [0.5, 1.0, 2.0])).shape == (3,)

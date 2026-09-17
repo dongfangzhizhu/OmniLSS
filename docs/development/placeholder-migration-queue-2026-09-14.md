@@ -55,7 +55,7 @@
 | [ ] | `ZALG` | `ZALG` | 占位 |  |
 | [x] | `ZIP` | `ZIP` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `ZIP2` | `ZIP2` | experimental | 状态已离开 placeholder（experimental） |
-| [ ] | `ZIPF` | `ZIPF` | 占位 |  |
+| [x] | `ZIPF` | `ZIPF` | experimental | 已完成真实 d/p/q/r、R 边界语义与采样契约 |
 
 ## A4 正实数与其余连续
 
