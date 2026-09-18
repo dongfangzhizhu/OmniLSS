@@ -78,22 +78,26 @@ def _lg_log_pdf(y, mu):
     Returns:
         Log-probability
     """
-    eps = jnp.finfo(jnp.float64).eps
-    
-    # Ensure mu is in valid range
-    mu = jnp.clip(mu, eps, 1.0 - eps)
-    
-    # Ensure y is positive integer
-    y_safe = jnp.maximum(y, 1.0)
+    y, mu = jnp.broadcast_arrays(jnp.asarray(y, dtype=jnp.float64),
+                                jnp.asarray(mu, dtype=jnp.float64))
+    valid = (mu > 0) & (mu < 1)
+    mu = jnp.where(valid, mu, 0.5)
+    # Evaluate the positive-support formula only at safe finite points.
+    y_safe = jnp.where((y >= 1) & jnp.isfinite(y), y, 1.0)
     
     # Log-PDF: log(mu^y / (y * (-log(1-mu))))
     # = y*log(mu) - log(y) - log(-log(1-mu))
     log_pdf = y_safe * jnp.log(mu) - jnp.log(y_safe) - jnp.log(-jnp.log1p(-mu))
     
-    # Set probability to 0 for y <= 0
-    log_pdf = jnp.where(y <= 0, -jnp.inf, log_pdf)
+    # LG starts at one; positive infinity has zero limiting mass.
+    log_pdf = jnp.where((y < 1) | jnp.isposinf(y), -jnp.inf, log_pdf)
     
-    return log_pdf
+    return jnp.where(valid & ~jnp.isnan(y), log_pdf, jnp.nan)
+
+
+def _lg_d(x, mu=0.5, log=False):
+    value = _lg_log_pdf(x, mu)
+    return value if log else jnp.exp(value)
 
 
 def _lg_p(q, mu=0.5, lower_tail=True, log_p=False):
@@ -148,6 +152,7 @@ def LG() -> LogarithmicFamily:
         parameters=("mu",),
         log_pdf_func=_lg_log_pdf,
         type_="Discrete",
+        d=_lg_d,
         p=_lg_p,
         q=_lg_q,
         r=_lg_r,
@@ -395,24 +400,16 @@ class ZeroAlteredLogarithmicFamily(FamilyDefinition):
     """Zero-Altered Logarithmic distribution (ZALG)."""
 
 
-def _zalg_log_pdf(y, mu, nu):
-    """Zero-altered logarithmic: Pr(Y=0)=nu, Pr(Y=y|y>0)=(1-nu)*f(y)/[1-f(0)]."""
-    eps = jnp.finfo(jnp.float64).eps
-    mu = jnp.clip(mu, eps, 1.0 - eps)
-    nu = jnp.clip(nu, eps, 1.0 - eps)
-    
-    # LG log-pdf for y > 0
-    y_safe = jnp.maximum(y, 1.0)
-    log_lg = y_safe * jnp.log(mu) - jnp.log(y_safe) - jnp.log(-jnp.log1p(-mu))
-    
-    # Zero-altered: no mass at 0 in base distribution (LG starts at 1)
-    # So Pr(Y=0) = nu, Pr(Y=y|y>0) = (1-nu) * f(y)
-    log_at0 = jnp.log(nu)
-    log_cont = jnp.log1p(-nu) + log_lg
-    
-    # R dZALG assigns no mass to negative values; only y == 0 is the
-    # zero-adjustment atom.  Keep the non-integral positive convention of LG.
-    return jnp.where(y < 0, -jnp.inf, jnp.where(y == 0, log_at0, log_cont))
+def _zalg_log_pdf(y, mu, sigma):
+    """Zero-adjusted LG with the same parameter validity as p/q/r."""
+    y, mu, sigma = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64)
+                                        for v in (y, mu, sigma)])
+    valid = (mu > 0) & (mu < 1) & (sigma > 0) & (sigma < 1)
+    safe_sigma = jnp.where(valid, sigma, 0.5)
+    # At the atom, avoid evaluating log(0) in an unselected AD branch.
+    log_lg = _lg_log_pdf(jnp.where(y == 0, 1.0, y), mu)
+    result = jnp.where(y == 0, jnp.log(safe_sigma), jnp.log1p(-safe_sigma) + log_lg)
+    return jnp.where(valid & ~jnp.isnan(y), result, jnp.nan)
 
 
 def _logarithmic_logsf(q, mu, sigma):
@@ -500,6 +497,11 @@ def _logarithmic_q(p, mu, sigma, lower_tail=True, log_p=False, max_value=None):
     return jnp.asarray(out)
 
 
+def _zalg_d(x, mu=0.5, sigma=0.1, log=False):
+    value = _zalg_log_pdf(x, mu, sigma)
+    return value if log else jnp.exp(value)
+
+
 def _zalg_p(q, mu=0.5, sigma=0.1, lower_tail=True, log_p=False):
     sigma = np.asarray(sigma, dtype=float)
     sigma = np.where((sigma > 0) & (sigma < 1), sigma, np.nan)
@@ -524,6 +526,7 @@ def ZALG() -> ZeroAlteredLogarithmicFamily:
         parameters=("mu", "sigma"),
         log_pdf_func=_zalg_log_pdf,
         type_="Discrete",
+        d=_zalg_d,
         p=_zalg_p,
         q=_zalg_q,
         r=_zalg_r,
