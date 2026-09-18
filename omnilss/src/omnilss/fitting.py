@@ -1257,7 +1257,7 @@ def gamlss(
         mixed_model = mixed_fit(
             formula=formula,
             sigma_formula=sigma_formula,
-            family=getattr(family, "name", None) or str(family),
+            family=family,
             data=data,
             algorithm="auto",
             max_iter=max_iter if max_iter is not None else (control.n_cyc if control is not None else 20),

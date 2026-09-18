@@ -17,6 +17,7 @@ import warnings
 from .rs_algorithm import rs_fit
 from .lbfgs_algorithm import joint_lbfgs_fit as cg_fit
 from ..model import GAMLSSModel
+from ..families import FamilyDefinition
 
 
 def _contains_smooth_terms(*formulas: str | None) -> bool:
@@ -41,7 +42,7 @@ def _auto_select_algorithm(family_name: str, n: int, has_smooth: bool) -> str:
     family_key = family_name.upper()
     if has_smooth or family_key in unstable_families or n < 500:
         return "rs"
-    return "cg"
+    return "lbfgs"
 
 
 def mixed_fit(
@@ -49,7 +50,7 @@ def mixed_fit(
     sigma_formula: str = "~ 1",
     nu_formula: Optional[str] = None,
     tau_formula: Optional[str] = None,
-    family: str = "NO",
+    family: str | FamilyDefinition = "NO",
     data: Optional[Dict[str, np.ndarray]] = None,
     algorithm: Literal["auto", "rs", "cg", "lbfgs"] = "auto",
     max_iter: int = 20,
@@ -69,7 +70,7 @@ def mixed_fit(
         sigma_formula: Formula for sigma parameter
         nu_formula: Formula for nu parameter (if applicable)
         tau_formula: Formula for tau parameter (if applicable)
-        family: Distribution family name
+        family: Distribution family name or configured family instance
         data: Dictionary of data arrays
         algorithm: Algorithm selection strategy:
             - "auto": Automatically select best algorithm (currently uses RS)
@@ -107,7 +108,8 @@ def mixed_fit(
 
     # Algorithm selection
     if algorithm == "auto":
-        selected_algorithm = _auto_select_algorithm(str(family), n, has_smooth)
+        family_name = getattr(family, "name", str(family))
+        selected_algorithm = _auto_select_algorithm(family_name, n, has_smooth)
         if verbose:
             reason = "smooth terms" if has_smooth else f"n={n}, family={family}"
             print(f"Auto-selection: Using {selected_algorithm.upper()} algorithm ({reason})")
