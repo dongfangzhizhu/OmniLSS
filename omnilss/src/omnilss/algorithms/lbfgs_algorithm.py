@@ -227,6 +227,14 @@ def joint_lbfgs_fit(
     if tau_formula is not None:
         parameter_formulas.setdefault("tau", tau_formula)
 
+    from ..formula_parser import has_smooth_terms
+    if any(has_smooth_terms(value) for value in
+           (formula, sigma_formula, *parameter_formulas.values())):
+        raise ValueError(
+            "The joint_lbfgs_fit CG compatibility backend does not support "
+            "penalized smooth terms; use gamlss(method='RS') or mixed_fit(algorithm='auto')."
+        )
+
     fam = resolve_family(family)
     model = gamlss(
         formula=formula,

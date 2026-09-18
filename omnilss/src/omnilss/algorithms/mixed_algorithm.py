@@ -140,6 +140,12 @@ def mixed_fit(
         if verbose:
             print(f"Using {selected_algorithm.upper()} algorithm")
     
+    if selected_algorithm == "lbfgs" and has_smooth:
+        raise ValueError(
+            "The MIXED lbfgs/CG compatibility backend does not support penalized "
+            "smooth terms; use algorithm='rs' or algorithm='auto'."
+        )
+
     # Fit using selected algorithm
     if selected_algorithm == "rs":
         model = rs_fit(
