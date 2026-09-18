@@ -80,8 +80,8 @@ def ZABB() -> FamilyDefinition:
     return _clone(_ZABB(), "ZABB", ZABBFamily)
 
 
-def ZIBB() -> FamilyDefinition:
-    return _clone(_ZIBB(), "ZIBB", ZIBBFamily)
+def ZIBB(bd=10) -> FamilyDefinition:
+    return _clone(_ZIBB(bd=bd), "ZIBB", ZIBBFamily)
 
 
 def ZAZIPF() -> FamilyDefinition:

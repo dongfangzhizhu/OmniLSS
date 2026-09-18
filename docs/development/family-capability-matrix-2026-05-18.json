@@ -43,7 +43,7 @@
   "families": {
     "BB": {
       "name": "BB",
-      "implementation_status": "experimental",
+      "implementation_status": "placeholder",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -56,7 +56,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "registered family without enough validation evidence for production use",
+        "public surface contains placeholder numerical behavior and requires replacement",
         "RS_JAX route is not advertised for this family"
       ]
     },

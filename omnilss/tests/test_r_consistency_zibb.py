@@ -25,7 +25,7 @@ class TestZIBBConsistency(unittest.TestCase):
         for profile_name, x, mu, sigma, nu, p in (
             (
                 "central",
-                np.arange(0, 20),
+                np.arange(0, 20) % 11,
                 np.linspace(0.1, 0.9, 20),
                 np.linspace(0.2, 2.0, 20),
                 np.linspace(0.1, 0.9, 20),
@@ -33,7 +33,7 @@ class TestZIBBConsistency(unittest.TestCase):
             ),
             (
                 "tail",
-                np.arange(0, 20),
+                np.arange(0, 20) % 11,
                 np.linspace(0.1, 0.9, 20),
                 np.linspace(0.2, 2.0, 20),
                 np.linspace(0.1, 0.9, 20),
@@ -41,9 +41,9 @@ class TestZIBBConsistency(unittest.TestCase):
             ),
         ):
             with self.subTest(profile=profile_name):
-                r_d = self.bus.eval_family("ZIBB", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
-                r_p = self.bus.eval_family("ZIBB", "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
-                r_q = self.bus.eval_family("ZIBB", "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()})
+                r_d = self.bus.eval_family("ZIBB", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "bd": 10})
+                r_p = self.bus.eval_family("ZIBB", "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "bd": 10})
+                r_q = self.bus.eval_family("ZIBB", "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "bd": 10})
 
                 py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu)))
                 py_p = np.asarray(fam.p(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu)))

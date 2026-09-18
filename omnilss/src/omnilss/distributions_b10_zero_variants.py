@@ -482,24 +482,11 @@ def ZIBB(bd=10):
     Args:
         bd: Binomial denominator (fixed parameter, default=10)
     """
-    from .distributions_b7 import _bb_log_pdf
+    from .zibb import dZIBB, pZIBB, qZIBB, rZIBB
     
     def zibb_log_pdf(y, mu, sigma, nu):
         """ZIBB log-PDF with fixed bd."""
-        eps = jnp.finfo(jnp.float64).eps
-        nu = jnp.clip(nu, eps, 1.0 - eps)
-        
-        # Base BB log-PDF
-        log_base = _bb_log_pdf(y, mu, sigma, bd)
-        
-        # f(0) for BB
-        log_f0 = _bb_log_pdf(jnp.zeros_like(y), mu, sigma, bd)
-        
-        # Zero-inflated probabilities
-        log_at0 = jnp.log(nu + (1.0 - nu) * jnp.exp(log_f0))
-        log_cont = jnp.log1p(-nu) + log_base
-        
-        return jnp.where(y <= 0, log_at0, log_cont)
+        return dZIBB(y,mu,sigma,nu,bd,log=True)
     
     from .links import logit_link, logit_inverse, logit_derivative, log_link, log_inverse, log_derivative
     
@@ -513,6 +500,10 @@ def ZIBB(bd=10):
         parameters=("mu", "sigma", "nu"),
         log_pdf_func=zibb_log_pdf,
         type_="Discrete",
+        d=lambda x,mu=.5,sigma=.5,nu=.1,log=False: dZIBB(x,mu,sigma,nu,bd,log),
+        p=lambda q,mu=.5,sigma=.5,nu=.1,lower_tail=True,log_p=False: pZIBB(q,mu,sigma,nu,bd,lower_tail,log_p),
+        q=lambda p,mu=.5,sigma=.5,nu=.1,lower_tail=True,log_p=False: qZIBB(p,mu,sigma,nu,bd,lower_tail,log_p),
+        r=lambda key,n,mu=.5,sigma=.5,nu=.1: rZIBB(key,n,mu,sigma,nu,bd),
         links={"mu": "logit", "sigma": "log", "nu": "logit"},
         link_functions={
             "mu": logit_link,
