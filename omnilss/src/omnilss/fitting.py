@@ -12,7 +12,7 @@ R source references:
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import asdict
+from dataclasses import asdict, replace
 import warnings
 from numbers import Integral
 import math
@@ -893,6 +893,12 @@ def gamlss(
 
     if data is None:
         raise ValueError("data is required")
+    if max_iter is not None:
+        if isinstance(max_iter, (bool, np.bool_)) or not isinstance(max_iter, Integral) or max_iter < 1:
+            raise ValueError("max_iter must be a positive integer")
+        max_iter = int(max_iter)
+        if control is not None:
+            control = replace(control, n_cyc=max_iter)
     family = resolve_family(family)
     if "algorithm" in optimizer_kwargs:
         # Backward-compatible alias used by examples and benchmark scripts.
@@ -1170,6 +1176,9 @@ def gamlss(
     if method_name == "RS_JAX":
         from .algorithms.jax_rs_integration import gamlss_rs_jax
 
+        if max_iter is not None and control is None:
+            control = replace(gamlss_control(), n_cyc=max_iter)
+
         return gamlss_rs_jax(
             formula=formula,
             family=family,
@@ -1194,7 +1203,7 @@ def gamlss(
             sigma_formula=sigma_formula,
             parameter_formulas=parameter_formulas,
             weights=weights,
-            max_iter=control.n_cyc if control is not None else 20,
+            max_iter=max_iter if max_iter is not None else (control.n_cyc if control is not None else 20),
             tol=control.c_crit if control is not None else 1e-4,
             verbose=verbose,
             routing_decision=routing_decision,
@@ -1222,7 +1231,7 @@ def gamlss(
                 family=family,
                 data=dict(data),
                 weights=weights,
-                max_iter=control.n_cyc if control is not None else 20,
+                max_iter=max_iter if max_iter is not None else (control.n_cyc if control is not None else 20),
                 tol=control.c_crit if control is not None else 1e-4,
                 verbose=verbose,
             )
@@ -1251,7 +1260,7 @@ def gamlss(
             family=getattr(family, "name", None) or str(family),
             data=data,
             algorithm="auto",
-            max_iter=control.n_cyc if control is not None else 20,
+            max_iter=max_iter if max_iter is not None else (control.n_cyc if control is not None else 20),
             tol=control.c_crit if control is not None else 1e-4,
             verbose=verbose,
         )
@@ -1268,6 +1277,8 @@ def gamlss(
     rqres_callable = _build_rqres_callable(family)
 
     control = gamlss_control() if control is None else control
+    if max_iter is not None:
+        control = replace(control, n_cyc=max_iter)
     i_control = glim_control() if i_control is None else i_control
 
     # Initialize performance monitoring if verbose
