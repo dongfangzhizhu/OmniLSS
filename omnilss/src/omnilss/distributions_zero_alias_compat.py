@@ -22,6 +22,7 @@ def _clone(base: FamilyDefinition, name: str, family_class) -> FamilyDefinition:
         score_functions=base.score_functions,
         hessian_functions=base.hessian_functions,
         fixed_parameters=base.fixed_parameters,
+        constructor_parameters=base.constructor_parameters,
         d=base.d,
         p=base.p,
         q=base.q,

@@ -63,6 +63,7 @@ def build_ad_family(
     p: Callable[..., Any] | None = None,
     q: Callable[..., Any] | None = None,
     r: Callable[..., Any] | None = None,
+    constructor_parameters: Mapping[str, Any] | None = None,
 ) -> FamilyDefinition:
     """Build a FamilyDefinition dynamically using JAX auto-differentiation (AD).
     
@@ -199,6 +200,7 @@ def build_ad_family(
         score_functions=score_functions,
         hessian_functions=hessian_functions,
         fixed_parameters=fixed_parameters,
+        constructor_parameters=constructor_parameters,
         d=_d_final,  # Add d function
         p=_p_final,  # Add p function
         q=_q_final,  # Add q function

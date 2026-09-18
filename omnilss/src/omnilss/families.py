@@ -57,6 +57,7 @@ class FamilyDefinition:
     p: Callable[..., Any] | None = None  # CDF function
     q: Callable[..., Any] | None = None  # Quantile function
     r: Callable[..., Any] | None = None  # Random generation function
+    constructor_parameters: Mapping[str, Any] | None = None
 
     def pdf(self, *args: Any, **kwargs: Any) -> Any:
         """Evaluate the density/PMF through the standard ``d`` function."""
@@ -100,4 +101,5 @@ class FamilyDefinition:
             p=mapping.get("p"),
             q=mapping.get("q"),
             r=mapping.get("r"),
+            constructor_parameters=mapping.get("constructor_parameters"),
         )

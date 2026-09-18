@@ -442,6 +442,7 @@ def ZABB(bd=10):
     return build_ad_family(
         family_class=ZABBFamily,
         name="ZABB",
+        constructor_parameters={"bd": int(bd)},
         parameters=("mu", "sigma", "nu"),
         log_pdf_func=zabb_log_pdf,
         type_="Discrete",
@@ -489,6 +490,7 @@ def ZIBB(bd=10):
     return build_ad_family(
         family_class=ZIBBFamily,
         name="ZIBB",
+        constructor_parameters={"bd": bd},
         parameters=("mu", "sigma", "nu"),
         log_pdf_func=zibb_log_pdf,
         type_="Discrete",

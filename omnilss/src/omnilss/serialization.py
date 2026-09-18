@@ -692,6 +692,9 @@ def save_model_json(
         meta = {
             "omnilss_version": OMNILSS_MODEL_VERSION,
             "family": getattr(model.family, "name", str(model.family)),
+            "family_constructor_parameters": _json_safe(
+                dict(getattr(model.family, "constructor_parameters", None) or {})
+            ),
             "parameters": list(model.parameters),
             "formulas": {k: str(v) for k, v in dict(model.formulas).items()},
             "terms": _json_safe(dict(getattr(model, "terms", {}) or {})),
@@ -765,7 +768,31 @@ def load_model_json(path: str | Path):
         etas = {p: npz[f"eta__{p}"] for p in params if f"eta__{p}" in npz}
         y = npz["y"] if "y" in npz.files else np.array([], dtype=np.float64)
 
-    fam = resolve_family(meta["family"])
+    options = meta.get("family_constructor_parameters", {})
+    if not isinstance(options, dict):
+        raise ValueError("family_constructor_parameters must be an object")
+    if options:
+        # Only explicitly supported declarative options are reconstructed.
+        # Never silently discard options and fall back to a default family.
+        from .distributions_zero_alias_compat import ZABB, ZIBB
+        factories = {"ZABB": ZABB, "ZIBB": ZIBB}
+        factory = factories.get(meta["family"])
+        if factory is None or set(options) != {"bd"}:
+            raise ValueError("Unsupported family constructor parameters")
+        bd = options["bd"]
+        if meta["family"] == "ZIBB":
+            values = np.asarray(bd)
+            valid_bd = (values.dtype.kind in "iuf" and values.size > 0
+                        and np.all(np.isfinite(values)) and np.all(values >= 0)
+                        and np.all(values == np.floor(values)))
+        else:
+            valid_bd = isinstance(bd, int) and not isinstance(bd, bool) and bd >= 1
+        if not valid_bd:
+            raise ValueError("Saved bd must be a valid integer denominator")
+        fam = factory(bd=bd)
+    else:
+        # Legacy artifacts omitted constructor state and used default families.
+        fam = resolve_family(meta["family"])
     n = int(meta["n"])
     return GAMLSSModel(
         par=params,
