@@ -18,15 +18,12 @@ from .rs_algorithm import rs_fit
 from .lbfgs_algorithm import joint_lbfgs_fit as cg_fit
 from ..model import GAMLSSModel
 from ..families import FamilyDefinition
+from ..formula_parser import has_smooth_terms
 
 
 def _contains_smooth_terms(*formulas: str | None) -> bool:
     """Return True when any formula contains a known smooth-term marker."""
-    markers = ("pb(", "ps(", "cs(")
-    return any(
-        formula is not None and any(marker in formula for marker in markers)
-        for formula in formulas
-    )
+    return any(has_smooth_terms(formula) for formula in formulas)
 
 
 def _auto_select_algorithm(family_name: str, n: int, has_smooth: bool) -> str:

@@ -19,6 +19,21 @@ import jax.numpy as jnp
 import numpy as np
 
 
+_SMOOTH_CALL_PATTERN = re.compile(
+    r"\b(pb|ps|cs|s|random|re|ri|lo|pcat|fp|bfp|cy|te|ti|"
+    r"pvc|pbm|pbz|pbo|pbc|pbp|scs)\s*\("
+)
+
+
+def has_smooth_terms(formula: str | None) -> bool:
+    """Detect smooth calls for routing, including not-yet-admitted smoothers.
+
+    Detection is not admission: unsupported smoothers must still reach the
+    normal design/admission gate rather than being treated as linear terms.
+    """
+    return formula is not None and bool(_SMOOTH_CALL_PATTERN.search(formula))
+
+
 @dataclass
 class SmoothTerm:
     """Represents a smooth term in a formula.

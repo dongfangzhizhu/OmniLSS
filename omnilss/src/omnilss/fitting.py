@@ -43,6 +43,7 @@ from ._fitting_residuals import (
     _compute_residuals as _compute_residuals_shared,
 )
 from .formula_parser import parse_formula as parse_full_formula
+from .formula_parser import has_smooth_terms
 from .model import GAMLSSModel
 
 _STANDARD_NORMAL = NormalDist()
@@ -70,18 +71,7 @@ def _has_smooth_terms(formula: str) -> bool:
     >>> _has_smooth_terms("y ~ x1 + ps(x2, df=5)")
     True
     """
-    import re
-
-    # Pattern to match smooth terms.  s() is the generic smoother entry point
-    # (defaults to pb) and must route through build_smooth_design so the
-    # Phase 3.7 admission gate rejects unverified smoothers fail-closed.
-    # Unimplemented/staged smoothers are listed so they are never silently
-    # dropped as unknown linear terms.
-    smooth_pattern = (
-        r"\b(pb|ps|cs|s|random|re|ri|lo|pcat|fp|bfp|cy|te|ti|"
-        r"pvc|pbm|pbz|pbo|pbc|pbp|scs)\s*\("
-    )
-    return bool(re.search(smooth_pattern, formula))
+    return has_smooth_terms(formula)
 
 
 def _parse_formula(formula: str) -> tuple[str, list[str]]:
