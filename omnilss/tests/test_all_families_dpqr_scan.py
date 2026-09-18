@@ -39,7 +39,7 @@ KNOWN_NAN_PLACEHOLDER = {
     "MN4", "MN5", "MULTIN", "NBF", "NET", "NO2", "NOF", "PARETO", "PARETO1",
     "PARETO1O", "PARETO2", "PE2", "PIG2", "RGE", "SEP", "SEP1", "SEP2",
     "SEP3", "SEP4", "SHASHO2", "SI", "SST", "ST3", "ST3C", "ST4", "ST5",
-    "WARING", "WEI2", "YULE", "ZABB", "ZABI", "ZABNB", "ZALG", "ZANBI",
+    "WARING", "WEI2", "YULE", "ZABI", "ZABNB", "ZALG", "ZANBI",
     "ZAP", "ZAPIG", "ZASICHEL", "ZAZIPF", "ZIBI", "ZIBNB", "ZINBF",
     "ZINBI", "ZIP2", "ZIPIG", "ZISICHEL",
 }

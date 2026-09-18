@@ -76,8 +76,8 @@ class ZINBIFamily(FamilyDefinition):
 
 
 
-def ZABB() -> FamilyDefinition:
-    return _clone(_ZABB(), "ZABB", ZABBFamily)
+def ZABB(bd=10) -> FamilyDefinition:
+    return _clone(_ZABB(bd=bd), "ZABB", ZABBFamily)
 
 
 def ZIBB(bd=10) -> FamilyDefinition:
