@@ -13,6 +13,7 @@ Functions follow the R naming convention:
 from __future__ import annotations
 
 import numpy as np
+from .gb1 import dGB1, pGB1, qGB1, rGB1
 import jax
 import jax.numpy as jnp
 import jax.random as jrandom

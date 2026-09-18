@@ -61,7 +61,7 @@
 
 | 勾选 | R family | registry | 当前状态 | 备注 |
 |---|---|---|---|---|
-| [ ] | `GB1` | `GB1` | 占位 |  |
+| [x] | `GB1` | `GB1` | experimental | 已实现实际 R 参数化的 DPQR，见 gb1-delivery-2026-09-18.md |
 | [x] | `GB2` | `GB2` | experimental | 已接入真实 d/p/q/r、参数广播、边界与 R 公式契约 |
 | [ ] | `GIG` | `GIG` | 占位 |  |
 | [ ] | `NO2` | `NO2` | 占位 |  |

@@ -64,7 +64,7 @@ def test_known_compat_alias_families_are_marked_separately_from_evidence():
 
 
 def test_ad_families_without_explicit_dpqr_are_marked_placeholder():
-    for family_name in ("GB1", "GIG"):
+    for family_name in ("GIG",):
         capability = get_family_capability(family_name)
         assert capability.implementation_status is ImplementationStatus.PLACEHOLDER
         assert implementation_status_for_family(family_name) is (
@@ -80,7 +80,7 @@ def test_dpqr_placeholder_helpers_are_marked_placeholder():
         assert _dpqr_function_uses_placeholder(helper_name) is True
 
 def test_ad_families_with_explicit_dpqr_are_not_false_placeholder():
-    for family_name in ("BE", "WEI", "IG", "NBI", "NBII", "SEP1", "ST1", "TF", "GB2"):
+    for family_name in ("BE", "WEI", "IG", "NBI", "NBII", "SEP1", "ST1", "TF", "GB2", "GB1"):
         capability = get_family_capability(family_name)
         assert capability.implementation_status is ImplementationStatus.EXPERIMENTAL
         assert implementation_status_for_family(family_name) is (

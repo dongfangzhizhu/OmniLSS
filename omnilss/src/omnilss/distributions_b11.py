@@ -123,55 +123,9 @@ class GB1Family(FamilyDefinition):
 
 
 def _gb1_log_pdf(y, mu, sigma, nu, tau):
-    """Generalized Beta Type 1 log-PDF.
-    
-    Parameters:
-    - mu: location parameter (0 < mu < 1)
-    - sigma: scale parameter (> 0)
-    - nu: shape parameter 1 (> 0)
-    - tau: shape parameter 2 (> 0)
-    
-    The GB1 is a four-parameter extension of the beta distribution.
-    
-    PDF: f(y) ∝ y^(a-1) * (1-y)^(b-1) * [1 + ((y/(1-y))^c - 1) / d]^(-a-b)
-    
-    Simplified parameterization:
-    - a = 1/sigma^2
-    - b = (1-mu)/(mu * sigma^2)
-    - c = nu
-    - d = tau
-    """
-    eps = jnp.finfo(jnp.float64).eps
-    y = jnp.clip(y, eps, 1.0 - eps)
-    mu = jnp.clip(mu, eps, 1.0 - eps)
-    sigma = jnp.maximum(sigma, eps)
-    nu = jnp.maximum(nu, eps)
-    tau = jnp.maximum(tau, eps)
-    
-    # Parameters
-    a = 1.0 / (sigma * sigma)
-    b = (1.0 - mu) / (mu * sigma * sigma)
-    c = nu
-    d = tau
-    
-    # Log-PDF components
-    log_y_term = (a - 1.0) * jnp.log(y)
-    log_1my_term = (b - 1.0) * jnp.log1p(-y)
-    
-    # Ratio term: y / (1-y)
-    ratio = y / (1.0 - y)
-    ratio_c = jnp.power(ratio, c)
-    
-    # Main term: [1 + (ratio^c - 1) / d]^(-a-b)
-    inner = 1.0 + (ratio_c - 1.0) / d
-    log_main_term = -(a + b) * jnp.log(inner)
-    
-    # Normalizing constant (Beta function)
-    log_beta_ab = betaln(a, b)
-    
-    log_pdf = log_y_term + log_1my_term + log_main_term - log_beta_ab
-    
-    return log_pdf
+    """Shared differentiable density in R's bounded GB1 parameterization."""
+    from .gb1 import log_density
+    return log_density(y, mu, sigma, nu, tau)
 
 
 def GB1():
@@ -182,17 +136,18 @@ def GB1():
     
     Parameters:
     - mu: location (0 < mu < 1)
-    - sigma: scale (> 0)
+    - sigma: scale (0 < sigma < 1)
     - nu: shape 1 (> 0)
     - tau: shape 2 (> 0)
     
     Link functions:
     - mu: logit
-    - sigma: log
+    - sigma: logit
     - nu: log
     - tau: log
     """
     from .links import logit_link, logit_inverse, logit_derivative
+    from .gb1 import dGB1, pGB1, qGB1, rGB1
     
     return build_ad_family(
         family_class=GB1Family,
@@ -200,22 +155,23 @@ def GB1():
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_gb1_log_pdf,
         type_="Continuous",
-        links={"mu": "logit", "sigma": "log", "nu": "log", "tau": "log"},
+        d=dGB1, p=pGB1, q=qGB1, r=rGB1,
+        links={"mu": "logit", "sigma": "logit", "nu": "log", "tau": "log"},
         link_functions={
             "mu": logit_link,
-            "sigma": log_link,
+            "sigma": logit_link,
             "nu": log_link,
             "tau": log_link,
         },
         link_inverses={
             "mu": logit_inverse,
-            "sigma": log_inverse,
+            "sigma": logit_inverse,
             "nu": log_inverse,
             "tau": log_inverse,
         },
         link_derivatives={
             "mu": logit_derivative,
-            "sigma": log_derivative,
+            "sigma": logit_derivative,
             "nu": log_derivative,
             "tau": log_derivative,
         },
