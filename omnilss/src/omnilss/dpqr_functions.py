@@ -5851,27 +5851,19 @@ def dGB2(x, mu=1.0, sigma=1.0, nu=1.0, tau=1.0, log=False):
     nu = jnp.asarray(nu, dtype=jnp.float64)
     tau = jnp.asarray(tau, dtype=jnp.float64)
 
-    eps = jnp.finfo(jnp.float64).eps
-    x = jnp.asarray(x, dtype=jnp.float64)
-    mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), eps)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    nu = jnp.maximum(jnp.asarray(nu, dtype=jnp.float64), eps)
-    tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), eps)
-
-    # Use log-space computation
-    log_ratio = jnp.log(x / mu)
-
-    # log f(x) = log(|σ|) + (σν-1)*log(x) - σν*log(μ) - log(B(ν,τ)) - (ν+τ)*log(1+(x/μ)^σ)
-    log_pdf = (
-        jnp.log(jnp.abs(sigma)) +
-        (sigma * nu - 1.0) * jnp.log(x) -
-        sigma * nu * jnp.log(mu) -
-        betaln(nu, tau) -
-        (nu + tau) * jnp.logaddexp(0.0, sigma * log_ratio)
-    )
-
-    # Handle x <= 0
-    log_pdf = jnp.where(x <= 0, -jnp.inf, log_pdf)
+    valid = ((mu > 0) & (sigma != 0) & (nu > 0) & (tau > 0)
+             & jnp.isfinite(mu) & jnp.isfinite(sigma)
+             & jnp.isfinite(nu) & jnp.isfinite(tau))
+    # Evaluate outside-support observations at a safe point before masking.
+    # Splitting the logs avoids overflow in x/mu for finite positive inputs.
+    safe_x = jnp.where((x > 0) & jnp.isfinite(x), x, 1.0)
+    log_x = jnp.log(safe_x)
+    z = sigma * (log_x - jnp.log(mu))
+    log_pdf = (jnp.log(jnp.abs(sigma)) - log_x - betaln(nu, tau)
+               - nu * jnp.logaddexp(0.0, -z)
+               - tau * jnp.logaddexp(0.0, z))
+    log_pdf = jnp.where((x <= 0) | jnp.isposinf(x), -jnp.inf, log_pdf)
+    log_pdf = jnp.where(valid & ~jnp.isnan(x), log_pdf, jnp.nan)
 
     if log:
         return log_pdf

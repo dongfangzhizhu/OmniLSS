@@ -134,50 +134,10 @@ class GeneralizedBeta2Family(FamilyDefinition):
 
 
 def _gb2_log_pdf(y, mu, sigma, nu, tau):
-    """Generalized Beta Type 2 log-pdf.
-    
-    The GB2 distribution is a very flexible four-parameter family.
-    
-    R formula (from gamlss.dist):
-    f(y|μ,σ,ν,τ) = |σ| y^(σν-1) / {μ^(σν) B(ν,τ) [1+(y/μ)^σ]^(ν+τ)}
-    
-    Parameters:
-    - y: observed value (> 0)
-    - mu: location parameter (> 0)
-    - sigma: scale parameter (> 0)
-    - nu: shape parameter 1 (> 0)
-    - tau: shape parameter 2 (> 0)
-    
-    Numerical stabilization:
-    - Clip sigma to [0.1, 10.0] to prevent overflow in power operations
-    - Clip tau to [eps, 100.0] to prevent parameter explosion
-    - Use log-space computation: sigma * log(y/mu) instead of log((y/mu)^sigma)
-    """
-    eps = jnp.finfo(jnp.float64).eps
-    y = jnp.asarray(y, dtype=jnp.float64)
-    mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), eps)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    nu = jnp.maximum(jnp.asarray(nu, dtype=jnp.float64), eps)
-    tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), eps)
-    
-    # Use log-space computation to avoid overflow in power operations
-    # Instead of: (y/mu)^sigma, compute: exp(sigma * log(y/mu))
-    # This is more stable for large sigma values
-    log_ratio = jnp.log(y / mu)
-    
-    # log f(y) = log(|σ|) + (σν-1)*log(y) - σν*log(μ) - log(B(ν,τ)) - (ν+τ)*log(1+(y/μ)^σ)
-    # Rewrite using log-space:
-    # log(1 + (y/μ)^σ) = log(1 + exp(σ * log(y/μ)))
-    # Use log1p for numerical stability: log1p(x) = log(1 + x)
-    log_pdf = (
-        jnp.log(jnp.abs(sigma)) +
-        (sigma * nu - 1.0) * jnp.log(y) -
-        sigma * nu * jnp.log(mu) -
-        betaln(nu, tau) -
-        (nu + tau) * jnp.log1p(jnp.exp(sigma * log_ratio))
-    )
-    
-    return log_pdf
+    """Use the public JAX log-density for both fitting and prediction."""
+    from .dpqr_functions import dGB2
+
+    return dGB2(y, mu, sigma, nu, tau, log=True)
 
 
 def GB2() -> GeneralizedBeta2Family:
