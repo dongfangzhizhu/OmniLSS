@@ -64,7 +64,7 @@ def test_known_compat_alias_families_are_marked_separately_from_evidence():
 
 
 def test_ad_families_without_explicit_dpqr_are_marked_placeholder():
-    for family_name in ("GB2", "GIG"):
+    for family_name in ("GB1", "GIG"):
         capability = get_family_capability(family_name)
         assert capability.implementation_status is ImplementationStatus.PLACEHOLDER
         assert implementation_status_for_family(family_name) is (
@@ -80,7 +80,7 @@ def test_dpqr_placeholder_helpers_are_marked_placeholder():
         assert _dpqr_function_uses_placeholder(helper_name) is True
 
 def test_ad_families_with_explicit_dpqr_are_not_false_placeholder():
-    for family_name in ("BE", "WEI", "IG", "NBI", "NBII", "SEP1", "ST1", "TF"):
+    for family_name in ("BE", "WEI", "IG", "NBI", "NBII", "SEP1", "ST1", "TF", "GB2"):
         capability = get_family_capability(family_name)
         assert capability.implementation_status is ImplementationStatus.EXPERIMENTAL
         assert implementation_status_for_family(family_name) is (
@@ -163,14 +163,14 @@ def test_method_route_capability_report_supports_service_admission():
     assert experimental["code"] == "experimental_requires_opt_in"
     assert experimental["status"] == "experimental"
 
-    unsupported = method_route_capability_report("GB2", "RS_JAX")
+    unsupported = method_route_capability_report("GIG", "RS_JAX")
     assert unsupported["ok"] is False
     assert unsupported["code"] == "placeholder_requires_opt_in"
     assert unsupported["feature"] == "rs_jax_fit"
     assert unsupported["implementation_status"] == "placeholder"
 
     unsupported_with_placeholder_opt_in = method_route_capability_report(
-        "GB2", "RS_JAX", allow_placeholder=True
+        "GIG", "RS_JAX", allow_placeholder=True
     )
     assert unsupported_with_placeholder_opt_in["ok"] is False
     assert unsupported_with_placeholder_opt_in["code"] == "unsupported_route"
@@ -215,7 +215,7 @@ def test_capability_matrix_is_machine_readable():
     assert "NO" in matrix["families"]
     assert matrix["families"]["NO"]["implementation_status"] == "implemented"
     assert matrix["families"]["ST1"]["implementation_status"] == "experimental"
-    assert matrix["families"]["GB2"]["implementation_status"] == "placeholder"
+    assert matrix["families"]["GB2"]["implementation_status"] == "experimental"
     assert matrix["families"]["NO"]["features"]["production_safe"] == "validated"
 
 

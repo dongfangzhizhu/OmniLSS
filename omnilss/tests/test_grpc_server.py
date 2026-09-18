@@ -661,7 +661,7 @@ def test_grpc_fit_blocks_placeholder_family_before_backend(monkeypatch) -> None:
     response = service.Fit(
         fit_pb2.FitRequest(
             formula="y ~ x",
-            family="GB2",
+            family="GIG",
             data_json=json.dumps({"y": [1.0], "x": [0.0]}),
             method="RS",
         ),

@@ -43,8 +43,8 @@ def test_generate_capability_matrix_writes_runtime_snapshot(tmp_path):
         status.value for status in ImplementationStatus
     ]
     assert payload["method_capability_features"]["RS"] == "rs_fit"
-    assert payload["families"]["ST1"]["implementation_status"] == "compat_alias"
-    assert payload["families"]["GB2"]["implementation_status"] == "placeholder"
+    assert payload["families"]["ST1"]["implementation_status"] == "experimental"
+    assert payload["families"]["GB2"]["implementation_status"] == "experimental"
     assert payload["families"]["NO"]["features"]["production_safe"] == "validated"
 
 

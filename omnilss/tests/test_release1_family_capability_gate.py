@@ -22,7 +22,7 @@ UNSAFE = tuple(
     capability.name
     for capability in (
         get_family_capability(name)
-        for name in ("GB2", "ST1", "NBI")
+        for name in ("GIG", "DBI", "NBI")
     )
     if capability.implementation_status
     in {ImplementationStatus.PLACEHOLDER, ImplementationStatus.COMPAT_ALIAS}
@@ -47,14 +47,14 @@ def test_all_known_unsafe_states_are_rejected_with_structured_reason():
 def test_implemented_family_is_admitted_and_unsafe_public_fit_is_blocked():
     assert require_production_family_route("NO", "RS", route="public_fit")["ok"] is True
     with pytest.raises(ProductionFamilyRejectedError) as caught:
-        gamlss("y ~ x", family="GB2", data={"y": [1.0, 2.0], "x": [0.0, 1.0]})
+        gamlss("y ~ x", family="GIG", data={"y": [1.0, 2.0], "x": [0.0, 1.0]})
     assert caught.value.to_dict()["route"] == "public_fit"
 
 
 def test_benchmark_route_uses_the_shared_gate_before_workload():
     runner = BenchmarkRunner()
     with pytest.raises(ProductionFamilyRejectedError) as caught:
-        runner.run(BenchmarkSpec("correctness", "ST1", "RS", "normal", n=4))
+        runner.run(BenchmarkSpec("correctness", "DBI", "RS", "normal", n=4))
     assert caught.value.to_dict()["route"] == "benchmark"
 
 

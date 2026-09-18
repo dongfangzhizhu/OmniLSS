@@ -33,7 +33,7 @@ SKIP = {
 # phases).  The scan asserts everything OUTSIDE this set is finite.
 KNOWN_NAN_PLACEHOLDER = {
     "BCCGO", "BCPEO", "BCTO", "BEINF0", "BEINF1", "BEOI", "BEZI",
-    "DPO", "DPO1", "EGB2", "EXGAUS", "GAF", "GB1", "GB2",
+    "DPO", "DPO1", "EGB2", "EXGAUS", "GAF", "GB1",
     "GENERALISEDPOISSON", "GIG", "GP", "GPO", "IGA", "IGAMMA", "JSUO", "LG",
     "LNO", "LOGITNO", "LOGNO2", "LOGSHASH", "LOGSHASHO", "LQNO", "MN3",
     "MN4", "MN5", "MULTIN", "NBF", "NET", "NO2", "NOF", "PARETO", "PARETO1",

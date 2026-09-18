@@ -5902,42 +5902,30 @@ def pGB2(q, mu=1.0, sigma=1.0, nu=1.0, tau=1.0, lower_tail=True, log_p=False):
     F(q) = I_z(ν, τ) where z = (q/μ)^σ / [1 + (q/μ)^σ]
     and I_z is the regularized incomplete beta function.
     """
-    q = jnp.asarray(q, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    nu = jnp.asarray(nu, dtype=jnp.float64)
-    tau = jnp.asarray(tau, dtype=jnp.float64)
+    from scipy.special import betainc, betaincc, expit
 
-    eps = jnp.finfo(jnp.float64).eps
-    q, mu, sigma, nu, tau = jnp.broadcast_arrays(
-        jnp.asarray(q, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64),
-        jnp.asarray(sigma, dtype=jnp.float64), jnp.asarray(nu, dtype=jnp.float64),
-        jnp.asarray(tau, dtype=jnp.float64)
+    q, mu, sigma, nu, tau = np.broadcast_arrays(
+        *[np.asarray(v, dtype=float) for v in (q, mu, sigma, nu, tau)]
     )
-    q_safe = jnp.maximum(q, eps)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.where(sigma == 0, eps, sigma)
-    nu = jnp.maximum(nu, eps)
-    tau = jnp.maximum(tau, eps)
-
-    # Compute z = (q/μ)^σ / [1 + (q/μ)^σ]
-    log_power = sigma * jnp.log(q_safe / mu)
-    z = jax.nn.sigmoid(log_power)
-
-    # Use incomplete beta function
-    from scipy.special import betainc
-    cdf = jnp.asarray(betainc(np.asarray(nu), np.asarray(tau), np.asarray(z)))
-
-    # Handle q <= 0
-    cdf = jnp.where(q <= 0, 0.0, cdf)
-
-    if not lower_tail:
-        cdf = 1.0 - cdf
-
-    if log_p:
-        cdf = jnp.log(cdf)
-
-    return cdf
+    valid = ((mu > 0) & (sigma != 0) & (nu > 0) & (tau > 0)
+             & np.isfinite(mu) & np.isfinite(sigma)
+             & np.isfinite(nu) & np.isfinite(tau))
+    # Negative sigma swaps the beta shapes when expressed with |sigma|.
+    a, b = np.where(sigma > 0, nu, tau), np.where(sigma > 0, tau, nu)
+    with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+        z = np.abs(sigma) * (np.log(np.where(q > 0, q, 1.)) - np.log(mu))
+        # Evaluate the small beta argument and its complement separately;
+        # neither sigmoid rounding to one nor 1-CDF destroys the upper tail.
+        left = betainc(a, b, expit(z))
+        right = betainc(b, a, expit(-z))
+        cdf = np.where(z <= 0, left, betaincc(b, a, expit(-z)))
+        sf = np.where(z >= 0, right, betaincc(a, b, expit(z)))
+        result = cdf if lower_tail else sf
+        result = np.where(q <= 0, float(not lower_tail), result)
+        result = np.where(np.isposinf(q), float(lower_tail), result)
+        if log_p:
+            result = np.log(result)
+    return jnp.asarray(np.where(valid & ~np.isnan(q), result, np.nan))
 
 
 def qGB2(p, mu=1.0, sigma=1.0, nu=1.0, tau=1.0, lower_tail=True, log_p=False):
@@ -5971,37 +5959,28 @@ def qGB2(p, mu=1.0, sigma=1.0, nu=1.0, tau=1.0, lower_tail=True, log_p=False):
     z = I^(-1)_p(ν, τ) (inverse incomplete beta)
     q = μ * [z / (1 - z)]^(1/σ)
     """
-    p, mu, sigma, nu, tau = jnp.broadcast_arrays(
-        jnp.asarray(p, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64),
-        jnp.asarray(sigma, dtype=jnp.float64), jnp.asarray(nu, dtype=jnp.float64),
-        jnp.asarray(tau, dtype=jnp.float64)
+    from scipy.special import betaincinv, betainccinv
+
+    p, mu, sigma, nu, tau = np.broadcast_arrays(
+        *[np.asarray(v, dtype=float) for v in (p, mu, sigma, nu, tau)]
     )
-
-    if log_p:
-        p = jnp.exp(p)
-
-    if not lower_tail:
-        p = 1.0 - p
-
-    eps = jnp.finfo(jnp.float64).eps
-    valid = (p >= 0) & (p <= 1) & (mu > 0) & (sigma != 0) & (nu > 0) & (tau > 0)
-    p_safe = jnp.clip(p, eps, 1.0 - eps)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.where(sigma == 0, eps, sigma)
-    nu = jnp.maximum(nu, eps)
-    tau = jnp.maximum(tau, eps)
-
-    # Get z from inverse incomplete beta
-    from scipy.special import betaincinv
-    z = jnp.asarray(betaincinv(np.asarray(nu), np.asarray(tau), np.asarray(p_safe)))
-    z = jnp.clip(z, eps, 1.0 - eps)
-
-    # Transform: q = μ * [z / (1 - z)]^(1/σ)
-    q = mu * jnp.exp(jnp.log(z / (1.0 - z)) / sigma)
-    q = jnp.where(p == 0, 0.0, q)
-    q = jnp.where(p == 1, jnp.inf, q)
-
-    return jnp.where(valid, q, jnp.nan)
+    valid_p = (p <= 0) if log_p else ((p >= 0) & (p <= 1))
+    valid = (valid_p & (mu > 0) & (sigma != 0) & (nu > 0) & (tau > 0)
+             & np.isfinite(mu) & np.isfinite(sigma)
+             & np.isfinite(nu) & np.isfinite(tau))
+    a, b = np.where(sigma > 0, nu, tau), np.where(sigma > 0, tau, nu)
+    with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+        flip = (p > -np.log(2.0)) if log_p else (p > 0.5)
+        probability = (np.where(flip, -np.expm1(p), np.exp(p)) if log_p
+                       else np.where(flip, 1.0 - p, p))
+        # Compute both beta coordinates directly, never as 1 - coordinate.
+        use_lower = np.logical_xor(lower_tail, flip)
+        z = np.where(use_lower, betaincinv(a, b, probability),
+                     betainccinv(a, b, probability))
+        w = np.where(use_lower, betainccinv(b, a, probability),
+                     betaincinv(b, a, probability))
+        result = np.exp(np.log(mu) + (np.log(z) - np.log(w)) / np.abs(sigma))
+    return jnp.asarray(np.where(valid, result, np.nan))
 
 
 def rGB2(key, n, mu=1.0, sigma=1.0, nu=1.0, tau=1.0):
@@ -6039,14 +6018,8 @@ def rGB2(key, n, mu=1.0, sigma=1.0, nu=1.0, tau=1.0):
     nu = jnp.asarray(nu, dtype=jnp.float64)
     tau = jnp.asarray(tau, dtype=jnp.float64)
 
-    eps = jnp.finfo(jnp.float64).eps
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    nu = jnp.maximum(nu, eps)
-    tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), eps)
-
     # Generate uniform samples
-    u = jrandom.uniform(key, shape=(n,))
+    u = jrandom.uniform(key, shape=(n,), dtype=jnp.float64)
 
     # Convert to GB2 samples using quantile function
     samples = qGB2(u, mu, sigma, nu, tau)
