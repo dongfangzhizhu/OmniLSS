@@ -7,7 +7,7 @@ import pytest
 
 from omnilss.model import GAMLSSModel
 from omnilss.distributions_zero_alias_compat import ZABB, ZIBB
-from omnilss.serialization import save_model_json, load_model_json
+from omnilss.serialization import save_model_json, load_model_json, validate_model_json
 
 
 def _model(family):
@@ -39,6 +39,7 @@ def test_roundtrip_constructor_and_probabilities(tmp_path,factory,bd):
     original=factory(bd=bd)
     path=tmp_path/'model.omnilss'
     save_model_json(_model(original),path)
+    assert validate_model_json(path)["ok"]
     loaded=load_model_json(path)
     assert loaded.family.constructor_parameters=={'bd':bd}
     args=(.3,.2,.25)
@@ -56,6 +57,7 @@ def test_legacy_missing_options_uses_default(tmp_path):
     source,target=tmp_path/'new.zip',tmp_path/'old.zip'
     save_model_json(_model(ZABB()),source)
     _rewrite(source,target,lambda meta:meta.pop('family_constructor_parameters'))
+    assert validate_model_json(target)["ok"]
     assert load_model_json(target).family.constructor_parameters=={'bd':10}
 
 
@@ -75,3 +77,38 @@ def test_invalid_options_do_not_silently_restore_default(tmp_path,options):
     _rewrite(source,target,lambda meta:meta.update(family_constructor_parameters=options))
     with pytest.raises(ValueError):
         load_model_json(target)
+
+
+@pytest.mark.parametrize('family,options,code',[
+    ('ZABB',None,'invalid_family_constructor_parameters'),
+    ('ZABB',[], 'invalid_family_constructor_parameters'),
+    ('NO',{'bd':3},'unsupported_family_constructor_parameters'),
+    ('ZIBB',{'bd':3,'extra':1},'unsupported_family_constructor_parameters'),
+    ('ZABB',{'bd':0},'invalid_family_denominator'),
+    ('ZABB',{'bd':[3]},'invalid_family_denominator'),
+    ('ZIBB',{'bd':[True,3]},'invalid_family_denominator'),
+    ('ZIBB',{'bd':['3',2]},'invalid_family_denominator'),
+    ('ZIBB',{'bd':[[1],[2,3]]},'invalid_family_denominator'),
+    ('ZIBB',{'bd':[]},'invalid_family_denominator'),
+    ('ZIBB',{'bd':float('inf')},'invalid_family_denominator'),
+    ('ZIBB',{'bd':1.5},'invalid_family_denominator'),
+])
+def test_validator_loader_constructor_diagnostics_agree(tmp_path,family,options,code):
+    source,target=tmp_path/'valid.zip',tmp_path/'invalid.zip'
+    save_model_json(_model(ZABB(bd=3)),source)
+    _rewrite(source,target,lambda meta:meta.update(family=family,family_constructor_parameters=options))
+    report=validate_model_json(target)
+    assert not report['ok']
+    issue=next(item for item in report['errors'] if item['code']==code)
+    assert issue['path'].startswith('meta.family_constructor_parameters')
+    with pytest.raises(ValueError) as caught:
+        load_model_json(target)
+    assert str(caught.value)==issue['message']
+
+
+@pytest.mark.parametrize('bd',[0,3.,[0,3,17],[[0,1],[2,3]]])
+def test_validator_accepts_supported_zibb_options(tmp_path,bd):
+    path=tmp_path/'valid.zip'
+    save_model_json(_model(ZIBB(bd=bd)),path)
+    assert validate_model_json(path)['ok']
+    assert load_model_json(path).family.constructor_parameters=={'bd':bd}

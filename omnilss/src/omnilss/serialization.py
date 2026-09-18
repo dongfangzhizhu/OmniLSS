@@ -158,6 +158,45 @@ def _artifact_issue(
     }
 
 
+def _family_constructor_issue(meta: dict[str, Any]) -> dict[str, str] | None:
+    """Validate declarative constructor options without constructing a family."""
+    path = "meta.family_constructor_parameters"
+    options = meta.get("family_constructor_parameters", {})
+    if not isinstance(options, dict):
+        return _artifact_issue("invalid_family_constructor_parameters", path,
+                               "family_constructor_parameters must be an object")
+    if not options:
+        return None  # Legacy artifacts and families using default constructors.
+    family = meta.get("family")
+    if family not in ("ZABB", "ZIBB") or set(options) != {"bd"}:
+        return _artifact_issue("unsupported_family_constructor_parameters", path,
+                               "Unsupported family constructor parameters")
+    bd = options["bd"]
+    valid = False
+    if family == "ZABB":
+        valid = isinstance(bd, int) and not isinstance(bd, bool) and bd >= 1
+    else:
+        # Inspect leaves before NumPy conversion so mixed bool/int or string/int
+        # arrays cannot be coerced into apparently valid integer denominators.
+        def numeric_leaves(value):
+            if isinstance(value, list):
+                return bool(value) and all(numeric_leaves(item) for item in value)
+            return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+        if numeric_leaves(bd):
+            try:
+                values = np.asarray(bd)
+                valid = (values.dtype.kind in "iuf" and values.size > 0
+                         and np.all(np.isfinite(values)) and np.all(values >= 0)
+                         and np.all(values == np.floor(values)))
+            except (TypeError, ValueError, OverflowError):
+                valid = False
+    if not valid:
+        return _artifact_issue("invalid_family_denominator", path + ".bd",
+                               "Saved bd must be a valid integer denominator")
+    return None
+
+
 def _artifact_report(
     artifact: Path, errors: list[dict[str, str]], warnings: list[dict[str, str]]
 ) -> dict[str, Any]:
@@ -324,6 +363,9 @@ def validate_model_json(path: str | Path) -> dict[str, Any]:
         )
 
     if not errors or meta:
+        constructor_issue = _family_constructor_issue(meta)
+        if constructor_issue is not None:
+            errors.append(constructor_issue)
         version = str(meta.get("omnilss_version", ""))
         if not version.startswith("0.3."):
             errors.append(
@@ -768,27 +810,17 @@ def load_model_json(path: str | Path):
         etas = {p: npz[f"eta__{p}"] for p in params if f"eta__{p}" in npz}
         y = npz["y"] if "y" in npz.files else np.array([], dtype=np.float64)
 
+    constructor_issue = _family_constructor_issue(meta)
+    if constructor_issue is not None:
+        raise ValueError(constructor_issue["message"])
     options = meta.get("family_constructor_parameters", {})
-    if not isinstance(options, dict):
-        raise ValueError("family_constructor_parameters must be an object")
     if options:
         # Only explicitly supported declarative options are reconstructed.
         # Never silently discard options and fall back to a default family.
         from .distributions_zero_alias_compat import ZABB, ZIBB
         factories = {"ZABB": ZABB, "ZIBB": ZIBB}
-        factory = factories.get(meta["family"])
-        if factory is None or set(options) != {"bd"}:
-            raise ValueError("Unsupported family constructor parameters")
+        factory = factories[meta["family"]]
         bd = options["bd"]
-        if meta["family"] == "ZIBB":
-            values = np.asarray(bd)
-            valid_bd = (values.dtype.kind in "iuf" and values.size > 0
-                        and np.all(np.isfinite(values)) and np.all(values >= 0)
-                        and np.all(values == np.floor(values)))
-        else:
-            valid_bd = isinstance(bd, int) and not isinstance(bd, bool) and bd >= 1
-        if not valid_bd:
-            raise ValueError("Saved bd must be a valid integer denominator")
         fam = factory(bd=bd)
     else:
         # Legacy artifacts omitted constructor state and used default families.
