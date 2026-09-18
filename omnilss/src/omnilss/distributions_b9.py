@@ -97,63 +97,13 @@ def _lg_log_pdf(y, mu):
 
 
 def _lg_p(q, mu=0.5, lower_tail=True, log_p=False):
-    """R LG.R pLG: cumulative sum of dLG over 1..q (discrete)."""
-    import numpy as _np
-    import jax.numpy as jnp
-
-    q_arr = _np.atleast_1d(_np.asarray(q, dtype=_np.float64))
-    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
-    n = max(len(q_arr), len(mu_arr))
-    out = []
-    for i in range(n):
-        qi = int(round(float(q_arr[i % len(q_arr)])))
-        mui = float(mu_arr[i % len(mu_arr)])
-        if qi <= 0:
-            c = 0.0
-        else:
-            ks = _np.arange(1, qi + 1, dtype=_np.float64)
-            # dLG(k, mu) = mu^k / (k * (-log(1-mu)))
-            dens = _np.power(mui, ks) / (ks * (-_np.log1p(-mui)))
-            c = float(_np.sum(dens))
-        out.append(float(min(max(c, 0.0), 1.0)))
-    cdf = _np.array(out)
-    if not lower_tail:
-        cdf = 1.0 - cdf
-    if log_p:
-        cdf = _np.log(cdf)
-    return jnp.asarray(cdf, dtype=jnp.float64)
+    """CPU logarithmic CDF using the shared infinite-tail kernel."""
+    return _logarithmic_p(q, mu, 0.0, lower_tail, log_p)
 
 
-def _lg_q(p, mu=0.5, lower_tail=True, log_p=False, max_value=10000):
-    """R LG.R qLG: walk up 1..max_value until CDF >= p."""
-    import numpy as _np
-    import jax.numpy as jnp
-
-    p_arr = _np.atleast_1d(_np.asarray(p, dtype=_np.float64))
-    if log_p:
-        p_arr = _np.exp(p_arr)
-    if not lower_tail:
-        p_arr = 1.0 - p_arr
-    p_arr = _np.clip(p_arr, 1e-15, 1.0 - 1e-15)
-    mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
-    n = max(len(p_arr), len(mu_arr))
-    out = []
-    for i in range(n):
-        pi = float(p_arr[i % len(p_arr)])
-        mui = float(mu_arr[i % len(mu_arr)])
-        cum = 0.0
-        qq = 0
-        if pi >= 1.0:
-            out.append(float('inf'))
-            continue
-        for j in range(1, max_value + 1):
-            cum += _np.power(mui, j) / (j * (-_np.log1p(-mui)))
-            qq = j
-            if pi <= cum:
-                break
-        out.append(float(qq))
-    res = _np.array(out)
-    return jnp.asarray(res, dtype=jnp.float64)
+def _lg_q(p, mu=0.5, lower_tail=True, log_p=False, max_value=None):
+    """Dynamic logarithmic quantile; unresolved explicit caps return NaN."""
+    return _logarithmic_q(p, mu, 0.0, lower_tail, log_p, max_value)
 
 
 def _lg_r(key, n, mu=0.5):
@@ -465,14 +415,14 @@ def _zalg_log_pdf(y, mu, nu):
     return jnp.where(y < 0, -jnp.inf, jnp.where(y == 0, log_at0, log_cont))
 
 
-def _zalg_logsf(q, mu, sigma):
+def _logarithmic_logsf(q, mu, sigma):
     """Scalar log survival via an integral of the infinite logarithmic tail.
 
     For m=floor(q)+1, sum(mu**k/k, k=m..inf) equals
     mu**m/m * integral(exp(-u)/(1-mu*exp(-u/m)), u=0..inf).
     This avoids allocating support grids and retains underflowed log tails.
     """
-    if not (0 < mu < 1 and 0 < sigma < 1) or np.isnan(q):
+    if not (0 < mu < 1 and 0 <= sigma < 1) or np.isnan(q):
         return np.nan
     if q < 0:
         return 0.0
@@ -490,10 +440,10 @@ def _zalg_logsf(q, mu, sigma):
             + math.log(integral) - math.log(-math.log1p(-mu)))
 
 
-def _zalg_p(q, mu=0.5, sigma=0.1, lower_tail=True, log_p=False):
+def _logarithmic_p(q, mu, sigma, lower_tail=True, log_p=False):
     """CPU CDF/survival with an untruncated logarithmic tail."""
     q, mu, sigma = np.broadcast_arrays(*[np.asarray(v, dtype=float) for v in (q, mu, sigma)])
-    logs = np.array([_zalg_logsf(x, m, s) for x, m, s in
+    logs = np.array([_logarithmic_logsf(x, m, s) for x, m, s in
                      zip(q.flat, mu.flat, sigma.flat)]).reshape(q.shape)
     with np.errstate(divide="ignore", invalid="ignore"):
         result = -np.expm1(logs) if lower_tail else np.exp(logs)
@@ -502,7 +452,7 @@ def _zalg_p(q, mu=0.5, sigma=0.1, lower_tail=True, log_p=False):
     return jnp.asarray(result)
 
 
-def _zalg_q(p, mu=0.5, sigma=0.1, lower_tail=True, log_p=False, max_value=None):
+def _logarithmic_q(p, mu, sigma, lower_tail=True, log_p=False, max_value=None):
     """CPU inverse CDF with doubling/bisection; unresolved capped searches yield NaN.
 
     The default searches up to 2**53-1, the exact integer range of float64.
@@ -517,13 +467,18 @@ def _zalg_q(p, mu=0.5, sigma=0.1, lower_tail=True, log_p=False, max_value=None):
     out = np.full(p.shape, np.nan)
     for index in np.ndindex(p.shape):
         prob, m, s = p[index], mu[index], sigma[index]
-        if not (0 < m < 1 and 0 < s < 1) or np.isnan(prob):
+        if not (0 < m < 1 and 0 <= s < 1) or np.isnan(prob):
             continue
         if (log_p and prob > 0) or (not log_p and not 0 <= prob <= 1):
             continue
         with np.errstate(divide="ignore", invalid="ignore"):
             target = (np.log(-np.expm1(prob)) if lower_tail else prob) if log_p else (
                 np.log1p(-prob) if lower_tail else np.log(prob))
+        # LG has no atom at zero: positive probabilities below the floating
+        # exponential range still map to its first support point, not zero.
+        if s == 0 and log_p and lower_tail and np.isfinite(prob) and target == 0:
+            out[index] = 1.0 if cap >= 1 else np.nan
+            continue
         if target >= math.log1p(-s):
             out[index] = 0
             continue
@@ -531,18 +486,30 @@ def _zalg_q(p, mu=0.5, sigma=0.1, lower_tail=True, log_p=False, max_value=None):
             out[index] = np.inf
             continue
         lo, hi = 0, min(1, cap)
-        while hi < cap and _zalg_logsf(hi, m, s) > target:
+        while hi < cap and _logarithmic_logsf(hi, m, s) > target:
             lo, hi = hi, min(2 * hi, cap)
-        if _zalg_logsf(hi, m, s) > target:
+        if _logarithmic_logsf(hi, m, s) > target:
             continue
         while hi - lo > 1:
             mid = (lo + hi) // 2
-            if _zalg_logsf(mid, m, s) <= target:
+            if _logarithmic_logsf(mid, m, s) <= target:
                 hi = mid
             else:
                 lo = mid
         out[index] = hi
     return jnp.asarray(out)
+
+
+def _zalg_p(q, mu=0.5, sigma=0.1, lower_tail=True, log_p=False):
+    sigma = np.asarray(sigma, dtype=float)
+    sigma = np.where((sigma > 0) & (sigma < 1), sigma, np.nan)
+    return _logarithmic_p(q, mu, sigma, lower_tail, log_p)
+
+
+def _zalg_q(p, mu=0.5, sigma=0.1, lower_tail=True, log_p=False, max_value=None):
+    sigma = np.asarray(sigma, dtype=float)
+    sigma = np.where((sigma > 0) & (sigma < 1), sigma, np.nan)
+    return _logarithmic_q(p, mu, sigma, lower_tail, log_p, max_value)
 
 
 def _zalg_r(key, n, mu=0.5, sigma=0.1):
