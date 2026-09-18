@@ -48,58 +48,12 @@ class BetaBinomialFamily(FamilyDefinition):
 
 
 def _bb_log_pdf(y, mu, sigma, bd):
-    """Beta Binomial log-pdf.
-    
-    The Beta Binomial distribution is a binomial distribution where
-    the probability parameter p follows a Beta(alpha, beta) distribution.
-    
-    Parameters:
-    - y: observed count (0 to bd)
-    - mu: mean probability (0 to 1)
-    - sigma: dispersion parameter (> 0)
-    - bd: binomial denominator (number of trials, FIXED parameter from data)
-    
-    R parameterization (from gamlss.dist):
-    alpha = mu * (1/sigma - 1)
-    beta = (1 - mu) * (1/sigma - 1)
-    
-    Note: bd must be provided in the data and will not be estimated.
+    """Shared BB density: alpha=mu/sigma, beta=(1-mu)/sigma.
+
+    bd is fixed; sigma < 1e-4 uses the same binomial limit as p/q.
     """
-    eps = jnp.finfo(jnp.float64).eps
-    mu = jnp.clip(mu, eps, 1.0 - eps)
-    sigma = jnp.maximum(sigma, eps)
-    # Ensure bd is positive (it should come from data)
-    bd = jnp.maximum(bd, 1.0)
-    
-    # R parameterization from gamlss.dist/R/BB.R:
-    # k = 1/sigma
-    # alpha = mu * k = mu/sigma
-    # beta = (1-mu) * k = (1-mu)/sigma
-    # 
-    # logfy = lgamma(bd+1) - lgamma(y+1) - lgamma(bd-y+1)
-    #         + lgamma(k) + lgamma(y + mu*k) + lgamma(bd + (1-mu)*k - y)
-    #         - lgamma(mu*k) - lgamma((1-mu)*k) - lgamma(bd + k)
-    #
-    # Note: When sigma < 0.0001, R uses binomial limit
-    
-    k = 1.0 / sigma
-    
-    # Numerical guards
-    # When sigma is very small (k very large), we approach the binomial limit
-    # R uses sigma >= 1e-10, so k <= 1e10
-    k = jnp.minimum(k, 1e10)
-    
-    log_pdf = (
-        gammaln(bd + 1.0) - gammaln(y + 1.0) - gammaln(bd - y + 1.0) +
-        gammaln(k) +
-        gammaln(y + mu * k) +
-        gammaln(bd + (1.0 - mu) * k - y) -
-        gammaln(mu * k) -
-        gammaln((1.0 - mu) * k) -
-        gammaln(bd + k)
-    )
-    
-    return log_pdf
+    from .dpqr_functions import dBB
+    return dBB(y, mu, sigma, bd, log=True)
 
 
 def BB() -> BetaBinomialFamily:
@@ -112,7 +66,7 @@ def BB() -> BetaBinomialFamily:
         data = {"y": counts, "bd": denominators}
         model = gamlss(formula="y ~ x", family=BB(), data=data)
     """
-    from .dpqr_functions import pBB, qBB, rBB
+    from .dpqr_functions import dBB, pBB, qBB, rBB
     return build_ad_family(
         family_class=BetaBinomialFamily,
         name="BB",
@@ -124,6 +78,7 @@ def BB() -> BetaBinomialFamily:
         link_inverses={"mu": logit_inverse, "sigma": log_inverse, "bd": identity_inverse},
         link_derivatives={"mu": logit_derivative, "sigma": log_derivative, "bd": identity_derivative},
         fixed_parameters=("bd",),  # bd is fixed, not estimated
+        d=dBB,
         p=pBB,
         q=qBB,
         r=rBB,

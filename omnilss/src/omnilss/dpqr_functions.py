@@ -6849,33 +6849,27 @@ def dBB(x, mu=0.5, sigma=1.0, bd=10, log=False):
     between the sets of trials. Journal of the Royal Statistical Society
     Series B, 10(2), 257-261.
     """
-    x = jnp.asarray(x, dtype=jnp.float64)
-    mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    bd = jnp.asarray(bd, dtype=jnp.float64)
-
-    eps = jnp.finfo(jnp.float64).eps
-    mu = jnp.clip(mu, eps, 1.0 - eps)
-    sigma = jnp.maximum(sigma, eps)
-    bd = jnp.maximum(bd, 1.0)
-
-    # k = 1/sigma
-    k = 1.0 / sigma
-    k = jnp.minimum(k, 1e10)  # Numerical guard
-
-    # log p(x)
-    log_pdf = (
-        gammaln(bd + 1.0) - gammaln(x + 1.0) - gammaln(bd - x + 1.0) +
-        gammaln(k) +
-        gammaln(x + mu * k) +
-        gammaln(bd + (1.0 - mu) * k - x) -
-        gammaln(mu * k) -
-        gammaln((1.0 - mu) * k) -
-        gammaln(bd + k)
-    )
-
-    # Handle x outside [0, bd]
-    log_pdf = jnp.where((x < 0) | (x > bd), -jnp.inf, log_pdf)
+    x, mu, sigma, bd = jnp.broadcast_arrays(
+        *[jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, bd)])
+    valid = ((mu > 0) & (mu < 1) & (sigma > 0) & jnp.isfinite(sigma)
+             & (bd >= 0) & jnp.isfinite(bd) & (bd == jnp.floor(bd)))
+    support = (x >= 0) & (x <= bd) & (x == jnp.floor(x)) & jnp.isfinite(x)
+    y = jnp.where(support, x, 0.)
+    m = jnp.where(valid, mu, .5)
+    n = jnp.where(valid, bd, 1.)
+    small = sigma < 1e-4
+    # Keep the inactive beta branch finite even for sigma below float range.
+    s = jnp.where(valid & ~small, sigma, 1.)
+    a, b = m/s, (1-m)/s
+    choose = gammaln(n+1) - gammaln(y+1) - gammaln(n-y+1)
+    # JAX betaln's approximation can lose ~1e-6 for small shape sums;
+    # the gamma identity preserves R agreement in the regular branch.
+    beta_log = (choose + gammaln(y+a) + gammaln(n-y+b) - gammaln(n+a+b)
+                - gammaln(a) - gammaln(b) + gammaln(a+b))
+    binomial_log = choose + y*jnp.log(m) + (n-y)*jnp.log1p(-m)
+    log_pdf = jnp.where(small, binomial_log, beta_log)
+    log_pdf = jnp.where(support, log_pdf, -jnp.inf)
+    log_pdf = jnp.where(valid & ~jnp.isnan(x), log_pdf, jnp.nan)
 
     if log:
         return log_pdf
