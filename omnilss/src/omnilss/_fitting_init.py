@@ -20,6 +20,10 @@ def _initial_parameter_value(
     if parameter == "sigma":
         return _initial_sigma(family, y, mu, w)
     if parameter == "nu":
+        if family.name in ("ZABB", "ZIBB"):
+            # nu is a probability, not a generic shape initialized at one.
+            zero_fraction = float(np.average(np.asarray(y) == 0, weights=w))
+            return float(np.clip(zero_fraction, 0.05, 0.95))
         if family.name == "PE":
             return 1.8
         if family.name == "TF":
@@ -109,6 +113,17 @@ def _initial_mu_beta(
     elif family.name == "BI":
         clipped = np.clip(y, 1e-6, 1.0 - 1e-6)
         target = np.log(clipped / (1.0 - clipped))
+    elif family.name in ("ZABB", "ZIBB"):
+        options = family.constructor_parameters or {}
+        bd = np.asarray(options.get("bd", 10), dtype=np.float64)
+        bd = np.broadcast_to(bd, y.shape)
+        if np.any(~np.isfinite(bd) | (bd < 1) | (bd != np.floor(bd))):
+            raise ValueError("Zero-BB fitting requires positive integer bd per observation")
+        if np.any(~np.isfinite(y) | (y < 0) | (y > bd) | (y != np.floor(y))):
+            raise ValueError("Zero-BB response must be an integer in [0, bd]")
+        # Half-count adjustment avoids logit infinities at zero and bd.
+        probability = (y + 0.5) / (bd + 1.0)
+        target = np.log(probability) - np.log1p(-probability)
     elif family.name == "BB":
         if fixed_parameter_values is None or "bd" not in fixed_parameter_values:
             raise ValueError("BB initialization requires fixed parameter 'bd'")
@@ -172,6 +187,8 @@ def _initial_sigma(
     """Construct a family-aware starting point for the sigma parameter."""
 
     eps = np.finfo(np.float64).eps
+    if family.name in ("ZABB", "ZIBB"):
+        return 0.1
     if family.name == "LOGNO":
         log_y = np.log(np.maximum(y, eps))
         sigma = np.sqrt(np.sum(w * np.square(log_y - mu)) / np.sum(w))
