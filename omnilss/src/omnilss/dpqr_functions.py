@@ -6991,7 +6991,7 @@ def rBB(key, n, mu=0.5, sigma=1.0, bd=10):
     sigma : array_like
         Dispersion parameter (sigma > 0)
     bd : array_like
-        Binomial denominator (bd >= 1)
+        Nonnegative integer binomial denominator; zero gives all-zero samples.
 
     Returns
     -------
@@ -7004,33 +7004,44 @@ def rBB(key, n, mu=0.5, sigma=1.0, bd=10):
     1. Generate p ~ Beta(alpha, beta) where alpha = mu/sigma, beta = (1-mu)/sigma
     2. Generate x ~ Binomial(bd, p)
     3. Return x
+
+    Parameters must broadcast to (n,). Invalid parameter elements return NaN.
+    n must be a nonnegative static integer (including when used with jit).
     """
+    if isinstance(n, (bool, np.bool_)) or not isinstance(n, (int, np.integer)) or n < 0:
+        raise ValueError("n must be a nonnegative integer")
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     bd = jnp.asarray(bd, dtype=jnp.float64)
 
-    eps = jnp.finfo(jnp.float64).eps
-    mu = jnp.clip(mu, eps, 1.0 - eps)
-    sigma = jnp.maximum(sigma, eps)
-    bd = jnp.maximum(bd, 1.0)
+    mu, sigma, bd = [jnp.broadcast_to(v, (n,)) for v in (mu, sigma, bd)]
+    valid = ((mu > 0) & (mu < 1) & (sigma > 0) & jnp.isfinite(sigma)
+             & (bd >= 0) & jnp.isfinite(bd) & (bd == jnp.floor(bd)))
+    small = sigma < 1e-4
+    safe_mu = jnp.where(valid, mu, .5)
+    safe_bd = jnp.where(valid, bd, 0.)
+    # The beta draw is unused in the binomial/degenerate branches. Avoid
+    # enormous shapes or NaNs there rather than relying on output masking.
+    beta_active = valid & ~small & (bd > 0)
+    safe_sigma = jnp.where(beta_active, sigma, 1.)
+    beta_mu = jnp.where(beta_active, safe_mu, .5)
 
     # Split key
     key1, key2 = jrandom.split(key)
 
     # Beta parameters
-    k = 1.0 / sigma
-    alpha = mu * k
-    beta = (1.0 - mu) * k
+    alpha = beta_mu / safe_sigma
+    beta = (1.0 - beta_mu) / safe_sigma
 
     # Generate Beta samples
-    p_samples = jrandom.beta(key1, alpha, beta, shape=(n,))
+    p_samples = jrandom.beta(key1, alpha, beta, shape=(n,), dtype=jnp.float64)
 
     # One vectorized draw supplies independent randomness for every observation;
     # reusing key2 inside a Python loop made the old samples correlated.
-    probabilities = jnp.where(sigma < 0.0001, mu, p_samples)
-    samples = jrandom.binomial(key2, n=bd, p=probabilities, shape=(n,))
+    probabilities = jnp.where(small, safe_mu, p_samples)
+    samples = jrandom.binomial(key2, n=safe_bd, p=probabilities, shape=(n,))
 
-    return samples
+    return jnp.where(valid, samples, jnp.nan)
 
 
 # ------------------------------------------------------------------------------
