@@ -56,7 +56,10 @@ def mixed_fit(
     max_iter: int = 20,
     tol: float = 1e-4,
     rtol: float = 1e-6,
-    verbose: bool = False
+    verbose: bool = False,
+    *,
+    weights=None,
+    parameter_formulas=None,
 ) -> GAMLSSModel:
     """Fit GAMLSS model using Mixed algorithm.
     
@@ -71,6 +74,9 @@ def mixed_fit(
         nu_formula: Formula for nu parameter (if applicable)
         tau_formula: Formula for tau parameter (if applicable)
         family: Distribution family name or configured family instance
+        weights: Optional observation weights, forwarded to either backend.
+        parameter_formulas: Parameter formula mapping. Entries take precedence
+            over the legacy nu_formula/tau_formula arguments; input is copied.
         data: Dictionary of data arrays
         algorithm: Algorithm selection strategy:
             - "auto": Automatically select best algorithm (currently uses RS)
@@ -102,9 +108,14 @@ def mixed_fit(
         print("Mixed Algorithm")
         print("=" * 70)
     
+    formulas = dict(parameter_formulas or {})
+    if nu_formula is not None:
+        formulas.setdefault("nu", nu_formula)
+    if tau_formula is not None:
+        formulas.setdefault("tau", tau_formula)
     response_name = formula.split("~", 1)[0].strip()
     n = len(np.asarray(data[response_name])) if response_name in data else 0
-    has_smooth = _contains_smooth_terms(formula, sigma_formula, nu_formula, tau_formula)
+    has_smooth = _contains_smooth_terms(formula, sigma_formula, *formulas.values())
 
     # Algorithm selection
     if algorithm == "auto":
@@ -134,17 +145,11 @@ def mixed_fit(
     
     # Fit using selected algorithm
     if selected_algorithm == "rs":
-        # Build parameter_formulas for nu and tau
-        parameter_formulas = {}
-        if nu_formula is not None:
-            parameter_formulas["nu"] = nu_formula
-        if tau_formula is not None:
-            parameter_formulas["tau"] = tau_formula
-        
         model = rs_fit(
             formula=formula,
             sigma_formula=sigma_formula,
-            parameter_formulas=parameter_formulas if parameter_formulas else None,
+            parameter_formulas=formulas or None,
+            weights=weights,
             family=family,
             data=data,
             max_iter=max_iter,
@@ -162,6 +167,8 @@ def mixed_fit(
             sigma_formula=sigma_formula,
             nu_formula=nu_formula,
             tau_formula=tau_formula,
+            parameter_formulas=formulas or None,
+            weights=weights,
             family=family,
             data=data,
             max_outer_iter=max_iter,

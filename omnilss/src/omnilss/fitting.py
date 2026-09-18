@@ -1257,6 +1257,8 @@ def gamlss(
         mixed_model = mixed_fit(
             formula=formula,
             sigma_formula=sigma_formula,
+            parameter_formulas=parameter_formulas,
+            weights=weights,
             family=family,
             data=data,
             algorithm="auto",

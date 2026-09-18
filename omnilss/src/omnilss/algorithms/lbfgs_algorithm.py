@@ -168,6 +168,9 @@ def joint_lbfgs_fit(
     outer_tol: float = 1e-4,
     inner_tol: float = 1e-4,
     verbose: bool = False,
+    *,
+    weights=None,
+    parameter_formulas=None,
 ) -> GAMLSSModel:
     """Joint L-BFGS optimizer wrapper.
 
@@ -194,6 +197,10 @@ def joint_lbfgs_fit(
         Distribution family
     data : dict
         Data dictionary {variable: array}
+    weights : array-like, optional
+        Observation weights passed to the full-Hessian CG backend.
+    parameter_formulas : mapping, optional
+        Parameter formulas; entries override legacy nu_formula/tau_formula.
     mu_step, sigma_step, nu_step, tau_step : float
         Deprecated compatibility arguments; the full-Hessian CG backend uses
         its own damped line search.
@@ -214,19 +221,18 @@ def joint_lbfgs_fit(
 
     from ..fitting import gamlss, gamlss_control
 
-    parameter_formulas: dict | None = None
-    if nu_formula is not None or tau_formula is not None:
-        parameter_formulas = {}
-        if nu_formula is not None:
-            parameter_formulas["nu"] = nu_formula
-        if tau_formula is not None:
-            parameter_formulas["tau"] = tau_formula
+    parameter_formulas = dict(parameter_formulas or {})
+    if nu_formula is not None:
+        parameter_formulas.setdefault("nu", nu_formula)
+    if tau_formula is not None:
+        parameter_formulas.setdefault("tau", tau_formula)
 
     fam = resolve_family(family)
     model = gamlss(
         formula=formula,
         sigma_formula=sigma_formula,
-        parameter_formulas=parameter_formulas,
+        parameter_formulas=parameter_formulas or None,
+        weights=weights,
         family=fam,
         data=data,
         method="CG",
