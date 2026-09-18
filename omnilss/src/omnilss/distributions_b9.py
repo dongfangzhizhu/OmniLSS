@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
+import numpy as np
+from scipy.integrate import quad
 
 import jax.numpy as jnp
 import jax.random as jrandom
@@ -463,50 +465,84 @@ def _zalg_log_pdf(y, mu, nu):
     return jnp.where(y < 0, -jnp.inf, jnp.where(y == 0, log_at0, log_cont))
 
 
+def _zalg_logsf(q, mu, sigma):
+    """Scalar log survival via an integral of the infinite logarithmic tail.
+
+    For m=floor(q)+1, sum(mu**k/k, k=m..inf) equals
+    mu**m/m * integral(exp(-u)/(1-mu*exp(-u/m)), u=0..inf).
+    This avoids allocating support grids and retains underflowed log tails.
+    """
+    if not (0 < mu < 1 and 0 < sigma < 1) or np.isnan(q):
+        return np.nan
+    if q < 0:
+        return 0.0
+    if np.isposinf(q):
+        return -np.inf
+    if q < 1:
+        return math.log1p(-sigma)
+    m = math.floor(q) + 1
+    log_mu = math.log(mu)
+    integral, _ = quad(
+        lambda u: math.exp(-u) / -math.expm1(log_mu - u / m),
+        0, np.inf, epsabs=1e-11, epsrel=1e-11, limit=200,
+    )
+    return (math.log1p(-sigma) + m * log_mu - math.log(m)
+            + math.log(integral) - math.log(-math.log1p(-mu)))
+
+
 def _zalg_p(q, mu=0.5, sigma=0.1, lower_tail=True, log_p=False):
-    """CDF of R's zero-adjusted logarithmic distribution."""
-    q, mu, sigma = jnp.broadcast_arrays(
-        jnp.asarray(q, dtype=jnp.float64),
-        jnp.asarray(mu, dtype=jnp.float64),
-        jnp.asarray(sigma, dtype=jnp.float64),
-    )
-    mu = jnp.clip(mu, 1e-15, 1.0 - 1e-15)
-    sigma = jnp.clip(sigma, 1e-15, 1.0 - 1e-15)
-    k = jnp.arange(1, 10001, dtype=jnp.float64)
-    terms = mu[..., None] ** k / (k * (-jnp.log1p(-mu[..., None])))
-    cdf = sigma + (1.0 - sigma) * jnp.sum(
-        jnp.where(k <= jnp.floor(q)[..., None], terms, 0.0), axis=-1
-    )
-    cdf = jnp.where(q < 0, 0.0, cdf)
-    cdf = jnp.where(jnp.isposinf(q), 1.0, cdf)
-    if not lower_tail:
-        cdf = 1.0 - cdf
-    return jnp.log(cdf) if log_p else cdf
+    """CPU CDF/survival with an untruncated logarithmic tail."""
+    q, mu, sigma = np.broadcast_arrays(*[np.asarray(v, dtype=float) for v in (q, mu, sigma)])
+    logs = np.array([_zalg_logsf(x, m, s) for x, m, s in
+                     zip(q.flat, mu.flat, sigma.flat)]).reshape(q.shape)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        result = -np.expm1(logs) if lower_tail else np.exp(logs)
+        if log_p:
+            result = np.log(result) if lower_tail else logs
+    return jnp.asarray(result)
 
 
-def _zalg_q(p, mu=0.5, sigma=0.1, lower_tail=True, log_p=False, max_value=10000):
-    """Inverse CDF for ZALG, with R-compatible finite search cap."""
-    p, mu, sigma = jnp.broadcast_arrays(
-        jnp.asarray(p, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64),
-        jnp.asarray(sigma, dtype=jnp.float64)
-    )
-    if log_p:
-        p = jnp.exp(p)
-    if not lower_tail:
-        p = 1.0 - p
-    k = jnp.arange(0, max_value + 1, dtype=jnp.float64)
-    positive = jnp.arange(1, 10001, dtype=jnp.float64)
-    terms = mu[..., None] ** positive / (positive * (-jnp.log1p(-mu[..., None])))
-    cdf = sigma[..., None] + (1.0 - sigma[..., None]) * jnp.cumsum(
-        terms, axis=-1
-    )
-    cdf = jnp.concatenate((sigma[..., None], cdf), axis=-1)
-    crossed = cdf >= p[..., None]
-    result = jnp.argmax(crossed, axis=-1).astype(jnp.float64)
-    result = jnp.where(jnp.any(crossed, axis=-1), result, float(max_value))
-    result = jnp.where(p >= 1.0, jnp.inf, result)
-    result = jnp.where(p == 0.0, 0.0, result)
-    return jnp.where((p >= 0.0) & (p <= 1.0), result, jnp.nan)
+def _zalg_q(p, mu=0.5, sigma=0.1, lower_tail=True, log_p=False, max_value=None):
+    """CPU inverse CDF with doubling/bisection; unresolved capped searches yield NaN.
+
+    The default searches up to 2**53-1, the exact integer range of float64.
+    An explicit max_value must be a nonnegative integer in this range.
+    """
+    if max_value is not None and (isinstance(max_value, (bool, np.bool_))
+            or not isinstance(max_value, (int, np.integer))
+            or not 0 <= max_value <= 2**53 - 1):
+        raise ValueError("max_value must be an integer in [0, 2**53-1] or None")
+    cap = 2**53 - 1 if max_value is None else int(max_value)
+    p, mu, sigma = np.broadcast_arrays(*[np.asarray(v, dtype=float) for v in (p, mu, sigma)])
+    out = np.full(p.shape, np.nan)
+    for index in np.ndindex(p.shape):
+        prob, m, s = p[index], mu[index], sigma[index]
+        if not (0 < m < 1 and 0 < s < 1) or np.isnan(prob):
+            continue
+        if (log_p and prob > 0) or (not log_p and not 0 <= prob <= 1):
+            continue
+        with np.errstate(divide="ignore", invalid="ignore"):
+            target = (np.log(-np.expm1(prob)) if lower_tail else prob) if log_p else (
+                np.log1p(-prob) if lower_tail else np.log(prob))
+        if target >= math.log1p(-s):
+            out[index] = 0
+            continue
+        if np.isneginf(target):
+            out[index] = np.inf
+            continue
+        lo, hi = 0, min(1, cap)
+        while hi < cap and _zalg_logsf(hi, m, s) > target:
+            lo, hi = hi, min(2 * hi, cap)
+        if _zalg_logsf(hi, m, s) > target:
+            continue
+        while hi - lo > 1:
+            mid = (lo + hi) // 2
+            if _zalg_logsf(mid, m, s) <= target:
+                hi = mid
+            else:
+                lo = mid
+        out[index] = hi
+    return jnp.asarray(out)
 
 
 def _zalg_r(key, n, mu=0.5, sigma=0.1):
