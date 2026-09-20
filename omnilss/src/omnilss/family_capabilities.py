@@ -158,6 +158,11 @@ _R_CONSISTENCY_EVIDENCE = frozenset(
 # yet a universal production default.
 _RS_JAX_SUPPORTED = frozenset({"NO", "GA", "PO", "BI", "WEI", "TF"})
 
+# Fixed R regression coverage for the ordinary RS fitting route.  This is a
+# feature-level admission signal only; it does not make the family production
+# safe or claim CG/MIXED parity.
+_RS_FIT_EVIDENCE = frozenset({"NO", "ZIP"})
+
 # Keep this set small.  A family is production-safe only when the current codebase
 # has strong evidence across fit, prediction, artifact, and R-consistency paths.
 _PRODUCTION_SAFE = frozenset({"NO"})
@@ -458,7 +463,11 @@ def _build_capability(name: str) -> FamilyCapability:
 
     # Normal RS is the broadest runtime path, but most families still need more
     # validation evidence before they can be called production-safe.
-    features["rs_fit"] = CapabilityStatus.EXPERIMENTAL
+    features["rs_fit"] = (
+        CapabilityStatus.VALIDATED
+        if key in _RS_FIT_EVIDENCE
+        else CapabilityStatus.EXPERIMENTAL
+    )
     features["prediction"] = CapabilityStatus.EXPERIMENTAL
     features["sampling"] = CapabilityStatus.EXPERIMENTAL
     features["smooth_terms"] = CapabilityStatus.EXPERIMENTAL

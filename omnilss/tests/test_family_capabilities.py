@@ -95,6 +95,14 @@ def test_zipf_and_zalg_r_consistency_evidence_is_registered():
         assert capability.status("r_consistency") is CapabilityStatus.VALIDATED
 
 
+def test_zip_rs_fit_evidence_is_admitted_in_strict_route():
+    capability = get_family_capability("ZIP")
+    assert capability.status("rs_fit") is CapabilityStatus.VALIDATED
+    report = method_route_capability_report("ZIP", "RS", strict=True)
+    assert report["ok"] is True
+    assert report["code"] == "validated"
+
+
 def test_sichel_boundary_nan_handling_is_not_placeholder_behavior():
     """Invalid-input NaN returns must not mask a complete SICHEL dpqr wiring."""
     capability = get_family_capability("SICHEL")

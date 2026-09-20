@@ -44,7 +44,7 @@ def build_coverage() -> dict:
                 "has_fitting": bool(getattr(cap, "fitting", False)),
                 "has_smoothing": bool(getattr(cap, "smoothing", False)),
             }
-            for key, evidence in (("r_consistency", "evidence_tier_dpqr"), ("fitting", "evidence_tier_fitting")):
+            for key, evidence in (("r_consistency", "evidence_tier_dpqr"), ("rs_fit", "evidence_tier_fitting")):
                 try:
                     info[evidence] = cap.status(key).name
                 except Exception:
