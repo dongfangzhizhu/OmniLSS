@@ -13,6 +13,10 @@ message RouteCapabilityRequest {
   string family = 1;
   string method = 2;
   bool strict = 3;
+  string formula = 4;
+  string sigma_formula = 5;
+  string nu_formula = 6;
+  string tau_formula = 7;
 }
 
 message RouteCapabilityResponse {

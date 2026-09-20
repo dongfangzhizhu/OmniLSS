@@ -294,7 +294,7 @@ def test_grpc_route_capability_requires_family_and_method() -> None:
 
     assert response.success is False
     assert response.report_json == "{}"
-    assert "non-empty family and method" in response.error
+    assert response.error == "ValueError error"
 
 
 def test_model_registry_list_and_delete(tmp_path, monkeypatch) -> None:

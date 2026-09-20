@@ -24,3 +24,12 @@ def test_grpc_route_preflight_legacy_still_returns_capability_report():
     report=json.loads(response.report_json)
     assert response.success is True
     assert report['method']=='CG'
+
+
+def test_grpc_route_preflight_accepts_formula_fields():
+    service,*_=grpc_server.create_service()
+    response=service.RouteCapability(capability_pb2.RouteCapabilityRequest(
+        family='NO',method='CG',formula='y ~ x',sigma_formula='~ pb(x)'),None)
+    report=json.loads(response.report_json)
+    assert report['code']=='smooth_terms_unsupported_for_method'
+    assert report['smooth_parameters']==['sigma']

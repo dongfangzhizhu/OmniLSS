@@ -346,6 +346,14 @@ def create_service():
             try:
                 family = str(request.family).strip()
                 method = str(request.method).strip()
+                formulas = {
+                    key: value for key, value in {
+                        "mu": str(request.formula).strip(),
+                        "sigma": str(request.sigma_formula).strip(),
+                        "nu": str(request.nu_formula).strip(),
+                        "tau": str(request.tau_formula).strip(),
+                    }.items() if value
+                }
                 if not family or not method:
                     raise ValueError(
                         "route capability checks require non-empty family and method"
@@ -353,7 +361,7 @@ def create_service():
                 return capability_pb2.RouteCapabilityResponse(
                     report_json=_to_json(
                         method_route_capability_report(
-                            family, method, strict=bool(request.strict)
+                            family, method, strict=bool(request.strict), formulas=formulas
                         )
                     ),
                     success=True,

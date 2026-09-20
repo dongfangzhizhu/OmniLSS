@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10\x63\x61pability.proto\x12\x07omnilss\"\x19\n\x17\x43\x61pabilityMatrixRequest\"O\n\x18\x43\x61pabilityMatrixResponse\x12\x13\n\x0bmatrix_json\x18\x01 \x01(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\t\"H\n\x16RouteCapabilityRequest\x12\x0e\n\x06\x66\x61mily\x18\x01 \x01(\t\x12\x0e\n\x06method\x18\x02 \x01(\t\x12\x0e\n\x06strict\x18\x03 \x01(\x08\"N\n\x17RouteCapabilityResponse\x12\x13\n\x0breport_json\x18\x01 \x01(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\t\"\x10\n\x0eVersionRequest\"\x84\x01\n\x0fVersionResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x16\n\x0epython_version\x18\x02 \x01(\t\x12\x13\n\x0bjax_version\x18\x03 \x01(\t\x12\x13\n\x0bx64_enabled\x18\x04 \x01(\t\x12\x0f\n\x07success\x18\x05 \x01(\x08\x12\r\n\x05\x65rror\x18\x06 \x01(\t\"\x0f\n\rHealthRequest\"U\n\x0eHealthResponse\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x13\n\x0bmodel_count\x18\x02 \x01(\x03\x12\x0f\n\x07success\x18\x03 \x01(\x08\x12\r\n\x05\x65rror\x18\x04 \x01(\t2\xbb\x02\n\x11\x43\x61pabilityService\x12W\n\x10\x43\x61pabilityMatrix\x12 .omnilss.CapabilityMatrixRequest\x1a!.omnilss.CapabilityMatrixResponse\x12T\n\x0fRouteCapability\x12\x1f.omnilss.RouteCapabilityRequest\x1a .omnilss.RouteCapabilityResponse\x12<\n\x07Version\x12\x17.omnilss.VersionRequest\x1a\x18.omnilss.VersionResponse\x12\x39\n\x06Health\x12\x16.omnilss.HealthRequest\x1a\x17.omnilss.HealthResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10\x63\x61pability.proto\x12\x07omnilss\"\x19\n\x17\x43\x61pabilityMatrixRequest\"O\n\x18\x43\x61pabilityMatrixResponse\x12\x13\n\x0bmatrix_json\x18\x01 \x01(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\t\"\x99\x01\n\x16RouteCapabilityRequest\x12\x0e\n\x06\x66\x61mily\x18\x01 \x01(\t\x12\x0e\n\x06method\x18\x02 \x01(\t\x12\x0e\n\x06strict\x18\x03 \x01(\x08\x12\x0f\n\x07\x66ormula\x18\x04 \x01(\t\x12\x15\n\rsigma_formula\x18\x05 \x01(\t\x12\x12\n\nnu_formula\x18\x06 \x01(\t\x12\x13\n\x0btau_formula\x18\x07 \x01(\t\"N\n\x17RouteCapabilityResponse\x12\x13\n\x0breport_json\x18\x01 \x01(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\t\"\x10\n\x0eVersionRequest\"\x84\x01\n\x0fVersionResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x16\n\x0epython_version\x18\x02 \x01(\t\x12\x13\n\x0bjax_version\x18\x03 \x01(\t\x12\x13\n\x0bx64_enabled\x18\x04 \x01(\t\x12\x0f\n\x07success\x18\x05 \x01(\x08\x12\r\n\x05\x65rror\x18\x06 \x01(\t\"\x0f\n\rHealthRequest\"U\n\x0eHealthResponse\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x13\n\x0bmodel_count\x18\x02 \x01(\x03\x12\x0f\n\x07success\x18\x03 \x01(\x08\x12\r\n\x05\x65rror\x18\x04 \x01(\t2\xbb\x02\n\x11\x43\x61pabilityService\x12W\n\x10\x43\x61pabilityMatrix\x12 .omnilss.CapabilityMatrixRequest\x1a!.omnilss.CapabilityMatrixResponse\x12T\n\x0fRouteCapability\x12\x1f.omnilss.RouteCapabilityRequest\x1a .omnilss.RouteCapabilityResponse\x12<\n\x07Version\x12\x17.omnilss.VersionRequest\x1a\x18.omnilss.VersionResponse\x12\x39\n\x06Health\x12\x16.omnilss.HealthRequest\x1a\x17.omnilss.HealthResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,18 +35,18 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_CAPABILITYMATRIXREQUEST']._serialized_end=54
   _globals['_CAPABILITYMATRIXRESPONSE']._serialized_start=56
   _globals['_CAPABILITYMATRIXRESPONSE']._serialized_end=135
-  _globals['_ROUTECAPABILITYREQUEST']._serialized_start=137
-  _globals['_ROUTECAPABILITYREQUEST']._serialized_end=209
-  _globals['_ROUTECAPABILITYRESPONSE']._serialized_start=211
-  _globals['_ROUTECAPABILITYRESPONSE']._serialized_end=289
-  _globals['_VERSIONREQUEST']._serialized_start=291
-  _globals['_VERSIONREQUEST']._serialized_end=307
-  _globals['_VERSIONRESPONSE']._serialized_start=310
-  _globals['_VERSIONRESPONSE']._serialized_end=442
-  _globals['_HEALTHREQUEST']._serialized_start=444
-  _globals['_HEALTHREQUEST']._serialized_end=459
-  _globals['_HEALTHRESPONSE']._serialized_start=461
-  _globals['_HEALTHRESPONSE']._serialized_end=546
-  _globals['_CAPABILITYSERVICE']._serialized_start=549
-  _globals['_CAPABILITYSERVICE']._serialized_end=864
+  _globals['_ROUTECAPABILITYREQUEST']._serialized_start=138
+  _globals['_ROUTECAPABILITYREQUEST']._serialized_end=291
+  _globals['_ROUTECAPABILITYRESPONSE']._serialized_start=293
+  _globals['_ROUTECAPABILITYRESPONSE']._serialized_end=371
+  _globals['_VERSIONREQUEST']._serialized_start=373
+  _globals['_VERSIONREQUEST']._serialized_end=389
+  _globals['_VERSIONRESPONSE']._serialized_start=392
+  _globals['_VERSIONRESPONSE']._serialized_end=524
+  _globals['_HEALTHREQUEST']._serialized_start=526
+  _globals['_HEALTHREQUEST']._serialized_end=541
+  _globals['_HEALTHRESPONSE']._serialized_start=543
+  _globals['_HEALTHRESPONSE']._serialized_end=628
+  _globals['_CAPABILITYSERVICE']._serialized_start=631
+  _globals['_CAPABILITYSERVICE']._serialized_end=946
 # @@protoc_insertion_point(module_scope)

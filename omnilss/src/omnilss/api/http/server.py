@@ -239,6 +239,11 @@ def create_handler(
                 method = (query.get("method") or [""])[0].strip()
                 strict_raw = (query.get("strict") or ["false"])[0].strip().lower()
                 strict = strict_raw in {"1", "true", "yes", "y", "on"}
+                formulas = {
+                    key: (query.get(key) or [""])[0]
+                    for key in ("formula", "sigma_formula", "nu_formula", "tau_formula")
+                }
+                formulas = {key: value for key, value in formulas.items() if value}
                 if not family or not method:
                     record_metric(
                         "bad_request_total",
@@ -268,7 +273,9 @@ def create_handler(
                 )
                 self._send_json(
                     200,
-                    method_route_capability_report(family, method, strict=strict),
+                    method_route_capability_report(
+                        family, method, strict=strict, formulas=formulas
+                    ),
                     request_id=request_id,
                 )
                 emit_event(
