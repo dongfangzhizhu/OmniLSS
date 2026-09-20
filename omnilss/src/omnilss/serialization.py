@@ -724,6 +724,13 @@ def save_model_json(
             arrays[f"eta__{k}"] = np.asarray(v)
         for k, v in model.fitted_values.items():
             arrays[f"fit__{k}"] = np.asarray(v)
+        # Observation weights are part of the fitted model state.  Omitting
+        # them silently changes weighted diagnostics and any subsequent model
+        # operation after an artifact round-trip.
+        arrays["weights"] = np.asarray(
+            model.weights if model.weights is not None else np.ones(model.n),
+            dtype=np.float64,
+        )
 
         import io
 
@@ -747,6 +754,7 @@ def save_model_json(
             "type": str(model.type),
             "call": _model_call_metadata(model, include_training_data),
             "training_data_included": bool(include_training_data),
+            "weights_included": True,
             "design_matrix_schema": _json_safe(ensure_model_design_schema(model)),
             "family_capability": _json_safe(_family_capability_snapshot(model)),
             "smooth_infos": _json_safe(_smooth_metadata_snapshot(model)),
@@ -809,6 +817,11 @@ def load_model_json(path: str | Path):
         coeffs = {p: npz[f"coef__{p}"] for p in params if f"coef__{p}" in npz}
         etas = {p: npz[f"eta__{p}"] for p in params if f"eta__{p}" in npz}
         y = npz["y"] if "y" in npz.files else np.array([], dtype=np.float64)
+        weights = npz["weights"] if "weights" in npz.files else np.ones(int(meta["n"]))
+        if weights.shape != (int(meta["n"]),):
+            raise ValueError(
+                f"Artifact weights must have shape ({int(meta['n'])},), got {weights.shape}"
+            )
 
     constructor_issue = _family_constructor_issue(meta)
     if constructor_issue is not None:
@@ -844,7 +857,7 @@ def load_model_json(path: str | Path):
         formulas=meta.get("formulas", {}),
         terms=meta.get("terms", {}),
         design_matrices={},
-        weights=np.ones(n),
+        weights=weights,
         residuals=np.zeros(n),
         iter=int(meta.get("iter", 0)),
         type=meta.get("type", "Continuous"),

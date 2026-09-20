@@ -454,6 +454,12 @@ def create_service():
             if request.max_iter > 0:
                 kwargs["max_iter"] = min(int(request.max_iter), MAX_ITER)
             kwargs["verbose"] = bool(request.verbose)
+            # The data envelope carries optional observation weights.  Keep
+            # them out of the covariate mapping before forwarding the explicit
+            # fitting argument so the generated protobuf contract stays
+            # backward-compatible.
+            if "weights" in data:
+                kwargs["weights"] = data.pop("weights")
 
             model = gamlss(**kwargs)
             model_id = REGISTRY.save(model)

@@ -34,6 +34,7 @@ def test_zip_newdata_prediction_preserves_parameter_shapes():
     assert params["sigma"].shape == (3,)
     assert np.all(params["mu"] > 0)
     assert np.all((params["sigma"] > 0) & (params["sigma"] < 1))
+    assert model.call["parameter_formulas"]["sigma"] == "y ~1"
     response = model.predict(newdata)
     assert np.asarray(response).shape == (3,)
 
@@ -48,9 +49,30 @@ def test_zip_weights_are_retained_and_artifact_roundtrip_predicts(tmp_path):
     report = validate_model_json(path)
     assert report["ok"] is True, report
     restored = load_model_json(path)
+    np.testing.assert_allclose(restored.weights, model.weights)
     predicted = restored.predict_params(newdata)
     for parameter in original:
         np.testing.assert_allclose(predicted[parameter], original[parameter], rtol=1e-8, atol=1e-8)
+
+
+def test_zip_sigma_parameter_formula_rebuilds_on_newdata(tmp_path):
+    model = _fit_zip()
+    # The public sigma_formula is the ZIP second-parameter formula path.
+    model = gamlss(
+        "y ~ x",
+        family="ZIP",
+        data={"y": np.asarray(model.y), "x": np.linspace(-1.5, 1.5, 90)},
+        sigma_formula="~ x",
+        max_iter=15,
+    )
+    assert len(model.coefficients["sigma"]) == 2
+    assert "x" in model.call["parameter_formulas"]["sigma"]
+    newdata = {"x": np.array([-1.0, 0.0, 1.0])}
+    original = model.predict_params(newdata)["sigma"]
+    path = tmp_path / "zip_sigma_formula.omnilss"
+    save_model_json(model, path)
+    restored = load_model_json(path)
+    np.testing.assert_allclose(restored.predict_params(newdata)["sigma"], original)
 
 
 def test_zip_prediction_schema_rejects_missing_newdata_column():
