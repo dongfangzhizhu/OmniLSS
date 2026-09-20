@@ -59,6 +59,15 @@ def test_missing_module_returns_usage_error():
     assert run_suite.main(["--module", "tests.does_not_exist"]) == 4
 
 
+def test_collection_report_is_machine_readable(tmp_path):
+    report = tmp_path / "collection.json"
+    assert run_suite.main(["--module", "tests.test_operations", "--collect-only", "--collect-report", str(report)]) == 0
+    payload = __import__("json").loads(report.read_text(encoding="utf-8"))
+    assert payload["collected_items"] > 0
+    assert payload["collection_errors"] == []
+    assert payload["status"] == "passed"
+
+
 def test_empty_selection_does_not_discover_everything():
     with mock.patch.object(run_suite, "resolve_requested_modules", return_value=[]):
         assert run_suite.main([]) == 5

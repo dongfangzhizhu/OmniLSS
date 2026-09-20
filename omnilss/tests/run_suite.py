@@ -9,6 +9,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,6 +36,24 @@ class RequiredRGate:
     def pytest_runtest_logreport(self, report) -> None:
         if report.skipped:
             self.skipped.append(report.nodeid)
+
+
+class CollectionReport:
+    """Capture collection diagnostics for CI and local triage."""
+
+    def __init__(self) -> None:
+        self.errors: list[str] = []
+        self.skipped: list[str] = []
+        self.items = 0
+
+    def pytest_collectreport(self, report) -> None:
+        if report.failed:
+            self.errors.append(str(report.nodeid))
+        if report.skipped:
+            self.skipped.append(str(report.nodeid))
+
+    def pytest_collection_finish(self, session) -> None:
+        self.items = len(session.items)
 
 
 
@@ -94,6 +113,8 @@ def build_parser() -> argparse.ArgumentParser:
             "smoke-only results (DEVELOPMENT_PLAN 2.6 / .kiro 1.6)."
         ),
     )
+    parser.add_argument("--collect-only", action="store_true", help="Collect selected modules without running tests.")
+    parser.add_argument("--collect-report", type=Path, help="Write JSON collection diagnostics to this path.")
     return parser
 
 
@@ -177,6 +198,12 @@ def main(argv: list[str] | None = None) -> int:
     if not modules:
         print("ERROR: no test modules selected.")
         return 5
+    missing = [module for module in modules if not ROOT.joinpath(*module.split('.')).with_suffix('.py').exists()]
+    if missing:
+        print("ERROR: selected test modules do not exist:")
+        for module in missing:
+            print(f"- {module}")
+        return 4
     try:
         import pytest
     except ImportError:
@@ -187,10 +214,28 @@ def main(argv: list[str] | None = None) -> int:
         pytest_args.append("-v")
     if args.failfast:
         pytest_args.append("-x")
+    if args.collect_only:
+        pytest_args.append("--collect-only")
     if args.require_r:
         pytest_args.append("-rs")
     gate = RequiredRGate()
-    exit_code = int(pytest.main(pytest_args, plugins=[gate] if args.require_r else []))
+    collection = CollectionReport()
+    plugins = [collection]
+    if args.require_r:
+        plugins.append(gate)
+    exit_code = int(pytest.main(pytest_args, plugins=plugins))
+    if args.collect_report:
+        args.collect_report.parent.mkdir(parents=True, exist_ok=True)
+        args.collect_report.write_text(json.dumps({
+            "suite": [resolve_suite_name(name) for name in args.suites] if args.suites else None,
+            "modules": modules,
+            "module_count": len(modules),
+            "collected_items": collection.items,
+            "collection_errors": collection.errors,
+            "collection_skips": collection.skipped,
+            "pytest_exit_code": exit_code,
+            "status": "passed" if exit_code == 0 and not collection.errors else "failed",
+        }, indent=2) + "\n", encoding="utf-8")
     if args.require_r and gate.skipped:
         print("ERROR: --require-r is fail-closed: skipped tests/modules are not allowed:")
         for nodeid in gate.skipped:

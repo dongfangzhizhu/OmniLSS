@@ -327,6 +327,21 @@ SUITES: OrderedDict[str, list[str]] = OrderedDict(
                 "tests.test_r_consistency_gu",
             ],
         ),
+        ("l1_fast", [
+            "tests.test_operations", "tests.test_fixed_parameters",
+            "tests.test_distribution_registry", "tests.test_link_registry_and_metadata",
+            "tests.test_family_capabilities", "tests.test_prediction_schema_contract",
+            "tests.test_serialization_json",
+        ]),
+        ("l2_fit", [
+            "tests.test_jax_rs_core", "tests.test_rs_algorithm", "tests.test_fitting_cg",
+            "tests.test_mixed_algorithm", "tests.test_optimizer_integration",
+            "tests.test_prediction", "tests.test_formulae2data",
+        ]),
+        ("l3_external", [
+            "tests.test_grpc_server", "tests.test_http_server", "tests.test_fastapi_server",
+            "tests.test_server_security", "tests.test_tls_support", "tests.test_run_suite_gate",
+        ]),
     ]
 )
 
@@ -338,6 +353,9 @@ SUITE_ALIASES = {
     "phase0": "phase0_gate",
     "stage1": "stage1_gate",
     "stage2": "stage2_gate",
+    "l1": "l1_fast",
+    "l2": "l2_fit",
+    "l3": "l3_external",
 }
 
 
