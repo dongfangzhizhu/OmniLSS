@@ -291,7 +291,8 @@ def _weighted_least_squares(
 
 
 def _require_method_family_capability(
-    family_name: str, method_name: str, *, allow_experimental: bool = True
+    family_name: str, method_name: str, *, allow_experimental: bool = True,
+    formulas: Mapping[str, str] | None = None,
 ) -> None:
     """Validate method/family support before starting an expensive fit."""
 
@@ -300,6 +301,16 @@ def _require_method_family_capability(
         require_production_family_route,
     )
 
+    if str(method_name).upper() == "CG" and formulas:
+        from .family_capabilities import method_route_capability_report
+
+        report = method_route_capability_report(
+            family_name, method_name, strict=not allow_experimental, formulas=formulas
+        )
+        if not report["ok"]:
+            from .family_capabilities import FamilyCapabilityError
+            raise FamilyCapabilityError(str(report["message"]))
+        return
     report = require_production_family_route(
         family_name, method_name, route="public_fit"
     )
@@ -1077,7 +1088,12 @@ def gamlss(
         )
 
     _require_method_family_capability(
-        family.name, method_name, allow_experimental=not strict_capabilities
+        family.name, method_name, allow_experimental=not strict_capabilities,
+        formulas={
+            "mu": formula,
+            "sigma": sigma_formula,
+            **(parameter_formulas or {}),
+        },
     )
 
     # Handle new optimizer methods

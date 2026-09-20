@@ -813,6 +813,7 @@ def method_route_capability_report(
     strict: bool = False,
     allow_compat_alias: bool = False,
     allow_placeholder: bool = False,
+    formulas: Mapping[str, str] | None = None,
 ) -> dict[str, object]:
     """Return a JSON-friendly route-admission report for fitting methods.
 
@@ -823,6 +824,31 @@ def method_route_capability_report(
     """
 
     method = str(method_name).upper()
+    if method == "CG" and formulas:
+        from .formula_parser import has_smooth_terms
+
+        smooth_parameters = [
+            parameter for parameter, formula in formulas.items()
+            if has_smooth_terms(formula)
+        ]
+        if smooth_parameters:
+            return {
+                "ok": False,
+                "family": str(family_name).upper(),
+                "method": method,
+                "feature": "smooth_terms",
+                "status": "unsupported",
+                "strict": bool(strict),
+                "allow_experimental": not strict,
+                "allow_compat_alias": bool(allow_compat_alias),
+                "allow_placeholder": bool(allow_placeholder),
+                "code": "smooth_terms_unsupported_for_method",
+                "smooth_parameters": smooth_parameters,
+                "message": (
+                    "method='CG' does not support penalized smooth terms; "
+                    "use method='RS' or method='auto'."
+                ),
+            }
     feature = method_capability_features().get(method)
     allow_experimental = not strict
     if feature is None:
