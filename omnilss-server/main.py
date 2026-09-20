@@ -15,6 +15,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, status
 from pydantic import BaseModel
 
 from omnilss import gamlss
+from omnilss.formula_parser import has_smooth_terms
 from omnilss.api.grpc.server import REGISTRY
 from omnilss.prediction import PredictionSchemaError
 
@@ -124,6 +125,24 @@ def _model_kwargs(
     return kwargs
 
 
+def _reject_unsupported_smooth_method(req: FitRequest | DistributionSelectRequest) -> None:
+    if str(req.method).upper() != "CG":
+        return
+    formulas = [req.formula, req.sigma_formula]
+    if isinstance(req, FitRequest):
+        formulas.extend(value for value in (req.nu_formula, req.tau_formula) if value)
+    if any(has_smooth_terms(value) for value in formulas):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "type": "method_capability_error",
+                "code": "smooth_terms_unsupported_for_method",
+                "method": "CG",
+                "message": "method='CG' does not support penalized smooth terms; use method='RS' or method='auto'.",
+            },
+        )
+
+
 def _model_summary(model_id: str, model: Any) -> dict[str, Any]:
     slots = dict(getattr(model, "additional_slots", {}) or {})
     converged = slots.get("rs_converged", slots.get("cg_converged", True))
@@ -144,6 +163,7 @@ def _load_or_404(model_id: str) -> Any:
 
 @app.post("/fit")
 def fit(req: FitRequest, _: None = Depends(_check_auth)):
+    _reject_unsupported_smooth_method(req)
     model = gamlss(**_model_kwargs(req))
     model_id = REGISTRY.save(model)
     return _model_summary(model_id, model)
@@ -191,6 +211,7 @@ def delete_model(model_id: str, _: None = Depends(_check_auth)):
 def distributions_select(
     req: DistributionSelectRequest, _: None = Depends(_check_auth)
 ):
+    _reject_unsupported_smooth_method(req)
     n_obs = max(
         (len(v) for v in req.data.values() if hasattr(v, "__len__")), default=1
     )

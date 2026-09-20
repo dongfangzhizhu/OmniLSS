@@ -264,6 +264,13 @@ def _error_text(exc: Exception) -> str:
         return _to_json(exc.to_dict())
     if isinstance(exc, PredictionSchemaError):
         return _to_json({"type": "prediction_schema_error", **exc.to_dict()})
+    if isinstance(exc, ValueError) and "does not support penalized smooth terms" in str(exc):
+        return _to_json({
+            "type": "method_capability_error",
+            "code": "smooth_terms_unsupported_for_method",
+            "method": "CG",
+            "message": str(exc),
+        })
     # Phase 5.4: never leak raw exception text to clients; return the error
     # class name so operators can correlate logs without exposing internals.
     return f"{type(exc).__name__} error"
