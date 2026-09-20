@@ -163,6 +163,11 @@ _RS_JAX_SUPPORTED = frozenset({"NO", "GA", "PO", "BI", "WEI", "TF"})
 # safe or claim CG/MIXED parity.
 _RS_FIT_EVIDENCE = frozenset({"NO", "ZIP"})
 
+# End-to-end newdata prediction and artifact round-trip evidence.  Serialization
+# itself is a package-wide contract; this set records families exercised through
+# that contract without implying production-safe status.
+_PREDICTION_EVIDENCE = frozenset({"NO", "ZIP"})
+
 # Keep this set small.  A family is production-safe only when the current codebase
 # has strong evidence across fit, prediction, artifact, and R-consistency paths.
 _PRODUCTION_SAFE = frozenset({"NO"})
@@ -468,7 +473,11 @@ def _build_capability(name: str) -> FamilyCapability:
         if key in _RS_FIT_EVIDENCE
         else CapabilityStatus.EXPERIMENTAL
     )
-    features["prediction"] = CapabilityStatus.EXPERIMENTAL
+    features["prediction"] = (
+        CapabilityStatus.VALIDATED
+        if key in _PREDICTION_EVIDENCE
+        else CapabilityStatus.EXPERIMENTAL
+    )
     features["sampling"] = CapabilityStatus.EXPERIMENTAL
     features["smooth_terms"] = CapabilityStatus.EXPERIMENTAL
     features["cg_fit"] = CapabilityStatus.EXPERIMENTAL

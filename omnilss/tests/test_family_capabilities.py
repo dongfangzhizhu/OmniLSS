@@ -103,6 +103,11 @@ def test_zip_rs_fit_evidence_is_admitted_in_strict_route():
     assert report["code"] == "validated"
 
 
+def test_zip_prediction_evidence_is_registered():
+    capability = get_family_capability("ZIP")
+    assert capability.status("prediction") is CapabilityStatus.VALIDATED
+
+
 def test_sichel_boundary_nan_handling_is_not_placeholder_behavior():
     """Invalid-input NaN returns must not mask a complete SICHEL dpqr wiring."""
     capability = get_family_capability("SICHEL")
