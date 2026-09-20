@@ -88,6 +88,13 @@ def test_ad_families_with_explicit_dpqr_are_not_false_placeholder():
         )
 
 
+def test_zipf_and_zalg_r_consistency_evidence_is_registered():
+    for family_name in ("ZIPF", "ZALG"):
+        capability = get_family_capability(family_name)
+        assert capability.implementation_status is ImplementationStatus.EXPERIMENTAL
+        assert capability.status("r_consistency") is CapabilityStatus.VALIDATED
+
+
 def test_sichel_boundary_nan_handling_is_not_placeholder_behavior():
     """Invalid-input NaN returns must not mask a complete SICHEL dpqr wiring."""
     capability = get_family_capability("SICHEL")

@@ -148,6 +148,8 @@ _R_CONSISTENCY_EVIDENCE = frozenset(
         "WEI",
         "ZAGA",
         "ZIP",
+        "ZIPF",
+        "ZALG",
     }
 )
 

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-20T22:47:36.713266+00:00",
+  "generated_at": "2026-09-20T23:08:30.693612+00:00",
   "source_repo_root": "D:\\AI\\my\\githubprojs\\OmniLSS",
   "stats": {
     "total_registered": 146,
@@ -22,7 +22,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "BCCG": {
@@ -31,7 +31,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "BCCGO": {
@@ -40,7 +40,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "BCCGUNTR": {
@@ -49,7 +49,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "BCPE": {
@@ -58,7 +58,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "BCPEO": {
@@ -67,7 +67,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "BCPEUNTR": {
@@ -76,7 +76,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "BCT": {
@@ -85,7 +85,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "BCTO": {
@@ -94,7 +94,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "BCTUNTR": {
@@ -103,7 +103,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "BE": {
@@ -112,7 +112,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "BEINF": {
@@ -121,7 +121,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "BEINF0": {
@@ -130,7 +130,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "BEINF1": {
@@ -139,7 +139,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "BEO": {
@@ -148,7 +148,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "BEOI": {
@@ -157,7 +157,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "BEZI": {
@@ -166,7 +166,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "BI": {
@@ -175,7 +175,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "BINOM_1_31": {
@@ -184,7 +184,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "BINOM_2_33": {
@@ -193,7 +193,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "BINOM_3_33": {
@@ -202,7 +202,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "BNB": {
@@ -211,7 +211,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "CONTR01_2_13": {
@@ -220,7 +220,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "CONTR01_4_33": {
@@ -229,7 +229,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "CONTRPLUS_1_1": {
@@ -238,7 +238,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "CONTRPLUS_2_11": {
@@ -247,7 +247,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "CONTRPLUS_3_13": {
@@ -256,7 +256,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "CONTRPLUS_4_33": {
@@ -265,7 +265,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "CONTR_2_12": {
@@ -274,7 +274,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "CONTR_3_11": {
@@ -283,7 +283,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "CONTR_4_13": {
@@ -292,7 +292,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "COUNT_1_22": {
@@ -301,7 +301,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "COUNT_1_31": {
@@ -310,7 +310,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "COUNT_2_32": {
@@ -319,7 +319,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "COUNT_2_32R": {
@@ -328,7 +328,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "COUNT_2_33": {
@@ -337,7 +337,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "COUNT_3_32": {
@@ -346,7 +346,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "COUNT_3_33": {
@@ -355,7 +355,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "DBI": {
@@ -364,7 +364,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "DBURR12": {
@@ -373,7 +373,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "DEL": {
@@ -382,7 +382,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "DELAPORT": {
@@ -391,7 +391,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "DPO": {
@@ -400,7 +400,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "DPO1": {
@@ -409,7 +409,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "EGB2": {
@@ -418,7 +418,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "EXGAUS": {
@@ -427,7 +427,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "EXP": {
@@ -436,7 +436,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "GA": {
@@ -445,7 +445,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "GAF": {
@@ -454,7 +454,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "GB1": {
@@ -463,7 +463,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "GB2": {
@@ -472,7 +472,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "GENERALISEDPOISSON": {
@@ -481,7 +481,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "GEOM": {
@@ -490,7 +490,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "GEOMO": {
@@ -499,7 +499,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "GG": {
@@ -508,7 +508,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "GIG": {
@@ -517,7 +517,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "GP": {
@@ -526,7 +526,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "GPO": {
@@ -535,7 +535,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "GT": {
@@ -544,7 +544,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "GU": {
@@ -553,7 +553,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "IG": {
@@ -562,7 +562,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "IGA": {
@@ -571,7 +571,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "IGAMMA": {
@@ -580,7 +580,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "JSU": {
@@ -589,7 +589,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "JSUO": {
@@ -598,7 +598,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "LG": {
@@ -607,7 +607,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "LNO": {
@@ -616,7 +616,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "LO": {
@@ -625,7 +625,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "LOGITNO": {
@@ -634,7 +634,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "LOGNO": {
@@ -643,7 +643,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "LOGNO2": {
@@ -652,7 +652,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "LOGSHASH": {
@@ -661,7 +661,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "LOGSHASHO": {
@@ -670,7 +670,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "LQNO": {
@@ -679,7 +679,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "MN3": {
@@ -688,7 +688,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "MN4": {
@@ -697,7 +697,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "MN5": {
@@ -706,7 +706,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "MULTIN": {
@@ -715,7 +715,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "NBF": {
@@ -724,7 +724,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "NBI": {
@@ -733,7 +733,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "NBII": {
@@ -742,7 +742,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "NET": {
@@ -751,7 +751,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "NO": {
@@ -760,7 +760,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "NO2": {
@@ -769,7 +769,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "NOF": {
@@ -778,7 +778,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "PARETO": {
@@ -787,7 +787,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "PARETO1": {
@@ -796,7 +796,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "PARETO1O": {
@@ -805,7 +805,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "PARETO2": {
@@ -814,7 +814,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "PARETO2O": {
@@ -823,7 +823,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "PE": {
@@ -832,7 +832,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "PE2": {
@@ -841,7 +841,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "PIG": {
@@ -850,7 +850,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "PIG2": {
@@ -859,7 +859,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "PO": {
@@ -868,7 +868,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "RG": {
@@ -877,7 +877,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "RGE": {
@@ -886,7 +886,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "SEP": {
@@ -895,7 +895,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "SEP1": {
@@ -904,7 +904,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "SEP2": {
@@ -913,7 +913,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "SEP3": {
@@ -922,7 +922,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "SEP4": {
@@ -931,7 +931,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "SHASH": {
@@ -940,7 +940,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "SHASHO": {
@@ -949,7 +949,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "SHASHO2": {
@@ -958,7 +958,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "SI": {
@@ -967,7 +967,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "SICHEL": {
@@ -976,7 +976,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "SIMPLEX": {
@@ -985,7 +985,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "SN1": {
@@ -994,7 +994,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "SN2": {
@@ -1003,7 +1003,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "SST": {
@@ -1012,7 +1012,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ST1": {
@@ -1021,7 +1021,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ST2": {
@@ -1030,7 +1030,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ST3": {
@@ -1039,7 +1039,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ST3C": {
@@ -1048,7 +1048,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ST4": {
@@ -1057,7 +1057,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ST5": {
@@ -1066,7 +1066,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "TF": {
@@ -1075,7 +1075,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "TF2": {
@@ -1084,7 +1084,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "WARING": {
@@ -1093,7 +1093,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "WEI": {
@@ -1102,7 +1102,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "WEI2": {
@@ -1111,7 +1111,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "WEI3": {
@@ -1120,7 +1120,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "YULE": {
@@ -1129,7 +1129,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZABB": {
@@ -1138,7 +1138,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZABI": {
@@ -1147,7 +1147,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZABNB": {
@@ -1156,7 +1156,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZAGA": {
@@ -1165,7 +1165,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "ZAIG": {
@@ -1174,7 +1174,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZALG": {
@@ -1183,7 +1183,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "ZANBI": {
@@ -1192,7 +1192,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZAP": {
@@ -1201,7 +1201,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZAPIG": {
@@ -1210,7 +1210,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZASICHEL": {
@@ -1219,7 +1219,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZAZIPF": {
@@ -1228,7 +1228,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZIBB": {
@@ -1237,7 +1237,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZIBI": {
@@ -1246,7 +1246,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZIBNB": {
@@ -1255,7 +1255,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZILG": {
@@ -1264,7 +1264,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZINBF": {
@@ -1273,7 +1273,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZINBI": {
@@ -1282,7 +1282,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZIP": {
@@ -1291,7 +1291,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "ZIP2": {
@@ -1300,7 +1300,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZIPF": {
@@ -1309,7 +1309,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "unknown"
     },
     "ZIPIG": {
@@ -1318,7 +1318,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     },
     "ZISICHEL": {
@@ -1327,7 +1327,7 @@
       "has_dqr": false,
       "has_fitting": false,
       "has_smoothing": false,
-      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_dpqr": "UNSUPPORTED",
       "evidence_tier_fitting": "unknown"
     }
   }
