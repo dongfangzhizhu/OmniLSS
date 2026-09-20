@@ -25,7 +25,7 @@ Registry metadata only: this report does not establish R export coverage or nume
 | BINOM_1_31 | compat_alias |
 | BINOM_2_33 | compat_alias |
 | BINOM_3_33 | compat_alias |
-| BNB | experimental |
+| BNB | placeholder |
 | CONTR01_2_13 | compat_alias |
 | CONTR01_4_33 | compat_alias |
 | CONTRPLUS_1_1 | compat_alias |
@@ -53,8 +53,8 @@ Registry metadata only: this report does not establish R export coverage or nume
 | EXP | experimental |
 | GA | experimental |
 | GAF | placeholder |
-| GB1 | placeholder |
-| GB2 | placeholder |
+| GB1 | experimental |
+| GB2 | experimental |
 | GENERALISEDPOISSON | experimental |
 | GEOM | experimental |
 | GEOMO | experimental |
@@ -133,7 +133,7 @@ Registry metadata only: this report does not establish R export coverage or nume
 | ZABNB | experimental |
 | ZAGA | experimental |
 | ZAIG | experimental |
-| ZALG | placeholder |
+| ZALG | experimental |
 | ZANBI | experimental |
 | ZAP | experimental |
 | ZAPIG | experimental |
@@ -142,10 +142,11 @@ Registry metadata only: this report does not establish R export coverage or nume
 | ZIBB | experimental |
 | ZIBI | experimental |
 | ZIBNB | experimental |
+| ZILG | experimental |
 | ZINBF | experimental |
 | ZINBI | experimental |
 | ZIP | experimental |
 | ZIP2 | experimental |
-| ZIPF | placeholder |
+| ZIPF | experimental |
 | ZIPIG | experimental |
 | ZISICHEL | experimental |

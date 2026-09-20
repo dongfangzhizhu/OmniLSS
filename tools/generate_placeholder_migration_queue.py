@@ -13,6 +13,8 @@ are grouped under their batch but flagged with their current status.
 from __future__ import annotations
 
 import sys
+import json
+import argparse
 from datetime import date
 from pathlib import Path
 
@@ -54,13 +56,15 @@ def registry_name(r_name: str) -> str:
     return mapping.get(r_name, r_name)
 
 
-def main() -> int:
-    out = Path("docs/development") / f"placeholder-migration-queue-{date.today().isoformat()}.md"
-
+def generate_queue(coverage: dict, out: Path, generated_date: str) -> None:
+    status_by_family = {
+        name: info.get("implementation_status", "missing")
+        for name, info in coverage.get("families", {}).items()
+    }
     lines: list[str] = []
     lines.append("# GAMLSS 分布族 placeholder 迁移队列清单")
     lines.append("")
-    lines.append(f"> 生成日期：{date.today().isoformat()}")
+    lines.append(f"> 生成日期：{generated_date}")
     lines.append("> 生成方式：`tools/generate_placeholder_migration_queue.py`")
     lines.append(
         "> 状态来源：`omnilss.family_capabilities` 的代码派生 "
@@ -79,9 +83,7 @@ def main() -> int:
         lines.append("|---|---|---|---|---|")
         for r_name in r_names:
             reg = registry_name(r_name)
-            status = "missing"
-            if reg in _REGISTERED_FAMILIES:
-                status = implementation_status_for_family(reg).value
+            status = status_by_family.get(reg, "missing")
             checked = "[ ]" if status == "placeholder" else "[x]"
             if status == "placeholder":
                 total_placeholder += 1
@@ -99,6 +101,22 @@ def main() -> int:
 
     out.write_text("\n".join(lines), encoding="utf-8")
     print(f"wrote {out} ({total_placeholder} placeholders)")
+    return None
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--coverage", type=Path)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--date", default=date.today().isoformat())
+    args = parser.parse_args()
+    if args.coverage:
+        coverage = json.loads(args.coverage.read_text(encoding="utf-8"))
+    else:
+        from generate_r_export_coverage import build_coverage
+        coverage = build_coverage()
+    out = args.output or Path("docs/development") / f"placeholder-migration-queue-{args.date}.md"
+    generate_queue(coverage, out, args.date)
     return 0
 
 

@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-09-13T22:46:33.985558+00:00",
+  "generated_at": "2026-09-20T22:47:36.713266+00:00",
   "source_repo_root": "D:\\AI\\my\\githubprojs\\OmniLSS",
   "stats": {
-    "total_registered": 145,
+    "total_registered": 146,
     "status_distribution": {
-      "placeholder": 23,
-      "experimental": 96,
+      "placeholder": 20,
+      "experimental": 100,
       "compat_alias": 25,
       "implemented": 1
     },
     "validated_count": 1,
-    "experimental_count": 96,
+    "experimental_count": 100,
     "compat_alias_count": 25,
-    "placeholder_count": 23,
+    "placeholder_count": 20,
     "missing_count": 0
   },
   "families": {
@@ -206,7 +206,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "BNB": {
-      "implementation_status": "experimental",
+      "implementation_status": "placeholder",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -458,7 +458,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "GB1": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -467,7 +467,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "GB2": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -1178,7 +1178,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "ZALG": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -1258,6 +1258,15 @@
       "evidence_tier_dpqr": "unknown",
       "evidence_tier_fitting": "unknown"
     },
+    "ZILG": {
+      "implementation_status": "experimental",
+      "is_production_safe": false,
+      "has_dqr": false,
+      "has_fitting": false,
+      "has_smoothing": false,
+      "evidence_tier_dpqr": "unknown",
+      "evidence_tier_fitting": "unknown"
+    },
     "ZINBF": {
       "implementation_status": "experimental",
       "is_production_safe": false,
@@ -1295,7 +1304,7 @@
       "evidence_tier_fitting": "unknown"
     },
     "ZIPF": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
