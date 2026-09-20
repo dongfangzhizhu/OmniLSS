@@ -39,6 +39,9 @@ def test_grpc_error_text_preserves_prediction_schema_envelope() -> None:
         "term": "factor(grp)",
         "reason": "unseen factor levels ['c']",
         "message": "Factor term 'factor(grp)' contains unseen levels ['c']",
+        "expected_schema": None,
+        "actual_schema": None,
+        "state_version": None,
     }
 
 
@@ -638,7 +641,8 @@ def test_grpc_fit_error_returns_fit_response(monkeypatch) -> None:
     assert isinstance(response, fit_pb2.FitResponse)
     assert response.success is False
     assert response.model_id == ""
-    assert "simulated unary fit failure" in response.error
+    assert response.error == "ValueError error"
+    assert "simulated unary fit failure" not in response.error
 
 
 def test_grpc_fit_blocks_placeholder_family_before_backend(monkeypatch) -> None:
