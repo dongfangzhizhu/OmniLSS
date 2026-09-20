@@ -889,12 +889,20 @@ def gamlss(
         max_iter = int(max_iter)
         if control is not None:
             control = replace(control, n_cyc=max_iter)
-    family = resolve_family(family)
     if "algorithm" in optimizer_kwargs:
         # Backward-compatible alias used by examples and benchmark scripts.
         method = optimizer_kwargs.pop("algorithm")
     method_name = str(method).upper()
     requested_method_name = method_name
+    family = resolve_family(family)
+    if method_name == "CG" and any(
+        has_smooth_terms(value)
+        for value in (formula, sigma_formula, *(parameter_formulas or {}).values())
+    ):
+        raise ValueError(
+            "method='CG' does not support penalized smooth terms; use "
+            "method='RS' or method='auto'."
+        )
     routing_decision: dict[str, Any] | None = None
 
     def _routing_confidence(decision: Any, n_obs: int) -> float | None:
