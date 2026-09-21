@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 from typing import Any
 
 try:  # Keep importing this module safe when the optional extra is absent.
@@ -20,8 +21,17 @@ def create_app():
         ) from exc
 
     from ... import gamlss
-    from ...family_capabilities import require_production_family_route
-    from ..grpc.server import REGISTRY, _error_text
+    from ...family_capabilities import capability_matrix, method_route_capability_report, require_production_family_route
+    from ..grpc import server as grpc_server
+
+    def _error_detail(exc: Exception) -> dict[str, Any] | str:
+        """Convert the shared gRPC-safe error text into an HTTP JSON detail."""
+        text = grpc_server._error_text(exc)
+        try:
+            payload = json.loads(text)
+        except (TypeError, json.JSONDecodeError):
+            return text
+        return payload if isinstance(payload, dict) else text
 
     def _check_auth(authorization: str = Header(default="")) -> None:
         api_token = os.getenv("OMNILSS_API_TOKEN", "")
@@ -40,11 +50,33 @@ def create_app():
 
     @app.get("/models")
     def list_models(_: None = Depends(_check_auth)) -> dict[str, list[str]]:
-        return {"model_ids": REGISTRY.list_ids()}
+        return {"model_ids": grpc_server.REGISTRY.list_ids()}
+
+    @app.get("/capabilities")
+    def capabilities(_: None = Depends(_check_auth)) -> dict[str, Any]:
+        return capability_matrix()
+
+    @app.get("/route-capability")
+    def route_capability(
+        family: str,
+        method: str,
+        strict: bool = False,
+        formula: str | None = None,
+        sigma_formula: str | None = None,
+        nu_formula: str | None = None,
+        tau_formula: str | None = None,
+        _: None = Depends(_check_auth),
+    ) -> dict[str, Any]:
+        formulas = {
+            key: value for key, value in {
+                "mu": formula, "sigma": sigma_formula, "nu": nu_formula, "tau": tau_formula,
+            }.items() if value
+        }
+        return method_route_capability_report(family, method, strict=strict, formulas=formulas)
 
     @app.delete("/models/{model_id}")
     def delete_model(model_id: str, _: None = Depends(_check_auth)) -> dict[str, Any]:
-        deleted = REGISTRY.delete(model_id)
+        deleted = grpc_server.REGISTRY.delete(model_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="model_id not found")
         return {"deleted": True, "model_id": model_id}
@@ -83,7 +115,7 @@ def create_app():
             if payload.get("max_iter") is not None:
                 kwargs["max_iter"] = min(max(1, int(payload["max_iter"])), 1000)
             model = gamlss(**kwargs)
-            model_id = REGISTRY.save(model)
+            model_id = grpc_server.REGISTRY.save(model)
             return {
                 "success": True,
                 "model_id": model_id,
@@ -92,7 +124,7 @@ def create_app():
                 "converged": bool(getattr(model, "additional_slots", {}).get("converged", True)),
             }
         except Exception as exc:
-            raise HTTPException(status_code=400, detail=_error_text(exc)) from exc
+            raise HTTPException(status_code=400, detail=_error_detail(exc)) from exc
 
     @app.post("/models/{model_id}/predict")
     async def predict(model_id: str, request: _FastAPIRequest, _: None = Depends(_check_auth)) -> dict[str, Any]:
@@ -103,12 +135,12 @@ def create_app():
             newdata = payload.get("newdata", payload)
             if not isinstance(newdata, dict):
                 raise ValueError("predict requires newdata as a JSON object")
-            model = REGISTRY.load(model_id)
+            model = grpc_server.REGISTRY.load(model_id)
             params = model.predict_params(newdata)
             return {"success": True, "model_id": model_id, "params": {k: list(map(float, v)) for k, v in params.items()}}
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="model_id not found") from exc
         except Exception as exc:
-            raise HTTPException(status_code=400, detail=_error_text(exc)) from exc
+            raise HTTPException(status_code=400, detail=_error_detail(exc)) from exc
 
     return app

@@ -19,7 +19,7 @@ def test_zip_fastapi_fit_predict_with_weights(monkeypatch, tmp_path):
     monkeypatch.setattr(grpc_server, "MODEL_STORE", model_dir)
     monkeypatch.setattr(grpc_server, "MODEL_DB", model_dir / "registry.sqlite3")
     registry = grpc_server._ModelRegistry()
-    monkeypatch.setattr(fastapi_server, "REGISTRY", registry, raising=False)
+    monkeypatch.setattr(grpc_server, "REGISTRY", registry)
     monkeypatch.delenv("OMNILSS_API_TOKEN", raising=False)
     app = fastapi_server.create_app()
 
@@ -75,3 +75,18 @@ def test_fastapi_fit_and_predict_require_bearer_token(monkeypatch):
         json={"newdata": {}},
         headers={"Authorization": "Bearer test-token"},
     ).status_code == 200
+
+
+def test_fastapi_capability_routes_match_runtime_report(monkeypatch):
+    from fastapi.testclient import TestClient
+    from omnilss.api.http import fastapi_server
+    from omnilss.family_capabilities import capability_matrix, method_route_capability_report
+
+    monkeypatch.delenv("OMNILSS_API_TOKEN", raising=False)
+    client = TestClient(fastapi_server.create_app())
+    capabilities = client.get("/capabilities")
+    assert capabilities.status_code == 200
+    assert capabilities.json() == capability_matrix()
+    route = client.get("/route-capability", params={"family": "ZIP", "method": "RS", "strict": "true"})
+    assert route.status_code == 200
+    assert route.json() == method_route_capability_report("ZIP", "RS", strict=True, formulas={})
