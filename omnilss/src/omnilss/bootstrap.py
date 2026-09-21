@@ -497,6 +497,11 @@ def compute_confidence_intervals(
     if valid_estimates.shape[0] == 0:
         missing = jnp.full((boot_estimates.shape[1],), jnp.nan)
         return missing, missing
+    if valid_estimates.shape[0] == 1:
+        # A single successful fit cannot quantify uncertainty.  Returning the
+        # observed estimate for both bounds is deterministic and avoids asking
+        # the percentile/BCa implementations to extrapolate from one sample.
+        return valid_estimates[0], valid_estimates[0]
     
     if method == 'percentile':
         lower_percentile = alpha / 2 * 100

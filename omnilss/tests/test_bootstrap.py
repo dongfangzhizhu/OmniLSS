@@ -192,6 +192,17 @@ def test_confidence_intervals_nonfinite_and_empty(method):
         assert np.isnan(compute_confidence_intervals(empty, **kwargs)).all()
 
 
+@pytest.mark.parametrize("method", ["percentile", "bca"])
+def test_confidence_intervals_single_valid_estimate_is_degenerate(method):
+    kwargs = dict(method=method, original_estimate=np.array([4.0, 7.0]))
+    estimates = np.array([[np.nan, np.nan], [4.0, 7.0], [np.inf, 1.0]])
+
+    lower, upper = compute_confidence_intervals(estimates, **kwargs)
+
+    np.testing.assert_array_equal(lower, [4.0, 7.0])
+    np.testing.assert_array_equal(upper, [4.0, 7.0])
+
+
 @pytest.mark.parametrize("jack", [np.empty((0, 1)), [[1.0]], [[1.0], [np.nan]], [[1.0], [np.inf]], [[1.0, 2.0], [2.0, 3.0]]])
 def test_bca_rejects_invalid_jackknife(jack):
     with pytest.raises(ValueError, match="jackknife_estimates"):
