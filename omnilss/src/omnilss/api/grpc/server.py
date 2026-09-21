@@ -43,6 +43,22 @@ MODEL_DB = Path(os.getenv("OMNILSS_MODEL_DB_PATH", str(MODEL_STORE / "registry.s
 _MODEL_REGISTRY_SCHEMA_VERSION = 2
 
 
+class ArtifactCapabilityRejectedError(ValueError):
+    """Raised when an artifact no longer matches runtime capability policy."""
+
+    def __init__(self, report: dict[str, Any]) -> None:
+        self.report = dict(report)
+        super().__init__("model artifact capability replay failed")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": "artifact_capability_error",
+            "code": "capability_replay_failed",
+            "message": "model artifact is incompatible with the current capability registry",
+            "report": self.report,
+        }
+
+
 def _artifact_family_capability(path: Path) -> dict[str, Any]:
     """Read the saved family capability snapshot from a model artifact."""
 
@@ -199,7 +215,17 @@ class _ModelRegistry:
                 self._db.commit()
                 raise KeyError(model_id)
             self._refresh_capability_snapshot(model_id, path)
+            row = self._db.execute(
+                "SELECT capability_ok, capability_report_json FROM models WHERE id = ?",
+                (model_id,),
+            ).fetchone()
             self._db.commit()
+            if row is None or not bool(row[0]):
+                try:
+                    report = json.loads(row[1]) if row and row[1] else {}
+                except (TypeError, json.JSONDecodeError):
+                    report = {"ok": False, "changes": []}
+                raise ArtifactCapabilityRejectedError(report)
             return load_model_json(path)
 
     def list_ids(self) -> list[str]:
@@ -261,6 +287,8 @@ def _error_text(exc: Exception) -> str:
     """Return a machine-readable error string for gRPC response fields."""
 
     if isinstance(exc, ProductionFamilyRejectedError):
+        return _to_json(exc.to_dict())
+    if isinstance(exc, ArtifactCapabilityRejectedError):
         return _to_json(exc.to_dict())
     if isinstance(exc, PredictionSchemaError):
         return _to_json({"type": "prediction_schema_error", **exc.to_dict()})

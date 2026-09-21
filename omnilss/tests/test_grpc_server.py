@@ -449,6 +449,42 @@ def test_model_registry_persists_capability_snapshot_and_replay_report(
     assert model_id in second.list_ids()
 
 
+def test_model_registry_rejects_capability_drift_on_load(tmp_path, monkeypatch):
+    import json
+    import zipfile
+    import sqlite3
+    import numpy as np
+    from omnilss import gamlss
+    from omnilss.api.grpc import server as grpc_server
+
+    model_dir = tmp_path / "models"
+    model_dir.mkdir()
+    db_path = model_dir / "registry.sqlite3"
+    monkeypatch.setattr(grpc_server, "MODEL_STORE", model_dir)
+    monkeypatch.setattr(grpc_server, "MODEL_DB", db_path)
+    model = gamlss("y ~ x", family="NO", data={"y": np.array([1., 2., 3.]), "x": np.array([0., 1., 2.])}, max_iter=2)
+    registry = grpc_server._ModelRegistry()
+    model_id = registry.save(model)
+    artifact = model_dir / f"{model_id}.omnilss"
+    with sqlite3.connect(db_path) as db:
+        row = db.execute("SELECT capability_json FROM models WHERE id = ?", (model_id,)).fetchone()
+        capability = json.loads(row[0])
+        capability["features"]["prediction"] = "experimental"
+        db.execute("UPDATE models SET capability_json = ? WHERE id = ?", (json.dumps(capability), model_id))
+        db.commit()
+    # The artifact is authoritative for replay; mutate its saved capability too.
+    with zipfile.ZipFile(artifact, "r") as zf:
+        meta = json.loads(zf.read("meta.json"))
+        arrays = zf.read("arrays.npz")
+    meta["family_capability"]["features"]["prediction"] = "experimental"
+    with zipfile.ZipFile(artifact, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("meta.json", json.dumps(meta))
+        zf.writestr("arrays.npz", arrays)
+    with pytest.raises(grpc_server.ArtifactCapabilityRejectedError) as exc_info:
+        registry.load(model_id)
+    assert exc_info.value.to_dict()["code"] == "capability_replay_failed"
+
+
 def test_grpc_list_models_and_delete_model_service_direct(monkeypatch) -> None:
     """Fit service management RPCs should expose list/delete semantics."""
     from omnilss.api.grpc import server as grpc_server
