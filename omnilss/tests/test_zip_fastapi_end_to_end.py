@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import numpy as np
 import pytest
 
@@ -90,3 +91,59 @@ def test_fastapi_capability_routes_match_runtime_report(monkeypatch):
     route = client.get("/route-capability", params={"family": "ZIP", "method": "RS", "strict": "true"})
     assert route.status_code == 200
     assert route.json() == method_route_capability_report("ZIP", "RS", strict=True, formulas={})
+
+
+def test_fastapi_and_grpc_share_model_lifecycle(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import fit_pb2, predict_pb2
+    from omnilss.api.http import fastapi_server
+
+    model_dir = tmp_path / "models"
+    model_dir.mkdir()
+    monkeypatch.setattr(grpc_server, "MODEL_STORE", model_dir)
+    monkeypatch.setattr(grpc_server, "MODEL_DB", model_dir / "registry.sqlite3")
+    registry = grpc_server._ModelRegistry()
+    monkeypatch.setattr(grpc_server, "REGISTRY", registry)
+    monkeypatch.delenv("OMNILSS_API_TOKEN", raising=False)
+    app = TestClient(fastapi_server.create_app())
+    service, *_ = grpc_server.create_service()
+
+    data = {"y": [0.0, 1.0, 0.0, 2.0, 1.0], "x": [-1.0, -0.5, 0.0, 0.5, 1.0]}
+    http_fit = app.post("/fit", json={
+        "formula": "y ~ x", "family": "ZIP", "data": data, "sigma_formula": "~ 1"
+    })
+    assert http_fit.status_code == 200, http_fit.text
+    http_model_id = http_fit.json()["model_id"]
+    grpc_prediction = service.Predict(
+        predict_pb2.PredictRequest(
+            model_id=http_model_id,
+            newdata_json='{"x": [-0.25, 0.25]}',
+        ),
+        None,
+    )
+    assert grpc_prediction.success, grpc_prediction.error
+    assert set(json.loads(grpc_prediction.params_json)) == {"mu", "sigma"}
+
+    grpc_fit = service.Fit(
+        fit_pb2.FitRequest(
+            formula="y ~ x", family="ZIP", data_json=json.dumps(data), method="RS"
+        ),
+        None,
+    )
+    assert grpc_fit.success, grpc_fit.error
+    http_prediction = app.post(
+        "/models/%s/predict" % grpc_fit.model_id,
+        json={"newdata": {"x": [-0.25, 0.25]}},
+    )
+    assert http_prediction.status_code == 200, http_prediction.text
+    assert set(http_prediction.json()["params"]) == {"mu", "sigma"}
+
+    deleted = app.delete("/models/%s" % http_model_id)
+    assert deleted.status_code == 200
+    after_delete = service.Predict(
+        predict_pb2.PredictRequest(model_id=http_model_id, newdata_json='{"x": [0.0]}'),
+        None,
+    )
+    assert after_delete.success is False
+    assert after_delete.error == "KeyError error"
