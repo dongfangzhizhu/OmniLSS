@@ -19,7 +19,7 @@ def test_zip_fastapi_fit_predict_with_weights(monkeypatch, tmp_path):
     monkeypatch.setattr(grpc_server, "MODEL_STORE", model_dir)
     monkeypatch.setattr(grpc_server, "MODEL_DB", model_dir / "registry.sqlite3")
     registry = grpc_server._ModelRegistry()
-    monkeypatch.setattr(grpc_server, "REGISTRY", registry)
+    monkeypatch.setattr(fastapi_server, "REGISTRY", registry, raising=False)
     monkeypatch.delenv("OMNILSS_API_TOKEN", raising=False)
     app = fastapi_server.create_app()
 
@@ -57,3 +57,21 @@ def test_fastapi_rejects_placeholder_before_fit(monkeypatch):
     })
     assert response.status_code == 400
     assert "placeholder" in str(response.json()["detail"]).lower()
+
+
+def test_fastapi_fit_and_predict_require_bearer_token(monkeypatch):
+    from fastapi.testclient import TestClient
+    from omnilss.api.http import fastapi_server
+
+    monkeypatch.setenv("OMNILSS_API_TOKEN", "test-token")
+    client = TestClient(fastapi_server.create_app())
+    body = {"formula": "y ~ 1", "family": "NO", "data": {"y": [1.0, 2.0]}}
+    assert client.post("/fit", json=body).status_code == 401
+    response = client.post("/fit", json=body, headers={"Authorization": "Bearer test-token"})
+    assert response.status_code == 200, response.text
+    model_id = response.json()["model_id"]
+    assert client.post(
+        f"/models/{model_id}/predict",
+        json={"newdata": {}},
+        headers={"Authorization": "Bearer test-token"},
+    ).status_code == 200

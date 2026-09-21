@@ -73,6 +73,9 @@ grpc = [
 ]
 server = [
   "omnilss[grpc]",
+  "fastapi>=0.115.0",
+  "uvicorn>=0.30.0",
+  "httpx2>=0.1.0",
 ]
 dev = [
   "pytest>=7.0.0",

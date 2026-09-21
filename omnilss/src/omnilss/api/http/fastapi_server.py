@@ -5,22 +5,26 @@ from __future__ import annotations
 import os
 from typing import Any
 
+try:  # Keep importing this module safe when the optional extra is absent.
+    from fastapi import Request as _FastAPIRequest
+except Exception:  # pragma: no cover - exercised only without FastAPI installed
+    _FastAPIRequest = Any  # type: ignore[assignment,misc]
+
 
 def create_app():
     try:
-        from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
+        from fastapi import Depends, FastAPI, Header, HTTPException, status
     except Exception as exc:  # pragma: no cover
         raise RuntimeError(
             "FastAPI runtime is unavailable. Install with `pip install fastapi uvicorn`."
         ) from exc
 
-    from .. import gamlss
+    from ... import gamlss
     from ...family_capabilities import require_production_family_route
     from ..grpc.server import REGISTRY, _error_text
 
-    api_token = os.getenv("OMNILSS_API_TOKEN", "")
-
     def _check_auth(authorization: str = Header(default="")) -> None:
+        api_token = os.getenv("OMNILSS_API_TOKEN", "")
         if not api_token:
             return
         if not authorization.startswith("Bearer "):
@@ -46,7 +50,7 @@ def create_app():
         return {"deleted": True, "model_id": model_id}
 
     @app.post("/fit")
-    async def fit(request: Request, _: None = Depends(_check_auth)) -> dict[str, Any]:
+    async def fit(request: _FastAPIRequest, _: None = Depends(_check_auth)) -> dict[str, Any]:
         """Fit a model through the same production admission as gRPC."""
         try:
             payload = await request.json()
@@ -91,7 +95,7 @@ def create_app():
             raise HTTPException(status_code=400, detail=_error_text(exc)) from exc
 
     @app.post("/models/{model_id}/predict")
-    async def predict(model_id: str, request: Request, _: None = Depends(_check_auth)) -> dict[str, Any]:
+    async def predict(model_id: str, request: _FastAPIRequest, _: None = Depends(_check_auth)) -> dict[str, Any]:
         try:
             payload = await request.json()
             if not isinstance(payload, dict):
