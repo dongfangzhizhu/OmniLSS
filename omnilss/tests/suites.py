@@ -338,6 +338,7 @@ SUITES: OrderedDict[str, list[str]] = OrderedDict(
             "tests.test_zip_prediction_serialization",
             "tests.test_zip_service_forwarding",
             "tests.test_zip_grpc_end_to_end",
+            "tests.test_zip_fastapi_end_to_end",
         ]),
         ("l2_fit", [
             "tests.test_jax_rs_core", "tests.test_rs_algorithm", "tests.test_fitting_cg",
