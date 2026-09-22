@@ -43,9 +43,17 @@ message HealthResponse {
   string error = 4;
 }
 
+message AuditModelsRequest {}
+message AuditModelsResponse {
+  string audit_json = 1;
+  bool success = 2;
+  string error = 3;
+}
+
 service CapabilityService {
   rpc CapabilityMatrix(CapabilityMatrixRequest) returns (CapabilityMatrixResponse);
   rpc RouteCapability(RouteCapabilityRequest) returns (RouteCapabilityResponse);
   rpc Version(VersionRequest) returns (VersionResponse);
   rpc Health(HealthRequest) returns (HealthResponse);
+  rpc AuditModels(AuditModelsRequest) returns (AuditModelsResponse);
 }

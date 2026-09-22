@@ -30,6 +30,7 @@ SERVICE_SPECS = {
             ("RouteCapability", "RouteCapabilityRequest", "RouteCapabilityResponse"),
             ("Version", "VersionRequest", "VersionResponse"),
             ("Health", "HealthRequest", "HealthResponse"),
+            ("AuditModels", "AuditModelsRequest", "AuditModelsResponse"),
         ),
     ),
     "fit": (

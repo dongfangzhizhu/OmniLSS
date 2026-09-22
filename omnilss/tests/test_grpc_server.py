@@ -224,6 +224,25 @@ def test_grpc_capability_matrix_service_direct() -> None:
 
 
 @pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
+def test_grpc_audit_models_service_direct(monkeypatch):
+    import json
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import capability_pb2
+
+    class DummyRegistry:
+        def audit(self):
+            return [{"model_id": "m1", "integrity_ok": True, "capability_ok": False}]
+
+    monkeypatch.setattr(grpc_server, "REGISTRY", DummyRegistry())
+    service, *_ = grpc_server.create_service()
+    response = service.AuditModels(capability_pb2.AuditModelsRequest(), None)
+    assert response.success is True
+    payload = json.loads(response.audit_json)
+    assert payload["status"] == "degraded"
+    assert payload["unhealthy_model_count"] == 1
+
+
+@pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
 def test_grpc_capability_matrix_request() -> None:
     """CapabilityMatrix request should work over the gRPC boundary."""
     import json

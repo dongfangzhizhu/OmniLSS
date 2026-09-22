@@ -524,6 +524,26 @@ def create_service():
                     status="degraded", model_count=0, success=False, error=_error_text(exc)
                 )
 
+        def AuditModels(self, request, context):  # noqa: N802, ARG002
+            try:
+                audit = REGISTRY.audit()
+                unhealthy = sum(
+                    1 for item in audit
+                    if not item["integrity_ok"] or not item["capability_ok"]
+                )
+                return capability_pb2.AuditModelsResponse(
+                    audit_json=_to_json({
+                        "status": "degraded" if unhealthy else "ok",
+                        "models": audit,
+                        "unhealthy_model_count": unhealthy,
+                    }),
+                    success=True,
+                    error="",
+                )
+            except Exception as exc:
+                return capability_pb2.AuditModelsResponse(
+                    audit_json="{}", success=False, error=_error_text(exc)
+                )
         def ListModels(self, request, context):  # noqa: N802, ARG002
             try:
                 return fit_pb2.ListModelsResponse(
