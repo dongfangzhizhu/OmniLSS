@@ -8,6 +8,7 @@ while `serve()` will raise a clear runtime error.
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import os
 import sqlite3
@@ -57,6 +58,30 @@ class ArtifactCapabilityRejectedError(ValueError):
             "message": "model artifact is incompatible with the current capability registry",
             "report": self.report,
         }
+
+
+class ArtifactIntegrityError(ValueError):
+    """Raised when a persisted model artifact no longer matches its hash."""
+
+    def __init__(self, expected: str | None, actual: str | None) -> None:
+        self.expected = expected
+        self.actual = actual
+        super().__init__("model artifact integrity check failed")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": "artifact_integrity_error",
+            "code": "artifact_hash_mismatch",
+            "message": "model artifact failed its integrity check",
+        }
+
+
+def _artifact_hash(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _artifact_family_capability(path: Path) -> dict[str, Any]:
@@ -134,6 +159,7 @@ class _ModelRegistry:
             "capability_json": "ALTER TABLE models ADD COLUMN capability_json TEXT",
             "capability_report_json": "ALTER TABLE models ADD COLUMN capability_report_json TEXT",
             "capability_ok": "ALTER TABLE models ADD COLUMN capability_ok INTEGER",
+            "artifact_hash": "ALTER TABLE models ADD COLUMN artifact_hash TEXT",
         }
         for column, statement in migrations.items():
             if column not in existing:
@@ -141,6 +167,14 @@ class _ModelRegistry:
 
     def _refresh_capability_snapshot(self, model_id: str, path: Path) -> None:
         """Persist artifact capability metadata and current replay status."""
+
+        actual_hash = _artifact_hash(path)
+        expected_row = self._db.execute(
+            "SELECT artifact_hash FROM models WHERE id = ?", (model_id,)
+        ).fetchone()
+        expected_hash = expected_row[0] if expected_row else None
+        if expected_hash and expected_hash != actual_hash:
+            raise ArtifactIntegrityError(expected_hash, actual_hash)
 
         try:
             capability = _artifact_family_capability(path)
@@ -168,6 +202,7 @@ class _ModelRegistry:
             "capability_json = ?, "
             "capability_report_json = ?, "
             "capability_ok = ? "
+            ", artifact_hash = ? "
             "WHERE id = ?",
             (
                 _MODEL_REGISTRY_SCHEMA_VERSION,
@@ -177,6 +212,7 @@ class _ModelRegistry:
                 json.dumps(capability, ensure_ascii=False, sort_keys=True),
                 json.dumps(report, ensure_ascii=False, sort_keys=True),
                 1 if report.get("ok") else 0,
+                actual_hash,
                 model_id,
             ),
         )
@@ -194,9 +230,9 @@ class _ModelRegistry:
             created_at = time.time()
             self._paths[model_id] = (path, created_at)
             self._db.execute(
-                "INSERT INTO models(id, path, created_at, schema_version) "
-                "VALUES (?, ?, ?, ?)",
-                (model_id, str(path), created_at, _MODEL_REGISTRY_SCHEMA_VERSION),
+                "INSERT INTO models(id, path, created_at, schema_version, artifact_hash) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (model_id, str(path), created_at, _MODEL_REGISTRY_SCHEMA_VERSION, _artifact_hash(path)),
             )
             self._refresh_capability_snapshot(model_id, path)
             self._db.commit()
@@ -289,6 +325,8 @@ def _error_text(exc: Exception) -> str:
     if isinstance(exc, ProductionFamilyRejectedError):
         return _to_json(exc.to_dict())
     if isinstance(exc, ArtifactCapabilityRejectedError):
+        return _to_json(exc.to_dict())
+    if isinstance(exc, ArtifactIntegrityError):
         return _to_json(exc.to_dict())
     if isinstance(exc, PredictionSchemaError):
         return _to_json({"type": "prediction_schema_error", **exc.to_dict()})

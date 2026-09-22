@@ -480,9 +480,32 @@ def test_model_registry_rejects_capability_drift_on_load(tmp_path, monkeypatch):
     with zipfile.ZipFile(artifact, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("meta.json", json.dumps(meta))
         zf.writestr("arrays.npz", arrays)
-    with pytest.raises(grpc_server.ArtifactCapabilityRejectedError) as exc_info:
+    with pytest.raises(grpc_server.ArtifactIntegrityError) as exc_info:
         registry.load(model_id)
-    assert exc_info.value.to_dict()["code"] == "capability_replay_failed"
+    assert exc_info.value.to_dict()["code"] == "artifact_hash_mismatch"
+
+
+def test_model_registry_records_hash_and_rejects_truncated_artifact(tmp_path, monkeypatch):
+    import sqlite3
+    import numpy as np
+    from omnilss import gamlss
+    from omnilss.api.grpc import server as grpc_server
+
+    model_dir = tmp_path / "models"
+    model_dir.mkdir()
+    db_path = model_dir / "registry.sqlite3"
+    monkeypatch.setattr(grpc_server, "MODEL_STORE", model_dir)
+    monkeypatch.setattr(grpc_server, "MODEL_DB", db_path)
+    model = gamlss("y ~ 1", family="NO", data={"y": np.array([1., 2., 3.])}, max_iter=2)
+    registry = grpc_server._ModelRegistry()
+    model_id = registry.save(model)
+    artifact = model_dir / f"{model_id}.omnilss"
+    with sqlite3.connect(db_path) as db:
+        stored_hash = db.execute("SELECT artifact_hash FROM models WHERE id = ?", (model_id,)).fetchone()[0]
+    assert len(stored_hash) == 64
+    artifact.write_bytes(artifact.read_bytes()[:20])
+    with pytest.raises(grpc_server.ArtifactIntegrityError):
+        registry.load(model_id)
 
 
 def test_grpc_list_models_and_delete_model_service_direct(monkeypatch) -> None:
