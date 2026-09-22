@@ -74,6 +74,30 @@ def create_app():
         entries = grpc_server.REGISTRY.audit()
         return {**audit_metrics, **grpc_server._audit_metrics(entries)}
 
+    @app.get("/metrics")
+    def prometheus_metrics() -> Any:
+        entries = grpc_server.REGISTRY.audit()
+        values = grpc_server._audit_metrics(entries)
+        lines = [
+            "# HELP omnilss_registry_models_total Registered model artifacts.",
+            "# TYPE omnilss_registry_models_total gauge",
+            f"omnilss_registry_models_total {values['total_models']}",
+            "# HELP omnilss_registry_healthy_models Registered healthy artifacts.",
+            "# TYPE omnilss_registry_healthy_models gauge",
+            f"omnilss_registry_healthy_models {values['healthy_models']}",
+            "# HELP omnilss_registry_unhealthy_models Registered unhealthy artifacts.",
+            "# TYPE omnilss_registry_unhealthy_models gauge",
+            f"omnilss_registry_unhealthy_models {values['unhealthy_models']}",
+            "# HELP omnilss_registry_integrity_failures Artifact hash failures.",
+            "# TYPE omnilss_registry_integrity_failures gauge",
+            f"omnilss_registry_integrity_failures {values['integrity_failures']}",
+            "# HELP omnilss_registry_capability_failures Capability replay failures.",
+            "# TYPE omnilss_registry_capability_failures gauge",
+            f"omnilss_registry_capability_failures {values['capability_failures']}",
+        ]
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
+
     @app.post("/models/audit/cleanup")
     def cleanup_audit(_: None = Depends(_check_auth)) -> dict[str, Any]:
         entries = grpc_server.REGISTRY.audit()

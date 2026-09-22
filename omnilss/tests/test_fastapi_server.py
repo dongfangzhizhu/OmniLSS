@@ -65,6 +65,9 @@ def test_fastapi_models_endpoints_share_registry(monkeypatch):
     metrics = client.get("/models/audit/metrics")
     assert metrics.json()["requests"] == 1
     assert metrics.json()["unhealthy_models"] == 1
+    prometheus = client.get("/metrics")
+    assert prometheus.status_code == 200
+    assert "omnilss_registry_unhealthy_models 1" in prometheus.text
     cleanup = client.post("/models/audit/cleanup")
     assert cleanup.status_code == 200
     assert cleanup.json()["deleted_count"] == 1
