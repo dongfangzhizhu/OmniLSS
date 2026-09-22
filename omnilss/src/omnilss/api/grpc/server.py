@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import importlib.util
 import hashlib
+import logging
 import json
 import os
 import sqlite3
@@ -347,6 +348,9 @@ def _audit_metrics(entries: list[dict[str, Any]]) -> dict[str, int]:
 
 
 REGISTRY = _ModelRegistry()
+_LOGGER = logging.getLogger(__name__)
+_startup_audit = REGISTRY.audit()
+_LOGGER.info("OmniLSS registry audit at startup: %s", _audit_metrics(_startup_audit))
 
 
 def _to_json(obj: Any) -> str:

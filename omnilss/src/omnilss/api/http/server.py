@@ -84,6 +84,18 @@ def create_handler(
     def metrics_text() -> str:
         with metrics_lock:
             snapshot = dict(metrics)
+        try:
+            from ..grpc.server import REGISTRY, _audit_metrics
+
+            registry_metrics = _audit_metrics(REGISTRY.audit())
+        except Exception:
+            registry_metrics = {
+                "total_models": 0,
+                "healthy_models": 0,
+                "unhealthy_models": 0,
+                "integrity_failures": 0,
+                "capability_failures": 0,
+            }
         lines = [
             "# HELP omnilss_http_requests_total Total HTTP metadata requests.",
             "# TYPE omnilss_http_requests_total counter",
@@ -114,6 +126,21 @@ def create_handler(
             "# HELP omnilss_http_request_duration_seconds_sum Sum of request durations.",
             "# TYPE omnilss_http_request_duration_seconds_sum counter",
             f"omnilss_http_request_duration_seconds_sum {snapshot['request_duration_seconds_sum']:.12g}",
+            "# HELP omnilss_registry_models_total Registered model artifacts.",
+            "# TYPE omnilss_registry_models_total gauge",
+            f"omnilss_registry_models_total {registry_metrics['total_models']}",
+            "# HELP omnilss_registry_healthy_models Registered healthy artifacts.",
+            "# TYPE omnilss_registry_healthy_models gauge",
+            f"omnilss_registry_healthy_models {registry_metrics['healthy_models']}",
+            "# HELP omnilss_registry_unhealthy_models Registered unhealthy artifacts.",
+            "# TYPE omnilss_registry_unhealthy_models gauge",
+            f"omnilss_registry_unhealthy_models {registry_metrics['unhealthy_models']}",
+            "# HELP omnilss_registry_integrity_failures Artifact hash failures.",
+            "# TYPE omnilss_registry_integrity_failures gauge",
+            f"omnilss_registry_integrity_failures {registry_metrics['integrity_failures']}",
+            "# HELP omnilss_registry_capability_failures Capability replay failures.",
+            "# TYPE omnilss_registry_capability_failures gauge",
+            f"omnilss_registry_capability_failures {registry_metrics['capability_failures']}",
         ]
         return "\n".join(lines) + "\n"
 
@@ -370,13 +397,6 @@ def create_handler(
             record_metric(
                 "method_not_allowed_total", duration=time.perf_counter() - started
             )
-            self._send_error(
-                405,
-                code="method_not_allowed",
-                message=f"HTTP POST is not enabled for {parsed.path!r}; fit/predict endpoints require authn, limits, and structured logging before exposure",
-                request_id=request_id,
-                extra_headers={"Allow": "GET"},
-            )
             emit_event(
                 method="POST",
                 path=parsed.path,
@@ -384,6 +404,13 @@ def create_handler(
                 request_id=request_id,
                 duration=time.perf_counter() - started,
                 error_code="method_not_allowed",
+            )
+            self._send_error(
+                405,
+                code="method_not_allowed",
+                message=f"HTTP POST is not enabled for {parsed.path!r}; fit/predict endpoints require authn, limits, and structured logging before exposure",
+                request_id=request_id,
+                extra_headers={"Allow": "GET"},
             )
 
     return OmniLSSHTTPRequestHandler

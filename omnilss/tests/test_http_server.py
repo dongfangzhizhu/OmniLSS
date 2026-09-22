@@ -119,6 +119,8 @@ def test_http_metrics_endpoint_tracks_metadata_requests():
         assert "omnilss_http_requests_total 2" in body
         assert "omnilss_http_health_requests_total 1" in body
         assert "omnilss_http_capability_requests_total 1" in body
+        assert "omnilss_registry_models_total" in body
+        assert "omnilss_registry_integrity_failures" in body
     finally:
         server.shutdown()
         server.server_close()
