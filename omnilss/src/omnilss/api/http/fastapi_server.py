@@ -43,6 +43,7 @@ def create_app():
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     app = FastAPI(title="OmniLSS REST API", version="v1-prototype")
+    audit_metrics = {"requests": 0, "unhealthy_models": 0}
 
     @app.get("/health")
     def health() -> dict[str, Any]:
@@ -63,7 +64,23 @@ def create_app():
     def audit_models(_: None = Depends(_check_auth)) -> dict[str, Any]:
         entries = grpc_server.REGISTRY.audit()
         unhealthy = [item for item in entries if not item["integrity_ok"] or not item["capability_ok"]]
+        audit_metrics["requests"] += 1
+        audit_metrics["unhealthy_models"] = len(unhealthy)
         return {"status": "degraded" if unhealthy else "ok", "models": entries, "unhealthy_model_count": len(unhealthy)}
+
+    @app.get("/models/audit/metrics")
+    def audit_metrics_endpoint(_: None = Depends(_check_auth)) -> dict[str, int]:
+        return dict(audit_metrics)
+
+    @app.post("/models/audit/cleanup")
+    def cleanup_audit(_: None = Depends(_check_auth)) -> dict[str, Any]:
+        entries = grpc_server.REGISTRY.audit()
+        removed = []
+        for item in entries:
+            if not item["integrity_ok"] or not item["capability_ok"]:
+                if grpc_server.REGISTRY.delete(item["model_id"]):
+                    removed.append(item["model_id"])
+        return {"deleted_model_ids": removed, "deleted_count": len(removed), "reason": "unhealthy_artifact"}
 
     @app.get("/capabilities")
     def capabilities(_: None = Depends(_check_auth)) -> dict[str, Any]:
