@@ -147,3 +147,29 @@ def test_fastapi_and_grpc_share_model_lifecycle(tmp_path, monkeypatch):
     )
     assert after_delete.success is False
     assert after_delete.error == "KeyError error"
+
+
+def test_fastapi_cleanup_removes_model_seen_by_grpc(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.http import fastapi_server
+
+    model_dir = tmp_path / "models"
+    model_dir.mkdir()
+    monkeypatch.setattr(grpc_server, "MODEL_STORE", model_dir)
+    monkeypatch.setattr(grpc_server, "MODEL_DB", model_dir / "registry.sqlite3")
+    registry = grpc_server._ModelRegistry()
+    monkeypatch.setattr(grpc_server, "REGISTRY", registry)
+    monkeypatch.delenv("OMNILSS_API_TOKEN", raising=False)
+    client = TestClient(fastapi_server.create_app())
+
+    class UnhealthyRegistry:
+        def audit(self):
+            return [{"model_id": "broken", "integrity_ok": False, "capability_ok": True}]
+        def delete(self, model_id):
+            return model_id == "broken"
+
+    monkeypatch.setattr(grpc_server, "REGISTRY", UnhealthyRegistry())
+    response = client.post("/models/audit/cleanup")
+    assert response.status_code == 200
+    assert response.json()["deleted_model_ids"] == ["broken"]

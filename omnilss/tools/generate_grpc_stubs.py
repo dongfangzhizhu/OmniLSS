@@ -31,6 +31,7 @@ SERVICE_SPECS = {
             ("Version", "VersionRequest", "VersionResponse"),
             ("Health", "HealthRequest", "HealthResponse"),
             ("AuditModels", "AuditModelsRequest", "AuditModelsResponse"),
+            ("CleanupUnhealthyModels", "CleanupUnhealthyModelsRequest", "CleanupUnhealthyModelsResponse"),
         ),
     ),
     "fit": (

@@ -49,6 +49,12 @@ message AuditModelsResponse {
   bool success = 2;
   string error = 3;
 }
+message CleanupUnhealthyModelsRequest {}
+message CleanupUnhealthyModelsResponse {
+  string result_json = 1;
+  bool success = 2;
+  string error = 3;
+}
 
 service CapabilityService {
   rpc CapabilityMatrix(CapabilityMatrixRequest) returns (CapabilityMatrixResponse);
@@ -56,4 +62,5 @@ service CapabilityService {
   rpc Version(VersionRequest) returns (VersionResponse);
   rpc Health(HealthRequest) returns (HealthResponse);
   rpc AuditModels(AuditModelsRequest) returns (AuditModelsResponse);
+  rpc CleanupUnhealthyModels(CleanupUnhealthyModelsRequest) returns (CleanupUnhealthyModelsResponse);
 }

@@ -544,6 +544,28 @@ def create_service():
                 return capability_pb2.AuditModelsResponse(
                     audit_json="{}", success=False, error=_error_text(exc)
                 )
+
+        def CleanupUnhealthyModels(self, request, context):  # noqa: N802, ARG002
+            try:
+                audit = REGISTRY.audit()
+                removed = []
+                for item in audit:
+                    if not item["integrity_ok"] or not item["capability_ok"]:
+                        if REGISTRY.delete(item["model_id"]):
+                            removed.append(item["model_id"])
+                return capability_pb2.CleanupUnhealthyModelsResponse(
+                    result_json=_to_json({
+                        "deleted_model_ids": removed,
+                        "deleted_count": len(removed),
+                        "reason": "unhealthy_artifact",
+                    }),
+                    success=True,
+                    error="",
+                )
+            except Exception as exc:
+                return capability_pb2.CleanupUnhealthyModelsResponse(
+                    result_json="{}", success=False, error=_error_text(exc)
+                )
         def ListModels(self, request, context):  # noqa: N802, ARG002
             try:
                 return fit_pb2.ListModelsResponse(
