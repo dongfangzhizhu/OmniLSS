@@ -240,6 +240,7 @@ def test_grpc_audit_models_service_direct(monkeypatch):
     payload = json.loads(response.audit_json)
     assert payload["status"] == "degraded"
     assert payload["unhealthy_model_count"] == 1
+    assert payload["metrics"]["capability_failures"] == 1
 
 
 @pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")

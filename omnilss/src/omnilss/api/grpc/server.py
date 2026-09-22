@@ -335,6 +335,17 @@ class _ModelRegistry:
         self._db.commit()
 
 
+def _audit_metrics(entries: list[dict[str, Any]]) -> dict[str, int]:
+    """Build the shared audit metric fields used by HTTP and gRPC."""
+    return {
+        "total_models": len(entries),
+        "healthy_models": sum(1 for item in entries if item["integrity_ok"] and item["capability_ok"]),
+        "unhealthy_models": sum(1 for item in entries if not item["integrity_ok"] or not item["capability_ok"]),
+        "integrity_failures": sum(1 for item in entries if not item["integrity_ok"]),
+        "capability_failures": sum(1 for item in entries if not item["capability_ok"]),
+    }
+
+
 REGISTRY = _ModelRegistry()
 
 
@@ -536,6 +547,7 @@ def create_service():
                         "status": "degraded" if unhealthy else "ok",
                         "models": audit,
                         "unhealthy_model_count": unhealthy,
+                        "metrics": _audit_metrics(audit),
                     }),
                     success=True,
                     error="",

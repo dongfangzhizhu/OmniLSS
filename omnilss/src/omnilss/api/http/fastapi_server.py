@@ -64,13 +64,15 @@ def create_app():
     def audit_models(_: None = Depends(_check_auth)) -> dict[str, Any]:
         entries = grpc_server.REGISTRY.audit()
         unhealthy = [item for item in entries if not item["integrity_ok"] or not item["capability_ok"]]
+        metrics = grpc_server._audit_metrics(entries)
         audit_metrics["requests"] += 1
         audit_metrics["unhealthy_models"] = len(unhealthy)
-        return {"status": "degraded" if unhealthy else "ok", "models": entries, "unhealthy_model_count": len(unhealthy)}
+        return {"status": "degraded" if unhealthy else "ok", "models": entries, "unhealthy_model_count": len(unhealthy), "metrics": metrics}
 
     @app.get("/models/audit/metrics")
     def audit_metrics_endpoint(_: None = Depends(_check_auth)) -> dict[str, int]:
-        return dict(audit_metrics)
+        entries = grpc_server.REGISTRY.audit()
+        return {**audit_metrics, **grpc_server._audit_metrics(entries)}
 
     @app.post("/models/audit/cleanup")
     def cleanup_audit(_: None = Depends(_check_auth)) -> dict[str, Any]:

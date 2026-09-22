@@ -59,9 +59,12 @@ def test_fastapi_models_endpoints_share_registry(monkeypatch):
     assert audit.status_code == 200
     assert audit.json()["status"] == "degraded"
     assert audit.json()["unhealthy_model_count"] == 1
+    assert audit.json()["metrics"]["integrity_failures"] == 1
+    assert audit.json()["metrics"]["capability_failures"] == 1
     assert client.get("/health").json()["status"] == "degraded"
     metrics = client.get("/models/audit/metrics")
     assert metrics.json()["requests"] == 1
+    assert metrics.json()["unhealthy_models"] == 1
     cleanup = client.post("/models/audit/cleanup")
     assert cleanup.status_code == 200
     assert cleanup.json()["deleted_count"] == 1
