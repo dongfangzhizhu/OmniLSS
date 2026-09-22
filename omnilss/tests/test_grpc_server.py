@@ -393,6 +393,58 @@ def test_model_registry_migrates_legacy_sqlite_schema(tmp_path, monkeypatch) -> 
     assert row[2] == 0
 
 
+def test_legacy_registry_backfills_artifact_hash(tmp_path, monkeypatch):
+    import sqlite3
+    import numpy as np
+    from omnilss import gamlss
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.serialization import save_model_json
+
+    model_dir = tmp_path / "models"
+    model_dir.mkdir()
+    db_path = model_dir / "registry.sqlite3"
+    artifact = model_dir / "legacy.omnilss"
+    model = gamlss("y ~ 1", family="NO", data={"y": np.array([1., 2., 3.])}, max_iter=2)
+    save_model_json(model, artifact)
+    with sqlite3.connect(db_path) as db:
+        db.execute("CREATE TABLE models (id TEXT PRIMARY KEY, path TEXT NOT NULL, created_at REAL NOT NULL)")
+        db.execute("INSERT INTO models VALUES (?, ?, ?)", ("legacy", str(artifact), time.time()))
+        db.commit()
+    monkeypatch.setattr(grpc_server, "MODEL_STORE", model_dir)
+    monkeypatch.setattr(grpc_server, "MODEL_DB", db_path)
+    registry = grpc_server._ModelRegistry()
+    with sqlite3.connect(db_path) as db:
+        stored_hash = db.execute("SELECT artifact_hash FROM models WHERE id = 'legacy'").fetchone()[0]
+    assert len(stored_hash) == 64
+    audit = registry.audit()[0]
+    assert audit["integrity_ok"] is True
+    assert audit["capability_ok"] is True
+
+
+def test_corrupt_legacy_artifact_is_retained_for_audit(tmp_path, monkeypatch):
+    import json
+    import sqlite3
+    from omnilss.api.grpc import server as grpc_server
+
+    model_dir = tmp_path / "models"
+    model_dir.mkdir()
+    db_path = model_dir / "registry.sqlite3"
+    artifact = model_dir / "broken.omnilss"
+    artifact.write_bytes(b"not-a-zip")
+    with sqlite3.connect(db_path) as db:
+        db.execute("CREATE TABLE models (id TEXT PRIMARY KEY, path TEXT NOT NULL, created_at REAL NOT NULL)")
+        db.execute("INSERT INTO models VALUES (?, ?, ?)", ("broken", str(artifact), time.time()))
+        db.commit()
+    monkeypatch.setattr(grpc_server, "MODEL_STORE", model_dir)
+    monkeypatch.setattr(grpc_server, "MODEL_DB", db_path)
+    registry = grpc_server._ModelRegistry()
+    assert registry.list_ids() == ["broken"]
+    audit = registry.audit()[0]
+    assert audit["integrity_ok"] is True
+    assert audit["capability_ok"] is False
+    assert "capability_replay_failed" in json.dumps(audit["report"])
+
+
 def test_model_registry_persists_capability_snapshot_and_replay_report(
     tmp_path, monkeypatch
 ) -> None:

@@ -123,7 +123,10 @@ class _ModelRegistry:
             artifact_path = Path(path)
             self._paths[str(model_id)] = (artifact_path, float(created_at))
             if artifact_path.exists():
-                self._refresh_capability_snapshot(str(model_id), artifact_path)
+                try:
+                    self._refresh_capability_snapshot(str(model_id), artifact_path)
+                except ArtifactIntegrityError as exc:
+                    self._record_artifact_failure(str(model_id), exc.to_dict())
             else:
                 self._db.execute("DELETE FROM models WHERE id = ?", (str(model_id),))
         self._db.commit()
@@ -217,6 +220,18 @@ class _ModelRegistry:
             ),
         )
 
+    def _record_artifact_failure(self, model_id: str, report: dict[str, Any]) -> None:
+        """Persist a load/audit failure without dropping the registry row."""
+        self._db.execute(
+            "UPDATE models SET schema_version = ?, capability_ok = 0, "
+            "capability_report_json = ? WHERE id = ?",
+            (
+                _MODEL_REGISTRY_SCHEMA_VERSION,
+                json.dumps({"ok": False, "issues": [report]}, ensure_ascii=False, sort_keys=True),
+                model_id,
+            ),
+        )
+
     def save(self, model: Any) -> str:
         with self._lock:
             self._evict_expired()
@@ -268,6 +283,32 @@ class _ModelRegistry:
         with self._lock:
             self._evict_expired()
             return sorted(self._paths)
+
+    def audit(self) -> list[dict[str, Any]]:
+        """Return persisted artifact health without loading model payloads."""
+        with self._lock:
+            rows = self._db.execute(
+                "SELECT id, path, artifact_hash, capability_ok, capability_report_json "
+                "FROM models ORDER BY id"
+            ).fetchall()
+            result = []
+            for model_id, path, stored_hash, capability_ok, report_json in rows:
+                artifact_path = Path(path)
+                actual_hash = _artifact_hash(artifact_path) if artifact_path.exists() else None
+                try:
+                    report = json.loads(report_json) if report_json else {}
+                except (TypeError, json.JSONDecodeError):
+                    report = {"ok": False, "issues": [{"code": "invalid_audit_report"}]}
+                result.append({
+                    "model_id": str(model_id),
+                    "exists": artifact_path.exists(),
+                    "artifact_hash": stored_hash,
+                    "actual_hash": actual_hash,
+                    "integrity_ok": bool(stored_hash and actual_hash == stored_hash),
+                    "capability_ok": bool(capability_ok),
+                    "report": report,
+                })
+            return result
 
     def delete(self, model_id: str) -> bool:
         with self._lock:
