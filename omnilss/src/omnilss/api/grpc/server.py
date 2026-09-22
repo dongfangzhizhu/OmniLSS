@@ -582,6 +582,18 @@ def create_service():
                 return capability_pb2.CleanupUnhealthyModelsResponse(
                     result_json="{}", success=False, error=_error_text(exc)
                 )
+
+        def Metrics(self, request, context):  # noqa: N802, ARG002
+            try:
+                return capability_pb2.MetricsResponse(
+                    metrics_json=_to_json(_audit_metrics(REGISTRY.audit())),
+                    success=True,
+                    error="",
+                )
+            except Exception as exc:
+                return capability_pb2.MetricsResponse(
+                    metrics_json="{}", success=False, error=_error_text(exc)
+                )
         def ListModels(self, request, context):  # noqa: N802, ARG002
             try:
                 return fit_pb2.ListModelsResponse(

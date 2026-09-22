@@ -32,6 +32,7 @@ SERVICE_SPECS = {
             ("Health", "HealthRequest", "HealthResponse"),
             ("AuditModels", "AuditModelsRequest", "AuditModelsResponse"),
             ("CleanupUnhealthyModels", "CleanupUnhealthyModelsRequest", "CleanupUnhealthyModelsResponse"),
+            ("Metrics", "MetricsRequest", "MetricsResponse"),
         ),
     ),
     "fit": (

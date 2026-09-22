@@ -64,6 +64,11 @@ class CapabilityServiceStub(object):
                 request_serializer=capability__pb2.CleanupUnhealthyModelsRequest.SerializeToString,
                 response_deserializer=capability__pb2.CleanupUnhealthyModelsResponse.FromString,
                 _registered_method=True)
+        self.Metrics = channel.unary_unary(
+                '/omnilss.CapabilityService/Metrics',
+                request_serializer=capability__pb2.MetricsRequest.SerializeToString,
+                response_deserializer=capability__pb2.MetricsResponse.FromString,
+                _registered_method=True)
 
 
 class CapabilityServiceServicer(object):
@@ -105,6 +110,12 @@ class CapabilityServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Metrics(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_CapabilityServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -137,6 +148,11 @@ def add_CapabilityServiceServicer_to_server(servicer, server):
                     servicer.CleanupUnhealthyModels,
                     request_deserializer=capability__pb2.CleanupUnhealthyModelsRequest.FromString,
                     response_serializer=capability__pb2.CleanupUnhealthyModelsResponse.SerializeToString,
+            ),
+            'Metrics': grpc.unary_unary_rpc_method_handler(
+                    servicer.Metrics,
+                    request_deserializer=capability__pb2.MetricsRequest.FromString,
+                    response_serializer=capability__pb2.MetricsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -301,6 +317,33 @@ class CapabilityService(object):
             '/omnilss.CapabilityService/CleanupUnhealthyModels',
             capability__pb2.CleanupUnhealthyModelsRequest.SerializeToString,
             capability__pb2.CleanupUnhealthyModelsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Metrics(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/omnilss.CapabilityService/Metrics',
+            capability__pb2.MetricsRequest.SerializeToString,
+            capability__pb2.MetricsResponse.FromString,
             options,
             channel_credentials,
             insecure,
