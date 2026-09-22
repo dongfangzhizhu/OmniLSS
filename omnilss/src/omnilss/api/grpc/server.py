@@ -506,13 +506,18 @@ def create_service():
                 )
 
         def Health(self, request, context):  # noqa: N802, ARG002
-            """Phase 8.1: health probe with the registered model count."""
+            """Health probe with registry integrity and capability summary."""
             try:
+                audit = REGISTRY.audit()
+                unhealthy = sum(
+                    1 for item in audit
+                    if not item["integrity_ok"] or not item["capability_ok"]
+                )
                 return capability_pb2.HealthResponse(
-                    status="ok",
-                    model_count=int(len(REGISTRY.list_ids())),
+                    status="degraded" if unhealthy else "ok",
+                    model_count=int(len(audit)),
                     success=True,
-                    error="",
+                    error="" if not unhealthy else f"{unhealthy} model artifacts require audit attention",
                 )
             except Exception as exc:
                 return capability_pb2.HealthResponse(

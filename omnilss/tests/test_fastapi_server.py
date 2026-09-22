@@ -24,6 +24,12 @@ def test_fastapi_models_endpoints_share_registry(monkeypatch):
                 return True
             return False
 
+        def audit(self):
+            return [
+                {"model_id": "m1", "integrity_ok": True, "capability_ok": True},
+                {"model_id": "m2", "integrity_ok": False, "capability_ok": False},
+            ]
+
     import omnilss.api.grpc.server as grpc_server
 
     dummy = DummyRegistry()
@@ -42,6 +48,12 @@ def test_fastapi_models_endpoints_share_registry(monkeypatch):
 
     response = client.delete("/models/missing")
     assert response.status_code == 404
+
+    audit = client.get("/models/audit")
+    assert audit.status_code == 200
+    assert audit.json()["status"] == "degraded"
+    assert audit.json()["unhealthy_model_count"] == 1
+    assert client.get("/health").json()["status"] == "degraded"
 
 
 @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="fastapi not installed")

@@ -45,12 +45,25 @@ def create_app():
     app = FastAPI(title="OmniLSS REST API", version="v1-prototype")
 
     @app.get("/health")
-    def health() -> dict[str, str]:
-        return {"status": "ok", "service": "omnilss-fastapi"}
+    def health() -> dict[str, Any]:
+        audit = grpc_server.REGISTRY.audit()
+        unhealthy = sum(1 for item in audit if not item["integrity_ok"] or not item["capability_ok"])
+        return {
+            "status": "degraded" if unhealthy else "ok",
+            "service": "omnilss-fastapi",
+            "model_count": len(audit),
+            "unhealthy_model_count": unhealthy,
+        }
 
     @app.get("/models")
     def list_models(_: None = Depends(_check_auth)) -> dict[str, list[str]]:
         return {"model_ids": grpc_server.REGISTRY.list_ids()}
+
+    @app.get("/models/audit")
+    def audit_models(_: None = Depends(_check_auth)) -> dict[str, Any]:
+        entries = grpc_server.REGISTRY.audit()
+        unhealthy = [item for item in entries if not item["integrity_ok"] or not item["capability_ok"]]
+        return {"status": "degraded" if unhealthy else "ok", "models": entries, "unhealthy_model_count": len(unhealthy)}
 
     @app.get("/capabilities")
     def capabilities(_: None = Depends(_check_auth)) -> dict[str, Any]:
