@@ -41,6 +41,16 @@ def test_release_check_preflight_only_skips_packaging(monkeypatch, capsys):
     assert "Offline release preflight checks completed successfully" in capsys.readouterr().out
 
 
+def test_release_check_tls_readiness_is_optional_and_fail_closed(monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr(release_check, "validate_docs_localization", lambda: [])
+    for name in ("validate_capability_matrix_file", "validate_three_month_checklist", "run_release_gate_smoke"):
+        monkeypatch.setattr(release_check, name, lambda: {"ok": True, "issues": []})
+    monkeypatch.setattr(release_check.shutil, "which", lambda _: "/usr/bin/python")
+    monkeypatch.setattr(release_check.tls_readiness, "validate", lambda *args: {"ok": False, "issues": ["expired"]})
+    assert release_check.main(["--preflight-only", "--tls-cert", str(tmp_path / "cert"), "--tls-key", str(tmp_path / "key")]) == 1
+    assert "TLS readiness check failed" in capsys.readouterr().err
+
+
 def test_release_check_preflight_reports_matrix_drift(monkeypatch, capsys):
     """Matrix drift should fail before packaging checks and print issue details."""
 

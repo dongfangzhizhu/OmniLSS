@@ -18,6 +18,7 @@ _LOCALIZATION_TOOL = Path(__file__).with_name("check_docs_localization.py")
 _CAPABILITY_MATRIX_TOOL = Path(__file__).with_name("validate_capability_matrix.py")
 _RELEASE_GATE_SMOKE_TOOL = Path(__file__).with_name("release_gate_smoke.py")
 _THREE_MONTH_PLAN_TOOL = Path(__file__).with_name("validate_three_month_execution_plan.py")
+_TLS_READINESS_TOOL = Path(__file__).parents[2] / "tools" / "tls_readiness.py"
 _LOCALIZATION_SPEC = importlib.util.spec_from_file_location(
     "check_docs_localization", _LOCALIZATION_TOOL
 )
@@ -61,6 +62,11 @@ assert (
 _THREE_MONTH_PLAN_SPEC.loader.exec_module(three_month_plan)
 validate_three_month_checklist = three_month_plan.validate_three_month_checklist
 
+_TLS_READINESS_SPEC = importlib.util.spec_from_file_location("tls_readiness", _TLS_READINESS_TOOL)
+tls_readiness = importlib.util.module_from_spec(_TLS_READINESS_SPEC)
+assert _TLS_READINESS_SPEC is not None and _TLS_READINESS_SPEC.loader is not None
+_TLS_READINESS_SPEC.loader.exec_module(tls_readiness)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -71,7 +77,7 @@ def _run(cmd: list[str]) -> int:
     return proc.returncode
 
 
-def _run_preflight_checks() -> int:
+def _run_preflight_checks(tls_cert: Path | None = None, tls_key: Path | None = None, tls_min_days: int = 7) -> int:
     """Run offline release-gate checks that do not require packaging tools."""
 
     localization_errors = validate_docs_localization()
@@ -114,6 +120,17 @@ def _run_preflight_checks() -> int:
             )
         return 1
 
+    if tls_cert is not None or tls_key is not None:
+        if tls_cert is None or tls_key is None:
+            print("TLS readiness failed: --tls-cert and --tls-key must be provided together.", file=sys.stderr)
+            return 1
+        tls_report = tls_readiness.validate(tls_cert, tls_key, tls_min_days)
+        if not tls_report["ok"]:
+            print("TLS readiness check failed:", file=sys.stderr)
+            for issue in tls_report["issues"]:
+                print(f"- {issue}", file=sys.stderr)
+            return 1
+
     return 0
 
 
@@ -127,6 +144,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             "generated capability matrix validation, three-month checklist validation, and core smoke checks."
         ),
     )
+    parser.add_argument("--tls-cert", type=Path, help="Production TLS certificate; enables fail-closed TLS readiness check.")
+    parser.add_argument("--tls-key", type=Path, help="Production TLS private key; must be paired with --tls-cert.")
+    parser.add_argument("--tls-min-days", type=int, default=7)
     args = parser.parse_args(argv)
 
     for tool in ("python",):
@@ -134,7 +154,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"Missing required executable: {tool}", file=sys.stderr)
             return 2
 
-    preflight_status = _run_preflight_checks()
+    preflight_status = _run_preflight_checks(args.tls_cert, args.tls_key, args.tls_min_days)
     if preflight_status != 0:
         return preflight_status
     if args.preflight_only:

@@ -37,3 +37,10 @@ python tools/tls_readiness.py --cert secrets/server.crt --key secrets/server.key
 ```
 
 该命令只输出证书路径、过期时间和剩余天数，不读取或输出私钥内容。
+
+发布门禁中显式传入证书参数即可启用 fail-closed 校验：
+
+```powershell
+python omnilss/tools/release_check.py --preflight-only `
+  --tls-cert secrets/server.crt --tls-key secrets/server.key --tls-min-days 7
+```
