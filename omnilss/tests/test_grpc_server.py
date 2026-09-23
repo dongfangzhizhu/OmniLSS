@@ -296,6 +296,10 @@ def test_grpc_metrics_service_direct(monkeypatch):
     response = service.Metrics(capability_pb2.MetricsRequest(), None)
     assert response.success is True
     assert json.loads(response.metrics_json) == {
+        "audit_requests_total": 1,
+        "metrics_requests_total": 1,
+        "cleanup_requests_total": 1,
+        "cleanup_deleted_models_total": 1,
         "total_models": 2,
         "healthy_models": 1,
         "unhealthy_models": 1,

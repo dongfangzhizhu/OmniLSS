@@ -63,7 +63,8 @@ def test_fastapi_models_endpoints_share_registry(monkeypatch):
     assert audit.json()["metrics"]["capability_failures"] == 1
     assert client.get("/health").json()["status"] == "degraded"
     metrics = client.get("/models/audit/metrics")
-    assert metrics.json()["requests"] == 1
+    assert metrics.json()["audit_requests_total"] == 1
+    assert metrics.json()["metrics_requests_total"] == 1
     assert metrics.json()["unhealthy_models"] == 1
     prometheus = client.get("/metrics")
     assert prometheus.status_code == 200
@@ -72,6 +73,7 @@ def test_fastapi_models_endpoints_share_registry(monkeypatch):
     assert cleanup.status_code == 200
     assert cleanup.json()["deleted_count"] == 1
     assert cleanup.json()["reason"] == "unhealthy_artifact"
+    assert client.get("/models/audit/metrics").json()["cleanup_requests_total"] == 1
 
 
 @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="fastapi not installed")

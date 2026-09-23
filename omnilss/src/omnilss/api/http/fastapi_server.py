@@ -43,7 +43,13 @@ def create_app():
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     app = FastAPI(title="OmniLSS REST API", version="v1-prototype")
-    audit_metrics = {"requests": 0, "unhealthy_models": 0}
+    audit_metrics = {
+        "audit_requests_total": 0,
+        "metrics_requests_total": 0,
+        "cleanup_requests_total": 0,
+        "cleanup_deleted_models_total": 0,
+        "unhealthy_models": 0,
+    }
 
     @app.get("/health")
     def health() -> dict[str, Any]:
@@ -65,18 +71,20 @@ def create_app():
         entries = grpc_server.REGISTRY.audit()
         unhealthy = [item for item in entries if not item["integrity_ok"] or not item["capability_ok"]]
         metrics = grpc_server._audit_metrics(entries)
-        audit_metrics["requests"] += 1
+        audit_metrics["audit_requests_total"] += 1
         audit_metrics["unhealthy_models"] = len(unhealthy)
         return {"status": "degraded" if unhealthy else "ok", "models": entries, "unhealthy_model_count": len(unhealthy), "metrics": metrics}
 
     @app.get("/models/audit/metrics")
     def audit_metrics_endpoint(_: None = Depends(_check_auth)) -> dict[str, int]:
         entries = grpc_server.REGISTRY.audit()
+        audit_metrics["metrics_requests_total"] += 1
         return {**audit_metrics, **grpc_server._audit_metrics(entries)}
 
     @app.get("/metrics")
     def prometheus_metrics() -> Any:
         entries = grpc_server.REGISTRY.audit()
+        audit_metrics["metrics_requests_total"] += 1
         values = grpc_server._audit_metrics(entries)
         lines = [
             "# HELP omnilss_registry_models_total Registered model artifacts.",
@@ -102,10 +110,12 @@ def create_app():
     def cleanup_audit(_: None = Depends(_check_auth)) -> dict[str, Any]:
         entries = grpc_server.REGISTRY.audit()
         removed = []
+        audit_metrics["cleanup_requests_total"] += 1
         for item in entries:
             if not item["integrity_ok"] or not item["capability_ok"]:
                 if grpc_server.REGISTRY.delete(item["model_id"]):
                     removed.append(item["model_id"])
+        audit_metrics["cleanup_deleted_models_total"] += len(removed)
         return {"deleted_model_ids": removed, "deleted_count": len(removed), "reason": "unhealthy_artifact"}
 
     @app.get("/capabilities")

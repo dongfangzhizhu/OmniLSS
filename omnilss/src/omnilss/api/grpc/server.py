@@ -351,6 +351,12 @@ REGISTRY = _ModelRegistry()
 _LOGGER = logging.getLogger(__name__)
 _startup_audit = REGISTRY.audit()
 _LOGGER.info("OmniLSS registry audit at startup: %s", _audit_metrics(_startup_audit))
+_SERVICE_METRICS = {
+    "audit_requests_total": 0,
+    "metrics_requests_total": 0,
+    "cleanup_requests_total": 0,
+    "cleanup_deleted_models_total": 0,
+}
 
 
 def _to_json(obj: Any) -> str:
@@ -541,6 +547,7 @@ def create_service():
 
         def AuditModels(self, request, context):  # noqa: N802, ARG002
             try:
+                _SERVICE_METRICS["audit_requests_total"] += 1
                 audit = REGISTRY.audit()
                 unhealthy = sum(
                     1 for item in audit
@@ -563,12 +570,14 @@ def create_service():
 
         def CleanupUnhealthyModels(self, request, context):  # noqa: N802, ARG002
             try:
+                _SERVICE_METRICS["cleanup_requests_total"] += 1
                 audit = REGISTRY.audit()
                 removed = []
                 for item in audit:
                     if not item["integrity_ok"] or not item["capability_ok"]:
                         if REGISTRY.delete(item["model_id"]):
                             removed.append(item["model_id"])
+                _SERVICE_METRICS["cleanup_deleted_models_total"] += len(removed)
                 return capability_pb2.CleanupUnhealthyModelsResponse(
                     result_json=_to_json({
                         "deleted_model_ids": removed,
@@ -585,8 +594,9 @@ def create_service():
 
         def Metrics(self, request, context):  # noqa: N802, ARG002
             try:
+                _SERVICE_METRICS["metrics_requests_total"] += 1
                 return capability_pb2.MetricsResponse(
-                    metrics_json=_to_json(_audit_metrics(REGISTRY.audit())),
+                    metrics_json=_to_json({**_SERVICE_METRICS, **_audit_metrics(REGISTRY.audit())}),
                     success=True,
                     error="",
                 )
