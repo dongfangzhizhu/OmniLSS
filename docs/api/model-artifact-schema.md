@@ -28,7 +28,7 @@ save_model(trusted_model, "model.omnilss")
 
 `meta.json` should include:
 
-- `omnilss_version`, currently compatible with `0.3.x` loaders.
+- `omnilss_version`, the producer package version. New artifacts record `0.4.0`; this runtime accepts the explicitly supported `0.3.x` and `0.4.x` producer series.
 - `parameters`, listing model parameters such as `mu` and `sigma`.
 - `design_matrix_schema.version == 2` and `design_matrix_schema.artifact_version == 2`.
 - `design_matrix_schema.parameters.<parameter>` entries with formula, term order, intercept state, column count, factor levels, numeric transform AST metadata, and smooth basis metadata where required.
@@ -85,8 +85,8 @@ Validation reports use a versioned envelope so clients can route on stable issue
 
 Important issue codes include:
 
-- `missing_meta`, `invalid_meta`, `missing_arrays`, `invalid_arrays`, `invalid_zip`.
-- `unsupported_version`, `invalid_design_matrix_schema_version`, `design_matrix_schema_migration_required`, `unsupported_future_design_matrix_schema_version`, `invalid_artifact_schema_version`, `artifact_schema_migration_required`, `unsupported_future_artifact_schema_version`.
+- `missing_meta`, `invalid_meta`, `missing_arrays`, `invalid_arrays`, `invalid_zip`, `archive_limits_exceeded`.
+- `invalid_version`, `unsupported_version`, `invalid_design_matrix_schema_version`, `design_matrix_schema_migration_required`, `unsupported_future_design_matrix_schema_version`, `invalid_artifact_schema_version`, `artifact_schema_migration_required`, `unsupported_future_artifact_schema_version`.
 - `missing_parameter_schema`, `missing_parameter_formula`, `invalid_term_order`.
 - `missing_factor_levels`, `invalid_factor_levels`.
 - `missing_numeric_transform_ast`, `invalid_numeric_transform_ast`, `invalid_numeric_transform_term`, `numeric_transform_ast_mismatch`.
@@ -97,7 +97,7 @@ Important issue codes include:
 
 ## Artifact Schema Migration Policy
 
-`artifact_schema_policy()` exposes the runtime compatibility contract for JSON artifacts. The current runtime supports design-matrix schema version `2` and artifact schema version `2`. Older schema versions are rejected with `*_schema_migration_required` issue codes and should be re-saved from a compatible OmniLSS runtime before production use. Newer schema versions are rejected with `unsupported_future_*_schema_version` issue codes until the serving runtime is upgraded.
+`artifact_schema_policy()` exposes three independent compatibility dimensions. `current_package_version` records the producer runtime, while `supported_package_series` lists the accepted `0.3.x` and `0.4.x` producer series. Malformed versions and unlisted major/minor series are rejected. Design-matrix schema version `2` and artifact schema version `2` govern the data contract independently: a supported producer version does not override an old or future schema. Older schema versions are rejected with `*_schema_migration_required` issue codes; newer schema versions are rejected with `unsupported_future_*_schema_version` until the serving runtime is upgraded.
 
 ## Artifact and Prediction Error Example
 
@@ -105,7 +105,7 @@ The following abbreviated `meta.json` fragment shows the minimum schema fields a
 
 ```json
 {
-  "omnilss_version": "0.3.0",
+  "omnilss_version": "0.4.0",
   "parameters": ["mu"],
   "design_matrix_schema": {
     "version": 2,

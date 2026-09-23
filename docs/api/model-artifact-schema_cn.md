@@ -28,7 +28,7 @@ save_model(trusted_model, "model.omnilss")
 
 `meta.json` 应包含：
 
-- `omnilss_version`，当前 loader 兼容 `0.3.x`。
+- `omnilss_version` 是生产该工件的包版本。新工件记录 `0.4.0`；当前 runtime 明确接受 `0.3.x` 和 `0.4.x` producer series。
 - `parameters`，列出 `mu`、`sigma` 等模型参数。
 - `design_matrix_schema.version == 2` 和 `design_matrix_schema.artifact_version == 2`。
 - `design_matrix_schema.parameters.<parameter>` 条目，包含公式、term 顺序、截距状态、列数、factor levels、数值变换 AST metadata，以及必要的 smooth basis metadata。
@@ -85,8 +85,8 @@ PYTHONPATH=src python tools/validate_model_artifact.py model.omnilss --fail-on-w
 
 重要 issue code 包括：
 
-- `missing_meta`、`invalid_meta`、`missing_arrays`、`invalid_arrays`、`invalid_zip`。
-- `unsupported_version`、`invalid_design_matrix_schema_version`、`design_matrix_schema_migration_required`、`unsupported_future_design_matrix_schema_version`、`invalid_artifact_schema_version`、`artifact_schema_migration_required`、`unsupported_future_artifact_schema_version`。
+- `missing_meta`、`invalid_meta`、`missing_arrays`、`invalid_arrays`、`invalid_zip`、`archive_limits_exceeded`。
+- `invalid_version`、`unsupported_version`、`invalid_design_matrix_schema_version`、`design_matrix_schema_migration_required`、`unsupported_future_design_matrix_schema_version`、`invalid_artifact_schema_version`、`artifact_schema_migration_required`、`unsupported_future_artifact_schema_version`。
 - `missing_parameter_schema`、`missing_parameter_formula`、`invalid_term_order`。
 - `missing_factor_levels`、`invalid_factor_levels`。
 - `missing_numeric_transform_ast`、`invalid_numeric_transform_ast`、`invalid_numeric_transform_term`、`numeric_transform_ast_mismatch`。
@@ -97,7 +97,7 @@ PYTHONPATH=src python tools/validate_model_artifact.py model.omnilss --fail-on-w
 
 ## Artifact Schema 迁移策略
 
-`artifact_schema_policy()` 会暴露 JSON artifact 的 runtime compatibility contract。当前 runtime 支持 design-matrix schema version `2` 和 artifact schema version `2`。更旧的 schema version 会以 `*_schema_migration_required` issue code 被拒绝，应先使用兼容的 OmniLSS runtime 重新保存后再进入生产使用。更新的 schema version 会以 `unsupported_future_*_schema_version` issue code 被拒绝，直到 serving runtime 升级。
+`artifact_schema_policy()` 暴露三个彼此独立的兼容维度。`current_package_version` 记录 producer runtime，`supported_package_series` 列出可接受的 `0.3.x` 和 `0.4.x` producer series；格式错误或未列出的 major/minor series 会被拒绝。Design-matrix schema version `2` 与 artifact schema version `2` 独立治理数据合同：受支持的 producer version 不能覆盖过旧或未来 schema。旧 schema 使用 `*_schema_migration_required` issue code 拒绝，未来 schema 使用 `unsupported_future_*_schema_version` 拒绝，直到 serving runtime 升级。
 
 ## Artifact 与预测错误示例
 
@@ -105,7 +105,7 @@ PYTHONPATH=src python tools/validate_model_artifact.py model.omnilss --fail-on-w
 
 ```json
 {
-  "omnilss_version": "0.3.0",
+  "omnilss_version": "0.4.0",
   "parameters": ["mu"],
   "design_matrix_schema": {
     "version": 2,

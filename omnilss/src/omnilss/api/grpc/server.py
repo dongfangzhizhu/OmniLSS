@@ -30,7 +30,12 @@ from ...family_capabilities import (
     method_route_capability_report,
 )
 from ...prediction import PredictionSchemaError
-from ...serialization import compare_model_capability_snapshot, load_model_json, save_model_json
+from ...serialization import (
+    compare_model_capability_snapshot,
+    load_model_json,
+    save_model_json,
+    validate_model_json,
+)
 
 MODEL_STORE = Path(
     os.getenv(
@@ -95,8 +100,23 @@ def _artifact_family_capability(path: Path) -> dict[str, Any]:
 
 
 def _artifact_capability_replay_report(path: Path) -> dict[str, Any]:
-    """Replay capability validation for an artifact against this runtime."""
+    """Replay artifact and capability compatibility against this runtime."""
 
+    validation = validate_model_json(path)
+    if not validation["ok"]:
+        return {
+            "ok": False,
+            "family": None,
+            "artifact_capability": {},
+            "runtime_capability": None,
+            "changes": [
+                {
+                    "code": "artifact_validation_failed",
+                    "errors": validation["errors"],
+                }
+            ],
+            "artifact_validation": validation,
+        }
     return dict(compare_model_capability_snapshot(path))
 
 
@@ -181,8 +201,10 @@ class _ModelRegistry:
             raise ArtifactIntegrityError(expected_hash, actual_hash)
 
         try:
-            capability = _artifact_family_capability(path)
             report = _artifact_capability_replay_report(path)
+            capability = (
+                _artifact_family_capability(path) if report.get("ok") else {}
+            )
         except Exception as exc:  # pragma: no cover - defensive for corrupt legacy rows
             capability = {}
             report = {

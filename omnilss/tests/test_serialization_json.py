@@ -9,7 +9,18 @@ from omnilss import (
     gamlss,
     validate_model_json as top_level_validate_model_json,
 )
+from omnilss._version import PACKAGE_VERSION
 from omnilss.serialization import load_model_json, save_model_json
+
+
+def _rewrite_artifact_version(path, version):
+    with zipfile.ZipFile(path, "r") as zf:
+        meta = json.loads(zf.read("meta.json").decode("utf-8"))
+        arrays_payload = zf.read("arrays.npz")
+    meta["omnilss_version"] = version
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("meta.json", json.dumps(meta))
+        zf.writestr("arrays.npz", arrays_payload)
 
 
 def test_json_roundtrip(tmp_path):
@@ -24,6 +35,7 @@ def test_json_roundtrip(tmp_path):
     loaded = load_model_json(path)
 
     assert loaded.additional_slots.get("loaded_from_json") is True
+    assert loaded.additional_slots["omnilss_version"] == PACKAGE_VERSION
     assert abs(float(loaded.g_dev) - float(model.g_dev)) < 1e-8
     assert np.max(np.abs(np.asarray(loaded.fitted_values["mu"]) - np.asarray(model.fitted_values["mu"]))) < 1e-8
 
@@ -58,6 +70,7 @@ def test_json_artifact_contains_design_matrix_schema(tmp_path):
 
     with zipfile.ZipFile(path, "r") as zf:
         meta = json.loads(zf.read("meta.json").decode("utf-8"))
+    assert meta["omnilss_version"] == PACKAGE_VERSION
     assert meta["design_matrix_schema"]["version"] == 2
     assert meta["design_matrix_schema"]["artifact_version"] == 2
     schema = meta["design_matrix_schema"]["parameters"]["mu"]
@@ -213,8 +226,12 @@ def test_artifact_schema_policy_is_public() -> None:
 
     assert top_level_artifact_schema_policy() == policy
     assert policy["type"] == "artifact_schema_policy"
+    assert policy["current_package_version"] == PACKAGE_VERSION
+    assert policy["omnilss_model_version"] == PACKAGE_VERSION
+    assert policy["supported_package_series"] == ["0.3.x", "0.4.x"]
     assert policy["current_design_schema_version"] == 2
     assert policy["supported_artifact_schema_versions"] == [2]
+
 
 def test_validate_model_json_accepts_schema_safe_artifact(tmp_path):
     rng = np.random.default_rng(32)
@@ -376,4 +393,66 @@ def test_load_model_json_rejects_future_artifact_schema(tmp_path):
         zf.writestr("arrays.npz", arrays_payload)
 
     with pytest.raises(ValueError, match="newer than this runtime supports"):
+        load_model_json(path)
+
+
+@pytest.mark.parametrize(
+    "producer_version",
+    [
+        "0.3.0",
+        "0.3.99",
+        "0.4.0",
+        "0.4.99",
+        "0.4.0-rc.1+build.7",
+        "0.4.0-a+build",
+    ],
+)
+def test_artifact_accepts_supported_producer_series(tmp_path, producer_version):
+    from omnilss.serialization import validate_model_json
+
+    x = np.linspace(0.0, 1.0, 20)
+    model = gamlss("y ~ x", family="NO", data={"y": 1.0 + x, "x": x})
+    path = tmp_path / f"supported-{producer_version}.omnilss"
+    save_model_json(model, path)
+    _rewrite_artifact_version(path, producer_version)
+
+    assert validate_model_json(path)["ok"] is True
+    loaded = load_model_json(path)
+    assert loaded.additional_slots["omnilss_version"] == producer_version
+
+
+@pytest.mark.parametrize(
+    ("producer_version", "expected_code", "message"),
+    [
+        (None, "invalid_version", "must be a semantic version"),
+        ("", "invalid_version", "must be a semantic version"),
+        ("0.4", "invalid_version", "must be a semantic version"),
+        ("v0.4.0", "invalid_version", "must be a semantic version"),
+        ("0.4.0-.", "invalid_version", "must be a semantic version"),
+        ("0.4.0+...", "invalid_version", "must be a semantic version"),
+        ("0.4.0-a..b", "invalid_version", "must be a semantic version"),
+        ("0.4.0-01", "invalid_version", "must be a semantic version"),
+        ("0.4.1٢", "invalid_version", "must be a semantic version"),
+        ("0.4.0-alpha.1٢", "invalid_version", "must be a semantic version"),
+        ("0.2.9", "unsupported_version", "supported series"),
+        ("0.5.0", "unsupported_version", "supported series"),
+        ("1.0.0", "unsupported_version", "supported series"),
+    ],
+)
+def test_artifact_rejects_invalid_or_unsupported_producer_versions(
+    tmp_path, producer_version, expected_code, message
+):
+    from omnilss.serialization import validate_model_json
+
+    x = np.linspace(0.0, 1.0, 20)
+    model = gamlss("y ~ x", family="NO", data={"y": 1.0 + x, "x": x})
+    path = tmp_path / "unsupported-version.omnilss"
+    save_model_json(model, path)
+    _rewrite_artifact_version(path, producer_version)
+
+    report = validate_model_json(path)
+    assert report["ok"] is False
+    issue = next(error for error in report["errors"] if error["code"] == expected_code)
+    assert issue["path"] == "meta.omnilss_version"
+    with pytest.raises(ValueError, match=message):
         load_model_json(path)

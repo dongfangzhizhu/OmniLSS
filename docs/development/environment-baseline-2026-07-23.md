@@ -63,12 +63,10 @@ export PYTHONPATH="$PWD/omnilss/src"
 ./debianjaxgpu/bin/python -c "import omnilss; print(omnilss.__version__)"
 ```
 
-### Version drift fix (A0.1)
+### Version source contract (A0.1)
 
-`omnilss/__init__.py` previously reported the version from the installed
-dist-info (`importlib.metadata.version`).  When a stale install (e.g. 0.3.0)
-was present, source runs reported the wrong version.  `__init__.py` now declares
-a source-of-truth version (0.4.0, kept in sync with `pyproject.toml`) and only
-adopts an installed version when it is strictly newer.  The Windows `.venv`
-editable install itself still needs upgrading to 0.4.0 (done on the Windows
-host).
+`omnilss/_version.py` provides the lightweight runtime version used by both
+`omnilss.__version__` and model artifact producers. It is kept in sync with
+`pyproject.toml` by a contract test. Installed `dist-info` is diagnostic
+metadata only and never overrides the source runtime version, avoiding stale
+editable-install metadata and lexicographic version comparisons.

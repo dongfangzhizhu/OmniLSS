@@ -506,7 +506,7 @@ def test_model_registry_migrates_legacy_sqlite_schema(tmp_path, monkeypatch) -> 
         "capability_ok",
     }.issubset(columns)
     assert row[0] == grpc_server._MODEL_REGISTRY_SCHEMA_VERSION
-    assert "capability_replay_failed" in row[1]
+    assert "artifact_validation_failed" in row[1]
     assert row[2] == 0
 
 
@@ -559,7 +559,7 @@ def test_corrupt_legacy_artifact_is_retained_for_audit(tmp_path, monkeypatch):
     audit = registry.audit()[0]
     assert audit["integrity_ok"] is True
     assert audit["capability_ok"] is False
-    assert "capability_replay_failed" in json.dumps(audit["report"])
+    assert "artifact_validation_failed" in json.dumps(audit["report"])
 
 
 def test_model_registry_persists_capability_snapshot_and_replay_report(
@@ -1014,3 +1014,121 @@ def test_grpc_predict_is_restart_safe_with_persistent_registry(tmp_path, monkeyp
         assert len(payload["mu"]) == 2
     finally:
         server2.stop(grace=0)
+
+
+def test_artifact_replay_rejects_unsupported_producer_version(tmp_path):
+    """Service audit must apply the same artifact version policy as loading."""
+    import json
+    import zipfile
+
+    import numpy as np
+
+    from omnilss import gamlss
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.serialization import save_model_json
+
+    path = tmp_path / "unsupported-producer.omnilss"
+    model = gamlss(
+        "y ~ 1", family="NO", data={"y": np.array([1.0, 2.0, 3.0])}, max_iter=2
+    )
+    save_model_json(model, path)
+    with zipfile.ZipFile(path, "r") as zf:
+        meta = json.loads(zf.read("meta.json").decode("utf-8"))
+        arrays_payload = zf.read("arrays.npz")
+    meta["omnilss_version"] = "0.5.0"
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("meta.json", json.dumps(meta))
+        zf.writestr("arrays.npz", arrays_payload)
+
+    report = grpc_server._artifact_capability_replay_report(path)
+
+    assert report["ok"] is False
+    change = report["changes"][0]
+    assert change["code"] == "artifact_validation_failed"
+    assert change["errors"][0]["code"] == "unsupported_version"
+
+
+def test_registry_reports_malformed_metadata_as_artifact_validation_failure(
+    tmp_path, monkeypatch
+):
+    """Registry startup validates metadata before extracting capabilities."""
+    import json
+    import sqlite3
+    import time
+    import zipfile
+
+    from omnilss.api.grpc import server as grpc_server
+
+    model_dir = tmp_path / "models"
+    model_dir.mkdir()
+    db_path = model_dir / "registry.sqlite3"
+    artifact = model_dir / "malformed.omnilss"
+    with zipfile.ZipFile(artifact, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("meta.json", json.dumps(["not", "an", "object"]))
+        zf.writestr("arrays.npz", b"not-needed-after-invalid-meta")
+
+    with sqlite3.connect(db_path) as db:
+        db.execute(
+            "CREATE TABLE models ("
+            "id TEXT PRIMARY KEY, path TEXT NOT NULL, created_at REAL NOT NULL)"
+        )
+        db.execute(
+            "INSERT INTO models VALUES (?, ?, ?)",
+            ("malformed", str(artifact), time.time()),
+        )
+
+    monkeypatch.setattr(grpc_server, "MODEL_STORE", model_dir)
+    monkeypatch.setattr(grpc_server, "MODEL_DB", db_path)
+    registry = grpc_server._ModelRegistry()
+
+    audit = registry.audit()[0]
+    assert audit["capability_ok"] is False
+    assert audit["report"]["changes"][0]["code"] == "artifact_validation_failed"
+    assert audit["report"]["changes"][0]["errors"][0]["code"] == "invalid_meta"
+
+    with pytest.raises(grpc_server.ArtifactCapabilityRejectedError):
+        registry.load("malformed")
+
+
+def test_registry_rejects_oversized_legacy_artifact_before_decompression(
+    tmp_path, monkeypatch
+):
+    """Registry startup applies ZIP limits before reading legacy payloads."""
+    import json
+    import sqlite3
+    import time
+    import zipfile
+
+    from omnilss import serialization
+    from omnilss.api.grpc import server as grpc_server
+
+    model_dir = tmp_path / "models"
+    model_dir.mkdir()
+    db_path = model_dir / "registry.sqlite3"
+    artifact = model_dir / "oversized.omnilss"
+    with zipfile.ZipFile(artifact, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("meta.json", json.dumps({"omnilss_version": "0.4.0"}))
+        zf.writestr("arrays.npz", b"x" * 256)
+
+    with sqlite3.connect(db_path) as db:
+        db.execute(
+            "CREATE TABLE models ("
+            "id TEXT PRIMARY KEY, path TEXT NOT NULL, created_at REAL NOT NULL)"
+        )
+        db.execute(
+            "INSERT INTO models VALUES (?, ?, ?)",
+            ("oversized", str(artifact), time.time()),
+        )
+
+    monkeypatch.setattr(serialization, "_MAX_ZIP_UNCOMPRESSED_BYTES", 128)
+    monkeypatch.setattr(grpc_server, "MODEL_STORE", model_dir)
+    monkeypatch.setattr(grpc_server, "MODEL_DB", db_path)
+    registry = grpc_server._ModelRegistry()
+
+    audit = registry.audit()[0]
+    assert audit["capability_ok"] is False
+    errors = audit["report"]["changes"][0]["errors"]
+    assert errors[0]["code"] == "archive_limits_exceeded"
+
+    with pytest.raises(grpc_server.ArtifactCapabilityRejectedError):
+        registry.load("oversized")

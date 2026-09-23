@@ -4,13 +4,19 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 import zipfile
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-OMNILSS_MODEL_VERSION = "0.3.0"
+from ._version import PACKAGE_VERSION
+
+# Package versions identify the runtime that produced an artifact.  They are
+# intentionally independent from the design and artifact schema versions below.
+OMNILSS_MODEL_VERSION = PACKAGE_VERSION
+SUPPORTED_PACKAGE_SERIES: tuple[tuple[int, int], ...] = ((0, 3), (0, 4))
 ARTIFACT_VALIDATION_REPORT_VERSION = 1
 SUPPORTED_DESIGN_SCHEMA_VERSIONS = (2,)
 SUPPORTED_ARTIFACT_SCHEMA_VERSIONS = (2,)
@@ -158,6 +164,41 @@ def _artifact_issue(
     }
 
 
+_PACKAGE_VERSION_PATTERN = re.compile(
+    r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
+    r"(?:-((?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)"
+    r"(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?"
+    r"(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$"
+)
+
+
+def _supported_package_series_labels() -> list[str]:
+    return [f"{major}.{minor}.x" for major, minor in SUPPORTED_PACKAGE_SERIES]
+
+
+def _package_version_issue(version: Any) -> dict[str, str] | None:
+    """Validate the package version recorded by an artifact producer."""
+
+    value = version if isinstance(version, str) else ""
+    match = _PACKAGE_VERSION_PATTERN.fullmatch(value)
+    if match is None:
+        return _artifact_issue(
+            "invalid_version",
+            "meta.omnilss_version",
+            "Artifact omnilss_version must be a semantic version such as '0.4.0'",
+        )
+
+    series = (int(match.group(1)), int(match.group(2)))
+    if series not in SUPPORTED_PACKAGE_SERIES:
+        supported = ", ".join(_supported_package_series_labels())
+        return _artifact_issue(
+            "unsupported_version",
+            "meta.omnilss_version",
+            f"Unsupported artifact producer version {value!r}; supported series: {supported}",
+        )
+    return None
+
+
 def _family_constructor_issue(meta: dict[str, Any]) -> dict[str, str] | None:
     """Validate declarative constructor options without constructing a family."""
     path = "meta.family_constructor_parameters"
@@ -221,13 +262,20 @@ def artifact_schema_policy() -> dict[str, Any]:
 
     return {
         "type": "artifact_schema_policy",
+        # Retained for clients of the original policy payload.
         "omnilss_model_version": OMNILSS_MODEL_VERSION,
+        "current_package_version": PACKAGE_VERSION,
+        "supported_package_series": _supported_package_series_labels(),
         "validation_report_version": ARTIFACT_VALIDATION_REPORT_VERSION,
         "current_design_schema_version": CURRENT_DESIGN_SCHEMA_VERSION,
         "current_artifact_schema_version": CURRENT_ARTIFACT_SCHEMA_VERSION,
         "supported_design_schema_versions": list(SUPPORTED_DESIGN_SCHEMA_VERSIONS),
         "supported_artifact_schema_versions": list(SUPPORTED_ARTIFACT_SCHEMA_VERSIONS),
         "migration_policy": {
+            "package_version": (
+                "Producer package versions identify artifact provenance; only the "
+                "explicitly supported major/minor series are loadable."
+            ),
             "older_schema": (
                 "Artifacts with schema versions older than the supported set must "
                 "be re-saved from a compatible OmniLSS runtime before production use."
@@ -319,6 +367,7 @@ def validate_model_json(path: str | Path) -> dict[str, Any]:
 
     try:
         with zipfile.ZipFile(p, "r") as zf:
+            _zip_bomb_guard(zf)
             names = set(zf.namelist())
             if "meta.json" not in names:
                 errors.append(
@@ -327,7 +376,10 @@ def validate_model_json(path: str | Path) -> dict[str, Any]:
                 meta: dict[str, Any] = {}
             else:
                 try:
-                    meta = json.loads(zf.read("meta.json").decode("utf-8"))
+                    decoded_meta = json.loads(zf.read("meta.json").decode("utf-8"))
+                    if not isinstance(decoded_meta, dict):
+                        raise TypeError("meta.json must contain a JSON object")
+                    meta = decoded_meta
                 except Exception as exc:
                     errors.append(
                         _artifact_issue(
@@ -361,20 +413,26 @@ def validate_model_json(path: str | Path) -> dict[str, Any]:
             [_artifact_issue("invalid_zip", str(p), f"Invalid zip artifact: {exc}")],
             [],
         )
+    except ValueError as exc:
+        return _artifact_report(
+            p,
+            [
+                _artifact_issue(
+                    "archive_limits_exceeded",
+                    str(p),
+                    f"Artifact archive exceeds safety limits: {exc}",
+                )
+            ],
+            [],
+        )
 
     if not errors or meta:
         constructor_issue = _family_constructor_issue(meta)
         if constructor_issue is not None:
             errors.append(constructor_issue)
-        version = str(meta.get("omnilss_version", ""))
-        if not version.startswith("0.3."):
-            errors.append(
-                _artifact_issue(
-                    "unsupported_version",
-                    "meta.omnilss_version",
-                    f"Unsupported model version: {version!r}",
-                )
-            )
+        version_issue = _package_version_issue(meta.get("omnilss_version"))
+        if version_issue is not None:
+            errors.append(version_issue)
 
         parameters = [str(param) for param in meta.get("parameters", [])]
         if not parameters:
@@ -783,7 +841,10 @@ def load_model_json(path: str | Path):
 
     with zipfile.ZipFile(Path(path), "r") as zf:
         _zip_bomb_guard(zf)
-        meta = json.loads(zf.read("meta.json").decode("utf-8"))
+        decoded_meta = json.loads(zf.read("meta.json").decode("utf-8"))
+        if not isinstance(decoded_meta, dict):
+            raise ValueError("Artifact meta.json must contain a JSON object")
+        meta = decoded_meta
         design_matrix_schema = meta.get("design_matrix_schema", {})
         if not isinstance(design_matrix_schema, dict):
             raise ValueError("Artifact is missing a valid design_matrix_schema object")
@@ -805,9 +866,10 @@ def load_model_json(path: str | Path):
                 raise ValueError(issue["message"])
         family_capability = meta.get("family_capability", {})
         smooth_infos = meta.get("smooth_infos", {})
-        version = meta.get("omnilss_version", "")
-        if not str(version).startswith("0.3."):
-            raise ValueError(f"Incompatible model version: {version}")
+        version = meta.get("omnilss_version")
+        version_issue = _package_version_issue(version)
+        if version_issue is not None:
+            raise ValueError(version_issue["message"])
 
         import io
 
