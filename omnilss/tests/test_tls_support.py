@@ -46,6 +46,19 @@ def test_client_supports_tls_and_token():
     assert "metadata=self._metadata" in text
 
 
+def test_tls_file_validation_is_fail_closed(tmp_path):
+    from omnilss.api.grpc.server import _validate_tls_files
+
+    with pytest.raises(RuntimeError, match="together"):
+        _validate_tls_files(str(tmp_path / "cert"), "")
+    cert = tmp_path / "cert.pem"
+    key = tmp_path / "key.pem"
+    cert.write_text("bad", encoding="utf-8")
+    key.write_text("bad", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="PEM certificate"):
+        _validate_tls_files(str(cert), str(key))
+
+
 @pytest.mark.skipif(not __import__("importlib.util").util.find_spec("grpc"), reason="grpcio not installed")
 def test_grpc_tls_metrics_requires_trusted_root_and_token(tmp_path, monkeypatch):
     """A real TLS channel must verify the certificate and Bearer metadata."""

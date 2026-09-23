@@ -790,6 +790,25 @@ def _validate_api_token(host: str, token: str) -> None:
         )
 
 
+def _validate_tls_files(cert_path: str, key_path: str) -> tuple[bytes, bytes]:
+    """Validate configured TLS files before creating gRPC credentials."""
+    if not cert_path or not key_path:
+        raise RuntimeError("OMNILSS_TLS_CERT and OMNILSS_TLS_KEY must be configured together")
+    cert = Path(cert_path)
+    key = Path(key_path)
+    if not cert.is_file() or not key.is_file():
+        raise RuntimeError("configured TLS certificate and key files must exist")
+    cert_bytes = cert.read_bytes()
+    key_bytes = key.read_bytes()
+    if not cert_bytes or not key_bytes:
+        raise RuntimeError("configured TLS certificate and key files must not be empty")
+    if b"BEGIN CERTIFICATE" not in cert_bytes:
+        raise RuntimeError("OMNILSS_TLS_CERT is not a PEM certificate")
+    if b"PRIVATE KEY" not in key_bytes:
+        raise RuntimeError("OMNILSS_TLS_KEY is not a PEM private key")
+    return cert_bytes, key_bytes
+
+
 def serve(host: str = "0.0.0.0", port: int = 50051):
     try:
         import grpc
@@ -841,11 +860,8 @@ def serve(host: str = "0.0.0.0", port: int = 50051):
     # otherwise the server binds insecurely (auth token still applies).
     tls_cert = os.getenv("OMNILSS_TLS_CERT", "")
     tls_key = os.getenv("OMNILSS_TLS_KEY", "")
-    if tls_cert and tls_key:
-        with open(tls_cert, "rb") as fh:
-            cert_bytes = fh.read()
-        with open(tls_key, "rb") as fh:
-            key_bytes = fh.read()
+    if tls_cert or tls_key:
+        cert_bytes, key_bytes = _validate_tls_files(tls_cert, tls_key)
         creds = grpc.ssl_server_credentials(((key_bytes, cert_bytes),))
         server.add_secure_port(f"{host}:{port}", creds)
     else:
