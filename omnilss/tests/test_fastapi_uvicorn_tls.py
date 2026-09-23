@@ -7,6 +7,7 @@ import os
 import shutil
 import ssl
 import subprocess
+import sys
 import time
 from pathlib import Path
 from urllib.error import HTTPError
@@ -44,7 +45,7 @@ def test_uvicorn_https_requires_ca_and_token(tmp_path):
     port = 59100
     env = dict(os.environ, PYTHONPATH=str(root / "omnilss" / "src"), OMNILSS_API_TOKEN="uvicorn-token")
     process = subprocess.Popen([
-        str(root / ".venv" / "Scripts" / "python.exe"), "-m", "uvicorn", "main:app",
+        sys.executable, "-m", "uvicorn", "main:app",
         "--host", "127.0.0.1", "--port", str(port), "--ssl-keyfile", str(key), "--ssl-certfile", str(cert),
     ], cwd=server_root, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     context = ssl.create_default_context(cafile=str(ca_cert))

@@ -123,4 +123,39 @@ jobs:
           JAX_ENABLE_X64: "true"
           PYTHONPATH: omnilss/src
         run: |
-          python benchmarks/jax_rs_benchmark.py --suite no-r --smoke --families NO --n-values 100 --n-reps 2 --out-dir benchmarks/results/smoke
+           python benchmarks/jax_rs_benchmark.py --suite no-r --smoke --families NO --n-values 100 --n-reps 2 --out-dir benchmarks/results/smoke
+
+  tls-smoke:
+    name: TLS Service Smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install uv
+      - run: pip install pyyaml
+      - name: Install server dependencies
+        run: |
+          cd omnilss
+          uv pip install --system -e ".[server,dev]"
+      - name: Validate compose TLS overlay
+        run: |
+          python - <<'PY'
+          import pathlib, yaml
+          base = yaml.safe_load(pathlib.Path('docker-compose.yml').read_text())
+          overlay = yaml.safe_load(pathlib.Path('docker-compose.tls.yml').read_text())
+          assert 'omnilss-core-grpc' in overlay['services']
+          assert 'omnilss-core-http' in overlay['services']
+          assert 'OMNILSS_TLS_CERT' in overlay['services']['omnilss-core-grpc']['environment']
+          assert 'OMNILSS_TLS_KEY' in overlay['services']['omnilss-core-grpc']['environment']
+          assert '--ssl-certfile' in overlay['services']['omnilss-core-http']['environment']['OMNILSS_UVICORN_TLS_ARGS']
+          print('TLS compose overlay validated')
+          PY
+      - name: Run TLS readiness and service smoke
+        env:
+          JAX_PLATFORMS: cpu
+          JAX_ENABLE_X64: "true"
+          PYTHONPATH: omnilss/src
+        run: |
+          python -m pytest omnilss/tests/test_tls_readiness.py omnilss/tests/test_tls_support.py omnilss/tests/test_fastapi_uvicorn_tls.py -q
