@@ -1,0 +1,22 @@
+version: "3.9"
+
+# TLS deployment overlay:
+#   docker compose -f docker-compose.yml -f docker-compose.tls.yml up
+# The certificate directory is read-only and must contain server.crt/server.key.
+services:
+  omnilss-core-grpc:
+    ports:
+      - "50051:50051"
+    environment:
+      OMNILSS_TLS_CERT: /run/secrets/server.crt
+      OMNILSS_TLS_KEY: /run/secrets/server.key
+    volumes:
+      - "${OMNILSS_TLS_DIR:-./secrets}:/run/secrets:ro"
+
+  omnilss-core-http:
+    ports:
+      - "8443:8000"
+    environment:
+      OMNILSS_UVICORN_TLS_ARGS: "--ssl-keyfile /run/secrets/server.key --ssl-certfile /run/secrets/server.crt"
+    volumes:
+      - "${OMNILSS_TLS_DIR:-./secrets}:/run/secrets:ro"

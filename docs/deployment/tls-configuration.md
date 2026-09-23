@@ -21,3 +21,19 @@ OMNILSS_UVICORN_TLS_ARGS=--ssl-keyfile /run/secrets/server.key --ssl-certfile /r
 ```
 
 HTTP 服务同时要求 `OMNILSS_API_TOKEN`，客户端必须发送 `Authorization: Bearer <token>`。
+
+## Compose TLS overlay
+
+准备 `secrets/server.crt` 和 `secrets/server.key` 后运行：
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.tls.yml up
+```
+
+也可以通过 `OMNILSS_TLS_DIR` 指定证书目录。部署前运行 readiness gate：
+
+```powershell
+python tools/tls_readiness.py --cert secrets/server.crt --key secrets/server.key --min-days 7
+```
+
+该命令只输出证书路径、过期时间和剩余天数，不读取或输出私钥内容。
