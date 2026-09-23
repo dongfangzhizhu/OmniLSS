@@ -31,7 +31,9 @@ services:
     build: ./omnilss-server
     ports:
       - "8000:8000"
-    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    command: >-
+      uvicorn main:app --host 0.0.0.0 --port 8000
+      ${OMNILSS_UVICORN_TLS_ARGS:-}
     environment:
       JAX_PLATFORMS: cpu
       JAX_ENABLE_X64: "true"

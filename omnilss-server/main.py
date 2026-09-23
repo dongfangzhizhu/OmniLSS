@@ -66,15 +66,13 @@ _RATE_LIMIT_STATE: dict[str, list[float]] = {}
 # omnilss.api.http.fastapi_server._check_auth).  Production deployments must
 # set OMNILSS_API_TOKEN (docker-compose does); with no token configured the
 # API is open for local development only.
-_API_TOKEN = os.getenv("OMNILSS_API_TOKEN", "")
-
-
 def _check_auth(authorization: str = Header(default="")) -> None:
-    if not _API_TOKEN:
+    api_token = os.getenv("OMNILSS_API_TOKEN", "")
+    if not api_token:
         return
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    if authorization[7:] != _API_TOKEN:
+    if authorization[7:] != api_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
 
