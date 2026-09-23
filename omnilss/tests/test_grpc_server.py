@@ -309,6 +309,38 @@ def test_grpc_metrics_service_direct(monkeypatch):
 
 
 @pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
+def test_grpc_metrics_network_and_token_auth(monkeypatch):
+    import json
+    import os
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import capability_pb2, capability_pb2_grpc
+
+    class DummyRegistry:
+        def audit(self):
+            return [{"model_id": "m1", "integrity_ok": True, "capability_ok": True}]
+
+    monkeypatch.setattr(grpc_server, "REGISTRY", DummyRegistry())
+    monkeypatch.setenv("OMNILSS_API_TOKEN", "metrics-token")
+    server = grpc_server.serve(host="127.0.0.1", port=59057)
+    time.sleep(0.2)
+    try:
+        channel = grpc.insecure_channel("127.0.0.1:59057")
+        stub = capability_pb2_grpc.CapabilityServiceStub(channel)
+        with pytest.raises(grpc.RpcError) as exc_info:
+            stub.Metrics(capability_pb2.MetricsRequest(), timeout=5)
+        assert exc_info.value.code() == grpc.StatusCode.UNAUTHENTICATED
+        response = stub.Metrics(
+            capability_pb2.MetricsRequest(),
+            timeout=5,
+            metadata=(("authorization", "Bearer metrics-token"),),
+        )
+        assert response.success is True
+        assert json.loads(response.metrics_json)["total_models"] == 1
+    finally:
+        server.stop(grace=0)
+
+
+@pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
 def test_grpc_capability_matrix_request() -> None:
     """CapabilityMatrix request should work over the gRPC boundary."""
     import json
