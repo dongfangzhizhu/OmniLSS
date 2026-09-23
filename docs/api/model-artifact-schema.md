@@ -11,6 +11,19 @@ A `.omnilss` JSON artifact is a ZIP archive with two required members:
 - `meta.json`: JSON metadata, formulas, schema snapshots, diagnostics, and capability snapshots.
 - `arrays.npz`: NumPy arrays for coefficients, fitted values, and linear predictors. Training response data is omitted by default.
 
+## Public Save/Load API
+
+`save_model(model, "model.omnilss")` and `load_model("model.omnilss")` both use this safe ZIP-based format. The default API never detects or falls back to pickle. The explicit `save_model_pickle()` and `load_model_pickle()` functions remain available only for trusted Python artifacts because loading pickle can execute arbitrary code.
+
+To migrate a legacy trusted pickle, load it explicitly in a controlled environment and then re-save it in the safe format:
+
+```python
+from omnilss import load_model_pickle, save_model
+
+trusted_model = load_model_pickle("legacy-model.pkl")
+save_model(trusted_model, "model.omnilss")
+```
+
 ## Required Metadata
 
 `meta.json` should include:

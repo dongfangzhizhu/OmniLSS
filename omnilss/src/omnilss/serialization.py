@@ -875,8 +875,8 @@ def load_model_json(path: str | Path):
     )
 
 
-# Backward-compatible aliases.  Phase 5.5: load_model defaults to the safe
-# JSON loader; the pickle path is kept for trusted files only (documented on
-# load_model_pickle).
-save_model = save_model_pickle
+# Safe public defaults.  Pickle remains an explicit trusted-input escape hatch;
+# never auto-detect or fall back to it from load_model because unpickling can
+# execute arbitrary code.
+save_model = save_model_json
 load_model = load_model_json

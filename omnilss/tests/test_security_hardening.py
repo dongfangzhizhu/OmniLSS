@@ -24,7 +24,9 @@ from omnilss.serialization import (  # noqa: E402
     load_model,
     load_model_json,
     load_model_pickle,
+    save_model,
     save_model_json,
+    save_model_pickle,
 )
 
 
@@ -70,8 +72,10 @@ def test_np_load_disallows_pickle():
     )
 
 
-def test_load_model_defaults_to_json():
-    """The public load_model alias is the safe JSON loader."""
+def test_default_model_io_uses_safe_json_artifacts():
+    """The public save/load pair uses the safe JSON artifact format."""
+    assert save_model is save_model_json
+    assert save_model is not save_model_pickle
     assert load_model is load_model_json
     assert load_model is not load_model_pickle
 

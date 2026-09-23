@@ -11,6 +11,19 @@
 - `meta.json`：JSON metadata、公式、schema snapshot、diagnostics 和 capability snapshot。
 - `arrays.npz`：NumPy 数组，包含系数、拟合值和线性预测器。训练响应数据默认省略。
 
+## 公共保存/加载 API
+
+`save_model(model, "model.omnilss")` 与 `load_model("model.omnilss")` 均使用这一安全的 ZIP 工件格式。默认 API 不会探测或回退到 pickle。显式的 `save_model_pickle()` 和 `load_model_pickle()` 仅用于可信 Python 工件，因为加载 pickle 可能执行任意代码。
+
+迁移旧的可信 pickle 时，应在受控环境显式加载，再保存为安全格式：
+
+```python
+from omnilss import load_model_pickle, save_model
+
+trusted_model = load_model_pickle("legacy-model.pkl")
+save_model(trusted_model, "model.omnilss")
+```
+
 ## 必需 Metadata
 
 `meta.json` 应包含：
