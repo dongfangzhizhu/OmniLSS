@@ -58,6 +58,9 @@ class BootstrapResult:
         Number of successful fits (excluding NaN)
     n_ci_samples : int
         Number of complete finite bootstrap rows used for confidence intervals.
+    ci_quality : str
+        Confidence interval sample quality: ``unavailable``, ``degenerate``,
+        ``low``, ``acceptable``, or ``strong``.
     alpha : float
         Significance level (e.g., 0.05 for 95% CI)
     method : str
@@ -99,6 +102,27 @@ class BootstrapResult:
     def ci_sample_rate(self) -> float:
         """Fraction of requested bootstrap rows available for confidence intervals."""
         return self.n_ci_samples / self.n_boots if self.n_boots else 0.0
+
+    @property
+    def ci_quality(self) -> str:
+        """Classify confidence interval quality from complete sample count.
+
+        The classification is intentionally based on absolute complete-row
+        counts, rather than the failure rate, because confidence interval
+        precision depends on the number of observations available to the
+        quantile calculation.  The boundaries are deterministic and apply to
+        both manually constructed and Bootstrap-generated results.
+        """
+        n_samples = self.n_ci_samples
+        if n_samples == 0:
+            return "unavailable"
+        if n_samples == 1:
+            return "degenerate"
+        if n_samples < 10:
+            return "low"
+        if n_samples < 100:
+            return "acceptable"
+        return "strong"
 
     @property
     def failure_rate(self) -> float:
@@ -167,6 +191,7 @@ class BootstrapResult:
             "failure_rate": self.failure_rate,
             "n_ci_samples": self.n_ci_samples,
             "ci_sample_rate": self.ci_sample_rate,
+            "ci_quality": self.ci_quality,
             "alpha": self.alpha,
             "coefficients": self.coefficients,
             "fitted_values": self.fitted_values,
@@ -201,6 +226,7 @@ class BootstrapResult:
             f"Successful fits: {self.n_successful} ({self.n_successful/self.n_boots*100 if self.n_boots else 0:.1f}%)",
             f"Failed fits: {self.n_failed} ({self.failure_rate*100:.1f}%)",
             f"Samples used for confidence intervals: {self.n_ci_samples} ({self.ci_sample_rate*100:.1f}%)",
+            f"Confidence interval quality: {self.ci_quality}",
             f"Confidence level: {(1-self.alpha)*100:.0f}%",
             "",
             "Coefficient Statistics:",

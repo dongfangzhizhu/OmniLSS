@@ -863,6 +863,34 @@ def test_bootstrap_result_reports_complete_ci_sample_count():
     exported = result.to_dict()
     assert exported["n_ci_samples"] == 2
     assert exported["ci_sample_rate"] == pytest.approx(2 / 3)
+    assert result.ci_quality == "low"
+    assert exported["ci_quality"] == "low"
+
+
+@pytest.mark.parametrize("n_samples,expected", [
+    (0, "unavailable"),
+    (1, "degenerate"),
+    (2, "low"),
+    (9, "low"),
+    (10, "acceptable"),
+    (99, "acceptable"),
+    (100, "strong"),
+])
+def test_bootstrap_result_ci_quality_levels(n_samples, expected):
+    coefficients = jnp.ones((n_samples, 1))
+    if n_samples == 0:
+        coefficients = jnp.empty((0, 1))
+    elif n_samples < 100:
+        coefficients = jnp.concatenate(
+            [coefficients, jnp.full((100 - n_samples, 1), jnp.nan)]
+        )
+    result = BootstrapResult(
+        coefficients=coefficients,
+        n_boots=100,
+        n_successful=n_samples,
+    )
+
+    assert result.ci_quality == expected
 
 
 @pytest.mark.parametrize("method", ["nonparametric", "parametric", "residual"])
