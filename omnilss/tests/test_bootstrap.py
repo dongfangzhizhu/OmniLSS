@@ -145,12 +145,44 @@ def test_compute_confidence_intervals_bca_with_jackknife():
 def test_compute_confidence_intervals_bca_without_jackknife():
     """BCa remains usable with the documented zero-acceleration fallback."""
     boot = jnp.arange(20.0).reshape(10, 2)
-    lower, upper = compute_confidence_intervals(
-        boot, method="bca", original_estimate=jnp.array([9.0, 10.0])
-    )
+    with pytest.warns(RuntimeWarning, match="without jackknife"):
+        lower, upper, diagnostic = compute_confidence_intervals(
+            boot, method="bca", original_estimate=jnp.array([9.0, 10.0]),
+            return_diagnostics=True,
+        )
     assert lower.shape == (2,)
     assert upper.shape == (2,)
     assert jnp.all(lower <= upper)
+    assert diagnostic == "bc"
+
+
+def test_compute_confidence_intervals_bca_warns_for_low_sample_count():
+    boot = jnp.arange(12.0).reshape(6, 2)
+    jack = jnp.arange(10.0).reshape(5, 2)
+    with pytest.warns(RuntimeWarning, match="fewer than 10"):
+        lower, upper, diagnostic = compute_confidence_intervals(
+            boot, method="bca", original_estimate=jnp.array([5.0, 6.0]),
+            jackknife_estimates=jack, return_diagnostics=True,
+        )
+    assert jnp.all(lower <= upper)
+    assert diagnostic == "bca"
+
+
+@pytest.mark.parametrize(
+    "boot,expected",
+    [(jnp.empty((0, 2)), "unavailable"),
+     (jnp.array([[1.0, 2.0]]), "degenerate")],
+)
+def test_compute_confidence_intervals_reports_degenerate_bca_diagnostics(boot, expected):
+    kwargs = dict(method="bca", original_estimate=jnp.array([1.0, 2.0]),
+                  return_diagnostics=True)
+    lower, upper, diagnostic = compute_confidence_intervals(boot, **kwargs)
+    assert diagnostic == expected
+    if expected == "unavailable":
+        assert jnp.isnan(lower).all() and jnp.isnan(upper).all()
+    else:
+        assert jnp.array_equal(lower, boot[0])
+        assert jnp.array_equal(upper, boot[0])
 
 
 def test_bca_matches_scipy_reference():

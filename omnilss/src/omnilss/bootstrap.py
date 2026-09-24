@@ -64,6 +64,10 @@ class BootstrapResult:
     ci_quality_thresholds : tuple of int
         Boundaries used for CI quality classification as
         ``(degenerate_max, acceptable_min, strong_min)``.
+    ci_method : str
+        Method used to calculate the stored interval.
+    ci_diagnostic : str, optional
+        Additional information about CI fallback or reliability.
     alpha : float
         Significance level (e.g., 0.05 for 95% CI)
     method : str
@@ -83,6 +87,8 @@ class BootstrapResult:
     failure_indices: Optional[jnp.ndarray] = None
     failure_reasons: Optional[Dict[str, int]] = None
     ci_quality_thresholds: Tuple[int, int, int] = (1, 10, 100)
+    ci_method: str = "percentile"
+    ci_diagnostic: Optional[str] = None
 
     @property
     def n_failed(self) -> int:
@@ -198,6 +204,8 @@ class BootstrapResult:
             "ci_sample_rate": self.ci_sample_rate,
             "ci_quality": self.ci_quality,
             "ci_quality_thresholds": self.ci_quality_thresholds,
+            "ci_method": self.ci_method,
+            "ci_diagnostic": self.ci_diagnostic,
             "alpha": self.alpha,
             "coefficients": self.coefficients,
             "fitted_values": self.fitted_values,
@@ -233,6 +241,8 @@ class BootstrapResult:
             f"Failed fits: {self.n_failed} ({self.failure_rate*100:.1f}%)",
             f"Samples used for confidence intervals: {self.n_ci_samples} ({self.ci_sample_rate*100:.1f}%)",
             f"Confidence interval quality: {self.ci_quality}",
+            f"Confidence interval method: {self.ci_method}",
+            f"Confidence interval diagnostic: {self.ci_diagnostic or 'none'}",
             f"Confidence level: {(1-self.alpha)*100:.0f}%",
             "",
             "Coefficient Statistics:",
@@ -512,6 +522,15 @@ def _validate_ci_quality_thresholds(
     return thresholds
 
 
+def _ci_result_diagnostic(method: str, n_ci_samples: int) -> str:
+    """Return a compact diagnostic label for a stored confidence interval."""
+    if n_ci_samples == 0:
+        return "unavailable"
+    if n_ci_samples == 1:
+        return "degenerate"
+    return method
+
+
 def _maybe_warn_ci_sample_count(
     method: str,
     n_ci_samples: int,
@@ -540,7 +559,9 @@ def compute_confidence_intervals(
     method: str = 'percentile',
     original_estimate: Optional[jnp.ndarray] = None,
     jackknife_estimates: Optional[jnp.ndarray] = None,
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    *,
+    return_diagnostics: bool = False,
+) -> Any:
     """Compute bootstrap confidence intervals.
     
     Parameters
@@ -560,6 +581,9 @@ def compute_confidence_intervals(
     jackknife_estimates : array_like, optional
         Complete finite leave-one-out statistics, shape (n_jackknife, n_params),
         with at least two rows. Failed jackknife fits cannot be discarded.
+    return_diagnostics : bool, default=False
+        If true, return ``(lower, upper, diagnostic)``. The diagnostic is one
+        of ``percentile``, ``bc``, ``bca``, ``unavailable``, or ``degenerate``.
         
     Returns
     -------
@@ -567,6 +591,8 @@ def compute_confidence_intervals(
         Lower confidence bounds
     upper_ci : jnp.ndarray
         Upper confidence bounds
+    diagnostic : str, optional
+        Returned only when ``return_diagnostics=True``.
         
     Notes
     -----
@@ -585,6 +611,7 @@ def compute_confidence_intervals(
         raise ValueError("boot_estimates must be a two-dimensional array")
     if method not in ('percentile', 'bca'):
         raise ValueError(f"Unknown method: {method}")
+    diagnostic = method
     if method == 'bca':
         if original_estimate is None:
             raise ValueError("original_estimate is required for bca intervals")
@@ -599,18 +626,40 @@ def compute_confidence_intervals(
                 raise ValueError("jackknife_estimates must have shape (n_jackknife, n_params) with at least two rows")
             if not bool(jnp.all(jnp.isfinite(jack))):
                 raise ValueError("jackknife_estimates must be finite")
+        else:
+            diagnostic = "bc"
+            warnings.warn(
+                "BCa confidence intervals requested without jackknife estimates; "
+                "using the bias-corrected (BC) fallback with zero acceleration",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
     # Exclude failed fits as complete rows, preserving joint parameter samples.
     valid_mask = jnp.isfinite(boot_estimates).all(axis=1)
     valid_estimates = boot_estimates[valid_mask]
     if valid_estimates.shape[0] == 0:
         missing = jnp.full((boot_estimates.shape[1],), jnp.nan)
+        diagnostic = "unavailable"
+        if return_diagnostics:
+            return missing, missing, diagnostic
         return missing, missing
     if valid_estimates.shape[0] == 1:
         # A single successful fit cannot quantify uncertainty.  Returning the
         # observed estimate for both bounds is deterministic and avoids asking
         # the percentile/BCa implementations to extrapolate from one sample.
+        diagnostic = "degenerate"
+        if return_diagnostics:
+            return valid_estimates[0], valid_estimates[0], diagnostic
         return valid_estimates[0], valid_estimates[0]
+
+    if method == 'bca' and valid_estimates.shape[0] < 10:
+        warnings.warn(
+            "BCa confidence intervals are based on fewer than 10 complete "
+            "finite bootstrap samples and may be unreliable",
+            RuntimeWarning,
+            stacklevel=2,
+        )
     
     if method == 'percentile':
         lower_percentile = alpha / 2 * 100
@@ -643,6 +692,8 @@ def compute_confidence_intervals(
     else:
         raise ValueError(f"Unknown method: {method}")
     
+    if return_diagnostics:
+        return lower_ci, upper_ci, diagnostic
     return lower_ci, upper_ci
 
 
@@ -789,8 +840,9 @@ def nonparametric_bootstrap(
     std_estimate = jnp.nanstd(boot_coefficients, axis=0)
     
     # Compute confidence intervals
-    lower_ci, upper_ci = compute_confidence_intervals(
-        boot_coefficients, alpha=alpha, method='percentile'
+    lower_ci, upper_ci, ci_diagnostic = compute_confidence_intervals(
+        boot_coefficients, alpha=alpha, method='percentile',
+        return_diagnostics=True,
     )
     _maybe_warn_ci_sample_count(
         "nonparametric", int(jnp.sum(jnp.isfinite(boot_coefficients).all(axis=1))),
@@ -810,6 +862,7 @@ def nonparametric_bootstrap(
         failure_indices=failure_indices,
         failure_reasons=failure_reasons or None,
         ci_quality_thresholds=ci_quality_thresholds,
+        ci_diagnostic=ci_diagnostic,
     )
 
 
@@ -956,8 +1009,9 @@ def parametric_bootstrap(
     std_estimate = jnp.nanstd(boot_coefficients, axis=0)
     
     # Compute confidence intervals
-    lower_ci, upper_ci = compute_confidence_intervals(
-        boot_coefficients, alpha=alpha, method='percentile'
+    lower_ci, upper_ci, ci_diagnostic = compute_confidence_intervals(
+        boot_coefficients, alpha=alpha, method='percentile',
+        return_diagnostics=True,
     )
     _maybe_warn_ci_sample_count(
         "parametric", int(jnp.sum(jnp.isfinite(boot_coefficients).all(axis=1))),
@@ -977,6 +1031,7 @@ def parametric_bootstrap(
         failure_indices=failure_indices,
         failure_reasons=failure_reasons or None,
         ci_quality_thresholds=ci_quality_thresholds,
+        ci_diagnostic=ci_diagnostic,
     )
 
 
@@ -1124,8 +1179,9 @@ def residual_bootstrap(
     std_estimate = jnp.nanstd(boot_coefficients, axis=0)
     
     # Compute confidence intervals
-    lower_ci, upper_ci = compute_confidence_intervals(
-        boot_coefficients, alpha=alpha, method='percentile'
+    lower_ci, upper_ci, ci_diagnostic = compute_confidence_intervals(
+        boot_coefficients, alpha=alpha, method='percentile',
+        return_diagnostics=True,
     )
     _maybe_warn_ci_sample_count(
         "residual", int(jnp.sum(jnp.isfinite(boot_coefficients).all(axis=1))),
@@ -1145,6 +1201,7 @@ def residual_bootstrap(
         failure_indices=failure_indices,
         failure_reasons=failure_reasons or None,
         ci_quality_thresholds=ci_quality_thresholds,
+        ci_diagnostic=ci_diagnostic,
     )
 
 
