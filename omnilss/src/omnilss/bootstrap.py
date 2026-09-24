@@ -448,6 +448,38 @@ def _maybe_warn_bootstrap_failures(
         _warn_bootstrap_failures(method, n_boots, n_successful, failure_reasons)
 
 
+def _validate_ci_warning_samples(ci_warning_samples: Optional[int]) -> None:
+    """Validate the optional minimum complete-sample warning threshold."""
+    if ci_warning_samples is not None and (
+        isinstance(ci_warning_samples, bool)
+        or not isinstance(ci_warning_samples, (int, np.integer))
+        or ci_warning_samples < 0
+    ):
+        raise ValueError("ci_warning_samples must be a non-negative integer or None")
+
+
+def _maybe_warn_ci_sample_count(
+    method: str,
+    n_ci_samples: int,
+    ci_warning_samples: Optional[int],
+) -> None:
+    """Warn when too few complete bootstrap rows support confidence intervals."""
+    if ci_warning_samples is None or n_ci_samples >= ci_warning_samples:
+        return
+    if n_ci_samples == 0:
+        detail = "no complete finite bootstrap samples are available"
+    elif n_ci_samples == 1:
+        detail = "only one complete finite bootstrap sample is available; the interval is degenerate"
+    else:
+        detail = f"only {n_ci_samples} complete finite bootstrap samples are available"
+    warnings.warn(
+        f"{method} bootstrap confidence intervals may be unreliable: {detail}; "
+        f"requested at least {ci_warning_samples}",
+        RuntimeWarning,
+        stacklevel=4,
+    )
+
+
 def compute_confidence_intervals(
     boot_estimates: jnp.ndarray,
     alpha: float = 0.05,
@@ -572,6 +604,7 @@ def nonparametric_bootstrap(
     *,
     failure_warning: str = "always",
     warning_failure_rate: float = 0.0,
+    ci_warning_samples: Optional[int] = None,
 ) -> BootstrapResult:
     """Perform non-parametric bootstrap for GAMLSS models.
     
@@ -634,6 +667,7 @@ def nonparametric_bootstrap(
     """
     n_obs = _validate_bootstrap_inputs(data, n_boots, alpha, min_success_rate)
     _validate_failure_warning_options(failure_warning, warning_failure_rate)
+    _validate_ci_warning_samples(ci_warning_samples)
     try:
         parameter_template = jnp.asarray(fit_function(data))
     except Exception as exc:
@@ -702,6 +736,10 @@ def nonparametric_bootstrap(
     lower_ci, upper_ci = compute_confidence_intervals(
         boot_coefficients, alpha=alpha, method='percentile'
     )
+    _maybe_warn_ci_sample_count(
+        "nonparametric", int(jnp.sum(jnp.isfinite(boot_coefficients).all(axis=1))),
+        ci_warning_samples,
+    )
     
     return BootstrapResult(
         coefficients=boot_coefficients,
@@ -732,6 +770,7 @@ def parametric_bootstrap(
     *,
     failure_warning: str = "always",
     warning_failure_rate: float = 0.0,
+    ci_warning_samples: Optional[int] = None,
 ) -> BootstrapResult:
     """Perform parametric bootstrap for GAMLSS models.
 
@@ -791,6 +830,7 @@ def parametric_bootstrap(
     """
     _validate_bootstrap_inputs(data, n_boots, alpha, min_success_rate)
     _validate_failure_warning_options(failure_warning, warning_failure_rate)
+    _validate_ci_warning_samples(ci_warning_samples)
     fitted_params = jnp.asarray(fitted_params)
     if fitted_params.ndim != 1:
         raise ValueError("fitted_params must be a one-dimensional parameter vector")
@@ -860,6 +900,10 @@ def parametric_bootstrap(
     lower_ci, upper_ci = compute_confidence_intervals(
         boot_coefficients, alpha=alpha, method='percentile'
     )
+    _maybe_warn_ci_sample_count(
+        "parametric", int(jnp.sum(jnp.isfinite(boot_coefficients).all(axis=1))),
+        ci_warning_samples,
+    )
     
     return BootstrapResult(
         coefficients=boot_coefficients,
@@ -890,6 +934,7 @@ def residual_bootstrap(
     *,
     failure_warning: str = "always",
     warning_failure_rate: float = 0.0,
+    ci_warning_samples: Optional[int] = None,
 ) -> BootstrapResult:
     """Perform residual bootstrap for GAMLSS models.
 
@@ -933,6 +978,7 @@ def residual_bootstrap(
     """
     n_obs = _validate_bootstrap_inputs(data, n_boots, alpha, min_success_rate)
     _validate_failure_warning_options(failure_warning, warning_failure_rate)
+    _validate_ci_warning_samples(ci_warning_samples)
     response_shape = jnp.asarray(data["y"]).shape
     try:
         fitted_values = _validate_observation_shape(
@@ -1018,6 +1064,10 @@ def residual_bootstrap(
     # Compute confidence intervals
     lower_ci, upper_ci = compute_confidence_intervals(
         boot_coefficients, alpha=alpha, method='percentile'
+    )
+    _maybe_warn_ci_sample_count(
+        "residual", int(jnp.sum(jnp.isfinite(boot_coefficients).all(axis=1))),
+        ci_warning_samples,
     )
     
     return BootstrapResult(

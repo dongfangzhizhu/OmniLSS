@@ -866,6 +866,40 @@ def test_bootstrap_result_reports_complete_ci_sample_count():
 
 
 @pytest.mark.parametrize("method", ["nonparametric", "parametric", "residual"])
+def test_bootstrap_warns_when_ci_samples_are_insufficient(method):
+    data = {'y': jnp.arange(4.0)}
+    fit = lambda d: jnp.array([jnp.nan])
+    kwargs = dict(
+        n_boots=2, parallel=False, failure_warning="never",
+        ci_warning_samples=1,
+    )
+
+    with pytest.warns(RuntimeWarning, match="no complete finite bootstrap samples"):
+        if method == "nonparametric":
+            result = nonparametric_bootstrap(fit, data, jax.random.PRNGKey(0), **kwargs)
+        elif method == "parametric":
+            result = parametric_bootstrap(
+                fit, lambda params, key: jnp.zeros(4), data, jnp.array([1.0]),
+                jax.random.PRNGKey(0), **kwargs,
+            )
+        else:
+            result = residual_bootstrap(
+                fit, data, jnp.zeros(4), jnp.zeros(4), jax.random.PRNGKey(0), **kwargs,
+            )
+
+    assert result.n_ci_samples == 0
+
+
+@pytest.mark.parametrize("value", [-1, 1.5, True, "10"])
+def test_bootstrap_rejects_invalid_ci_warning_samples(value):
+    with pytest.raises(ValueError, match="ci_warning_samples"):
+        nonparametric_bootstrap(
+            lambda d: jnp.array([1.0]), {'y': jnp.arange(3.0)},
+            jax.random.PRNGKey(0), n_boots=1, ci_warning_samples=value,
+        )
+
+
+@pytest.mark.parametrize("method", ["nonparametric", "parametric", "residual"])
 @pytest.mark.parametrize("policy,threshold,expected", [
     ("always", 1.0, 1), ("never", 0.0, 0),
     ("threshold", 0.5, 1), ("threshold", 0.75, 0),
