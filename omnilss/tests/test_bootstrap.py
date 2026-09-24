@@ -850,6 +850,21 @@ def test_bootstrap_result_primary_failure_reason_is_deterministic():
     }
 
 
+def test_bootstrap_result_reports_complete_ci_sample_count():
+    result = BootstrapResult(
+        coefficients=jnp.array([[1.0, 2.0], [jnp.nan, 3.0], [4.0, 5.0]]),
+        n_boots=3,
+        n_successful=2,
+    )
+
+    assert result.n_ci_samples == 2
+    assert result.ci_sample_rate == pytest.approx(2 / 3)
+    assert "Samples used for confidence intervals: 2 (66.7%)" in result.summary()
+    exported = result.to_dict()
+    assert exported["n_ci_samples"] == 2
+    assert exported["ci_sample_rate"] == pytest.approx(2 / 3)
+
+
 @pytest.mark.parametrize("method", ["nonparametric", "parametric", "residual"])
 @pytest.mark.parametrize("policy,threshold,expected", [
     ("always", 1.0, 1), ("never", 0.0, 0),

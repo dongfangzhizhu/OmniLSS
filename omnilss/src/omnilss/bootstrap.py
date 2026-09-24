@@ -56,6 +56,8 @@ class BootstrapResult:
         Number of bootstrap iterations
     n_successful : int
         Number of successful fits (excluding NaN)
+    n_ci_samples : int
+        Number of complete finite bootstrap rows used for confidence intervals.
     alpha : float
         Significance level (e.g., 0.05 for 95% CI)
     method : str
@@ -79,6 +81,24 @@ class BootstrapResult:
     def n_failed(self) -> int:
         """Number of bootstrap fits that did not return finite parameters."""
         return self.n_boots - self.n_successful
+
+    @property
+    def n_ci_samples(self) -> int:
+        """Number of complete finite rows available for confidence intervals.
+
+        Confidence intervals operate on complete parameter rows so that the
+        joint bootstrap distribution is preserved.  This is normally equal to
+        ``n_successful``, but is computed from the returned coefficients to
+        keep serialized or manually constructed results accurate.
+        """
+        if self.coefficients.ndim != 2:
+            return 0
+        return int(jnp.sum(jnp.isfinite(self.coefficients).all(axis=1)))
+
+    @property
+    def ci_sample_rate(self) -> float:
+        """Fraction of requested bootstrap rows available for confidence intervals."""
+        return self.n_ci_samples / self.n_boots if self.n_boots else 0.0
 
     @property
     def failure_rate(self) -> float:
@@ -145,6 +165,8 @@ class BootstrapResult:
             "n_successful": self.n_successful,
             "n_failed": self.n_failed,
             "failure_rate": self.failure_rate,
+            "n_ci_samples": self.n_ci_samples,
+            "ci_sample_rate": self.ci_sample_rate,
             "alpha": self.alpha,
             "coefficients": self.coefficients,
             "fitted_values": self.fitted_values,
@@ -178,6 +200,7 @@ class BootstrapResult:
             f"Number of bootstrap samples: {self.n_boots}",
             f"Successful fits: {self.n_successful} ({self.n_successful/self.n_boots*100 if self.n_boots else 0:.1f}%)",
             f"Failed fits: {self.n_failed} ({self.failure_rate*100:.1f}%)",
+            f"Samples used for confidence intervals: {self.n_ci_samples} ({self.ci_sample_rate*100:.1f}%)",
             f"Confidence level: {(1-self.alpha)*100:.0f}%",
             "",
             "Coefficient Statistics:",
