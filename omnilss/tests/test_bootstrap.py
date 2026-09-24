@@ -964,6 +964,74 @@ def test_nonparametric_bootstrap_propagates_ci_quality_thresholds():
 
 
 @pytest.mark.parametrize("method", ["nonparametric", "parametric", "residual"])
+def test_bootstrap_entry_points_support_full_bca(method):
+    data = {"y": jnp.arange(6.0)}
+
+    def fit(d):
+        return jnp.array([jnp.mean(d["y"])])
+
+    kwargs = dict(n_boots=12, parallel=False, ci_method="bca", failure_warning="never")
+    if method == "nonparametric":
+        result = nonparametric_bootstrap(fit, data, jax.random.PRNGKey(1), **kwargs)
+    elif method == "parametric":
+        result = parametric_bootstrap(
+            fit, lambda params, key: data["y"], data, jnp.array([2.5]),
+            jax.random.PRNGKey(1), **kwargs,
+        )
+    else:
+        result = residual_bootstrap(
+            fit, data, data["y"], jnp.zeros(6), jax.random.PRNGKey(1), **kwargs,
+        )
+
+    assert result.ci_method == "bca"
+    assert result.ci_diagnostic == "bca"
+    assert result.jackknife_n_samples == 6
+    assert result.ci_fallback_reason is None
+    assert jnp.all(jnp.isfinite(jnp.array([result.lower_ci, result.upper_ci])))
+    exported = result.to_dict()
+    assert exported["jackknife_n_samples"] == 6
+    assert exported["ci_fallback_reason"] is None
+
+
+@pytest.mark.parametrize("method", ["nonparametric", "parametric", "residual"])
+def test_bootstrap_entry_points_reject_invalid_ci_method(method):
+    data = {"y": jnp.arange(3.0)}
+    fit = lambda d: jnp.array([jnp.mean(d["y"])])
+    with pytest.raises(ValueError, match="ci_method"):
+        if method == "nonparametric":
+            nonparametric_bootstrap(fit, data, jax.random.PRNGKey(0), ci_method="basic")
+        elif method == "parametric":
+            parametric_bootstrap(
+                fit, lambda params, key: data["y"], data, jnp.array([1.0]),
+                jax.random.PRNGKey(0), ci_method="basic",
+            )
+        else:
+            residual_bootstrap(
+                fit, data, data["y"], jnp.zeros(3), jax.random.PRNGKey(0),
+                ci_method="basic",
+            )
+
+
+def test_bootstrap_bca_records_jackknife_fallback_reason():
+    data = {"y": jnp.arange(4.0)}
+
+    def fit(d):
+        if d["y"].shape[0] == 3:
+            raise ValueError("leave-one-out failure")
+        return jnp.array([jnp.mean(d["y"])])
+
+    with pytest.warns(RuntimeWarning, match="without jackknife"):
+        result = nonparametric_bootstrap(
+            fit, data, jax.random.PRNGKey(0), n_boots=10, parallel=False,
+            ci_method="bca", failure_warning="never",
+        )
+    assert result.ci_method == "bca"
+    assert result.ci_diagnostic == "bc"
+    assert result.jackknife_n_samples == 0
+    assert "4 of 4 jackknife fits failed" in result.ci_fallback_reason
+
+
+@pytest.mark.parametrize("method", ["nonparametric", "parametric", "residual"])
 def test_bootstrap_warns_when_ci_samples_are_insufficient(method):
     data = {'y': jnp.arange(4.0)}
     fit = lambda d: jnp.array([jnp.nan])

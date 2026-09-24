@@ -89,6 +89,8 @@ class BootstrapResult:
     ci_quality_thresholds: Tuple[int, int, int] = (1, 10, 100)
     ci_method: str = "percentile"
     ci_diagnostic: Optional[str] = None
+    jackknife_n_samples: int = 0
+    ci_fallback_reason: Optional[str] = None
 
     @property
     def n_failed(self) -> int:
@@ -206,6 +208,8 @@ class BootstrapResult:
             "ci_quality_thresholds": self.ci_quality_thresholds,
             "ci_method": self.ci_method,
             "ci_diagnostic": self.ci_diagnostic,
+            "jackknife_n_samples": self.jackknife_n_samples,
+            "ci_fallback_reason": self.ci_fallback_reason,
             "alpha": self.alpha,
             "coefficients": self.coefficients,
             "fitted_values": self.fitted_values,
@@ -522,6 +526,57 @@ def _validate_ci_quality_thresholds(
     return thresholds
 
 
+def _validate_ci_method(ci_method: str) -> str:
+    """Validate the confidence interval method accepted by bootstrap APIs."""
+    if ci_method not in ("percentile", "bca"):
+        raise ValueError("ci_method must be one of 'percentile' or 'bca'")
+    return ci_method
+
+
+def _compute_jackknife_estimates(
+    fit_function: Callable,
+    data: Dict[str, jnp.ndarray],
+    n_obs: int,
+    parameter_shape: tuple,
+    method: str,
+) -> Tuple[jnp.ndarray, int, Optional[str]]:
+    """Fit the statistic on every leave-one-out version of the original data.
+
+    Jackknife failures are omitted deliberately: BCa can still use the complete
+    finite rows that remain, while the returned reason makes partial jackknife
+    coverage visible to callers.
+    """
+    estimates = []
+    failures = 0
+    for omitted in range(n_obs):
+        indices = jnp.concatenate((jnp.arange(omitted), jnp.arange(omitted + 1, n_obs)))
+        jack_data = {
+            name: value[indices]
+            if isinstance(value, (jnp.ndarray, np.ndarray)) and value.ndim > 0
+            else value
+            for name, value in data.items()
+        }
+        try:
+            estimate = _validate_parameter_vector(
+                fit_function(jack_data), parameter_shape, f"{method} jackknife"
+            )
+            if not bool(jnp.all(jnp.isfinite(estimate))):
+                raise ValueError("non-finite estimate")
+            estimates.append(estimate)
+        except Exception:
+            failures += 1
+    if estimates:
+        result = jnp.stack(estimates)
+    else:
+        result = jnp.empty((0, parameter_shape[0]))
+    reason = None
+    if failures:
+        reason = f"{failures} of {n_obs} jackknife fits failed"
+    if result.shape[0] < 2:
+        reason = reason or "fewer than two complete jackknife fits"
+    return result, int(result.shape[0]), reason
+
+
 def _ci_result_diagnostic(method: str, n_ci_samples: int) -> str:
     """Return a compact diagnostic label for a stored confidence interval."""
     if n_ci_samples == 0:
@@ -711,6 +766,7 @@ def nonparametric_bootstrap(
     warning_failure_rate: float = 0.0,
     ci_warning_samples: Optional[int] = None,
     ci_quality_thresholds: Tuple[int, int, int] = (1, 10, 100),
+    ci_method: str = "percentile",
 ) -> BootstrapResult:
     """Perform non-parametric bootstrap for GAMLSS models.
     
@@ -775,6 +831,7 @@ def nonparametric_bootstrap(
     _validate_failure_warning_options(failure_warning, warning_failure_rate)
     _validate_ci_warning_samples(ci_warning_samples)
     ci_quality_thresholds = _validate_ci_quality_thresholds(ci_quality_thresholds)
+    ci_method = _validate_ci_method(ci_method)
     try:
         parameter_template = jnp.asarray(fit_function(data))
     except Exception as exc:
@@ -839,9 +896,20 @@ def nonparametric_bootstrap(
     mean_estimate = jnp.nanmean(boot_coefficients, axis=0)
     std_estimate = jnp.nanstd(boot_coefficients, axis=0)
     
+    jackknife_estimates = None
+    jackknife_n_samples = 0
+    ci_fallback_reason = None
+    if ci_method == "bca":
+        jackknife_estimates, jackknife_n_samples, ci_fallback_reason = _compute_jackknife_estimates(
+            fit_function, data, n_obs, parameter_template.shape, "nonparametric"
+        )
+        if jackknife_n_samples < 2:
+            jackknife_estimates = None
     # Compute confidence intervals
     lower_ci, upper_ci, ci_diagnostic = compute_confidence_intervals(
-        boot_coefficients, alpha=alpha, method='percentile',
+        boot_coefficients, alpha=alpha, method=ci_method,
+        original_estimate=parameter_template if ci_method == "bca" else None,
+        jackknife_estimates=jackknife_estimates,
         return_diagnostics=True,
     )
     _maybe_warn_ci_sample_count(
@@ -862,7 +930,10 @@ def nonparametric_bootstrap(
         failure_indices=failure_indices,
         failure_reasons=failure_reasons or None,
         ci_quality_thresholds=ci_quality_thresholds,
+        ci_method=ci_method,
         ci_diagnostic=ci_diagnostic,
+        jackknife_n_samples=jackknife_n_samples,
+        ci_fallback_reason=ci_fallback_reason,
     )
 
 
@@ -882,6 +953,7 @@ def parametric_bootstrap(
     warning_failure_rate: float = 0.0,
     ci_warning_samples: Optional[int] = None,
     ci_quality_thresholds: Tuple[int, int, int] = (1, 10, 100),
+    ci_method: str = "percentile",
 ) -> BootstrapResult:
     """Perform parametric bootstrap for GAMLSS models.
 
@@ -943,6 +1015,7 @@ def parametric_bootstrap(
     _validate_failure_warning_options(failure_warning, warning_failure_rate)
     _validate_ci_warning_samples(ci_warning_samples)
     ci_quality_thresholds = _validate_ci_quality_thresholds(ci_quality_thresholds)
+    ci_method = _validate_ci_method(ci_method)
     fitted_params = jnp.asarray(fitted_params)
     if fitted_params.ndim != 1:
         raise ValueError("fitted_params must be a one-dimensional parameter vector")
@@ -1008,9 +1081,20 @@ def parametric_bootstrap(
     mean_estimate = jnp.nanmean(boot_coefficients, axis=0)
     std_estimate = jnp.nanstd(boot_coefficients, axis=0)
     
+    jackknife_estimates = None
+    jackknife_n_samples = 0
+    ci_fallback_reason = None
+    if ci_method == "bca":
+        jackknife_estimates, jackknife_n_samples, ci_fallback_reason = _compute_jackknife_estimates(
+            fit_function, data, jnp.asarray(data["y"]).shape[0], fitted_params.shape, "parametric"
+        )
+        if jackknife_n_samples < 2:
+            jackknife_estimates = None
     # Compute confidence intervals
     lower_ci, upper_ci, ci_diagnostic = compute_confidence_intervals(
-        boot_coefficients, alpha=alpha, method='percentile',
+        boot_coefficients, alpha=alpha, method=ci_method,
+        original_estimate=fitted_params if ci_method == "bca" else None,
+        jackknife_estimates=jackknife_estimates,
         return_diagnostics=True,
     )
     _maybe_warn_ci_sample_count(
@@ -1031,7 +1115,10 @@ def parametric_bootstrap(
         failure_indices=failure_indices,
         failure_reasons=failure_reasons or None,
         ci_quality_thresholds=ci_quality_thresholds,
+        ci_method=ci_method,
         ci_diagnostic=ci_diagnostic,
+        jackknife_n_samples=jackknife_n_samples,
+        ci_fallback_reason=ci_fallback_reason,
     )
 
 
@@ -1051,6 +1138,7 @@ def residual_bootstrap(
     warning_failure_rate: float = 0.0,
     ci_warning_samples: Optional[int] = None,
     ci_quality_thresholds: Tuple[int, int, int] = (1, 10, 100),
+    ci_method: str = "percentile",
 ) -> BootstrapResult:
     """Perform residual bootstrap for GAMLSS models.
 
@@ -1096,6 +1184,7 @@ def residual_bootstrap(
     _validate_failure_warning_options(failure_warning, warning_failure_rate)
     _validate_ci_warning_samples(ci_warning_samples)
     ci_quality_thresholds = _validate_ci_quality_thresholds(ci_quality_thresholds)
+    ci_method = _validate_ci_method(ci_method)
     response_shape = jnp.asarray(data["y"]).shape
     try:
         fitted_values = _validate_observation_shape(
@@ -1178,9 +1267,20 @@ def residual_bootstrap(
     mean_estimate = jnp.nanmean(boot_coefficients, axis=0)
     std_estimate = jnp.nanstd(boot_coefficients, axis=0)
     
+    jackknife_estimates = None
+    jackknife_n_samples = 0
+    ci_fallback_reason = None
+    if ci_method == "bca":
+        jackknife_estimates, jackknife_n_samples, ci_fallback_reason = _compute_jackknife_estimates(
+            fit_function, data, n_obs, parameter_template.shape, "residual"
+        )
+        if jackknife_n_samples < 2:
+            jackknife_estimates = None
     # Compute confidence intervals
     lower_ci, upper_ci, ci_diagnostic = compute_confidence_intervals(
-        boot_coefficients, alpha=alpha, method='percentile',
+        boot_coefficients, alpha=alpha, method=ci_method,
+        original_estimate=parameter_template if ci_method == "bca" else None,
+        jackknife_estimates=jackknife_estimates,
         return_diagnostics=True,
     )
     _maybe_warn_ci_sample_count(
@@ -1201,7 +1301,10 @@ def residual_bootstrap(
         failure_indices=failure_indices,
         failure_reasons=failure_reasons or None,
         ci_quality_thresholds=ci_quality_thresholds,
+        ci_method=ci_method,
         ci_diagnostic=ci_diagnostic,
+        jackknife_n_samples=jackknife_n_samples,
+        ci_fallback_reason=ci_fallback_reason,
     )
 
 
