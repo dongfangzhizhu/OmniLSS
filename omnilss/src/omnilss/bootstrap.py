@@ -91,6 +91,7 @@ class BootstrapResult:
     ci_diagnostic: Optional[str] = None
     jackknife_n_samples: int = 0
     ci_fallback_reason: Optional[str] = None
+    jackknife_failure_indices: Optional[jnp.ndarray] = None
 
     @property
     def n_failed(self) -> int:
@@ -210,6 +211,7 @@ class BootstrapResult:
             "ci_diagnostic": self.ci_diagnostic,
             "jackknife_n_samples": self.jackknife_n_samples,
             "ci_fallback_reason": self.ci_fallback_reason,
+            "jackknife_failure_indices": self.jackknife_failure_indices,
             "alpha": self.alpha,
             "coefficients": self.coefficients,
             "fitted_values": self.fitted_values,
@@ -539,16 +541,15 @@ def _compute_jackknife_estimates(
     n_obs: int,
     parameter_shape: tuple,
     method: str,
-) -> Tuple[jnp.ndarray, int, Optional[str]]:
+    parallel: bool = False,
+) -> Tuple[jnp.ndarray, int, Optional[str], jnp.ndarray]:
     """Fit the statistic on every leave-one-out version of the original data.
 
     Jackknife failures are omitted deliberately: BCa can still use the complete
     finite rows that remain, while the returned reason makes partial jackknife
     coverage visible to callers.
     """
-    estimates = []
-    failures = 0
-    for omitted in range(n_obs):
+    def leave_one_out(omitted):
         indices = jnp.concatenate((jnp.arange(omitted), jnp.arange(omitted + 1, n_obs)))
         jack_data = {
             name: value[indices]
@@ -556,25 +557,41 @@ def _compute_jackknife_estimates(
             else value
             for name, value in data.items()
         }
+        estimate = _validate_parameter_vector(
+            fit_function(jack_data), parameter_shape, f"{method} jackknife"
+        )
+        if not bool(jnp.all(jnp.isfinite(estimate))):
+            raise ValueError("non-finite estimate")
+        return estimate
+
+    estimates = []
+    failure_indices = []
+    omitted_indices = range(n_obs)
+    if parallel:
         try:
-            estimate = _validate_parameter_vector(
-                fit_function(jack_data), parameter_shape, f"{method} jackknife"
-            )
-            if not bool(jnp.all(jnp.isfinite(estimate))):
-                raise ValueError("non-finite estimate")
-            estimates.append(estimate)
+            # This is intentionally best-effort: arbitrary fit callbacks may not
+            # be vmappable, so the sequential path remains the compatibility
+            # fallback and provides per-row failure diagnostics.
+            estimates_array = vmap(leave_one_out)(jnp.arange(n_obs))
+            estimates = [estimates_array[index] for index in range(n_obs)]
         except Exception:
-            failures += 1
+            estimates = []
+    if not estimates:
+        for omitted in omitted_indices:
+            try:
+                estimates.append(leave_one_out(omitted))
+            except Exception:
+                failure_indices.append(omitted)
     if estimates:
         result = jnp.stack(estimates)
     else:
         result = jnp.empty((0, parameter_shape[0]))
     reason = None
-    if failures:
-        reason = f"{failures} of {n_obs} jackknife fits failed"
+    if failure_indices:
+        reason = f"{len(failure_indices)} of {n_obs} jackknife fits failed"
     if result.shape[0] < 2:
         reason = reason or "fewer than two complete jackknife fits"
-    return result, int(result.shape[0]), reason
+    return result, int(result.shape[0]), reason, jnp.asarray(failure_indices, dtype=int)
 
 
 def _ci_result_diagnostic(method: str, n_ci_samples: int) -> str:
@@ -767,6 +784,7 @@ def nonparametric_bootstrap(
     ci_warning_samples: Optional[int] = None,
     ci_quality_thresholds: Tuple[int, int, int] = (1, 10, 100),
     ci_method: str = "percentile",
+    jackknife_parallel: Optional[bool] = None,
 ) -> BootstrapResult:
     """Perform non-parametric bootstrap for GAMLSS models.
     
@@ -832,6 +850,10 @@ def nonparametric_bootstrap(
     _validate_ci_warning_samples(ci_warning_samples)
     ci_quality_thresholds = _validate_ci_quality_thresholds(ci_quality_thresholds)
     ci_method = _validate_ci_method(ci_method)
+    if jackknife_parallel is None:
+        jackknife_parallel = parallel
+    if not isinstance(jackknife_parallel, bool):
+        raise ValueError("jackknife_parallel must be a boolean or None")
     try:
         parameter_template = jnp.asarray(fit_function(data))
     except Exception as exc:
@@ -899,9 +921,14 @@ def nonparametric_bootstrap(
     jackknife_estimates = None
     jackknife_n_samples = 0
     ci_fallback_reason = None
+    jackknife_failure_indices = jnp.empty((0,), dtype=int)
     if ci_method == "bca":
-        jackknife_estimates, jackknife_n_samples, ci_fallback_reason = _compute_jackknife_estimates(
-            fit_function, data, n_obs, parameter_template.shape, "nonparametric"
+        (
+            jackknife_estimates, jackknife_n_samples, ci_fallback_reason,
+            jackknife_failure_indices,
+        ) = _compute_jackknife_estimates(
+            fit_function, data, n_obs, parameter_template.shape, "nonparametric",
+            parallel=jackknife_parallel,
         )
         if jackknife_n_samples < 2:
             jackknife_estimates = None
@@ -934,6 +961,7 @@ def nonparametric_bootstrap(
         ci_diagnostic=ci_diagnostic,
         jackknife_n_samples=jackknife_n_samples,
         ci_fallback_reason=ci_fallback_reason,
+        jackknife_failure_indices=jackknife_failure_indices,
     )
 
 
@@ -954,6 +982,7 @@ def parametric_bootstrap(
     ci_warning_samples: Optional[int] = None,
     ci_quality_thresholds: Tuple[int, int, int] = (1, 10, 100),
     ci_method: str = "percentile",
+    jackknife_parallel: Optional[bool] = None,
 ) -> BootstrapResult:
     """Perform parametric bootstrap for GAMLSS models.
 
@@ -1016,6 +1045,10 @@ def parametric_bootstrap(
     _validate_ci_warning_samples(ci_warning_samples)
     ci_quality_thresholds = _validate_ci_quality_thresholds(ci_quality_thresholds)
     ci_method = _validate_ci_method(ci_method)
+    if jackknife_parallel is None:
+        jackknife_parallel = parallel
+    if not isinstance(jackknife_parallel, bool):
+        raise ValueError("jackknife_parallel must be a boolean or None")
     fitted_params = jnp.asarray(fitted_params)
     if fitted_params.ndim != 1:
         raise ValueError("fitted_params must be a one-dimensional parameter vector")
@@ -1084,9 +1117,14 @@ def parametric_bootstrap(
     jackknife_estimates = None
     jackknife_n_samples = 0
     ci_fallback_reason = None
+    jackknife_failure_indices = jnp.empty((0,), dtype=int)
     if ci_method == "bca":
-        jackknife_estimates, jackknife_n_samples, ci_fallback_reason = _compute_jackknife_estimates(
-            fit_function, data, jnp.asarray(data["y"]).shape[0], fitted_params.shape, "parametric"
+        (
+            jackknife_estimates, jackknife_n_samples, ci_fallback_reason,
+            jackknife_failure_indices,
+        ) = _compute_jackknife_estimates(
+            fit_function, data, jnp.asarray(data["y"]).shape[0], fitted_params.shape,
+            "parametric", parallel=jackknife_parallel,
         )
         if jackknife_n_samples < 2:
             jackknife_estimates = None
@@ -1119,6 +1157,7 @@ def parametric_bootstrap(
         ci_diagnostic=ci_diagnostic,
         jackknife_n_samples=jackknife_n_samples,
         ci_fallback_reason=ci_fallback_reason,
+        jackknife_failure_indices=jackknife_failure_indices,
     )
 
 
@@ -1139,6 +1178,7 @@ def residual_bootstrap(
     ci_warning_samples: Optional[int] = None,
     ci_quality_thresholds: Tuple[int, int, int] = (1, 10, 100),
     ci_method: str = "percentile",
+    jackknife_parallel: Optional[bool] = None,
 ) -> BootstrapResult:
     """Perform residual bootstrap for GAMLSS models.
 
@@ -1185,6 +1225,10 @@ def residual_bootstrap(
     _validate_ci_warning_samples(ci_warning_samples)
     ci_quality_thresholds = _validate_ci_quality_thresholds(ci_quality_thresholds)
     ci_method = _validate_ci_method(ci_method)
+    if jackknife_parallel is None:
+        jackknife_parallel = parallel
+    if not isinstance(jackknife_parallel, bool):
+        raise ValueError("jackknife_parallel must be a boolean or None")
     response_shape = jnp.asarray(data["y"]).shape
     try:
         fitted_values = _validate_observation_shape(
@@ -1270,9 +1314,14 @@ def residual_bootstrap(
     jackknife_estimates = None
     jackknife_n_samples = 0
     ci_fallback_reason = None
+    jackknife_failure_indices = jnp.empty((0,), dtype=int)
     if ci_method == "bca":
-        jackknife_estimates, jackknife_n_samples, ci_fallback_reason = _compute_jackknife_estimates(
-            fit_function, data, n_obs, parameter_template.shape, "residual"
+        (
+            jackknife_estimates, jackknife_n_samples, ci_fallback_reason,
+            jackknife_failure_indices,
+        ) = _compute_jackknife_estimates(
+            fit_function, data, n_obs, parameter_template.shape, "residual",
+            parallel=jackknife_parallel,
         )
         if jackknife_n_samples < 2:
             jackknife_estimates = None
@@ -1305,6 +1354,7 @@ def residual_bootstrap(
         ci_diagnostic=ci_diagnostic,
         jackknife_n_samples=jackknife_n_samples,
         ci_fallback_reason=ci_fallback_reason,
+        jackknife_failure_indices=jackknife_failure_indices,
     )
 
 

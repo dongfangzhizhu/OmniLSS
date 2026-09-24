@@ -987,6 +987,7 @@ def test_bootstrap_entry_points_support_full_bca(method):
     assert result.ci_diagnostic == "bca"
     assert result.jackknife_n_samples == 6
     assert result.ci_fallback_reason is None
+    assert result.jackknife_failure_indices.shape == (0,)
     assert jnp.all(jnp.isfinite(jnp.array([result.lower_ci, result.upper_ci])))
     exported = result.to_dict()
     assert exported["jackknife_n_samples"] == 6
@@ -1028,7 +1029,17 @@ def test_bootstrap_bca_records_jackknife_fallback_reason():
     assert result.ci_method == "bca"
     assert result.ci_diagnostic == "bc"
     assert result.jackknife_n_samples == 0
+    np.testing.assert_array_equal(result.jackknife_failure_indices, [0, 1, 2, 3])
     assert "4 of 4 jackknife fits failed" in result.ci_fallback_reason
+
+
+@pytest.mark.parametrize("value", [0, 1, "true"])
+def test_bootstrap_rejects_invalid_jackknife_parallel(value):
+    with pytest.raises(ValueError, match="jackknife_parallel"):
+        nonparametric_bootstrap(
+            lambda d: jnp.array([1.0]), {"y": jnp.arange(3.0)},
+            jax.random.PRNGKey(0), n_boots=2, jackknife_parallel=value,
+        )
 
 
 @pytest.mark.parametrize("method", ["nonparametric", "parametric", "residual"])
