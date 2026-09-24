@@ -61,6 +61,9 @@ class BootstrapResult:
     ci_quality : str
         Confidence interval sample quality: ``unavailable``, ``degenerate``,
         ``low``, ``acceptable``, or ``strong``.
+    ci_quality_thresholds : tuple of int
+        Boundaries used for CI quality classification as
+        ``(degenerate_max, acceptable_min, strong_min)``.
     alpha : float
         Significance level (e.g., 0.05 for 95% CI)
     method : str
@@ -79,6 +82,7 @@ class BootstrapResult:
     method: str = 'nonparametric'
     failure_indices: Optional[jnp.ndarray] = None
     failure_reasons: Optional[Dict[str, int]] = None
+    ci_quality_thresholds: Tuple[int, int, int] = (1, 10, 100)
 
     @property
     def n_failed(self) -> int:
@@ -110,17 +114,18 @@ class BootstrapResult:
         The classification is intentionally based on absolute complete-row
         counts, rather than the failure rate, because confidence interval
         precision depends on the number of observations available to the
-        quantile calculation.  The boundaries are deterministic and apply to
-        both manually constructed and Bootstrap-generated results.
+        quantile calculation.  Zero samples are always ``unavailable``;
+        otherwise the configured boundaries classify the result.
         """
         n_samples = self.n_ci_samples
         if n_samples == 0:
             return "unavailable"
-        if n_samples == 1:
+        degenerate_max, acceptable_min, strong_min = self.ci_quality_thresholds
+        if n_samples <= degenerate_max:
             return "degenerate"
-        if n_samples < 10:
+        if n_samples < acceptable_min:
             return "low"
-        if n_samples < 100:
+        if n_samples < strong_min:
             return "acceptable"
         return "strong"
 
@@ -192,6 +197,7 @@ class BootstrapResult:
             "n_ci_samples": self.n_ci_samples,
             "ci_sample_rate": self.ci_sample_rate,
             "ci_quality": self.ci_quality,
+            "ci_quality_thresholds": self.ci_quality_thresholds,
             "alpha": self.alpha,
             "coefficients": self.coefficients,
             "fitted_values": self.fitted_values,
@@ -484,6 +490,28 @@ def _validate_ci_warning_samples(ci_warning_samples: Optional[int]) -> None:
         raise ValueError("ci_warning_samples must be a non-negative integer or None")
 
 
+def _validate_ci_quality_thresholds(
+    ci_quality_thresholds: Tuple[int, int, int],
+) -> Tuple[int, int, int]:
+    """Validate and normalize CI quality boundaries."""
+    if (
+        not isinstance(ci_quality_thresholds, (tuple, list))
+        or len(ci_quality_thresholds) != 3
+        or any(
+            isinstance(value, bool)
+            or not isinstance(value, (int, np.integer))
+            for value in ci_quality_thresholds
+        )
+    ):
+        raise ValueError("ci_quality_thresholds must contain exactly three integers")
+    thresholds = tuple(int(value) for value in ci_quality_thresholds)
+    if thresholds[0] < 0 or not thresholds[0] < thresholds[1] < thresholds[2]:
+        raise ValueError(
+            "ci_quality_thresholds must be strictly increasing and non-negative"
+        )
+    return thresholds
+
+
 def _maybe_warn_ci_sample_count(
     method: str,
     n_ci_samples: int,
@@ -631,6 +659,7 @@ def nonparametric_bootstrap(
     failure_warning: str = "always",
     warning_failure_rate: float = 0.0,
     ci_warning_samples: Optional[int] = None,
+    ci_quality_thresholds: Tuple[int, int, int] = (1, 10, 100),
 ) -> BootstrapResult:
     """Perform non-parametric bootstrap for GAMLSS models.
     
@@ -694,6 +723,7 @@ def nonparametric_bootstrap(
     n_obs = _validate_bootstrap_inputs(data, n_boots, alpha, min_success_rate)
     _validate_failure_warning_options(failure_warning, warning_failure_rate)
     _validate_ci_warning_samples(ci_warning_samples)
+    ci_quality_thresholds = _validate_ci_quality_thresholds(ci_quality_thresholds)
     try:
         parameter_template = jnp.asarray(fit_function(data))
     except Exception as exc:
@@ -779,6 +809,7 @@ def nonparametric_bootstrap(
         method='nonparametric',
         failure_indices=failure_indices,
         failure_reasons=failure_reasons or None,
+        ci_quality_thresholds=ci_quality_thresholds,
     )
 
 
@@ -797,6 +828,7 @@ def parametric_bootstrap(
     failure_warning: str = "always",
     warning_failure_rate: float = 0.0,
     ci_warning_samples: Optional[int] = None,
+    ci_quality_thresholds: Tuple[int, int, int] = (1, 10, 100),
 ) -> BootstrapResult:
     """Perform parametric bootstrap for GAMLSS models.
 
@@ -857,6 +889,7 @@ def parametric_bootstrap(
     _validate_bootstrap_inputs(data, n_boots, alpha, min_success_rate)
     _validate_failure_warning_options(failure_warning, warning_failure_rate)
     _validate_ci_warning_samples(ci_warning_samples)
+    ci_quality_thresholds = _validate_ci_quality_thresholds(ci_quality_thresholds)
     fitted_params = jnp.asarray(fitted_params)
     if fitted_params.ndim != 1:
         raise ValueError("fitted_params must be a one-dimensional parameter vector")
@@ -943,6 +976,7 @@ def parametric_bootstrap(
         method='parametric',
         failure_indices=failure_indices,
         failure_reasons=failure_reasons or None,
+        ci_quality_thresholds=ci_quality_thresholds,
     )
 
 
@@ -961,6 +995,7 @@ def residual_bootstrap(
     failure_warning: str = "always",
     warning_failure_rate: float = 0.0,
     ci_warning_samples: Optional[int] = None,
+    ci_quality_thresholds: Tuple[int, int, int] = (1, 10, 100),
 ) -> BootstrapResult:
     """Perform residual bootstrap for GAMLSS models.
 
@@ -1005,6 +1040,7 @@ def residual_bootstrap(
     n_obs = _validate_bootstrap_inputs(data, n_boots, alpha, min_success_rate)
     _validate_failure_warning_options(failure_warning, warning_failure_rate)
     _validate_ci_warning_samples(ci_warning_samples)
+    ci_quality_thresholds = _validate_ci_quality_thresholds(ci_quality_thresholds)
     response_shape = jnp.asarray(data["y"]).shape
     try:
         fitted_values = _validate_observation_shape(
@@ -1108,6 +1144,7 @@ def residual_bootstrap(
         method='residual',
         failure_indices=failure_indices,
         failure_reasons=failure_reasons or None,
+        ci_quality_thresholds=ci_quality_thresholds,
     )
 
 

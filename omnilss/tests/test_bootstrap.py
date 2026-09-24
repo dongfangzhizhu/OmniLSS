@@ -893,6 +893,44 @@ def test_bootstrap_result_ci_quality_levels(n_samples, expected):
     assert result.ci_quality == expected
 
 
+def test_bootstrap_result_supports_custom_ci_quality_thresholds():
+    result = BootstrapResult(
+        coefficients=jnp.ones((5, 1)),
+        n_boots=5,
+        n_successful=5,
+        ci_quality_thresholds=(2, 5, 20),
+    )
+
+    assert result.ci_quality == "acceptable"
+    assert result.to_dict()["ci_quality_thresholds"] == [2, 5, 20]
+
+
+@pytest.mark.parametrize("value", [(), (1, 10), (1, 10, 100, 200),
+                                    (1, 1, 100), (-1, 10, 100),
+                                    (1, 1.5, 100), (1, True, 100)])
+def test_bootstrap_rejects_invalid_ci_quality_thresholds(value):
+    with pytest.raises(ValueError, match="ci_quality_thresholds"):
+        nonparametric_bootstrap(
+            lambda d: jnp.array([1.0]), {'y': jnp.arange(3.0)},
+            jax.random.PRNGKey(0), n_boots=1,
+            ci_quality_thresholds=value,
+        )
+
+
+def test_nonparametric_bootstrap_propagates_ci_quality_thresholds():
+    result = nonparametric_bootstrap(
+        lambda d: jnp.array([1.0]),
+        {'y': jnp.arange(3.0)},
+        jax.random.PRNGKey(0),
+        n_boots=3,
+        parallel=False,
+        ci_quality_thresholds=(1, 2, 3),
+    )
+
+    assert result.ci_quality_thresholds == (1, 2, 3)
+    assert result.ci_quality == "strong"
+
+
 @pytest.mark.parametrize("method", ["nonparametric", "parametric", "residual"])
 def test_bootstrap_warns_when_ci_samples_are_insufficient(method):
     data = {'y': jnp.arange(4.0)}
