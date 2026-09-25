@@ -14,7 +14,7 @@ def test_stabilize_hessian_regularizes_singular_matrix():
     _ = np.linalg.cholesky(result.matrix)
 
 
-def test_working_response_is_clipped_and_finite():
+def test_working_response_is_finite_without_hard_clip():
     y = np.array([1.0, 2.0], dtype=np.float64)
     fitted = np.array([1.0, 2.0], dtype=np.float64)
     link_derivative = np.array([1e-12, 1e-12], dtype=np.float64)
@@ -35,4 +35,7 @@ def test_working_response_is_clipped_and_finite():
 
     assert np.isfinite(w).all()
     assert np.isfinite(z).all()
-    assert np.max(np.abs(z)) <= 1e6
+    # Commit 460cfaa removed the historical ±1e6 hard clip so that the IRLS
+    # working response matches R's glim.fit (needed for zero-inflated fits).
+    # The value must stay finite but is deliberately left unclipped.
+    assert np.max(np.abs(z)) > 1e6

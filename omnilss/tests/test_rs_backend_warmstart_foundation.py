@@ -31,12 +31,14 @@ def test_family_heuristic_initializes_mu_sigma_with_data_statistics():
     assert np.allclose(result.initial_eta["nu"], 0.0)
 
 
-def test_glim_control_defaults_to_single_inner_step():
+def test_glim_control_defaults_to_r_compatible_cycles():
+    # R gamlss glim.control() defaults to cyc = 20; commit 3eaae3d restored
+    # that R-compatible default (the previous local default was 1).
     control = glim_control()
-    assert control.cyc == 1
+    assert control.cyc == 20
 
     fallback = glim_control(cyc=0)
-    assert fallback.cyc == 1
+    assert fallback.cyc == 20
 
 
 def test_numpy_solver_backend_exposes_expected_operations():
