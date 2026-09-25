@@ -1,173 +1,195 @@
-# OmniLSS 全量 GAMLSS 迁移：二次全面审计与执行计划
+# OmniLSS 全量 GAMLSS 迁移：2026-09-25 全面复审与完整开发计划
 
-> 文档日期：2026-09-11  
-> 审计对象：仓库当前 `main` 工作树；对照 `R/` 原始源码、`omnilss/`、`ondil/` 以及仓库内 `gamlss-python/`。  
-> 目的：修正 2026-08-22 路线图中的过期事实，并给出可逐项验收的后续开发计划。  
-> 本文是“全量迁移”专项执行文件；项目阶段总纲仍以 `DEVELOPMENT_PLAN.md` 为准。
+> **复审日期**：2026-09-25
+> **复审对象**：当前工作树、`R/` 原始源码、`omnilss/`、`gamlss-python/`、`ondil/`、测试/工具/证据产物。
+> **文档定位**：全量 R GAMLSS 迁移专项的执行基线；项目总纲仍以根目录 `DEVELOPMENT_PLAN.md` 为准。
+> **重要限制**：本次复审不覆盖用户工作树中未提交的实现修改；这些修改必须先通过本计划的回归和证据门禁，不能直接计入完成量。
 
-## 1. 结论摘要
+## 1. 复审结论
 
-当前项目已具备可信的工程地基，但尚未达到“R gamlss 全量迁移”定义。当前可确认基线为：
+OmniLSS 已具备可运行的 JAX 分布回归核心、R golden 基础设施、RS/CG/MIXED 入口、平滑/预测/服务协议和 capability fail-closed 机制；但“全量迁移”仍未完成。当前应使用证据层级而不是注册数量管理进度。
 
-| 维度 | 当前事实 | 结论 |
+### 1.1 可复现的当前基线
+
+| 对象 | 复审结果 | 证据/解释 |
 |---|---:|---|
-| `omnilss` 版本 | 0.4.0 | 根 `.venv` 可导入，旧文档中的 0.3.0 已过期 |
-| Python 注册家族 | 145 | 比 2026-08-22 文档一致，但不等于 145 个 R 家族完成 |
-| implementation status | implemented 1 / experimental 84 / compat_alias 25 / placeholder 35 | 只有 `NO` 达到生产级实现口径 |
-| R 包源码 | 12 个包目录，`gamlss` 79 个 R 文件、`gamlss.dist` 124 个 R 文件 | 原始范围仍为 1,115 个导出符号、约 1,700 个函数定义 |
-| 测试收集 | 2,774 项，43 个收集错误 | 测试基座仍未闭环；不得宣称全库回归通过 |
-| `gamlss-python` | 52 个 Python 源文件 | 已有较完整的 R 转录与 reference 流程，应作为公式/参数化/边界行为交叉 oracle |
-| `ondil` | 65 个 Python 源文件，版本 0.4.8 | 在线增量层，不等价于离线 `gamlss` 迁移；需共享规范、独立验收 |
+| OmniLSS 版本 | `0.4.0` | `omnilss/pyproject.toml` |
+| registry family | `146` | `docs/development/r-export-coverage.json`，生成时间 2026-09-25 |
+| implementation status | implemented 1 / experimental 102 / compat_alias 25 / placeholder 18 | 同一 coverage JSON |
+| DPQR evidence `VALIDATED` | 35 | coverage JSON 的 `evidence_tier_dpqr` |
+| fitting evidence `VALIDATED` | 2 | coverage JSON 的 `evidence_tier_fitting` |
+| R 源码目录 | 13 个包目录，12 个 `NAMESPACE` | `R/` 实际扫描 |
+| R 文件规模 | 363 个 `.R` 文件 | `R/` 实际扫描；`gamlss` 79、`gamlss.dist` 124 |
+| R 包版本 | `gamlss` 5.5-3；`gamlss.dist` 6.1-8 | `R/*/DESCRIPTION` |
+| OmniLSS 测试文件 | 417 个 `test_*.py` | `omnilss/tests` |
+| gamlss-python | 52 个 `.py` 源文件，版本 0.2.0 | `gamlss-python/pyproject.toml` |
+| ondil | 119 个 `.py` 文件，版本 0.4.8 | `ondil/pyproject.toml` |
+| 本机环境 | Python 3.10.19 / JAX 0.6.2 CPU / NumPy 2.2.6 / SciPy 1.15.3 / R 4.6.0 | 2026-09-25 本机检查 |
+| x64 状态 | 当前 `jax_enable_x64=False` | parity 前必须显式打开并在日志中确认 |
+| 全库收集 | 本轮命令未在工具时限内完成 | 不得宣称零 collection error 或全库通过 |
 
-### 1.1 必须纠正的旧口径
+### 1.2 必须修正的旧结论
 
-1. “`BEo/GEOMo/PARETO2o` 三个家族未注册”不能继续作为当前事实。当前 registry 已存在 `GEOMO`；`BEo/PARETO2o` 是否仍缺失必须由 R NAMESPACE 与当前 registry 生成器重新计算，而非引用旧附录。
-2. 145 个注册项包含大量内部扩展、兼容别名和骨架项，不能与 R 的 117 个分布家族直接相除得完成率。
-3. `family_capabilities` 中的 `dqr/fitting/smoothing` 字段是能力元数据，不是 R 数值等价证据。必须增加逐家族、逐函数、逐场景的证据记录。
-4. `gamlss-python` 的“与 R 约 1e-9”是其项目声明；必须通过本仓库固定 R artifact 复核后才能转化为 OmniLSS 结论。
+1. 2026-09-11 的 `145 / 84 / 35` 状态已经过时；当前应引用 2026-09-25 生成的 `146 / 102 / 18`。
+2. `tools/generate_r_export_coverage.py` 当前只读取 Python capability registry，**没有解析 R NAMESPACE、R 函数定义、Python 导出、测试和 golden manifest**；现有 JSON 是 registry inventory，不是真实 R↔Python 逐符号 coverage。
+3. 根 `pytest.ini` 已排除 `ondil`、`gamlss-python`、`debianjaxgpu`；旧文档“43 个 ondil/临时脚本收集错误”不能作为当前事实，必须分别报告各项目收集结果。
+4. `family_capabilities` 的 metadata 与 R 数值等价证据不是同一概念；名称可解析不代表 Kernel、Parity 或 Admission 已完成。
+5. `gamlss-python` 是 NumPy/SciPy 转录参考，`ondil` 是在线估计参考；两者均不能替代 R parity 或 JAX kernel。
 
-## 2. 审计模型：四层证据，而不是单一状态
+## 2. 统一完成定义：四层证据 + 五类对象
 
-今后每个分布家族和每个核心 API 使用以下四层状态：
+对每个分布 family、核心 API、smoother、算法和服务 route 分别记录：
 
-1. **Surface**：名称可导入、registry 可解析、参数名和 link 元数据存在。
-2. **Kernel**：d/p/q/r（或对应 API）是真实实现，无 placeholder/静默近似，支持域和边界明确。
-3. **Parity**：固定 R 源码、固定参数点、固定随机种子下通过数值对照；分别记录 d、p、q、r 和异常/边界案例。
-4. **Admission**：在指定方法（RS/CG/MIXED/JOINT/LBFGS）、预测、新数据、服务路由中通过门禁，才可称 production-safe。
+1. **Surface**：可导入、可解析、参数名/link/support 元数据正确；
+2. **Kernel**：真实公式实现，无 placeholder、同名克隆、静默近似或错误参数化；
+3. **Parity**：固定 R 源码/包版本、参数点、输入、seed、dtype 下通过 d/p/q/r 或 API 对照；
+4. **Admission**：在目标方法、fit、newdata、序列化和服务路由中通过 fail-closed 门禁。
 
-`experimental` 只能表示 Surface/Kernel 部分完成；`compat_alias` 永远不能当作 Parity；`placeholder` 不得进入生产路由。
+| 对象 | 必须记录的证据 |
+|---|---|
+| family | R family、R `d/p/q/r` 文件/函数、参数化、support、link、Python factory、四层状态 |
+| DPQR | 固定点、边界、单调性/归一化、upper-tail/log-p、随机抽样、异常行为 |
+| fitting | RS/CG/MIXED、系数、fitted、deviance、迭代、收敛/失败原因 |
+| smoother | parser、basis、penalty、lambda、EDF、fit、newdata、R golden |
+| service | family/method/smoother admission、错误码、资源限制、序列化往返 |
 
-## 3. 对照项目的可复用成果与边界
+`implemented` 只表示达到 production-safe；`experimental` 不得自动进入生产路由；`compat_alias` 不计独立 R family；`placeholder` 必须明确拒绝或保持可见失败。
 
-### 3.1 R 原始实现：唯一语义基准
+## 3. 对照项目审核与边界
 
-每个家族开发必须先定位 `R/gamlss.dist/R/` 对应 `d/p/q/r`、link、参数检查和边界分支；拟合与平滑必须同时查阅 `R/gamlss/R/`。R 源码优先级高于任何 Python 转录。
+### 3.1 R 原始源码
 
-### 3.2 `gamlss-python`：数值转录参考，不是依赖
+R `gamlss.dist` 6.1-8 负责 family、参数链接、support、d/p/q/r、导数、矩和边界；R `gamlss` 5.5-3 负责 formula、RS/CG/混合拟合、预测、诊断、模型选择和平滑。每项任务必须先建立 `R source map`，标注文件、函数、参数检查和特殊分支。
 
-可复用：参数化说明、解析导数、递推/特殊函数策略、RS/CG 控制参数、`pb/pbz` 以及 R reference 生成方式。  
-不可直接复用：NumPy/SciPy 实现不能直接替代 JAX kernel；其 API、随机数、dtype、自动微分和服务路由均不满足 OmniLSS 要求。每次借鉴必须记录 R 文件、参考项目文件和最终 JAX 文件的对应关系。
+### 3.2 gamlss-python
 
-### 3.3 `ondil`：在线层单独建模
+可借鉴公式转录、参数说明、解析导数、SciPy 特殊函数策略、RS/CG 控制参数、`pb/pbz` 和 R reference 流程。不可直接复用其 NumPy/SciPy kernel、随机数语义、dtype、自动微分、API 或服务路由。必须记录 `R 文件 → gamlss-python 文件 → OmniLSS JAX 文件`。
 
-`ondil` 的目标是在线/增量分布回归，依赖 NumPy/SciPy/Numba/Scikit-learn。后续应共享“分布族规范（参数、support、link、score、信息矩阵）”，但不得把离线 R parity 结果直接当作在线估计器正确性。在线层需要另外验证 chunk 顺序、warm start、漂移、缺失值和并发语义。
+### 3.3 ondil
 
-## 4. 当前差距矩阵
+`ondil` 只进入 L2 在线工作流：可共享参数、support、link、score、信息矩阵 contract，但离线 R golden 不证明在线 estimator 正确；还必须验证 chunk 顺序、warm-start、漂移、缺失值、并发、性能和内存。
 
-### 4.1 `gamlss.dist`
+## 4. 当前差距与优先级
 
-当前优先差距不是“注册数量”，而是：35 个 placeholder、25 个 compat_alias、逐函数证据大量缺失，以及部分 experimental 家族的 NaN/收敛问题。重点风险包括：
+### 4.1 分布层
 
-- 偏态 t/SEP/ST 家族的独立参数化与尾部积分；不得用 ST3C 克隆替代 ST1/2/4。
-- Box-Cox `o` 变体的截断归一化、方差标准化和参数边界。
-- 离散递推及 zero-inflated/zero-adjusted 家族：`DEL/DPO/SI/WARING/NBF/GPO/NBII/ZALG/ZIP/ZIP2/ZIPF`。
-- `GB1/GB2/GIG/NO2/NOF/PARETO/PE2/PIG2/RGE/WEI2/exGAUS/EGB2/LOGSHASH/LQNO/SN/MN` 等 placeholder 连续族。
-- `ZASICHEL/ZISICHEL` NaN、CG-ZAGA/CG-GU/MIXED-GU 收敛和非核心族拟合差异。
+当前重点是 18 个 placeholder、25 个 alias、大量仅有 Surface/实验 Kernel 的 family，以及仅 35 项 DPQR evidence 为 VALIDATED。优先风险为：ST/SEP/SST 独立参数化和 q 反演；Box-Cox `o`、BCCG/BCT/BCPE 截断与方差标准化；DEL/DPO/SI/WARING/YULE/NBF/GPO/NBII 离散递推；ZALG/ZIP/ZIP2/ZIPF 零质量与尾部；GIG/NO2/NOF/PARETO/PE2/RGE/WEI2/EXGAUS/EGB2/LOGSHASH/LQNO/MN 特殊函数、长尾和占位实现；ZASICHEL/ZISICHEL、ZAGA/GU 的 NaN 与收敛问题。
 
-### 4.2 `gamlss` 核心
+### 4.2 拟合、核心 API 与平滑
 
-优先补齐 `gamlss.family`/link 系统、`predictAll`/`Formulae2data` 的语义、完整诊断与模型选择；平滑器必须按 admission 链路逐一准入。`pb/ps/cs` 的已有能力不代表其它 smoother 已完成。
+优先保证 link/family 构造、`Formulae2data`、`predictAll`、update/refit、诊断/残差/hatvalues/vcov/logLik、GAIC/stepwise，再逐个准入 smoother。已有 `pb/ps/cs` 不能推导其它 smoother 已完成。
 
-### 4.3 周边包
+### 4.3 工程与证据
 
-`gamlss.tr`、`gamlss.cens` 与核心拟合耦合最紧；`mx/add` 次之；spatial/foreach/prepdata/ggplots/data 属于后续交付；`gamlss2` 是独立 API，不应与 1.x 的兼容目标混在同一批次。
+覆盖生成器、R artifact、x64 启动检查、collection 报告和 CI fail-closed 是所有后续统计工作的阻塞项。
 
-## 5. 新的分阶段开发计划
+## 5. 完整开发计划（WBS）
 
-### P0：审计与验证基座（1–2 周，阻塞所有宣称）
+### P0：审计基座与可重复验证（1–2 周，硬阻塞）
 
-**P0.1 生成真实覆盖矩阵**：解析每个 R 包 NAMESPACE、R 函数定义、Python导出/registry、测试模块和 golden manifest，生成 `r-export-coverage.json` 与逐符号 Markdown。字段必须包含 R symbol、Python symbol、surface/kernel/parity/admission、证据路径、最近验证 commit。
+**P0.1 真实 R↔Python 覆盖矩阵**：解析 12 个 `NAMESPACE` 的 exports/S3/S4/import、R 文件函数定义、Python registry/exports、测试路径和 golden manifest。输出逐符号 JSON、Markdown、placeholder queue；字段至少包含 `r_package/r_symbol/r_file/python_symbol/python_file/surface/kernel/parity/admission/evidence/commit`。旧工具必须改名或明确标注为 `registry-inventory`。
 
-**P0.2 修复测试收集**：定位并修复 43 个 `ondil/tests`/临时脚本收集错误；将临时诊断脚本移出 pytest 搜索路径；最终要求 `pytest --collect-only` 零错误，并分层统计 L1/L2/L3。
+**P0.2 R golden manifest**：固定 R/Python/JAX/NumPy/SciPy 版本、本地源码 hash、x64、seed、参数点、容差和命令；R 不可用时只能标 `smoke-only`。
 
-**P0.3 固定环境**：记录 Windows CPU、WSL GPU、R 版本、JAX/NumPy/SciPy 版本；统一 x64 策略。每个 golden manifest 必须包含 R/Python/JAX 版本和源码 commit。
+**P0.3 测试收集分层**：分别执行并保存 `omnilss/tests`、`ondil/tests`、`gamlss-python/tests` 和根 tests 的 collected/error/skipped；目标每组 zero collection error。
 
-**P0.4 自动差异报告**：每次 registry 或 R 源码变化自动报告 missing/extra/alias/placeholder，不再手工维护家族列表。
+**P0.4 环境与 x64 门禁**：parity/golden 入口强制检查 Rscript、R 包、`JAX_ENABLE_X64=True`、backend、版本和 dirty worktree；Windows CPU、WSL GPU、CI 各有 manifest。
 
-验收：覆盖 JSON 可重生成且与运行时一致；collect-only 零错误；报告可指出每个未完成项及证据路径。
+**P0.5 自动差异报告**：CI 对 R missing、Python extra、alias、placeholder、无 evidence、registry 与 JSON 不一致失败。
 
-### P1：分布 kernel 与 d/p/q/r parity（预计 8–12 周）
+**P0 验收**：coverage 可从源码重生成；inventory 与真实 coverage 分离；分层 collection 无错误；golden 可复现；未验证项可定位。
 
-每个批次执行：R 源码阅读 → 数学说明 → JAX 实现 → support/boundary/property → R golden d/p/q/r → 状态晋升。建议顺序：
+### P1：DPQR kernel 与 R parity（8–12 周）
 
-| 批次 | 范围 | 主要验收 |
+每族执行：R source map → 参数规范 → JAX kernel → support/boundary/property → R d/p/q/r artifact → 状态晋升。
+
+| 批次 | 范围 | 退出条件 |
 |---|---|---|
-| P1-A | ST/SEP/SST | 独立参数化、尾部、q 的稳健反演 |
-| P1-B | BEINF/BEZI/BEOI/LG/LNO/LOGITNO/NET 及 Box-Cox `o` | 混合质量、截断归一化、边界 |
-| P1-C | DEL/DPO/SI/WARING/YULE/NBF/GPO/NBII | 离散递推、归一化、整数 support |
-| P1-D | ZALG/ZIP/ZIP2/ZIPF 及相关零膨胀 | 零质量、尾部概率、极端参数 |
-| P1-E | GB/GIG/NO2/NOF/PARETO/PE2/PIG2/RGE/WEI2 | 正实数 support 与特殊函数 |
-| P1-F | EXGAUS/EGB2/LOGSHASH/LQNO/SN/MN/剩余族 | 长尾、矩、数值稳定性 |
+| P1-A | ST/SEP/SST | 独立参数化、尾部、q 反演、R golden |
+| P1-B | BEINF/BEZI/BEOI/LG/LNO/LOGITNO/NET、Box-Cox-o | 混合质量、截断项、边界、normalization |
+| P1-C | DEL/DPO/SI/WARING/YULE/NBF/GPO/NBII | 递推、整数 support、极端分支 |
+| P1-D | ZALG/ZIP/ZIP2/ZIPF 及 zero variants | 零质量、尾部、log-p、采样 |
+| P1-E | GB/GIG/NO2/NOF/PARETO/PE2/PIG2/RGE/WEI2 | 特殊函数、正实 support、尾部稳定 |
+| P1-F | EXGAUS/EGB2/LOGSHASH/LQNO/SN/MN 及余项 | 长尾、矩、广播、异常、dtype |
 
-“完成”要求每族四个函数通过固定点、边界、单调性/归一化和随机抽样；没有 R 执行结果只能标 smoke-only。
+每族必须通过固定点、边界、单调性/归一化、广播、upper-tail/log-p、抽样和实时 R 对照；无 R 结果只能标 `smoke-only`。
 
-### P2：全家族拟合 parity（预计 6–10 周）
+### P2：全 family 拟合 parity（6–10 周）
 
-先建立每族最小数据集（连续、计数、零膨胀、边界、极端值），再覆盖 RS、CG、MIXED；记录系数、fitted values、deviance、迭代次数、收敛原因、失败原因。修复 NaN-as-convergence、溢出伪成功、MIXED 路由和已知 ZAGA/GU 缺陷。每族至少一个 RS R golden；CG/MIXED 按族型分层覆盖。
+建立连续、计数、zero-inflated、边界、极端值数据集。每族至少一个 RS R golden；CG/MIXED 分层覆盖。记录系数、fitted、deviance、迭代、收敛/失败原因、warnings 和 dtype。必须修复 NaN-as-convergence、溢出伪成功、MIXED 路由不可达、ZAGA/GU 差异、链接尺度热启动污染和拟合/预测参数化不一致；失败不得用 skip 隐藏。
 
-### P3：核心 171 符号与 smoother（预计 10–16 周）
+### P3：`gamlss` 核心 API 与 smoother（10–16 周）
 
-顺序：
+顺序：family/link/check/构造；formula/`Formulae2data`/`predictAll`/update/refit/newdata；residuals/diagnostics/hatvalues/vcov/logLik/deviance；GAIC/stepwise/find.hyper/profile deviance；最后准入 `lo/random/re/ri/pcat/fp/bfp/cy/pvc/pbm/pbz/pbo/pbc/pbp/scs`。每个 smoother 必须通过 parsing、basis、penalty、lambda/EDF、fit、newdata、R golden、admission 八项检查。
 
-1. `gamlss.family`、link、参数检查和 family 构造协议；
-2. prediction/update/refit/Formulae2data；
-3. diagnostics/residuals/hatvalues/vcov/logLik；
-4. GAIC/stepwise/find.hyper/prof.dev；
-5. `lo/random/re/ri/pcat/fp/bfp/cy/pvc/pbm/pbz/pbo/pbc/pbp/scs`。
+### P4：周边 R 包（12–20 周）
 
-每个 smoother 必须通过 parsing、basis、penalty、lambda/EDF、fit、newdata、R golden 七项 admission；未通过则明确拒绝，不得用近似趋势替代。
-
-### P4：周边 R 包（预计 12–20 周）
-
-- D1：`gamlss.tr`、`gamlss.cens`，与 P1/P2 家族和 censor/truncation 拟合打通；
-- D2：`gamlss.mx`、`gamlss.add`，先完成有限混合/NP，再完成 GA/BA/NN/FK/TR；
+- D1：`gamlss.tr`、`gamlss.cens`，打通 censor/truncation；
+- D2：`gamlss.mx`、`gamlss.add`，先有限混合/NP，再 GA/BA/NN/FK/TR；
 - D3：`gamlss.spatial`、`gamlss.foreach`、`gamlss.prepdata`；
-- D4：`gamlss.ggplots` 数据层、`gamlss.data`、WeatherGermany；
-- D5：`gamlss2` 单独规格、单独版本目标，默认不阻塞 1.0。
+- D4：`gamlss.ggplots` 数据层、`gamlss.data`、WeatherGermany；外观不要求像素一致；
+- D5：`gamlss2` 单独规格/版本/证据，不阻塞 1.x/1.0。
 
-### P5：ondil 在线层（与 P1/P2 并行，但独立验收）
+### P5：ondil 在线层（可与 P1/P2 并行，独立发布）
 
-建立共享 distribution contract；为在线 estimator 增加离线等价初始化、chunk 顺序不变性、warm-start、漂移和并发测试。L1 的 R golden 只验证 kernel；ondil 还必须有流式 golden 和性能/内存基线。
+先定义共享 distribution contract，再做离线等价初始化、chunk 顺序不变性、warm-start、漂移、缺失值、并发、性能/内存基线和流式 golden。L1 R golden 只证明 kernel，不证明在线 estimator。
 
-## 6. 里程碑与发布门槛
+## 6. 时间、依赖与并行安排
 
-| 里程碑 | 必须满足 | 建议版本 |
+| 周期 | 主线 | 依赖 |
 |---|---|---|
-| M0 | P0 完成，零收集错误，覆盖矩阵可重生成 | 0.4.x |
-| M1 | R 117 家族全部 Surface+Kernel+Parity（d/p/q/r），无 placeholder 进入目标范围 | 0.5.0 |
-| M2 | 家族拟合 parity 与收敛失败可解释，RS 全覆盖、CG/MIXED 分层覆盖 | 0.6.0 |
-| M3 | `gamlss` 核心 API 与准入 smoother 闭环 | 0.9.0 |
-| M4 | D1–D4 周边包完成，服务/文档/示例同步 | 1.0.0 |
+| W1–W2 | P0 审计/环境/收集 | 阻塞 P1/P2/P3 |
+| W3–W6 | P1-A/B/C + P2 数据集/诊断 | P0.1–P0.4 |
+| W7–W10 | P1-D/E + P2 RS | P1 contract、R runner |
+| W11–W14 | P1-F + P2 CG/MIXED | DPQR parity 基线 |
+| W15–W20 | P3 family/core/prediction/diagnostics | P1/P2 admission |
+| W21–W28 | P3 smoother + P4-D1 | 核心 API golden |
+| W29–W40 | P4 D2–D5 + 发布 | 核心 API 稳定 |
+| 全程 | P5 ondil、CI、文档、benchmark | contract 和独立门禁 |
 
-任何里程碑都必须满足：`--require-r`、golden manifest、无 skip、覆盖报告、中文任务提交和可复现命令齐全。
+时间为容量估计，不是完成承诺；R artifact、失败分类或 admission 不齐只能保持 `experimental`。
 
-## 7. 每个开发任务的标准模板
+## 7. 里程碑与发布门槛
 
-1. `R source map`：列出 R 文件、函数、参数化和边界分支；
-2. `Python design`：JAX dtype、可微性、特殊函数和异常策略；
-3. `implementation`：kernel/registry/API；
-4. `tests`：unit/property、R comparison、fit/newdata（如适用）；
-5. `evidence`：golden JSON、manifest、环境和 commit；
-6. `status update`：只在四层状态满足条件后修改能力矩阵；
-7. `regression`：运行目标 suite、相关全量 suite 和 collect-only。
+| 里程碑 | 门槛 | 建议版本 |
+|---|---|---|
+| M0 | P0 完成；真实 coverage 可重生成；分层 collection 无错误；x64/R manifest 完整 | 0.4.x |
+| M1 | 目标 R family 全部 Surface+Kernel+DPQR parity；无 placeholder 进入目标范围 | 0.5.0 |
+| M2 | RS 全覆盖；CG/MIXED 分层 parity；失败可解释；fit/newdata 证据齐全 | 0.6.0 |
+| M3 | 核心 API、诊断、模型选择和准入 smoother 闭环 | 0.9.0 |
+| M4 | D1–D4 周边包、服务、文档、教程、发布 artifact 同步 | 1.0.0 |
 
-## 8. 立即执行的前十项任务
+每个里程碑必须有 `--require-r`、固定 manifest、无隐性 skip、coverage diff、目标/相关 suite 和 collection 日志、中文任务提交、可复现命令。性能只能在一致性 gate 后运行，并区分 cold/warm、CPU/GPU 和 R 可用性。
 
-- [ ] P0.1 重新生成 R↔Python 逐符号/逐家族覆盖矩阵；
-- [ ] P0.2 清零 43 个测试收集错误并拆分 L1/L2/L3 测试；
-- [ ] P0.3 冻结三套 Python/R 环境并更新基线；
-- [ ] P0.4 自动报告 missing/extra/alias/placeholder；
-- [ ] P0.5 核查 `BEo/PARETO2o` 及所有 `o` 变体的真实 registry 差异；
-- [ ] P1.1 为每族建立参数化和 support 规范；
-- [ ] P1.2 完成 ST/SEP R golden 与独立 kernel；
-- [ ] P1.3 完成 BEINF/zero-adjusted/Box-Cox-o 批次；
-- [ ] P1.4 完成离散递推批次；
-- [ ] P2.1 建立全族最小拟合数据集和收敛诊断格式。
+## 8. 每个任务交付模板
 
-## 9. 风险与决策
+1. R source map；2. gamlss-python/ondil reference map；3. JAX dtype/可微性/特殊函数/异常策略；4. kernel/registry/API/admission；5. unit/property/R comparison/fit/newdata/service tests；6. JSON/manifest/环境/hash/seed/命令/commit；7. 四层证据满足后更新状态；8. 目标 suite、相关 suite、分层 collection 和 `git diff --check`。
 
-- **范围风险**：117 家族、1,115 导出符号和周边包不能按一个完成率管理；采用上述四层证据和分阶段发布。
-- **数值风险**：JAX 版本差异、float32、特殊函数和 R 优化器差异；golden 必须记录环境，失败必须分类为公式、参数化、优化器或数值稳定性。
-- **参考项目风险**：`gamlss-python` 只能交叉参考，不得复制其未验证声明；`ondil` 不得替代 L1 parity。
-- **工程风险**：pytest 收集错误会掩盖真实回归；P0.2 是硬阻塞。
-- **范围决策**：`gamlss2` 放在 1.0 后独立规划；ggplot 外观不追求像素一致，只要求数据层一致；服务生产路由继续 fail-closed。
+## 9. 立即执行的前十五项任务
+
+- [ ] P0.1 将 `generate_r_export_coverage.py` 拆为真实 coverage generator 与 registry inventory generator；
+- [ ] P0.2 解析 12 个 NAMESPACE、R 函数定义和 S3/S4 exports，生成逐符号 schema；
+- [ ] P0.3 重新生成 146 family 的 JSON/Markdown/placeholder queue，并校验运行时一致；
+- [ ] P0.4 建立 omnilss/ondil/gamlss-python 分层 collection 命令和零错误门禁；
+- [ ] P0.5 固定 Windows CPU、WSL GPU、CI 的 R/Python/JAX/NumPy/SciPy/x64 manifest；
+- [ ] P0.6 修正 `BEo/PARETO2o`、全部 `o` 变体、alias/extra/missing 的自动差异报告；
+- [ ] P1.1 为 registry 项映射真实 R family、参数、support、link 和函数集合；
+- [ ] P1.2 完成 ST/SEP/SST 的 R golden 与独立 JAX kernel；
+- [ ] P1.3 完成 Box-Cox-o 与 BEINF/zero-adjusted 批次；
+- [ ] P1.4 完成离散递推与 zero-inflated 批次；
+- [ ] P1.5 完成 GIG/NO2/NOF/PARETO/PE2/RGE/WEI2 连续 placeholder 批次；
+- [ ] P2.1 建立全族最小拟合数据集和统一 convergence diagnostic schema；
+- [ ] P2.2 修复 NaN/overflow/MIXED 路由并加入回归；
+- [ ] P3.1 冻结 family/link/formula/prediction contract；
+- [ ] P5.1 建立 OmniLSS↔ondil distribution contract 与独立流式 golden。
+
+## 10. 风险、决策与当前状态
+
+- **范围风险**：146 registry 项不等于 R family；采用逐符号/逐函数/逐场景证据，gamlss2 不阻塞 1.0。
+- **数值风险**：x64、JAX 版本、特殊函数、R 与 Python 优化器差异；所有失败必须分类。
+- **证据风险**：inventory 冒充 coverage、R 不可用时 skip、静态 null golden；P0 为硬门禁。
+- **工程风险**：收集超时不能等同于收集通过；采用分层日志和超时定位。
+- **参考项目风险**：gamlss-python 只作转录 oracle，ondil 只作在线设计 oracle，不改变 R 优先级。
+- **发布决策**：服务生产路由继续 fail-closed；placeholder/alias/experimental 默认不 admission；benchmark 不能先于 parity。
+
+当前专项状态：**P0 进行中，P1/P2/P3/P4/P5 待依赖门禁后执行**。根 `DEVELOPMENT_PLAN.md` 的 Phase 0–4“完成”只表示 Release 1 阶段目标，不代表全量 R GAMLSS 迁移完成。

@@ -12,9 +12,10 @@
 > - 架构设计：`.kiro/specs/r-gamlss-migration-plan/design.md`
 > - 阶段任务原版：`.kiro/specs/r-gamlss-migration-plan/tasks.md`
 > - 审计基线：`docs/development/omnilss-r-gamlss-migration-comprehensive-audit-2026-07-22.md`
-> - 全量迁移审计与路线图（Release 1 之后的范围）：`docs/development/full-gamlss-migration-audit-and-roadmap-2026-08-22.md`
+> - 全量迁移审计与路线图（Release 1 之后的范围）：`docs/development/full-gamlss-migration-audit-and-roadmap-2026-09-11.md`
+> - 交付执行计划（交付物/里程碑/排期/结构治理）：`docs/development/deliverable-plan-2026-09-26.md`
 >
-> **最近更新**：2026-08-14（Phase 0 完成 + Phase 8.1 L3 服务完备性闭环）
+> **最近更新**：2026-09-26（配套文档更新：新增交付计划 `docs/development/deliverable-plan-2026-09-26.md`，全量迁移路线图更新为 2026-09-11 版）
 
 ---
 
@@ -382,7 +383,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 - [x] **A3-SI DPQR 契约补齐** — 完成 ✅ 本轮
   - 【实现】`distributions_b6.py` 为 SI 接入 R-SI 递推核的离散 CDF、首个交叉点 quantile 和逆变换 random generation；修复 `log_p` 概率未解码导致的 NaN 风险。
   - 【测试】新增 `tests/test_si_dpqr_contract.py`；SI 与 capability 回归共 21 项通过，Python 编译检查和 `git diff --check` 通过。
-  - 【数据】重新生成 `docs/development/r-export-coverage.json`、`r-export-coverage.md` 与 `placeholder-migration-queue-2026-09-13.md`；当前注册 145 个，placeholder 26 个，SI 已为 experimental。
+  - 【数据】重新生成 `docs/development/r-export-coverage.json`、`r-export-coverage.md` 与 `placeholder-migration-queue-2026-09-13.md`（该队列已清理，见 Git 历史）；当前注册 145 个，placeholder 26 个，SI 已为 experimental。
 - [x] **A3-NBF DPQR 契约补齐** — 完成 ✅ 本轮
   - 【实现】`distributions_b15.py` 为 NBF 接入 R 三参数负二项参数化的精确 `d/p/q/r`；`sigma1=sigma*mu**(nu-2)`、`size=1/sigma1`，包含 R 的小离散度 Poisson 分支，并实现离散边界、upper-tail、log-p、广播和逆变换采样。
   - 【测试】新增 `tests/test_nbf_dpqr_contract.py` 3 项；NBF 与 SI 契约测试共 6 项通过，综合 DPQR 测试 100% 完成（包含预期跳过项）。

@@ -312,7 +312,9 @@ and
 - [R GAMLSS coverage and plan](docs/development/r-gamlss-coverage-and-plan-2026-05-22.md) — gap audit and phased implementation plan
 - [Offline dev bootstrap](docs/development/offline-dev-bootstrap-2026-05-17.md) — devcontainer build/reuse rules
 - [R environment setup](docs/development/r-environment-setup.md) — R install/test guide
-- [Benchmark methodology](docs/benchmarks/benchmarking-principles.md) — reporting rules for generated artifacts
+- [Benchmark methodology](benchmarks/README.md) — benchmark scripts and reporting rules
+- [Delivery plan](docs/development/deliverable-plan-2026-09-26.md) — current delivery scope, milestones and acceptance gates
+- [Full GAMLSS migration roadmap](docs/development/full-gamlss-migration-audit-and-roadmap-2026-09-11.md) — phased migration WBS (P0–P5)
 - [Architecture freeze](docs/architecture/30-day-feature-freeze.md) — current stabilization policy
 - [Maintenance status](docs/maintenance/30-day-refactor-status.md) — active refactor tasks and audit links
 - [R GAMLSS](http://www.gamlss.org/) — original R implementation

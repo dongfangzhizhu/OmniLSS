@@ -12,7 +12,7 @@
 - 修复 `SI`（Sichel 简化分布）公开 DPQR 不完整的问题。此前只有 log-PMF，公开 `p/q/r` 走 placeholder 并返回 `NaN`。
 - 增加基于 R-SI 递推核的离散概率网格、CDF、首个交叉点分位数和逆变换采样。
 - 补齐概率边界、upper-tail、log-probability、参数广播和采样测试：`tests/test_si_dpqr_contract.py`。
-- 刷新代码派生的覆盖数据：`r-export-coverage.json`、`r-export-coverage.md` 和 `placeholder-migration-queue-2026-09-13.md`。
+- 刷新代码派生的覆盖数据：`r-export-coverage.json`、`r-export-coverage.md` 和 `placeholder-migration-queue-2026-09-13.md`（已清理，见 Git 历史）。
 
 验证结果：
 

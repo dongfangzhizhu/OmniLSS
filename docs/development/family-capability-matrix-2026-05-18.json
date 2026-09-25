@@ -45,7 +45,7 @@
   "families": {
     "BB": {
       "name": "BB",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -58,7 +58,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "registered family without enough validation evidence for production use",
         "RS_JAX route is not advertised for this family"
       ]
     },
@@ -443,7 +443,7 @@
     },
     "BNB": {
       "name": "BNB",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -456,7 +456,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "registered family without enough validation evidence for production use",
         "RS_JAX route is not advertised for this family"
       ]
     },
@@ -2498,12 +2498,12 @@
         "prediction": "experimental",
         "sampling": "experimental",
         "smooth_terms": "experimental",
-        "r_consistency": "unsupported",
+        "r_consistency": "validated",
         "ad_hessian": "unsupported",
         "production_safe": "experimental"
       },
       "notes": [
-        "registered family without enough validation evidence for production use",
+        "has repository R-consistency test coverage; still requires feature-specific gates",
         "RS_JAX route is not advertised for this family"
       ]
     },
@@ -2720,10 +2720,10 @@
       "name": "ZIP",
       "implementation_status": "experimental",
       "features": {
-        "rs_fit": "experimental",
+        "rs_fit": "validated",
         "rs_jax_fit": "unsupported",
         "cg_fit": "experimental",
-        "prediction": "experimental",
+        "prediction": "validated",
         "sampling": "experimental",
         "smooth_terms": "experimental",
         "r_consistency": "validated",
@@ -2764,12 +2764,12 @@
         "prediction": "experimental",
         "sampling": "experimental",
         "smooth_terms": "experimental",
-        "r_consistency": "unsupported",
+        "r_consistency": "validated",
         "ad_hessian": "unsupported",
         "production_safe": "experimental"
       },
       "notes": [
-        "registered family without enough validation evidence for production use",
+        "has repository R-consistency test coverage; still requires feature-specific gates",
         "RS_JAX route is not advertised for this family"
       ]
     },

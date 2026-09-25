@@ -4,7 +4,7 @@ Registry metadata only: this report does not establish R export coverage or nume
 
 | Family | Implementation status |
 |---|---|
-| BB | placeholder |
+| BB | experimental |
 | BCCG | experimental |
 | BCCGO | experimental |
 | BCCGUNTR | compat_alias |
@@ -25,7 +25,7 @@ Registry metadata only: this report does not establish R export coverage or nume
 | BINOM_1_31 | compat_alias |
 | BINOM_2_33 | compat_alias |
 | BINOM_3_33 | compat_alias |
-| BNB | placeholder |
+| BNB | experimental |
 | CONTR01_2_13 | compat_alias |
 | CONTR01_4_33 | compat_alias |
 | CONTRPLUS_1_1 | compat_alias |

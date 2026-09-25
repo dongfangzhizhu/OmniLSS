@@ -1,5 +1,7 @@
 # Offline Dev Bootstrap for OmniLSS (2026-05-17)
 
+[中文版本](offline-dev-bootstrap-2026-05-17_cn.md)
+
 This runbook describes the Codex Cloud / devcontainer environment used to keep
 OmniLSS development testable when the later development session has no network
 access. It complements `docs/development/r-environment-setup.md` and the active

@@ -70,7 +70,7 @@ def generate_queue(coverage: dict, out: Path, generated_date: str) -> None:
         "> 状态来源：`omnilss.family_capabilities` 的代码派生 "
         "`implementation_status`（placeholder = 生产路由被拒，需重写）"
     )
-    lines.append("> 批次划分：`docs/development/full-gamlss-migration-audit-and-roadmap-2026-08-22.md` 附录 A")
+    lines.append("> 批次划分：`docs/development/full-gamlss-migration-audit-and-roadmap-2026-09-11.md` 第 5 节 P1 批次")
     lines.append("")
     lines.append("勾选规则：`- [ ]` 表示待迁移；`- [x]` 表示已完成（状态已离开 placeholder）。")
     lines.append("")
