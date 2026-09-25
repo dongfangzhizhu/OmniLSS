@@ -255,6 +255,175 @@ def _apply_method_step(
     return proposed_beta
 
 
+def _formula_term_names(term: str) -> list[str]:
+    """Extract data variable names referenced by a single formula term.
+
+    Bare identifiers and expressions such as ``log(x)`` or the interaction
+    ``x1:x2`` are decomposed into the underlying variable names.  Numeric
+    constants and allowlisted function names are not treated as variables.
+    Unparseable terms return no names so that the downstream term evaluator
+    reports the original error.
+    """
+
+    text = str(term).strip()
+    if not text:
+        return []
+    if ":" in text and "(" not in text:
+        names: list[str] = []
+        for part in text.split(":"):
+            names.extend(_formula_term_names(part))
+        return names
+    try:
+        parsed = ast.parse(text, mode="eval")
+    except SyntaxError:
+        return []
+    names = []
+    for node in ast.walk(parsed):
+        if isinstance(node, ast.Name) and node.id not in _ALLOWED_FORMULA_FUNCTIONS:
+            names.append(node.id)
+    return names
+
+
+def _collect_formula_variables(formula_text: str, response: str) -> list[str]:
+    """Collect every data variable referenced by one (possibly partial) formula."""
+
+    parsed = parse_full_formula(_normalize_parameter_formula(response, formula_text))
+    names: list[str] = []
+    for term in parsed.linear_terms:
+        names.extend(_formula_term_names(term.variable))
+    for term in parsed.smooth_terms:
+        names.extend(_formula_term_names(term.variable))
+    for term in parsed.tensor_terms:
+        for variable in term.variables:
+            names.extend(_formula_term_names(variable))
+    return names
+
+
+def _validate_fitting_inputs(
+    formula: str,
+    data: Mapping[str, Any],
+    weights: Any | None = None,
+    *,
+    extra_formulas: Mapping[str, str] | None = None,
+) -> np.ndarray | None:
+    """Validate the shared data contract for the fitting entry points.
+
+    Enforces one consistent contract for :func:`omnilss.fitting.gamlss` and
+    :func:`omnilss.fitting.gamlss_ml` before any algorithm-specific routing:
+
+    - the response must exist in ``data`` and be a non-empty, one-dimensional,
+      numeric, finite array;
+    - every variable referenced by the mu formula plus the extra (sigma or
+      parameter) formulas must exist in ``data``, be one-dimensional, match
+      the response length, and be finite when numeric;
+    - ``weights`` (when provided) must be numeric, one-dimensional, match the
+      response length, be finite and non-negative, and contain at least one
+      positive entry.
+
+    Returns the validated weights converted to ``float64``, or ``None`` when
+    no weights were supplied.  Raises ``ValueError`` on the first contract
+    violation with a message naming the offending variable and constraint.
+    """
+
+    parsed = parse_full_formula(str(formula))
+    response = parsed.response
+
+    if response not in data:
+        raise ValueError(f"data is missing response variable {response!r}")
+    y = np.asarray(data[response])
+    if y.ndim != 1:
+        raise ValueError(
+            f"response variable {response!r} must be one-dimensional, got shape {y.shape}"
+        )
+    if y.shape[0] == 0:
+        raise ValueError(
+            f"response variable {response!r} is empty; "
+            "at least one observation is required"
+        )
+    try:
+        y_numeric = y.astype(np.float64, copy=False)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"response variable {response!r} must be numeric, got dtype {y.dtype}"
+        ) from exc
+    if not np.all(np.isfinite(y_numeric)):
+        n_bad = int(np.count_nonzero(~np.isfinite(y_numeric)))
+        raise ValueError(
+            f"response variable {response!r} contains {n_bad} non-finite value(s) "
+            "(NaN or Inf); remove or impute them before fitting"
+        )
+    n = int(y.shape[0])
+
+    formula_specs: list[tuple[str, str]] = [("formula", str(formula))]
+    if extra_formulas:
+        formula_specs.extend(
+            (f"{label} formula", str(text))
+            for label, text in extra_formulas.items()
+            if text is not None
+        )
+
+    checked: set[str] = set()
+    for label, text in formula_specs:
+        for name in _collect_formula_variables(text, response):
+            if name in checked or name == response:
+                continue
+            checked.add(name)
+            if name not in data:
+                raise ValueError(
+                    f"{label} {text!r} references variable {name!r} "
+                    "that is missing from data"
+                )
+            values = np.asarray(data[name])
+            if values.ndim != 1:
+                raise ValueError(
+                    f"variable {name!r} referenced by {label} must be "
+                    f"one-dimensional, got shape {values.shape}"
+                )
+            if values.shape[0] != n:
+                raise ValueError(
+                    f"variable {name!r} has length {values.shape[0]}, but response "
+                    f"{response!r} has length {n}"
+                )
+            if values.dtype.kind in "fiu":
+                try:
+                    finite = np.isfinite(values.astype(np.float64, copy=False))
+                except (TypeError, ValueError):
+                    continue
+                if not np.all(finite):
+                    n_bad = int(np.count_nonzero(~finite))
+                    raise ValueError(
+                        f"variable {name!r} referenced by {label} contains "
+                        f"{n_bad} non-finite value(s) (NaN or Inf)"
+                    )
+
+    if weights is None:
+        return None
+    try:
+        w = np.asarray(weights, dtype=np.float64)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"weights must be numeric: {exc}") from exc
+    if w.ndim != 1:
+        raise ValueError(f"weights must be one-dimensional, got shape {w.shape}")
+    if w.shape[0] != n:
+        raise ValueError(
+            f"weights has length {w.shape[0]}, but response "
+            f"{response!r} has length {n}"
+        )
+    if not np.all(np.isfinite(w)):
+        n_bad = int(np.count_nonzero(~np.isfinite(w)))
+        raise ValueError(
+            f"weights contains {n_bad} non-finite value(s) (NaN or Inf)"
+        )
+    if np.any(w < 0):
+        raise ValueError(
+            "weights must be non-negative; "
+            f"found {int(np.count_nonzero(w < 0))} negative value(s)"
+        )
+    if not np.any(w > 0):
+        raise ValueError("weights must contain at least one positive value")
+    return w
+
+
 __all__ = [
     "FormulaEvaluationError",
     "_apply_method_step",
@@ -262,5 +431,6 @@ __all__ = [
     "_is_intercept_only_formula",
     "_normalize_parameter_formula",
     "_resolve_parameter_formulas",
+    "_validate_fitting_inputs",
     "_weighted_least_squares",
 ]

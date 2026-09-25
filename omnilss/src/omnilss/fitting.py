@@ -31,6 +31,7 @@ from ._fitting_utils import (
     _is_intercept_only_formula as _is_intercept_only_formula_shared,
     _normalize_parameter_formula as _normalize_parameter_formula_shared,
     _resolve_parameter_formulas as _resolve_parameter_formulas_shared,
+    _validate_fitting_inputs as _validate_fitting_inputs_shared,
     _weighted_least_squares as _weighted_least_squares_shared,
 )
 from ._fitting_init import (
@@ -189,6 +190,27 @@ def _resolve_parameter_formulas(
         mu_formula,
         sigma_formula,
         parameter_formulas,
+    )
+
+
+def _validate_fitting_inputs(
+    formula: str,
+    data: Mapping[str, Any],
+    weights: Any | None = None,
+    *,
+    extra_formulas: Mapping[str, str] | None = None,
+) -> np.ndarray | None:
+    """Validate the shared fitting data contract before algorithm dispatch.
+
+    Thin wrapper around :func:`omnilss._fitting_utils._validate_fitting_inputs`
+    so that both fitting entry points expose one consistent contract.
+    """
+
+    return _validate_fitting_inputs_shared(
+        formula,
+        data,
+        weights,
+        extra_formulas=extra_formulas,
     )
 
 
@@ -503,6 +525,15 @@ def gamlss_ml(
 
     if data is None:
         raise ValueError("data is required")
+    weights = _validate_fitting_inputs(
+        formula,
+        data,
+        weights,
+        extra_formulas={
+            "sigma": sigma_formula,
+            **(parameter_formulas or {}),
+        },
+    )
     family = resolve_family(family)
     rqres_callable = _build_rqres_callable(family)
 
@@ -898,6 +929,15 @@ def gamlss(
 
     if data is None:
         raise ValueError("data is required")
+    weights = _validate_fitting_inputs(
+        formula,
+        data,
+        weights,
+        extra_formulas={
+            "sigma": sigma_formula,
+            **(parameter_formulas or {}),
+        },
+    )
     if max_iter is not None:
         if isinstance(max_iter, (bool, np.bool_)) or not isinstance(max_iter, Integral) or max_iter < 1:
             raise ValueError("max_iter must be a positive integer")
