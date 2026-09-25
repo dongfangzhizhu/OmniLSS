@@ -287,11 +287,11 @@ def _initial_sigma(
             sigma = 2.0  # YULE
     else:
         sigma = np.sqrt(np.sum(w * np.square(y - mu)) / np.sum(w))
-    # NO uses a log link for sigma.  Keep its first link-scale coefficient
-    # positive so a tiny initial residual scale cannot produce a negative
-    # public sigma coefficient and an invalid warm start.
-    if family.name == "NO":
-        sigma = max(float(sigma), 1.0 + eps)
+    # Note: NO uses a log link for sigma, so its link-scale coefficient is
+    # legitimately negative whenever sigma < 1 (the converged RS value for
+    # typical data is negative too).  Only guard against a non-positive
+    # residual scale here; forcing sigma >= 1 broke the gamlss_ml contract
+    # that the stored intercept equals the moment estimate / RS result.
     return max(float(sigma), eps)
 
 
