@@ -200,10 +200,19 @@ class JaxSolverBackend(SolverBackend):
         working_response: np.ndarray,
         weights: np.ndarray,
         ridge: float | None = None,
+        skip_stabilize: bool = False,
     ) -> np.ndarray:
         sqrt_w = jnp.sqrt(jnp.asarray(weights, dtype=jnp.float64))
         xw = jnp.asarray(design, dtype=jnp.float64) * sqrt_w[:, None]
         zw = jnp.asarray(working_response, dtype=jnp.float64) * sqrt_w
+        if not skip_stabilize and ridge is None:
+            # Mirror NumpySolverBackend: derive the stabilization ridge from
+            # the weighted Gram unless the caller already stabilized it
+            # (skip_stabilize=True) or supplied an explicit ridge.
+            gram = np.asarray(xw.T @ xw, dtype=np.float64)
+            stabilized = stabilize_hessian(gram)
+            if stabilized.lambda_value > 0.0:
+                ridge = float(stabilized.lambda_value)
         if ridge is not None:
             # Levenberg-style damping for the normal equations, matching the
             # NumPy backend's stabilized ridge.

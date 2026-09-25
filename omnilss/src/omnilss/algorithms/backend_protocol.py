@@ -54,5 +54,13 @@ class SolverBackend(Protocol):
         design: np.ndarray,
         working_response: np.ndarray,
         weights: np.ndarray,
+        ridge: float | None = None,
+        skip_stabilize: bool = False,
     ) -> np.ndarray:
-        """Solve weighted least squares and return coefficients."""
+        """Solve weighted least squares and return coefficients.
+
+        When ``ridge`` is None and ``skip_stabilize`` is False, backends derive
+        the regularization from their Hessian/Gram stabilization pass.  When
+        ``skip_stabilize`` is True the caller has already stabilized the Gram
+        and passes the resulting ``ridge`` directly.
+        """
