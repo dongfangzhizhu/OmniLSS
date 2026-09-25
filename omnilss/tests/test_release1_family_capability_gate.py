@@ -8,6 +8,7 @@ import pytest
 from omnilss import gamlss
 from omnilss.benchmarks.runner import BenchmarkRunner, BenchmarkSpec
 from omnilss.family_capabilities import (
+    FamilyCapabilityError,
     ImplementationStatus,
     ProductionFamilyRejectedError,
     get_family_capability,
@@ -44,18 +45,17 @@ def test_all_known_unsafe_states_are_rejected_with_structured_reason():
         assert report["code"] in {"placeholder_requires_opt_in", "compat_alias_requires_opt_in"}
 
 
-def test_implemented_family_is_admitted_and_unsafe_public_fit_is_blocked():
+def test_implemented_family_is_admitted_and_unsafe_exploratory_fit_is_blocked():
     assert require_production_family_route("NO", "RS", route="public_fit")["ok"] is True
-    with pytest.raises(ProductionFamilyRejectedError) as caught:
+    with pytest.raises(FamilyCapabilityError, match="capability feature 'rs_fit'"):
         gamlss("y ~ x", family="GIG", data={"y": [1.0, 2.0], "x": [0.0, 1.0]})
-    assert caught.value.to_dict()["route"] == "public_fit"
 
 
 def test_experimental_family_is_fail_closed_only_on_production_route():
     with pytest.raises(ProductionFamilyRejectedError) as caught:
         require_production_family_route("GA", "RS", route="service")
     report = caught.value.to_dict()
-    assert report["implementation_status"] == "implemented"
+    assert report["implementation_status"] == "experimental"
     assert report["code"] == "experimental_requires_opt_in"
 
 
