@@ -15,11 +15,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 
+# When this file is executed directly (``python tests/run_suite.py``), Python
+# puts ``tests/`` rather than the project root at sys.path[0].  Put the root
+# first before importing ``tests.suites`` so an unrelated installed package
+# named ``tests`` cannot shadow this repository's test package.
+if str(ROOT) in sys.path:
+    sys.path.remove(str(ROOT))
+sys.path.insert(0, str(ROOT))
+
 try:
     from tests.suites import SUITES, get_suite_modules, resolve_suite_name
 except ModuleNotFoundError:
-    if str(ROOT) not in sys.path:
-        sys.path.insert(0, str(ROOT))
     from tests.suites import SUITES, get_suite_modules, resolve_suite_name
 
 

@@ -59,6 +59,19 @@ def test_missing_module_returns_usage_error():
     assert run_suite.main(["--module", "tests.does_not_exist"]) == 4
 
 
+def test_runner_script_can_be_executed_directly_from_package_root():
+    result = subprocess.run(
+        [sys.executable, str(run_suite.ROOT / "tests" / "run_suite.py"), "--list"],
+        cwd=run_suite.ROOT,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env=dict(os.environ, PYTHONPATH=""),
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "l1_fast" in result.stdout
+
+
 def test_collection_report_is_machine_readable(tmp_path):
     report = tmp_path / "collection.json"
     assert run_suite.main(["--module", "tests.test_operations", "--collect-only", "--collect-report", str(report)]) == 0
