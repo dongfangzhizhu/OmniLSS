@@ -346,6 +346,24 @@ def _function_source(module_name: str, node: ast.FunctionDef) -> str:
     return ast.get_source_segment(source, node) or ""
 
 
+def _function_executable_source(module_name: str, node: ast.FunctionDef) -> str:
+    """Return function statements without documentation or comments.
+
+    Placeholder detection must inspect behavior, not API documentation.  A
+    valid distribution may document that invalid inputs return ``NaN`` without
+    being a placeholder (for example, the BB sampler).  Re-rendering the
+    executable AST also removes comments that describe migration work while
+    retaining executable ``jnp.nan`` returns in actual placeholder helpers.
+    """
+
+    body = list(node.body)
+    if body and isinstance(body[0], ast.Expr):
+        value = body[0].value
+        if isinstance(value, ast.Constant) and isinstance(value.value, str):
+            body = body[1:]
+    return ast.unparse(ast.Module(body=body, type_ignores=[]))
+
+
 @lru_cache(maxsize=None)
 def _dpqr_function_uses_placeholder(function_name: str) -> bool:
     """Return whether a dpqr helper has obvious placeholder behavior."""
@@ -354,11 +372,11 @@ def _dpqr_function_uses_placeholder(function_name: str) -> bool:
     node = defs.get(function_name)
     if node is None:
         return False
-    source = _function_source("omnilss.dpqr_functions", node).lower()
-    # NaN is a valid result for invalid inputs.  SICHEL's three public
-    # functions perform real numerical work and use conditional NaN returns
-    # only for those boundaries; do not classify that handling as a stub.
-    if function_name in {"pSICHEL", "qSICHEL", "rSICHEL"}:
+    source = _function_executable_source("omnilss.dpqr_functions", node).lower()
+    # Conditional NaN output is part of the public invalid-input contract for
+    # several real kernels.  It is only a placeholder when the helper has no
+    # numerical path and returns an all-NaN result directly.
+    if "jnp.where" in source:
         source = source.replace("jnp.nan", "")
     return any(marker in source for marker in _DPQR_PLACEHOLDER_SOURCE_MARKERS)
     return any(marker in source for marker in _DPQR_PLACEHOLDER_SOURCE_MARKERS)

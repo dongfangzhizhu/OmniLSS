@@ -1323,7 +1323,7 @@ def rs_fit(
         p: jnp.asarray(
             coefficients.get(p, np.array([parameter_values[p][0]])), dtype=jnp.float64
         )
-        for p in family.parameters
+        for p in family.estimable_parameters
     }
     linear_predictors_jax = {
         p: jnp.asarray(linear_predictors[p], dtype=jnp.float64)
@@ -1331,7 +1331,7 @@ def rs_fit(
     }
     design_matrices_jax = {
         p: jnp.asarray(design_matrices.get(p, np.zeros((n, 1))), dtype=jnp.float64)
-        for p in family.parameters
+        for p in family.estimable_parameters
     }
 
     # Build terms dictionary
