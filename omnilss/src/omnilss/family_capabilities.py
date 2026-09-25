@@ -1028,13 +1028,16 @@ def require_production_family_route(
     batch, benchmark, or service routes.
     """
 
-    report = method_route_capability_report(family_name, method_name, strict=False)
+    # Production routes are fail-closed for experimental capability evidence;
+    # this is intentionally stricter than the exploratory public fitting API.
+    report = method_route_capability_report(family_name, method_name, strict=True)
     report = {**report, "route": route}
     if report["ok"]:
         return report
     if report.get("implementation_status") in {
         ImplementationStatus.PLACEHOLDER.value,
         ImplementationStatus.COMPAT_ALIAS.value,
+        ImplementationStatus.EXPERIMENTAL.value,
     }:
         raise ProductionFamilyRejectedError(report)
     return report

@@ -51,6 +51,14 @@ def test_implemented_family_is_admitted_and_unsafe_public_fit_is_blocked():
     assert caught.value.to_dict()["route"] == "public_fit"
 
 
+def test_experimental_family_is_fail_closed_only_on_production_route():
+    with pytest.raises(ProductionFamilyRejectedError) as caught:
+        require_production_family_route("GA", "RS", route="service")
+    report = caught.value.to_dict()
+    assert report["implementation_status"] == "implemented"
+    assert report["code"] == "experimental_requires_opt_in"
+
+
 def test_benchmark_route_uses_the_shared_gate_before_workload():
     runner = BenchmarkRunner()
     with pytest.raises(ProductionFamilyRejectedError) as caught:

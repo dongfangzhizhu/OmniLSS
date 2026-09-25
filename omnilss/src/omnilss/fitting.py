@@ -296,10 +296,7 @@ def _require_method_family_capability(
 ) -> None:
     """Validate method/family support before starting an expensive fit."""
 
-    from .family_capabilities import (
-        FamilyCapabilityError,
-        require_production_family_route,
-    )
+    from .family_capabilities import FamilyCapabilityError
 
     if str(method_name).upper() == "CG" and formulas:
         from .family_capabilities import method_route_capability_report
@@ -311,13 +308,14 @@ def _require_method_family_capability(
             from .family_capabilities import FamilyCapabilityError
             raise FamilyCapabilityError(str(report["message"]))
         return
-    report = require_production_family_route(
-        family_name, method_name, route="public_fit"
-    )
-    if not allow_experimental:
-        from .family_capabilities import method_route_capability_report
+    from .family_capabilities import method_route_capability_report
 
-        report = method_route_capability_report(family_name, method_name, strict=True)
+    # Public fitting remains an exploratory API and therefore preserves its
+    # historical opt-in policy for experimental families. Production routes use
+    # require_production_family_route(), which is deliberately fail-closed.
+    report = method_route_capability_report(
+        family_name, method_name, strict=not allow_experimental
+    )
     if report["code"] == "unknown_method":
         return
     if report["ok"]:
@@ -1093,14 +1091,21 @@ def gamlss(
             f"'HYBRID', 'joint', or 'lbfgs', got {method!r}"
         )
 
-    _require_method_family_capability(
-        family.name, method_name, allow_experimental=not strict_capabilities,
-        formulas={
-            "mu": formula,
-            "sigma": sigma_formula,
-            **(parameter_formulas or {}),
-        },
-    )
+    # User-supplied FamilyDefinition objects are valid extension points even
+    # when they are intentionally not added to the built-in capability matrix.
+    # Apply the production capability gate to known families only; the family
+    # object's own numerical contract remains responsible for custom families.
+    from .family_capabilities import family_capability_names
+
+    if family.name.upper() in family_capability_names():
+        _require_method_family_capability(
+            family.name, method_name, allow_experimental=not strict_capabilities,
+            formulas={
+                "mu": formula,
+                "sigma": sigma_formula,
+                **(parameter_formulas or {}),
+            },
+        )
 
     # Handle new optimizer methods
     if method_name in {"JOINT", "LBFGS"}:
