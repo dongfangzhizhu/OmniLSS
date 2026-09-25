@@ -17,7 +17,7 @@ jobs:
         python-version: ["3.10"]
         group:
           - name: Group A Core Algorithms
-            pattern: "tests/test_rs*.py tests/test_cg*.py tests/test_mixed*.py tests/test_fitting_jit*.py tests/test_smooth_outer_loop.py tests/test_distribution_registry_complete.py"
+            pattern: "tests/test_rs*.py tests/test_cg*.py tests/test_mixed*.py tests/test_fitting_jit*.py tests/test_distribution_registry_complete.py"
           - name: Group B R Consistency
             pattern: "tests/test_*r_consistency*.py tests/test_consistency_families.py tests/test_dpqr_r_consistency.py"
           - name: Group C Smooth Diagnostics Prediction
