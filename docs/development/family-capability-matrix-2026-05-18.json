@@ -24,6 +24,7 @@
     "RS_JAX": "rs_jax_fit",
     "CG": "cg_fit",
     "MIXED": "cg_fit",
+    "HYBRID": "cg_fit",
     "JOINT": "cg_fit",
     "LBFGS": "cg_fit"
   },
@@ -32,6 +33,7 @@
     "RS_JAX": "rs_jax_fit",
     "CG": "cg_fit",
     "MIXED": "cg_fit",
+    "HYBRID": "cg_fit",
     "JOINT": "cg_fit",
     "LBFGS": "cg_fit"
   },

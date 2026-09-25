@@ -1,4 +1,4 @@
-# 拟合算法：RS / CG / MIXED
+# 拟合算法：RS / CG / MIXED / HYBRID
 
 OmniLSS 实现 R `gamlss` 的三种拟合算法，通过 `method=` 选择。
 
@@ -22,12 +22,29 @@ model = gamlss("y ~ x", family="GA", data=data, method="RS")
 model = gamlss("y ~ x", family="BE", data=data, method="CG")
 ```
 
-## MIXED（混合）
+## MIXED（R 兼容两阶段算法）
 
-- RS 与 CG 的混合（`RS(iter1) + CG(iter2)`），兼顾鲁棒与效率。
+- 严格执行 R `mixed(n1, n2)` 的顺序：先运行 RS，再把全部可估参数状态作为 CG 的 warm start。
+- 默认 `mixed_n1=1`、`mixed_n2=20`；最终 `iter` 和 `converged` 采用 CG 阶段语义，两个阶段的记录保存在 `model.additional_slots`。
+- CG 尚不能保留惩罚平滑状态，因此含平滑项时会明确拒绝；此时使用 RS 或 HYBRID。
 
 ```python
-model = gamlss("y ~ x", family="NBI", data=data, method="MIXED")
+model = gamlss(
+    "y ~ x",
+    family="NBI",
+    data=data,
+    method="MIXED",
+    mixed_n1=1,
+    mixed_n2=20,
+)
+```
+
+## HYBRID（自动单后端调度）
+
+HYBRID 保留原有的自动策略：根据样本量、family 和平滑项，在一次拟合中选择 RS 或 L-BFGS。它不是 R `mixed()`。
+
+```python
+model = gamlss("y ~ pb(x)", family="NO", data=data, method="HYBRID")
 ```
 
 ## 收敛控制

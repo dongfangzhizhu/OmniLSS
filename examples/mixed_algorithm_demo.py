@@ -1,9 +1,8 @@
-"""Demonstration of the Mixed algorithm wrapper for GAMLSS fitting.
+"""Demonstration of the HYBRID algorithm dispatcher.
 
-The Mixed wrapper can route to RS or to the current Cole-Green implementation.
-When ``algorithm="cg"`` is selected, the wrapper delegates to
-``gamlss(method="CG")``, whose default backend is the full-Hessian
-``CG_FULL_HESSIAN`` path with cross-derivative diagnostics.
+HYBRID routes to one RS or L-BFGS backend based on data characteristics. It is
+separate from ``mixed_fit``, which implements R's sequential RS-to-CG
+``mixed(n1, n2)`` algorithm.
 """
 
 # ruff: noqa: E402
@@ -20,7 +19,7 @@ import jax  # noqa: E402
 jax.config.update("jax_enable_x64", True)
 
 import numpy as np
-from omnilss.algorithms import mixed_fit, compare_algorithms
+from omnilss.algorithms import hybrid_fit, compare_algorithms
 
 
 def demo_mixed_auto():
@@ -38,7 +37,7 @@ def demo_mixed_auto():
     data = {"y": y, "x": x}
 
     # Fit with automatic selection
-    model = mixed_fit(
+    model = hybrid_fit(
         formula="y ~ x",
         sigma_formula="~ x",
         family="NO",
@@ -48,9 +47,9 @@ def demo_mixed_auto():
     )
 
     print(
-        f"\nSelected algorithm: {model.additional_slots['mixed_algorithm_used'].upper()}"
+        f"\nSelected algorithm: {model.additional_slots['hybrid_algorithm_used'].upper()}"
     )
-    print(f"Auto-selected: {model.additional_slots['mixed_auto_selected']}")
+    print(f"Auto-selected: {model.additional_slots['hybrid_auto_selected']}")
     print(f"Final deviance: {model.g_dev:.4f}")
 
 
@@ -69,7 +68,7 @@ def demo_explicit_selection():
 
     # Fit with RS
     print("\nUsing RS algorithm explicitly:")
-    model_rs = mixed_fit(
+    model_rs = hybrid_fit(
         formula="y ~ x",
         sigma_formula="~ x",
         family="NO",
@@ -82,7 +81,7 @@ def demo_explicit_selection():
 
     # Fit with CG
     print("\nUsing CG algorithm explicitly:")
-    model_cg = mixed_fit(
+    model_cg = hybrid_fit(
         formula="y ~ x",
         sigma_formula="~ x",
         family="NO",
@@ -157,47 +156,21 @@ def demo_comparison():
 
 
 def demo_summary():
-    """Print summary of Mixed algorithm."""
+    """Print a summary of the HYBRID dispatcher."""
     print("\n" + "=" * 70)
-    print("Mixed Algorithm Summary")
+    print("HYBRID Dispatcher Summary")
     print("=" * 70)
     print("""
-The Mixed algorithm provides a unified interface for GAMLSS fitting:
+HYBRID provides a single-backend dispatcher for GAMLSS fitting:
 
-1. Automatic Selection (algorithm="auto"):
-   - Currently selects RS algorithm (recommended)
-   - Future versions may implement intelligent selection based on:
-     * Data characteristics
-     * Model complexity
-     * Convergence behavior
+1. Automatic selection (algorithm="auto") chooses RS or L-BFGS from sample
+   size, family and smooth-term constraints.
+2. algorithm="rs" forces the standard RS implementation.
+3. algorithm="lbfgs" forces the experimental L-BFGS compatibility backend.
+   The legacy algorithm="cg" spelling is deprecated and maps to L-BFGS.
 
-2. Explicit RS (algorithm="rs"):
-   - Uses the fully implemented RS algorithm
-   - Fast convergence (2-3 iterations)
-   - Excellent numerical stability
-   - Recommended for production use
-
-3. Explicit CG (algorithm="cg"):
-   - Delegates to gamlss(method="CG")
-   - Uses the default CG_FULL_HESSIAN Cole-Green backend
-   - Preserves cross-parameter Hessian blocks and records diagnostics
-   - Useful when you want an auditable CG comparison against RS
-
-Usage Examples:
-
-    # Automatic selection
-    model = mixed_fit("y ~ x", "~ x", family="NO", data=data)
-    
-    # Explicit RS
-    model = mixed_fit("y ~ x", "~ x", family="NO", data=data, algorithm="rs")
-    
-    # Explicit CG
-    model = mixed_fit("y ~ x", "~ x", family="NO", data=data, algorithm="cg")
-    
-    # Compare algorithms
-    models = compare_algorithms("y ~ x", "~ x", family="NO", data=data)
-
-Recommendation: Use algorithm="auto" or algorithm="rs" for routine production work; use algorithm="cg" when you specifically need the full-Hessian Cole-Green path for comparison or diagnostics.
+Use gamlss(..., method="MIXED", mixed_n1=1, mixed_n2=20) when you need
+R-compatible sequential RS-to-CG fitting.
     """)
 
 

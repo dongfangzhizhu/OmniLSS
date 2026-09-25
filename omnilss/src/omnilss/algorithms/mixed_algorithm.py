@@ -1,7 +1,8 @@
-"""Mixed algorithm for GAMLSS fitting.
+"""R-compatible mixed fitting and the historical hybrid dispatcher.
 
-The Mixed algorithm combines the strengths of RS and CG algorithms,
-automatically selecting the best approach based on convergence behavior.
+``mixed_fit`` implements the R ``mixed(n1, n2)`` sequence (RS then CG).
+``hybrid_fit`` preserves OmniLSS's data-dependent choice between a single RS
+or L-BFGS backend.
 
 References:
     Rigby, R. A., & Stasinopoulos, D. M. (2005). Generalized additive models 
@@ -9,11 +10,13 @@ References:
     Series C, 54(3), 507-554.
 """
 
+from numbers import Integral
 from typing import Dict, Optional, Literal
 import time
 import numpy as np
 import warnings
 
+from .cg_algorithm_v2 import cg_fit_v2
 from .rs_algorithm import rs_fit
 from .lbfgs_algorithm import joint_lbfgs_fit as cg_fit
 from ..model import GAMLSSModel
@@ -42,7 +45,7 @@ def _auto_select_algorithm(family_name: str, n: int, has_smooth: bool) -> str:
     return "lbfgs"
 
 
-def mixed_fit(
+def hybrid_fit(
     formula: str,
     sigma_formula: str = "~ 1",
     nu_formula: Optional[str] = None,
@@ -58,12 +61,12 @@ def mixed_fit(
     weights=None,
     parameter_formulas=None,
 ) -> GAMLSSModel:
-    """Fit GAMLSS model using Mixed algorithm.
-    
-    The Mixed algorithm can:
-    1. Automatically select between RS and CG based on data characteristics
-    2. Use RS algorithm (recommended for most cases)
-    3. Use CG algorithm (for comparison)
+    """Fit a GAMLSS model using the historical hybrid dispatcher.
+
+    The hybrid dispatcher selects one backend; it is not R ``mixed()``:
+    1. Automatically select RS or L-BFGS from data characteristics
+    2. Force RS for comparison or smooth-term support
+    3. Force the L-BFGS compatibility backend for experiments
     
     Args:
         formula: Formula for mu parameter
@@ -89,10 +92,10 @@ def mixed_fit(
     Example:
         >>> data = {"y": y, "x": x}
         >>> # Automatic selection (uses RS)
-        >>> model = mixed_fit("y ~ x", "~ x", family="NO", data=data)
+        >>> model = hybrid_fit("y ~ x", "~ x", family="NO", data=data)
         >>> 
         >>> # Explicit RS
-        >>> model = mixed_fit("y ~ x", "~ x", family="NO", data=data, algorithm="rs")
+        >>> model = hybrid_fit("y ~ x", "~ x", family="NO", data=data, algorithm="rs")
         >>> 
         >>> # Explicit CG
         >>> model = mixed_fit("y ~ x", "~ x", family="NO", data=data, algorithm="cg")
@@ -102,7 +105,7 @@ def mixed_fit(
     
     if verbose:
         print("=" * 70)
-        print("Mixed Algorithm")
+        print("Hybrid Dispatcher")
         print("=" * 70)
     
     formulas = dict(parameter_formulas or {})
@@ -142,7 +145,7 @@ def mixed_fit(
     
     if selected_algorithm == "lbfgs" and has_smooth:
         raise ValueError(
-            "The MIXED lbfgs/CG compatibility backend does not support penalized "
+            "The HYBRID lbfgs compatibility backend does not support penalized "
             "smooth terms; use algorithm='rs' or algorithm='auto'."
         )
 
@@ -160,9 +163,11 @@ def mixed_fit(
             rtol=rtol,
             verbose=verbose
         )
-        # Add mixed algorithm metadata
+        # Retain the old mixed_* keys for callers of the historical dispatcher.
+        model.additional_slots["hybrid_algorithm_used"] = "rs"
+        model.additional_slots["hybrid_auto_selected"] = algorithm == "auto"
         model.additional_slots["mixed_algorithm_used"] = "rs"
-        model.additional_slots["mixed_auto_selected"] = (algorithm == "auto")
+        model.additional_slots["mixed_auto_selected"] = algorithm == "auto"
         
     elif selected_algorithm == "lbfgs":
         model = cg_fit(
@@ -178,19 +183,166 @@ def mixed_fit(
             outer_tol=tol,
             verbose=verbose
         )
-        # Add mixed algorithm metadata
+        model.additional_slots["hybrid_algorithm_used"] = "lbfgs"
+        model.additional_slots["hybrid_auto_selected"] = algorithm == "auto"
         model.additional_slots["mixed_algorithm_used"] = "lbfgs"
-        model.additional_slots["mixed_auto_selected"] = (algorithm == "auto")
+        model.additional_slots["mixed_auto_selected"] = algorithm == "auto"
     
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}. Use 'auto', 'rs', or 'lbfgs'.")
     
     if verbose:
         print("=" * 70)
-        print(f"Mixed algorithm completed using {selected_algorithm.upper()}")
+        print(f"Hybrid dispatcher completed using {selected_algorithm.upper()}")
         print("=" * 70)
     
     return model
+
+
+def _stage_cycles(name: str, value: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, Integral):
+        raise ValueError(f"{name} must be an integer >= 0")
+    value = int(value)
+    if value < 0:
+        raise ValueError(f"{name} must be >= 0")
+    return value
+
+
+def mixed_fit(
+    formula: str,
+    sigma_formula: str = "~ 1",
+    nu_formula: Optional[str] = None,
+    tau_formula: Optional[str] = None,
+    family: str | FamilyDefinition = "NO",
+    data: Optional[Dict[str, np.ndarray]] = None,
+    n1: int = 1,
+    n2: int = 20,
+    tol: float = 1e-4,
+    rtol: float = 1e-6,
+    verbose: bool = False,
+    *,
+    weights=None,
+    parameter_formulas=None,
+    max_iter: int | None = None,
+) -> GAMLSSModel:
+    """Fit the R-compatible two-stage ``mixed(n1, n2)`` algorithm.
+
+    The first stage runs RS for at most ``n1`` outer cycles. Every estimable
+    parameter coefficient, linear predictor and fitted value is then validated
+    and copied into the eta-scale Cole-Green backend for at most ``n2`` cycles.
+    Penalized smooth terms remain unsupported because CG cannot yet preserve
+    their penalty state; use :func:`hybrid_fit` for the historical automatic
+    RS/L-BFGS dispatcher.
+    """
+
+    if data is None:
+        raise ValueError("data must be provided")
+    n1 = _stage_cycles("n1", n1)
+    if max_iter is not None:
+        warnings.warn(
+            "mixed_fit(max_iter=...) is deprecated; use n2=... for the CG stage",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        n2 = max_iter
+    n2 = _stage_cycles("n2", n2)
+
+    formulas = dict(parameter_formulas or {})
+    if nu_formula is not None:
+        formulas.setdefault("nu", nu_formula)
+    if tau_formula is not None:
+        formulas.setdefault("tau", tau_formula)
+    if _contains_smooth_terms(formula, sigma_formula, *formulas.values()):
+        raise ValueError(
+            "R-compatible MIXED does not yet support penalized smooth terms in "
+            "the CG stage; use method='RS' or method='HYBRID'"
+        )
+
+    rs_model = rs_fit(
+        formula=formula,
+        sigma_formula=sigma_formula,
+        parameter_formulas=formulas or None,
+        weights=weights,
+        family=family,
+        data=data,
+        max_iter=n1,
+        tol=tol,
+        rtol=rtol,
+        verbose=verbose,
+    )
+    rs_history = tuple(
+        float(value)
+        for value in rs_model.additional_slots.get(
+            "deviance_history", (float(rs_model.g_dev),)
+        )
+    )
+
+    cg_model = cg_fit_v2(
+        formula=formula,
+        sigma_formula=sigma_formula,
+        parameter_formulas=formulas or None,
+        weights=weights,
+        family=rs_model.family,
+        data=dict(data),
+        max_iter=n2,
+        tol=tol,
+        verbose=verbose,
+        initial_model=rs_model,
+    )
+    cg_history = tuple(
+        float(value)
+        for value in cg_model.additional_slots.get(
+            "deviance_history", (float(cg_model.g_dev),)
+        )
+    )
+    boundary_deviance = float(rs_model.g_dev)
+    if not cg_history or not np.isclose(
+        cg_history[0], boundary_deviance, rtol=1e-9, atol=1e-9
+    ):
+        raise RuntimeError(
+            "MIXED RS/CG boundary deviance changed before the first CG update"
+        )
+    combined_history = rs_history + cg_history[1:]
+
+    slots = dict(cg_model.additional_slots)
+    cg_iterations = int(slots.get("cg_iterations", cg_model.iter))
+    rs_iterations = int(rs_model.iter)
+    slots.update(
+        {
+            "method": "MIXED",
+            "converged": bool(slots.get("cg_converged", False)),
+            "cycles": cg_iterations,
+            "deviance_history": combined_history,
+            "mixed_rs_n1": n1,
+            "mixed_cg_n2": n2,
+            "mixed_rs_iterations": rs_iterations,
+            "mixed_cg_iterations": cg_iterations,
+            "mixed_total_iterations": rs_iterations + cg_iterations,
+            "mixed_rs_converged": bool(
+                rs_model.additional_slots.get("rs_converged", False)
+            ),
+            "mixed_cg_converged": bool(slots.get("cg_converged", False)),
+            "mixed_rs_deviance_history": rs_history,
+            "mixed_cg_deviance_history": cg_history,
+            "mixed_boundary_deviance": boundary_deviance,
+            "mixed_cg_backend": slots.get("cg_backend", "CG_IRLS_CROSS"),
+            "mixed_state_parameters": tuple(rs_model.family.estimable_parameters),
+        }
+    )
+    cg_model.additional_slots = slots
+    cg_model.iter = cg_iterations
+    cg_model.call = {
+        **dict(cg_model.call or {}),
+        "method": "MIXED",
+        "mixed_n1": n1,
+        "mixed_n2": n2,
+    }
+    cg_model.control = {
+        **dict(cg_model.control or {}),
+        "mixed.n1": n1,
+        "mixed.n2": n2,
+    }
+    return cg_model
 
 
 def compare_algorithms(

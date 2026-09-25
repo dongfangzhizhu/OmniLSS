@@ -84,6 +84,74 @@ def _global_deviance(
     )
 
 
+def _initial_state_from_model(
+    initial_model: GAMLSSModel,
+    family: Any,
+    design_matrices: dict[str, np.ndarray],
+    offsets: dict[str, np.ndarray],
+    n: int,
+) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], dict[str, np.ndarray]]:
+    """Copy and validate a complete RS boundary state for CG warm start."""
+
+    model_parameters = tuple(getattr(initial_model, "parameters", ()))
+    if model_parameters != tuple(family.parameters):
+        raise ValueError(
+            "initial_model parameters do not match the requested family: "
+            f"{model_parameters!r} != {tuple(family.parameters)!r}"
+        )
+
+    params: dict[str, np.ndarray] = {}
+    coefficients: dict[str, np.ndarray] = {}
+    etas: dict[str, np.ndarray] = {}
+    for parameter in family.estimable_parameters:
+        if parameter not in initial_model.coefficients:
+            raise ValueError(f"initial_model is missing coefficients for {parameter!r}")
+        if parameter not in initial_model.linear_predictors:
+            raise ValueError(
+                f"initial_model is missing the linear predictor for {parameter!r}"
+            )
+        if parameter not in initial_model.fitted_values:
+            raise ValueError(f"initial_model is missing fitted values for {parameter!r}")
+
+        beta = np.asarray(initial_model.coefficients[parameter], dtype=np.float64).copy()
+        eta = np.asarray(
+            initial_model.linear_predictors[parameter], dtype=np.float64
+        ).copy()
+        fitted = np.asarray(
+            initial_model.fitted_values[parameter], dtype=np.float64
+        ).copy()
+        design = design_matrices[parameter]
+        offset = offsets[parameter]
+        if beta.ndim != 1 or beta.size != design.shape[1]:
+            raise ValueError(
+                f"initial_model coefficient width for {parameter!r} does not match "
+                f"the CG design matrix ({beta.size} != {design.shape[1]})"
+            )
+        if eta.shape != (n,) or fitted.shape != (n,):
+            raise ValueError(
+                f"initial_model state for {parameter!r} must have shape ({n},)"
+            )
+        expected_eta = design @ beta + offset
+        if not np.allclose(eta, expected_eta, rtol=1e-7, atol=1e-9):
+            raise ValueError(
+                f"initial_model linear predictor for {parameter!r} does not match "
+                "the CG design matrix"
+            )
+        expected_fitted = np.asarray(
+            family.link_inverses[parameter](jnp.asarray(eta)), dtype=np.float64
+        )
+        if not np.allclose(fitted, expected_fitted, rtol=1e-7, atol=1e-9):
+            raise ValueError(
+                f"initial_model fitted values for {parameter!r} do not match "
+                "its linear predictor"
+            )
+
+        coefficients[parameter] = beta
+        etas[parameter] = eta
+        params[parameter] = fitted
+    return params, coefficients, etas
+
+
 def cg_outer_step(
     y: np.ndarray,
     design_matrices: dict[str, np.ndarray],
@@ -174,8 +242,15 @@ def cg_fit_v2(
     tol: float = 1e-4,
     step_sizes: dict | None = None,
     verbose: bool = False,
+    initial_model: GAMLSSModel | None = None,
 ) -> GAMLSSModel:
-    """Fit with the eta-level CG IRLS cross-derivative backend."""
+    """Fit with the eta-level CG IRLS cross-derivative backend.
+
+    When ``initial_model`` is provided, every estimable parameter is copied
+    from that model after validating its coefficient, eta, fitted-value and
+    design-matrix boundary. This is the state hand-off used by R-compatible
+    ``mixed()`` fitting.
+    """
     family = resolve_family(family)
     response_name, _ = _parse_formula(formula)
     resolved_formulas = _resolve_parameter_formulas(
@@ -205,40 +280,65 @@ def cg_fit_v2(
         predictor_labels[parameter] = labels
         smooth_infos[parameter] = smooth
 
-    params: dict[str, np.ndarray] = {}
-    coefs: dict[str, np.ndarray] = {}
-    etas: dict[str, np.ndarray] = {}
-    mu_X = design_matrices["mu"]
-    beta_mu = _initial_mu_beta(
-        family, mu_X, y, w, fixed_parameter_values=fixed_parameter_values
-    )
-    eta_mu = mu_X @ beta_mu
-    mu = np.asarray(family.link_inverses["mu"](jnp.asarray(eta_mu)), dtype=np.float64)
-    params["mu"], coefs["mu"], etas["mu"] = mu, beta_mu, eta_mu
-
-    for p in family.parameters:
-        if p == "mu" or p in fixed_parameter_values:
-            continue
-        X = design_matrices[p]
-        init = (
-            _initial_sigma(
-                family, y, mu, w, fixed_parameter_values=fixed_parameter_values
+    offsets: dict[str, np.ndarray] = {}
+    initial_offsets = dict(getattr(initial_model, "offsets", {}) or {})
+    for parameter in family.estimable_parameters:
+        offset = np.asarray(
+            initial_offsets.get(parameter, np.zeros(n)), dtype=np.float64
+        ).copy()
+        if offset.shape != (n,):
+            raise ValueError(
+                f"initial_model offset for {parameter!r} must have shape ({n},)"
             )
-            if p == "sigma"
-            else _initial_parameter_value(family, p, y, mu, w)
-        )
-        eta_init = np.full(
+        offsets[parameter] = offset
+
+    if initial_model is not None:
+        params, coefs, etas = _initial_state_from_model(
+            initial_model,
+            family,
+            design_matrices,
+            offsets,
             n,
-            float(
-                np.asarray(
-                    family.link_functions[p](jnp.asarray([init], dtype=jnp.float64))
-                )[0]
-            ),
         )
-        beta, *_ = np.linalg.lstsq(X, eta_init, rcond=None)
-        eta = X @ beta
-        pv = np.asarray(family.link_inverses[p](jnp.asarray(eta)), dtype=np.float64)
-        params[p], coefs[p], etas[p] = pv, beta, eta
+    else:
+        params = {}
+        coefs = {}
+        etas = {}
+        mu_X = design_matrices["mu"]
+        beta_mu = _initial_mu_beta(
+            family, mu_X, y, w, fixed_parameter_values=fixed_parameter_values
+        )
+        eta_mu = mu_X @ beta_mu + offsets["mu"]
+        mu = np.asarray(
+            family.link_inverses["mu"](jnp.asarray(eta_mu)), dtype=np.float64
+        )
+        params["mu"], coefs["mu"], etas["mu"] = mu, beta_mu, eta_mu
+
+        for p in family.parameters:
+            if p == "mu" or p in fixed_parameter_values:
+                continue
+            X = design_matrices[p]
+            init = (
+                _initial_sigma(
+                    family, y, mu, w, fixed_parameter_values=fixed_parameter_values
+                )
+                if p == "sigma"
+                else _initial_parameter_value(family, p, y, mu, w)
+            )
+            eta_init = np.full(
+                n,
+                float(
+                    np.asarray(
+                        family.link_functions[p](jnp.asarray([init], dtype=jnp.float64))
+                    )[0]
+                ),
+            )
+            beta, *_ = np.linalg.lstsq(X, eta_init - offsets[p], rcond=None)
+            eta = X @ beta + offsets[p]
+            pv = np.asarray(
+                family.link_inverses[p](jnp.asarray(eta)), dtype=np.float64
+            )
+            params[p], coefs[p], etas[p] = pv, beta, eta
 
     for p, v in fixed_parameter_values.items():
         params[p] = np.asarray(v, dtype=np.float64)
@@ -248,8 +348,8 @@ def cg_fit_v2(
     history = [g_dev]
     line_search_steps: list[int] = []
     steps = {"mu": 1.0, "sigma": 1.0, "nu": 1.0, "tau": 1.0, **(step_sizes or {})}
-    offsets = {p: np.zeros(n, dtype=np.float64) for p in family.estimable_parameters}
     last_bundle: EtaDerivativeBundle | None = None
+    termination_reason = "max_iter_reached"
 
     while it < max_iter:
         old_g_dev = g_dev
@@ -293,11 +393,15 @@ def cg_fit_v2(
             print(
                 f"CG_IRLS_CROSS iter {it}: deviance={g_dev:.6f}, change={abs(old_g_dev - g_dev):.2e}"
             )
-        if not accepted or abs(old_g_dev - g_dev) <= tol:
+        if not accepted:
+            termination_reason = "step_rejected"
+            break
+        if abs(old_g_dev - g_dev) <= tol:
+            termination_reason = "relative_deviance_converged"
             break
 
-    converged = len(history) > 1 and abs(history[-2] - history[-1]) <= tol
-    if len(history) > 1 and not history[-1] < history[-2]:
+    converged = termination_reason == "relative_deviance_converged"
+    if converged and len(history) > 1 and not history[-1] < history[-2]:
         # Remove duplicate convergence probe points for monotonicity diagnostics.
         history = history[:-1]
     fitted_values_jax = {
@@ -367,7 +471,10 @@ def cg_fit_v2(
         iterative_weights={
             p: jnp.ones(n, dtype=jnp.float64) for p in family.parameters
         },
-        offsets={p: jnp.zeros(n, dtype=jnp.float64) for p in family.parameters},
+        offsets={
+            p: jnp.asarray(offsets.get(p, np.zeros(n)), dtype=jnp.float64)
+            for p in family.parameters
+        },
         formulas=resolved_formulas,
         terms=terms,
         design_matrices=design_matrices_jax,
@@ -390,6 +497,9 @@ def cg_fit_v2(
             "cg_cross_derivatives": "eta_correction",
             "cg_iterations": it,
             "cg_converged": converged,
+            "cg_termination_reason": termination_reason,
+            "cg_initial_model_used": initial_model is not None,
+            "cg_initial_deviance": float(history[0]),
             "cg_final_deviance": float(g_dev),
             "cg_line_search_steps": tuple(line_search_steps),
             "cg_eta_hessian_shape": hessian_shape,

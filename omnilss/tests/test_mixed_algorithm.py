@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 import warnings
-from omnilss.algorithms import mixed_fit, compare_algorithms
+from omnilss.algorithms import hybrid_fit, compare_algorithms
 
 
 class TestMixedBasic:
@@ -17,7 +17,7 @@ class TestMixedBasic:
         y = 2 + 3*x + np.random.normal(0, 1, n)
         data = {"y": y, "x": x}
         
-        model = mixed_fit(
+        model = hybrid_fit(
             formula="y ~ x",
             sigma_formula="~ 1",
             family="NO",
@@ -39,7 +39,7 @@ class TestMixedBasic:
         y = 2 + 3*x + np.random.normal(0, 1, n)
         data = {"y": y, "x": x}
         
-        model = mixed_fit(
+        model = hybrid_fit(
             formula="y ~ x",
             sigma_formula="~ 1",
             family="NO",
@@ -62,7 +62,7 @@ class TestMixedBasic:
         data = {"y": y, "x": x}
         
         with pytest.warns(DeprecationWarning, match="deprecated alias for 'lbfgs'"):
-            model = mixed_fit(
+            model = hybrid_fit(
                 formula="y ~ x",
                 sigma_formula="~ 1",
                 family="NO",
@@ -85,7 +85,7 @@ class TestMixedBasic:
 
         with warnings.catch_warnings(record=True) as record:
             warnings.simplefilter("always")
-            model = mixed_fit(
+            model = hybrid_fit(
                 formula="y ~ x",
                 sigma_formula="~ 1",
                 family="NO",
@@ -161,7 +161,7 @@ class TestMixedEdgeCases:
         data = {"y": y, "x": x}
         
         with pytest.raises(ValueError, match="Unknown algorithm"):
-            mixed_fit(
+            hybrid_fit(
                 formula="y ~ x",
                 sigma_formula="~ 1",
                 family="NO",
@@ -172,7 +172,7 @@ class TestMixedEdgeCases:
     def test_mixed_no_data(self):
         """Test Mixed without data."""
         with pytest.raises(ValueError, match="data must be provided"):
-            mixed_fit(
+            hybrid_fit(
                 formula="y ~ x",
                 sigma_formula="~ 1",
                 family="NO",
@@ -187,7 +187,7 @@ class TestMixedEdgeCases:
         y = 2 + 3*x + np.random.normal(0, 1, n)
         data = {"y": y, "x": x}
         
-        model = mixed_fit(
+        model = hybrid_fit(
             formula="y ~ x",
             sigma_formula="~ 1",
             family="NO",
@@ -212,7 +212,7 @@ class TestMixedMultipleVariables:
         y = 2 + 3*x1 + 2*x2 + np.random.normal(0, 1, n)
         data = {"y": y, "x1": x1, "x2": x2}
         
-        model = mixed_fit(
+        model = hybrid_fit(
             formula="y ~ x1 + x2",
             sigma_formula="~ 1",
             family="NO",
@@ -257,7 +257,7 @@ class TestMixedVerbose:
         data = {"y": y, "x": x}
         
         # Should not raise any errors
-        model = mixed_fit(
+        model = hybrid_fit(
             formula="y ~ x",
             sigma_formula="~ 1",
             family="NO",

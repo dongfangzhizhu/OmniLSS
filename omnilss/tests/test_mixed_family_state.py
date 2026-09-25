@@ -13,12 +13,12 @@ from omnilss.serialization import save_model_json, load_model_json
 def test_public_route_preserves_family(tmp_path,factory):
     family=factory(bd=3)
     data={'y':np.tile([0.,0.,1.,2.,3.],12)}
-    model=gamlss('y ~ 1',family=family,data=data,method='MIXED',max_iter=2)
+    model=gamlss('y ~ 1',family=family,data=data,method='HYBRID',max_iter=2)
     reference=gamlss('y ~ 1',family=family,data=data,method='RS',max_iter=2)
     assert model.family is family
     np.testing.assert_allclose(model.g_dev,reference.g_dev)
-    assert model.additional_slots['method']=='MIXED'
-    assert model.additional_slots['mixed_algorithm_used']=='rs'
+    assert model.additional_slots['method']=='HYBRID'
+    assert model.additional_slots['hybrid_algorithm_used']=='rs'
     path=tmp_path/'mixed.zip'
     save_model_json(model,path)
     restored=load_model_json(path)
@@ -42,6 +42,6 @@ def test_auto_selection_name_and_state(monkeypatch,family,n,expected):
         return fit
     monkeypatch.setattr(mixed,'rs_fit',backend('rs'))
     monkeypatch.setattr(mixed,'cg_fit',backend('lbfgs'))
-    model=mixed.mixed_fit('y ~ 1',family=family,data={'y':np.ones(n)})
+    model=mixed.hybrid_fit('y ~ 1',family=family,data={'y':np.ones(n)})
     assert calls==[(expected,family)]
-    assert model.additional_slots['mixed_algorithm_used']==expected
+    assert model.additional_slots['hybrid_algorithm_used']==expected

@@ -17,7 +17,7 @@ def test_reject_before_backend(monkeypatch,algorithm,parameter):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore',DeprecationWarning)
         with pytest.raises(ValueError,match='does not support penalized'):
-            mixed.mixed_fit(formula,data={'y':np.ones(3)},algorithm=algorithm,
+            mixed.hybrid_fit(formula,data={'y':np.ones(3)},algorithm=algorithm,
                             parameter_formulas=options)
 
 

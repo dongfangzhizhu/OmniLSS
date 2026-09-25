@@ -5,7 +5,8 @@ This module contains various algorithms for fitting GAMLSS models:
 - RS (Rigby-Stasinopoulos): The original GAMLSS algorithm (fully implemented)
 - joint_lbfgs_fit/lbfgs_fit: L-BFGS joint optimizer
 - cole_green_fit: True Cole-Green full-Hessian implementation from omnilss.fitting_cg.fit_cg
-- Mixed: Intelligent algorithm selection combining RS and CG
+- Mixed: R-compatible RS(n1) followed by eta-scale CG(n2)
+- Hybrid: data-dependent single-backend selection between RS and L-BFGS
 - RS_JAX: JAX-native RS with jax.lax.while_loop + jnp.linalg.lstsq (GPU/TPU ready)
 
 The RS algorithm is the default and most commonly used.
@@ -84,7 +85,7 @@ def cg_fit(
     )
 
 
-from .mixed_algorithm import mixed_fit, compare_algorithms
+from .mixed_algorithm import compare_algorithms, hybrid_fit, mixed_fit
 
 # JAX-native RS core (GPU/TPU ready)
 from .jax_family_specs import (
@@ -115,6 +116,7 @@ __all__ = [
     "fit_cg",
     "cg_fit_v2",
     "mixed_fit",
+    "hybrid_fit",
     "compare_algorithms",
     # JAX-native RS
     "FamilyJAXSpec",

@@ -27,6 +27,10 @@ def test_solver_receives_override(monkeypatch,method,module,function,extra,expli
     gamlss('y ~ x',family='NO',data=DATA,method=method,control=control,max_iter=explicit,**extra)
     if method=='RS_JAX':
         assert (received['control'].n_cyc if received['control'] else 20)==expected
+    elif method=='MIXED':
+        assert received['n1']==1
+        assert received['n2']==expected
+        assert received['tol']==(.002 if control else 1e-4)
     else:
         assert received['max_iter']==expected
         assert received['tol']==(.002 if control else 1e-4)

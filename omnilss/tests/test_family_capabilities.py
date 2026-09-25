@@ -154,6 +154,7 @@ def test_method_capability_features_match_runtime_routing_contract():
         "RS_JAX": "rs_jax_fit",
         "CG": "cg_fit",
         "MIXED": "cg_fit",
+        "HYBRID": "cg_fit",
         "JOINT": "cg_fit",
         "LBFGS": "cg_fit",
     }

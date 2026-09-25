@@ -1,20 +1,12 @@
-# MIXED 权重和参数公式传递
+# MIXED/HYBRID 权重和参数公式传递
 
-公开 gamlss(method="MIXED") 此前未传 weights/parameter_formulas，导致
-用户请求的加权模型与多参数公式可能被静默忽略。
+公开 `gamlss(method="MIXED")` 和 `gamlss(method="HYBRID")` 均会把 `weights` 与 `parameter_formulas` 传到实际后端。公式 mapping 会先复制，显式 mapping 优先于旧的 `nu_formula`/`tau_formula`，调用者对象不会被修改。
 
-本次将两个参数沿 mixed_fit 的 RS 和历史 lbfgs 兼容分支完整传递。
-兼容包装器最终调用 CG 时也传递它们。新选项为仅关键字参数，不改变旧
-位置参数含义。公式字典复制后使用，mapping优先于旧nu_formula/tau_formula。
-自动选择检查完整公式集合，nu/tau里的pb/ps/cs也触发RS路径。
+自 2026-09-24 起，两种语义明确分离：
 
-项目 .venv：
-`python -m pytest omnilss/tests/test_mixed_inputs.py omnilss/tests/test_mixed_algorithm.py omnilss/tests/test_max_iter_contract.py -q`
-结果 **51 passed**。
+- `MIXED` 对齐 R `mixed(n1, n2)`：先运行 RS，再把全部可估参数的 coefficient、linear predictor 和 fitted value 校验后传给 eta-scale CG。公开参数为 `mixed_n1`（默认 1）和 `mixed_n2`（默认 20）。
+- `HYBRID` 保留历史自动调度：根据样本量、family 和平滑项选择单一 RS 或 L-BFGS 后端。直接 API 为 `hybrid_fit(..., algorithm="auto")`。
 
-真实NO加权截距模型匹配解析加权均值/标准差；sigma协变量公式实际拟合
-与直接RS一致，系数维度验证为2。nu/tau透传及兼容CG入口由调用边界测试
-覆盖。此次未验证nu/tau协变量模型的数值收敛或GPU，不宣称R拟合等价。
+当前 CG 阶段尚不能保留惩罚平滑状态，因此 `MIXED` 遇到任一参数公式中的 smooth term 会 fail-closed；需要平滑时使用 `RS`，或使用会自动留在 RS 的 `HYBRID`。配置 family 若 RS 保存的 eta 无法由其 beta 和 design matrix 重建，也会在 MIXED 阶段边界被拒绝，而不是静默重新初始化。
 
-下一项建议：统一MIXED平滑项识别与核心公式解析器。当前仅识别pb/ps/cs
-字符串，s(...)/其它合法表达式可能被错误分配到不支持平滑的后端。
+验证范围包括：加权 NO、sigma 协变量公式、RS→CG 手工流水线等价、零 CG 迭代时完整 RS 状态保持、阶段迭代参数和元数据、HYBRID 旧选择规则，以及 smooth fail-closed。R live parity 仍由单独的 required-R suite 负责；在该门禁完成前，MIXED 保持 experimental capability。

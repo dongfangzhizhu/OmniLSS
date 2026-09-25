@@ -77,6 +77,7 @@ METHOD_CAPABILITY_FEATURES: tuple[tuple[str, str], ...] = (
     ("RS_JAX", "rs_jax_fit"),
     ("CG", "cg_fit"),
     ("MIXED", "cg_fit"),
+    ("HYBRID", "cg_fit"),
     ("JOINT", "cg_fit"),
     ("LBFGS", "cg_fit"),
 )
@@ -844,7 +845,7 @@ def method_route_capability_report(
     """
 
     method = str(method_name).upper()
-    if method == "CG" and formulas:
+    if method in {"CG", "MIXED"} and formulas:
         from .formula_parser import has_smooth_terms
 
         smooth_parameters = [
@@ -865,8 +866,8 @@ def method_route_capability_report(
                 "code": "smooth_terms_unsupported_for_method",
                 "smooth_parameters": smooth_parameters,
                 "message": (
-                    "method='CG' does not support penalized smooth terms; "
-                    "use method='RS' or method='auto'."
+                    f"method={method!r} does not support penalized smooth terms "
+                    "in its CG stage; use method='RS' or method='HYBRID'."
                 ),
             }
     feature = method_capability_features().get(method)

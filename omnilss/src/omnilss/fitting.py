@@ -833,7 +833,13 @@ def gamlss(
             Cole-Green algorithm with full JAX Hessian cross-derivatives.
 
         ``"MIXED"``
-            Mixed RS/CG damped update path.
+            R-compatible two-stage algorithm: RS warm-up followed by
+            eta-scale Cole-Green updates. Configure stages with
+            ``mixed_n1`` (default 1) and ``mixed_n2`` (default 20).
+
+        ``"HYBRID"``
+            Historical automatic dispatcher selecting one of RS or L-BFGS
+            from data size, family and smooth-term constraints.
 
         ``"joint"``
             Joint optimization with Optax (Adam/SGD/RMSprop/Adagrad).
@@ -906,13 +912,13 @@ def gamlss(
     method_name = str(method).upper()
     requested_method_name = method_name
     family = resolve_family(family)
-    if method_name == "CG" and any(
+    if method_name in {"CG", "MIXED"} and any(
         has_smooth_terms(value)
         for value in (formula, sigma_formula, *(parameter_formulas or {}).values())
     ):
         raise ValueError(
-            "method='CG' does not support penalized smooth terms; use "
-            "method='RS' or method='auto'."
+            f"method={method_name!r} does not support penalized smooth terms in "
+            "its CG stage; use method='RS' or method='HYBRID'."
         )
     routing_decision: dict[str, Any] | None = None
 
@@ -1080,11 +1086,11 @@ def gamlss(
             stacklevel=2,
         )
 
-    supported_methods = {"RS", "RS_JAX", "CG", "MIXED", "JOINT", "LBFGS"}
+    supported_methods = {"RS", "RS_JAX", "CG", "MIXED", "HYBRID", "JOINT", "LBFGS"}
     if method_name not in supported_methods:
         raise ValueError(
             "method must be one of 'RS', 'RS_JAX', 'auto', 'CG', 'MIXED', "
-            f"'joint', or 'lbfgs', got {method!r}"
+            f"'HYBRID', 'joint', or 'lbfgs', got {method!r}"
         )
 
     _require_method_family_capability(
@@ -1260,15 +1266,37 @@ def gamlss(
                 f"got {cg_backend_name!r}"
             )
 
-    # MIXED: real mixed algorithm (auto-selects RS or L-BFGS per data).
-    # Previously MIXED fell through to the inline damped-IWLS path below,
-    # which converged to a suboptimal fixed point for some families (e.g.
-    # NBI sigma -> -0.39 vs the MLE -0.90, deviance 516.3 vs 513.5).  Route
-    # it through mixed_fit so the result is a properly converged fit.
+    # R-compatible MIXED: RS(n1) followed by eta-scale CG(n2), sharing the
+    # complete parameter boundary state. Penalized smooths fail closed until
+    # the CG stage can preserve their penalty state.
     if method_name == "MIXED":
         from .algorithms.mixed_algorithm import mixed_fit
 
-        mixed_model = mixed_fit(
+        mixed_n1 = optimizer_kwargs.pop("mixed_n1", 1)
+        mixed_n2 = optimizer_kwargs.pop(
+            "mixed_n2",
+            max_iter
+            if max_iter is not None
+            else (control.n_cyc if control is not None else 20),
+        )
+        return mixed_fit(
+            formula=formula,
+            sigma_formula=sigma_formula,
+            parameter_formulas=parameter_formulas,
+            weights=weights,
+            family=family,
+            data=dict(data),
+            n1=mixed_n1,
+            n2=mixed_n2,
+            tol=control.c_crit if control is not None else 1e-4,
+            verbose=verbose,
+        )
+
+    # HYBRID retains the historical automatic single-backend dispatcher.
+    if method_name == "HYBRID":
+        from .algorithms.mixed_algorithm import hybrid_fit
+
+        hybrid_model = hybrid_fit(
             formula=formula,
             sigma_formula=sigma_formula,
             parameter_formulas=parameter_formulas,
@@ -1280,16 +1308,17 @@ def gamlss(
             tol=control.c_crit if control is not None else 1e-4,
             verbose=verbose,
         )
-        # Preserve the requested method label: mixed_fit may run RS internally
-        # (which stamps additional_slots["method"]="RS").
-        if getattr(mixed_model, "additional_slots", None) is not None:
-            mixed_model.additional_slots = {
-                **dict(mixed_model.additional_slots),
-                "method": "MIXED",
-            }
-        return mixed_model
+        hybrid_model.additional_slots = {
+            **dict(hybrid_model.additional_slots),
+            "method": "HYBRID",
+        }
+        hybrid_model.call = {
+            **dict(hybrid_model.call or {}),
+            "method": "HYBRID",
+        }
+        return hybrid_model
 
-    # CG and MIXED methods use the inline implementation below
+    # CG uses the inline implementation below
     rqres_callable = _build_rqres_callable(family)
 
     control = gamlss_control() if control is None else control
@@ -1884,35 +1913,6 @@ def gamlss(
             "cg_condition_number": getattr(cg_result, "condition_number", None),
             "cg_param_slices": getattr(cg_result, "param_slices", None),
         }
-    elif method_name == "MIXED":
-        method_slots = {
-            "mixed_converged": bool(converged),
-            "mixed_iterations": int(iteration),
-            "mixed_final_deviance": float(g_dev),
-        }
-        # Wire MIXED to the real auto-selecting mixed_fit dispatcher
-        # (RS or L-BFGS chosen by data characteristics) and record which
-        # algorithm was actually used.
-        try:
-            from .algorithms.mixed_algorithm import mixed_fit
-
-            family_name = getattr(family, "name", None) or str(family)
-            mixed_model = mixed_fit(
-                formula=formula,
-                sigma_formula=sigma_formula,
-                family=family_name,
-                data=data,
-                algorithm="auto",
-                max_iter=control.n_cyc,
-                tol=control.c_crit,
-                verbose=False,
-            )
-            method_slots["mixed_auto_selected"] = mixed_model.additional_slots.get(
-                "mixed_algorithm_used", "rs"
-            )
-        except Exception as exc:  # noqa: BLE001 - diagnostics must not break fitting
-            method_slots["mixed_dispatcher_error"] = str(exc)
-
     residual_values = (
         rqres_callable(y=y, mu=mu, sigma=parameter_values.get("sigma"))
         if rqres_callable is not None

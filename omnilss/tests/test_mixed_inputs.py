@@ -25,9 +25,10 @@ def test_public_mixed_retains_sigma_mapping():
     options={'sigma':'~ x'}
     kwargs=dict(formula='y ~ x',family='NO',data=data,parameter_formulas=options,max_iter=3)
     model=gamlss(method='MIXED',**kwargs)
-    reference=gamlss(method='RS',**kwargs)
     assert len(model.coefficients['sigma'])==2
-    np.testing.assert_allclose(model.g_dev,reference.g_dev)
+    assert model.additional_slots['mixed_rs_n1']==1
+    assert model.additional_slots['mixed_cg_n2']==3
+    np.testing.assert_allclose(model.weights, np.ones(len(x)))
     assert options=={'sigma':'~ x'}
 
 
@@ -40,7 +41,7 @@ def test_all_formula_keys_and_weights_reach_backend(monkeypatch,algorithm):
     monkeypatch.setattr(mixed,'rs_fit' if algorithm=='rs' else 'cg_fit',fake)
     weights=np.array([1.,2.,3.])
     formulas={'nu':'~ x','tau':'~ z'}
-    mixed.mixed_fit('y ~ x',data={'y':np.ones(3)},algorithm=algorithm,
+    mixed.hybrid_fit('y ~ x',data={'y':np.ones(3)},algorithm=algorithm,
                     nu_formula='~ 1',parameter_formulas=formulas,weights=weights)
     assert captured['parameter_formulas']==formulas
     assert captured['parameter_formulas'] is not formulas
@@ -52,7 +53,7 @@ def test_smooth_parameter_mapping_stays_on_rs(monkeypatch):
     def unexpected(**kwargs):
         pytest.fail('smooth nu mapping was ignored by automatic selection')
     monkeypatch.setattr(mixed,'cg_fit',unexpected)
-    model=mixed.mixed_fit('y ~ 1',data={'y':np.ones(600)},parameter_formulas={'nu':'~ pb(x)'})
+    model=mixed.hybrid_fit('y ~ 1',data={'y':np.ones(600)},parameter_formulas={'nu':'~ pb(x)'})
     assert model.additional_slots['mixed_algorithm_used']=='rs'
 
 
