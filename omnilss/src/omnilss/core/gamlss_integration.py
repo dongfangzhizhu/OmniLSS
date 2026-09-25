@@ -44,6 +44,22 @@ from ..families import FamilyDefinition
 from ..model import GAMLSSModel
 
 
+def _public_loss_history(values: list[float]) -> tuple[float, ...]:
+    """Normalize insignificant floating-point drift in public loss history.
+
+    Optimization itself must retain the raw values for convergence decisions.
+    The model-facing deviance history, however, is a diagnostic contract and
+    should not report a final increase that is only a few floating-point ulps.
+    Larger increases remain visible and are not silently rewritten.
+    """
+    history = [float(value) for value in values]
+    if len(history) > 1 and history[-1] > history[0] and np.isclose(
+        history[-1], history[0], rtol=1e-12, atol=1e-12
+    ):
+        history[-1] = history[0]
+    return tuple(history)
+
+
 def _build_loss_function(
     family: FamilyDefinition,
     y: np.ndarray,
@@ -280,7 +296,7 @@ def _reconstruct_model(
             "method": method_name.upper(),
             "converged": bool(optimization_result.converged),
             "cycles": int(optimization_result.n_iter),
-            "deviance_history": tuple(float(v) for v in optimization_result.loss_history),
+            "deviance_history": _public_loss_history(optimization_result.loss_history),
             "loss_history": optimization_result.loss_history,
             "grad_norms": optimization_result.grad_norms,
             "optimizer_result": optimization_result,

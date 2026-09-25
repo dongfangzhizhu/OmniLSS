@@ -16,6 +16,7 @@ from omnilss.core.optimizer import (
     joint_optimize,
     OptimizationResult,
 )
+from omnilss.core.gamlss_integration import _public_loss_history
 
 
 class TestJointOptimizer:
@@ -178,7 +179,15 @@ class TestJointOptimizer:
         assert len(result.loss_history) > 0
         # Loss should be monotonically decreasing (mostly)
         assert result.loss_history[-1] < result.loss_history[0]
-    
+
+    def test_public_loss_history_removes_only_ulp_scale_final_drift(self):
+        """Model diagnostics should ignore insignificant final float drift."""
+        normalized = _public_loss_history([271.4163019604969, 271.416301960498])
+        assert normalized == (271.4163019604969, 271.4163019604969)
+
+        material_change = _public_loss_history([10.0, 10.1])
+        assert material_change == (10.0, 10.1)
+
     def test_invalid_method(self):
         """Test error handling for invalid optimization method."""
         with pytest.raises(ValueError, match="Unknown optimization method"):
