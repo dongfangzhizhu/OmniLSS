@@ -37,7 +37,7 @@ class GLIMControl:
     """Python representation of `glim.control`."""
 
     cc: float = 0.001
-    cyc: int = 1
+    cyc: int = 20
     glm_trace: bool = False
     bf_cyc: int = 30
     bf_tol: float = 0.001
@@ -89,7 +89,7 @@ def gamlss_control(
 
 def glim_control(
     cc: float = 0.001,
-    cyc: int = 1,
+    cyc: int = 20,
     glm_trace: bool = False,
     bf_cyc: int = 30,
     bf_tol: float = 0.001,
@@ -99,7 +99,7 @@ def glim_control(
 
     cc = 0.001 if cc <= 0 else cc
     bf_tol = 0.001 if bf_tol <= 0 else bf_tol
-    cyc = 1 if cyc < 1 else cyc
+    cyc = 20 if cyc < 1 else cyc
     bf_cyc = 30 if bf_cyc < 1 else bf_cyc
     return GLIMControl(
         cc=cc,
