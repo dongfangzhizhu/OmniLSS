@@ -25,6 +25,7 @@ def main() -> int:
     date = args.date or __import__("datetime").date.today().isoformat()
     coverage_mod = _load("generate_r_export_coverage", ROOT / "tools" / "generate_r_export_coverage.py")
     queue_mod = _load("generate_placeholder_migration_queue", ROOT / "tools" / "generate_placeholder_migration_queue.py")
+    symbol_mod = _load("generate_symbol_coverage", ROOT / "tools" / "generate_symbol_coverage.py")
     coverage = coverage_mod.build_coverage()
     coverage_path = ROOT / "docs" / "development" / "r-export-coverage.json"
     markdown_path = ROOT / "docs" / "development" / "r-export-coverage.md"
@@ -32,9 +33,14 @@ def main() -> int:
     queue_path = ROOT / "docs" / "development" / f"placeholder-migration-queue-{date}.md"
     # Queue generation consumes the exact in-memory snapshot written above.
     queue_mod.generate_queue(coverage, queue_path, date)
+    # D0.1: the real R <-> Python per-symbol matrix (parses R sources, registry,
+    # tests and the golden manifest), separate from the registry inventory above.
+    symbol_mod.write_coverage(symbol_mod.build_coverage())
     print(f"Generated: {coverage_path}")
     print(f"Generated: {markdown_path}")
     print(f"Generated: {queue_path}")
+    print(f"Generated: {symbol_mod.OUT_JSON}")
+    print(f"Generated: {symbol_mod.OUT_MD}")
     return 0
 
 

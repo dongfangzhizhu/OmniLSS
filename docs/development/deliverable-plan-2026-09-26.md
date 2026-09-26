@@ -30,7 +30,7 @@
 | DPQR evidence VALIDATED | 35 |
 | fitting evidence VALIDATED | 2 |
 | R 源码 | 13 个包目录、12 个 NAMESPACE、363 个 `.R` 文件（gamlss 5.5-3、gamlss.dist 6.1-8） |
-| 测试 | 417 个 `test_*.py`；全库收集尚未在时限内完成，不得宣称全库通过 |
+| 测试 | 418 个 `test_*.py`；全库收集尚未在时限内完成，不得宣称全库通过（D0.3 分层门禁落地后逐组统计 collected/error/skipped） |
 | 环境 | Python 3.10.19 / JAX 0.6.2 CPU / R 4.6.0；x64 默认关闭，parity 前必须显式开启 |
 | 参考项目 | gamlss-python 0.2.0（52 源文件）、ondil 0.4.8（119 源文件） |
 
@@ -46,7 +46,21 @@
 | D0.2 golden manifest | 固定 R/包/Python/JAX 版本、源码 hash、x64、seed、容差 | 任一 parity 测试可复现；无 R 时只能标 smoke-only |
 | D0.3 分层测试门禁 | omnilss / ondil / gamlss-python 分别收集与运行 | 各组 collection 零错误；统计 collected/error/skipped |
 | D0.4 自动差异报告 | missing/extra/alias/placeholder/evidence 缺失 | registry 或 R 源码变化时 CI 输出差异并阻断回归 |
-| D0.5 环境门禁 | parity 入口强制检查 Rscript、x64、版本 | 未满足时测试 fail-closed 而非 skip |
+| D0.5 环境门禁 | parity 入口强制检查 Rscript、x64、版本 | 未满足时 test fail-closed 而非 skip |
+
+**D0.1 交付记录（2026-09-26）**
+
+- 工具：`tools/generate_symbol_coverage.py` 解析 12 个 NAMESPACE 的 `export*()`、
+  R 函数定义（`name <- function`）、Python `__all__`/定义/stub、测试引用与 golden manifest，
+  输出逐符号四层矩阵（`surface`/`kernel`/`parity`/`admission`）。
+- 生成物：`docs/development/r-symbol-coverage.json` 与 `docs/development/r-symbol-coverage.md`；
+  `tools/generate_coverage_artifacts.py` 已接入；`--check` 供 CI 复核新鲜度
+  （回归测试 `omnilss/tests/test_symbol_coverage_tool.py`）。
+- 溯源：`R/` 为 vendored（`.gitignore` 忽略）源码，因此逐行证据使用「定义文件内容哈希 +
+  上游 DESCRIPTION 版本 + Python 主模块最后提交」，不引用 R 文件 commit。
+- 读法：`parity` 依次取 `test_r_consistency*` 命中、golden fixture、capability 层级；
+  `registry` 表示族已注册于 capability registry，kernel 深度以 `kernel` 列
+  （implementation_status：implemented/experimental/compat_alias/placeholder）为准。
 
 ### D1 分布 family d/p/q/r parity（P1，8–12 周）
 
@@ -152,7 +166,7 @@ OmniLSS/
 
 ## 8. 立即执行清单（第一批）
 
-- [ ] D0.1 重写 coverage 工具为真实 R↔Python 逐符号矩阵；
+- [x] D0.1 重写 coverage 工具为真实 R↔Python 逐符号矩阵（2026-09-26 完成；工具 `tools/generate_symbol_coverage.py`，生成物 `docs/development/r-symbol-coverage.{json,md}`，报告 `docs/development/task-reports/d0-1-symbol-coverage-matrix-2026-09-26.md`）；
 - [ ] D0.2 golden manifest 模板与 `--require-r` 门禁对齐；
 - [ ] D0.3 四套分层 collection 命令固化到 CI；
 - [ ] D0.4 registry/R 源码变化自动差异报告；
