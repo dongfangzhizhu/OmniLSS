@@ -52,12 +52,18 @@ def _no2_log_pdf(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp.nda
 
 
 def NO2() -> Normal2Family:
+    from .dpqr_batch_e import dNO2, pNO2, qNO2, rNO2
+
     return build_ad_family(
         family_class=Normal2Family,
         name="NO2",
         parameters=("mu", "sigma"),
         log_pdf_func=_no2_log_pdf,
         type_="Continuous",
+        d=dNO2,
+        p=pNO2,
+        q=qNO2,
+        r=rNO2,
         links={"mu": "identity", "sigma": "log"},
         link_functions={"mu": identity_link, "sigma": log_link},
         link_inverses={"mu": identity_inverse, "sigma": log_inverse},

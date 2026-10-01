@@ -1,6 +1,6 @@
 # GAMLSS 分布族 placeholder 迁移队列清单
 
-> 生成日期：2026-09-26
+> 生成日期：2026-10-02
 > 生成方式：`tools/generate_placeholder_migration_queue.py`
 > 状态来源：`omnilss.family_capabilities` 的代码派生 `implementation_status`（placeholder = 生产路由被拒，需重写）
 > 批次划分：`docs/development/full-gamlss-migration-audit-and-roadmap-2026-09-11.md` 第 5 节 P1 批次
@@ -64,14 +64,14 @@
 | [x] | `GB1` | `GB1` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `GB2` | `GB2` | experimental | 状态已离开 placeholder（experimental） |
 | [ ] | `GIG` | `GIG` | 占位 |  |
-| [ ] | `NO2` | `NO2` | 占位 |  |
+| [x] | `NO2` | `NO2` | experimental | 状态已离开 placeholder（experimental） |
 | [ ] | `NOF` | `NOF` | 占位 |  |
-| [ ] | `PARETO` | `PARETO` | 占位 |  |
-| [ ] | `PARETO1` | `PARETO1` | 占位 |  |
+| [x] | `PARETO` | `PARETO` | experimental | 状态已离开 placeholder（experimental） |
+| [x] | `PARETO1` | `PARETO1` | experimental | 状态已离开 placeholder（experimental） |
 | [ ] | `PE2` | `PE2` | 占位 |  |
 | [x] | `PIG2` | `PIG2` | experimental | 状态已离开 placeholder（experimental） |
-| [ ] | `RGE` | `RGE` | 占位 |  |
-| [ ] | `WEI2` | `WEI2` | 占位 |  |
+| [x] | `RGE` | `RGE` | experimental | 状态已离开 placeholder（experimental） |
+| [x] | `WEI2` | `WEI2` | experimental | 状态已离开 placeholder（experimental） |
 | [ ] | `exGAUS` | `EXGAUS` | 占位 |  |
 | [ ] | `GAF` | `GAF` | 占位 |  |
 | [ ] | `EGB2` | `EGB2` | 占位 |  |
@@ -85,4 +85,4 @@
 
 ## 附录：尚未在任何批次中的状态
 
-当前 placeholder 家族总数（批次内）：16
+当前 placeholder 家族总数（批次内）：11

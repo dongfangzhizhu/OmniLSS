@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-10-01T23:06:58.266397+00:00",
+  "generated_at": "2026-10-01T23:41:56.086074+00:00",
   "source_repo_root": "D:\\AI\\my\\githubprojs\\OmniLSS",
   "stats": {
     "total_registered": 146,
     "status_distribution": {
-      "experimental": 102,
+      "experimental": 107,
       "compat_alias": 25,
-      "placeholder": 18,
+      "placeholder": 13,
       "implemented": 1
     },
     "validated_count": 1,
-    "experimental_count": 102,
+    "experimental_count": 107,
     "compat_alias_count": 25,
-    "placeholder_count": 18,
+    "placeholder_count": 13,
     "missing_count": 0
   },
   "families": {
@@ -764,7 +764,7 @@
       "evidence_tier_fitting": "VALIDATED"
     },
     "NO2": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -782,7 +782,7 @@
       "evidence_tier_fitting": "EXPERIMENTAL"
     },
     "PARETO": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -791,7 +791,7 @@
       "evidence_tier_fitting": "EXPERIMENTAL"
     },
     "PARETO1": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -881,7 +881,7 @@
       "evidence_tier_fitting": "EXPERIMENTAL"
     },
     "RGE": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,
@@ -1106,7 +1106,7 @@
       "evidence_tier_fitting": "EXPERIMENTAL"
     },
     "WEI2": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,

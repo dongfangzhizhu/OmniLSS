@@ -5,7 +5,7 @@
   "r_exports_total": 1080,
   "current_counts": {
     "missing": 402,
-    "placeholder": 75,
+    "placeholder": 50,
     "compat_alias": 11,
     "evidence_gap": 36,
     "extra": 300
@@ -27,8 +27,8 @@
     "placeholder": {
       "new": [],
       "resolved": [],
-      "current_count": 75,
-      "baseline_count": 75
+      "current_count": 50,
+      "baseline_count": 50
     },
     "compat_alias": {
       "new": [],

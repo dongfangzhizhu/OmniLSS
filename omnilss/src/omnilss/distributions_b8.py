@@ -195,12 +195,18 @@ def _pareto_log_pdf(y, mu):
 
 
 def PARETO() -> ParetoFamily:
+    from .dpqr_batch_e import dPARETO, pPARETO, qPARETO, rPARETO
+
     return build_ad_family(
         family_class=ParetoFamily,
         name="PARETO",
         parameters=("mu",),
         log_pdf_func=_pareto_log_pdf,
         type_="Continuous",
+        d=dPARETO,
+        p=pPARETO,
+        q=qPARETO,
+        r=rPARETO,
         links={"mu": "log"},
         link_functions={"mu": log_link},
         link_inverses={"mu": log_inverse},

@@ -87,10 +87,10 @@ Registry metadata only: this report does not establish R export coverage or nume
 | NBII | experimental |
 | NET | experimental |
 | NO | implemented |
-| NO2 | placeholder |
+| NO2 | experimental |
 | NOF | placeholder |
-| PARETO | placeholder |
-| PARETO1 | placeholder |
+| PARETO | experimental |
+| PARETO1 | experimental |
 | PARETO1O | experimental |
 | PARETO2 | experimental |
 | PARETO2O | experimental |
@@ -100,7 +100,7 @@ Registry metadata only: this report does not establish R export coverage or nume
 | PIG2 | experimental |
 | PO | experimental |
 | RG | experimental |
-| RGE | placeholder |
+| RGE | experimental |
 | SEP | experimental |
 | SEP1 | experimental |
 | SEP2 | experimental |
@@ -125,7 +125,7 @@ Registry metadata only: this report does not establish R export coverage or nume
 | TF2 | experimental |
 | WARING | experimental |
 | WEI | experimental |
-| WEI2 | placeholder |
+| WEI2 | experimental |
 | WEI3 | experimental |
 | YULE | experimental |
 | ZABB | experimental |

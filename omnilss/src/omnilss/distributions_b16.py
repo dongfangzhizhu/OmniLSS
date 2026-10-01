@@ -62,11 +62,17 @@ def PARETO1() -> Pareto1Family:
     Returns:
         Pareto1Family with automatic differentiation support
     """
+    from .dpqr_batch_e import dPARETO1, pPARETO1, qPARETO1, rPARETO1
+
     return build_ad_family(
         family_class=Pareto1Family,
         log_pdf_func=_pareto1_log_pdf,
         name="PARETO1",
         parameters=("mu",),
+        d=dPARETO1,
+        p=pPARETO1,
+        q=qPARETO1,
+        r=rPARETO1,
     )
 
 

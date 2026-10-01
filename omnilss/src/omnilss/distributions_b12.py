@@ -221,35 +221,30 @@ class WEI2Family(FamilyDefinition):
 
 def _wei2_log_pdf(y, mu, sigma):
     """Weibull Type 2 log-PDF.
-    
-    Alternative parameterization with different scale/shape relationship.
+
+    R ``dWEI2`` is ``dweibull(x, scale = mu^(-1/sigma), shape = sigma)``; the
+    earlier Python version used ``shape = 1/sigma, scale = mu * sigma``, which is
+    a different distribution and silently disagreed with R.
     """
-    eps = jnp.finfo(jnp.float64).eps
-    y = jnp.maximum(y, eps)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    
-    # Type 2: shape = 1/sigma, scale = mu * sigma
-    shape = 1.0 / sigma
-    scale = mu * sigma
-    
-    z = y / scale
-    
-    return (
-        jnp.log(shape) - jnp.log(scale)
-        + (shape - 1.0) * (jnp.log(y) - jnp.log(scale))
-        - jnp.power(z, shape)
-    )
+    from .dpqr_batch_e import dWEI2 as _dWEI2
+
+    return _dWEI2(y, mu, sigma, log=True)
 
 
 def WEI2():
     """Weibull Type 2 distribution."""
+    from .dpqr_batch_e import dWEI2, pWEI2, qWEI2, rWEI2
+
     return build_ad_family(
         family_class=WEI2Family,
         name="WEI2",
         parameters=("mu", "sigma"),
         log_pdf_func=_wei2_log_pdf,
         type_="Continuous",
+        d=dWEI2,
+        p=pWEI2,
+        q=qWEI2,
+        r=rWEI2,
         links={"mu": "log", "sigma": "log"},
         link_functions={"mu": log_link, "sigma": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse},
@@ -510,34 +505,33 @@ class RGEFamily(FamilyDefinition):
 
 
 def _rge_log_pdf(y, mu, sigma, nu):
-    """Reverse Gumbel Extended log-PDF.
-    
-    Extension of reverse Gumbel with additional shape parameter.
+    """Reverse Generalized Extreme log-PDF.
+
+    Mirrors R ``dRGE``: with ``z = nu*(y-mu)/sigma`` the log density is
+    ``-log(sigma) + (1/nu - 1)*log(1+z) - (1+z)^(1/nu)`` on ``1+z > 0``, with the
+    reverse-Gumbel limit used when ``|nu|`` is below R's 1e-3 switch.  The
+    earlier Python version was an unrelated "reverse Gumbel extended" formula
+    that disagreed with R everywhere.
     """
-    eps = jnp.finfo(jnp.float64).eps
-    sigma = jnp.maximum(sigma, eps)
-    nu = jnp.maximum(nu, eps)
-    
-    z = (y - mu) / sigma
-    
-    # Extended form with nu parameter
-    exp_z = jnp.exp(z)
-    
-    return (
-        -jnp.log(sigma) - z - nu * exp_z
-        + (nu - 1.0) * jnp.log(nu)
-        - gammaln(nu)
-    )
+    from .dpqr_batch_e import dRGE as _dRGE
+
+    return _dRGE(y, mu, sigma, nu, log=True)
 
 
 def RGE():
-    """Reverse Gumbel Extended distribution."""
+    """Reverse Generalized Extreme distribution."""
+    from .dpqr_batch_e import dRGE, pRGE, qRGE, rRGE
+
     return build_ad_family(
         family_class=RGEFamily,
         name="RGE",
         parameters=("mu", "sigma", "nu"),
         log_pdf_func=_rge_log_pdf,
         type_="Continuous",
+        d=dRGE,
+        p=pRGE,
+        q=qRGE,
+        r=rRGE,
         links={"mu": "identity", "sigma": "log", "nu": "log"},
         link_functions={
             "mu": identity_link,
