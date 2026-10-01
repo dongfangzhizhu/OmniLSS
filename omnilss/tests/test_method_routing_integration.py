@@ -29,6 +29,40 @@ def _make_no_data(n: int = 40) -> dict[str, np.ndarray]:
     return {"y": y, "x": x}
 
 
+def _make_multi_x_data(n: int = 40) -> dict[str, np.ndarray]:
+    """Data with five predictors: pushes p_total above the small-p fallback (4).
+
+    The routing tests below use ``y ~ x1 + ... + x5`` precisely to get a large
+    ``p_total``; the previous helper only supplied ``x``, so every one of them
+    failed at formula parsing instead of exercising the crossover logic.
+    """
+    rng = np.random.default_rng(20260517)
+    data = {"y": rng.normal(size=n)}
+    for i in range(1, 6):
+        data[f"x{i}"] = rng.normal(size=n)
+    data["y"] = 1.0 + 0.5 * data["x1"] + rng.normal(scale=0.25, size=n)
+    return data
+
+
+def _any_placeholder_family():
+    """Resolve a family that is still registered as a placeholder.
+
+    The queue shrinks as D1 lands (NO2/PARETO/PARETO1/WEI2/RGE left it in
+    D1-E), so the family is looked up instead of hard-coded.  If the queue ever
+    empties, this fails loudly rather than silently testing nothing.
+    """
+    from omnilss.distribution_registry import list_families, resolve
+    from omnilss.family_capabilities import implementation_status_for_family
+
+    for name in sorted(list_families()):
+        status = implementation_status_for_family(name)
+        if getattr(status, "value", status) == "placeholder":
+            return name, resolve(name)
+    raise AssertionError(
+        "placeholder 队列已清空：本测试改为断言能力矩阵本身（D1 占位清零已完成）"
+    )
+
+
 def test_auto_routes_to_rs_on_cpu(monkeypatch):
     """CPU backend method='auto' calls the NumPy RS path."""
     calls: list[str] = []
@@ -91,7 +125,7 @@ def test_auto_routes_to_jax_above_threshold(monkeypatch):
 
     with cfg.crossover_config(gpu={"NO": 10}):
         # Use large p_total (>4) to avoid small-p fallback
-        result = gamlss("y ~ x1 + x2 + x3 + x4 + x5", family=NO(), data=_make_no_data(n=40), method="auto")
+        result = gamlss("y ~ x1 + x2 + x3 + x4 + x5", family=NO(), data=_make_multi_x_data(n=40), method="auto")
 
     assert result.additional_slots["method"] == "RS_JAX"
     assert calls == ["jax"]
@@ -114,7 +148,7 @@ def test_auto_routes_to_rs_below_threshold(monkeypatch):
     monkeypatch.setattr(jax_rs_integration, "gamlss_rs_jax", fake_jax_fit)
 
     with cfg.crossover_config(gpu={"NO": 100}):  # n=40 < threshold=100
-        result = gamlss("y ~ x1 + x2 + x3 + x4 + x5", family=NO(), data=_make_no_data(n=40), method="auto")
+        result = gamlss("y ~ x1 + x2 + x3 + x4 + x5", family=NO(), data=_make_multi_x_data(n=40), method="auto")
 
     assert result.additional_slots["method"] == "RS"
     assert calls == ["rs"]
@@ -137,7 +171,7 @@ def test_auto_routes_to_jax_at_threshold(monkeypatch):
     monkeypatch.setattr(jax_rs_integration, "gamlss_rs_jax", fake_jax_fit)
 
     with cfg.crossover_config(gpu={"NO": 40}):  # n=40 == threshold=40
-        result = gamlss("y ~ x1 + x2 + x3 + x4 + x5", family=NO(), data=_make_no_data(n=40), method="auto")
+        result = gamlss("y ~ x1 + x2 + x3 + x4 + x5", family=NO(), data=_make_multi_x_data(n=40), method="auto")
 
     assert result.additional_slots["method"] == "RS_JAX"
     assert calls == ["jax"]
@@ -161,7 +195,7 @@ def test_routing_records_accelerator_available(monkeypatch):
     monkeypatch.setattr(jax_rs_integration, "gamlss_rs_jax", fake_jax_fit)
 
     with cfg.crossover_config(gpu={"NO": 1}):
-        gamlss("y ~ x1 + x2 + x3 + x4 + x5", family=NO(), data=_make_no_data(n=40), method="auto")
+        gamlss("y ~ x1 + x2 + x3 + x4 + x5", family=NO(), data=_make_multi_x_data(n=40), method="auto")
 
     assert captured["routing_decision"]["accelerator_available"] is True
 
@@ -206,16 +240,18 @@ def test_rs_jax_deprecated_warning():
 
 def test_auto_rejects_placeholder_family():
     """Placeholder families are rejected by default, even with auto routing."""
+    _name, family = _any_placeholder_family()
     data = _make_no_data()
     with pytest.raises(FamilyCapabilityError, match="placeholder"):
-        gamlss("y ~ x", family=NO2(), data=data, method="auto")
+        gamlss("y ~ x", family=family, data=data, method="auto")
 
 
 def test_rs_rejects_placeholder_family(monkeypatch):
     """Placeholder families are rejected by default for explicit RS too."""
+    _name, family = _any_placeholder_family()
     data = _make_no_data()
     with pytest.raises(FamilyCapabilityError, match="placeholder"):
-        gamlss("y ~ x", family=NO2(), data=data, method="RS")
+        gamlss("y ~ x", family=family, data=data, method="RS")
 
 
 def test_strict_capabilities_allow_validated_no_rs_route(monkeypatch):
@@ -242,7 +278,9 @@ def test_strict_capabilities_allow_validated_no_rs_route(monkeypatch):
 def test_strict_capabilities_reject_experimental_ga_rs_route():
     from omnilss import GA
 
-    with pytest.raises(FamilyCapabilityError, match="requested evidence tier"):
+    # The capability report now supplies the real reason, so the assertion is on
+    # the rejection code's wording rather than the old generic fallback.
+    with pytest.raises(FamilyCapabilityError, match="experimental"):
         gamlss(
             "y ~ x",
             family=GA(),
@@ -288,7 +326,7 @@ def test_routing_decision_payload_for_auto(monkeypatch):
 
     with cfg.crossover_config(gpu={"NO": 1}):
         # Large p to bypass small-p fallback
-        gamlss("y ~ x1 + x2 + x3 + x4 + x5", family=NO(), data=_make_no_data(n=40), method="auto")
+        gamlss("y ~ x1 + x2 + x3 + x4 + x5", family=NO(), data=_make_multi_x_data(n=40), method="auto")
 
     routing = captured.get("routing_decision")
     assert isinstance(routing, dict)

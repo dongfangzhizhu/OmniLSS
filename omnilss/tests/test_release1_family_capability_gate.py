@@ -47,7 +47,9 @@ def test_all_known_unsafe_states_are_rejected_with_structured_reason():
 
 def test_implemented_family_is_admitted_and_unsafe_exploratory_fit_is_blocked():
     assert require_production_family_route("NO", "RS", route="public_fit")["ok"] is True
-    with pytest.raises(FamilyCapabilityError, match="capability feature 'rs_fit'"):
+    # GIG is a placeholder family: the rejection reason must name that state,
+    # not the generic "feature unavailable" wording.
+    with pytest.raises(FamilyCapabilityError, match="placeholder numeric behavior"):
         gamlss("y ~ x", family="GIG", data={"y": [1.0, 2.0], "x": [0.0, 1.0]})
 
 

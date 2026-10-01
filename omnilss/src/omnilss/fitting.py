@@ -348,6 +348,13 @@ def _require_method_family_capability(
             f"Family '{family_name}' is not supported by method='RS_JAX'. "
             "Use method='RS' instead."
         )
+    # Surface the capability report's own reason.  The previous generic wording
+    # ("feature ... is unavailable") hid the actual rejection cause, so a
+    # placeholder family was reported as a missing feature rather than as a
+    # placeholder that needs an explicit opt-in.
+    detail = report.get("message")
+    if detail:
+        raise FamilyCapabilityError(str(detail))
     raise FamilyCapabilityError(
         f"Family '{family_name}' cannot use method='{method_name}' "
         f"because capability feature '{report['feature']}' is unavailable "
