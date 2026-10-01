@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "template_id": "r-golden-fixed-point-parity",
+  "description": "D0.2 pinned provenance for the regenerated R golden manifest. tools/golden_manifest_gate.py validates manifest.json against this template; --require-r is fail-closed (missing R, drift, or disabled x64 means the run may only be labelled smoke-only). Tolerances live here as the single source of truth; a manifest case may override with an explicit numeric 'tolerance' field.",
+  "manifest_path": "omnilss/tests/fixtures/r_golden/regenerated/manifest.json",
+  "generator": "omnilss/tests/fixtures/r_golden/generate_golden.R",
+  "pinned": {
+    "R_version_prefix": "R version 4.6.0",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "python_version_prefix": "3.10",
+    "jax_version_prefix": "0.6",
+    "jax_enable_x64": true
+  },
+  "required_case_fields": [
+    "family",
+    "formula",
+    "seed",
+    "n",
+    "R_version",
+    "gamlss_version",
+    "gamlss_dist_version",
+    "content_hash"
+  ],
+  "tolerances": {
+    "default": 1e-6,
+    "fitting": 1e-6,
+    "dpqr": 1e-10
+  },
+  "cases": {
+    "ig_y_x_seed_20260522": {"kind": "fitting"},
+    "po_y_x_seed_20260523": {"kind": "fitting"},
+    "no_y_x_seed_20260524": {"kind": "fitting"},
+    "ga_y_x_seed_20260525": {"kind": "fitting"},
+    "bi_y_x_seed_20260809": {"kind": "fitting"},
+    "nbi_y_x_seed_20260810": {"kind": "fitting"},
+    "be_y_x_seed_20260811": {"kind": "fitting"},
+    "zaga_y_x_seed_20260812": {"kind": "fitting"},
+    "gu_y_x_seed_20260813": {"kind": "fitting"}
+  }
+}

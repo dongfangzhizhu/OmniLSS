@@ -1,11 +1,14 @@
-"""Tests for R golden fixture provenance (task 0.8).
+"""Tests for R golden fixture provenance (task 0.8, D0.2 alignment).
 
 Validates that:
-- Every checked-in fixture is listed in the regenerated manifest with a
+- Every *regenerated* fixture is listed in the regenerated manifest with a
   content hash and provenance (R/gamlss versions, seed).
 - The manifest hashes are 8-hex-digit strings and stable across regeneration
   (reproducibility).
 - Regenerated fixtures satisfy the same schema as the checked-in ones.
+- The D0.2 template (`manifest_template.json`) pins versions/tolerances and the
+  gate `tools/golden_manifest_gate.py` agrees with it (see
+  `test_golden_manifest_gate.py`).
 """
 
 from __future__ import annotations
@@ -36,8 +39,11 @@ def test_regenerated_manifest_exists_and_has_hashes() -> None:
     manifest_path = REGEN_DIR / "manifest.json"
     assert manifest_path.exists(), "run Rscript fixtures/r_golden/generate_golden.R"
     manifest = json.loads(manifest_path.read_text())
+    # The regenerated manifest documents only regenerated/ fixtures: the parent
+    # directory holds historical anchors (e.g. sichel from generate_sichel_golden.R)
+    # and authored inputs (manifest_template.json) that other pipelines own.
     assert set(manifest.keys()) == {
-        p.stem for p in (FIXTURES_DIR.glob("*.json")) if p.stem != "manifest"
+        p.stem for p in (REGEN_DIR.glob("*.json")) if p.stem != "manifest"
     }
     for entry in manifest.values():
         assert isinstance(entry.get("content_hash"), str)

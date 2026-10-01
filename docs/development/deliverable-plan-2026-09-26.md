@@ -58,6 +58,12 @@
   （回归测试 `omnilss/tests/test_symbol_coverage_tool.py`）。
 - 溯源：`R/` 为 vendored（`.gitignore` 忽略）源码，因此逐行证据使用「定义文件内容哈希 +
   上游 DESCRIPTION 版本 + Python 主模块最后提交」，不引用 R 文件 commit。
+
+**D0.2 交付记录（2026-09-26）**
+
+- 模板 `manifest_template.json`：固定 R/gamlss/gamlss.dist/Python/JAX 版本、`jax_enable_x64`、必填 provenance 字段（覆盖 `stage0_gate.PROVENANCE_FIELDS` 超集）、默认与分 kind 容差、期望 case 集合。
+- 门禁 `tools/golden_manifest_gate.py`：`--check` 只做模板/manifest/fixture 内容哈希校验（快路径）；默认模式额外探针环境并给出 `pinned` / `smoke-only` 标签；`--require-r` fail-closed——R 缺失、任一版本漂移或 x64 未开启一律失败，非发布运行只能标 `smoke-only`。
+- 可复现性：Python 侧按 `generate_golden.R` 的 djb2 复算 9 个 fixture 内容哈希，全部一致；本机 `--require-r` 实测 `pinned`（python 3.10.19 / jax 0.6.2 / x64=True / R 4.6.0 / gamlss 5.5.0 / gamlss.dist 6.1.1）。
 - 读法：`parity` 依次取 `test_r_consistency*` 命中、golden fixture、capability 层级；
   `registry` 表示族已注册于 capability registry，kernel 深度以 `kernel` 列
   （implementation_status：implemented/experimental/compat_alias/placeholder）为准。
@@ -167,7 +173,7 @@ OmniLSS/
 ## 8. 立即执行清单（第一批）
 
 - [x] D0.1 重写 coverage 工具为真实 R↔Python 逐符号矩阵（2026-09-26 完成；工具 `tools/generate_symbol_coverage.py`，生成物 `docs/development/r-symbol-coverage.{json,md}`，报告 `docs/development/task-reports/d0-1-symbol-coverage-matrix-2026-09-26.md`）；
-- [ ] D0.2 golden manifest 模板与 `--require-r` 门禁对齐；
+- [x] D0.2 golden manifest 模板与 `--require-r` 门禁对齐（2026-09-26 完成；模板 `omnilss/tests/fixtures/r_golden/manifest_template.json`，门禁 `tools/golden_manifest_gate.py`，报告 `docs/development/task-reports/d0-2-golden-manifest-gate-2026-09-26.md`）；
 - [ ] D0.3 四套分层 collection 命令固化到 CI；
 - [ ] D0.4 registry/R 源码变化自动差异报告；
 - [ ] D1-A ST/SEP/SST R golden 与独立 kernel；
