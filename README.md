@@ -177,6 +177,26 @@ cd omnilss
 python -m pytest tests -q
 ```
 
+The repository's own test surface is collected through a fail-closed tiered gate:
+
+```bash
+python tools/tiered_collection.py            # all four tiers, --mode collect (default)
+python tools/tiered_collection.py --list     # tier inventory
+python tools/tiered_collection.py --tier omnilss --mode run --timeout 3600
+python tools/tiered_collection.py --json > tiered-collection.json   # machine-readable report
+```
+
+| Tier | Directory | Scope |
+|------|-----------|-------|
+| `omnilss` | `omnilss/tests` | main suite (`omnilss/pyproject.toml` pytest config) |
+| `omnilss-server` | `omnilss-server` | L3 FastAPI service tests |
+| `omnilss-pro` | `omnilss-pro` | commercial prototype (src layout) |
+| `benchmarks` | `benchmarks` | benchmark/diagnostic scripts (5 data-dependent scripts excluded explicitly) |
+
+Exit code 0 requires zero collection errors **and** at least one collected test
+per selected tier; `--mode run` additionally requires no failures. `ondil/` and
+`gamlss-python/` are reference projects and are never tiers.
+
 R-backed consistency tests remain required for release and benchmark claims, but
 they skip in Python-only environments when native R, `gamlss`, or `gamlss.dist`
 are unavailable. Use the benchmark validation gate before publishing equivalence
@@ -206,6 +226,24 @@ or speed claims.
 **vs R gamlss**: R gamlss is the gold standard for statistical modeling. OmniLSS is for when you need Python, GPU, or ML pipeline integration.
 
 **vs ondil**: ondil is designed for online/incremental learning on streaming data (scikit-learn API). OmniLSS is for batch differentiable modeling with hardware acceleration.
+
+### Vendored reference projects (compared, not gated)
+
+Two upstream projects live in this repository root purely as **reference
+implementations for comparison**. They are not part of this project's test
+surface, CI matrix, or dependency graph:
+
+| Reference project | Version | Scope | Why it is not a test tier |
+|-------------------|---------|-------|---------------------------|
+| [`ondil/`](ondil/) | 0.4.8 | online/incremental distributional regression (NumPy + Numba, sklearn-style API) | separate upstream package with its own suite and Python/Numba version caps |
+| [`gamlss-python/`](gamlss-python/) | 0.2.0 (PyPI `gamlss`) | Python port of R `gamlss` (numpy/scipy/pandas/patsy families and smoothers) | upstream port kept to compare API and parameterisation choices |
+
+The tiered collection gate (`tools/tiered_collection.py`) collects only the four
+self-owned tiers — `omnilss`, `omnilss-server`, `omnilss-pro`, `benchmarks` —
+and a regression test asserts that `ondil` and `gamlss-python` can never become
+tiers. Optional comparison harnesses may import them when installed (for example
+`benchmarks/three_way_comparison.py --no-ondil` skips that leg), but their suites
+are never silently treated as evidence for this project.
 
 ## R GAMLSS Parity
 

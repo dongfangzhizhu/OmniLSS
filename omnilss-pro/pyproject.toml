@@ -28,3 +28,6 @@ omnilss_pro = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+# src-layout: tests import `omnilss_pro` without installing the package, so the
+# tiered collection gate (tools/tiered_collection.py) collects cleanly from CI.
+pythonpath = ["src"]

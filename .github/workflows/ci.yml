@@ -79,6 +79,52 @@ jobs:
           # check (required on main).
           fail_ci_if_error: true
 
+  collection-gate:
+    name: Tiered Collection Gate (D0.3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install uv
+      - name: Install dependencies (main + server/grpc extras)
+        run: |
+          cd omnilss
+          uv pip install --system -e ".[server,dev]"
+      - name: Tiered collection gate (four self-owned tiers)
+        env:
+          MPLBACKEND: Agg
+          JAX_PLATFORMS: cpu
+          JAX_ENABLE_X64: "true"
+          PYTHONPATH: omnilss/src
+        run: |
+          # D0.3: fail-closed by construction — the tool exits 0 only when every
+          # selected tier collects with zero errors and at least one test.
+          # --strict-skips (D7) additionally rejects collection-time skips, e.g. a
+          # module-level importorskip silently hiding a suite; the dev extras are
+          # installed above so hypothesis-backed property modules are collected.
+          # Tiers: omnilss, omnilss-server, omnilss-pro, benchmarks.
+          # ondil/ and gamlss-python/ are reference projects and are never tiers.
+          python tools/tiered_collection.py --mode collect --strict-skips --json | tee tiered-collection.json
+      - name: Upload tiered collection report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiered-collection-report
+          path: tiered-collection.json
+      - name: Golden manifest gate (D0.2, template/manifest validation only)
+        run: python tools/golden_manifest_gate.py --check
+      - name: Symbol coverage artifact freshness (D0.1, needs vendored R/)
+        if: hashFiles('R/gamlss/NAMESPACE') != ''
+        run: python tools/generate_symbol_coverage.py --check
+      - name: Explain skipped R-dependent check
+        if: hashFiles('R/gamlss/NAMESPACE') == ''
+        run: |
+          echo "R/ is vendored and gitignored, so CI has no R sources: the D0.1"
+          echo "artifact freshness check runs where R/ is present (local/dev), and its"
+          echo "pure-Python invariants are covered by tests/test_symbol_coverage_tool.py."
+
   lint:
     name: Code Quality
     runs-on: ubuntu-latest
