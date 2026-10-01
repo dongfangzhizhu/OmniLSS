@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "baseline": "docs/development/symbol-coverage-baseline.json",
+  "baseline_error": "",
+  "r_exports_total": 1080,
+  "current_counts": {
+    "missing": 402,
+    "placeholder": 75,
+    "compat_alias": 11,
+    "evidence_gap": 36,
+    "extra": 300
+  },
+  "category_meaning": {
+    "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
+    "placeholder": "家族以 placeholder 核注册（kernel 层为 placeholder）",
+    "compat_alias": "家族以兼容别名提供（kernel 层为 compat_alias）",
+    "evidence_gap": "已实现但完全没有测试证据（parity 层为 unverified）",
+    "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
+  },
+  "categories": {
+    "missing": {
+      "new": [],
+      "resolved": [],
+      "current_count": 402,
+      "baseline_count": 402
+    },
+    "placeholder": {
+      "new": [],
+      "resolved": [],
+      "current_count": 75,
+      "baseline_count": 75
+    },
+    "compat_alias": {
+      "new": [],
+      "resolved": [],
+      "current_count": 11,
+      "baseline_count": 11
+    },
+    "evidence_gap": {
+      "new": [],
+      "resolved": [],
+      "current_count": 36,
+      "baseline_count": 36
+    },
+    "extra": {
+      "new": [],
+      "resolved": [],
+      "current_count": 300,
+      "baseline_count": 300
+    }
+  },
+  "regressions": [],
+  "improvements": [],
+  "ok": true,
+  "ratchet_ok": true,
+  "ceiling_ok": true
+}

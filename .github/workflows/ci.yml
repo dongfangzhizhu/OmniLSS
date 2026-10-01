@@ -124,6 +124,24 @@ jobs:
           echo "R/ is vendored and gitignored, so CI has no R sources: the D0.1"
           echo "artifact freshness check runs where R/ is present (local/dev), and its"
           echo "pure-Python invariants are covered by tests/test_symbol_coverage_tool.py."
+      - name: Coverage difference report / regression ratchet (D0.4)
+        env:
+          JAX_PLATFORMS: cpu
+          JAX_ENABLE_X64: "true"
+          PYTHONPATH: omnilss/src
+        run: |
+          # Consumes the D0.1 per-symbol matrix, enumerates missing / placeholder /
+          # compat_alias / evidence_gap (plus informational python-only "extra"),
+          # and exits 1 when any ratchet category gains a symbol relative to
+          # docs/development/symbol-coverage-baseline.json.
+          python tools/coverage_diff_report.py --json --out coverage-diff.json | tee /tmp/coverage-diff.log
+      - name: Upload coverage difference report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-difference-report
+          path: coverage-diff.json
+          if-no-files-found: warn
 
   lint:
     name: Code Quality

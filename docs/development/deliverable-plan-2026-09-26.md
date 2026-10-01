@@ -76,6 +76,19 @@
 - 实测（本机，装齐 `.[server,dev]` 等价依赖）：omnilss 3384 / omnilss-server 1 / omnilss-pro 25 / benchmarks 10，合计 3420 项，**0 error / 0 skip**，exit 0。
 - 已知排除（显式、有据）：`benchmarks/diagnostic/` 下 5 个独立诊断脚本依赖缺失数据文件或 R bridge，以 `--ignore` 显式排除并写入 `BENCHMARK_KNOWN_EXCLUSIONS`；新增破坏仍会失败。
 
+**D0.4 交付记录（2026-10-02）**
+
+- 工具 `tools/coverage_diff_report.py`：复用 D0.1 的 `build_coverage()`，把逐符号矩阵分到
+  `missing` / `placeholder` / `compat_alias` / `evidence_gap`（四类阻断）+ `extra`（仅报告），
+  与入库 ratchet 基线 `docs/development/symbol-coverage-baseline.json` 比对：新增即回归并
+  exit 1，离开即 improvement 只报告；baseline 缺失/损坏一律 fail-closed。
+- 首次基线（R exports 1080）：missing 402 / placeholder 75 / compat_alias 11 /
+  evidence_gap 36 / extra 300。这是**冻结现状的债务清单**，不是已达成的覆盖率；
+  口径为按 R 符号计数，与第 2 节按族计数的 18 placeholder 不可直接互比。
+- 流水线：`tools/generate_coverage_artifacts.py` 用同一内存矩阵快照生成
+  `symbol-coverage-diff.json`，ratchet 失败时流水线返回 1；CI `collection-gate` 新增该步骤
+  并上传 artifact。报告里的路径一律仓库相对，保证提交物跨机器可复现。
+
 ### D1 分布 family d/p/q/r parity（P1，8–12 周）
 
 - 批次 A：ST/SEP/SST（独立参数化、尾部、q 稳健反演）；
@@ -185,7 +198,11 @@ OmniLSS/
 - [x] D0.3 四套分层 collection 命令固化到 CI（2026-09-26 完成；工具 `tools/tiered_collection.py`，
   CI job `collection-gate`，report `docs/development/task-reports/d0-3-tiered-collection-2026-09-26.md`；
   分组为本项目四测试面，`ondil`/`gamlss-python` 仅作参考对比）；
-- [ ] D0.4 registry/R 源码变化自动差异报告；
+- [x] D0.4 registry/R 源码变化自动差异报告（2026-10-02 完成；工具 `tools/coverage_diff_report.py`，
+  ratchet 基线 `docs/development/symbol-coverage-baseline.json`、报告快照 `docs/development/symbol-coverage-diff.json`，
+  回归测试 `omnilss/tests/test_coverage_diff_report.py`，CI job `collection-gate`，
+  报告 `docs/development/task-reports/d0-4-coverage-diff-report-2026-10-02.md`）；
+  - D0 至此四项齐备：D0.1 矩阵 / D0.2 golden 门禁 / D0.3 分层 collection / D0.4 回归 ratchet。
 - [ ] D1-A ST/SEP/SST R golden 与独立 kernel；
 - [ ] D1-B Box-Cox-o 与有界混合批次；
 - [ ] D1-C 离散递推批次；
