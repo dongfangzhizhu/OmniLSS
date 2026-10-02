@@ -11,7 +11,7 @@
   },
   "counts": {
     "missing": 402,
-    "placeholder": 15,
+    "placeholder": 10,
     "compat_alias": 11,
     "evidence_gap": 36,
     "extra": 300
@@ -422,19 +422,14 @@
       "gamlss::stepTGDAll.A"
     ],
     "placeholder": [
-      "gamlss.dist::EGB2",
       "gamlss.dist::GIG",
       "gamlss.dist::LOGSHASH",
-      "gamlss.dist::dEGB2",
       "gamlss.dist::dGIG",
       "gamlss.dist::dLOGSHASH",
-      "gamlss.dist::pEGB2",
       "gamlss.dist::pGIG",
       "gamlss.dist::pLOGSHASH",
-      "gamlss.dist::qEGB2",
       "gamlss.dist::qGIG",
       "gamlss.dist::qLOGSHASH",
-      "gamlss.dist::rEGB2",
       "gamlss.dist::rGIG",
       "gamlss.dist::rLOGSHASH"
     ],

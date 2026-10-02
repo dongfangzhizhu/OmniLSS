@@ -37,22 +37,30 @@ import jax.random as jr  # noqa: E402
 
 from omnilss.dpqr_batch_f import (  # noqa: E402
     R_QUIRKS,
+    dEGB2,
     dLQNO,
     dMN3,
     dMN4,
     dMN5,
+    dexGAUS,
+    pEGB2,
     pLQNO,
     pMN3,
     pMN4,
     pMN5,
+    pexGAUS,
+    qEGB2,
     qLQNO,
     qMN3,
     qMN4,
     qMN5,
+    qexGAUS,
+    rEGB2,
     rLQNO,
     rMN3,
     rMN4,
     rMN5,
+    rexGAUS,
 )
 from omnilss.family_capabilities import implementation_status_for_family  # noqa: E402
 
@@ -107,6 +115,17 @@ CONTINUOUS_CASES = {
         [(0.5, 0.5), (1.0, 1.0), (2.0, 0.3), (0.3, 2.0), (5.0, 1.5)],
         [-3.0, -1.0, 0.0, 0.5, 1.0, 2.0, 5.0],
     ),
+    # --- 批次四 -----------------------------------------------------------
+    "exGAUS": (
+        dexGAUS, pexGAUS, qexGAUS, rexGAUS,
+        [(5.0, 1.0, 1.0), (0.0, 0.5, 2.0), (2.0, 1.5, 0.5), (-2.0, 1.0, 3.0)],
+        [-3.0, -1.0, 0.0, 1.0, 2.0, 5.0, 9.0],
+    ),
+    "EGB2": (
+        dEGB2, pEGB2, qEGB2, rEGB2,
+        [(0.0, 1.0, 1.0, 0.5), (1.0, 0.5, 2.0, 1.0), (-1.0, 1.5, 0.5, 3.0), (2.0, 0.8, 3.0, 0.2)],
+        [-4.0, -1.0, 0.0, 0.5, 1.0, 2.0, 5.0],
+    ),
 }
 
 #: (family, d, p, q, r, parameter grid, categories, number of categories)
@@ -132,7 +151,12 @@ DISCRETE_CASES = {
 }
 
 #: R ``gamlss.dist`` 的 ``nopar``。Python 侧必须一致，否则拟合会按错误的维度组装。
-EXPECTED_NOPAR = {"LQNO": 2, "MN3": 2, "MN4": 3, "MN5": 4}
+EXPECTED_NOPAR = {"LQNO": 2, "MN3": 2, "MN4": 3, "MN5": 4, "exGAUS": 3, "EGB2": 4}
+
+#: 数值反演分位数的族（R 用 ``uniroot``，tol = double.eps^0.25 ≈ 1.2e-4，是
+#: **x 尺度上的绝对容差**）。这些族的 q 对 R 只能按 uniroot 的精度比较；
+#: 我们自己的 ``p∘q = id`` 自洽性另用紧容差断言。
+NUMERIC_Q = {"exGAUS": (1e-3, 2e-4)}
 
 _PROBS = [0.05, 0.25, 0.5, 0.75, 0.95]
 
@@ -278,6 +302,22 @@ class TestBatchFInvariants(unittest.TestCase):
                 upper = np.asarray(qfun(jnp.asarray(u), *parr, lower_tail=False), dtype=float)
                 np.testing.assert_allclose(upper, direct, rtol=1e-8, atol=1e-10, err_msg=f"{name} q 未处理 lower_tail")
 
+    def test_numeric_quantile_is_self_consistent(self) -> None:
+        """数值反演族（R 用 uniroot）：``p∘q`` 必须以紧容差回到概率本身。
+
+        R 的 ``uniroot`` 只能给出 ~1.2e-4 的绝对精度，所以对 R 只能放宽比较；
+        但我们自己的二分法收敛到全精度，自洽性必须用紧容差锁住。
+        """
+        for name, _d, pfun, qfun, _r, grid, _xs in (
+            (n, *v) for n, v in CONTINUOUS_CASES.items() if n in NUMERIC_Q
+        ):
+            for params in grid:
+                u = np.asarray(_PROBS, dtype=float)
+                parr = _parr(len(u), params)
+                qv = np.asarray(qfun(jnp.asarray(u), *parr), dtype=float)
+                back = np.asarray(pfun(jnp.asarray(qv), *parr), dtype=float)
+                np.testing.assert_allclose(back, u, rtol=1e-9, atol=1e-11, err_msg=f"{name} 数值 q∘p ≠ id")
+
     def test_r_quirk_inventory_is_explicit(self) -> None:
         """R 已知缺陷清单来自 ``omnilss.dpqr_batch_f.R_QUIRKS``，必须都进对照集合。"""
         self.assertTrue(R_QUIRKS)
@@ -333,12 +373,15 @@ class TestBatchFRConsistency(unittest.TestCase):
     def test_quantile_matches_r_lower_tail(self) -> None:
         probs = [0.05, 0.25, 0.5, 0.75, 0.95]
         for name, _d, _p, qfun, _r, grid, _xs in _all_cases():
+            rtol, atol = NUMERIC_Q.get(name, (1e-8, 1e-10))
             for params in grid:
                 u = np.asarray(probs, dtype=float)
                 parr = _parr(len(u), params)
                 got = np.asarray(qfun(jnp.asarray(u), *parr), dtype=float)
                 exp = _r_values(name, "q", [u, *[np.asarray(v) for v in parr]])
-                np.testing.assert_allclose(got, exp, rtol=1e-8, atol=1e-10, err_msg=f"{name} q params={params}")
+                np.testing.assert_allclose(
+                    got, exp, rtol=rtol, atol=atol, err_msg=f"{name} q params={params}"
+                )
 
     def test_r_ignores_tail_flags_for_the_mn_quantiles(self) -> None:
         """实测确认 R 的 qMN3/qMN4/qMN5 忽略 ``lower.tail`` 与 ``log.p``。

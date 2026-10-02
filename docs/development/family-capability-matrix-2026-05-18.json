@@ -880,7 +880,7 @@
     },
     "EGB2": {
       "name": "EGB2",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -893,13 +893,13 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "registered family without enough validation evidence for production use",
         "RS_JAX route is not advertised for this family"
       ]
     },
     "EXGAUS": {
       "name": "EXGAUS",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -912,7 +912,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "registered family without enough validation evidence for production use",
         "RS_JAX route is not advertised for this family"
       ]
     },

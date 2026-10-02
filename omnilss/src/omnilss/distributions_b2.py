@@ -355,22 +355,21 @@ class ExGaussianFamily(FamilyDefinition):
 
 
 def _exgaus_log_pdf(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray, nu: jnp.ndarray) -> jnp.ndarray:
+    """``exGAUS`` log-density.
+
+    Delegates to :func:`omnilss.dpqr_batch_f.dexGAUS` so the AD gradients and the
+    public ``d`` share one kernel (the formula already matched R exactly).
+    """
+    from .dpqr_batch_f import dexGAUS
+
     eps = jnp.finfo(jnp.float64).eps
-    sigma = jnp.maximum(sigma, eps)
-    nu = jnp.maximum(nu, eps)
-    z = y - mu - jnp.square(sigma) / nu
-    # Use the exponential-modified formula (nu large enough relative to sigma)
-    log_fy_emg = (
-        -jnp.log(nu)
-        - (z + jnp.square(sigma) / (2.0 * nu)) / nu
-        + norm.logcdf(z / sigma)
-    )
-    # Fallback to pure normal when nu is very small
-    log_fy_normal = norm.logpdf(y, loc=mu, scale=sigma)
-    return jnp.where(nu > 0.05 * sigma, log_fy_emg, log_fy_normal)
+    return dexGAUS(y, mu, jnp.maximum(sigma, eps), jnp.maximum(nu, eps), log=True)
 
 
 def exGAUS() -> ExGaussianFamily:
+    """Exponentially-modified Gaussian distribution (R ``exGAUS``)."""
+    from .dpqr_batch_f import dexGAUS, pexGAUS, qexGAUS, rexGAUS
+
     return build_ad_family(
         family_class=ExGaussianFamily,
         name="exGAUS",
@@ -381,4 +380,8 @@ def exGAUS() -> ExGaussianFamily:
         link_functions={"mu": identity_link, "sigma": log_link, "nu": log_link},
         link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse},
         link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative},
+        d=dexGAUS,
+        p=pexGAUS,
+        q=qexGAUS,
+        r=rexGAUS,
     )

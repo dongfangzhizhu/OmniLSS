@@ -48,8 +48,8 @@ Registry metadata only: this report does not establish R export coverage or nume
 | DELAPORT | experimental |
 | DPO | experimental |
 | DPO1 | placeholder |
-| EGB2 | placeholder |
-| EXGAUS | placeholder |
+| EGB2 | experimental |
+| EXGAUS | experimental |
 | EXP | experimental |
 | GA | experimental |
 | GAF | experimental |

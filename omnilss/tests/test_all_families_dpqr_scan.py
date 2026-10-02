@@ -36,10 +36,11 @@ SKIP = {
 #   D1-E 批次一: PARETO, PARETO1, WEI2, RGE, NO2
 #   D1-E 批次二: PE2, NOF, GAF
 #   D1-E 批次三: LQNO, MN3, MN4, MN5, MULTIN（MULTIN 是 MN3 的别名克隆）
+#   D1-E 批次四: EGB2, EXGAUS
 #   PIG2（b13 早已接线）
 KNOWN_NAN_PLACEHOLDER = {
     "BCCGO", "BCPEO", "BCTO", "BEINF0", "BEINF1", "BEOI", "BEZI",
-    "DPO", "DPO1", "EGB2", "EXGAUS",
+    "DPO", "DPO1",
     "GENERALISEDPOISSON", "GIG", "GP", "GPO", "IGA", "IGAMMA", "JSUO", "LG",
     "LNO", "LOGITNO", "LOGNO2", "LOGSHASH", "LOGSHASHO", "NBF", "NET",
     "PARETO1O", "PARETO2", "SEP", "SEP1", "SEP2",

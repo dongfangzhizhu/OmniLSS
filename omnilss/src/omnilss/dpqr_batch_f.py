@@ -27,7 +27,9 @@ from __future__ import annotations
 
 import jax.numpy as jnp
 import jax.random as jr
-from jax.scipy.special import ndtr, ndtri
+import numpy as np
+from jax.scipy.special import gammaln, ndtr, ndtri
+from scipy.stats import f as _scipy_f
 
 _INF = jnp.inf
 _NAN = jnp.nan
@@ -267,3 +269,185 @@ def qMN5(p, mu=1.0, sigma=1.0, nu=1.0, tau=1.0, lower_tail=True, log_p=False):
 def rMN5(key, n, mu=1.0, sigma=1.0, nu=1.0, tau=1.0):
     """Sampler for ``MN5``."""
     return qMN5(jr.uniform(key, (int(n),), dtype=jnp.float64), mu, sigma, nu, tau)
+
+
+# ---------------------------------------------------------------------------
+# exGAUS - exponentially modified Gaussian, mu real, sigma > 0, nu > 0
+# ---------------------------------------------------------------------------
+
+
+def _exgaus_z(x, mu, sigma, nu):
+    """R's ``z <- x - mu - sigma^2/nu``."""
+    return x - mu - sigma * sigma / nu
+
+
+def _exgaus_log_density(x, mu, sigma, nu):
+    """R's ``dexGAUS`` log branch, reproduced term for term."""
+    z = _exgaus_z(x, mu, sigma, nu)
+    emg = (
+        -jnp.log(nu)
+        - (z + sigma * sigma / (2.0 * nu)) / nu
+        + _safe_log(ndtr(z / sigma))
+    )
+    normal = -0.5 * jnp.log(2.0 * jnp.pi) - jnp.log(sigma) - 0.5 * ((x - mu) / sigma) ** 2
+    return jnp.where(nu > 0.05 * sigma, emg, normal)
+
+
+def dexGAUS(x, mu=5.0, sigma=1.0, nu=1.0, log=False):
+    """Density of the ex-Gaussian distribution ``N(mu, sigma) + Exp(mean=nu)``."""
+    x, mu, sigma, nu = _broadcast((x, mu, sigma, nu))
+    valid = (sigma > 0.0) & (nu > 0.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    safe_nu = jnp.where(nu > 0.0, nu, 1.0)
+    value = jnp.where(valid, _exgaus_log_density(x, mu, safe_sigma, safe_nu), _NAN)
+    return value if log else jnp.exp(value)
+
+
+def _exgaus_cdf_scalar(q, mu, sigma, nu):
+    """R's ``pexGAUS`` body, reproduced term for term (no ``sigma < 0`` branch)."""
+    z = _exgaus_z(q, mu, sigma, nu)
+    emg = ndtr((q - mu) / sigma) - ndtr(z / sigma) * jnp.exp(
+        ((mu + sigma * sigma / nu) ** 2 - mu * mu - 2.0 * q * (sigma * sigma / nu))
+        / (2.0 * sigma * sigma)
+    )
+    normal = ndtr((q - mu) / sigma)
+    return jnp.where(nu > 0.05 * sigma, emg, normal)
+
+
+def pexGAUS(q, mu=5.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
+    """CDF of the ex-Gaussian distribution."""
+    q, mu, sigma, nu = _broadcast((q, mu, sigma, nu))
+    valid = (sigma > 0.0) & (nu > 0.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    safe_nu = jnp.where(nu > 0.0, nu, 1.0)
+    cdf = jnp.clip(_exgaus_cdf_scalar(q, mu, safe_sigma, safe_nu), 0.0, 1.0)
+    value = _apply_tail(cdf, lower_tail, log_p)
+    return jnp.where(valid, value, _NAN)
+
+
+def _bisection_invert(prob, cdf_fn, lo, hi, *, expansions=24, iters=90):
+    """Vectorised bracket-then-bisect inversion of a monotone increasing CDF.
+
+    ``exGAUS`` (and later ``GIG``) have no closed-form quantile, so R uses
+    ``uniroot``.  A fixed-iteration bisection is deterministic, JIT-safe and
+    reaches full double precision long before the iteration cap.
+    """
+    for _ in range(expansions):
+        width = hi - lo
+        lo = jnp.where(cdf_fn(lo) > prob, lo - width, lo)
+        hi = jnp.where(cdf_fn(hi) < prob, hi + width, hi)
+    for _ in range(iters):
+        mid = 0.5 * (lo + hi)
+        below = cdf_fn(mid) < prob
+        lo = jnp.where(below, mid, lo)
+        hi = jnp.where(below, hi, mid)
+    return 0.5 * (lo + hi)
+
+
+def qexGAUS(p, mu=5.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
+    """Quantile of the ex-Gaussian distribution (bisection, like R's ``uniroot``)."""
+    p, mu, sigma, nu = _broadcast((p, mu, sigma, nu))
+    valid = (sigma > 0.0) & (nu > 0.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    safe_nu = jnp.where(nu > 0.0, nu, 1.0)
+    prob = _prob_from_p(p, lower_tail, log_p)
+    prob = jnp.clip(prob, 0.0, 1.0)
+    span = safe_sigma + safe_nu
+    lo = mu - 64.0 * span
+    hi = mu + 64.0 * span
+
+    def cdf_fn(v):
+        return jnp.clip(_exgaus_cdf_scalar(v, mu, safe_sigma, safe_nu), 0.0, 1.0)
+
+    value = _bisection_invert(prob, cdf_fn, lo, hi)
+    value = jnp.where(prob <= 0.0, -_INF, value)
+    value = jnp.where(prob >= 1.0, _INF, value)
+    return jnp.where(valid, value, _NAN)
+
+
+def rexGAUS(key, n, mu=5.0, sigma=1.0, nu=1.0):
+    """Sampler for the ex-Gaussian distribution.
+
+    ``exGAUS`` is *defined* as ``N(mu, sigma) + Exp(mean=nu)``, so convolving two
+    exact draws is an exact sampler — and far cheaper than R's route of pushing a
+    uniform through the numerically inverted ``qexGAUS``.
+    """
+    z = jr.normal(key, (int(n),), dtype=jnp.float64)
+    return mu + sigma * z + nu * jr.exponential(key, (int(n),), dtype=jnp.float64)
+
+
+# ---------------------------------------------------------------------------
+# EGB2 - exponential generalized beta type 2, mu real, sigma/nu/tau > 0
+# ---------------------------------------------------------------------------
+
+
+def dEGB2(x, mu=0.0, sigma=1.0, nu=1.0, tau=0.5, log=False):
+    """Density of the exponential generalized beta type 2 distribution.
+
+    Mirrors R ``dEGB2`` term for term: ``z = (x-mu)/sigma`` and
+    ``log f = nu*z - log(sigma) - lgamma(nu) - lgamma(tau) + lgamma(nu+tau)
+    - (nu+tau)*log(1+exp(z))``.  ``log(1+exp(z))`` is evaluated as
+    ``logaddexp(0, z)`` so the upper tail does not overflow.
+    """
+    x, mu, sigma, nu, tau = _broadcast((x, mu, sigma, nu, tau))
+    valid = (sigma > 0.0) & (nu > 0.0) & (tau > 0.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    safe_nu = jnp.where(nu > 0.0, nu, 1.0)
+    safe_tau = jnp.where(tau > 0.0, tau, 1.0)
+    z = (x - mu) / safe_sigma
+    value = (
+        safe_nu * z
+        - jnp.log(safe_sigma)
+        - gammaln(safe_nu)
+        - gammaln(safe_tau)
+        + gammaln(safe_nu + safe_tau)
+        - (safe_nu + safe_tau) * jnp.logaddexp(0.0, z)
+    )
+    value = jnp.where(valid, value, _NAN)
+    return value if log else jnp.exp(value)
+
+
+def pEGB2(q, mu=0.0, sigma=1.0, nu=1.0, tau=0.5, lower_tail=True, log_p=False):
+    """CDF of the exponential generalized beta type 2 distribution (F-based)."""
+    q, mu, sigma, nu, tau = _broadcast((q, mu, sigma, nu, tau))
+    valid = (sigma > 0.0) & (nu > 0.0) & (tau > 0.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    safe_nu = jnp.where(nu > 0.0, nu, 1.0)
+    safe_tau = jnp.where(tau > 0.0, tau, 1.0)
+    w = (safe_tau / safe_nu) * jnp.exp((q - mu) / safe_sigma)
+    w = jnp.where(jnp.isfinite(w), w, 1.0)
+    cdf = jnp.asarray(
+        _scipy_f.cdf(np.asarray(w, dtype=np.float64), 2.0 * np.asarray(safe_nu, np.float64),
+                     2.0 * np.asarray(safe_tau, np.float64)),
+        dtype=jnp.float64,
+    )
+    cdf = jnp.where(jnp.isfinite(w), cdf, jnp.where(q > mu, 1.0, 0.0))
+    value = _apply_tail(cdf, lower_tail, log_p)
+    return jnp.where(valid, value, _NAN)
+
+
+def qEGB2(p, mu=0.0, sigma=1.0, nu=1.0, tau=0.5, lower_tail=True, log_p=False):
+    """Quantile of the exponential generalized beta type 2 distribution."""
+    p, mu, sigma, nu, tau = _broadcast((p, mu, sigma, nu, tau))
+    valid = (sigma > 0.0) & (nu > 0.0) & (tau > 0.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    safe_nu = jnp.where(nu > 0.0, nu, 1.0)
+    safe_tau = jnp.where(tau > 0.0, tau, 1.0)
+    prob = _prob_from_p(p, lower_tail, log_p)
+    prob = jnp.clip(jnp.where(jnp.isnan(prob), 0.5, prob), 0.0, 1.0)
+    inside = (prob > 0.0) & (prob < 1.0)
+    prob_s = jnp.where(inside, prob, 0.5)
+    w = jnp.asarray(
+        _scipy_f.ppf(np.asarray(prob_s, dtype=np.float64), 2.0 * np.asarray(safe_nu, np.float64),
+                     2.0 * np.asarray(safe_tau, np.float64)),
+        dtype=jnp.float64,
+    )
+    value = mu + safe_sigma * jnp.log((safe_nu / safe_tau) * w)
+    value = jnp.where(prob <= 0.0, -_INF, value)
+    value = jnp.where(prob >= 1.0, _INF, value)
+    return jnp.where(valid, value, _NAN)
+
+
+def rEGB2(key, n, mu=0.0, sigma=1.0, nu=1.0, tau=0.5):
+    """Inverse-transform sampler for the EGB2 distribution (as R does)."""
+    return qEGB2(jr.uniform(key, (int(n),), dtype=jnp.float64), mu, sigma, nu, tau)

@@ -145,6 +145,33 @@
   `KNOWN_NAN_PLACEHOLDER`，全族扫描门禁开始覆盖它们。
 - 效果：placeholder 符号 35 → 15；ratchet 基线同步收紧。
 
+**D1-E 批次四交付记录（2026-10-02）**
+
+- 范围：exGAUS / EGB2。批次内剩余 placeholder 从 4 降到 2（GIG / LOGSHASH，两者各有
+  实质性阻碍，见下）。
+- **EGB2 参数化纠错**：Python 侧原先把 R 的公式套在 `log(y)` 上（R 是 `z = (x-mu)/sigma`
+  作用在**原始**响应上），密度整体错误；且 `mu.link` 写成 `log`，R 是 `identity`
+  （`mu` 是全实数轴上的位置参数）。两者都按 R 修正。
+- exGAUS 的密度原本就与 R 一致，补齐 `p/q/r`：`q` 用向量化二分（R 用 `uniroot`，
+  tol = `double.eps^0.25 ≈ 1.2e-4`，是 **x 尺度上的绝对**容差，所以对 R 的比较按
+  此放宽，自洽性 `p∘q = id` 另用紧容差断言）；`r` 利用 `exGAUS = N(mu,sigma)+Exp(mean=nu)`
+  的定义直接卷积抽样，比 R 的"uniform 过数值分位数"便宜得多且同样精确。
+- EGB2 的 `p/q` 走 F 分布（`pf`/`qf`，scipy），与 R 的 `pEGB2`/`qEGB2` 同一路线；
+  R 源码里 `sigma < 0` 的分支在 `sigma.link="log"` 下不可达，不复制。
+- **GIG 阻碍（暂缓）**：R 的 `pGIG` 有 outright bug ——
+  `integrate(function(x) dGIG(x, mu = 1, ...))` 把 `mu` 写死成 1，CDF 根本不是本族的；
+  更关键的是密度需要 `besselK(1/sigma^2, nu)`，**JAX 没有可微的 BesselK**，
+  `build_ad_family` 的 AD 路径无法成立。需要一个独立的可微 BesselK 实现（级数/渐近
+  展开 + 自动选域），作为单独的工作项。
+- **LOGSHASH 阻碍（暂缓）**：参考环境是**已安装的 gamlss.dist 6.1.1**（D0.5 门禁实测
+  `pinned`），`dLOGSHASH` 在该版本中不存在（只存在于 vendored 的 6.1-8 源码），
+  无法做 R 对照。要么升级 R 环境，要么接受无 R 对照的 `smoke-only` 交付。
+- 验收：`tests/test_dpqr_batch_f.py` 扩到 22 项（新增"数值分位数自洽性"不变量）；
+  修复 `tests/test_r_consistency_egb2.py`（模板生成的旧版 `nu` 取 `[-2,2]`，
+  R 会 `stop`）；`test_all_families_dpqr_scan.py` 把 EGB2/EXGAUS 移出
+  `KNOWN_NAN_PLACEHOLDER`。
+- 效果：placeholder 符号 15 → 10；ratchet 基线同步收紧。
+
 **link 元数据门禁交付记录（2026-10-02）**
 
 - 缺陷：`FamilyDefinition` 的 `links` / `link_functions` / `link_inverses` /

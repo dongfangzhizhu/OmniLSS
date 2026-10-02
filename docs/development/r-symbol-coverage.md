@@ -12,8 +12,8 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 - Family-linked symbols: 531 (dpqr kernels: 424)
 - Python-only public exports: 300
 
-- **surface**: `missing` 402, `module_def` 195, `module_export` 96, `public_api` 191, `registry` 196
-- **kernel**: `compat_alias` 11, `experimental` 500, `implemented` 152, `missing` 402, `placeholder` 15
+- **surface**: `missing` 402, `module_def` 199, `module_export` 96, `public_api` 191, `registry` 192
+- **kernel**: `compat_alias` 11, `experimental` 505, `implemented` 152, `missing` 402, `placeholder` 10
 - **parity**: `capability:unsupported` 285, `capability:validated` 99, `golden:validated` 36, `r_consistency_test` 126, `tested` 96, `unverified` 438
 - **admission**: `blocked` 526, `exported_api` 85, `internal` 62, `not_available` 402, `production_safe` 5
 
@@ -641,7 +641,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | DBURR12 | gamlss.dist | DBURR12 | public_api | compat_alias | r_consistency_test | blocked | 4 |
 | DEL | gamlss.dist | DEL | public_api | experimental | r_consistency_test | blocked | 9 |
 | DPO | gamlss.dist | DPO | public_api | experimental | r_consistency_test | blocked | 7 |
-| EGB2 | gamlss.dist | EGB2 | public_api | placeholder | r_consistency_test | blocked | 3 |
+| EGB2 | gamlss.dist | EGB2 | public_api | experimental | r_consistency_test | blocked | 4 |
 | EXP | gamlss.dist | EXP | public_api | experimental | r_consistency_test | blocked | 5 |
 | Family | gamlss.dist | - | missing | missing | unverified | not_available | 3 |
 | Family.d | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
@@ -793,7 +793,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | dDBURR12 | gamlss.dist | - | registry | compat_alias | capability:unsupported | blocked | 0 |
 | dDEL | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | dDPO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| dEGB2 | gamlss.dist | - | registry | placeholder | capability:unsupported | blocked | 0 |
+| dEGB2 | gamlss.dist | dEGB2 | module_def | experimental | capability:unsupported | blocked | 1 |
 | dEXP | gamlss.dist | dEXP | module_export | experimental | capability:validated | blocked | 0 |
 | dGA | gamlss.dist | dGA | module_export | experimental | golden:validated | blocked | 0 |
 | dGAF | gamlss.dist | dGAF | module_def | experimental | capability:unsupported | blocked | 1 |
@@ -889,8 +889,8 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | dZIPF | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | dZIPIG | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | dZISICHEL | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| dexGAUS | gamlss.dist | dexGAUS | module_def | implemented | tested | internal | 1 |
-| exGAUS | gamlss.dist | exGAUS | public_api | implemented | r_consistency_test | exported_api | 4 |
+| dexGAUS | gamlss.dist | dexGAUS | module_def | implemented | tested | internal | 2 |
+| exGAUS | gamlss.dist | exGAUS | public_api | implemented | r_consistency_test | exported_api | 5 |
 | fittedMN | gamlss.dist | fittedMN | module_export | implemented | tested | internal | 1 |
 | flexDist | gamlss.dist | flexDist | public_api | implemented | tested | exported_api | 2 |
 | gamlss.family | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
@@ -928,7 +928,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | pDBURR12 | gamlss.dist | - | registry | compat_alias | capability:unsupported | blocked | 0 |
 | pDEL | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | pDPO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| pEGB2 | gamlss.dist | - | registry | placeholder | capability:unsupported | blocked | 0 |
+| pEGB2 | gamlss.dist | pEGB2 | module_def | experimental | capability:unsupported | blocked | 1 |
 | pEXP | gamlss.dist | pEXP | module_export | experimental | capability:validated | blocked | 0 |
 | pGA | gamlss.dist | pGA | module_export | experimental | golden:validated | blocked | 0 |
 | pGAF | gamlss.dist | pGAF | module_def | experimental | capability:unsupported | blocked | 1 |
@@ -1024,7 +1024,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | pZIPF | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | pZIPIG | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | pZISICHEL | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| pexGAUS | gamlss.dist | pexGAUS | module_def | implemented | tested | internal | 1 |
+| pexGAUS | gamlss.dist | pexGAUS | module_def | implemented | tested | internal | 2 |
 | plotBEINF | gamlss.dist | plotBEINF | module_export | implemented | tested | internal | 1 |
 | plotBEINF0 | gamlss.dist | plotBEINF0 | module_export | implemented | tested | internal | 1 |
 | plotBEINF1 | gamlss.dist | plotBEINF1 | module_export | implemented | tested | internal | 1 |
@@ -1053,7 +1053,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | qDBURR12 | gamlss.dist | - | registry | compat_alias | capability:unsupported | blocked | 0 |
 | qDEL | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | qDPO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| qEGB2 | gamlss.dist | - | registry | placeholder | capability:unsupported | blocked | 0 |
+| qEGB2 | gamlss.dist | qEGB2 | module_def | experimental | capability:unsupported | blocked | 1 |
 | qEXP | gamlss.dist | qEXP | module_export | experimental | capability:validated | blocked | 0 |
 | qGA | gamlss.dist | qGA | module_export | experimental | golden:validated | blocked | 0 |
 | qGAF | gamlss.dist | qGAF | module_def | experimental | capability:unsupported | blocked | 1 |
@@ -1149,7 +1149,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | qZIPF | gamlss.dist | - | registry | experimental | capability:validated | blocked | 1 |
 | qZIPIG | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | qZISICHEL | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| qexGAUS | gamlss.dist | qexGAUS | module_def | implemented | tested | internal | 1 |
+| qexGAUS | gamlss.dist | qexGAUS | module_def | implemented | tested | internal | 2 |
 | rBB | gamlss.dist | rBB | module_def | experimental | capability:unsupported | blocked | 2 |
 | rBCCG | gamlss.dist | rBCCG | module_def | experimental | capability:validated | blocked | 1 |
 | rBCCGo | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
@@ -1170,7 +1170,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | rDBURR12 | gamlss.dist | - | registry | compat_alias | capability:unsupported | blocked | 0 |
 | rDEL | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | rDPO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| rEGB2 | gamlss.dist | - | registry | placeholder | capability:unsupported | blocked | 0 |
+| rEGB2 | gamlss.dist | rEGB2 | module_def | experimental | capability:unsupported | blocked | 1 |
 | rEXP | gamlss.dist | rEXP | module_export | experimental | capability:validated | blocked | 0 |
 | rGA | gamlss.dist | rGA | module_export | experimental | golden:validated | blocked | 0 |
 | rGAF | gamlss.dist | rGAF | module_def | experimental | capability:unsupported | blocked | 1 |
@@ -1266,7 +1266,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | rZIPF | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | rZIPIG | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | rZISICHEL | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| rexGAUS | gamlss.dist | rexGAUS | module_def | implemented | tested | internal | 1 |
+| rexGAUS | gamlss.dist | rexGAUS | module_def | implemented | tested | internal | 2 |
 | show.link | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
 | theoCentileSK | gamlss.dist | theoCentileSK | public_api | implemented | r_consistency_test | exported_api | 3 |
 | tofyS | gamlss.dist | tofyS | module_def | implemented | tested | internal | 1 |

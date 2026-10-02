@@ -72,9 +72,9 @@
 | [x] | `PIG2` | `PIG2` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `RGE` | `RGE` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `WEI2` | `WEI2` | experimental | 状态已离开 placeholder（experimental） |
-| [ ] | `exGAUS` | `EXGAUS` | 占位 |  |
+| [x] | `exGAUS` | `EXGAUS` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `GAF` | `GAF` | experimental | 状态已离开 placeholder（experimental） |
-| [ ] | `EGB2` | `EGB2` | 占位 |  |
+| [x] | `EGB2` | `EGB2` | experimental | 状态已离开 placeholder（experimental） |
 | [ ] | `LOGSHASH` | `LOGSHASH` | 占位 |  |
 | [x] | `LQNO` | `LQNO` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `SN1` | `SN1` | experimental | 状态已离开 placeholder（experimental） |
@@ -85,4 +85,4 @@
 
 ## 附录：尚未在任何批次中的状态
 
-当前 placeholder 家族总数（批次内）：4
+当前 placeholder 家族总数（批次内）：2

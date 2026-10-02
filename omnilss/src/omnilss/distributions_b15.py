@@ -13,7 +13,7 @@ from scipy.stats import poisson as _poisson
 from jax.scipy.stats import t as _jst, norm as _jnorm
 
 from .ad import build_ad_family
-from .dpqr_batch_f import dLQNO, pLQNO, qLQNO, rLQNO
+from .dpqr_batch_f import dEGB2, dLQNO, pEGB2, pLQNO, qEGB2, qLQNO, rEGB2, rLQNO
 from .families import FamilyDefinition
 from .links import (
     log_link, log_inverse, log_derivative,
@@ -1113,62 +1113,60 @@ class EGB2Family(FamilyDefinition):
 
 
 def _egb2_log_pdf(y, mu, sigma, nu, tau):
-    """EGB2 log-PDF."""
+    """EGB2 log-density.
+
+    R's ``gamlss.dist::dEGB2`` uses ``z = (x - mu)/sigma`` on the **raw**
+    response — an earlier revision of this module applied the same formula to
+    ``log(y)``, which is a different distribution.  The kernel now lives in
+    :mod:`omnilss.dpqr_batch_f` and is reused verbatim.
+    """
     eps = jnp.finfo(jnp.float64).eps
-    y = jnp.maximum(y, eps)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    nu = jnp.maximum(nu, eps)
-    tau = jnp.maximum(tau, eps)
-    
-    # Log transformation
-    log_y = jnp.log(y)
-    
-    # GB2 on log scale
-    z = (log_y - mu) / sigma
-    
-    # GB2 parameters
-    a = nu
-    b = tau
-    p = 1.0 / sigma
-    q = 1.0
-    
-    log_pdf = (
-        jnp.log(p) + (p * a - 1.0) * log_y
-        - a * jnp.log(mu) - betaln(a, b)
-        - (a + b) * jnp.log1p(jnp.exp(p * (log_y - mu)))
+    return dEGB2(
+        y,
+        mu,
+        jnp.maximum(sigma, eps),
+        jnp.maximum(nu, eps),
+        jnp.maximum(tau, eps),
+        log=True,
     )
-    
-    return log_pdf
 
 
 def EGB2():
-    """Exponential Generalized Beta Type 2 distribution."""
+    """Exponential Generalized Beta Type 2 distribution.
+
+    R ``EGB2``: ``z = (x-mu)/sigma`` with ``mu.link = "identity"``,
+    ``sigma.link = nu.link = tau.link = "log"`` and ``nopar = 4``.  ``mu`` is a
+    location parameter on the whole real line, hence the identity link.
+    """
     return build_ad_family(
         family_class=EGB2Family,
         name="EGB2",
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_egb2_log_pdf,
         type_="Continuous",
-        links={"mu": "log", "sigma": "log", "nu": "log", "tau": "log"},
+        links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "log"},
         link_functions={
-            "mu": log_link,
+            "mu": identity_link,
             "sigma": log_link,
             "nu": log_link,
             "tau": log_link,
         },
         link_inverses={
-            "mu": log_inverse,
+            "mu": identity_inverse,
             "sigma": log_inverse,
             "nu": log_inverse,
             "tau": log_inverse,
         },
         link_derivatives={
-            "mu": log_derivative,
+            "mu": identity_derivative,
             "sigma": log_derivative,
             "nu": log_derivative,
             "tau": log_derivative,
         },
+        d=dEGB2,
+        p=pEGB2,
+        q=qEGB2,
+        r=rEGB2,
     )
 
 
