@@ -77,10 +77,10 @@ Registry metadata only: this report does not establish R export coverage or nume
 | LOGNO2 | experimental |
 | LOGSHASH | placeholder |
 | LOGSHASHO | experimental |
-| LQNO | placeholder |
-| MN3 | placeholder |
-| MN4 | placeholder |
-| MN5 | placeholder |
+| LQNO | experimental |
+| MN3 | experimental |
+| MN4 | experimental |
+| MN5 | experimental |
 | MULTIN | compat_alias |
 | NBF | experimental |
 | NBI | experimental |

@@ -122,6 +122,29 @@
   移出，使全族扫描门禁真正覆盖它们。
 - 效果：placeholder 符号 50 → 35；ratchet 基线同步收紧。
 
+**D1-E 批次三交付记录（2026-10-02）**
+
+- 范围：LQNO / MN3 / MN4 / MN5（别名 `MULTIN` 经克隆自动获得）。批次内剩余 placeholder
+  从 8 降到 4（GIG / exGAUS / EGB2 / LOGSHASH）。
+- **LQNO 参数化纠错**：Python 侧原先被实现成三参数的 tanh "log quantile normal"，
+  与 R 毫无关系 —— R 的 `LQNO` 是两参数族
+  `Y ~ Normal(mu, sqrt(mu*(1+sigma*mu)))`，`mu.link = sigma.link = "log"`。
+  现按 R 定义重写，`parameters` 由 `(mu, sigma, nu)` 改为 `(mu, sigma)`。
+- 新内核模块 `omnilss/dpqr_batch_f.py`；`MN3/4/5` 的 AD `log_pdf` 委托给 `dMN*`，
+  保证梯度与公开 `d` 永不漂移。
+- 新登记三条 R 缺陷：`qMN3`/`qMN4`/`qMN5` 完全忽略 `lower.tail` 与 `log.p`
+  （R 函数体根本没用到这两个形式参数）。我们按数学正确行为处理，并有实测测试锁定
+  "是 R 的缺陷而不是我们的差异"；`qLQNO` 则确实会处理 `log.p`，两侧完全一致。
+- `pLQNO` 上尾按 `ndtr(-z)` 而非 `1-ndtr(z)` 求 `log_p`，避免极端上尾的抵消误差。
+- 修复 `tests/test_r_consistency_lqno.py`：模板生成的旧版把 `nu` 传给 R（直接
+  `unused argument` 报错）且用负 `mu`（R 会 `stop`），两处都改为合法参数化。
+- 验收：新增 `tests/test_dpqr_batch_f.py`（21 项）。连续族用 `p(q(u)) == u`，
+  离散分类族改用广义反函数条件 `p(q(u)) >= u > p(q(u)-1)`，另加 "pmf 之和 = 1"、
+  "类别落在 `1..k`"、"参数个数 = R 的 `nopar`"（`LQNO` 2 / `MN3` 2 / `MN4` 3 / `MN5` 4）。
+  `test_all_families_dpqr_scan.py` 把 LQNO/MN3/MN4/MN5/MULTIN 移出
+  `KNOWN_NAN_PLACEHOLDER`，全族扫描门禁开始覆盖它们。
+- 效果：placeholder 符号 35 → 15；ratchet 基线同步收紧。
+
 **link 元数据门禁交付记录（2026-10-02）**
 
 - 缺陷：`FamilyDefinition` 的 `links` / `link_functions` / `link_inverses` /

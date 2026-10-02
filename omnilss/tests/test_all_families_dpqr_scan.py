@@ -35,13 +35,13 @@ SKIP = {
 # 已经接线并从本集合移除的族（每移除一个就等于给扫描门禁加一道 ratchet）：
 #   D1-E 批次一: PARETO, PARETO1, WEI2, RGE, NO2
 #   D1-E 批次二: PE2, NOF, GAF
+#   D1-E 批次三: LQNO, MN3, MN4, MN5, MULTIN（MULTIN 是 MN3 的别名克隆）
 #   PIG2（b13 早已接线）
 KNOWN_NAN_PLACEHOLDER = {
     "BCCGO", "BCPEO", "BCTO", "BEINF0", "BEINF1", "BEOI", "BEZI",
     "DPO", "DPO1", "EGB2", "EXGAUS",
     "GENERALISEDPOISSON", "GIG", "GP", "GPO", "IGA", "IGAMMA", "JSUO", "LG",
-    "LNO", "LOGITNO", "LOGNO2", "LOGSHASH", "LOGSHASHO", "LQNO", "MN3",
-    "MN4", "MN5", "MULTIN", "NBF", "NET",
+    "LNO", "LOGITNO", "LOGNO2", "LOGSHASH", "LOGSHASHO", "NBF", "NET",
     "PARETO1O", "PARETO2", "SEP", "SEP1", "SEP2",
     "SEP3", "SEP4", "SHASHO2", "SI", "SST", "ST3", "ST3C", "ST4", "ST5",
     "WARING", "YULE", "ZABI", "ZABNB", "ZALG", "ZANBI",

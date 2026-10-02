@@ -1430,7 +1430,7 @@
     },
     "LQNO": {
       "name": "LQNO",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1443,13 +1443,13 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "registered family without enough validation evidence for production use",
         "RS_JAX route is not advertised for this family"
       ]
     },
     "MN3": {
       "name": "MN3",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1462,13 +1462,13 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "registered family without enough validation evidence for production use",
         "RS_JAX route is not advertised for this family"
       ]
     },
     "MN4": {
       "name": "MN4",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1481,13 +1481,13 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "registered family without enough validation evidence for production use",
         "RS_JAX route is not advertised for this family"
       ]
     },
     "MN5": {
       "name": "MN5",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1500,7 +1500,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "registered family without enough validation evidence for production use",
         "RS_JAX route is not advertised for this family"
       ]
     },

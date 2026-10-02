@@ -5,7 +5,7 @@
   "r_exports_total": 1080,
   "current_counts": {
     "missing": 402,
-    "placeholder": 35,
+    "placeholder": 15,
     "compat_alias": 11,
     "evidence_gap": 36,
     "extra": 300
@@ -26,8 +26,29 @@
     },
     "placeholder": {
       "new": [],
-      "resolved": [],
-      "current_count": 35,
+      "resolved": [
+        "gamlss.dist::LQNO",
+        "gamlss.dist::MN3",
+        "gamlss.dist::MN4",
+        "gamlss.dist::MN5",
+        "gamlss.dist::dLQNO",
+        "gamlss.dist::dMN3",
+        "gamlss.dist::dMN4",
+        "gamlss.dist::dMN5",
+        "gamlss.dist::pLQNO",
+        "gamlss.dist::pMN3",
+        "gamlss.dist::pMN4",
+        "gamlss.dist::pMN5",
+        "gamlss.dist::qLQNO",
+        "gamlss.dist::qMN3",
+        "gamlss.dist::qMN4",
+        "gamlss.dist::qMN5",
+        "gamlss.dist::rLQNO",
+        "gamlss.dist::rMN3",
+        "gamlss.dist::rMN4",
+        "gamlss.dist::rMN5"
+      ],
+      "current_count": 15,
       "baseline_count": 35
     },
     "compat_alias": {
@@ -50,7 +71,88 @@
     }
   },
   "regressions": [],
-  "improvements": [],
+  "improvements": [
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::LQNO"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::MN3"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::MN4"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::MN5"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::dLQNO"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::dMN3"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::dMN4"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::dMN5"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::pLQNO"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::pMN3"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::pMN4"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::pMN5"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::qLQNO"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::qMN3"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::qMN4"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::qMN5"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::rLQNO"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::rMN3"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::rMN4"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::rMN5"
+    }
+  ],
   "ok": true,
   "ratchet_ok": true,
   "ceiling_ok": true

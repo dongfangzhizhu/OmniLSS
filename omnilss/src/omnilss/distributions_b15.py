@@ -13,6 +13,7 @@ from scipy.stats import poisson as _poisson
 from jax.scipy.stats import t as _jst, norm as _jnorm
 
 from .ad import build_ad_family
+from .dpqr_batch_f import dLQNO, pLQNO, qLQNO, rLQNO
 from .families import FamilyDefinition
 from .links import (
     log_link, log_inverse, log_derivative,
@@ -1181,53 +1182,51 @@ class LQNOFamily(FamilyDefinition):
     pass
 
 
-def _lqno_log_pdf(y, mu, sigma, nu):
-    """LQNO log-PDF."""
+def _lqno_log_pdf(y, mu, sigma):
+    """LQNO log-density.
+
+    R's ``gamlss.dist::LQNO`` is a **two**-parameter family: a Normal with mean
+    ``mu`` and a mean-dependent standard deviation ``sqrt(mu * (1 + sigma*mu))``
+    (see ``R/gamlss.dist/R/LQNO.R``, identical in the installed 6.1.1).
+
+    An earlier revision of this module shipped a three-parameter ``tanh``
+    "log quantile normal" that had nothing to do with the R family; it is gone,
+    and the kernel lives in :mod:`omnilss.dpqr_batch_f` next to its d/p/q/r.
+    """
     eps = jnp.finfo(jnp.float64).eps
-    y = jnp.maximum(y, eps)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    
-    log_y = jnp.log(y)
-    
-    # Quantile transformation
-    z = (log_y - mu) / sigma
-    q = jnp.tanh(nu * z)
-    
-    # Normal on transformed scale
-    log_pdf = (
-        -0.5 * jnp.log(2.0 * jnp.pi) - jnp.log(sigma) - jnp.log(y)
-        - 0.5 * q * q
-        + jnp.log(nu) + jnp.log(1.0 - jnp.tanh(nu * z) ** 2)
-    )
-    
-    return log_pdf
+    return dLQNO(y, jnp.maximum(mu, eps), jnp.maximum(sigma, eps), log=True)
 
 
 def LQNO():
-    """Log Quantile Normal distribution."""
+    """Log Quantile Normal distribution.
+
+    ``Y ~ Normal(mu, sqrt(mu * (1 + sigma * mu)))`` with ``mu > 0``, ``sigma > 0``
+    and ``mu.link = sigma.link = "log"`` — the same signature as
+    ``gamlss.dist::LQNO``.
+    """
     return build_ad_family(
         family_class=LQNOFamily,
         name="LQNO",
-        parameters=("mu", "sigma", "nu"),
+        parameters=("mu", "sigma"),
         log_pdf_func=_lqno_log_pdf,
         type_="Continuous",
-        links={"mu": "log", "sigma": "log", "nu": "identity"},
+        links={"mu": "log", "sigma": "log"},
         link_functions={
             "mu": log_link,
             "sigma": log_link,
-            "nu": identity_link,
         },
         link_inverses={
             "mu": log_inverse,
             "sigma": log_inverse,
-            "nu": identity_inverse,
         },
         link_derivatives={
             "mu": log_derivative,
             "sigma": log_derivative,
-            "nu": identity_derivative,
         },
+        d=dLQNO,
+        p=pLQNO,
+        q=qLQNO,
+        r=rLQNO,
     )
 
 

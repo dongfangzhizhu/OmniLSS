@@ -23,6 +23,20 @@ import jax.numpy as jnp
 from jax.scipy.special import gammaln, betaln
 
 from .ad import build_ad_family
+from .dpqr_batch_f import (
+    dMN3,
+    dMN4,
+    dMN5,
+    pMN3,
+    pMN4,
+    pMN5,
+    qMN3,
+    qMN4,
+    qMN5,
+    rMN3,
+    rMN4,
+    rMN5,
+)
 from .families import FamilyDefinition
 from .links import (
     identity_derivative,
@@ -172,44 +186,20 @@ class Multinomial3Family(FamilyDefinition):
 
 
 def _mn3_log_pdf(y, mu, sigma):
-    """MN3 log-pdf for categorical response with 3 levels.
-    
-    R parameterization:
+    """MN3 log-pmf for a categorical response with 3 levels.
+
+    R parameterization (``gamlss.dist::dMN3``):
     - P(Y=1) = mu/(1+mu+sigma)
     - P(Y=2) = sigma/(1+mu+sigma)
     - P(Y=3) = 1/(1+mu+sigma)
-    
-    Parameters:
-    - y: categorical response (1, 2, or 3)
-    - mu: parameter for category 1 (mu > 0)
-    - sigma: parameter for category 2 (sigma > 0)
-    
-    Note: y should be integer-valued (1, 2, or 3).
+
+    Delegates to :func:`omnilss.dpqr_batch_f.dMN3` so the AD gradients and the
+    public ``d`` can never drift apart.  The parameters are floored at ``eps``
+    purely so an out-of-range probe during optimisation still yields a finite
+    gradient instead of ``NaN``.
     """
     eps = jnp.finfo(jnp.float64).eps
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    
-    # Compute log probabilities for each category
-    # log(P(Y=1)) = log(mu) - log(1+mu+sigma)
-    # log(P(Y=2)) = log(sigma) - log(1+mu+sigma)
-    # log(P(Y=3)) = log(1) - log(1+mu+sigma) = -log(1+mu+sigma)
-    
-    log_normalizer = jnp.log(1.0 + mu + sigma)
-    
-    # Use indicator functions to select the appropriate log probability
-    # y should be 1, 2, or 3
-    y_int = jnp.round(y).astype(jnp.int32)
-    
-    log_p1 = jnp.log(mu) - log_normalizer
-    log_p2 = jnp.log(sigma) - log_normalizer
-    log_p3 = -log_normalizer
-    
-    # Select log probability based on y value
-    log_pdf = jnp.where(y_int == 1, log_p1,
-                        jnp.where(y_int == 2, log_p2, log_p3))
-    
-    return log_pdf
+    return dMN3(y, jnp.maximum(mu, eps), jnp.maximum(sigma, eps), log=True)
 
 
 def MN3() -> Multinomial3Family:
@@ -244,6 +234,10 @@ def MN3() -> Multinomial3Family:
         link_functions={"mu": log_link, "sigma": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative},
+        d=dMN3,
+        p=pMN3,
+        q=qMN3,
+        r=rMN3,
     )
 
 
@@ -272,28 +266,13 @@ def _mn4_log_pdf(y, mu, sigma, nu):
     - nu: parameter for category 3 (nu > 0)
     
     Note: y should be integer-valued (1, 2, 3, or 4).
+
+    Delegates to :func:`omnilss.dpqr_batch_f.dMN4`; see ``_mn3_log_pdf`` for why.
     """
     eps = jnp.finfo(jnp.float64).eps
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    nu = jnp.maximum(nu, eps)
-    
-    # Compute log probabilities for each category
-    log_normalizer = jnp.log(1.0 + mu + sigma + nu)
-    
-    y_int = jnp.round(y).astype(jnp.int32)
-    
-    log_p1 = jnp.log(mu) - log_normalizer
-    log_p2 = jnp.log(sigma) - log_normalizer
-    log_p3 = jnp.log(nu) - log_normalizer
-    log_p4 = -log_normalizer
-    
-    # Select log probability based on y value
-    log_pdf = jnp.where(y_int == 1, log_p1,
-                        jnp.where(y_int == 2, log_p2,
-                                  jnp.where(y_int == 3, log_p3, log_p4)))
-    
-    return log_pdf
+    return dMN4(
+        y, jnp.maximum(mu, eps), jnp.maximum(sigma, eps), jnp.maximum(nu, eps), log=True
+    )
 
 
 def MN4() -> Multinomial4Family:
@@ -330,6 +309,10 @@ def MN4() -> Multinomial4Family:
         link_functions={"mu": log_link, "sigma": log_link, "nu": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": log_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": log_derivative},
+        d=dMN4,
+        p=pMN4,
+        q=qMN4,
+        r=rMN4,
     )
 
 
@@ -360,31 +343,18 @@ def _mn5_log_pdf(y, mu, sigma, nu, tau):
     - tau: parameter for category 4 (tau > 0)
     
     Note: y should be integer-valued (1, 2, 3, 4, or 5).
+
+    Delegates to :func:`omnilss.dpqr_batch_f.dMN5`; see ``_mn3_log_pdf`` for why.
     """
     eps = jnp.finfo(jnp.float64).eps
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    nu = jnp.maximum(nu, eps)
-    tau = jnp.maximum(tau, eps)
-    
-    # Compute log probabilities for each category
-    log_normalizer = jnp.log(1.0 + mu + sigma + nu + tau)
-    
-    y_int = jnp.round(y).astype(jnp.int32)
-    
-    log_p1 = jnp.log(mu) - log_normalizer
-    log_p2 = jnp.log(sigma) - log_normalizer
-    log_p3 = jnp.log(nu) - log_normalizer
-    log_p4 = jnp.log(tau) - log_normalizer
-    log_p5 = -log_normalizer
-    
-    # Select log probability based on y value
-    log_pdf = jnp.where(y_int == 1, log_p1,
-                        jnp.where(y_int == 2, log_p2,
-                                  jnp.where(y_int == 3, log_p3,
-                                            jnp.where(y_int == 4, log_p4, log_p5))))
-    
-    return log_pdf
+    return dMN5(
+        y,
+        jnp.maximum(mu, eps),
+        jnp.maximum(sigma, eps),
+        jnp.maximum(nu, eps),
+        jnp.maximum(tau, eps),
+        log=True,
+    )
 
 
 def MN5() -> Multinomial5Family:
@@ -423,4 +393,8 @@ def MN5() -> Multinomial5Family:
         link_functions={"mu": log_link, "sigma": log_link, "nu": log_link, "tau": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": log_derivative, "tau": log_derivative},
+        d=dMN5,
+        p=pMN5,
+        q=qMN5,
+        r=rMN5,
     )

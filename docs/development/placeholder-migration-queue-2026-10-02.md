@@ -76,13 +76,13 @@
 | [x] | `GAF` | `GAF` | experimental | 状态已离开 placeholder（experimental） |
 | [ ] | `EGB2` | `EGB2` | 占位 |  |
 | [ ] | `LOGSHASH` | `LOGSHASH` | 占位 |  |
-| [ ] | `LQNO` | `LQNO` | 占位 |  |
+| [x] | `LQNO` | `LQNO` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `SN1` | `SN1` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `SN2` | `SN2` | experimental | 状态已离开 placeholder（experimental） |
-| [ ] | `MN3` | `MN3` | 占位 |  |
-| [ ] | `MN4` | `MN4` | 占位 |  |
-| [ ] | `MN5` | `MN5` | 占位 |  |
+| [x] | `MN3` | `MN3` | experimental | 状态已离开 placeholder（experimental） |
+| [x] | `MN4` | `MN4` | experimental | 状态已离开 placeholder（experimental） |
+| [x] | `MN5` | `MN5` | experimental | 状态已离开 placeholder（experimental） |
 
 ## 附录：尚未在任何批次中的状态
 
-当前 placeholder 家族总数（批次内）：8
+当前 placeholder 家族总数（批次内）：4
