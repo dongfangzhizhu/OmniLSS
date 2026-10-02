@@ -26,15 +26,9 @@
     },
     "placeholder": {
       "new": [],
-      "resolved": [
-        "gamlss.dist::EGB2",
-        "gamlss.dist::dEGB2",
-        "gamlss.dist::pEGB2",
-        "gamlss.dist::qEGB2",
-        "gamlss.dist::rEGB2"
-      ],
+      "resolved": [],
       "current_count": 10,
-      "baseline_count": 15
+      "baseline_count": 10
     },
     "compat_alias": {
       "new": [],
@@ -56,28 +50,7 @@
     }
   },
   "regressions": [],
-  "improvements": [
-    {
-      "category": "placeholder",
-      "symbol": "gamlss.dist::EGB2"
-    },
-    {
-      "category": "placeholder",
-      "symbol": "gamlss.dist::dEGB2"
-    },
-    {
-      "category": "placeholder",
-      "symbol": "gamlss.dist::pEGB2"
-    },
-    {
-      "category": "placeholder",
-      "symbol": "gamlss.dist::qEGB2"
-    },
-    {
-      "category": "placeholder",
-      "symbol": "gamlss.dist::rEGB2"
-    }
-  ],
+  "improvements": [],
   "ok": true,
   "ratchet_ok": true,
   "ceiling_ok": true
