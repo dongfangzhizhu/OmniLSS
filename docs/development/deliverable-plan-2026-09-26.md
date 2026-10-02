@@ -122,6 +122,23 @@
   移出，使全族扫描门禁真正覆盖它们。
 - 效果：placeholder 符号 50 → 35；ratchet 基线同步收紧。
 
+**link 元数据门禁交付记录（2026-10-02）**
+
+- 缺陷：`FamilyDefinition` 的 `links` / `link_functions` / `link_inverses` /
+  `link_derivatives` 允许为 `None`。族还是 placeholder 时能力门禁会拒绝它，
+  一切正常；**一旦 D1 把它升为 experimental，门禁放行，`rs_fit` 却在深处以
+  `TypeError: 'NoneType' object is not subscriptable` 崩溃** —— 没有族级诊断。
+  `PARETO1` 在批次一接上 d/p/q/r 后就正好踩中。
+- 修复：补齐全部缺元数据族的 R 默认链接（PARETO1 / PARETO1o / DPO1 用
+  `mu=log, sigma=log`，LOGSHASHo 用 `mu=identity, sigma=log, nu=log, tau=log`），
+  146 个族现在 100% 具备完整 link 元数据。
+- 顺带修正一处名称不一致：`BCT`/`BCTUNTR` 的 `tau` 标签写作 `logshift2`，
+  不在 `links.LINK_REGISTRY` 里（正确名是 `logshiftto2`），
+  `core/family_factory.py` 按名查表会 KeyError；`fitted_plot.py` 里硬编码了
+  这个错名，一并归一。
+- 门禁：`tests/test_family_link_metadata_gate.py`（4 项）—— 全族 link 元数据
+  结构完整 + 名字可识别 + `inverse(link(mu)) == mu` 往返 + 导数有限。
+
 ### D1 分布 family d/p/q/r parity（P1，8–12 周）
 
 - 批次 A：ST/SEP/SST（独立参数化、尾部、q 稳健反演）；

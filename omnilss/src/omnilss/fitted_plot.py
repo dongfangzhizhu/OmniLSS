@@ -108,7 +108,7 @@ def fitted_plot_data(
         link_name = str(link_map.get(parameter, "")).lower()
         if selected_type == "response" and link_name == "log":
             fit_array = np.maximum(fit_array, np.finfo(np.float64).eps)
-        if selected_type == "response" and link_name == "logshift2":
+        if selected_type == "response" and link_name == "logshiftto2":
             fit_array = np.maximum(fit_array, 2.0 + np.finfo(np.float64).eps)
         if se_array is not None:
             se_array = np.where(np.isfinite(se_array), np.maximum(se_array, 0.0), np.nan)

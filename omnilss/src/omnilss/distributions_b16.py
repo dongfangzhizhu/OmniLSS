@@ -58,7 +58,12 @@ def _pareto1_log_pdf(y: Array, mu: Array) -> Array:
 
 def PARETO1() -> Pareto1Family:
     """Pareto Type 1 distribution (1-parameter).
-    
+
+    R's ``PARETO1`` default is ``mu.link = "log"`` (mu > 0).  Without this the
+    family carries ``link_functions=None``; once it stopped being a placeholder
+    the capability gate let it through and ``rs_fit`` died with an opaque
+    ``TypeError: 'NoneType' object is not subscriptable``.
+
     Returns:
         Pareto1Family with automatic differentiation support
     """
@@ -69,6 +74,10 @@ def PARETO1() -> Pareto1Family:
         log_pdf_func=_pareto1_log_pdf,
         name="PARETO1",
         parameters=("mu",),
+        links={"mu": "log"},
+        link_functions={"mu": log_link},
+        link_inverses={"mu": log_inverse},
+        link_derivatives={"mu": log_derivative},
         d=dPARETO1,
         p=pPARETO1,
         q=qPARETO1,
@@ -117,7 +126,10 @@ def _pareto1o_log_pdf(y: Array, mu: Array, sigma: Array) -> Array:
 
 def PARETO1o() -> Pareto1oFamily:
     """Pareto Type 1 with fixed mu.
-    
+
+    R's ``PARETO1o`` defaults are ``mu.link = "log"`` / ``sigma.link = "log"``
+    (``PARETO1_mu_fixed.R``).
+
     Returns:
         Pareto1oFamily with automatic differentiation support
     """
@@ -126,6 +138,10 @@ def PARETO1o() -> Pareto1oFamily:
         log_pdf_func=_pareto1o_log_pdf,
         name="PARETO1o",
         parameters=("mu", "sigma"),
+        links={"mu": "log", "sigma": "log"},
+        link_functions={"mu": log_link, "sigma": log_link},
+        link_inverses={"mu": log_inverse, "sigma": log_inverse},
+        link_derivatives={"mu": log_derivative, "sigma": log_derivative},
     )
 
 
@@ -398,9 +414,12 @@ def _dpo1_log_pdf(y: Array, mu: Array, sigma: Array) -> Array:
 
 def DPO1() -> DPO1Family:
     """Double Poisson Type 1 distribution.
-    
+
+    R's ``DPO1`` defaults are ``mu.link = "log"`` / ``sigma.link = "log"``
+    (``DoublePoisson-30-12-14.R``).
+
     Alternative parameterization with approximate derivatives.
-    
+
     Returns:
         DPO1Family with automatic differentiation support
     """
@@ -409,6 +428,10 @@ def DPO1() -> DPO1Family:
         log_pdf_func=_dpo1_log_pdf,
         name="DPO1",
         parameters=("mu", "sigma"),
+        links={"mu": "log", "sigma": "log"},
+        link_functions={"mu": log_link, "sigma": log_link},
+        link_inverses={"mu": log_inverse, "sigma": log_inverse},
+        link_derivatives={"mu": log_derivative, "sigma": log_derivative},
     )
 
 
@@ -476,7 +499,10 @@ def _logshasho_log_pdf(y: Array, mu: Array, sigma: Array, nu: Array, tau: Array)
 
 def LOGSHASHo() -> LOGSHASHoFamily:
     """Log Sinh-Arcsinh Original distribution.
-    
+
+    R's ``LOGSHASHo`` defaults are ``mu.link="identity"``,
+    ``sigma.link="log"``, ``nu.link="log"``, ``tau.link="log"``.
+
     Returns:
         LOGSHASHoFamily with automatic differentiation support
     """
@@ -485,6 +511,25 @@ def LOGSHASHo() -> LOGSHASHoFamily:
         log_pdf_func=_logshasho_log_pdf,
         name="LOGSHASHo",
         parameters=("mu", "sigma", "nu", "tau"),
+        links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "log"},
+        link_functions={
+            "mu": identity_link,
+            "sigma": log_link,
+            "nu": log_link,
+            "tau": log_link,
+        },
+        link_inverses={
+            "mu": identity_inverse,
+            "sigma": log_inverse,
+            "nu": log_inverse,
+            "tau": log_inverse,
+        },
+        link_derivatives={
+            "mu": identity_derivative,
+            "sigma": log_derivative,
+            "nu": log_derivative,
+            "tau": log_derivative,
+        },
     )
 
 

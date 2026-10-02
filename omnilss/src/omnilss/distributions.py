@@ -1997,7 +1997,9 @@ def BCT() -> BoxCoxTFamily:
         parameters=("mu", "sigma", "nu", "tau"),
         g_dev_inc=g_dev_inc,
         type="Continuous",
-        links={"mu": "log", "sigma": "log", "nu": "identity", "tau": "logshift2"},
+        # "logshiftto2" is the canonical name in links.LINK_REGISTRY; the older
+        # "logshift2" spelling was not resolvable by get_link()/family_factory.
+        links={"mu": "log", "sigma": "log", "nu": "identity", "tau": "logshiftto2"},
         link_functions={"mu": log_link, "sigma": log_link, "nu": identity_link, "tau": tau_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": identity_inverse, "tau": tau_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": identity_derivative, "tau": tau_derivative},

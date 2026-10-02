@@ -686,7 +686,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | NO2 | gamlss.dist | NO2 | public_api | experimental | r_consistency_test | blocked | 7 |
 | NOF | gamlss.dist | NOF | public_api | experimental | r_consistency_test | blocked | 5 |
 | PARETO | gamlss.dist | PARETO | public_api | experimental | r_consistency_test | blocked | 7 |
-| PARETO1 | gamlss.dist | PARETO1 | public_api | experimental | r_consistency_test | blocked | 5 |
+| PARETO1 | gamlss.dist | PARETO1 | public_api | experimental | r_consistency_test | blocked | 6 |
 | PARETO1o | gamlss.dist | PARETO1o | public_api | implemented | unverified | exported_api | 0 |
 | PARETO2 | gamlss.dist | PARETO2 | public_api | experimental | r_consistency_test | blocked | 8 |
 | PARETO2o | gamlss.dist | PARETO2o | public_api | implemented | r_consistency_test | exported_api | 2 |
