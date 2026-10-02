@@ -52,7 +52,7 @@ Registry metadata only: this report does not establish R export coverage or nume
 | EXGAUS | placeholder |
 | EXP | experimental |
 | GA | experimental |
-| GAF | placeholder |
+| GAF | experimental |
 | GB1 | experimental |
 | GB2 | experimental |
 | GENERALISEDPOISSON | experimental |
@@ -88,14 +88,14 @@ Registry metadata only: this report does not establish R export coverage or nume
 | NET | experimental |
 | NO | implemented |
 | NO2 | experimental |
-| NOF | placeholder |
+| NOF | experimental |
 | PARETO | experimental |
 | PARETO1 | experimental |
 | PARETO1O | experimental |
 | PARETO2 | experimental |
 | PARETO2O | experimental |
 | PE | experimental |
-| PE2 | placeholder |
+| PE2 | experimental |
 | PIG | experimental |
 | PIG2 | experimental |
 | PO | experimental |

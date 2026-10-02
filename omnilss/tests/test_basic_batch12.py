@@ -65,25 +65,29 @@ def test_pareto2o_basic():
 
 
 def test_nof_basic():
-    """Test NOF distribution."""
+    """Test NOF distribution (R 的三参数族：方差函数 sigma^2*|mu|^nu)。"""
     family = NOF()
     assert family.name == "NOF"
+    assert family.parameters == ("mu", "sigma", "nu")
     y = jnp.array([-2.0, -1.0, 0.0, 1.0, 2.0])
-    mu = jnp.array([0.0, 0.0, 0.0, 0.0, 0.0])
+    mu = jnp.array([2.0, 2.0, 2.0, 2.0, 2.0])
     sigma = jnp.array([1.0, 1.0, 1.0, 1.0, 1.0])
-    pdf = family.pdf(y, mu, sigma)
+    nu = jnp.array([0.0, 0.0, 0.0, 0.0, 0.0])
+    pdf = family.pdf(y, mu, sigma, nu)
     assert jnp.all(jnp.isfinite(pdf))
     assert jnp.all(pdf >= 0)
 
 
 def test_gaf_basic():
-    """Test GAF distribution."""
+    """Test GAF distribution (R 的三参数族：方差函数 sigma^2*mu^nu)。"""
     family = GAF()
     assert family.name == "GAF"
+    assert family.parameters == ("mu", "sigma", "nu")
     y = jnp.array([0.5, 1.0, 2.0, 3.0, 5.0])
     mu = jnp.array([2.0, 2.0, 2.0, 2.0, 2.0])
     sigma = jnp.array([0.5, 0.5, 0.5, 0.5, 0.5])
-    pdf = family.pdf(y, mu, sigma)
+    nu = jnp.array([2.0, 2.0, 2.0, 2.0, 2.0])
+    pdf = family.pdf(y, mu, sigma, nu)
     assert jnp.all(jnp.isfinite(pdf))
     assert jnp.all(pdf >= 0)
 

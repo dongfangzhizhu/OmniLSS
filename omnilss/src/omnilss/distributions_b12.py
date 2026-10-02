@@ -422,31 +422,41 @@ class NOFFamily(FamilyDefinition):
     pass
 
 
-def _nof_log_pdf(y, mu, sigma):
+def _nof_log_pdf(y, mu, sigma, nu):
     """Normal Family log-PDF.
-    
-    Standard normal with alternative naming.
+
+    Mirrors R ``dNOF``: ``sigma1 = sigma*|mu|^(nu/2)`` and ``y ~ N(mu, sigma1)``.
+    With R's default ``nu = 0`` this collapses to the previous two-parameter
+    ``N(mu, sigma)`` form, so the extension is backwards compatible at the
+    default.
     """
-    eps = jnp.finfo(jnp.float64).eps
-    sigma = jnp.maximum(sigma, eps)
-    
-    z = (y - mu) / sigma
-    
-    return -0.5 * jnp.log(2.0 * jnp.pi) - jnp.log(sigma) - 0.5 * z * z
+    from .dpqr_batch_e import dNOF
+
+    return dNOF(y, mu, sigma, nu, log=True)
 
 
 def NOF():
-    """Normal Family distribution."""
+    """Normal Family distribution (R ``NOF``: variance function ``sigma^2*|mu|^nu``)."""
+    from .dpqr_batch_e import dNOF, pNOF, qNOF, rNOF
+
     return build_ad_family(
         family_class=NOFFamily,
         name="NOF",
-        parameters=("mu", "sigma"),
+        parameters=("mu", "sigma", "nu"),
         log_pdf_func=_nof_log_pdf,
         type_="Continuous",
-        links={"mu": "identity", "sigma": "log"},
-        link_functions={"mu": identity_link, "sigma": log_link},
-        link_inverses={"mu": identity_inverse, "sigma": log_inverse},
-        link_derivatives={"mu": identity_derivative, "sigma": log_derivative},
+        links={"mu": "identity", "sigma": "log", "nu": "identity"},
+        link_functions={"mu": identity_link, "sigma": log_link, "nu": identity_link},
+        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": identity_inverse},
+        link_derivatives={
+            "mu": identity_derivative,
+            "sigma": log_derivative,
+            "nu": identity_derivative,
+        },
+        d=dNOF,
+        p=pNOF,
+        q=qNOF,
+        r=rNOF,
     )
 
 
@@ -460,37 +470,40 @@ class GAFFamily(FamilyDefinition):
     pass
 
 
-def _gaf_log_pdf(y, mu, sigma):
+def _gaf_log_pdf(y, mu, sigma, nu):
     """Gamma Family log-PDF.
-    
-    Standard gamma with alternative naming.
+
+    Mirrors R ``dGAF``: ``sigma1 = sigma*mu^(nu/2-1)`` and
+    ``y ~ Gamma(shape = 1/sigma1^2, scale = mu*sigma1^2)``.  With R's default
+    ``nu = 2`` this reduces to the previous two-parameter form.
     """
-    eps = jnp.finfo(jnp.float64).eps
-    y = jnp.maximum(y, eps)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    
-    shape = 1.0 / (sigma * sigma)
-    scale = mu * sigma * sigma
-    
-    return (
-        (shape - 1.0) * jnp.log(y) - y / scale
-        - shape * jnp.log(scale) - gammaln(shape)
-    )
+    from .dpqr_batch_e import dGAF
+
+    return dGAF(y, mu, sigma, nu, log=True)
 
 
 def GAF():
-    """Gamma Family distribution."""
+    """Gamma Family distribution (R ``GAF``: variance function ``sigma^2*mu^nu``)."""
+    from .dpqr_batch_e import dGAF, pGAF, qGAF, rGAF
+
     return build_ad_family(
         family_class=GAFFamily,
         name="GAF",
-        parameters=("mu", "sigma"),
+        parameters=("mu", "sigma", "nu"),
         log_pdf_func=_gaf_log_pdf,
         type_="Continuous",
-        links={"mu": "log", "sigma": "log"},
-        link_functions={"mu": log_link, "sigma": log_link},
-        link_inverses={"mu": log_inverse, "sigma": log_inverse},
-        link_derivatives={"mu": log_derivative, "sigma": log_derivative},
+        links={"mu": "log", "sigma": "log", "nu": "identity"},
+        link_functions={"mu": log_link, "sigma": log_link, "nu": identity_link},
+        link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": identity_inverse},
+        link_derivatives={
+            "mu": log_derivative,
+            "sigma": log_derivative,
+            "nu": identity_derivative,
+        },
+        d=dGAF,
+        p=pGAF,
+        q=qGAF,
+        r=rGAF,
     )
 
 

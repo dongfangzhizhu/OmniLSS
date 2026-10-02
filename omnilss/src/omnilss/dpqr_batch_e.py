@@ -16,6 +16,14 @@ implements the mathematically correct branch instead of reproducing the bug.
 Every such deviation is listed in ``docs/development/task-reports/`` and asserted
 explicitly in the parity tests, so the difference is documented rather than
 silently absorbed.
+
+Batch 2 (PE2 / NOF / GAF) adds two more documented deviations:
+
+* ``qNOF`` calls ``qnorm`` without forwarding ``log.p``, so R silently treats a
+  log-scale probability as if it were on the probability scale.  We honour
+  ``log_p``.
+* ``dGAF`` applies ``ifelse(x <= 0, 0, fy)`` *after* the ``log`` branch, so R's
+  log-density for ``x <= 0`` is ``0`` (i.e. density 1).  We return ``-inf``.
 """
 
 from __future__ import annotations
@@ -27,6 +35,17 @@ import numpy as np
 #: Support endpoints used when a probability lands exactly on 0 or 1.
 _INF = jnp.inf
 _NAN = jnp.nan
+
+# Inventory of R ``gamlss.dist`` quirks we deliberately do **not** reproduce.
+# Kept next to the kernels so the docs and the tests stay in sync:
+# ``tests/test_dpqr_batch_e.py::test_r_quirk_inventory_is_explicit`` asserts that
+# every family listed here is part of the parity sweep.
+R_QUIRKS: dict[str, str] = {
+    "PARETO": "pPARETO 忽略 log.p（R 源码 `cdf < - log(cdf)` 笔误）；qPARETO 忽略 lower.tail",
+    "PARETO1": "pPARETO1 忽略 log.p（同上笔误）；qPARETO1 忽略 lower.tail",
+    "NOF": "qNOF 未把 log.p 传给 qnorm",
+    "GAF": "dGAF 在 log 分支之后才做 ifelse(x<=0, 0, fy)，导致 log 密度返回 0",
+}
 
 
 def _safe_log(value):
@@ -41,6 +60,35 @@ def _apply_tail(value, lower_tail: bool, log_p: bool):
     if log_p:
         return _safe_log(result)
     return result
+
+
+def _lgamma(value):
+    """``gamlss``' ``lgamma`` / R's ``lgamma``."""
+    from jax.scipy.special import gammaln
+
+    return gammaln(value)
+
+
+def _pgamma_std(x, shape):
+    """R's ``pgamma(x, shape=shape, scale=1)`` (regularised lower incomplete gamma)."""
+    from jax.scipy.special import gammainc
+
+    return gammainc(shape, x)
+
+
+def _qgamma_std(prob, shape):
+    """R's ``qgamma(prob, shape=shape, scale=1)``.
+
+    JAX has no incomplete-gamma inverse, so this falls back to SciPy — the same
+    route ``dpqr_functions`` already uses for BCPE.  SciPy's ``gammaincinv``
+    agrees with R's ``qgamma`` to ~1e-14 relative, well inside the 1e-8 parity
+    tolerance used by the R comparison tests.
+    """
+    from scipy.special import gammaincinv
+
+    prob_np = np.asarray(prob, dtype=np.float64)
+    shape_np = np.asarray(shape, dtype=np.float64)
+    return jnp.asarray(gammaincinv(shape_np, prob_np), dtype=jnp.float64)
 
 
 def _prob_from_p(p, lower_tail: bool, log_p: bool):
@@ -362,3 +410,236 @@ def qNO2(p, mu=0.0, sigma=1.0, lower_tail=True, log_p=False):
 def rNO2(key, n, mu=0.0, sigma=1.0):
     """Sampler for the normal distribution parameterised by the variance ``sigma``."""
     return qNO2(jr.uniform(key, (int(n),), dtype=jnp.float64), mu, sigma)
+
+
+# ---------------------------------------------------------------------------
+# PE2 - Power Exponential type 2 (R: PE2.R)
+#   z = (x-mu)/sigma, s = |z|^nu
+#   cdf = 0.5*(1 + pgamma(s, shape=1/nu, scale=1)*sign(z))
+# ---------------------------------------------------------------------------
+
+#: R replaces the gamma CDF by the uniform limit above this nu.
+_PE2_NU_LIMIT = 10000.0
+
+
+def _pe2_s(x, mu, sigma, nu):
+    return jnp.power(jnp.abs((x - mu) / sigma), nu)
+
+
+def dPE2(x, mu=0.0, sigma=1.0, nu=2.0, log=False):
+    """Density of the Power Exponential type 2 distribution."""
+    x, mu, sigma, nu = jnp.broadcast_arrays(
+        jnp.asarray(x, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+        jnp.asarray(nu, dtype=jnp.float64),
+    )
+    valid = (sigma > 0.0) & (nu > 0.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    safe_nu = jnp.where(nu > 0.0, nu, 1.0)
+    value = (
+        -jnp.log(safe_sigma)
+        + jnp.log(safe_nu)
+        - jnp.log(2.0)
+        - _pe2_s(x, mu, safe_sigma, safe_nu)
+        - _lgamma(1.0 / safe_nu)
+    )
+    value = jnp.where(valid, value, _NAN)
+    return value if log else jnp.exp(value)
+
+
+def pPE2(q, mu=0.0, sigma=1.0, nu=2.0, lower_tail=True, log_p=False):
+    """CDF of the Power Exponential type 2 distribution."""
+    q, mu, sigma, nu = jnp.broadcast_arrays(
+        jnp.asarray(q, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+        jnp.asarray(nu, dtype=jnp.float64),
+    )
+    valid = (sigma > 0.0) & (nu > 0.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    safe_nu = jnp.where(nu > 0.0, nu, 1.0)
+    z = (q - mu) / safe_sigma
+    cdf = 0.5 * (1.0 + _pgamma_std(_pe2_s(q, mu, safe_sigma, safe_nu), 1.0 / safe_nu) * jnp.sign(z))
+    # R's uniform limit for nu > 10000 (PE2.R).
+    cdf = jnp.where(nu > _PE2_NU_LIMIT, (q - (mu - safe_sigma)) / (2.0 * safe_sigma), cdf)
+    value = _apply_tail(cdf, lower_tail, log_p)
+    return jnp.where(valid, value, _NAN)
+
+
+def qPE2(p, mu=0.0, sigma=1.0, nu=2.0, lower_tail=True, log_p=False):
+    """Quantile of the Power Exponential type 2 distribution."""
+    p, mu, sigma, nu = jnp.broadcast_arrays(
+        jnp.asarray(p, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+        jnp.asarray(nu, dtype=jnp.float64),
+    )
+    valid = (sigma > 0.0) & (nu > 0.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    safe_nu = jnp.where(nu > 0.0, nu, 1.0)
+    prob = _prob_from_p(p, lower_tail, log_p)
+
+    def value_fn(pr):
+        sign_p = jnp.sign(pr - 0.5)
+        arg = (2.0 * pr - 1.0) * sign_p
+        s = _qgamma_std(arg, 1.0 / safe_nu)
+        return mu + safe_sigma * sign_p * jnp.power(s, 1.0 / safe_nu)
+
+    value = _quantile_from_prob(prob, value_fn, low=-_INF, high=_INF)
+    return jnp.where(valid, value, _NAN)
+
+
+def rPE2(key, n, mu=0.0, sigma=1.0, nu=2.0):
+    """Inverse-transform sampler for the Power Exponential type 2 distribution."""
+    return qPE2(jr.uniform(key, (int(n),), dtype=jnp.float64), mu, sigma, nu)
+
+
+# ---------------------------------------------------------------------------
+# NOF - normal family with variance function sigma^2 * |mu|^nu (R: NOF-13-3-13.R)
+#   sigma1 = sigma * |mu|^(nu/2);  y ~ Normal(mu, sigma1)
+# ---------------------------------------------------------------------------
+
+
+def _nof_sd(mu, sigma, nu):
+    return sigma * jnp.power(jnp.abs(mu), 0.5 * nu)
+
+
+def dNOF(x, mu=0.0, sigma=1.0, nu=0.0, log=False):
+    """Density of the NOF (normal family) distribution."""
+    x, mu, sigma, nu = jnp.broadcast_arrays(
+        jnp.asarray(x, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+        jnp.asarray(nu, dtype=jnp.float64),
+    )
+    sd = _nof_sd(mu, sigma, nu)
+    safe = jnp.where(sd > 0.0, sd, 1.0)
+    z = (x - mu) / safe
+    value = -0.5 * jnp.log(2.0 * np.pi) - jnp.log(safe) - 0.5 * z * z
+    # R: dnorm(x, mean=mu, sd=0) is a point mass at mu.
+    value = jnp.where(sd > 0.0, value, jnp.where(x == mu, _INF, -_INF))
+    value = jnp.where(sigma > 0.0, value, _NAN)
+    return value if log else jnp.exp(value)
+
+
+def pNOF(q, mu=0.0, sigma=1.0, nu=0.0, lower_tail=True, log_p=False):
+    """CDF of the NOF (normal family) distribution."""
+    q, mu, sigma, nu = jnp.broadcast_arrays(
+        jnp.asarray(q, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+        jnp.asarray(nu, dtype=jnp.float64),
+    )
+    sd = _nof_sd(mu, sigma, nu)
+    safe = jnp.where(sd > 0.0, sd, 1.0)
+    cdf = jnp.where(sd > 0.0, _norm_cdf((q - mu) / safe), jnp.where(q >= mu, 1.0, 0.0))
+    value = _apply_tail(cdf, lower_tail, log_p)
+    return jnp.where(sigma > 0.0, value, _NAN)
+
+
+def qNOF(p, mu=0.0, sigma=1.0, nu=0.0, lower_tail=True, log_p=False):
+    """Quantile of the NOF (normal family) distribution."""
+    p, mu, sigma, nu = jnp.broadcast_arrays(
+        jnp.asarray(p, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+        jnp.asarray(nu, dtype=jnp.float64),
+    )
+    sd = _nof_sd(mu, sigma, nu)
+    safe = jnp.where(sd > 0.0, sd, 1.0)
+    prob = _prob_from_p(p, lower_tail, log_p)
+
+    def value_fn(pr):
+        return mu + safe * _norm_quantile(pr)
+
+    value = _quantile_from_prob(prob, value_fn, low=-_INF, high=_INF)
+    # Degenerate sd == 0 collapses the family onto the point mass at mu.
+    value = jnp.where(sd > 0.0, value, mu)
+    return jnp.where(sigma > 0.0, value, _NAN)
+
+
+def rNOF(key, n, mu=0.0, sigma=1.0, nu=0.0):
+    """Sampler for the NOF (normal family) distribution."""
+    return qNOF(jr.uniform(key, (int(n),), dtype=jnp.float64), mu, sigma, nu)
+
+
+# ---------------------------------------------------------------------------
+# GAF - gamma family with variance function sigma^2 * mu^nu (R: GAF.R)
+#   sigma1 = sigma * mu^(nu/2 - 1)
+#   y ~ Gamma(shape = 1/sigma1^2, scale = mu*sigma1^2)
+# ---------------------------------------------------------------------------
+
+
+def _gaf_sigma1(mu, sigma, nu):
+    return sigma * jnp.power(mu, 0.5 * nu - 1.0)
+
+
+def _gaf_shape_scale(mu, sigma, nu):
+    sigma1 = _gaf_sigma1(mu, sigma, nu)
+    sigma1_sq = sigma1 * sigma1
+    return sigma1, 1.0 / sigma1_sq, mu * sigma1_sq
+
+
+def dGAF(x, mu=1.0, sigma=1.0, nu=2.0, log=False):
+    """Density of the GAF (gamma family) distribution."""
+    x, mu, sigma, nu = jnp.broadcast_arrays(
+        jnp.asarray(x, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+        jnp.asarray(nu, dtype=jnp.float64),
+    )
+    valid = (mu > 0.0) & (sigma > 0.0)
+    safe_mu = jnp.where(mu > 0.0, mu, 1.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    _sigma1, shape, scale = _gaf_shape_scale(safe_mu, safe_sigma, nu)
+    xs = jnp.where(x > 0.0, x, 1.0)
+    value = shape * jnp.log(xs / scale) - xs / scale - jnp.log(xs) - _lgamma(shape)
+    # R returns 0 for x <= 0 even on the log scale; see R_QUIRKS["GAF"].
+    value = jnp.where(x > 0.0, value, -_INF)
+    value = jnp.where(valid, value, _NAN)
+    return value if log else jnp.exp(value)
+
+
+def pGAF(q, mu=1.0, sigma=1.0, nu=2.0, lower_tail=True, log_p=False):
+    """CDF of the GAF (gamma family) distribution."""
+    q, mu, sigma, nu = jnp.broadcast_arrays(
+        jnp.asarray(q, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+        jnp.asarray(nu, dtype=jnp.float64),
+    )
+    valid = (mu > 0.0) & (sigma > 0.0)
+    safe_mu = jnp.where(mu > 0.0, mu, 1.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    _sigma1, shape, scale = _gaf_shape_scale(safe_mu, safe_sigma, nu)
+    z = jnp.where(q > 0.0, q / scale, 0.0)
+    cdf = jnp.where(q > 0.0, _pgamma_std(z, shape), 0.0)
+    value = _apply_tail(cdf, lower_tail, log_p)
+    return jnp.where(valid, value, _NAN)
+
+
+def qGAF(p, mu=1.0, sigma=1.0, nu=2.0, lower_tail=True, log_p=False):
+    """Quantile of the GAF (gamma family) distribution."""
+    p, mu, sigma, nu = jnp.broadcast_arrays(
+        jnp.asarray(p, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+        jnp.asarray(nu, dtype=jnp.float64),
+    )
+    valid = (mu > 0.0) & (sigma > 0.0)
+    safe_mu = jnp.where(mu > 0.0, mu, 1.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    _sigma1, shape, scale = _gaf_shape_scale(safe_mu, safe_sigma, nu)
+    prob = _prob_from_p(p, lower_tail, log_p)
+
+    def value_fn(pr):
+        return _qgamma_std(pr, shape) * scale
+
+    value = _quantile_from_prob(prob, value_fn, low=0.0, high=_INF)
+    return jnp.where(valid, value, _NAN)
+
+
+def rGAF(key, n, mu=1.0, sigma=1.0, nu=2.0):
+    """Inverse-transform sampler for the GAF (gamma family) distribution."""
+    return qGAF(jr.uniform(key, (int(n),), dtype=jnp.float64), mu, sigma, nu)

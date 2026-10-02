@@ -65,15 +65,15 @@
 | [x] | `GB2` | `GB2` | experimental | 状态已离开 placeholder（experimental） |
 | [ ] | `GIG` | `GIG` | 占位 |  |
 | [x] | `NO2` | `NO2` | experimental | 状态已离开 placeholder（experimental） |
-| [ ] | `NOF` | `NOF` | 占位 |  |
+| [x] | `NOF` | `NOF` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `PARETO` | `PARETO` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `PARETO1` | `PARETO1` | experimental | 状态已离开 placeholder（experimental） |
-| [ ] | `PE2` | `PE2` | 占位 |  |
+| [x] | `PE2` | `PE2` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `PIG2` | `PIG2` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `RGE` | `RGE` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `WEI2` | `WEI2` | experimental | 状态已离开 placeholder（experimental） |
 | [ ] | `exGAUS` | `EXGAUS` | 占位 |  |
-| [ ] | `GAF` | `GAF` | 占位 |  |
+| [x] | `GAF` | `GAF` | experimental | 状态已离开 placeholder（experimental） |
 | [ ] | `EGB2` | `EGB2` | 占位 |  |
 | [ ] | `LOGSHASH` | `LOGSHASH` | 占位 |  |
 | [ ] | `LQNO` | `LQNO` | 占位 |  |
@@ -85,4 +85,4 @@
 
 ## 附录：尚未在任何批次中的状态
 
-当前 placeholder 家族总数（批次内）：11
+当前 placeholder 家族总数（批次内）：8

@@ -1,4 +1,4 @@
-"""D1-E 批次一：PARETO / PARETO1 / WEI2 / RGE / NO2 的 d/p/q/r 验收测试。
+"""D1-E：PARETO / PARETO1 / WEI2 / RGE / NO2 / PE2 / NOF / GAF 的 d/p/q/r 验收测试。
 
 分两类：
 
@@ -32,24 +32,37 @@ import jax.numpy as jnp  # noqa: E402
 import jax.random as jr  # noqa: E402
 
 from omnilss.dpqr_batch_e import (  # noqa: E402
+    R_QUIRKS,
+    dGAF,
     dNO2,
+    dNOF,
     dPARETO,
     dPARETO1,
+    dPE2,
     dRGE,
     dWEI2,
+    pGAF,
     pNO2,
+    pNOF,
     pPARETO,
     pPARETO1,
+    pPE2,
     pRGE,
     pWEI2,
+    qGAF,
     qNO2,
+    qNOF,
     qPARETO,
     qPARETO1,
+    qPE2,
     qRGE,
     qWEI2,
+    rGAF,
     rNO2,
+    rNOF,
     rPARETO,
     rPARETO1,
+    rPE2,
     rRGE,
     rWEI2,
 )
@@ -136,6 +149,38 @@ CASES = {
         [-1.0, 0.0, 0.5, 1.0, 2.0],
         None,
     ),
+    # --- 批次二 -----------------------------------------------------------
+    "PE2": (
+        dPE2, pPE2, qPE2, rPE2,
+        [(0.0, 1.0, 2.0), (1.0, 0.5, 1.5)],
+        [-2.0, -0.5, 0.0, 0.5, 1.0, 2.5],
+        None,
+    ),
+    "NOF": (
+        dNOF, pNOF, qNOF, rNOF,
+        [(1.0, 1.0, 0.0), (2.0, 0.5, 1.0), (1.5, 1.0, -0.5)],
+        [-1.0, 0.0, 0.5, 1.0, 2.5],
+        None,
+    ),
+    "GAF": (
+        dGAF, pGAF, qGAF, rGAF,
+        [(1.0, 1.0, 2.0), (2.0, 0.5, 1.0), (3.0, 0.8, 3.0)],
+        [0.3, 1.0, 2.0, 5.0],
+        0.0,
+    ),
+}
+
+#: R ``gamlss.dist`` 声明的参数个数（``nopar``）。Python 侧的族必须一致，
+#: 否则拟合时会按错误的参数个数组装设计矩阵。
+EXPECTED_NOPAR = {
+    "PARETO": 1,
+    "PARETO1": 1,
+    "WEI2": 2,
+    "RGE": 3,
+    "NO2": 2,
+    "PE2": 3,
+    "NOF": 3,
+    "GAF": 3,
 }
 
 
@@ -211,16 +256,38 @@ class TestBatchEInvariants(unittest.TestCase):
                 if low is not None:
                     self.assertTrue(np.all(draws > low), f"{name} r 越出支撑集下界 {low}")
 
+    def test_parameter_count_matches_r(self) -> None:
+        """Python 族的 parameter 个数必须等于 R 的 ``nopar``。
+
+        NOF/GAF 曾经只声明 ``(mu, sigma)``，而 R 的 ``NOF``/``GAF`` 是三参数族
+        （``nu`` 决定方差函数 ``sigma^2*|mu|^nu`` / ``sigma^2*mu^nu``）。少一个参数
+        会让拟合按错误的维度组装，所以这里锁死。
+        """
+        from omnilss.distribution_registry import resolve
+
+        for name, nopar in EXPECTED_NOPAR.items():
+            self.assertEqual(len(resolve(name).parameters), nopar, f"{name} 参数个数与 R 不一致")
+
+    def test_quantile_honours_log_p(self) -> None:
+        """``q(p, log_p=True)`` 必须等于 ``q(exp(p))``。"""
+        probs = [0.05, 0.25, 0.5, 0.75, 0.95]
+        for name, (_d, _p, qfun, _r, grid, _xs, _low) in CASES.items():
+            for params in grid:
+                p = np.asarray(probs, dtype=float)
+                parr = [jnp.asarray(np.full(len(p), float(v))) for v in params]
+                direct = np.asarray(qfun(jnp.asarray(p), *parr), dtype=float)
+                logged = np.asarray(qfun(jnp.asarray(np.log(p)), *parr, log_p=True), dtype=float)
+                np.testing.assert_allclose(logged, direct, rtol=1e-8, atol=1e-10, err_msg=f"{name} q 未正确处理 log_p")
+
     def test_r_quirk_inventory_is_explicit(self) -> None:
-        """R gamlss.dist 的已知缺陷清单 —— 我们选择不复制，必须显式记录。"""
-        quirks = {
-            "PARETO": "pPARETO 忽略 log.p（R 源码 `cdf < - log(cdf)` 笔误）；qPARETO 忽略 lower.tail",
-            "PARETO1": "pPARETO1 忽略 log.p（同上笔误）；qPARETO1 忽略 lower.tail",
-        }
-        # 清单非空即说明这些族存在有据可查的偏差；新增同类偏差必须同步更新这里。
-        self.assertTrue(quirks)
-        for name in quirks:
-            self.assertIn(name, CASES)
+        """R gamlss.dist 的已知缺陷清单 —— 我们选择不复制，必须显式记录。
+
+        清单来自 ``omnilss.dpqr_batch_e.R_QUIRKS``（与实现同处一个模块，避免漂移）；
+        新增同类偏差必须同步更新那里。
+        """
+        self.assertTrue(R_QUIRKS)
+        for name in R_QUIRKS:
+            self.assertIn(name, CASES, f"{name} 登记了 R 缺陷但没有进入对照清单")
 
 
 @unittest.skipUnless(R_AVAILABLE, "R / Rscript not available")
@@ -264,6 +331,30 @@ class TestBatchERConsistency(unittest.TestCase):
                 got = np.asarray(qfun(jnp.asarray(p), *parr), dtype=float)
                 exp = _r_values(name, "q", [p, *[np.asarray(v) for v in parr]])
                 np.testing.assert_allclose(got, exp, rtol=1e-8, atol=1e-10, err_msg=f"{name} q params={params}")
+
+    def test_r_ignores_log_p_for_the_nof_quantile(self) -> None:
+        """实测确认 R 的 qNOF 忽略 log.p（不是我们的实现差异）。
+
+        R 的 ``qNOF`` 把 ``qnorm(p, mean, sd, lower.tail)`` 的 ``log.p`` 漏掉了，
+        所以 ``log.p=TRUE`` 与 ``log.p=FALSE`` 返回完全相同的值 —— 也就是说 R 根本
+        无法在 log 尺度上求分位数（传入 ``log(p)`` 会直接报
+        ``p must be between 0 and 1``）。
+
+        我们按数学正确的方式处理 ``log_p``：传入 ``log(p)`` 时应当得到 R 在概率
+        尺度下给出的同一个分位数。这两条断言一起把偏差钉死。
+        """
+        params = (1.5, 1.0, -0.5)
+        p = np.asarray([0.25, 0.5, 0.75], dtype=float)
+        parr = [np.full(len(p), float(v)) for v in params]
+        jpar = [jnp.asarray(v) for v in parr]
+        r_plain = _r_values("NOF", "q", [p, *parr], log_p=False)
+        r_logged = _r_values("NOF", "q", [p, *parr], log_p=True)
+        self.assertTrue(np.all(np.isfinite(r_plain)), f"R qNOF 返回非有限值: {r_plain}")
+        np.testing.assert_allclose(
+            r_plain, r_logged, err_msg="R qNOF 现在会处理 log.p 了 —— 可以去掉这条豁免"
+        )
+        ours = np.asarray(qNOF(jnp.asarray(np.log(p)), *jpar, log_p=True), dtype=float)
+        np.testing.assert_allclose(ours, r_plain, rtol=1e-8, atol=1e-10, err_msg="我们的 qNOF log_p 分支不正确")
 
     def test_r_ignores_lower_tail_for_the_pareto_quantiles(self) -> None:
         """实测确认 R 的 qPARETO/qPARETO1 忽略 lower.tail（不是我们的实现差异）。"""

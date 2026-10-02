@@ -5,7 +5,7 @@
   "r_exports_total": 1080,
   "current_counts": {
     "missing": 402,
-    "placeholder": 50,
+    "placeholder": 35,
     "compat_alias": 11,
     "evidence_gap": 36,
     "extra": 300
@@ -26,8 +26,24 @@
     },
     "placeholder": {
       "new": [],
-      "resolved": [],
-      "current_count": 50,
+      "resolved": [
+        "gamlss.dist::GAF",
+        "gamlss.dist::NOF",
+        "gamlss.dist::PE2",
+        "gamlss.dist::dGAF",
+        "gamlss.dist::dNOF",
+        "gamlss.dist::dPE2",
+        "gamlss.dist::pGAF",
+        "gamlss.dist::pNOF",
+        "gamlss.dist::pPE2",
+        "gamlss.dist::qGAF",
+        "gamlss.dist::qNOF",
+        "gamlss.dist::qPE2",
+        "gamlss.dist::rGAF",
+        "gamlss.dist::rNOF",
+        "gamlss.dist::rPE2"
+      ],
+      "current_count": 35,
       "baseline_count": 50
     },
     "compat_alias": {
@@ -50,7 +66,68 @@
     }
   },
   "regressions": [],
-  "improvements": [],
+  "improvements": [
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::GAF"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::NOF"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::PE2"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::dGAF"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::dNOF"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::dPE2"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::pGAF"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::pNOF"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::pPE2"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::qGAF"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::qNOF"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::qPE2"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::rGAF"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::rNOF"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::rPE2"
+    }
+  ],
   "ok": true,
   "ratchet_ok": true,
   "ceiling_ok": true

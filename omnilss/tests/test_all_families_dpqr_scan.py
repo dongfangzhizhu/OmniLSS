@@ -31,15 +31,20 @@ SKIP = {
 
 # Known NaN-placeholder families (p/q/r not yet wired; tracked for later
 # phases).  The scan asserts everything OUTSIDE this set is finite.
+#
+# 已经接线并从本集合移除的族（每移除一个就等于给扫描门禁加一道 ratchet）：
+#   D1-E 批次一: PARETO, PARETO1, WEI2, RGE, NO2
+#   D1-E 批次二: PE2, NOF, GAF
+#   PIG2（b13 早已接线）
 KNOWN_NAN_PLACEHOLDER = {
     "BCCGO", "BCPEO", "BCTO", "BEINF0", "BEINF1", "BEOI", "BEZI",
-    "DPO", "DPO1", "EGB2", "EXGAUS", "GAF",
+    "DPO", "DPO1", "EGB2", "EXGAUS",
     "GENERALISEDPOISSON", "GIG", "GP", "GPO", "IGA", "IGAMMA", "JSUO", "LG",
     "LNO", "LOGITNO", "LOGNO2", "LOGSHASH", "LOGSHASHO", "LQNO", "MN3",
-    "MN4", "MN5", "MULTIN", "NBF", "NET", "NO2", "NOF", "PARETO", "PARETO1",
-    "PARETO1O", "PARETO2", "PE2", "PIG2", "RGE", "SEP", "SEP1", "SEP2",
+    "MN4", "MN5", "MULTIN", "NBF", "NET",
+    "PARETO1O", "PARETO2", "SEP", "SEP1", "SEP2",
     "SEP3", "SEP4", "SHASHO2", "SI", "SST", "ST3", "ST3C", "ST4", "ST5",
-    "WARING", "WEI2", "YULE", "ZABI", "ZABNB", "ZALG", "ZANBI",
+    "WARING", "YULE", "ZABI", "ZABNB", "ZALG", "ZANBI",
     "ZAP", "ZAPIG", "ZASICHEL", "ZAZIPF", "ZIBI", "ZIBNB", "ZINBF",
     "ZINBI", "ZIP2", "ZIPIG", "ZISICHEL",
 }

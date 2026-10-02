@@ -955,7 +955,7 @@
     },
     "GAF": {
       "name": "GAF",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -968,7 +968,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "registered family without enough validation evidence for production use",
         "RS_JAX route is not advertised for this family"
       ]
     },
@@ -1619,7 +1619,7 @@
     },
     "NO2": {
       "name": "NO2",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1632,13 +1632,13 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "has repository R-consistency test coverage; still requires feature-specific gates",
         "RS_JAX route is not advertised for this family"
       ]
     },
     "NOF": {
       "name": "NOF",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1651,13 +1651,13 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "registered family without enough validation evidence for production use",
         "RS_JAX route is not advertised for this family"
       ]
     },
     "PARETO": {
       "name": "PARETO",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1670,13 +1670,13 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "registered family without enough validation evidence for production use",
         "RS_JAX route is not advertised for this family"
       ]
     },
     "PARETO1": {
       "name": "PARETO1",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1689,7 +1689,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "registered family without enough validation evidence for production use",
         "RS_JAX route is not advertised for this family"
       ]
     },
@@ -1771,7 +1771,7 @@
     },
     "PE2": {
       "name": "PE2",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1784,7 +1784,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "registered family without enough validation evidence for production use",
         "RS_JAX route is not advertised for this family"
       ]
     },
@@ -1865,7 +1865,7 @@
     },
     "RGE": {
       "name": "RGE",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -1878,7 +1878,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "registered family without enough validation evidence for production use",
         "RS_JAX route is not advertised for this family"
       ]
     },
@@ -2338,7 +2338,7 @@
     },
     "WEI2": {
       "name": "WEI2",
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -2351,7 +2351,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public surface contains placeholder numerical behavior and requires replacement",
+        "registered family without enough validation evidence for production use",
         "RS_JAX route is not advertised for this family"
       ]
     },

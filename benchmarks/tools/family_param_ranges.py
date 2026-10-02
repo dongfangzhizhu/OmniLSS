@@ -27,20 +27,8 @@ FAMILY_PARAM_RANGES = {
     },
     
     # 2-parameter families (mu, sigma)
-    "GAF": {
-        "type": "continuous_positive",
-        "x": "np.linspace(0.01, 10.0, 80)",
-        "mu": "np.linspace(0.5, 5.0, 80)",
-        "sigma": "np.linspace(0.2, 2.0, 80)",
-        "p": "np.linspace(0.02, 0.98, 80)",
-    },
-    "NOF": {
-        "type": "continuous_positive",
-        "x": "np.linspace(0.01, 10.0, 80)",
-        "mu": "np.linspace(0.5, 5.0, 80)",
-        "sigma": "np.linspace(0.2, 2.0, 80)",
-        "p": "np.linspace(0.02, 0.98, 80)",
-    },
+    # 注：GAF / NOF 在 R gamlss.dist 中是三参数族（方差函数里的 nu），
+    # 已移到下面的 3-parameter 段。
     "WEI2": {
         "type": "continuous_positive",
         "x": "np.linspace(0.01, 10.0, 80)",
@@ -163,11 +151,28 @@ FAMILY_PARAM_RANGES = {
         "p": "np.linspace(0.02, 0.98, 80)",
     },
     "PE2": {
+        "type": "continuous_real",
+        "x": "np.linspace(-3.0, 6.0, 80)",
+        "mu": "np.linspace(0.5, 5.0, 80)",
+        "sigma": "np.linspace(0.2, 2.0, 80)",
+        # R dPE2/pPE2/qPE2 要求 nu > 0（lgamma(1/nu)），旧配置含负值会让 R 报错。
+        "nu": "np.linspace(0.5, 4.0, 80)",
+        "p": "np.linspace(0.02, 0.98, 80)",
+    },
+    "GAF": {
         "type": "continuous_positive",
         "x": "np.linspace(0.01, 10.0, 80)",
         "mu": "np.linspace(0.5, 5.0, 80)",
         "sigma": "np.linspace(0.2, 2.0, 80)",
-        "nu": "np.linspace(-2.0, 2.0, 80)",
+        "nu": "np.linspace(1.0, 3.0, 80)",
+        "p": "np.linspace(0.02, 0.98, 80)",
+    },
+    "NOF": {
+        "type": "continuous_real",
+        "x": "np.linspace(-2.0, 8.0, 80)",
+        "mu": "np.linspace(0.5, 5.0, 80)",
+        "sigma": "np.linspace(0.2, 2.0, 80)",
+        "nu": "np.linspace(-0.5, 1.5, 80)",
         "p": "np.linspace(0.02, 0.98, 80)",
     },
     "LQNO": {

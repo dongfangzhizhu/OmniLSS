@@ -104,24 +104,22 @@ class PE2Family(FamilyDefinition):
 
 
 def _pe2_log_pdf(y, mu, sigma, nu):
-    """Power Exponential Type 2 log-PDF."""
-    eps = jnp.finfo(jnp.float64).eps
-    sigma = jnp.maximum(sigma, eps)
-    nu = jnp.clip(nu, eps, 10.0)  # Avoid extreme values
-    
-    z = jnp.abs(y - mu) / sigma
-    
-    # Type 2: alternative normalization
-    log_norm = (
-        jnp.log(nu) - jnp.log(2.0 * sigma)
-        - gammaln(1.0 / nu)
-    )
-    
-    return log_norm - jnp.power(z, nu)
+    """Power Exponential Type 2 log-PDF.
+
+    Delegates to :func:`omnilss.dpqr_batch_e.dPE2` so the fitted density and the
+    exported ``d`` kernel cannot drift apart.  The previous version clipped
+    ``nu`` to ``[eps, 10]``, which silently changed the density for ``nu > 10``;
+    R's ``dPE2`` only requires ``nu > 0``.
+    """
+    from .dpqr_batch_e import dPE2
+
+    return dPE2(y, mu, sigma, nu, log=True)
 
 
 def PE2():
     """Power Exponential Type 2 distribution."""
+    from .dpqr_batch_e import dPE2, pPE2, qPE2, rPE2
+
     return build_ad_family(
         family_class=PE2Family,
         name="PE2",
@@ -144,6 +142,10 @@ def PE2():
             "sigma": log_derivative,
             "nu": log_derivative,
         },
+        d=dPE2,
+        p=pPE2,
+        q=qPE2,
+        r=rPE2,
     )
 
 
