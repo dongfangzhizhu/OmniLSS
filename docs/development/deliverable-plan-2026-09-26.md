@@ -189,6 +189,35 @@
 - 门禁：`tests/test_family_link_metadata_gate.py`（4 项）—— 全族 link 元数据
   结构完整 + 名字可识别 + `inverse(link(mu)) == mu` 往返 + 导数有限。
 
+**D2 首项交付记录（2026-10-03）：WEI2 / PE2 的 RS 拟合修复 + RGE 拟合受 R 阻碍定性**
+
+- 批次一/二登记的"WEI2/RGE/PE2 的 RS 拟合在通用初始值下发散"已定位到真正的根因：
+  **`FamilyHeuristicInit` 暖启动用 `mu = mean(y)` 劫持了 mu 初始化**（`rs_fit` 优先采用
+  形状为 `(n,)` 的暖启动 mu 向量，族感知的 `_initial_mu_beta` 从未运行）。对 WEI2 尤其致命：
+  其 `mu` 是 rate 参数（`scale = mu^(-1/sigma)`，`E[Y] = Γ(1+1/σ)/mu`），从 `mean(y)`
+  出发的第一步 IWLS 把 `mu` 打到 `[3e-7, 0.19]`，随后的 sigma 步直接爆炸（1 轮外循环后
+  `g_dev ≈ 6.2e6`）。
+- 修复（两层）：
+  1. `FamilyHeuristicInit` 对 WEI2/RGE/PE2 不再提供 `mu`（`_NON_MEAN_MU_FAMILIES`），
+     让 `rs_fit` 落到族感知的 `_initial_mu_beta` —— 与外层循环对非 mu 参数的
+     Phase 2.1"族感知初始化是唯一事实来源"策略对齐；
+  2. `_fitting_init` 按 `gamlss.dist` family 对象的 `mu.initial`/`sigma.initial`/
+     `nu.initial` 表达式逐字移植 WEI2/RGE/PE2 的初值（WEI2 的
+     `s.Y.s = 1.283/sqrt(var(log y))`、`log mu = -s.Y.s*log(y) - 0.5772`；
+     RGE 的 `mu = y + 0.45*sd(y)`、`sigma = 0.78*sd(y)`、`nu = 0.1`；
+     PE2 的 `mu = (y+mean(y))/2`、`sigma = (|y-mean(y)|+sd(y))/2`、`nu = 1.8`）。
+- 验收：新增 `tests/test_rs_fit_wei2_pe2.py`（6 项）—— WEI2/PE2 各自的最小数据集上
+  与**实时 R gamlss** 活拟合对照（deviance rtol 1e-3，系数 rtol 1e-2 —— WEI2/PE2 的
+  似然面在 (σ, ν) 处平坦，两侧收敛点系数相对差 ≤ 7e-3，deviance 相对差 ~1e-5），
+  另有初值表达式与暖启动省略的纯 Python 单元断言。
+- **RGE 拟合受 R 阻碍（定性）**：R 自己无法用 `gamlss()` 拟合 RGE —— `dRGE` 在
+  未加保护的 IWLS 迭代步中硬 `stop`（"x must greater than mu-sigma/nu"）。实测对
+  RGE 自身采样的数据、截距-only 模型、以及显式安全初值（`mu.start`/`sigma.start`/
+  `nu.start`）全部失败。RGE 保留批次一的 d/p/q/r parity，拟合保持 experimental，
+  与 GIG/LOGSHASH 同一"受 R 阻碍"状态哲学。
+- 澄清：探针中 NO2 的 `g_dev ≈ 8.7e6` 是模型误设（常方差数据 + 方差随均值变化的
+  NO2），在正确设定的数据上 NO2 4 轮收敛（`g_dev ≈ 322`），非算法缺陷。
+
 ### D1 分布 family d/p/q/r parity（P1，8–12 周）
 
 - 批次 A：ST/SEP/SST（独立参数化、尾部、q 稳健反演）；

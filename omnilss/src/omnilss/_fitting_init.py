@@ -60,6 +60,12 @@ def _initial_parameter_value(
             return 0.2  # 20% zero-inflation, reasonable starting point
         if family.name in ("BEINF", "BEINF0", "BEINF1"):
             return 0.1  # 10% inflation at boundary, conservative estimate
+        if family.name == "RGE":
+            # R gamlss.dist RGE nu.initial: nu <- rep(0.1, length(y))
+            return 0.1
+        if family.name == "PE2":
+            # R gamlss.dist PE2 nu.initial: nu <- rep(1.8, length(y))
+            return 1.8
         return 1.0
     if parameter == "tau":
         if family.name == "JSU":
@@ -167,6 +173,24 @@ def _initial_mu_beta(
     elif family.name == "NET":
         # NET: mu uses identity link
         target = y
+    elif family.name == "WEI2":
+        # R WEI2 mu.initial (mu uses a log link, so the link-scale target is
+        # log(mu)):  s.Y.s <- 1.283/sqrt(var(log(y)));
+        #            mu <- exp(-s.Y.s * (log(y) + 0.5772/s.Y.s))
+        # 0.5772 is the Euler-Mascheroni constant and 1.283 ~= pi/sqrt(6) is
+        # the standard deviation of a standard Gumbel.
+        eps = np.finfo(np.float64).eps
+        log_y = np.log(np.maximum(y, eps))
+        s_y_s = 1.283 / np.sqrt(np.var(log_y))
+        target = -s_y_s * log_y - 0.5772
+    elif family.name == "RGE":
+        # R RGE mu.initial (mu uses an identity link):
+        #     mu <- y + 0.45 * sd(y)
+        target = y + 0.45 * np.std(y)
+    elif family.name == "PE2":
+        # R PE2 mu.initial (mu uses an identity link):
+        #     mu <- (y + mean(y)) / 2
+        target = (y + np.mean(y)) / 2.0
     else:
         target = y
     wx = x * sqrt_w[:, None]
@@ -285,6 +309,22 @@ def _initial_sigma(
             sigma = 1.0
         else:
             sigma = 2.0  # YULE
+    elif family.name == "WEI2":
+        # R WEI2 sigma.initial: s.Y.s <- 1.283/sqrt(var(log(y)));
+        #                       sigma <- rep(s.Y.s, length(y))
+        # (Weibull shape parameter; response scale, log link downstream.)
+        eps = np.finfo(np.float64).eps
+        log_y = np.log(np.maximum(y, eps))
+        sigma = 1.283 / np.sqrt(np.var(log_y))
+    elif family.name == "RGE":
+        # R RGE sigma.initial: sigma <- rep(0.78 * sd(y), length(y))
+        sigma = 0.78 * np.std(y)
+    elif family.name == "PE2":
+        # R PE2 sigma.initial: sigma <- (abs(y - mean(y)) + sd(y)) / 2
+        # R evaluates this per observation; collapsing to its response-scale
+        # mean gives the same intercept-only start as mean(|y-m|)+sd)/2.
+        mean_y = np.mean(y)
+        sigma = (np.mean(np.abs(y - mean_y)) + np.std(y)) / 2.0
     else:
         sigma = np.sqrt(np.sum(w * np.square(y - mu)) / np.sum(w))
     # Note: NO uses a log link for sigma, so its link-scale coefficient is

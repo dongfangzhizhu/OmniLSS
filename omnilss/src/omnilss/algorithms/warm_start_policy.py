@@ -58,9 +58,24 @@ class NoWarmStart:
 
 
 class FamilyHeuristicInit:
-    """Heuristic initialization with stable defaults for common parameters."""
+    """Heuristic initialization with stable defaults for common parameters.
+
+    For a small set of families the generic ``mu = mean(y)`` heuristic is
+    structurally wrong because their ``mu`` is not a location/mean parameter
+    (e.g. WEI2 parameterizes the Weibull with a *rate* ``mu``, where
+    ``E[Y] = Gamma(1 + 1/sigma) / mu``).  For those families ``fitted["mu"]``
+    is intentionally omitted so that ``rs_fit`` falls through to the
+    family-aware ``_initial_mu_beta()`` initialiser, which ports R's
+    ``gamlss.family`` ``mu.initial`` expressions (the same policy the outer
+    loop already applies to non-mu parameters, see the Phase 2.1 note in
+    ``rs_algorithm.rs_fit``).
+    """
 
     name = "family_heuristic"
+
+    # Families whose mu must not be initialized at mean(y); each of them has
+    # an R-faithful branch in omnilss._fitting_init._initial_mu_beta.
+    _NON_MEAN_MU_FAMILIES = frozenset({"WEI2", "RGE", "PE2"})
 
     def initialize(
         self,
@@ -81,10 +96,18 @@ class FamilyHeuristicInit:
                 y_sd = float(np.subtract(*np.percentile(positive, (75, 25))) / 1.349)
         y_sd = max(y_sd, 1e-6)
 
+        skip_mu = (
+            family_name is not None
+            and str(family_name).upper() in self._NON_MEAN_MU_FAMILIES
+        )
+
         eta: dict[str, np.ndarray] = {}
         fitted: dict[str, np.ndarray] = {}
         for p in parameter_names:
             if p == "mu":
+                if skip_mu:
+                    # Omit entirely: rs_fit falls back to _initial_mu_beta.
+                    continue
                 fitted[p] = np.full(n, y_mean, dtype=np.float64)
             elif p == "sigma":
                 fitted[p] = np.full(n, y_sd, dtype=np.float64)

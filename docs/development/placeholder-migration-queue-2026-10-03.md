@@ -1,6 +1,6 @@
 # GAMLSS 分布族 placeholder 迁移队列清单
 
-> 生成日期：2026-10-02
+> 生成日期：2026-10-03
 > 生成方式：`tools/generate_placeholder_migration_queue.py`
 > 状态来源：`omnilss.family_capabilities` 的代码派生 `implementation_status`（placeholder = 生产路由被拒，需重写）
 > 批次划分：`docs/development/full-gamlss-migration-audit-and-roadmap-2026-09-11.md` 第 5 节 P1 批次
