@@ -274,6 +274,20 @@ def _vmap_same_family_group(
             jnp.linalg.lstsq(Xs[k], final_etas[k], rcond=None)[0]
             for k in range(n_params)
         )
+        # Same diagnostic as ``jax_rs_core.run_rs``: fraction of final etas
+        # pinned at a clipping bound.  A high value means the fit is leaning on
+        # the eta guards rather than the data.  Computed here (rather than
+        # defaulted to 0.0) so the vmap path reports what core reports.
+        clipped = jnp.zeros((), dtype=final_etas[0].dtype)
+        total = 0
+        for k in range(n_params):
+            lo, hi = eta_bounds[k] if k < len(eta_bounds) else (-10.0, 10.0)
+            eta_k = final_etas[k]
+            clipped = clipped + jnp.sum(
+                (eta_k <= lo + 1e-12) | (eta_k >= hi - 1e-12)
+            )
+            total += int(eta_k.size)
+        eta_clip_ratio = clipped / total if total > 0 else 0.0
         return (
             final_params,
             final_etas,
@@ -281,6 +295,7 @@ def _vmap_same_family_group(
             final_gdev,
             final_it,
             jnp.logical_and(final_it < max_outer, jnp.logical_not(failed)),
+            eta_clip_ratio,
         )
 
     @jax.jit
@@ -289,7 +304,7 @@ def _vmap_same_family_group(
             y_batch, weight_batch, *Xs_batch
         )
 
-    params_b, etas_b, betas_b, gdev_b, it_b, converged_b = _run_batch(
+    params_b, etas_b, betas_b, gdev_b, it_b, converged_b, clip_b = _run_batch(
         y_batch, weight_batch, Xs_batch
     )
     return [
@@ -300,6 +315,7 @@ def _vmap_same_family_group(
             g_dev=float(gdev_b[local_idx]),
             iterations=int(it_b[local_idx]),
             converged=bool(converged_b[local_idx]),
+            eta_clip_ratio=float(clip_b[local_idx]),
         )
         for local_idx in range(len(indices))
     ]

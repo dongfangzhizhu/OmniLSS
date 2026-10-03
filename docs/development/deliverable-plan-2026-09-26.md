@@ -265,6 +265,31 @@
   目前只发 `eta clipped` 警告并继续拟合。族级响应域校验应纳入 D2 的
   "失败可分类解释"，而不是靠收敛flag 事后发现。
 
+**D2.3 交付记录（2026-10-03）：修复 `batch_jax_rs_fit` 崩溃 —— 批量路径补齐 `eta_clip_ratio`**
+
+- 缺陷（`tests/test_jax_rs_batch.py` 3 项长期红灯，本轮作为"不完整的功能"处理）：
+  `JaxRSResult` 新增 `eta_clip_ratio` 字段后，**批量 vmap 路径的构造点没跟上**，
+  抛 `TypeError: JaxRSResult.__new__() missing 1 required positional argument`。
+  即批量 API 完全不可用 —— 不是结果偏差，是直接崩溃。
+- 修复：在 `_vmap_same_family_group` 的 `_single_fit` 内按 `core.run_rs` 同一公式
+  （`eta <= lo + 1e-12 | eta >= hi - 1e-12` 计数占比）计算该量并回填。
+- **驱动因素的实测结论**（原假设被推翻，值得留档）：`eta_clip_ratio` 由
+  **残差趋零**驱动，而非斜率过大。NO 的 sigma 是 log link 且边界为 `(-6, 6)`，
+  无噪数据把 `exp(eta)` 压向下界 → ratio 0.5；sd=0.4 → 0.0；sd=3.0 → 0.0。
+  我最初按"大斜率触发"写测试，被实测打回后按真实机制重写。
+- 结构性风险（**已登记，未消除**）：`jax_rs_batch` 的 vmap kernel 是
+  `jax_rs_core` IRLS 主循环的**独立重写**（vmap 无法直接调用 core），
+  `compute_gdev` / `cond_fn` / `body_fn` 逐段对应。本次缺陷正是这种重复的
+  直接后果。两处裁剪逻辑一处用 Python `float` 标量、一处用 traced 数组，
+  强行抽公共函数需在两种语义间妥协，故**保留各自实现**，改以 parity 断言
+  锁定漂移。
+- 验收：`tests/test_jax_rs_batch.py` 5 项全绿（新增 2 项）：
+  1. parity 测试扩展为比对**全部 7 个字段**（原只比 `g_dev` rtol 1e-9 与
+     `params` rtol 1e-8），新增 `iterations` / `converged` 精确相等与
+     `eta_clip_ratio` atol 1e-12 —— 这条断言是防 vmap/core 漂移的锁；
+  2. `eta_clip_ratio` 边界钉住行为的定向测试（按实测机制构造，非按猜测）。
+  JAX RS 相关回归 4 文件：57 通过 / 5 跳过，无回归。
+
 ### D1 分布 family d/p/q/r parity（P1，8–12 周）
 
 - 批次 A：ST/SEP/SST（独立参数化、尾部、q 稳健反演）；

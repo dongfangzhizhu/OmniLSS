@@ -56,6 +56,56 @@ def test_batch_jax_rs_fit_matches_repeated_core_for_broadcast_design():
     for batch_result, repeated_result in zip(batched, repeated, strict=True):
         np.testing.assert_allclose(batch_result.g_dev, repeated_result.g_dev, rtol=1e-9)
         np.testing.assert_allclose(batch_result.params, repeated_result.params, rtol=1e-8)
+        # The vmap kernel is an independent rewrite of the core IRLS loop (vmap
+        # cannot call ``jax_rs_fit_core`` directly on traced values), so every
+        # field it reports has to be checked, not just the deviance.
+        assert batch_result.iterations == repeated_result.iterations
+        assert batch_result.converged == repeated_result.converged
+        np.testing.assert_allclose(
+            batch_result.eta_clip_ratio, repeated_result.eta_clip_ratio, atol=1e-12
+        )
+
+
+def test_batch_eta_clip_ratio_detects_boundary_pinned_etas():
+    """A near-zero-residual fit pins sigma's eta on the log-link bound.
+
+    ``eta_clip_ratio`` is the batch path's only warning that a fit is leaning on
+    the eta guards rather than the data.  If the vmap path silently returned 0.0
+    this diagnostic would be dead weight on that path only.
+
+    The driver is a collapsing residual, not a steep slope: NO's sigma uses a
+    log link bounded at (-6, 6), so noiseless data drives ``exp(eta)`` toward
+    the lower bound.  Measured ratios (batch == core, x64):
+    noiseless -> 0.5000, sd=0.4 -> 0.0000, sd=3.0 -> 0.0000.
+    """
+    spec = get_jax_spec("NO")
+    n_obs = 60
+    x = np.linspace(-1.0, 1.0, n_obs)
+    designs = (
+        jnp.asarray(np.column_stack([np.ones(n_obs), x]), dtype=jnp.float64),
+        jnp.ones((n_obs, 1), dtype=jnp.float64),
+    )
+
+    noiseless = batch_jax_rs_fit(
+        ys=jnp.asarray(1.0 + 0.5 * x, dtype=jnp.float64)[None, :],
+        Xs_per_model=designs,
+        family_specs=spec,
+        max_outer=10,
+    )[0]
+
+    noisy = batch_jax_rs_fit(
+        ys=jnp.asarray(
+            1.0 + 0.5 * x + np.random.default_rng(7).normal(0.0, 3.0, n_obs),
+            dtype=jnp.float64,
+        )[None, :],
+        Xs_per_model=designs,
+        family_specs=spec,
+        max_outer=10,
+    )[0]
+
+    # Half the eta entries (sigma on every observation) sit on the bound.
+    assert noiseless.eta_clip_ratio == 0.5
+    assert noisy.eta_clip_ratio == 0.0
 
 
 def test_batch_jax_rs_fit_accepts_per_model_weights_and_designs():
