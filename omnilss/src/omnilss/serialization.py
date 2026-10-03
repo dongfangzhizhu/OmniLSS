@@ -809,6 +809,10 @@ def save_model_json(
             "df_fit": float(model.df_fit),
             "g_dev": float(model.g_dev),
             "iter": int(model.iter),
+            "converged": None if model.converged is None else bool(model.converged),
+            "termination_reason": (
+                None if model.termination_reason is None else str(model.termination_reason)
+            ),
             "type": str(model.type),
             "call": _model_call_metadata(model, include_training_data),
             "training_data_included": bool(include_training_data),
@@ -922,6 +926,11 @@ def load_model_json(path: str | Path):
         weights=weights,
         residuals=np.zeros(n),
         iter=int(meta.get("iter", 0)),
+        # Legacy artifacts predate the first-class convergence fields; keep
+        # them loadable with converged=None ("not reported") instead of
+        # silently claiming success.
+        converged=meta.get("converged", None),
+        termination_reason=meta.get("termination_reason", None),
         type=meta.get("type", "Continuous"),
         parameters=params,
         call=meta.get("call", {}),

@@ -482,6 +482,8 @@ def cg_fit_v2(
         residuals=jnp.asarray(residual_values, dtype=jnp.float64),
         rqres=rqres_callable,
         iter=it,
+        converged=converged,
+        termination_reason=termination_reason,
         type=family.type,
         parameters=family.parameters,
         call={

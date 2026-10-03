@@ -372,6 +372,16 @@ def gamlss_rs_jax(
     # df_fit
     df_fit = float(sum(betas_np[p].size for p in family.estimable_parameters))
 
+    # Fail-closed convergence classification (mirrors the NumPy RS path).
+    converged_flag = bool(result.converged)
+    if not np.isfinite(float(result.g_dev)):
+        converged_flag = False
+        termination_reason = "non_finite_deviance"
+    elif converged_flag:
+        termination_reason = "relative_deviance_converged"
+    else:
+        termination_reason = "max_iterations_reached"
+
     return GAMLSSModel(
         par=tuple(family.parameters),
         family=family,
@@ -392,6 +402,8 @@ def gamlss_rs_jax(
         residuals=residual_values,
         rqres=rqres_callable,
         iter=result.iterations,
+        converged=converged_flag,
+        termination_reason=termination_reason,
         type=family.type,
         parameters=tuple(family.parameters),
         call={

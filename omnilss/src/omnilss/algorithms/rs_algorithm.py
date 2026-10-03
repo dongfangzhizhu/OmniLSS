@@ -1304,6 +1304,17 @@ def rs_fit(
     # Check convergence
     if _has_converged(g_dev_old, g_dev, tol, rtol):
         converged = True
+    # Classify the outcome so callers can tell "converged" from "diverged"
+    # without re-deriving it from the deviance history.  A non-finite deviance
+    # is fail-closed: it can never be reported as a converged fit even if the
+    # change criterion happened to pass.
+    if not np.isfinite(g_dev):
+        converged = False
+        termination_reason = "non_finite_deviance"
+    elif converged:
+        termination_reason = "relative_deviance_converged"
+    else:
+        termination_reason = "max_iterations_reached"
     timing_split["core_rs"] = float(time.perf_counter() - core_rs_t0)
     if solver_backend.name == "jax":
         sync_t0 = time.perf_counter()
@@ -1453,6 +1464,8 @@ def rs_fit(
         residuals=jnp.asarray(residual_values, dtype=jnp.float64),
         rqres=rqres_callable,
         iter=iteration,
+        converged=converged,
+        termination_reason=termination_reason,
         type=family.type,
         parameters=family.parameters,
         call={

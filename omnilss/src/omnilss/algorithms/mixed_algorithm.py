@@ -331,6 +331,15 @@ def mixed_fit(
     )
     cg_model.additional_slots = slots
     cg_model.iter = cg_iterations
+    # Align the first-class convergence fields with the MIXED verdict recorded
+    # in the slots (the CG stage decides, exactly as the slot did before), so
+    # MIXED models report the same outcome through the unified accessor.
+    mixed_converged = bool(slots.get("converged", False))
+    cg_model.converged = mixed_converged
+    if cg_model.termination_reason is None:
+        cg_model.termination_reason = (
+            "relative_deviance_converged" if mixed_converged else "cg_stage_not_converged"
+        )
     cg_model.call = {
         **dict(cg_model.call or {}),
         "method": "MIXED",
@@ -424,13 +433,13 @@ def compare_algorithms(
             "deviance": float(model_rs.g_dev),
             "iterations": model_rs.additional_slots.get("rs_iterations"),
             "runtime_seconds": rs_runtime,
-            "converged": bool(model_rs.additional_slots.get("rs_converged", False)),
+            "converged": bool(model_rs.convergence_status()),
         },
         "cg": {
             "deviance": float(model_cg.g_dev),
             "iterations": model_cg.additional_slots.get("cg_iterations"),
             "runtime_seconds": cg_runtime,
-            "converged": bool(model_cg.additional_slots.get("cg_converged", False)),
+            "converged": bool(model_cg.convergence_status()),
         },
     }
     
@@ -443,12 +452,12 @@ def compare_algorithms(
         print("-" * 70)
         
         rs_iters = model_rs.additional_slots.get("rs_iterations", "-")
-        rs_conv = model_rs.additional_slots.get("rs_converged", False)
+        rs_conv = bool(model_rs.convergence_status())
         print(f"{'RS':<15} {model_rs.g_dev:<15.4f} {rs_iters:<15} "
               f"{'Converged' if rs_conv else 'Not converged':<15}")
         
         cg_iters = model_cg.additional_slots.get("cg_iterations", "-")
-        cg_conv = model_cg.additional_slots.get("cg_converged", False)
+        cg_conv = bool(model_cg.convergence_status())
         print(f"{'CG':<15} {model_cg.g_dev:<15.4f} {cg_iters:<15} "
               f"{'Converged' if cg_conv else 'Not converged':<15}")
         

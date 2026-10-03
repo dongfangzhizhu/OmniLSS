@@ -1846,6 +1846,16 @@ def gamlss(
     if method_name != "CG":
         converged = abs(old_g_dev - g_dev) <= control.c_crit
 
+    # Classify the outcome for the first-class convergence fields.  Fail-closed:
+    # a non-finite deviance can never be reported as a converged fit.
+    if not np.isfinite(g_dev):
+        converged = False
+        termination_reason = "non_finite_deviance"
+    elif converged:
+        termination_reason = "relative_deviance_converged"
+    else:
+        termination_reason = "max_iterations_reached"
+
     # Print final status if verbose
     if verbose:
         monitor.finish()
@@ -2017,6 +2027,8 @@ def gamlss(
         formulas=formulas,
         terms=term_map,
         design_matrices=design_matrices,
+        converged=bool(converged),
+        termination_reason=termination_reason,
         additional_slots={
             "G.deviance": g_dev,
             "P.deviance": g_dev,

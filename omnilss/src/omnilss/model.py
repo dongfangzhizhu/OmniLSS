@@ -40,6 +40,14 @@ class GAMLSSModel:
     call: Mapping[str, Any] | None = None
     control: Mapping[str, Any] = field(default_factory=dict)
     iter: int = 0
+    # Convergence reporting.  R's `gamlss()` object exposes `$converged`; the
+    # Python container used to hide the same information inside
+    # ``additional_slots["rs_converged"] / ["cg_converged"]``, so a diverged
+    # fit was indistinguishable from a converged one at the model level.
+    # ``None`` means "not reported by this construction site" (legacy
+    # artifacts, ``gamlss_ml`` staging path, partial objects).
+    converged: bool | None = None
+    termination_reason: str | None = None
     weights: Any = None
     residuals: Any = None
     type: str = "Continuous"
@@ -71,6 +79,23 @@ class GAMLSSModel:
         """Mirror the R object check `what %in% object$par`."""
 
         return what in self.par
+
+    def convergence_status(self) -> bool | None:
+        """Return the reported convergence flag, or ``None`` when unknown.
+
+        The first-class :attr:`converged` field wins.  Older construction
+        sites (and third-party models that only populate
+        ``additional_slots``) are handled by falling back to the per-route
+        slot keys, so callers get one answer instead of silently defaulting.
+        """
+
+        if self.converged is not None:
+            return bool(self.converged)
+        slots = self.additional_slots if isinstance(self.additional_slots, Mapping) else {}
+        for key in ("converged", "rs_converged", "cg_converged", "mixed_converged"):
+            if key in slots:
+                return bool(slots[key])
+        return None
 
     def get_slot(self, slot_name: str) -> Any:
         """Retrieve a migrated slot or raise a close R-style error."""

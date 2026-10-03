@@ -218,6 +218,53 @@
 - 澄清：探针中 NO2 的 `g_dev ≈ 8.7e6` 是模型误设（常方差数据 + 方差随均值变化的
   NO2），在正确设定的数据上 NO2 4 轮收敛（`g_dev ≈ 322`），非算法缺陷。
 
+**D2.2 交付记录（2026-10-03）：拟合收敛状态一等化 —— 失败不再静默**
+
+- 先澄清 C6 的现状：`jax_rs_core` / `jax_rs_batch` 的 NaN-as-convergence **已在
+  `2dcab9a` 修复**（deviance 非有限即中止循环 + `converged` 要求"未触顶且无
+  failed 标志"），并有 `test_jax_rs_nan_handling.py` 锁定。真正未修的是
+  **默认的 NumPy RS 路径与模型容器**。
+- 缺陷：`GAMLSSModel` **没有 `converged` 字段**。收敛信息只藏在
+  `additional_slots["rs_converged"] / ["cg_converged"]` 里，导致
+  `g_dev = inf`、`mu` 被裁剪到 1e8 的发散拟合与正常拟合在模型层面**完全无法区分**
+  —— 这正是 D2.2 要治的"溢出伪成功/失败静默"，而 R 的 `gamlss()` 对象直接暴露
+  `$converged`。
+- 修复：
+  1. `GAMLSSModel` 新增一等字段 `converged: bool | None` 与
+     `termination_reason: str | None`（默认 `None` = 未报告，保证 legacy 工件与
+     `gamlss_ml` 暂存路径兼容）；
+  2. 全部拟合路由填充实并**fail-closed**：deviance 非有限一律
+     `converged=False` + `non_finite_deviance`，绝不因变化量判据而侥幸通过；
+     迭代预算耗尽为 `max_iterations_reached`，正常收敛为
+     `relative_deviance_converged`（与 CG 既有词汇表一致，另有
+     `step_rejected` / `no_progress_step_rejected`）；
+  3. 覆盖 NumPy RS（`rs_algorithm`）、CG v2、**CG full-hessian 内联路径**
+     （`method="CG"` 的默认后端，历史上完全没接线）、JAX RS 集成
+     （`jax_rs_integration`）；
+  4. JSON 工件的 `meta.json` 写入这两个字段并在加载时读回（`.get` 兜底，
+     旧工件读出 `None` 而非谎称成功）。
+- 既有 `additional_slots["rs_converged"] / ["cg_converged"]` 保留，与新字段
+  保持同步，向后兼容。
+- 验收：`tests/test_model_convergence_reporting.py`（11 项）—— 正常收敛 /
+  迭代预算耗尽 / 非有限 deviance 三种结局的分类，四条拟合路由（RS、CG、
+  RS_JAX、MIXED）与序列化往返都填字段，legacy 工件读出 `None`，
+  `convergence_status()` 的 slot 回退可用。
+  回归面：序列化（4 文件）、golden manifest（2 文件）、模型指标/选择、
+  MIXED/CG/RS/JAX-RS 算法与 gRPC 共 19 个测试文件全绿。
+- 连带修掉 3 个**消费者缺陷**（都是"读错收敛信息"这一类）：
+  1. `model_selection.compare_distributions` 读 `additional_slots["converged"]`，
+     而 RS 路径只写 `rs_converged` → 恒为 False（这正是
+     `test_model_selection.py::test_compare_distributions_with_failure` 长期
+     红色的原因，现已改读统一访问器并按其注释本意修正断言）；
+  2. `api/grpc/server.py` 在两个 slot 都缺失时**默认 `True`**（fail-open），
+     会向客户端谎称已收敛 → 改为 fail-closed（未知即 `False`）；
+  3. `mixed_algorithm` 的 metrics/verbose 读取统一走访问器，返回模型的
+     一等字段与 MIXED 判定对齐。
+- **新发现的 R-parity 缺口（待办）**：R 的 `gamlss()` 会按族校验响应取值范围，
+  例如含负响应时 GA 直接 `stop("response variable out of range")`；Python 侧
+  目前只发 `eta clipped` 警告并继续拟合。族级响应域校验应纳入 D2 的
+  "失败可分类解释"，而不是靠收敛flag 事后发现。
+
 ### D1 分布 family d/p/q/r parity（P1，8–12 周）
 
 - 批次 A：ST/SEP/SST（独立参数化、尾部、q 稳健反演）；

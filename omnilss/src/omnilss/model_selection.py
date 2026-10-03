@@ -71,7 +71,7 @@ def _fit_single_distribution(
             "df": float(model.df_fit),
             "AIC": float(model.additional_slots.get("aic", np.inf)),
             "BIC": float(model.additional_slots.get("sbc", np.inf)),
-            "converged": bool(model.additional_slots.get("converged", False)),
+            "converged": bool(model.convergence_status()),
             "n_iter": int(model.iter),
             "success": True
         }

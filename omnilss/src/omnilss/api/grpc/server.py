@@ -677,8 +677,21 @@ def create_service():
 
             model = gamlss(**kwargs)
             model_id = REGISTRY.save(model)
-            slots = dict(getattr(model, "additional_slots", {}) or {})
-            converged = slots.get("rs_converged", slots.get("cg_converged", True))
+            # Fail-closed convergence reporting: prefer the model's first-class
+            # flag, fall back to the per-route slots, and never claim success
+            # when nothing reported an outcome (the previous default of `True`
+            # told clients a fit converged even when no route had said so).
+            status_fn = getattr(model, "convergence_status", None)
+            if callable(status_fn):
+                converged = status_fn()
+            else:
+                slots = dict(getattr(model, "additional_slots", {}) or {})
+                converged = slots.get(
+                    "rs_converged",
+                    slots.get("cg_converged", slots.get("converged")),
+                )
+            if converged is None:
+                converged = False
             return fit_pb2.FitResponse(
                 model_id=model_id,
                 success=True,
