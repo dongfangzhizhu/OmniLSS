@@ -765,7 +765,7 @@ def test_grpc_batch_fit_service_direct(monkeypatch) -> None:
             ),
             fit_pb2.FitRequest(
                 formula="y ~ x",
-                family="GA",
+                family="NO",
                 data_json=json.dumps({"y": [2.0, 3.0], "x": [0.0, 1.0]}),
                 sigma_formula="~ 1",
                 method="RS",
@@ -779,7 +779,82 @@ def test_grpc_batch_fit_service_direct(monkeypatch) -> None:
     assert response.success is True
     assert [r.model_id for r in response.responses] == ["model-1", "model-2"]
     assert [r.deviance for r in response.responses] == [11.0, 12.0]
-    assert [call["family"] for call in calls] == ["NO", "GA"]
+    assert [call["family"] for call in calls] == ["NO", "NO"]
+
+
+def test_grpc_batch_fit_rejects_non_production_family(monkeypatch) -> None:
+    """Batch service routes are fail-closed for experimental families.
+
+    ``require_production_family_route(strict=True)`` refuses any family whose
+    capability status is experimental / placeholder / compat-alias.  The single
+    ``Fit`` path enforces the same rule, so a client cannot route around the
+    policy by batching instead.  This test pins that contract explicitly --
+    an earlier version of the batch test used GA and asserted success, which
+    only "worked" while GA's capability status was unreached.
+    """
+    import json
+
+    from omnilss.api.grpc import server as grpc_server
+    from omnilss.api.grpc.generated import fit_pb2
+
+    class DummyModel:
+        def __init__(self, deviance: float) -> None:
+            self.g_dev = deviance
+            self.iter = 1
+            self.additional_slots = {"rs_converged": True}
+
+    class DummyRegistry:
+        def __init__(self) -> None:
+            self.saved = 0
+
+        def save(self, model) -> str:
+            self.saved += 1
+            return f"model-{self.saved}"
+
+    calls = []
+
+    def fake_gamlss(**kwargs):
+        calls.append(kwargs)
+        return DummyModel(10.0 + len(calls))
+
+    try:
+        service, *_ = grpc_server.create_service()
+    except RuntimeError as exc:
+        pytest.skip(f"gRPC stubs/runtime unavailable in environment: {exc}")
+
+    monkeypatch.setattr(grpc_server, "gamlss", fake_gamlss)
+    monkeypatch.setattr(grpc_server, "REGISTRY", DummyRegistry())
+
+    request = fit_pb2.BatchFitRequest(
+        requests=[
+            fit_pb2.FitRequest(
+                formula="y ~ x",
+                family="NO",
+                data_json=json.dumps({"y": [1.0, 2.0], "x": [0.0, 1.0]}),
+                sigma_formula="~ 1",
+                method="RS",
+                max_iter=3,
+            ),
+            fit_pb2.FitRequest(
+                formula="y ~ x",
+                family="GA",
+                data_json=json.dumps({"y": [2.0, 3.0], "x": [0.0, 1.0]}),
+                sigma_formula="~ 1",
+                method="RS",
+                max_iter=3,
+            ),
+        ]
+    )
+
+    response = service.BatchFit(request, None)
+
+    assert response.success is False
+    assert response.error == "1 of 2 fits failed"
+    # The production family still fits; only the experimental one is rejected.
+    assert [r.success for r in response.responses] == [True, False]
+    assert "capability" in response.responses[1].error.lower()
+    # The rejection must happen before the fitting call, not after.
+    assert [call["family"] for call in calls] == ["NO"]
 
 
 

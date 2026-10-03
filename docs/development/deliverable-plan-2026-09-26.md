@@ -323,6 +323,31 @@
   三条方法路由的拒绝一致性、NO 负响应正常拟合。
 - **未接入 `gamlss_ml`**：与 R 的 `gamlssML` 一致（该函数不做此检查）。
 
+**D2.5 交付记录（2026-10-03）：清零 gRPC 批量拟合的既有失败（测试期望纠偏）**
+
+- 上一轮记为"`test_grpc_server.py::test_grpc_batch_fit_service_direct` 失败
+  （capability admission）"。本轮定位结论：**服务代码没有缺陷，是测试期望过时**。
+- 证据：`BatchFit` 与 `Fit` 复用同一个 `_fit_one`，准入检查
+  `require_production_family_route(..., strict=True)` 逐字相同，不存在
+  "批量比单条宽松/严格"的行为差异。实测各族 RS 路由的 strict 准入状态：
+  `NO` → `implemented`（放行）；`GA` / `PO` / `WEI2` / `PE2` → `experimental`
+  （拒绝）。测试的第二个请求用了 `family="GA"`，被正确拒绝，
+  于是 `assert response.success is True` 失败。
+- 修复：
+  1. `test_grpc_batch_fit_service_direct` 第二个请求改为 `family="NO"` ——
+     保持原测试意图（批量能跑通多个模型并返回递增 model_id / deviance），
+     不再依赖非生产族；
+  2. **新增** `test_grpc_batch_fit_rejects_non_production_family`，把此前
+     隐性的准入契约显式化：`BatchFit` 对 experimental 族返回
+     `success=False` + `1 of 2 fits failed`，且生产族同批仍成功
+     （`[True, False]`），并断言 `gamlss` 只被调用一次
+     —— 证明拒绝发生在**拟合调用之前**（准入层），不是拟合失败后的兜底。
+     这条断言直接锁住"客户端不能靠批量绕开准入策略"。
+- 教训：既有用例长期失败时，先确认是**代码错**还是**期望错**。本例是后者 ——
+  GA 的能力状态从可直接拟合变为需显式准入，测试没跟上。若照"修服务让它放行"
+  去做，等于把 fail-closed 的安全边界拆掉。
+- 验收：`tests/test_grpc_server.py` 35 项全绿（该文件既有失败清零）。
+
 ### D1 分布 family d/p/q/r parity（P1，8–12 周）
 
 - 批次 A：ST/SEP/SST（独立参数化、尾部、q 稳健反演）；
