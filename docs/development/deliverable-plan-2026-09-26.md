@@ -290,6 +290,39 @@
   2. `eta_clip_ratio` 边界钉住行为的定向测试（按实测机制构造，非按猜测）。
   JAX RS 相关回归 4 文件：57 通过 / 5 跳过，无回归。
 
+**D2.4 交付记录（2026-10-03）：族级响应域校验 —— R parity 补缺**
+
+- 先纠正上一条记录里的一个说法：`stop("response variable out of range")`
+  **并非只在绘图函数里**。真正的拟合入口校验在
+  `gamlss/R/gamlss-5.R:960`（`gamlss()` 函数体内，任何 IRLS 步之前）：
+  `if (!family$y.valid(y)) stop("response variable out of range")`。
+  `gamlss.ggplots` / `pdfplot` 里的同名 stop 是绘图侧的独立检查。
+- 另一处边界澄清：R 的 **`gamlssML` 不做该校验**（`gamlssML.R` 内无 `y.valid`），
+  所以 Python 的 `gamlss_ml` 也保持宽松，只在 `gamlss()` 加校验 —— 这是刻意的
+  parity 边界，不是漏接。
+- 新增 `src/omnilss/response_domain.py`：
+  - `_RESPONSE_DOMAINS` 表**逐条从 `gamlss.dist/R/<族>.R` 原文抄出**，共 18 族
+    （GA/EXP/PARETO1/WEI/WEI2/WEI3 → `y>0`；ZIP/ZABB/ZIBB → `y>=0`；
+    BEINF/BEINF0/BEINF1/BEOI/BEZI → 四个不同的单位区间变体；
+    MN4/MN5/PARETO/ZIPF → 位移或截断支撑集）。
+  - **表外的族一律放行**。初版我按分布常识给 PO/ZINB/ALPHA/BETA/DAGUM/
+    LOGGAMMA/LOMAX/NOF/FGA/GGA/MIXED/BCPEO*/WEIBULL 也加了限制，随后核对
+    R 源码发现这些族**根本没有 `y.valid`** —— 凭空加限制会拒绝 R 正常拟合的
+    数据，**假拒绝比漏检更糟**，全部移除。这条 provenance 规则写进了模块注释。
+  - `validate_response()` 硬失败（对齐 R 的 `stop`），另提供
+    `response_violation_count()` 非抛出版本；NaN/Inf 对所有族一律拒绝
+    （含 R 放行的族），因为没有族能拟合非有限响应。
+- 接入点选在 `gamlss()` 内 `resolve_family` 之后、所有方法路由之前，
+  因此 RS / CG / MIXED / RS_JAX / joint **五条路径行为一致** ——
+  只护 NumPy RS 会让其他路径继续拟合 R 拒绝的数据。
+- 验收：`tests/test_response_domain.py`（36 项），含**活 R 对照**两项：
+  1. R 对 GA + 负响应确实抛 `response variable out of range`
+     （bridge 把 R 的 `stop` 包成 `RuntimeError`，断言落在消息上）；
+  2. 正响应数据两侧都成功且 deviance 一致（rtol 1e-3），证明没有过度拒绝。
+  另有逐族的谓词边界断言（`y=0` 在 ZIP 合法、在 GA 非法等）、
+  三条方法路由的拒绝一致性、NO 负响应正常拟合。
+- **未接入 `gamlss_ml`**：与 R 的 `gamlssML` 一致（该函数不做此检查）。
+
 ### D1 分布 family d/p/q/r parity（P1，8–12 周）
 
 - 批次 A：ST/SEP/SST（独立参数化、尾部、q 稳健反演）；

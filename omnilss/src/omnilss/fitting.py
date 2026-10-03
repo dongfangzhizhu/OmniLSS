@@ -46,6 +46,7 @@ from ._fitting_residuals import (
 from .formula_parser import parse_formula as parse_full_formula
 from .formula_parser import has_smooth_terms
 from .model import GAMLSSModel
+from .response_domain import validate_response
 
 _STANDARD_NORMAL = NormalDist()
 
@@ -932,6 +933,15 @@ def gamlss(
     >>> model = gamlss("y ~ x", family=NO(), data=data)
     >>> model = gamlss("y ~ x", family="GA", data=data, method="RS")
     >>> model = gamlss("y ~ pb(x)", family=NO(), data=data)  # P-spline
+
+    Raises
+    ------
+    omnilss.response_domain.ResponseDomainError
+        If the response leaves the family's support, e.g. a negative value
+        with GA.  This mirrors R's ``gamlss()``, which calls
+        ``stop("response variable out of range")`` before any IRLS step
+        (``gamlss-5.R:960``).  R's ``gamlssML`` performs no such check, and
+        neither does :func:`gamlss_ml` here.
     """
 
     if data is None:
@@ -957,6 +967,15 @@ def gamlss(
     method_name = str(method).upper()
     requested_method_name = method_name
     family = resolve_family(family)
+
+    # R parity: `gamlss()` aborts before any IRLS step when the response
+    # leaves the family's support (gamlss-5.R:960 ->
+    # `if (!family$y.valid(y)) stop("response variable out of range")`).
+    # Checked here so every method route (RS / CG / MIXED / RS_JAX / joint)
+    # rejects the data identically instead of only the NumPy RS path.
+    _response_column, _ = _parse_formula(formula)
+    validate_response(getattr(family, "name", str(family)), data[_response_column])
+
     if method_name in {"CG", "MIXED"} and any(
         has_smooth_terms(value)
         for value in (formula, sigma_formula, *(parameter_formulas or {}).values())
