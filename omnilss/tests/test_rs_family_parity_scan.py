@@ -178,3 +178,54 @@ def test_gate_reports_skip_not_fail_when_unprobeable(scan, monkeypatch):
     info = scan.gate_derivatives("__STUB__")
     assert info["status"] == "skip"
     assert "finite" in info["detail"]
+
+
+def test_a_wedged_family_is_killed_and_recorded_as_skip(scan):
+    """A non-terminating family must not take the whole scan down.
+
+    An earlier run of the full scan had to be killed after 35 minutes: a
+    single family's RS fit did not return and the per-family ``try/except``
+    could not help, because the family was not raising -- it was never
+    finishing.  Windows has no ``signal.alarm``, so the only remedy is to run
+    each family in a child process and terminate it on deadline.
+
+    A 10 ms deadline is used here: the child is still importing JAX, so both
+    families are guaranteed to blow it.  What matters is the verdict shape.
+    """
+    rows = scan.scan_families(
+        ["NO", "GA"],
+        results=[],
+        index={},
+        jobs=[],
+        r_ok=False,
+        n=6,
+        timeout=0.01,
+        verbose=False,
+    )
+    assert [r["family"] for r in rows] == ["NO", "GA"]
+    for row in rows:
+        assert row["deriv"]["status"] == "skip"
+        assert "exceeded" in row["deriv"]["detail"]
+
+
+def test_timeout_row_names_the_deadline(scan):
+    """The skip verdict has to say *why* the family was not checked."""
+    row = scan._timeout_row("XYZ", 12.5)
+    assert row["family"] == "XYZ"
+    assert row["deriv"]["status"] == "skip"
+    assert "12.5s" in row["deriv"]["detail"]
+
+
+def test_evaluate_family_runs_every_gate(scan):
+    """Gate dispatch lives in one place now; check all three are wired."""
+    calls: list[str] = []
+    monkey = scan.gate_derivatives
+    scan.gate_derivatives = lambda f: calls.append("deriv") or {"status": "pass", "detail": ""}
+    scan.gate_dpqr = lambda f, *a: calls.append("dpqr") or {"status": "skip", "detail": ""}
+    scan.gate_rs_deviance = lambda f, *a: calls.append("rsdev") or {"status": "skip", "detail": ""}
+    try:
+        row = scan.evaluate_family("NO", [], {}, [], r_ok=True, n=6)
+    finally:
+        scan.gate_derivatives = monkey
+    assert calls == ["deriv", "dpqr", "rsdev"]
+    assert row["family"] == "NO"

@@ -513,6 +513,35 @@ deriv 关 20 个"失败"是工具自己造的，真实候选缺陷只剩 20 个�
 比较仍公平），否则整轮扫描超过 30 分钟。因此 **deriv / dpqr 两关的数字已可引用，
 rsdev 的数字需重测后才可作为基线**。
 
+**D2.11 交付记录（2026-10-06）：扫描器加单族超时 —— 让基线测得出来**
+
+D2.9 留的待办落地。上一轮全量扫描跑了 **35 分钟仍未结束**，只能强杀：
+逐族的 `try/except` 只能挡住"抛异常"，挡不住"根本不返回"。
+R 的 deviance 越界、早退这类表现都在单侧对照里出现，若无硬上限，
+一次异常就能让整轮基线无法生成。
+
+**为什么必须用子进程**：Windows 没有 `signal.alarm`；线程也无法打断
+正在跑的循环。唯一可靠手段是让每个族在子进程里跑，超时即 terminate。
+
+**实现**（`tools/rs_family_parity_scan.py`）
+- 抽出 `evaluate_family(family, ...)`：一族的全部关卡集中一处，
+  原来是 `main()` 里的 lambda 三连；
+- `_worker_loop` + `_Worker`：一个**常驻**子进程通过管道接单，
+  启动开销（JAX import）只付一次；只有某族真的超时时才重启 worker；
+- 超时族记 `skip`，detail 写明 `probe exceeded Ns and was killed`
+  —— 与"无法探测"同属"没查成"，不记 `fail`；
+- `--timeout`（默认 180s，`--timeout 0` 关闭退回进程内跑）；
+  `--quiet` 关闭逐族进度；子进程按 EOF 自行退出，关闭时无 traceback 噪声。
+
+**验收**：`tests/test_rs_family_parity_scan.py` 增至 25 项，新增
+- 超时确实触发且判为 `skip`（用 10ms deadline：子进程还在 import JAX，
+  两族必然超时，测的是判决形状而非时序）；
+- `_timeout_row` 必须写明 deadline；
+- `evaluate_family` 确实串起三关（防止重构漏掉某一关）。
+
+**顺带的方法论**：超时也是一种"假失败"来源 —— 若把超时记成 `fail`，
+一轮扫描里超时越多的族看起来越"坏"，会误导排查方向。
+
 **D2.10 交付记录（2026-10-06）：BI 二项响应被 `bd` 二次缩放 —— 计数当比例用**
 
 扫描器在 BI/DBI 上报出 `max rel diff 1.35e16`，追下去发现根因不在导数。

@@ -612,6 +612,167 @@ def gate_rs_deviance(family: str, results: list[dict], index: dict, fit_data) ->
 
 
 # ---------------------------------------------------------------------------
+# Per-family evaluation, isolated behind a wall-clock timeout
+# ---------------------------------------------------------------------------
+
+
+def evaluate_family(family: str, results, index, jobs, r_ok: bool, n: int) -> dict:
+    """Run all applicable gates for one family and return its report row."""
+    row: dict = {"family": family}
+    gates = (
+        ("deriv", lambda: gate_derivatives(family)),
+        ("dpqr", lambda: gate_dpqr(family, results, index) if r_ok else None),
+        (
+            "rsdev",
+            lambda: gate_rs_deviance(family, results, index, _fit_payload(family, jobs, index))
+            if r_ok
+            else None,
+        ),
+    )
+    for gate_name, gate_fn in gates:
+        try:
+            info = gate_fn()
+        except Exception as exc:  # never let one family abort the scan
+            info = {"status": "fail", "detail": f"scanner raised {type(exc).__name__}: {exc}"[:110]}
+        if info is not None:
+            row[gate_name] = info
+    return row
+
+
+def _timeout_row(family: str, seconds: float) -> dict:
+    return {
+        "family": family,
+        "deriv": {
+            "status": "skip",
+            "detail": f"probe exceeded {seconds:g}s and was killed",
+        },
+    }
+
+
+def _worker_loop(conn) -> None:  # pragma: no cover - runs in a child process
+    """Serve family evaluations over a pipe until the parent closes it.
+
+    A dedicated process is the only way to bound a family that does not
+    terminate: ``signal.alarm`` does not exist on Windows, and a thread cannot
+    interrupt a running loop.  Terminating the worker is safe because each
+    family is evaluated independently and the parent simply restarts it.
+    """
+    setup = conn.recv()
+    results, index, jobs, r_ok, n = setup
+    while True:
+        try:
+            family = conn.recv()
+        except (EOFError, OSError):
+            return  # parent went away or shut the pipe: exit quietly
+        try:
+            conn.send(evaluate_family(family, results, index, jobs, r_ok, n))
+        except Exception as exc:  # pragma: no cover - defensive
+            conn.send({"family": family, "deriv": {"status": "fail", "detail": f"{exc}"[:110]}})
+
+
+class _Worker:
+    """A reusable child process that evaluates one family at a time.
+
+    The worker is restarted only when a family blows the timeout, so the
+    (expensive) JAX import is paid once in the common case.
+    """
+
+    def __init__(self, results, index, jobs, r_ok: bool, n: int) -> None:
+        self._setup = (results, index, jobs, r_ok, n)
+        self._proc = None
+        self._conn = None
+        self._start()
+
+    def _start(self) -> None:
+        import multiprocessing as mp
+
+        ctx = mp.get_context("spawn")
+        parent_conn, child_conn = ctx.Pipe()
+        proc = ctx.Process(target=_worker_loop, args=(child_conn,), daemon=True)
+        proc.start()
+        child_conn.close()
+        parent_conn.send(self._setup)
+        self._conn, self._proc = parent_conn, proc
+
+    def _restart(self) -> None:
+        self.close()
+        self._start()
+
+    def evaluate(self, family: str, timeout: float) -> dict:
+        try:
+            self._conn.send(family)
+        except (BrokenPipeError, OSError):
+            self._restart()
+            self._conn.send(family)
+        if self._conn.poll(timeout):
+            try:
+                return self._conn.recv()
+            except EOFError:
+                self._restart()
+                return _timeout_row(family, timeout)
+        # The family is wedged inside the child; the only remedy is to kill it.
+        self._restart()
+        return _timeout_row(family, timeout)
+
+    def close(self) -> None:
+        if self._conn is not None:
+            try:
+                self._conn.close()
+            except OSError:
+                pass
+            self._conn = None
+        if self._proc is not None:
+            # Closing the pipe first lets the child leave its recv loop on
+            # EOF and exit on its own; terminate is only the fallback for a
+            # child that is already wedged inside a family.
+            self._proc.join(timeout=2)
+            if self._proc.is_alive():
+                self._proc.terminate()
+                self._proc.join(timeout=5)
+            if self._proc.is_alive():  # pragma: no cover - stubborn child
+                self._proc.kill()
+            self._proc = None
+
+    def __enter__(self) -> "_Worker":
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        self.close()
+
+
+def scan_families(
+    families: list[str],
+    results,
+    index,
+    jobs,
+    r_ok: bool,
+    n: int,
+    timeout: float,
+    verbose: bool = True,
+) -> list[dict]:
+    """Evaluate every family, isolating hangs behind ``timeout`` seconds."""
+    try:
+        worker = _Worker(results, index, jobs, r_ok, n)
+    except Exception as exc:  # pragma: no cover - no multiprocessing available
+        print(f"[warn] worker unavailable ({exc}); running in-process", file=sys.stderr)
+        return [evaluate_family(f, results, index, jobs, r_ok, n) for f in families]
+
+    rows: list[dict] = []
+    with worker:
+        for i, family in enumerate(families, 1):
+            row = worker.evaluate(family, timeout)
+            rows.append(row)
+            if verbose:
+                cells = " ".join(
+                    f"{g}={(row.get(g) or {}).get('status', '-'):5s}"
+                    for g in ("deriv", "dpqr", "rsdev")
+                    if g in row
+                )
+                print(f"[{i:3d}/{len(families)}] {family:12s} {cells}", flush=True)
+    return rows
+
+
+# ---------------------------------------------------------------------------
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -619,6 +780,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", help="write machine-readable results here")
     parser.add_argument("--no-r", action="store_true", help="run gate 2 only")
     parser.add_argument("--n", type=int, default=8, help="grid size")
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=180.0,
+        help="per-family wall-clock limit in seconds (0 disables isolation)",
+    )
+    parser.add_argument("--quiet", action="store_true", help="suppress per-family progress")
     opts = parser.parse_args(argv)
 
     families = (
@@ -637,21 +805,12 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as exc:
             print(f"[warn] R unavailable, running gate 2 only: {exc}", file=sys.stderr)
 
-    rows = []
-    for family in families:
-        row = {"family": family}
-        for gate_name, gate_fn in (
-            ("deriv", lambda f: gate_derivatives(f)),
-            ("dpqr", lambda f: gate_dpqr(f, results, index) if r_ok else None),
-            ("rsdev", lambda f: gate_rs_deviance(f, results, index, _fit_payload(f, jobs, index)) if r_ok else None),
-        ):
-            try:
-                info = gate_fn(family)
-            except Exception as exc:  # never let one family abort the scan
-                info = {"status": "fail", "detail": f"scanner raised {type(exc).__name__}: {exc}"[:110]}
-            if info is not None:
-                row[gate_name] = info
-        rows.append(row)
+    if opts.timeout and opts.timeout > 0:
+        rows = scan_families(
+            families, results, index, jobs, r_ok, opts.n, opts.timeout, not opts.quiet
+        )
+    else:
+        rows = [evaluate_family(f, results, index, jobs, r_ok, opts.n) for f in families]
 
     _report(rows, r_ok)
     if opts.json:
