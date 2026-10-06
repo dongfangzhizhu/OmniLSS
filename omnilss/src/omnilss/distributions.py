@@ -1913,6 +1913,32 @@ def BCT() -> BoxCoxTFamily:
         values = np.array([math.lgamma(float(value)) for value in flat], dtype=np.float64)
         return jnp.asarray(values.reshape(np.asarray(x).shape), dtype=jnp.float64)
 
+    def _truncation_log_term(
+        sigma: jnp.ndarray, nu: jnp.ndarray, tau: jnp.ndarray
+    ) -> jnp.ndarray:
+        """``-log(pt(1/(sigma*|nu|), df = tau))`` -- R BCT.R's truncation term.
+
+        The Box-Cox t family is *truncated*: R's ``dBCT`` subtracts the upper
+        tail beyond ``1/(sigma*|nu|)``.  That term depends on ``sigma`` and
+        ``nu``, so leaving it out of the fitting log-density does not merely
+        shift the deviance by a constant -- it also makes every score and
+        Hessian wrong, which is what the parity scanner flags for this family.
+
+        JAX ships no Student-t CDF (only ``t.pdf`` / ``t.logpdf``), so use the
+        regularized incomplete beta identity already used by ``BCTo``::
+
+            pt(t, df) = 1 - 0.5 * I_{df/(df+t^2)}(df/2, 1/2)     for t > 0
+
+        ``|nu|`` is floored rather than allowed to reach zero so the ``1/|nu|``
+        blow-up stays finite (and differentiable) instead of producing inf/NaN.
+        """
+        from jax.scipy.special import betainc as _betainc
+
+        arg = 1.0 / (sigma * jnp.maximum(jnp.abs(nu), eps))
+        x_beta = tau / (tau + arg * arg)
+        tail = 0.5 * _betainc(tau / 2.0, 0.5, x_beta)
+        return -jnp.log(jnp.maximum(1.0 - tail, eps))
+
     def _log_density(
         y: jnp.ndarray,
         mu: jnp.ndarray,
@@ -1933,7 +1959,8 @@ def BCT() -> BoxCoxTFamily:
         )
         jacobian = -jnp.log(sigma) - nu * jnp.log(mu) + (nu - 1.0) * jnp.log(y)
         kernel = -((tau + 1.0) / 2.0) * jnp.log1p(jnp.square(z) / tau)
-        return log_norm + jacobian + kernel
+        truncation = _truncation_log_term(sigma, nu, tau)
+        return log_norm + jacobian + kernel + truncation
 
     def g_dev_inc(
         y: jnp.ndarray,

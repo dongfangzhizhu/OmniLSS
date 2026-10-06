@@ -584,6 +584,88 @@ Python 侧却在三处都做了 `y_counts = round(y * bd)`（`dBI`、
 2. "既有测试全绿"不等于"这条路径对"——覆盖的是 `bd=1`，缺陷在 `bd>1`；
 3. R 的响应约定要从 `gamlss()` 的入口读，不是从 `dXY()` 的函数体猜。
 
+**D2.12 交付记录（2026-10-06）：BCT 拟合路径漏掉截断项 —— 密度与导数不同源**
+
+扫描器在 BCT 上报 `deriv: sigma / nu / tau` 三个参数导数对不上
+（rel diff 0.24–0.29），而 `mu` 对上。**这个"只有 mu 对得上"的形状就是线索。**
+
+**根因：密度和拟合用的对数密度是两个函数**
+
+Box-Cox t 是**截断**族。R 的 `dBCT` 末尾有：
+
+    loglik <- loglik + fTz - log(pt(1/(sigma * abs(nu)), df = tau))
+
+我们自己的 `dpqr_functions.dBCT` 也有这一项。但 `distributions.BCT` 里
+喂给 `g_dev_inc` 与数值 score 的 `_log_density` **漏了它**。
+
+实测（sigma=1.5, nu=0.7, tau=4）：
+
+    max | log(dBCT) - (-g_dev_inc/2) |  =  0.2199204   （与 y 无关的常数）
+    exp(0.2199204)                      =  1.2459
+    log(1 / pt(0.952, df=4))             =  0.2199204   ← 判决性对上
+
+常数偏移看着无害，deviance 上也大体无害 —— 但该项**依赖 sigma 与 nu**，
+所以**每个 score 和 Hessian 都是错的**。而 `mu` 的导数恰好不受影响，
+因为与参数无关的常数在求导时消掉 —— 这正是缺陷长期没被发现的形状。
+
+**修复**：`_truncation_log_term()` 补上该项，用正则化不完全贝塔恒等式
+
+    pt(t, df) = 1 - 0.5 * I_{df/(df+t^2)}(df/2, 1/2)   (t > 0)
+
+JAX 只有 `t.pdf` / `t.logpdf`，**没有 Student-t CDF**，而该式可微；
+这也正是 `BCTo._bcto_log_pdf` 已在用的写法。`|nu|` 取下界而非允许除零，
+避免 `1/|nu|` 溢出成 inf/NaN 破坏梯度。
+
+**修复效果**
+
+    max | log d - (-g_dev_inc/2) |  ：0.2199204  ->  0.0
+    mu / sigma / nu / tau score 对中心差分：rel 1e-11 ~ 2e-10
+    dBCT 对活 R：12 位逐位一致
+
+**验收**：`tests/test_bct_truncation_parity.py`（9 项）—— d 与 log d 对活 R
+实测值、d 与 `g_dev_inc` 恒等、四个参数 score 对中心差分、
+**截断项确实依赖 sigma 与 nu**（钉死"不得再当成常数"）、
+以及 `BCTo` 仍**无**截断（防止把修复过度套到 untruncated 变体上）。
+
+**顺带查出但本次未修：Box-Cox 族的 mu link 整簇错位**
+
+把 R 与我们的 link 逐个对表，模式很清楚 —— `o` 后缀（原始参数化，mu 是
+几何均值 → log link）与截断变体（mu 是位置参数 → identity link）
+在我们这里**正好互换**：
+
+| 族 | R `mu.link` | 我们 | R `tau.link` | 我们 |
+|----|------------|------|------------|------|
+| BCT | identity | **log** ✗ | log | **logshiftto2** ✗ |
+| BCTo | log | **identity** ✗ | log | log ✓ |
+| BCCG | identity | **log** ✗ | – | – |
+| BCCGo | log | log ✓ | – | – |
+| BCPE | identity | **log** ✗ | log | log ✓ |
+| BCPEo | log | **identity** ✗ | log | log ✓ |
+
+（`BCTUNTR` / `BCCGUNTR` / `BCPEUNTR` / `BCTO` 在 R 里**不存在**，
+它们对应 R 的 `BCTo` / `BCCGo` / `BCPEo`；目前是 `distributions_boxcox_compat.py`
+里的克隆壳，与 DBI 同性质。）
+
+**为什么本次没顺手改掉 link**：试过了，**改成 `identity` 后拟合直接发散**
+（`mu ~ -1.5e7`、`termination_reason=non_finite_deviance`）。
+原因是我们的 BCT 用**数值** score/Hessian，而 R 用闭式
+（`d2ldd2 = -2*tau/(sigma^2*(tau+3))` 等）；自然尺度上 1e-4 步长的
+数值 Hessian 撑不住。换 link 只是换优化几何，不改变最优解，
+所以先把 link 改回 `log`（能稳定收敛），把根因留给下一项。
+
+**已知剩余差距（不掩盖）**：BCT 在 500 轮下收敛到 deviance 137.66，
+R 收敛在 136.55（rel 2.2e-3，仍高于 1e-3 阈值）。这是收敛速度问题，
+不是错解 —— Python 侧 deviance 更高即拟合更差，没有出现 LOGNO 那种
+"发散却报告收敛"。**修法是移植 R 的解析导数**，见下一项建议。
+
+**方法论要点**：
+1. "只有部分参数对得上"本身就是线索 —— 与参数无关的常数会从导数里消失；
+2. 同一族里 `d` 与 `g_dev_inc` 应当描述**同一个**密度。差一个常数不是
+   "只是归一化不同"，要先问它依不依赖参数；
+3. 修族时先确认变体：`BCT` 与 `BCTo` 只差截断项，修复极易过度套用；
+4. 改 link 前先问"这是错解还是只是优化几何不同" —— 本次两者都不是问题
+   的根因，改了反而发散。
+
 ### D1 分布 family d/p/q/r parity（P1，8–12 周）
 
 - 批次 A：ST/SEP/SST（独立参数化、尾部、q 稳健反演）；
