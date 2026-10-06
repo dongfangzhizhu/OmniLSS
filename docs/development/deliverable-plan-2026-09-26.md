@@ -454,6 +454,63 @@ score 对 R 表达式 `((log y - mu)^2 - sigma^2)/sigma^3`。
 4. 同族存在多个参数化变体（LOGNO vs LOGNO2）时，必须以活 R 数值判定归属，
    不能看名字想当然。
 
+**D2.9 交付记录（2026-10-06）：族 parity 批量扫描工具 —— 把逐族排查固化为三关**
+
+D2.8 靠手工逐族排查找出 LOGNO 的缺陷，但 146 个族不可能都手查。本项把
+那套方法固化成工具：`tools/rs_family_parity_scan.py` + `tools/r_parity_batch.R`，
+一次跑完三关并输出覆盖率。
+
+**三关设计**
+
+| 关 | 比什么 | 阈值 | 需要 R |
+|----|--------|------|--------|
+| `dpqr` | d/p/q 数值对活 R `gamlss.dist` | rel 1e-6 | 是 |
+| `deriv` | score 对密度中心有限差分 | rel 1e-3 | 否 |
+| `rsdev` | RS 拟合 deviance 对活 R `gamlss()` | rel 1e-3 | 是 |
+
+所有 R 工作在**单个 Rscript 进程**内完成（逐族起进程约 2s，100+ 族不可行）；
+作业列表经**文件**传入（整扫描的 JSON 远超 Windows 命令行长度限制，
+WinError 206）。
+
+**工具自身的三次修正（都是"假失败"比"漏检"更危险的例子）**
+
+1. **族发现**：`dir(distributions)` 只有 19 个名字，其余在 `distributions_b*.py`。
+   改为从 `resolve_family` 的报错信息里提取全部名字 → **147 族**。
+2. **网格标定**：原用 `UNIT_FAMILIES` / `COUNT_FAMILIES` 手工白名单，
+   导致 LOGITNO（支撑 (0,1)）被按 0.3–4.0 探测、零膨胀计数族被按连续网格探测。
+   改为**从族对象自身推导**：`type`（Continuous/Discrete/Mixed）定响应支撑，
+   `links`（log/logit/identity）定每个参数的取值区间，`fixed_parameters`
+   决定是否补 `bd`。白名单删除。
+3. **支撑判定用相对阈值**：`d > 0` 不够 —— LOGITNO 在 y>1 处返回极小正数，
+   (0.3,4.0) 网格因此"满分"通过却只测到 1 个有效点。改为要求
+   `d >= 1e-6 * max(d)`。另：无法标定的族一律记 `skip` 而非 `fail`
+   ——"没查到"和"查错了"是两件事，不能混为一谈。
+
+标定修正的效果（同一份代码、同一批族，deriv 与 dpqr 两关不依赖拟合数据，
+故不受后续调参影响）：
+
+    deriv : 106/146 pass, fail=40  ->  120/146 pass, fail=20, skip=6
+    dpqr  :  48/146 pass, fail=35  ->   63/146 pass, fail=36, skip=47
+
+deriv 关 20 个"失败"是工具自己造的，真实候选缺陷只剩 20 个。
+
+**顺带修掉的真实崩溃**：DPO1 密度调用 `jnp.lgamma` —— JAX 根本没有这个函数
+（`jnp.gammaln` 也不存在），正确的是 `jax.scipy.special.gammaln`。
+扫描器第一次发现它时整轮扫描被中止，现已修复并对单族异常做了容错。
+
+**验收**：`tests/test_rs_family_parity_scan.py`（22 项）—— 族发现完整性、
+标定不靠白名单、`skip` 不冒充 `fail`、**故意写错的 score 仍被抓到**
+（保证标定没把关卡变成永真）、拟合样本不退化且落在支撑内、计数族样本保持整数。
+
+**产出**：M2 需要的首个真实覆盖率数字，并给出按族排序的待修清单。
+
+**已知待办（下一项的第一件事）**：`rsdev` 关的基线尚未在最终参数下重测。
+合成样本从"6 点网格平铺"改为按族 `type` 感知采样（原先响应只有 6 个不同取值，
+退化到 SST 报出 deviance 是 R 的 80 倍、TF2 21 倍，根本分不清是缺陷还是数据
+假象）；数据变"难收敛"后又把 `N_CYC` 降到 20、`N_OBS` 降到 48（两侧同降，
+比较仍公平），否则整轮扫描超过 30 分钟。因此 **deriv / dpqr 两关的数字已可引用，
+rsdev 的数字需重测后才可作为基线**。
+
 ### D1 分布 family d/p/q/r parity（P1，8–12 周）
 
 - 批次 A：ST/SEP/SST（独立参数化、尾部、q 稳健反演）；

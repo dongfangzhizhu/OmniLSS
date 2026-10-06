@@ -10,7 +10,7 @@ from typing import Tuple
 
 import jax.numpy as jnp
 from jax import Array
-from jax.scipy.special import ndtr
+from jax.scipy.special import gammaln as jsp_gammaln, ndtr
 
 from .ad import build_ad_family
 from .families import FamilyDefinition
@@ -401,8 +401,11 @@ def _dpo1_log_pdf(y: Array, mu: Array, sigma: Array) -> Array:
         0.0
     )
     
-    # Poisson part
-    log_poisson = y * jnp.log(mu) - mu - jnp.where(y > 0, jnp.lgamma(y + 1.0), 0.0)
+    # Poisson part.  JAX has no ``jnp.lgamma`` / ``jnp.gammaln`` -- the
+    # log-gamma function lives in ``jax.scipy.special.gammaln`` (equivalently
+    # ``jax.lax.lgamma``).  Calling ``jnp.lgamma`` raised AttributeError, which
+    # made the DPO1 density unusable and broke any fit or scan touching it.
+    log_poisson = y * jnp.log(mu) - mu - jnp.where(y > 0, jsp_gammaln(y + 1.0), 0.0)
     
     log_pdf = log_poisson / sigma - 0.5 * jnp.log(2.0 * jnp.pi * sigma * y) + log_c
     
