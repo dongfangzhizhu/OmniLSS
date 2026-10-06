@@ -348,6 +348,40 @@
   去做，等于把 fail-closed 的安全边界拆掉。
 - 验收：`tests/test_grpc_server.py` 35 项全绿（该文件既有失败清零）。
 
+**D2.6 交付记录（2026-10-03）：修复 HTTP 准入测试的 pydantic 加载缺陷**
+
+- 既有失败
+  `test_service_smooth_admission.py::test_http_helper_rejects_cg_smooth_structured`
+  报 `PydanticUserError: FitRequest is not fully defined; you should define Any`。
+- 根因（最小复现确认，非猜测）：`omnilss-server/main.py` 用了
+  `from __future__ import annotations`，pydantic 因此把字段注解当**字符串**处理。
+  测试用 `importlib.util.spec_from_file_location` 动态加载该文件，
+  pydantic 解析注解时拿不到该模块的 `__dict__` 作为命名空间，
+  于是连顶层已 `from typing import Any` 导入的 `Any` 都"未定义"。
+  **正常 `import main` 完全正常**（实测实例化成功）——即服务运行路径无缺陷，
+  纯属测试加载方式与延迟注解的冲突。
+- 修复**只动测试**，不改服务源码：
+  1. 抽出 `_load_server_module()`，加载后显式
+     `FitRequest.model_rebuild(_types_namespace=vars(module))`，
+     把模块自身命名空间交给 pydantic（pydantic 2.12.4 提供的参数；
+     仅调 `model_rebuild()` 不传命名空间仍报 `PydanticUndefinedAnnotation`）；
+  2. **新增** `test_server_fit_request_instantiates_under_normal_import` ——
+     走正常 import 路径实例化同一个模型。将来若服务真的坏了、而
+     `model_rebuild()` 又把它掩盖过去，这条会先失败。
+- 验收：`test_service_smooth_admission.py` + `test_http_capability_formula_query.py`
+  5 项全绿。
+
+**新发现的既有失败（未修，记录在案）**：
+`test_cg_smooth_admission.py::test_cg_rejects_every_smooth_formula_location`
+的 4 个参数化用例（`~ pb (x)` × full_hessian / irls_cross / CG_FULL_HESSIAN /
+CG_IRLS_CROSS）在 `pb (x)` 写法下于第 24 行断言失败。
+经 `git stash` 在未改动代码上复现确认为既有失败，与本轮无关。
+待后续单独定位。
+
+**测试基础设施备注**：`omnilss/tests/` 共 425 个测试文件，
+`pytest tests/ -m "not slow"` 全量单次运行实测超过 1.5 小时未结束（已终止），
+必须按目录/主题分块跑。分块策略是本项目的既有实践。
+
 ### D1 分布 family d/p/q/r parity（P1，8–12 周）
 
 - 批次 A：ST/SEP/SST（独立参数化、尾部、q 稳健反演）；
