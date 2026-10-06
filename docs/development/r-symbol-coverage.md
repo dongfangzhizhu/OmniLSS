@@ -499,7 +499,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | - | missing | missing | unverified | not_available | 3 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 2 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 127 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 128 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 18 |
 | gamlss.cs | gamlss | - | missing | missing | unverified | not_available | 0 |
 | gamlss.cy | gamlss | - | missing | missing | unverified | not_available | 0 |
@@ -635,9 +635,9 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | BEOI | gamlss.dist | BEOI | public_api | experimental | r_consistency_test | blocked | 7 |
 | BEZI | gamlss.dist | BEZI | public_api | experimental | r_consistency_test | blocked | 7 |
 | BEo | gamlss.dist | BEo | public_api | implemented | r_consistency_test | exported_api | 2 |
-| BI | gamlss.dist | BI | public_api | experimental | r_consistency_test | blocked | 11 |
+| BI | gamlss.dist | BI | public_api | experimental | r_consistency_test | blocked | 12 |
 | BNB | gamlss.dist | BNB | public_api | experimental | r_consistency_test | blocked | 7 |
-| DBI | gamlss.dist | DBI | public_api | compat_alias | r_consistency_test | blocked | 5 |
+| DBI | gamlss.dist | DBI | public_api | compat_alias | r_consistency_test | blocked | 6 |
 | DBURR12 | gamlss.dist | DBURR12 | public_api | compat_alias | r_consistency_test | blocked | 4 |
 | DEL | gamlss.dist | DEL | public_api | experimental | r_consistency_test | blocked | 9 |
 | DPO | gamlss.dist | DPO | public_api | experimental | r_consistency_test | blocked | 7 |
@@ -787,7 +787,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | dBEOI | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | dBEZI | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | dBEo | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
-| dBI | gamlss.dist | dBI | module_export | experimental | golden:validated | blocked | 0 |
+| dBI | gamlss.dist | dBI | module_export | experimental | golden:validated | blocked | 1 |
 | dBNB | gamlss.dist | dBNB | module_def | experimental | capability:unsupported | blocked | 1 |
 | dDBI | gamlss.dist | - | registry | compat_alias | capability:unsupported | blocked | 0 |
 | dDBURR12 | gamlss.dist | - | registry | compat_alias | capability:unsupported | blocked | 0 |
@@ -922,7 +922,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | pBEOI | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | pBEZI | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | pBEo | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
-| pBI | gamlss.dist | pBI | module_export | experimental | golden:validated | blocked | 0 |
+| pBI | gamlss.dist | pBI | module_export | experimental | golden:validated | blocked | 1 |
 | pBNB | gamlss.dist | pBNB | module_def | experimental | capability:unsupported | blocked | 0 |
 | pDBI | gamlss.dist | - | registry | compat_alias | capability:unsupported | blocked | 0 |
 | pDBURR12 | gamlss.dist | - | registry | compat_alias | capability:unsupported | blocked | 0 |
@@ -1047,7 +1047,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | qBEOI | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | qBEZI | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | qBEo | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
-| qBI | gamlss.dist | qBI | module_export | experimental | golden:validated | blocked | 0 |
+| qBI | gamlss.dist | qBI | module_export | experimental | golden:validated | blocked | 1 |
 | qBNB | gamlss.dist | qBNB | module_def | experimental | capability:unsupported | blocked | 1 |
 | qDBI | gamlss.dist | - | registry | compat_alias | capability:unsupported | blocked | 0 |
 | qDBURR12 | gamlss.dist | - | registry | compat_alias | capability:unsupported | blocked | 0 |

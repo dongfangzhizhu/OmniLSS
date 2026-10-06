@@ -267,11 +267,11 @@ def BI() -> BinomialFamily:
         
         Following R GAMLSS implementation:
         G.dev.incr = -2 * dBI(y, bd, mu, log=TRUE)
-        
-        When bd is provided:
-        - If y is in [0,1], it's treated as proportions and converted to counts: y_counts = round(y * bd)
-        - If y > 1, it's treated as counts directly
-        - Deviance is computed using binomial log-likelihood with counts
+
+        R's binomial response is a **count** of successes (``gamlss()`` builds
+        it from a two-column ``cbind(success, failure)`` response).  It is not
+        a proportion, so the count is used as given -- scaling it by ``bd``
+        double-counts the denominator.
         
         For Bernoulli (bd=1 or bd=None):
         - y should be 0 or 1
@@ -287,12 +287,10 @@ def BI() -> BinomialFamily:
             # Bernoulli case (bd=1)
             log_density = y * jnp.log(mu) + (1.0 - y) * jnp.log(1.0 - mu)
         else:
-            # General Binomial case
+            # General Binomial case: y is already a count of successes,
+            # matching R's `dbinom(y, size = bd, prob = mu)`.
             bd = jnp.asarray(bd, dtype=jnp.float64)
-            
-            # Convert proportions to counts if y is in [0,1]
-            # If y > 1, assume it's already counts
-            y_counts = jnp.where(y <= 1.0, jnp.round(y * bd), y)
+            y_counts = jnp.round(y)
             
             from jax.scipy.special import gammaln
             
@@ -309,8 +307,7 @@ def BI() -> BinomialFamily:
         
         R formula: dldm = function(y, mu, bd) (y-bd*mu)/(mu*(1-mu))
         
-        When bd is provided and y is in [0,1], y is treated as proportions
-        and converted to counts: y_counts = round(y * bd)
+        ``y`` is the count of successes, so it enters the formula directly.
         """
         y = jnp.asarray(y, dtype=jnp.float64)
         mu = jnp.asarray(mu, dtype=jnp.float64)
@@ -323,9 +320,7 @@ def BI() -> BinomialFamily:
         else:
             # General Binomial case
             bd = jnp.asarray(bd, dtype=jnp.float64)
-            # Convert proportions to counts if y is in [0,1]
-            y_counts = jnp.where(y <= 1.0, jnp.round(y * bd), y)
-            return (y_counts - bd * mu) / (mu * (1.0 - mu))
+            return (y - bd * mu) / (mu * (1.0 - mu))
 
     def d2ldm2(y: jnp.ndarray, mu: jnp.ndarray, bd: jnp.ndarray | None = None) -> jnp.ndarray:
         """Hessian function for mu parameter.

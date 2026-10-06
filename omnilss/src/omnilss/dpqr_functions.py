@@ -289,43 +289,76 @@ def rPO(key, n, mu=1.0):
 # Binomial Distribution (BI)
 # =============================================================================
 
+def _r_recycle(*arrays: np.ndarray) -> tuple[np.ndarray, ...]:
+    """Recycle arguments to a common length the way R's ``rep(., length=ly)`` does.
+
+    gamlss.dist's d/p/q functions all start with::
+
+        ly <- max(length(x), length(mu), length(bd))
+        x <- rep(x, length = ly); mu <- rep(mu, length = ly); ...
+
+    Skipping this makes vectorised calls fail whenever the argument lengths
+    differ, which R happily accepts.
+    """
+    flat = [np.asarray(a, dtype=np.float64).ravel() for a in arrays]
+    ly = max(a.size for a in flat)
+    return tuple(np.resize(a, ly) if a.size else np.zeros(ly) for a in flat)
+
+
 def dBI(x, mu=0.5, bd=None, log=False):
-    """Density function for Binomial distribution (Bernoulli case).
-    
+    """Density function for the Binomial distribution.
+
+    R parity (``gamlss.dist::dBI``)::
+
+        fy <- dbinom(x, size = bd, prob = mu, log = log)
+        fy <- ifelse(x < 0, 0, fy)
+
+    ``x`` is the **number of successes**, not a proportion, and ``bd`` is the
+    number of trials.  ``gamlss()`` itself takes the binomial response as a
+    two-column ``cbind(success, failure)`` matrix, from which it derives
+    ``y = success`` and ``bd = success + failure`` -- so the fitted response is
+    a count as well, which is what ``dldm = (y - bd*mu)/(mu*(1-mu))`` assumes.
+
     Parameters
     ----------
     x : array_like
-        Quantiles (0 or 1)
+        Number of successes (0..bd).
     mu : array_like
-        Probability parameter
+        Success probability.
     bd : array_like or None
-        Binomial denominator (number of trials). Default None means Bernoulli (bd=1).
+        Binomial denominator (number of trials).  ``None`` means Bernoulli
+        (bd = 1).
     log : bool
-        If True, return log density
-        
+        If True, return the log density.
+
     Returns
     -------
     array_like
-        Density values
+        Density values.
     """
     x = jnp.asarray(x, dtype=jnp.float64)
     mu = jnp.asarray(mu, dtype=jnp.float64)
     mu = jnp.clip(mu, 1e-10, 1.0 - 1e-10)
-    
+
     if bd is None or (not hasattr(bd, '__len__') and bd == 1):
         # Bernoulli case
         log_fy = x * jnp.log(mu) + (1.0 - x) * jnp.log(1.0 - mu)
-        return log_fy if log else jnp.exp(log_fy)
-    else:
-        # General Binomial case
-        from jax.scipy.special import gammaln
-        bd = jnp.asarray(bd, dtype=jnp.float64)
-        x_count = jnp.round(x * bd)
-        
-        log_comb = gammaln(bd + 1.0) - gammaln(x_count + 1.0) - gammaln(bd - x_count + 1.0)
-        log_fy = log_comb + x_count * jnp.log(mu) + (bd - x_count) * jnp.log(1.0 - mu)
-        
-        return log_fy if log else jnp.exp(log_fy)
+        fy = log_fy if log else jnp.exp(log_fy)
+        return jnp.where(x < 0, 0.0, fy)
+
+    # General Binomial case: x is already a count (R: dbinom(x, size = bd,
+    # prob = mu)).  Do NOT rescale x by bd -- the previous implementation did
+    # `round(x * bd)`, which silently mangles every genuine count response.
+    from jax.scipy.special import gammaln
+
+    bd = jnp.asarray(bd, dtype=jnp.float64)
+    x_count = jnp.round(x)
+
+    log_comb = gammaln(bd + 1.0) - gammaln(x_count + 1.0) - gammaln(bd - x_count + 1.0)
+    log_fy = log_comb + x_count * jnp.log(mu) + (bd - x_count) * jnp.log(1.0 - mu)
+
+    fy = log_fy if log else jnp.exp(log_fy)
+    return jnp.where(x < 0, 0.0, fy)
 
 
 def pBI(q, mu=0.5, bd=None, lower_tail=True, log_p=False):
@@ -357,13 +390,15 @@ def pBI(q, mu=0.5, bd=None, lower_tail=True, log_p=False):
         # Bernoulli case
         cdf = jnp.where(q < 0, 0.0, jnp.where(q < 1, 1.0 - mu, 1.0))
     else:
-        # General Binomial case
+        # General Binomial case.  R: pbinom(q, size = bd, prob = mu).
         from scipy.stats import binom
-        bd = np.asarray(bd)
-        mu_arr = np.asarray(mu)
-        cdf = np.array([binom.cdf(int(np.floor(float(qi))), int(bd_i), float(mu_i)) 
-                       for qi, bd_i, mu_i in zip(q, bd, mu_arr)])
-        cdf = jnp.asarray(cdf, dtype=jnp.float64)
+
+        q_arr, mu_arr, bd_arr = _r_recycle(q, mu, bd)
+        cdf = jnp.asarray(
+            binom.cdf(np.floor(q_arr), bd_arr.astype(int), mu_arr),
+            dtype=jnp.float64,
+        )
+        cdf = jnp.where(np.asarray(q_arr) < 0, 0.0, np.asarray(cdf))
     
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -411,35 +446,33 @@ def qBI(p, mu=0.5, bd=None, lower_tail=True, log_p=False):
     else:
         # General Binomial case
         from scipy.stats import binom
-        bd = np.asarray(bd)
-        mu_arr = np.asarray(mu)
-        q_values = np.array([binom.ppf(float(pi), int(bdi), float(mui)) 
-                           for pi, bdi, mui in zip(p, bd, mu_arr)])
+
+        p_arr, mu_arr, bd_arr = _r_recycle(p, mu, bd)
+        q_values = binom.ppf(p_arr, bd_arr.astype(int), mu_arr)
         q = jnp.asarray(q_values, dtype=jnp.float64)
     
     return q
 
 
-def rBI(key, n, mu=0.5):
-    """Random generation for Binomial distribution (Bernoulli case).
-    
-    Parameters
-    ----------
-    key : jax.random.PRNGKey
-        Random key
-    n : int
-        Number of observations
-    mu : array_like
-        Probability parameter
-        
-    Returns
-    -------
-    array_like
-        Random samples (0 or 1)
+def rBI(key, n, mu=0.5, bd=None):
+    """Random generation for the Binomial distribution.
+
+    R parity (``gamlss.dist::rBI``): ``qbinom(runif(n), size = bd, prob = mu)``.
+    ``bd`` is the number of trials; ``None`` (or 1) is the Bernoulli case.
     """
     mu = jnp.asarray(mu, dtype=jnp.float64)
-    
-    return (jrandom.uniform(key, shape=(n,)) < mu).astype(jnp.float64)
+
+    if bd is None or (not hasattr(bd, '__len__') and bd == 1):
+        return (jrandom.uniform(key, shape=(n,)) < mu).astype(jnp.float64)
+
+    from scipy.stats import binom
+
+    mu_np = np.asarray(mu, dtype=np.float64)
+    bd_arr = np.broadcast_to(
+        np.asarray(bd, dtype=np.float64), mu_np.shape if mu_np.ndim else (n,)
+    )
+    draws = binom.rvs(bd_arr.astype(int), np.broadcast_to(mu_np, bd_arr.shape))
+    return jnp.asarray(draws, dtype=jnp.float64)
 
 
 # =============================================================================
