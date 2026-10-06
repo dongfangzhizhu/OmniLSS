@@ -372,15 +372,39 @@
   5 项全绿。
 
 **新发现的既有失败（未修，记录在案）**：
-`test_cg_smooth_admission.py::test_cg_rejects_every_smooth_formula_location`
-的 4 个参数化用例（`~ pb (x)` × full_hessian / irls_cross / CG_FULL_HESSIAN /
-CG_IRLS_CROSS）在 `pb (x)` 写法下于第 24 行断言失败。
-经 `git stash` 在未改动代码上复现确认为既有失败，与本轮无关。
-待后续单独定位。
+（D2.6 期间登记的 `test_cg_smooth_admission.py` 4 项已于 D2.7 修复，见下。）
 
 **测试基础设施备注**：`omnilss/tests/` 共 425 个测试文件，
 `pytest tests/ -m "not slow"` 全量单次运行实测超过 1.5 小时未结束（已终止），
 必须按目录/主题分块跑。分块策略是本项目的既有实践。
+
+**D2.7 交付记录（2026-10-06）：修复公式解析器对 `pb (x)` 写法的识别缺陷**
+
+- 既有失败：`test_cg_smooth_admission.py::test_cg_rejects_every_smooth_formula_location`
+  的 4 个参数化用例（`~ pb (x)` × 4 个 CG backend）。
+  实际报错是 `sigma formula '~ pb (x)' references variable 'pb' that is
+  missing from data`，而测试期望的是 `method='CG' does not support ...`。
+- 根因（实测定位，非推测）：**检测器与解析器不一致**。
+  - `has_smooth_terms()`（`formula_parser.py:22`）的正则用 `\s*\(`，
+    容忍空格 → `~ pb (x)` 判为 True；
+  - 但实际 term 解析（`formula_parser.py:225`）用 `r'(\w+)\((.*)\)'`，
+    要求 `(` **紧跟**标识符 → `pb (x)` 落进 linear_terms，变量名是
+    字符串 `"pb (x)"`。
+  - 后果：CG 路由的平滑项检查（`fitting.py:979`）因 `has_smooth_terms`
+    传进的是已解析前的原字符串…实际上更严重的是数据校验
+    （`_fitting_utils.py:373`）把 `pb` 当普通变量先报缺失，
+    CG 的拒绝信息永远发不出来，用户看到的是误导性报错。
+- 修复：解析正则改为 `r'(\w+)\s*\((.*)\)'`，与检测模式对齐。
+  实测确认 `log (x)` 这类非平滑函数**仍正确判为线性项**（不在平滑词表内），
+  没有过度放宽。
+- 验收：
+  - `test_cg_smooth_admission.py` 18 项全绿（既有失败清零）。
+  - `tests/test_formula.py` 新增 7 项：带空格写法解析为平滑项、
+    非平滑函数保持线性、以及**不变式测试**
+    `has_smooth_terms(f) == bool(parsed.smooth_terms)`（对 8 个
+    smoother × 有无空格共 16 种写法）—— 直接锁住"两处不许再漂移"，
+    这是本次缺陷的成因。
+  - 回归面：公式解析块 8 文件 146 项、平滑与 CG 拟合块 7 文件 65 项全绿。
 
 ### D1 分布 family d/p/q/r parity（P1，8–12 周）
 

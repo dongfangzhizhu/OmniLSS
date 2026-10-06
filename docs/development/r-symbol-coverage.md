@@ -1483,7 +1483,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | trun.q | gamlss.tr | - | missing | missing | unverified | not_available | 0 |
 | trun.r | gamlss.tr | - | missing | missing | unverified | not_available | 0 |
 | BS | gamlss2 | - | missing | missing | unverified | not_available | 0 |
-| CG | gamlss2 | - | missing | missing | unverified | not_available | 28 |
+| CG | gamlss2 | - | missing | missing | unverified | not_available | 29 |
 | GAIC | gamlss2 | GAIC | module_export | implemented | tested | internal | 3 |
 | GDF | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | KS | gamlss2 | - | missing | missing | unverified | not_available | 0 |

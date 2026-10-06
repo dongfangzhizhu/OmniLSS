@@ -222,7 +222,15 @@ def parse_formula(formula: str) -> ParsedFormula:
             continue
         
         # Check if it's a smooth term (pb, ps, cs, s, lo, random, re, ri, pcat, fp, bfp, cy, pvc, pbm, pbz, pbo, pbc, te, ti)
-        smooth_match = re.match(r'(\w+)\((.*)\)', term)
+        #
+        # ``\s*`` before the paren is required for parity with
+        # ``_SMOOTH_CALL_PATTERN`` (used by ``has_smooth_terms``): R and common
+        # formula style both allow ``pb (x)``.  Without it the detector and the
+        # parser disagree -- ``has_smooth_terms`` would flag ``~ pb (x)`` while
+        # parsing silently fell through to a linear term named ``"pb (x)"``,
+        # so the CG route emitted a confusing "variable 'pb' is missing from
+        # data" instead of the intended smooth-terms rejection.
+        smooth_match = re.match(r'(\w+)\s*\((.*)\)', term)
         if smooth_match:
             smoother = smooth_match.group(1)
             args_str = smooth_match.group(2)

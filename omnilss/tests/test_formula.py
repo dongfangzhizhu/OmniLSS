@@ -443,3 +443,52 @@ def test_parse_smooth_args_with_quoted_comma():
 def test_parse_formula_rejects_unbalanced_nested_args():
     with pytest.raises(ValueError, match="unbalanced"):
         parse_formula("y ~ te(x1, x2, k_list=[5, 8)")
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "y ~ pb (x)",
+        "y ~ ps (x)",
+        "y ~ cs (z)",
+        "y ~ s (x)",
+        "y ~ x + pb (z)",
+    ],
+)
+def test_space_before_paren_parsed_as_smooth(formula):
+    """``pb (x)`` must parse as a smooth term, not a variable named ``pb (x)``.
+
+    Renders the parser consistent with :func:`has_smooth_terms`, whose regex
+    already allowed ``\\s*`` before the paren.  Previously the two disagreed:
+    the detector flagged ``~ pb (x)`` as smooth while the parser emitted a
+    linear term named ``"pb (x)"``, so the CG route raised a misleading
+    "variable 'pb' is missing from data" instead of its smooth-term rejection.
+    """
+    from omnilss.formula_parser import has_smooth_terms
+
+    assert has_smooth_terms(formula) is True
+    parsed = parse_formula(formula)
+    assert len(parsed.smooth_terms) == 1
+    assert not any("" == term.variable for term in parsed.linear_terms)
+
+
+def test_non_smooth_function_with_space_stays_linear():
+    """A function outside the smoother vocabulary must remain a linear term."""
+    parsed = parse_formula("y ~ log (x)")
+    assert len(parsed.smooth_terms) == 0
+    assert [term.variable for term in parsed.linear_terms] == ["log (x)"]
+
+
+def test_detector_and_parser_agree_on_smooth_vocabulary():
+    """Invariant: has_smooth_terms(f) implies the parser found a smooth term.
+
+    This is the contract that broke.  Guarding it directly prevents the two
+    code paths from drifting apart again.
+    """
+    from omnilss.formula_parser import has_smooth_terms
+
+    for smoother in ("pb", "ps", "cs", "s", "lo", "pcat", "fp", "cy"):
+        for spacing in ("", " "):
+            formula = f"y ~ {smoother}{spacing}(x)"
+            parsed = parse_formula(formula)
+            assert has_smooth_terms(formula) == bool(parsed.smooth_terms), formula
