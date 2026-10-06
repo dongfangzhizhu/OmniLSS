@@ -499,7 +499,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | - | missing | missing | unverified | not_available | 3 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 2 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 126 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 127 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 18 |
 | gamlss.cs | gamlss | - | missing | missing | unverified | not_available | 0 |
 | gamlss.cy | gamlss | - | missing | missing | unverified | not_available | 0 |
@@ -670,8 +670,8 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | LNO | gamlss.dist | LNO | public_api | experimental | r_consistency_test | blocked | 6 |
 | LO | gamlss.dist | LO | public_api | experimental | r_consistency_test | blocked | 6 |
 | LOGITNO | gamlss.dist | LOGITNO | public_api | experimental | r_consistency_test | blocked | 3 |
-| LOGNO | gamlss.dist | LOGNO | public_api | experimental | r_consistency_test | blocked | 12 |
-| LOGNO2 | gamlss.dist | LOGNO2 | public_api | experimental | r_consistency_test | blocked | 5 |
+| LOGNO | gamlss.dist | LOGNO | public_api | experimental | r_consistency_test | blocked | 13 |
+| LOGNO2 | gamlss.dist | LOGNO2 | public_api | experimental | r_consistency_test | blocked | 6 |
 | LOGSHASH | gamlss.dist | LOGSHASH | public_api | placeholder | r_consistency_test | blocked | 4 |
 | LQNO | gamlss.dist | LQNO | public_api | experimental | r_consistency_test | blocked | 4 |
 | MN3 | gamlss.dist | MN3 | public_api | experimental | r_consistency_test | blocked | 7 |
@@ -815,8 +815,8 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | dLNO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | dLO | gamlss.dist | dLO | module_export | experimental | capability:validated | blocked | 0 |
 | dLOGITNO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| dLOGNO | gamlss.dist | dLOGNO | module_export | experimental | capability:validated | blocked | 0 |
-| dLOGNO2 | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
+| dLOGNO | gamlss.dist | dLOGNO | module_export | experimental | capability:validated | blocked | 1 |
+| dLOGNO2 | gamlss.dist | - | registry | experimental | capability:validated | blocked | 1 |
 | dLOGSHASH | gamlss.dist | - | registry | placeholder | capability:unsupported | blocked | 0 |
 | dLQNO | gamlss.dist | dLQNO | module_def | experimental | capability:unsupported | blocked | 1 |
 | dMN3 | gamlss.dist | dMN3 | module_def | experimental | capability:unsupported | blocked | 1 |
@@ -950,7 +950,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | pLNO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | pLO | gamlss.dist | pLO | module_export | experimental | capability:validated | blocked | 0 |
 | pLOGITNO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| pLOGNO | gamlss.dist | pLOGNO | module_export | experimental | capability:validated | blocked | 0 |
+| pLOGNO | gamlss.dist | pLOGNO | module_export | experimental | capability:validated | blocked | 1 |
 | pLOGNO2 | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | pLOGSHASH | gamlss.dist | - | registry | placeholder | capability:unsupported | blocked | 0 |
 | pLQNO | gamlss.dist | pLQNO | module_def | experimental | capability:unsupported | blocked | 1 |
@@ -1075,7 +1075,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | qLNO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | qLO | gamlss.dist | qLO | module_export | experimental | capability:validated | blocked | 0 |
 | qLOGITNO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| qLOGNO | gamlss.dist | qLOGNO | module_export | experimental | capability:validated | blocked | 0 |
+| qLOGNO | gamlss.dist | qLOGNO | module_export | experimental | capability:validated | blocked | 1 |
 | qLOGNO2 | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | qLOGSHASH | gamlss.dist | - | registry | placeholder | capability:unsupported | blocked | 0 |
 | qLQNO | gamlss.dist | qLQNO | module_def | experimental | capability:unsupported | blocked | 1 |
@@ -1192,7 +1192,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | rLNO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | rLO | gamlss.dist | rLO | module_export | experimental | capability:validated | blocked | 0 |
 | rLOGITNO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| rLOGNO | gamlss.dist | rLOGNO | module_export | experimental | capability:validated | blocked | 0 |
+| rLOGNO | gamlss.dist | rLOGNO | module_export | experimental | capability:validated | blocked | 1 |
 | rLOGNO2 | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | rLOGSHASH | gamlss.dist | - | registry | placeholder | capability:unsupported | blocked | 0 |
 | rLQNO | gamlss.dist | rLQNO | module_def | experimental | capability:unsupported | blocked | 1 |
@@ -1490,7 +1490,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | Kumaraswamy | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | MN | gamlss2 | - | missing | missing | unverified | not_available | 1 |
 | OL | gamlss2 | - | missing | missing | unverified | not_available | 0 |
-| RS | gamlss2 | - | missing | missing | unverified | not_available | 47 |
+| RS | gamlss2 | - | missing | missing | unverified | not_available | 48 |
 | Rsq | gamlss2 | Rsq | module_export | implemented | unverified | internal | 0 |
 | available_families | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | bamlss2 | gamlss2 | - | missing | missing | unverified | not_available | 0 |

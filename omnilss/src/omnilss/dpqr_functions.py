@@ -588,17 +588,33 @@ def rGA(key, n, mu=1.0, sigma=1.0):
 # Log-Normal Distribution (LOGNO)
 # =============================================================================
 
-def dLOGNO(x, mu=1.0, sigma=1.0, log=False):
-    """Density function for Log-Normal distribution.
-    
+def dLOGNO(x, mu=0.0, sigma=1.0, log=False):
+    """Density function for Log-Normal distribution (mu on the log scale).
+
+    Parameterization matches R ``gamlss.dist::dLOGNO``, which is
+    ``dlnorm(x, meanlog = mu, sdlog = sigma)``: ``mu`` is the **mean of
+    log(Y)**, not the median of Y.
+
+    Do not confuse this with ``LOGNO2``, whose ``mu`` *is* the median and whose
+    density uses ``mean = log(mu)``.  This function previously applied that
+    ``log(mu)`` convention, which made it numerically equal to R's ``dLOGNO2``
+    -- and made LOGNO fits diverge to ``sigma ~ 1e-18`` while still reporting
+    ``converged=True``.
+
+    Verified against live R (R-4.6.0, gamlss.dist):
+        dLOGNO(c(2.1509, 2.3591), mu=0.8, sigma=0.4)
+          -> 0.46200903 0.41830590   (equals dlnorm(meanlog=0.8, sdlog=0.4))
+        dLOGNO2(c(2.1509, 2.3591), mu=0.8, sigma=0.4)
+          -> 0.021810862 0.010937647
+
     Parameters
     ----------
     x : array_like
         Quantiles (positive)
     mu : array_like
-        Median parameter
+        Mean of log(Y) -- the ``meanlog`` parameter (NOT the median)
     sigma : array_like
-        Shape parameter
+        Shape parameter (sdlog)
     log : bool
         If True, return log density
         
@@ -611,10 +627,9 @@ def dLOGNO(x, mu=1.0, sigma=1.0, log=False):
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     
-    log_mu = jnp.log(mu)
-    
+    # R: dlnorm(x, meanlog = mu, sdlog = sigma) -- mu IS the log-scale mean.
     log_fy = -(jnp.log(x) + jnp.log(sigma) + 0.5 * jnp.log(2.0 * jnp.pi) +
-               0.5 * jnp.square((jnp.log(x) - log_mu) / sigma))
+               0.5 * jnp.square((jnp.log(x) - mu) / sigma))
     
     return log_fy if log else jnp.exp(log_fy)
 
@@ -644,8 +659,8 @@ def pLOGNO(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     
-    log_mu = jnp.log(mu)
-    cdf = norm.cdf((jnp.log(q) - log_mu) / sigma)
+    # R: plnorm(q, meanlog = mu, sdlog = sigma) -- mu IS the log-scale mean.
+    cdf = norm.cdf((jnp.log(q) - mu) / sigma)
     
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -687,8 +702,8 @@ def qLOGNO(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     if not lower_tail:
         p = 1.0 - p
     
-    log_mu = jnp.log(mu)
-    q = jnp.exp(log_mu + sigma * ndtri(p))
+    # R: qlnorm(p, meanlog = mu, sdlog = sigma) -- mu IS the log-scale mean.
+    q = jnp.exp(mu + sigma * ndtri(p))
     
     return q
 
@@ -715,8 +730,8 @@ def rLOGNO(key, n, mu=1.0, sigma=1.0):
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     
-    log_mu = jnp.log(mu)
-    return jnp.exp(log_mu + sigma * jrandom.normal(key, shape=(n,)))
+    # R: rlnorm(n, meanlog = mu, sdlog = sigma) -- mu IS the log-scale mean.
+    return jnp.exp(mu + sigma * jrandom.normal(key, shape=(n,)))
 
 
 # =============================================================================

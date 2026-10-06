@@ -406,6 +406,54 @@
     这是本次缺陷的成因。
   - 回归面：公式解析块 8 文件 146 项、平滑与 CG 拟合块 7 文件 65 项全绿。
 
+**D2.8 交付记录（2026-10-06）：LOGNO 参数化错位修复 —— 从 g_dev 8.9e12 到与 R 逐位一致**
+
+探测 RS 拟合覆盖时发现：LOGNO 的 `g_dev = 8.9e12`，而 R 是 `173.05`，
+更糟的是它报 `converged=True`、`termination_reason=relative_deviance_converged`
+—— 又一次"发散静默报告为成功"。
+
+**缺陷一：d/p/q/r 四个函数的 mu 参数化错位（根因）**
+
+R 的 gamlss.dist 有两个对数正态族，mu 语义不同：
+- `LOGNO`： `dLOGNO = dlnorm(x, meanlog = mu, sdlog = sigma)` → mu 是 **log(Y) 的均值**
+- `LOGNO2`：`dLOGNO2` 内部用 `mean = log(mu)` → mu 是 **中位数**
+
+Python 的 `dLOGNO` / `pLOGNO` / `qLOGNO` / `rLOGNO` 全都用了 `log(mu)`
+约定 —— 即数值上等于 R 的 **dLOGNO2**。活 R 判决性证据：
+
+    dLOGNO (c(2.1509,2.3591), mu=0.8, sigma=0.4) -> 0.46200903 0.41830590
+    dLOGNO2(c(2.1509,2.3591), mu=0.8, sigma=0.4) -> 0.02181086 0.01093765
+    Python 修复前                                 -> 0.021811  0.010938   ← 等于 LOGNO2
+
+四个函数已统一改为 R 的 meanlog 约定，d/p/q 与活 R 逐位一致（rtol 1e-8）。
+（r 因 RNG 不同本就不同。）
+
+**缺陷二：RS 用了观测 Hessian 而非期望 Hessian**
+
+R 声明 `d2ldd2 = function(sigma) -2/sigma^2` —— **签名只接受 sigma**，
+这只有在对 y 取期望后才可能，即 RS 用 Fisher scoring。
+Python 用的是观测 Hessian `1/sigma^2 - 3(log y - mu)^2/sigma^4`：
+- 当 `(log y - mu)^2 < sigma^2/3` 时它变**正** → RS 工作权重失效
+- 实测：sigma=0.342 处 FD（观测）+61 而解析 -1654，量级与符号都不对
+- 后果：sigma 崩到 exp(-39.8) ≈ 1e-18，deviance 340 → 9.5e13
+
+已改为 R 的期望 Hessian `-2/sigma^2`（恒负定，与 y 无关）。
+
+**修复效果**：Python g_dev `173.05494254762493` vs R `173.05494254762488`
+（差 5e-14）；mu 系数逐位一致（0.76835679 / -0.07354675）。
+
+**验收**：`tests/test_logno_parity.py`（8 项）—— d/p/q 对活 R 值、
+mu 是 log 尺度（密度峰值在 exp(mu - sigma^2) 而非 mu）、
+RS deviance parity、活 R 对照、期望 Hessian 恒负定且不随 y 变、
+score 对 R 表达式 `((log y - mu)^2 - sigma^2)/sigma^3`。
+
+**方法论要点**：
+1. 收敛不等于 parity —— 本次又是 `converged=True` 掩盖了一个 8.9e12 的解；
+2. 导数对不上时，用**有限差分**定位，别读代码猜；
+3. R 导数函数的**签名**暴露语义：`function(sigma)` 不含 y ⇒ 期望 Hessian；
+4. 同族存在多个参数化变体（LOGNO vs LOGNO2）时，必须以活 R 数值判定归属，
+   不能看名字想当然。
+
 ### D1 分布 family d/p/q/r parity（P1，8–12 周）
 
 - 批次 A：ST/SEP/SST（独立参数化、尾部、q 稳健反演）；

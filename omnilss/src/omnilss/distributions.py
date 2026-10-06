@@ -558,12 +558,22 @@ def LOGNO() -> LogNormalFamily:
         return -1.0 / sigma + jnp.square(log_y - mu) / jnp.power(sigma, 3)
 
     def d2lds2(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp.ndarray:
-        y = jnp.asarray(y, dtype=jnp.float64)
-        mu = jnp.asarray(mu, dtype=jnp.float64)
+        """Expected (Fisher) second derivative w.r.t. sigma -- R parity.
+
+        R's LOGNO declares ``d2ldd2 = function(sigma) -2/sigma^2``.  Note the
+        signature takes **only sigma**: gamlss' RS algorithm uses the *expected*
+        Hessian, i.e. ``E[d2/dsigma^2]`` with ``E[(log y - mu)^2] = sigma^2``:
+
+            1/sigma^2 - 3 sigma^2 / sigma^4 = -2/sigma^2
+
+        The observed Hessian (``1/sigma^2 - 3(log y - mu)^2/sigma^4``) was used
+        here before.  Away from the optimum it can turn positive, which makes
+        the RS working weights negative and drives sigma to ~1e-18 while the
+        relative-deviance test still reports ``converged=True``
+        (observed: g_dev 8.9e12 vs R's 173.05).
+        """
         sigma = jnp.asarray(sigma, dtype=jnp.float64)
-        eps = jnp.finfo(jnp.float64).eps
-        log_y = jnp.log(jnp.maximum(y, eps))
-        return 1.0 / jnp.square(sigma) - 3.0 * jnp.square(log_y - mu) / jnp.power(sigma, 4)
+        return -2.0 / jnp.square(sigma)
 
     return LogNormalFamily(
         name="LOGNO",
