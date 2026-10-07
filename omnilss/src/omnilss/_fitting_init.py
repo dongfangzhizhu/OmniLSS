@@ -130,9 +130,30 @@ def _initial_mu_beta(
         # Zero-altered/inflated: use log link, exclude zeros from initialization
         # For zeros, use small positive value
         target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
-    elif family.name == "BI":
-        clipped = np.clip(y, 1e-6, 1.0 - 1e-6)
-        target = np.log(clipped / (1.0 - clipped))
+    elif family.name in ("BI", "DBI"):
+        # R BI()$mu.initial / DBI()$mu.initial (verified against live R):
+        #     expression({ mu <- (y + 0.5)/(bd + 1) })
+        # Two details both matter.  (1) y is a *success count*, so the
+        # denominator must be bd -- taking logit(y) directly treats a count of
+        # 7/10 as a proportion of 0.999999 and starts the IRLS at the far
+        # boundary.  (2) The half-count adjustment is R's, not ours: it keeps
+        # y in {0, bd} away from a logit infinity.  BB below already had the
+        # `/ bd` but not the half-count adjustment; both spellings are the
+        # same R idiom.
+        #
+        # Why this is a hard failure rather than a slow start: BI has a single
+        # parameter with a logit link, so the IRLS step from a boundary start
+        # is +-32 in eta, which lands outside [-15, 15] and never recovers.
+        # Symptom before the fix: deviance 8566.07 atR's 202.85, with
+        # ``converged=True`` because the step size had already collapsed.
+        if fixed_parameter_values is None or "bd" not in fixed_parameter_values:
+            raise ValueError(
+                f"{family.name} initialization requires fixed parameter 'bd' "
+                "(the binomial denominator)"
+            )
+        bd = np.maximum(np.asarray(fixed_parameter_values["bd"], dtype=np.float64), 1.0)
+        probability = (y + 0.5) / (bd + 1.0)
+        target = np.log(probability) - np.log1p(-probability)
     elif family.name in ("ZABB", "ZIBB"):
         options = family.constructor_parameters or {}
         bd = np.asarray(options.get("bd", 10), dtype=np.float64)
@@ -148,8 +169,10 @@ def _initial_mu_beta(
         if fixed_parameter_values is None or "bd" not in fixed_parameter_values:
             raise ValueError("BB initialization requires fixed parameter 'bd'")
         bd = np.maximum(np.asarray(fixed_parameter_values["bd"], dtype=np.float64), 1.0)
-        clipped = np.clip(y / bd, 1e-6, 1.0 - 1e-6)
-        target = np.log(clipped / (1.0 - clipped))
+        # Same R idiom as BI/DBI above: BB()$mu.initial is `(y + 0.5)/(bd + 1)`.
+        # The half-count adjustment was missing here.
+        probability = (y + 0.5) / (bd + 1.0)
+        target = np.log(probability) - np.log1p(-probability)
     elif family.name == "BE":
         clipped = np.clip(y, 1e-6, 1.0 - 1e-6)
         target = np.log(clipped / (1.0 - clipped))

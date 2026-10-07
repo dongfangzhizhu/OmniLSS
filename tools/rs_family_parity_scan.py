@@ -530,11 +530,18 @@ def _build_jobs(families: list[str], n: int) -> tuple[list[dict], dict]:
 
         # RS fit job
         fit_data = _fit_data(family, rng, y)
+        fixed = tuple(
+            getattr(_safe_family(family), "fixed_parameters", ()) or ()
+        )
         jobs.append(
             {
                 "kind": "fit",
                 "family": family,
                 "data": fit_data,
+                # R needs cbind(success, failure) for a binomial family; see
+                # _fit_data's docstring.  Omitted otherwise so the R side keeps
+                # the plain single-column formula.
+                **({"response_formula": "cbind(y, fail) ~ x"} if "bd" in fixed else {}),
                 "formula": "y ~ x",
                 "sigma_formula": "~1",
                 "n_cyc": N_CYC,
@@ -544,6 +551,14 @@ def _build_jobs(families: list[str], n: int) -> tuple[list[dict], dict]:
         index[family] = entry
 
     return jobs, index
+
+
+def _safe_family(family: str):
+    """``resolve_family`` or None -- probe helpers must not raise."""
+    try:
+        return resolve_family(family)
+    except Exception:
+        return None
 
 
 def _family_parameters(family: str) -> tuple[str, ...] | None:
@@ -562,15 +577,37 @@ def _fit_data(family: str, rng: np.random.Generator, y_grid: np.ndarray) -> dict
     only six distinct values, which is degenerate enough to distort the fit --
     SST reported a deviance 80x R's and TF2 21x, and there was no way to tell a
     real defect from a data artifact.
+
+    Binomial families (D2.22)
+    -------------------------
+    R's ``gamlss()`` does **not** accept a single response column plus a ``bd``
+    column for a binomial family -- it rejects the fit outright::
+
+        Error in gamlss(y ~ x, family = BI(), data = dfb, ...) :
+          y values must be 0 <= y <= 1
+
+    ``BI()$y.valid`` is ``all(y >= 0)``, yet the failure comes from
+    ``gamlss()``'s own binomial branch, which only recognises the two-column
+    ``cbind(success, failure)`` form.  So the sample is emitted that way:
+    ``y`` holds success counts and ``fail`` holds ``bd - y``.  Before this,
+    BI and DBI reported ``rsdev: skip`` with exactly that R error and their
+    RS parity went unmeasured.
+
+    Our own ``gamlss()`` takes ``y`` as the success count plus an explicit
+    ``bd``, so the R-side and Python-side payloads necessarily differ in shape.
+    They must not differ in *content*: ``_python_fit`` below reconstructs the
+    same ``bd`` so both sides minimise the identical binomial likelihood.
     """
     n = N_OBS
     x = rng.normal(0.0, 1.0, n)
     lo, hi = float(np.min(y_grid)), float(np.max(y_grid))
 
     try:
-        kind = getattr(resolve_family(family), "type", "Continuous")
+        fam = resolve_family(family)
+        kind = getattr(fam, "type", "Continuous")
+        fixed = tuple(getattr(fam, "fixed_parameters", ()) or ())
     except Exception:
-        kind = "Continuous"
+        kind, fixed = "Continuous", ()
 
     if kind == "Discrete":
         # Integers spanning the calibrated range, inclusive of the upper end.
@@ -582,6 +619,16 @@ def _fit_data(family: str, rng: np.random.Generator, y_grid: np.ndarray) -> dict
             # mixture component is actually exercised.
             mask = rng.random(n) < 0.3
             y[mask] = 0.0
+
+    if "bd" in fixed:
+        # Binomial: y is a success count in 0..bd.  The calibrated grid for
+        # these families is already integral (see ``calibrate``), but clamp
+        # anyway -- a non-integer count makes R's dbinom answer -Inf and the
+        # comparison meaningless in both directions.
+        bd = _PROBE_BD
+        y = np.clip(np.round(y), 0.0, bd)
+        return {"y": y.tolist(), "x": x.tolist(), "fail": (bd - y).tolist()}
+
     return {"y": y.tolist(), "x": x.tolist()}
 
 
@@ -738,13 +785,23 @@ def gate_rs_deviance(family: str, results: list[dict], index: dict, fit_data) ->
     rec = _RSDEV_R_STOPPED_EARLY.get(family)
     n_cyc = int(rec["n_cyc"]) if rec else N_CYC
 
+    # Binomial families need `bd` on our side: R gets cbind(success, failure)
+    # and infers the denominator from the row total, while our gamlss() takes
+    # the success count plus an explicit bd (D2.22).  Reconstruct it from the
+    # same two columns so both sides minimise the identical likelihood --
+    # comparing R's fit against ours without bd would be scoring a Bernoulli.
+    data = dict(fit_data)
+    if "fail" in data and "bd" not in data:
+        data["bd"] = (np.asarray(data["y"], dtype=np.float64)
+                      + np.asarray(data.pop("fail"), dtype=np.float64))
+
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             model = gamlss(
                 "y ~ x",
                 family=family,
-                data=fit_data,
+                data=data,
                 sigma_formula="~1",
                 method="RS",
                 max_iter=n_cyc,

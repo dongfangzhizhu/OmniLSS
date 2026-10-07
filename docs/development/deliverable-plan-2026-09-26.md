@@ -1414,6 +1414,117 @@ DBI   dpqr  fail -> pass
 5. **测试失败时先打印实际值，不要先改断言**。这条纪律对自己新写的测试
    同样成立。
 
+#### D2.22：`BI`/`DBI` 的 RS 拟合把成功计数当比例（dev 8566.07 → 与 R 逐位一致）
+
+**现象**：
+
+```python
+gamlss("y ~ x", family="BI", data={"y": succ, "x": x, "bd": bd}, method="RS")
+# converged=True, deviance = 8566.07433006277
+```
+
+R 在同样 60 个观测上是 **217.97377537960233**，且真值处的 deviance 只有
+221.6 —— 我们比真值还高 38 倍。同时伴随
+`eta clipped for parameter 'mu': 60/60 values out of [-15.0, 15.0]`。
+
+**三处独立缺陷叠加**，修任何一处都仍然是坏的：
+
+| # | 位置 | 缺陷 |
+|---|---|---|
+| 1 | `_initial_mu_beta` | `BI` 分支写 `logit(clip(y,1e-6,1-1e-6))` —— **y 是成功计数不是比例**。R 的 `BI()$mu.initial` 是 `mu <- (y + 0.5)/(bd + 1)`（活 R 求证），既缺 `/bd` 也缺半计数修正。同文件 `BB` 分支有 `/bd` 但同样缺半计数修正 |
+| 2 | `rs_algorithm.rs_fit` | `other_params`（喂给 score/Hessian 的 `context`）与 `dev_kwargs`（喂给 `g_dev_inc`）都只从 `family.parameters` 构造，而 `estimable_parameters` **刻意排除 fixed parameters** → `bd` 从未到达任何一处。`g_dev_inc` 的 `bd` 默认 `None`，`None` 选**Bernoulli** 分支 `y*log(mu)+(1-y)*log(1-mu)`，把计数 7/10 读成 7 |
+| 3 | `warm_start_policy.FamilyHeuristicInit` | 对 BI 给出 `fitted["mu"] = mean(y) = 5.78`。`mu` 是比例而 `y` 是计数，`logit(5.78)` 是 NaN → link clip 到 +15 → **第一个 IRLS 步之前**就从 `mu=1.0`、dev 21360.6 起步 |
+
+**诊断轨迹**（每一步只解一层，故可分离）：
+
+```
+mu = mean(y) = 5.78        -> logit clip     -> mu = 1.0,  dev = 21360.6
+mu = 1.0,  bd 缺失         -> Bernoulli dev   -> 在 mu=1-3e-7 与 3e-7 之间两周期震荡
+mu = logit(计数)           ->                -> dev = 8566.07, converged=True（报出的 bug）
+三处全修                   ->                -> dev = 217.973775379603 == R，逐位一致
+```
+
+**症状学上的教训**：每一个中间阶段 `converged` 都是 `True`。`converged`
+报告的是步长塌缩，不是目标函数到达极小；在两个被 clip 的 eta 值之间来回
+震荡的失控过程，从外面看就是完美收敛。
+
+**验收**（同一份 fixture，`default_rng(7)`，60 观测，bd=10）：
+
+| | 修复前 | 修复后 | R | rel |
+|---|---|---|---|---|
+| `BI` deviance | 8566.074330 | **217.973775379603** | 217.97377537960233 | 逐位 |
+| `DBI` deviance | 8566.074330 | 217.973775379603 | 217.95942206518868 | 见下 |
+
+`DBI` **尚未 parity**：R 的 `DBI` 估计两个参数（`mu, sigma`，
+`sigma` 系数 0.020070403755973468，dev 217.95942206518868），我们的
+`DBI` 是单参数壳（`parameters == ("mu",)`）因而退化成 `BI`。这是**族
+实现的结构缺口**，不是本轮缺陷；已登记为下一项，并用
+`test_dbi_reproduces_our_bi_shell_not_rs_two_parameter_dbi` 钉住现状
+（连同"R 的 DBI 是另一个数"这句一起写进断言，免得后人把巧合读成 parity）。
+
+**扫描器侧（D2.21 遗留项解除）**：`BI`/`BB` 的 `rsdev` 从 `skip` 变`pass`。
+
+```
+BI    deriv pass   dpqr pass   rsdev pass   251.671 vs R 251.671
+BB    deriv skip   dpqr skip   rsdev pass   203.879 vs R 203.879
+DBI   deriv pass   dpqr pass   rsdev fail   FamilyCapabilityError（compat alias 门禁，正确工作）
+```
+
+`_fit_data` 现在为 `fixed_parameters` 含 `bd` 的族发出 R 唯一接受的
+两列响应，`r_parity_batch.R` 按`payload$response_formula` 拼
+`cbind(y, fail)`，我们这一侧从同样两列重建 `bd`（两边必须最小化**同一个**
+二项似然）。`DBI` 的 `fail` 是门禁在正确工作 —— 它在
+`family_capabilities` 里注册为 compat alias，`gamlss()` 不透出
+`allow_compat_alias`，测试因此走 `rs_fit` 而不是绕过 fail-closed 准入。
+
+**测试**：`test_bi_dbi_binomial_parity.py` 19 项（含活 R 复算参考值）、
+`test_parity_scanner_probe_contracts.py` 14 项。相关回归 68 + 86 + 82 项
+零失败；`test_r_consistency_dbi` 的 3 个失败经 `git stash` 造对照确认为
+**既有失败**（R 侧 `x must be <= the binomial denominator 1`，期望过时）。
+
+**本轮自己的测试失误**（四次，全部源于没先看实际值）：
+
+1. `convergence_status()` 在当前构建上返回**布尔**不是词汇字符串
+   （词汇在 `termination_reason` 上）—— 与 D2.2 记的"一等等待词汇表"
+   有出入，已在断言里注明。
+2. 以为 Bernoulli 分支对 `y=7` 给出**负**增量 deviance。实际
+   `(2y-1)*log(0.5)`：y=7 是 +1.386，y=9 才是 −21.73。负 deviance在
+   `y=9` 上才出现 —— 这个观察反而成了最可诊断的信号。
+3. `gamlss()` 没有 `allow_compat_alias` 形参（只在内部 helper 上）。
+   一开始按 DBI 也走 `gamlss()`，spy 记录 0 次调用 —— **长得和"bug 复现"
+   一模一样**。
+4. 用 DBI 的 R 参考值断言我们的 DBI：忘了先确认我们的 DBI 有没有
+   `sigma` 参数。先 dump 双方参数列表再断言，才把"族缺口"和"拟合缺陷"
+   分开。
+
+**遗留**：
+- `DBI` 缺 `sigma` 参数（族实现缺口，非拟合缺陷）。
+- `DBI` 的 `rsdev` 因 compat alias 门禁 fail；解法是给它一条生产路线或
+  在 `gamlss()` 透出 `allow_compat_alias`，属准入设计变更。
+- `BE`/`ZABB`/`ZIBB`/`ZINBI` 的 `mu.initial` 与 R 不同（活 R 已dump：
+  R 是 `(y + mean(y))/2` 与 `rep(0.5, length(y))`，我们是
+  `logit(clip(y))` 与 `(y+0.5)/(bd+1)`）。`BE` 的 `rsdev` 目前 pass，
+  说明 IRLS 能从不同初值收敛到同一点 —— 但初值不同仍是 parity 缺口，
+  列为下一批。
+
+**D2.22 方法论要点**：
+
+1. **`converged=True` 不等于到达极小**。它报告步长塌缩。两周期震荡的
+   失控过程看起来就是完美收敛。凡是 `converged=True` 但目标值明显
+   不合理，先怀疑震荡。
+2. **固定参数是似然的一部分，必须像估计参数一样传下去**。
+   `estimable_parameters` 排除 fixed 参数是对的（不进设计矩阵），
+   但 `context` / `dev_kwargs` 从 `family.parameters` 取就会连带
+   把它排除 —— 这个耦合没有任何测试覆盖，改了没人知道。
+3. **"响应约定"要在**入口**读，不在密度函数里读**。`dBI` 完全正确，
+   `g_dev_inc` 也基本正确，错的是"y 是计数还是比例"这个约定在三个地方
+   各被重新解释了一次。
+4. **`skip` 与 `fail` 的差别要在**工具**里修**。族是对的、探针是错的
+   这类问题（D2.21）会让最贵的资产（已验证的密度代码）看起来该被重写。
+5. **分不清是族缺口还是拟合缺陷时，先 dump 双方的参数列表**。
+   我们的 `DBI` 与 R 的 `DBI` 连参数个数都不同 —— 这个事实一查就清楚，
+   但我是在写断言失败之后才去查的。
+
 #### D2.20：`TF2` 的链式法则项与 `TF` 的正态极限分支（rsdev rel 2.3e+01 →逐位一致）
 
 **现象**（全族扫描 v11）：

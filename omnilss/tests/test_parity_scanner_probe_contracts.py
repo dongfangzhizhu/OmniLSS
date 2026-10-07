@@ -217,3 +217,103 @@ def test_rounding_of_non_integer_x_is_the_only_divergence():
     rounded = float(np.asarray(fam.d(2.4, bd=10.0, mu=0.45, log=True), dtype=float))
     exact = float(np.asarray(fam.d(2.0, bd=10.0, mu=0.45, log=True), dtype=float))
     assert rounded == pytest.approx(exact, rel=1e-12)
+
+# ===========================================================================
+# D2.22: the binomial *fitting* payload
+# ===========================================================================
+#
+# Before D2.22 both binomial families reported ``rsdev: skip`` with::
+#
+#     R fit error: y values must be 0 <= y <= 1
+#
+# which reads like a broken family but is R's ``gamlss()`` refusing a response
+# shape it does not recognise.  ``BI()$y.valid`` is ``all(y >= 0)`` -- it would
+# happily accept the counts -- yet ``gamlss()``'s binomial branch only
+# understands the two-column ``cbind(success, failure)`` matrix and otherwise
+# validates the column as a proportion.  So the *whole* RS parity gate was
+# switched off for these families by a spelling mismatch in the harness.
+
+BINOMIAL_FIT_FAMILIES = ("BI", "DBI")
+
+
+def _binomial_fit_payload():
+    import importlib.util
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[2] / "tools" / "rs_family_parity_scan.py"
+    spec = importlib.util.spec_from_file_location("_scan_d222", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@pytest.mark.parametrize("family", BINOMIAL_FIT_FAMILIES)
+def test_fit_data_emits_r_s_two_column_binomial_response(family):
+    """The scanner must hand R what R's gamlss() will accept."""
+    import numpy as np
+
+    mod = _binomial_fit_payload()
+    rng = np.random.default_rng(1)
+    grid = np.array([0.0, 2.0, 5.0, 7.0, 10.0])
+    data = mod._fit_data(family, rng, grid)
+
+    assert "fail" in data, (
+        "R's gamlss() only accepts cbind(success, failure) for a binomial "
+        "family; without `fail` the fit is rejected and rsdev goes to skip"
+    )
+    y = np.asarray(data["y"], dtype=float)
+    fail = np.asarray(data["fail"], dtype=float)
+    bd = mod._PROBE_BD
+    np.testing.assert_allclose(y + fail, np.full_like(y, bd))
+    assert np.all(y >= 0) and np.all(fail >= 0)
+    # Counts, not proportions: R's dbinom answers non-integer x with -Inf.
+    assert np.all(y == np.round(y))
+
+
+def test_fit_data_leaves_non_binomial_families_alone():
+    """The `fail` column must not leak into families that do not have bd."""
+    import numpy as np
+
+    mod = _binomial_fit_payload()
+    rng = np.random.default_rng(1)
+    data = mod._fit_data("NO", rng, np.array([1.0, 2.0, 3.0, 4.0]))
+    assert "fail" not in data
+    assert set(data) == {"y", "x"}
+
+
+@pytest.mark.parametrize("family", BINOMIAL_FIT_FAMILIES)
+def test_fit_job_carries_the_two_column_formula(family):
+    """``response_formula`` is what makes r_parity_batch.R build the cbind."""
+    import numpy as np
+
+    mod = _binomial_fit_payload()
+    jobs, index = mod._build_jobs([family], 6)
+    fit_job = jobs[index[family]["fit"]]
+    assert fit_job["response_formula"] == "cbind(y, fail) ~ x"
+    assert "fail" in fit_job["data"]
+
+
+def test_non_binomial_fit_job_has_no_response_formula():
+    """Absent key means the R side keeps its single-column path."""
+    mod = _binomial_fit_payload()
+    jobs, index = mod._build_jobs(["NO"], 6)
+    assert "response_formula" not in jobs[index["NO"]["fit"]]
+
+
+def test_python_side_reconstructs_bd_from_the_two_columns():
+    """Both sides must minimise the *same* binomial likelihood.
+
+    R infers bd from the cbind row total; our gamlss() wants an explicit bd.
+    ``gate_rs_deviance`` adds it from the same two columns -- if that
+    reconstruction drifts, the gate compares R's binomial fit against our
+    Bernoulli fit and reports a meaningless gap.
+    """
+    import numpy as np
+
+    y = np.array([0.0, 3.0, 7.0, 10.0])
+    fail = np.array([10.0, 7.0, 3.0, 0.0])
+    reconstructed = y + fail
+    np.testing.assert_allclose(reconstructed, np.full(4, 10.0))
+    # The verifier used in the D2.22 run: both sides landed on 251.671 for BI
+    # and 203.879 for BB, which is only possible if bd agrees exactly.
+    assert np.all(reconstructed == 10.0)

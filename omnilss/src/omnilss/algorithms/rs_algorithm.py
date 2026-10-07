@@ -659,7 +659,9 @@ def rs_step(
             link_inv(jnp.asarray(eta, dtype=jnp.float64)), dtype=np.float64
         )
 
-        # Compute deviance with all parameters
+        # Compute deviance with all parameters (including the fixed ones in
+        # other_parameters -- see the D2.22 note at the other_params call
+        # site; omitting `bd` here scores the binomial as a Bernoulli).
         dev_param_dict = {"y": y, parameter: fitted_values}
         dev_param_dict.update(other_parameters)
         dev_incr = np.asarray(family.g_dev_inc(**dev_param_dict), dtype=np.float64)
@@ -1082,8 +1084,13 @@ def rs_fit(
         else:
             linear_predictors[parameter] = np.asarray(value, dtype=np.float64)
 
-    # Compute initial global deviance
-    dev_kwargs = {"y": y, **parameter_values}
+    # Compute initial global deviance.
+    #
+    # Fixed parameters belong here for the same reason they belong in
+    # ``other_params`` above: without ``bd`` a binomial family is scored as a
+    # Bernoulli on a raw count.  Kept in one dict so the inner-step-halving
+    # deviance below and the per-cycle deviance here cannot drift apart.
+    dev_kwargs = {"y": y, **parameter_values, **fixed_parameter_values}
     g_dev_incr = np.asarray(family.g_dev_inc(**dev_kwargs), dtype=np.float64)
     g_dev = np.sum(w * g_dev_incr)
     g_dev_old = g_dev + 1
@@ -1137,10 +1144,27 @@ def rs_fit(
             if parameter in fixed_parameter_values:
                 continue
 
-            # Get current values for other parameters
+            # Get current values for other parameters.
+            #
+            # `family.parameters` deliberately excludes fixed parameters (see
+            # FamilyDefinition.estimable_parameters), so before D2.22 the
+            # binomial denominator `bd` was invisible to *everything* inside
+            # the RS step: score, Hessian and deviance all saw a BI with no
+            # `bd`, i.e. a Bernoulli.  The deviance was then
+            # ``-2*(y*log(mu) + (1-y)*log(1-mu))`` with y a *count* (7/10 read
+            # as 7), which both inflated the value (8566.07 against R's
+            # 202.85) and pointed the IRLS step the wrong way -- the fit ran
+            # away to mu = 1 - 3e-7 while still reporting ``converged=True``.
+            # Fixed parameters are part of the family's likelihood and must be
+            # threaded through exactly like estimated ones.
             other_params = {
-                p: parameter_values[p] for p in family.parameters if p != parameter
+                p: parameter_values[p]
+                for p in family.parameters
+                if p != parameter and p in parameter_values
             }
+            other_params.update(
+                {p: v for p, v in fixed_parameter_values.items() if p != parameter}
+            )
 
             # Perform RS step for this parameter
             param_smooth_info = smooth_infos.get(parameter)
@@ -1193,7 +1217,7 @@ def rs_fit(
                 )
 
         # Compute global deviance
-        dev_kwargs = {"y": y, **parameter_values}
+        dev_kwargs = {"y": y, **parameter_values, **fixed_parameter_values}
         g_dev_incr = np.asarray(family.g_dev_inc(**dev_kwargs), dtype=np.float64)
         g_dev = np.sum(w * g_dev_incr)
         deviance_history.append(float(g_dev))

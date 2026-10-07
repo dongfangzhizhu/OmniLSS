@@ -75,7 +75,24 @@ class FamilyHeuristicInit:
 
     # Families whose mu must not be initialized at mean(y); each of them has
     # an R-faithful branch in omnilss._fitting_init._initial_mu_beta.
-    _NON_MEAN_MU_FAMILIES = frozenset({"WEI2", "RGE", "PE2"})
+    _NON_MEAN_MU_FAMILIES = frozenset(
+        {
+            "WEI2",
+            "RGE",
+            "PE2",
+            # BI / DBI: ``mu`` is a binomial *proportion*, but ``y`` is a
+            # success *count*.  ``mean(y) = 5.78`` for bd = 10 is not a
+            # proportion at all -- logit(5.78) is NaN, the logit link clips it
+            # to +15, and the fit starts at mu = 1.0 with deviance 21360.6
+            # before the first IRLS step.  DBI is the double-binomial built on
+            # the same response convention.  BB never reached this path
+            # because it also estimates sigma, but its mu has the same
+            # response convention; it is listed for the same reason.
+            "BI",
+            "DBI",
+            "BB",
+        }
+    )
 
     def initialize(
         self,

@@ -53,7 +53,23 @@ run_fit <- function(payload) {
   df <- as.data.frame(lapply(payload$data, function(v) as.numeric(unlist(v))))
   tryCatch({
     fam <- get(payload$family, mode = "function")
-    form <- as.formula(payload$formula)
+    # Binomial response convention (D2.22).  R's gamlss() rejects a binomial
+    # family outright unless the response is the two-column
+    # cbind(success, failure) matrix:
+    #
+    #   Error in gamlss(y ~ x, family = BI(), data = dfb, ...) :
+    #     y values must be 0 <= y <= 1
+    #
+    # even though BI()$y.valid is `all(y >= 0)`.  The scanner therefore emits
+    # `fail` alongside `y` for these families, and the formula is rewritten
+    # here.  `payload$response_formula` is set by the Python side; older
+    # payloads without it keep the single-column path.
+    form_text <- if (!is.null(payload$response_formula)) {
+      payload$response_formula
+    } else {
+      payload$formula
+    }
+    form <- as.formula(form_text)
     sigma_form <- if (is.null(payload$sigma_formula)) ~1 else as.formula(payload$sigma_formula)
     fit <- gamlss(
       form, family = fam, data = df,
