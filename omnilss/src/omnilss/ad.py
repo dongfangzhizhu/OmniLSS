@@ -64,6 +64,8 @@ def build_ad_family(
     q: Callable[..., Any] | None = None,
     r: Callable[..., Any] | None = None,
     constructor_parameters: Mapping[str, Any] | None = None,
+    score_overrides: Mapping[str, Callable[..., Any]] | None = None,
+    hessian_overrides: Mapping[str, Callable[..., Any]] | None = None,
 ) -> FamilyDefinition:
     """Build a FamilyDefinition dynamically using JAX auto-differentiation (AD).
     
@@ -76,6 +78,30 @@ def build_ad_family(
     d, p, q, r : callable, optional
         Explicit dpqr functions. If provided, they override the auto-generated
         placeholders and are JIT-compiled for performance.
+    score_overrides, hessian_overrides : mapping, optional
+        Explicit derivatives, keyed by parameter name.  Where present they
+        replace the AD-derived ones -- and they are *also* what lets the
+        still-compiled AD path warm up safely.
+
+        The reason this exists: AD succeeds for a first derivative and fails
+        for the second whenever the log-density reaches a special function
+        whose derivative JAX does not implement.  Two real cases in the
+        Box-Cox cluster:
+
+        * ``dBCT`` reaches ``betainc(a=tau/2, b=1/2, ...)``; ``betainc`` has
+          no gradient in ``a``/``b``.  A ``custom_jvp`` (D2.13) patches the
+          *first* derivative, but differentiating that JVP again -- which is
+          exactly what the Hessian does -- re-enters ``betainc`` and raises
+          ``Betainc gradient with respect to a and b not supported``.
+        * ``dBCPE`` reaches ``gammainc(1/tau, s)``; differentiating in ``a``
+          raises ``Differentiation rule for 'igamma_grad_a' not implemented``.
+
+        Both families have R's closed-form derivatives transcribed already, so
+        the fix is to hand them in rather than to teach JAX more special
+        functions.  Scores/Hessians here are *better* than AD's anyway: they
+        are R's own formulas, which is what parity means for this cluster
+        (see ``_DERIV_TOLERANCE`` in ``tools/rs_family_parity_scan.py`` for the
+        cases where R's own are only approximate).
     """
     # Pre-compile the vmapped log_pdf for reuse across g_dev_inc and _d
     _vmap_log_pdf = jax.jit(jax.vmap(log_pdf_func))
@@ -92,11 +118,24 @@ def build_ad_family(
     
     # Warm-up compilation with dummy data to avoid first-call overhead
     # This significantly improves performance for small to medium datasets
+    #
+    # Parameters with a caller-supplied derivative are excluded: the warm-up
+    # traces the AD Hessian even when the result is never used, and that trace
+    # is exactly what raises on families whose log-density touches a special
+    # function JAX cannot differentiate twice (see the docstring).  Building
+    # the closures eagerly costs nothing, so nothing is lost by skipping them.
+    derived_scores = dict(score_overrides or {})
+    derived_hessians = dict(hessian_overrides or {})
+    ad_derived = [
+        par
+        for par in parameters
+        if par not in derived_scores and par not in derived_hessians
+    ]
     try:
         dummy_size = 10
         dummy_args = [jnp.ones(dummy_size, dtype=jnp.float64) * 0.5 for _ in range(len(parameters) + 1)]
         _ = _vmap_log_pdf(*dummy_args)
-        for par in parameters:
+        for par in ad_derived:
             _ = _vmap_grads[par](*dummy_args)
             _ = _vmap_hess[par](*dummy_args)
     except Exception:
@@ -151,7 +190,13 @@ def build_ad_family(
         score_functions[par] = make_grad(par)
         hessian_functions[par] = make_hess(par)
 
-    # We also inject `pdf` into the class dynamically 
+    # Caller-supplied derivatives win.  They are keyed by parameter name and
+    # expect the same signature as the AD ones -- (y, mu, sigma, ...) or the
+    # keyword form -- so they drop straight in.
+    score_functions.update(derived_scores)
+    hessian_functions.update(derived_hessians)
+
+    # We also inject `pdf` into the class dynamically
     # since FamilyDefinition lacks it by default but tests/plot tools need it
     def _pdf(self, *args):
         args_1d, scalar_output = _prepare_jax_args(tuple(args))

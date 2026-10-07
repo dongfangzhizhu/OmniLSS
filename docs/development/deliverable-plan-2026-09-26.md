@@ -907,6 +907,143 @@ RS 路由不再报 `FamilyCapabilityError`。
 `BCPEUNTR` 克隆壳）尚未对齐~~ —— **D2.16 已完成**，但不是按上面那条
 错误的对应关系做的，见 D2.16 段。
 
+**D2.17 交付记录（2026-10-07）：`BCTo` / `BCPEo` 从"完全无法拟合"到可拟合**
+
+D2.16 让 `o` 族登上了族表，但**它们根本跑不起来**。这次把整条链路打通。
+
+**现象**：`BCTo` 与 `BCPEo` 的每一次 RS 周期都抛异常：
+
+```
+BCTo    ValueError: Betainc gradient with respect to a and b not supported.
+BCPEo   NotImplementedError: Differentiation rule for 'igamma_grad_a' not implemented
+```
+
+两个族在族表上可见、能 `resolve`、但没有任何一次成功拟合。
+
+**根因**：两处都在**独立重写的 log-pdf**里，不在密度本身。
+
+| 族 | 自带的 log-pdf 碰到 | JAX 的限制 |
+|---|---|---|
+| `BCTo` | `betainc(tau/2, 1/2, x)` | 对 `a`/`b` **无梯度**，而 `a` 就是 `df/2` |
+| `BCPEo` | `gammainc(1/tau, s)` | 对第一参数 `a` 无规则（`igamma_grad_a`）|
+
+D2.13 给 `_log_pt_t` 加的 `custom_jvp` 能修**一阶**导，但 RS 的 Hessian
+要对 JVP 再求一次导 —— 那会**重新进入** `betainc`。
+**`custom_jvp` 修不了这一类问题：它只补一层。**
+
+**修复**（两处，缺一不可）：
+
+1. **密度去重**。R 的 `dBCTo` body 与 `dBCT` 逐字相同（D2.16 已用
+   `identical(deparse(...))` 证明），`dBCPEo` 同 `dBCPE`。
+   `_bcto_log_pdf` / `_bcpeo_log_pdf` 各自的 ~45 行重写改为委托
+   `dpqr_functions.dBCT` / `dBCPE`（一个族一个密度，D2.15 的纪律），
+   顺带白拿 D2.13 的 `custom_jvp`。
+2. **`build_ad_family` 加 `score_overrides` / `hessian_overrides`**。
+   有 override 的参数**跳过 warm-up**（warm-up 会对每个参数 trace
+   `_vmap_hess`，即使结果丢弃 —— 那次 trace 就是抛错的地方）。
+   两族从 `BCT()` / `BCPE()` 借入 **R 的闭式导数**。
+   这不是绕过去 worse：对这个簇，R 的公式**就是** parity 目标
+   （D2.15 已证明"改进"R 的粗糙二阶导会让 parity 变差）。
+
+**验收**（40 点严格正数据，`y ~ x`，`c_crit = 0.001` 对齐 R 默认）：
+
+| 族 | 我们 | 活 R | rel | converged |
+|---|---|---|---|---|
+| `BCTo` | 106.819450 | 106.822650 | 3.00e-05 | True |
+| `BCPEo` | 106.764103 | 107.149897 | 3.60e-03 | True |
+
+`d` / `p` / `q` / `G.dev.incr` 逐元素对活 R（`rtol=1e-9`）全过。
+
+**一个自己踩的坑：把收敛判据不一致误判成"我们优化得更好"**
+
+修完之后我看到"六个 Box-Cox 族全部 `converged=False`、
+我们 deviance 一律比 R 低"，差点当成新缺陷。判定过程：
+
+1. **同一密度互评**：把 R 的系数放进**我们**的密度算 `sum(G.dev.incr)`，
+   得到 **106.839788**，与 R 报的 deviance 一致 → 目标函数相同，
+   我们确实停在了另一个点。
+2. **score 检验**：R 系数的 score 和**显著非零**
+   （BCT: mu −0.145、sigma +0.116、nu +0.028）→
+   **R 报的拟合点不是驻点**，R 提前停了。
+   `tau` 方向 score 峰值仅 3.9e-9 —— 完全平坦，这就是 R 自己的 trace
+   在停止迭代时 deviance 还在以 1.1e-4/周期下降的原因。
+3. **真根因**：`gamlss.control` **没有 `delta` 参数**
+   （签名止于 `save, ...`）。我传的 `delta=1e-8` 被 `...` **静默吞掉**，
+   R 实际用默认 `c.crit = 0.001`；而我这边传的是 `c_crit=1e-8`。
+   **两侧用了不同的停止规则**，偏差 1000 倍。
+
+R 的 RS 判据是 `while (abs(G.dev.old - G.dev) > c.crit && iter < n.cyc)`
+—— **绝对** deviance 变化；我们的是
+`abs_change < tol or rel_change < rtol` —— 绝对**或**相对。
+
+对齐到 `c_crit=0.001` 后**六族全部收敛**，rel 3.0e-05 ~ 3.6e-03。
+
+**方法论要点**：
+
+1. **`custom_jvp` 只补一层**。一阶能导 ≠ 二阶能导；
+   只要 RS 走 Hessian，重新求导就会回到特殊函数。
+   凡是"用 AD 派生"的族，log-pdf 都不能碰无二阶导的特殊函数。
+2. **"我们比 R 好"默认当作可疑**（D2.15 的纪律，本轮再次生效）。
+   判定手段是**同一密度互评** + **score 和是否为零**，
+   而不是比较两边的 deviance 数字。
+3. **"R 报的数"与"你传给 R 的参数"是两件事**。
+   `...` 会静默吞掉不认识的参数名，然后你就在拿两套不同的配置做对比。
+   **对照前先 `names(formals(f))` 核对，不要猜。**
+4. **R 的收敛判据是绝对量**。parity 对比必须用同一判据；
+   把自己的判据收紧 1000 倍再比"谁更优"是自欺。
+5. **`fit[["mu.fv"]]` 是 n 元素 fitted values，不是系数对**。
+   取 `[1]`/`[2]` 当截距/斜率重建 `mu(x)` 会得到 `mu(40) ≈ 71`
+   （而 `y` 在 [0.4, 4]），把 deviance 抬到 464。
+   这条我错了两次，第二次改用 `y ~ 1`（mu 是标量）才彻底消除歧义。
+6. **`gamlss.family` 对象没有 `d`/`p`/`q` 槽**。
+   `!is.null(o$p)` 为 TRUE 但 `o$p(...)` 报
+   "attempt to apply non-function"（`$` 部分匹配到了 `parameters`）。
+   dpqr 是命名空间级函数 `pBCTo` / `qBCTo`，第一参数名是 `q`。
+7. **别用便宜的替身伪造失败模式**。我先试 `jnp.round` 当
+   "一阶可导二阶不可导"的替身，实测它二阶返回 0 而不是报错 ——
+   什么也没复现，测试会为错误的原因通过。
+   改用真实的 `_log_pt_t`（grad1 = 0.0845，grad2 抛
+   `Betainc gradient with respect to a and b not supported`，与线上逐字一致），
+   并另加一条测试证明**不加 override 时同一构造确实会失败** ——
+   否则"override 生效"和"override 被忽略"两种情况都测得过去。
+
+**新增测试** `tests/test_boxcox_o_variants_fittable.py`（26 项）：
+能拟合 / 拟合值有限 / 密度逐字等于基族 / 导数来自基族而非 AD /
+override 是叠加而非开关 / warm-up 跳过 override /
+不加 override 时 AD 确实失败 / link 表 / `d`/`p`/`q`/`gdev` 对活 R /
+RS deviance 对活 R / "我们更低只是因为跑得更久"的推理被钉住。
+
+**回归**：Box-Cox 簇 129 项 + dpqr/能力 28 项 + `build_ad_family`
+相关 7 项全过。既有失败 `test_bccguntr_dpq_against_bccg_reference`
+（rel 3.167e-05，`rtol=1e-05`）经 `git stash` 判定为**改动前既已失败**
+（未含本次改动时报同样的数）。
+
+**全族 parity 扫描现状**（146 族，`tools/rs_family_parity_scan.py`，
+`--timeout 60`，D2.16 的欠账，本轮结清）：
+
+| 关卡 | 通过 | 失败 | skip |
+|---|---|---|---|
+| `dpqr` | 60 / 95 (63.2%) | 35 | 47 |
+| `deriv` | 130 / 139 (93.5%) | 9 | 7 |
+| `rsdev` | 47 / 61 (77.0%) | 14 | 81 |
+
+`rsdev` 的 14 个真实缺陷里，**`ST1` / `ST2` 报的
+`Betainc gradient with respect to a and b not supported`
+与本轮修的是同一类缺陷** —— 同一处 `ad.py` 的 override 机制应该能覆盖，
+是下一个明确的入手点。其余：`SST` 11751 vs 135（rel 8.6e+01）、
+`TF2` 3399 vs 144（rel 2.3e+01）、`ST3C` rel 1.8e-01、
+`ZAPIG` / `ZAZIPF` deviance 非有限、`SI` 为 `nan`、
+`GIG` 仍是 placeholder。81 个 skip 主要是 R 侧拟合不收敛
+（`BCT` / `BCCG` 就在其中），属"探针覆盖不足"而非"实现有缺陷"。
+
+**族覆盖已核对完整**：注册 146 族 = 扫描 146 族，**零遗漏**。
+（核对时我一度以为 `BCTO` / `BCTUNTR` 没被扫到 —— 错在拿 R 风格的
+混合大小写 `BCTo` / `BCTuntr` 去比对 Python 侧的**大写注册名**。
+这个混淆本身就是 D2.16 那条教训的重演：**两套命名空间的名字不能直接对齐**。）
+`BCT` / `BCCG` 的 `rsdev` 是 `skip` 而非 `fail`，原因是 R 侧在
+`n.cyc=5000` 下仍报 "Algorithm RS has not yet converged" ——
+**探针的收敛口径比实现更严**，同样是 D2.17 上面那条判据问题的延伸。
+
 ### D1 分布 family d/p/q/r parity（P1，8–12 周）
 
 - 批次 A：ST/SEP/SST（独立参数化、尾部、q 稳健反演）；

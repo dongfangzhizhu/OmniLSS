@@ -375,54 +375,38 @@ class BCPEoFamily(FamilyDefinition):
 
 
 def _bcpeo_log_pdf(y, mu, sigma, nu, tau):
-    """BCPE Original log-PDF (R BCPE.R dBCPE = dBCPEo).
+    """BCPE Original log-PDF -- delegates to the one and only BCPE density.
 
-    z = ((y/mu)^nu - 1)/(nu*sigma)  or  log(y/mu)/sigma
-    f.T(t): log.c = 0.5*(-(2/tau)log(2) + lgamma(1/tau) - lgamma(3/tau))
-            c = exp(log.c);  log.lik = log(tau) - log.c
-                - 0.5*|t/c|^tau - (1+1/tau)log(2) - lgamma(1/tau)
-    F.T(t): s = 0.5*(|t/c|^tau);  cdf = 0.5*(1 + pgamma(s, 1/tau, 1)*sign(t))
-    loglik = (nu-1)log(y) - nu log(mu) - log(sigma)
-           + f.T(z, log=TRUE) - log(F.T(1/(sigma*|nu|)))
+    R's ``dBCPEo`` body is byte-identical to ``dBCPE``'s
+    (``identical(deparse(body(dBCPEo)), deparse(body(dBCPE)))`` is ``TRUE`` in
+    gamlss.dist); the only difference between the two families is ``mu.link``.
+    This used to be an independent reimplementation, and it drifted: it called
+    ``jax.scipy.special.gammainc`` with a first argument of ``1/tau`` so ``gamlss
+    RS`` died with ``Differentiation rule for 'igamma_grad_a' not implemented``
+    -- the family could not be fitted at all.
+
+    D2.15 established the rule for this cluster: one family, one density.  The
+    fitting path and ``dpqr_functions.dBCPE`` now read the same code, so they
+    cannot disagree.
     """
-    import jax.numpy as jnp
-    from jax.scipy.special import gammaln as _gl, gammainc as _gic
+    from .dpqr_functions import dBCPE
 
-    eps = jnp.finfo(jnp.float64).eps
-    y = jnp.maximum(y, eps)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    nu = jnp.asarray(nu, dtype=jnp.float64)
-    tau = jnp.maximum(tau, eps)
-
-    ratio = y / mu
-    z = jnp.where(
-        jnp.abs(nu) > eps,
-        (jnp.power(ratio, nu) - 1.0) / (nu * sigma),
-        jnp.log(ratio) / sigma
-    )
-    logder = (nu - 1.0) * jnp.log(y) - nu * jnp.log(mu) - jnp.log(sigma)
-
-    # f.T(z, log=TRUE)
-    log_c = 0.5 * (-(2.0 / tau) * jnp.log(2.0) + _gl(1.0 / tau) - _gl(3.0 / tau))
-    log_fT = (jnp.log(tau) - log_c - 0.5 * jnp.power(jnp.abs(z) / jnp.exp(log_c), tau)
-              - (1.0 + 1.0 / tau) * jnp.log(2.0) - _gl(1.0 / tau))
-    # F.T(1/(sigma*|nu|))
-    t_trunc = 1.0 / (sigma * jnp.maximum(jnp.abs(nu), eps))
-    c = jnp.exp(log_c)
-    s_trunc = 0.5 * jnp.power(jnp.abs(t_trunc) / c, tau)
-    F_s = _gic(1.0 / tau, s_trunc)
-    log_FT = jnp.log(0.5 * (1.0 + F_s * jnp.sign(t_trunc)))
-
-    loglik = logder + log_fT - log_FT
-    return jnp.where(y > 0.0, loglik, -jnp.inf)
+    return dBCPE(y, mu, sigma, nu, tau, log=True)
 
 
 def BCPEo():
     """Box-Cox Power Exponential with original parameterization."""
+    from .distributions import BCPE
     from .dpqr_functions import pBCPE, qBCPE, rBCPE
 
+    # R's closed-form derivatives, borrowed from BCPE (identical density).
+    # AD cannot be used for tau: dBCPE reaches gammainc(1/tau, s) and
+    # differentiating twice raises "igamma_grad_a not implemented", which is
+    # why this family could not be fitted at all before.
+    _base = BCPE()
     return build_ad_family(
+        score_overrides=dict(_base.score_functions),
+        hessian_overrides=dict(_base.hessian_functions),
         family_class=BCPEoFamily,
         name="BCPEo",
         parameters=("mu", "sigma", "nu", "tau"),
@@ -470,51 +454,36 @@ class BCToFamily(FamilyDefinition):
 
 
 def _bcto_log_pdf(y, mu, sigma, nu, tau):
-    """BCT Original log-PDF (R BCT.R dBCT = dBCTo).
+    """BCT Original log-PDF -- delegates to the one and only BCT density.
 
-    z = ((y/mu)^nu - 1)/(nu*sigma)  or  log(y/mu)/sigma
-    loglik = (nu-1)log(y) - nu log(mu) - log(sigma)
-           + [lgamma((tau+1)/2) - lgamma(tau/2) - 0.5 log(tau) - lgamma(0.5)
-              - ((tau+1)/2) log(1 + z^2/tau)]
-           - log(pt(1/(sigma|nu|), df=tau))
+    R's ``dBCTo`` body is byte-identical to ``dBCT``'s (verified with
+    ``identical(deparse(...))``); the two families differ only in ``mu.link``.
+
+    The independent reimplementation this replaces called ``betainc`` with
+    ``a = tau/2``, and JAX has no derivative for ``betainc`` in ``a``/``b``
+    (``a`` *is* ``df/2``), so every RS step raised ``Betainc gradient with
+    respect to a and b not supported`` and ``BCTo`` could not be fitted.  The
+    dedicated ``_log_pt_t`` helper in ``dpqr_functions`` (D2.13) carries a
+    ``custom_jvp`` for exactly this reason -- delegating gets it for free.
     """
-    import jax.numpy as jnp
-    from jax.scipy.special import gammaln as _gl
+    from .dpqr_functions import dBCT
 
-    eps = jnp.finfo(jnp.float64).eps
-    y = jnp.maximum(y, eps)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    nu = jnp.asarray(nu, dtype=jnp.float64)
-    tau = jnp.maximum(tau, eps)
-
-    ratio = y / mu
-    z = jnp.where(
-        jnp.abs(nu) > eps,
-        (jnp.power(ratio, nu) - 1.0) / (nu * sigma),
-        jnp.log(ratio) / sigma
-    )
-    logder = (nu - 1.0) * jnp.log(y) - nu * jnp.log(mu) - jnp.log(sigma)
-    # t kernel without the log(sigma) factor (already in logder)
-    fTz = (_gl((tau + 1.0) / 2.0) - _gl(tau / 2.0) - 0.5 * jnp.log(tau) - _gl(0.5)
-           - ((tau + 1.0) / 2.0) * jnp.log1p(z * z / tau))
-    # truncation: -log(pt(1/(sigma*|nu|), df=tau))
-    # JAX t 无 logcdf，用不完全贝塔实现：P(T<=t)=1-0.5*I_x(df/2,1/2) (t>0)
-    from jax.scipy.special import betainc as _bic
-    trunc_arg = 1.0 / (sigma * jnp.maximum(jnp.abs(nu), eps))
-    xb = tau / (tau + trunc_arg * trunc_arg)
-    ib = _bic(tau / 2.0, 0.5, xb)
-    pt_val = jnp.where(trunc_arg > 0, 1.0 - 0.5 * ib, 0.5 * ib)
-    log_trunc = jnp.log(jnp.maximum(pt_val, eps))
-    loglik = logder + fTz - log_trunc
-    return jnp.where(y > 0.0, loglik, -jnp.inf)
+    return dBCT(y, mu, sigma, nu, tau, log=True)
 
 
 def BCTo():
     """Box-Cox t with original parameterization."""
+    from .distributions import BCT
     from .dpqr_functions import pBCT, qBCT, rBCT
 
+    # R's closed-form derivatives, borrowed from BCT (identical density).
+    # AD cannot be used for tau: dBCT reaches betainc(tau/2, 1/2, x), which has
+    # no gradient in a/b, so the Hessian trace raises even though D2.13's
+    # custom_jvp makes the first derivative work.
+    _base = BCT()
     return build_ad_family(
+        score_overrides=dict(_base.score_functions),
+        hessian_overrides=dict(_base.hessian_functions),
         family_class=BCToFamily,
         name="BCTo",
         parameters=("mu", "sigma", "nu", "tau"),
