@@ -53,42 +53,267 @@ def _t_cdf_jax(t, df):
     return jnp.where(t_val == 0, 0.5, cdf)
 
 
+def _norm_logpdf(x):
+    """Standard-normal log density -- R's ``dNO(x, mu=0, sigma=1, log=TRUE)``.
+
+    Spelled out rather than delegated to `jax.scipy.stats.norm` because a
+    `scipy.stats.*` call anywhere inside a density is a landmine: `fitting_cg`
+    differentiates `family.d(..., log=True)` inside `jit`, and scipy answers a
+    tracer with `__array__`, i.e. `TracerArrayConversionError`, once per CG
+    cycle.  Plain `jnp` primitives are two-sided differentiable.
+    """
+    import jax.numpy as jnp
+
+    x_val = jnp.asarray(x, dtype=jnp.float64)
+    return -0.5 * x_val * x_val - 0.5 * jnp.log(2.0 * jnp.pi)
+
+
+def _norm_logcdf(x):
+    """Standard-normal log CDF -- R's ``pNO(x, mu=0, sigma=1, log.p=TRUE)``.
+
+    `jax.scipy.special.log_ndtr` is exactly what R's `pNO(log.p=TRUE)` computes
+    (both go through `log_ndtr`), and unlike a hand-rolled `log(0.5*erfc(...))`
+    it stays accurate in the far left tail -- at x = -3 the naive form is off
+    by 3.9 in the log, which no tolerance can hide.
+
+    The reason this was not the first choice: `log_ndtr` has to be
+    differentiable through `fitting_cg`'s `jit`-compiled Hessian.  Checked
+    directly -- `grad` and `grad(grad)` of `log_ndtr` are both finite, so it is
+    safe here.  (The `scipy.stats.*` hazard noted in `_norm_logpdf` does not
+    apply: `jax.scipy` is pure JAX.)
+    """
+    import jax.numpy as jnp
+    from jax.scipy.special import log_ndtr
+
+    return log_ndtr(jnp.asarray(x, dtype=jnp.float64))
+
+
 def _st1_log_pdf(y, mu, sigma, nu, tau):
-    """R ST1.R dST1: log(2) + pt(nu*z, df=tau) + dt(z, df=tau) - log(sigma)."""
+    """R ST1.R dST1, including its normal-limit branch.
+
+    R:
+        loglik1 <- pt(w, df=tau, log.p=TRUE) + dt(z, df=tau, log=TRUE) + log(2) - log(sigma)
+        loglik2 <- pNO(w, 0, 1, log.p=TRUE)   + dNO(z, 0, 1, log=TRUE)   + log(2) - log(sigma)
+        loglik  <- ifelse(tau < 1e+06, loglik1, loglik2)
+
+    The branch is not cosmetic.  R's own ST1 optimum on the parity sample sits
+    at tau = 1.4e56, i.e. deep inside the normal limit -- and omitting the
+    branch makes our density wrong *at R's solution*, not merely at the
+    extremes.  ST3/ST4 carry the same `tau < 1e+06` switch; ST1/ST2 were the
+    two holdouts.
+    """
     import jax.numpy as jnp
     from jax.scipy.stats import t as t_dist
 
     z = (jnp.asarray(y, dtype=jnp.float64) - jnp.asarray(mu, dtype=jnp.float64)) / jnp.asarray(
         sigma, dtype=jnp.float64
     )
-    tau_safe = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), 1e-6)
-    loglik = (
+    tau_v = jnp.asarray(tau, dtype=jnp.float64)
+    tau_safe = jnp.maximum(tau_v, 1e-6)
+    w = jnp.asarray(nu, dtype=jnp.float64) * z
+
+    loglik1 = (
         jnp.log(2.0)
-        + jnp.log(_t_cdf_jax(jnp.asarray(nu, dtype=jnp.float64) * z, tau_safe))
+        + jnp.log(_t_cdf_jax(w, tau_safe))
         + t_dist.logpdf(z, tau_safe)
         - jnp.log(jnp.asarray(sigma, dtype=jnp.float64))
     )
-    return loglik
+    loglik2 = (
+        jnp.log(2.0)
+        + _norm_logcdf(w)
+        + _norm_logpdf(z)
+        - jnp.log(jnp.asarray(sigma, dtype=jnp.float64))
+    )
+    return jnp.where(tau_v < _GAUSS_LIMIT, loglik1, loglik2)
 
 
 def _st2_log_pdf(y, mu, sigma, nu, tau):
-    """R ST2.R dST2: w = nu*sqrt((tau+1)/(tau+z^2))*z; pt(w, df=tau+1)."""
+    """R ST2.R dST2, including its normal-limit branch.
+
+    R's dST2 mirrors dST1: the t kernel uses `df = tau + 1` for the CDF and
+    `df = tau` for the density, and everything switches to the normal limit at
+    `tau >= 1e+06` (with `lam` pinned to 1 there).
+    """
     import jax.numpy as jnp
     from jax.scipy.stats import t as t_dist
 
     z = (jnp.asarray(y, dtype=jnp.float64) - jnp.asarray(mu, dtype=jnp.float64)) / jnp.asarray(
         sigma, dtype=jnp.float64
     )
-    tau_safe = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), 1e-6)
-    lam = (tau_safe + 1.0) / (tau_safe + z * z)
-    w = jnp.asarray(nu, dtype=jnp.float64) * jnp.sqrt(lam) * z
-    loglik = (
+    tau_v = jnp.asarray(tau, dtype=jnp.float64)
+    tau_safe = jnp.maximum(tau_v, 1e-6)
+    z2 = z * z
+    lam = jnp.where(tau_v < _GAUSS_LIMIT, (tau_safe + 1.0) / (tau_safe + z2), 1.0)
+    nu_v = jnp.asarray(nu, dtype=jnp.float64)
+    w = nu_v * jnp.sqrt(lam) * z
+
+    loglik1 = (
         jnp.log(2.0)
         + jnp.log(_t_cdf_jax(w, tau_safe + 1.0))
         + t_dist.logpdf(z, tau_safe)
         - jnp.log(jnp.asarray(sigma, dtype=jnp.float64))
     )
-    return loglik
+    loglik2 = (
+        jnp.log(2.0)
+        + _norm_logcdf(w)
+        + _norm_logpdf(z)
+        - jnp.log(jnp.asarray(sigma, dtype=jnp.float64))
+    )
+    return jnp.where(tau_v < _GAUSS_LIMIT, loglik1, loglik2)
+
+
+# ---------------------------------------------------------------------------
+# R's closed-form scores / diagonal second derivatives (D2.18)
+# ---------------------------------------------------------------------------
+#
+# Why these are transcribed instead of auto-differentiated
+# --------------------------------------------------------
+# `_t_cdf_jax` reaches `betainc(df/2, 0.5, x)`, and `betainc` has no
+# derivative in `a`/`b`.  The first derivative fails too, so this is *worse*
+# than the Box-Cox cluster of D2.17: there, D2.13's `custom_jvp` patched the
+# score and only the Hessian re-entered `betainc`.  Here the score itself
+# raises, so every RS cycle failed with
+# `Betainc gradient with respect to a and b not supported` and neither family
+# could be fitted at all.  `custom_jvp` cannot help: it is applied *after*
+# the derivative is taken, so there is nothing to attach it to.
+#
+# Transcribing R's formulas is the right move for parity reasons too.  Every
+# second derivative below is `-dldX^2` clamped at -1e-15 -- a rough observed
+# approximation, not a true Hessian.  D2.15 established that for this project
+# the target is *what R feeds the IRLS*, so a "better" second derivative makes
+# parity worse.  Keep the roughness.
+#
+# The `dldt` forward difference with its hard-coded step is likewise
+# deliberate and must stay bit-comparable: R uses 0.001 on `tau` (ST1) and
+# 0.0005 on `df = tau+1` (ST2), and those are different step sizes for what
+# is nominally the same derivative.  Widening either one changes the number.
+
+_EPS_ST = 1e-15
+_GAUSS_LIMIT = 1e6  # R's `ifelse(tau < 1e+06, <t kernel>, <normal>)` cutoff
+
+
+def _st_pieces(y, mu, sigma, nu, tau, is_st2):
+    """Shared kernel quantities for ST1/ST2, transcribed from R.
+
+    Returns ``(z, lam, w, df, dwdz)`` where ``w`` is R's skewed-t argument.
+
+    ST1 and ST2 differ in more than the argument: ST2's ``w`` carries
+    ``sqrt(lam)`` and the density uses ``df = tau + 1`` throughout, while ST1
+    uses ``w = nu*z`` with ``df = tau``.  R's ``lam`` shows up in *both*
+    families' ``dldm``/``dldd`` even though only ST2's ``w`` needs it -- that
+    is R's actual code, so it is reproduced rather than tidied up.
+    """
+    import jax.numpy as jnp
+    from jax.scipy.stats import t as t_dist
+
+    y = jnp.asarray(y, dtype=jnp.float64)
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), 1e-12)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), 1e-6)
+
+    z = (y - mu) / sigma
+    z2 = z * z
+    # R: lam <- ifelse(tau < 1e+06, (tau+1)/(tau+z^2), 1)
+    lam = jnp.where(tau < _GAUSS_LIMIT, (tau + 1.0) / (tau + z2), 1.0)
+    if is_st2:
+        w = nu * jnp.sqrt(lam) * z
+        df = tau + 1.0
+        # R: dwdz <- nu*(lam^0.5)*(1 - lam*(z^2)/(tau+1))
+        dwdz = nu * jnp.sqrt(lam) * (1.0 - lam * z2 / (tau + 1.0))
+    else:
+        w = nu * z
+        df = tau
+        dwdz = jnp.zeros_like(z)
+    return z, lam, w, df, dwdz, t_dist
+
+
+def _st_hazard(w, df, t_dist):
+    """R's ``dt(w, df=tau) / pt(w, df=tau)`` -- the hazard ratio both families use."""
+    import jax.numpy as jnp
+
+    return t_dist.pdf(w, df) / jnp.maximum(_t_cdf_jax(w, df), 1e-300)
+
+
+def _st_dldt_fd(w, df, t_dist, step):
+    """R's forward difference of ``pt(w, df, log.p=TRUE)`` with respect to df.
+
+    ST1 differences on ``tau`` with step 0.001; ST2 differences on
+    ``df = tau + 1`` with step 0.0005.  Both are transcribed as written --
+    R's own value is a finite-difference approximation, and matching it is
+    the parity target.
+    """
+    import jax.numpy as jnp
+
+    return (
+        jnp.log(_t_cdf_jax(w, df + step)) - jnp.log(_t_cdf_jax(w, df - step))
+    ) / (2.0 * step)
+
+
+def _st_score_and_hessian(y, mu, sigma, nu, tau, is_st2, want_hessian=False):
+    """Return R's four scores and, optionally, four diagonal second derivatives."""
+    import jax.numpy as jnp
+    from jax.scipy.special import digamma
+
+    z, lam, w, df, dwdz, t_dist = _st_pieces(y, mu, sigma, nu, tau, is_st2)
+    z2 = z * z
+    tau_v = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), 1e-6)
+    hz = _st_hazard(w, df, t_dist)
+
+    # --- ST1: w = nu*z, so dw/dz = nu.  ST2: dw/dz as R defines it. ---
+    dw_dz = nu if not is_st2 else dwdz
+
+    dldm = -hz * dw_dz / sigma + lam * z / sigma
+    dldd = -hz * z * dw_dz / sigma + (lam * z2 - 1.0) / sigma
+    # R: dwdv <- w/nu, then dldv <- (dt/pt)*dwdv.  At nu = 0 that is 0/0, and
+    # R does return NaN there -- `ST1(nu=0)$dldv` is NaN and `d2ldv2` is NA.
+    # No guard is added: "fixing" it would diverge from the reference, and R's
+    # own `nu.initial` is 0.1, so the optimiser does not sit on that boundary.
+    dldv = hz * (w / nu)
+    j_fd = _st_dldt_fd(w, df, t_dist, 0.001 if not is_st2 else 0.0005)
+    dldt = j_fd + 0.5 * (
+        digamma((tau_v + 1.0) / 2.0)
+        - digamma(tau_v / 2.0)
+        - 1.0 / tau_v
+        - jnp.log(1.0 + z2 / tau_v)
+        + lam * z2 / tau_v
+    )
+
+    scores = {"mu": dldm, "sigma": dldd, "nu": dldv, "tau": dldt}
+    if not want_hessian:
+        return scores, None
+    # R: d2ldX2 <- -dldX*dldX, then ifelse(< -1e-15, ., -1e-15)
+    #
+    # The NaN propagation is not incidental.  At nu = 0 `dldv` is NaN (w/nu with
+    # w = 0), and R's `ifelse(NA, x, y)` returns **NA**, so `d2ldv2` is NA too
+    # (verified: `is.nan(ST1(nu=0)$d2ldv2)` is FALSE, the value is NA).  A plain
+    # `jnp.where(cond, a, b)` would return -1e-15 there instead, because the
+    # comparison against NaN yields False.  The explicit NaN check reproduces R.
+    hess = {}
+    for key, val in scores.items():
+        sq = -val * val
+        floored = jnp.where(sq < -_EPS_ST, sq, -_EPS_ST)
+        hess[key] = jnp.where(jnp.isnan(sq), jnp.nan, floored)
+    return scores, hess
+
+
+def _make_st_derivative_tables(is_st2):
+    """Build the eight R-derivative callables for one family."""
+
+    def _table(y, mu, sigma, nu, tau):
+        return _st_score_and_hessian(
+            y, mu, sigma, nu, tau, is_st2, want_hessian=True
+        )
+
+    scores, hess = {}, {}
+    for key in ("mu", "sigma", "nu", "tau"):
+        scores[key] = (
+            lambda y, mu, sigma, nu, tau, _k=key: _table(y, mu, sigma, nu, tau)[0][_k]
+        )
+        hess[key] = (
+            lambda y, mu, sigma, nu, tau, _k=key: _table(y, mu, sigma, nu, tau)[1][_k]
+        )
+    return scores, hess
 
 
 def _build_st1_st2(name, family_class, log_pdf_func):
@@ -247,12 +472,20 @@ def _build_st1_st2(name, family_class, log_pdf_func):
         u = _jr.uniform(key, shape=(n,), dtype=_jnp.float64)
         return _st_q(u, mu, sigma, nu, tau)
 
+    # R's closed-form scores / diagonal second derivatives.  Without these the
+    # AD path raises inside `betainc` on the *first* derivative (worse than the
+    # Box-Cox cluster in D2.17, where a `custom_jvp` at least fixed the score).
+    # See the block comment above `_st_score_and_hessian`.
+    _scores, _hess = _make_st_derivative_tables(name == "ST2")
+
     return build_ad_family(
         family_class=family_class,
         name=name,
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=log_pdf_func,
         type_="Continuous",
+        score_overrides=_scores,
+        hessian_overrides=_hess,
         links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
         link_functions={"mu": identity_link, "sigma": log_link, "nu": identity_link, "tau": log_link},
         link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": identity_inverse, "tau": log_inverse},
