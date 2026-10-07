@@ -57,6 +57,11 @@ from .dpqr_functions import (
     dBCCG, pBCCG, qBCCG, rBCCG,
     dZIP, pZIP, qZIP, rZIP,
 )
+# The Box-Cox power-exponential family's standardized kernel.  Its scoring
+# path used to omit the standardization constant entirely, so g_dev_inc and
+# dpqr_functions.dBCPE described different densities -- importing the same
+# helpers the d/p/q/r functions use is what keeps them one density.
+from .dpqr_functions import _bcpe_c, _bcpe_ftrunc, _bcpe_ftrunc_log
 
 
 @dataclass(frozen=True)
@@ -1786,6 +1791,22 @@ def BCCG() -> BoxCoxColeGreenFamily:
         z_log = jnp.log(ratio) / sigma
         return jnp.where(use_log, z_log, z_boxcox)
 
+    def _truncation_log_term(
+        sigma: jnp.ndarray, nu: jnp.ndarray
+    ) -> jnp.ndarray:
+        """``-log(pnorm(1/(sigma*|nu|)))`` -- R BCCG.R's truncation term.
+
+        Same defect shape as D2.12 found on BCT: ``dpqr_functions.dBCCG``
+        carries this term and the fitting log-density did not.  Measured at
+        sigma=0.65, nu=1.7 the two log-densities differed by exactly
+        ``0.20179639 = -log(pnorm(1/(sigma*|nu|)))``, constant in ``y`` --
+        harmless for the deviance, but it shifts every score and Hessian
+        because the term depends on ``sigma`` and ``nu``.
+        """
+        from jax.scipy.stats import norm
+
+        return -norm.logcdf(1.0 / (sigma * jnp.maximum(jnp.abs(nu), eps)))
+
     def _log_density(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray, nu: jnp.ndarray) -> jnp.ndarray:
         y = jnp.maximum(jnp.asarray(y, dtype=jnp.float64), eps)
         mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), eps)
@@ -1798,69 +1819,96 @@ def BCCG() -> BoxCoxColeGreenFamily:
             - nu * jnp.log(mu)
             + (nu - 1.0) * jnp.log(y)
             - 0.5 * jnp.square(z)
+            + _truncation_log_term(sigma, nu)
         )
 
     def g_dev_inc(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray, nu: jnp.ndarray) -> jnp.ndarray:
         return -2.0 * _log_density(y, mu, sigma, nu)
 
-    def _numeric_score(
+    def _score(
         parameter: str,
         y: jnp.ndarray,
         mu: jnp.ndarray,
         sigma: jnp.ndarray,
         nu: jnp.ndarray,
     ) -> jnp.ndarray:
-        step = jnp.array(1e-5, dtype=jnp.float64)
-        if parameter == "mu":
-            plus = _log_density(y, jnp.maximum(mu + step, eps), sigma, nu)
-            minus = _log_density(y, jnp.maximum(mu - step, eps), sigma, nu)
-            return (plus - minus) / (2.0 * step)
-        if parameter == "sigma":
-            plus = _log_density(y, mu, jnp.maximum(sigma + step, eps), nu)
-            minus = _log_density(y, mu, jnp.maximum(sigma - step, eps), nu)
-            return (plus - minus) / (2.0 * step)
-        plus = _log_density(y, mu, sigma, nu + step)
-        minus = _log_density(y, mu, sigma, nu - step)
-        return (plus - minus) / (2.0 * step)
+        """R BCCG.R's closed-form scores ``dldm`` / ``dldd`` / ``dldv``.
 
-    def _numeric_hessian(
+        Transcribed verbatim.  ``dldd`` and ``dldv`` both need the normal
+        inverse Mills ratio ``h = dnorm(1/(sigma*|nu|)) / pnorm(1/(sigma*|nu|))``
+        because of the truncation term.  Note the ``1/sqrt(2*pi)`` in ``dnorm``:
+        dropping it inflates both scores by 2.5066.
+        """
+        from jax.scipy.stats import norm as _norm
+
+        y = jnp.maximum(jnp.asarray(y, dtype=jnp.float64), eps)
+        mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), eps)
+        sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), eps)
+        nu = jnp.asarray(nu, dtype=jnp.float64)
+
+        if parameter == "mu":
+            z = _z_transform(y, mu, sigma, nu)
+            return ((z / sigma) + nu * (z * z - 1.0)) / mu
+
+        arg = 1.0 / (sigma * jnp.maximum(jnp.abs(nu), eps))
+        h = _norm.pdf(arg) / jnp.maximum(_norm.cdf(arg), eps)
+        z = _z_transform(y, mu, sigma, nu)
+        if parameter == "sigma":
+            return (z * z - 1.0) / sigma + h / (sigma * sigma * jnp.abs(nu))
+        log_ratio = jnp.log(y / mu)
+        value = (z - (log_ratio / sigma)) * (z / nu) - log_ratio * (z * z - 1.0)
+        return value + jnp.sign(nu) * h / (sigma * nu * nu)
+
+    def _hessian(
         parameter: str,
         y: jnp.ndarray,
         mu: jnp.ndarray,
         sigma: jnp.ndarray,
         nu: jnp.ndarray,
     ) -> jnp.ndarray:
-        step = jnp.array(1e-4, dtype=jnp.float64)
-        center = _log_density(y, mu, sigma, nu)
+        """R BCCG.R's diagonal second derivatives, transcribed verbatim.
+
+        ``d2ldv2 = -7*sigma^2/4`` is as coarse here as it is on BCT -- it is
+        what R feeds its IRLS, so copying it is what parity means.
+        """
+        y = jnp.maximum(jnp.asarray(y, dtype=jnp.float64), eps)
+        mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), eps)
+        sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), eps)
+        nu = jnp.asarray(nu, dtype=jnp.float64)
+
         if parameter == "mu":
-            plus = _log_density(y, jnp.maximum(mu + step, eps), sigma, nu)
-            minus = _log_density(y, jnp.maximum(mu - step, eps), sigma, nu)
-        elif parameter == "sigma":
-            plus = _log_density(y, mu, jnp.maximum(sigma + step, eps), nu)
-            minus = _log_density(y, mu, jnp.maximum(sigma - step, eps), nu)
-        else:
-            plus = _log_density(y, mu, sigma, nu + step)
-            minus = _log_density(y, mu, sigma, nu - step)
-        return (plus - 2.0 * center + minus) / jnp.square(step)
+            return -(1.0 + 2.0 * nu * nu * sigma * sigma) / (
+                mu * mu * sigma * sigma
+            )
+        if parameter == "sigma":
+            return -2.0 / (sigma * sigma)
+        return -7.0 * sigma * sigma / 4.0
 
     return BoxCoxColeGreenFamily(
         name="BCCG",
         parameters=("mu", "sigma", "nu"),
         g_dev_inc=g_dev_inc,
         type="Continuous",
-        links={"mu": "log", "sigma": "log", "nu": "identity"},
-        link_functions={"mu": log_link, "sigma": log_link, "nu": identity_link},
-        link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": identity_inverse},
-        link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": identity_derivative},
+                # Link functions transcribed from gamlss.dist::BCCG():
+        #   mu.link = "identity", sigma.link = "log", nu.link = "identity"
+        # mu was "log" here.  With the analytic scores in place the fit
+        # converges either way (deviance 199.567 vs R's 199.565), but the
+        # reported coefficient is on a different scale: log-link mu = 0.9996
+        # against R's identity-link 2.7684 (exp(0.9996) = 2.717, the same
+        # optimum, different parameterisation).
+        links={"mu": "identity", "sigma": "log", "nu": "identity"},
+        link_functions={"mu": identity_link, "sigma": log_link, "nu": identity_link},
+        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": identity_inverse},
+        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": identity_derivative},
         score_functions={
-            "mu": lambda y, mu, sigma, nu: _numeric_score("mu", y, mu, sigma, nu),
-            "sigma": lambda y, mu, sigma, nu: _numeric_score("sigma", y, mu, sigma, nu),
-            "nu": lambda y, mu, sigma, nu: _numeric_score("nu", y, mu, sigma, nu),
+            "mu": lambda y, mu, sigma, nu: _score("mu", y, mu, sigma, nu),
+            "sigma": lambda y, mu, sigma, nu: _score("sigma", y, mu, sigma, nu),
+            "nu": lambda y, mu, sigma, nu: _score("nu", y, mu, sigma, nu),
         },
         hessian_functions={
-            "mu": lambda y, mu, sigma, nu: _numeric_hessian("mu", y, mu, sigma, nu),
-            "sigma": lambda y, mu, sigma, nu: _numeric_hessian("sigma", y, mu, sigma, nu),
-            "nu": lambda y, mu, sigma, nu: _numeric_hessian("nu", y, mu, sigma, nu),
+            "mu": lambda y, mu, sigma, nu: _hessian("mu", y, mu, sigma, nu),
+            "sigma": lambda y, mu, sigma, nu: _hessian("sigma", y, mu, sigma, nu),
+            "nu": lambda y, mu, sigma, nu: _hessian("nu", y, mu, sigma, nu),
         },
         d=dBCCG,
         p=pBCCG,
@@ -2182,10 +2230,24 @@ def BCPE() -> BoxCoxPowerExponentialFamily:
         nu = jnp.asarray(nu, dtype=jnp.float64)
         tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), eps)
         z = _z_transform(y, mu, sigma, nu)
-        log_norm = jnp.log(tau) - (1.0 + 1.0 / tau) * jnp.log(2.0) - gammaln(1.0 / tau)
+        c = jnp.maximum(_bcpe_c(tau), eps)
+        # R BCPE.R's kernel is  -0.5 * (|z/c|^tau), NOT -0.5*|z|^tau.  The
+        # standardization constant c is what makes the distribution
+        # variance-standardised, and it appears in three places: log_norm,
+        # the kernel, and (via its derivative) the tau score.
+        log_c = jnp.log(c)
+        log_norm = (
+            jnp.log(tau)
+            - log_c
+            - (1.0 + 1.0 / tau) * jnp.log(2.0)
+            - gammaln(1.0 / tau)
+        )
         jacobian = -jnp.log(sigma) - nu * jnp.log(mu) + (nu - 1.0) * jnp.log(y)
-        kernel = -0.5 * jnp.power(jnp.abs(z), tau)
-        return log_norm + jacobian + kernel
+        kernel = -0.5 * jnp.power(jnp.abs(z) / c, tau)
+        # Truncation: R ends with - log(F.T(1/(sigma*|nu|))).  It depends on
+        # sigma and nu, so leaving it out shifts the scores as well.
+        truncation = -_bcpe_ftrunc_log(1.0 / (sigma * jnp.maximum(jnp.abs(nu), eps)), tau)
+        return log_norm + jacobian + kernel + truncation
 
     def g_dev_inc(
         y: jnp.ndarray,
@@ -2196,32 +2258,27 @@ def BCPE() -> BoxCoxPowerExponentialFamily:
     ) -> jnp.ndarray:
         return -2.0 * _log_density(y, mu, sigma, nu, tau)
 
-    def _numeric_score(
-        parameter: str,
-        y: jnp.ndarray,
-        mu: jnp.ndarray,
-        sigma: jnp.ndarray,
-        nu: jnp.ndarray,
-        tau: jnp.ndarray,
+    def _bcpe_trunc_hazard(
+        sigma: jnp.ndarray, nu: jnp.ndarray, tau: jnp.ndarray
     ) -> jnp.ndarray:
-        step = jnp.array(1e-5, dtype=jnp.float64)
-        if parameter == "mu":
-            plus = _log_density(y, jnp.maximum(mu + step, eps), sigma, nu, tau)
-            minus = _log_density(y, jnp.maximum(mu - step, eps), sigma, nu, tau)
-            return (plus - minus) / (2.0 * step)
-        if parameter == "sigma":
-            plus = _log_density(y, mu, jnp.maximum(sigma + step, eps), nu, tau)
-            minus = _log_density(y, mu, jnp.maximum(sigma - step, eps), nu, tau)
-            return (plus - minus) / (2.0 * step)
-        if parameter == "nu":
-            plus = _log_density(y, mu, sigma, nu + step, tau)
-            minus = _log_density(y, mu, sigma, nu - step, tau)
-            return (plus - minus) / (2.0 * step)
-        plus = _log_density(y, mu, sigma, nu, jnp.maximum(tau + step, eps))
-        minus = _log_density(y, mu, sigma, nu, jnp.maximum(tau - step, eps))
-        return (plus - minus) / (2.0 * step)
+        """R BCPE.R's ``h = f.T(1/(sigma*|nu|)) / F.T(1/(sigma*|nu|))``.
 
-    def _numeric_hessian(
+        Both halves are needed in closed form: ``f.T`` is the standardized
+        power-exponential density, ``F.T`` its CDF.  ``|nu|`` is floored so the
+        ``1/|nu|`` blow-up stays finite.
+        """
+        arg = 1.0 / (sigma * jnp.maximum(jnp.abs(nu), eps))
+        c = jnp.maximum(_bcpe_c(tau), eps)
+        log_pdf = (
+            jnp.log(tau)
+            - jnp.log(c)
+            - 0.5 * jnp.power(jnp.abs(arg) / c, tau)
+            - (1.0 + 1.0 / tau) * jnp.log(2.0)
+            - gammaln(1.0 / tau)
+        )
+        return jnp.exp(log_pdf - _bcpe_ftrunc_log(arg, tau))
+
+    def _score(
         parameter: str,
         y: jnp.ndarray,
         mu: jnp.ndarray,
@@ -2229,42 +2286,152 @@ def BCPE() -> BoxCoxPowerExponentialFamily:
         nu: jnp.ndarray,
         tau: jnp.ndarray,
     ) -> jnp.ndarray:
-        step = jnp.array(1e-4, dtype=jnp.float64)
-        center = _log_density(y, mu, sigma, nu, tau)
+        """R BCPE.R's closed-form scores, transcribed verbatim.
+
+        Every term is expressed through the standardization constant
+        ``c = exp(0.5*(-(2/tau)*log(2) + lgamma(1/tau) - lgamma(3/tau)))``;
+        ``dldt`` additionally needs ``d log(c)/d tau`` and, like R's own
+        ``dldt``, differences ``log F.T`` with a hard-coded 0.001 step.
+        """
+        from jax.scipy.special import digamma as _digamma, gammainc as _gammainc
+
+        y = jnp.maximum(jnp.asarray(y, dtype=jnp.float64), eps)
+        mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), eps)
+        sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), eps)
+        nu = jnp.asarray(nu, dtype=jnp.float64)
+        tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), eps)
+
+        z = _z_transform(y, mu, sigma, nu)
+        c = jnp.maximum(_bcpe_c(tau), eps)
+
         if parameter == "mu":
-            plus = _log_density(y, jnp.maximum(mu + step, eps), sigma, nu, tau)
-            minus = _log_density(y, jnp.maximum(mu - step, eps), sigma, nu, tau)
-        elif parameter == "sigma":
-            plus = _log_density(y, mu, jnp.maximum(sigma + step, eps), nu, tau)
-            minus = _log_density(y, mu, jnp.maximum(sigma - step, eps), nu, tau)
-        elif parameter == "nu":
-            plus = _log_density(y, mu, sigma, nu + step, tau)
-            minus = _log_density(y, mu, sigma, nu - step, tau)
-        else:
-            plus = _log_density(y, mu, sigma, nu, jnp.maximum(tau + step, eps))
-            minus = _log_density(y, mu, sigma, nu, jnp.maximum(tau - step, eps))
-        return (plus - 2.0 * center + minus) / jnp.square(step)
+            return (
+                (tau / (2.0 * mu * sigma * c * c))
+                * (z + sigma * nu * z * z)
+                * jnp.power(jnp.abs(z / c), tau - 2.0)
+                - (nu / mu)
+            )
+
+        h = _bcpe_trunc_hazard(sigma, nu, tau)
+        if parameter == "sigma":
+            return (1.0 / sigma) * (
+                (tau / 2.0) * jnp.power(jnp.abs(z / c), tau) - 1.0
+            ) + h / (sigma * sigma * jnp.abs(nu))
+
+        log_ratio = jnp.log(y / mu)
+        if parameter == "nu":
+            value = (
+                -(tau / (2.0 * nu * c * c))
+                * jnp.power(jnp.abs(z / c), tau - 2.0)
+                * z
+                * ((nu * z + 1.0 / sigma) * log_ratio - z)
+            )
+            return value + log_ratio + jnp.sign(nu) * h / (sigma * nu * nu)
+
+        d_log_c_dt = (1.0 / (2.0 * tau * tau)) * (
+            2.0 * math.log(2.0) - _digamma(1.0 / tau) + 3.0 * _digamma(3.0 / tau)
+        )
+
+        arg = 1.0 / (sigma * jnp.maximum(jnp.abs(nu), eps))
+
+        # R differentiates log F.T in tau with a 0.001 forward step; copied
+        # verbatim because a more accurate j would drift away from R's dldt.
+        def log_ft_tau(tau_value: jnp.ndarray) -> jnp.ndarray:
+            c_val = jnp.maximum(_bcpe_c(tau_value), eps)
+            s = 0.5 * jnp.power(jnp.abs(arg) / c_val, tau_value)
+            cdf = 0.5 * (1.0 + _gammainc(1.0 / tau_value, s) * jnp.sign(arg))
+            return jnp.log(jnp.maximum(cdf, eps))
+
+        j = (log_ft_tau(tau + 0.001) - log_ft_tau(tau)) / 0.001
+        return (
+            (1.0 / tau)
+            - 0.5 * jnp.log(jnp.abs(z / c)) * jnp.power(jnp.abs(z / c), tau)
+            + (1.0 / (tau * tau)) * (math.log(2.0) + _digamma(1.0 / tau))
+            + ((tau / 2.0) * jnp.power(jnp.abs(z / c), tau) - 1.0) * d_log_c_dt
+            - j
+        )
+
+    def _hessian(
+        parameter: str,
+        y: jnp.ndarray,
+        mu: jnp.ndarray,
+        sigma: jnp.ndarray,
+        nu: jnp.ndarray,
+        tau: jnp.ndarray,
+    ) -> jnp.ndarray:
+        """R BCPE.R's diagonal second derivatives, transcribed verbatim.
+
+        ``d2ldm2`` carries R's branch ``if (any(tau < 1.05)) -dldm^2``, which
+        switches to the squared score when the curvature formula degenerates.
+        The branch is on a *scalar* tau, so it is expressed with ``jnp.where``
+        on the whole array -- R's vectorised ``ifelse`` would collapse.
+        """
+        from jax.scipy.special import digamma as _digamma, polygamma as _polygamma
+
+        y = jnp.maximum(jnp.asarray(y, dtype=jnp.float64), eps)
+        mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), eps)
+        sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), eps)
+        nu = jnp.asarray(nu, dtype=jnp.float64)
+        tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), eps)
+
+        if parameter == "mu":
+            value = (
+                -(tau * tau)
+                * jnp.exp(
+                    gammaln(2.0 - 1.0 / tau)
+                    + gammaln(3.0 / tau)
+                    - 2.0 * gammaln(1.0 / tau)
+                )
+                / (mu * mu * sigma * sigma)
+                - (tau * nu * nu) / (mu * mu)
+            )
+            # R: if (any(tau < 1.05)) -dldm^2  else the closed form above.
+            # The fallback is the *squared score*, so it has to come from
+            # _score("mu", ...), not from a placeholder -- that recursion is
+            # what makes the degenerate branch meaningful.
+            dldm = _score("mu", y, mu, sigma, nu, tau)
+            return jnp.where(tau < 1.05, -dldm * dldm, value)
+        if parameter == "sigma":
+            return -tau / (sigma * sigma)
+        if parameter == "nu":
+            return -sigma * sigma * (3.0 * tau + 1.0) / 4.0
+
+        p = (tau + 1.0) / tau
+        d_log_c_dt = (1.0 / (2.0 * tau * tau)) * (
+            2.0 * math.log(2.0) - _digamma(1.0 / tau) + 3.0 * _digamma(3.0 / tau)
+        )
+        part1 = p * _polygamma(1, p) + 2.0 * _digamma(p) ** 2
+        part2 = _digamma(p) * (
+            math.log(2.0) + 3.0 - 3.0 * _digamma(3.0 / tau) - tau
+        )
+        part3 = -3.0 * _digamma(3.0 / tau) * (1.0 + math.log(2.0))
+        part4 = -(tau + math.log(2.0)) * math.log(2.0)
+        part5 = -tau + (tau ** 4) * d_log_c_dt ** 2
+        value = -(part1 + part2 + part3 + part4 + part5) / (tau * tau * tau)
+        return jnp.where(value < -1e-15, value, -1e-15)
 
     return BoxCoxPowerExponentialFamily(
         name="BCPE",
         parameters=("mu", "sigma", "nu", "tau"),
         g_dev_inc=g_dev_inc,
         type="Continuous",
-        links={"mu": "log", "sigma": "log", "nu": "identity", "tau": "log"},
-        link_functions={"mu": log_link, "sigma": log_link, "nu": identity_link, "tau": tau_link},
-        link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": identity_inverse, "tau": tau_inverse},
-        link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": identity_derivative, "tau": tau_derivative},
+        # gamlss.dist::BCPE(): mu.link = "identity", sigma.link = "log",
+        # nu.link = "identity", tau.link = "log".  mu was "log" here.
+        links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
+        link_functions={"mu": identity_link, "sigma": log_link, "nu": identity_link, "tau": tau_link},
+        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": identity_inverse, "tau": tau_inverse},
+        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": identity_derivative, "tau": tau_derivative},
         score_functions={
-            "mu": lambda y, mu, sigma, nu, tau: _numeric_score("mu", y, mu, sigma, nu, tau),
-            "sigma": lambda y, mu, sigma, nu, tau: _numeric_score("sigma", y, mu, sigma, nu, tau),
-            "nu": lambda y, mu, sigma, nu, tau: _numeric_score("nu", y, mu, sigma, nu, tau),
-            "tau": lambda y, mu, sigma, nu, tau: _numeric_score("tau", y, mu, sigma, nu, tau),
+            "mu": lambda y, mu, sigma, nu, tau: _score("mu", y, mu, sigma, nu, tau),
+            "sigma": lambda y, mu, sigma, nu, tau: _score("sigma", y, mu, sigma, nu, tau),
+            "nu": lambda y, mu, sigma, nu, tau: _score("nu", y, mu, sigma, nu, tau),
+            "tau": lambda y, mu, sigma, nu, tau: _score("tau", y, mu, sigma, nu, tau),
         },
         hessian_functions={
-            "mu": lambda y, mu, sigma, nu, tau: _numeric_hessian("mu", y, mu, sigma, nu, tau),
-            "sigma": lambda y, mu, sigma, nu, tau: _numeric_hessian("sigma", y, mu, sigma, nu, tau),
-            "nu": lambda y, mu, sigma, nu, tau: _numeric_hessian("nu", y, mu, sigma, nu, tau),
-            "tau": lambda y, mu, sigma, nu, tau: _numeric_hessian("tau", y, mu, sigma, nu, tau),
+            "mu": lambda y, mu, sigma, nu, tau: _hessian("mu", y, mu, sigma, nu, tau),
+            "sigma": lambda y, mu, sigma, nu, tau: _hessian("sigma", y, mu, sigma, nu, tau),
+            "nu": lambda y, mu, sigma, nu, tau: _hessian("nu", y, mu, sigma, nu, tau),
+            "tau": lambda y, mu, sigma, nu, tau: _hessian("tau", y, mu, sigma, nu, tau),
         },
         d=dBCPE,
         p=pBCPE,
