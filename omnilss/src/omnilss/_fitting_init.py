@@ -28,6 +28,11 @@ def _initial_parameter_value(
             return 1.8
         if family.name == "TF":
             return 10.0
+        if family.name == "TF2":
+            # R's TF2()$nu.initial is 4, not TF's 10 -- verified against live R.
+            # Do not fold this into the TF branch above: same parameter name,
+            # same file, different value, which is the D2.19 lesson again.
+            return 4.0
         if family.name == "JSU":
             return 0.0
         if family.name == "BCCG":

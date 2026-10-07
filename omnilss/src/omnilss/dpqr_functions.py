@@ -915,12 +915,30 @@ def dTF(x, mu=0.0, sigma=1.0, nu=10.0, log=False):
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     nu = jnp.asarray(nu, dtype=jnp.float64)
-    
+
     z = (x - mu) / sigma
-    log_fy = (gammaln((nu + 1.0) / 2.0) - gammaln(nu / 2.0) -
-              0.5 * jnp.log(nu * jnp.pi) - jnp.log(sigma) -
-              ((nu + 1.0) / 2.0) * jnp.log(1.0 + z * z / nu))
-    
+    log_t = (gammaln((nu + 1.0) / 2.0) - gammaln(nu / 2.0) -
+             0.5 * jnp.log(nu * jnp.pi) - jnp.log(sigma) -
+             ((nu + 1.0) / 2.0) * jnp.log(1.0 + z * z / nu))
+
+    # R's dTF switches to the normal limit above nu = 1e6:
+    #
+    #   ifelse(nu > 1e+06, dNO(x, mu = mu, sigma = sigma, log = FALSE),
+    #                       (1/sigma) * dt((x - mu)/sigma, df = nu, log = FALSE))
+    #
+    # This is not decoration.  TF2's own optimum lands at nu_eta = 47.33,
+    # i.e. nu = 3.6e20, where R's deviance is 144.17 and the bare t density
+    # returns -23.68 -- a per-point gap that compounds to 2334.79 against R's
+    # 144.17 when substituted into the objective.  The same switch exists in
+    # dTF2, dST1, dST2, dST3 and dST4; this one was simply missed when D2.18
+    # swept the skew-t cluster.
+    #
+    # `jax.scipy.stats.norm.logpdf` is avoided for the reason recorded on
+    # `_norm_logpdf`: a scipy.stats call inside a density breaks `fitting_cg`,
+    # which differentiates `family.d(..., log=True)` inside `jit`.
+    log_no = (-0.5 * jnp.square(z) - 0.5 * jnp.log(2.0 * jnp.pi) - jnp.log(sigma))
+    log_fy = jnp.where(nu > 1e6, log_no, log_t)
+
     return log_fy if log else jnp.exp(log_fy)
 
 

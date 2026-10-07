@@ -1313,6 +1313,161 @@ loglik  <- ifelse(tau < 1e+06, loglik1, loglik2)
 10. **分支/开关类修复必须证明它可观测**。正态极限分支两侧密度只差
     3e-07 —— 若两侧相同，这条测试删掉分支后仍然全绿，等于没测。
 
+#### D2.20：`TF2` 的链式法则项与 `TF` 的正态极限分支（rsdev rel 2.3e+01 →逐位一致）
+
+**现象**（全族扫描 v11）：
+
+```
+TF2  dpqr   pass
+TF2  deriv  fail   mu rel 7.519e-01、sigma rel 1.276e+00
+TF2  rsdev  fail   deviance 3399.12 vs R 144.172  (rel 2.258e+01)
+```
+
+**`dpqr` 绿 + `deriv` 红**是特征信号：密度对、导数属于另一个密度。
+
+**根因三处，逐层剥开**：
+
+1. **重参数化壳转发了裸导数**。`TF2` 是 `TF` 的壳（`sigma1 = sqrt((nu-2)/nu) * sigma`），
+   但三处score/hessian 直接把**原始 sigma** 转发给 `TF`，链式法则全丢：
+
+   ```python
+   def dldd_tf2(y, mu, sigma, nu):
+       return fam.score_functions["sigma"](y, mu, sigma, _nu_gt2(nu))   # sigma 而非 sigma1
+   ```
+
+   实测（对我们**自己**的密度做有限差分，`y=0.3, mu=0, sigma=1, nu=3`）：
+
+   | | 解析 | FD | 差 |
+   |---|---|---|---|
+   | `mu` | 0.38834951 | 1.10091743 | 7.1e-01 |
+   | `sigma` | -0.88349515 | -0.66972477 | 2.1e-01 |
+   | `nu` | 0.03111859 | -0.18480405 | 2.2e-01 |
+
+   **hessian 与转发后的 score 自洽到 1e-11** —— 这就是它昂贵的原因：
+   RS 在迭代一个**内部自洽但不属于所最小化密度**的梯度，
+   `converged=True` 与看似合理的 Hessian 同时成立。
+
+2. **修好 score 后 deviance 反而更差**（3399 → **6835**，`nu_eta = -36.04` 撞
+   `logshiftto2` 地板）。因为 `d2ldv2` 是**唯一驱动 nu 方向**的项，而 R 写的是
+   `TF()$d2ldd2(sigma1, nu)` —— 一个**只收两个参数的闭式**
+   `-(2*nu)/((nu+3)*sigma1^2)`。我们转发了自己的 AD 版（收四个参数），
+   在 `nu=3` 返回 `-1.0` 而 R 返回 `-3.0`，`d2ldv2` 因此变成 `-0.00983`
+   而非 `-0.12802`（**13 倍**）。
+
+3. **`TF` 的密度缺 `nu > 1e6` 正态极限分支**（D2.18 建立的 kernel 开关模式的漏项）。
+   R 的 `dTF` / `dTF2` 都有`ifelse(nu > 1e+06, dNO(...), (1/sigma)*dt(...))`，
+   我们的 `dTF` 与 `_log_density`都没有。而 **R 自己的 `TF2` 最优解就落在
+   `nu = 3.6e20`**（`nu_eta = 47.33`）—— 漏掉这个分支意味着我们的密度
+   **在 R 的解处就是错的**：单点log-lik `-23.68` vs R 的 `-1.2956`，
+   48 点累加后 deviance **2334.79 vs 144.17**。
+
+   两处都要改：`dpqr_functions.dTF`（RS 评估的）与
+   `distributions.TF._log_density`（AD 微分的）—— **只改一处会重新制造
+   密度/导数分裂**。
+
+**修好后**：
+
+| | 修复前 | 修复后 | R |
+|---|---|---|---|
+| deviance | 3399.12 | **144.171705** | 144.171705 |
+| 密度在 R 系数点 | 2334.79 | **144.171705**（差 6.8e-12） | 144.171705 |
+| `deriv mu` | rel 7.5e-01 | **逐位吻合 R** | — |
+
+三个 score 与 `d2ldv2` 现在**逐位吻合活 R**（`nu` = 2.5 / 3 / 5 / 11.2 / 30）。
+
+**我们停在 `nu_eta = 240`、R 停在 47.33，但 deviance 相同** —— `nu`方向
+**弱识别平坦**（固定 `mu`/`sigma` 在 R 的解上扫）：
+
+| `nu_eta` | `nu` | deviance |
+|---|---|---|
+| 4.0 | 5.7e+01 | 144.742391 |
+| 10.0 | 2.2e+04 | 144.173133 |
+| 20.0 | 4.9e+08 | 144.171705 |
+| 47.33（R 的停止点） | 3.6e+20 | 144.171705 |
+| 240.0（我们的停止点） | 1.7e+104 | 144.171705 |
+
+`nu_eta >= 20` 之后平坦到 15 位数字，**两个停止点是同一个目标函数值**。
+R 提前停是因为 `c_crit = 0.001` 是**绝对**判据而 deviance 在百量级
+（D2.18 同一模式）。所以断言是**双向带容差**，不是相等。
+
+**顺带修正**：`TF2$nu.initial = 4`，而 `TF$nu.initial = 10` ——
+**同参数名、同文件、不同值**，不能合并分支（D2.19 教训）。R 的
+`TF2$nu.dr = pmax(.Machine$double.eps, exp(eta))`、���
+`nu.linkfun = log(nu - 2 + 1e-05)`（加的是 `1e-05` 不是 `eps`，
+在 `nu≈47` 处两者都远小于值，**不是根因**）。
+
+**最终全族扫描确认**（146 族，21 分钟）：
+
+| 关卡（可测口径，排除 skip） | D2.19 之后 | D2.20 之后 |
+|---|---|---|
+| `deriv` | 133/144 (92.4%) | **134/144 (93.1%)** |
+| `dpqr` | 63/100 (63.0%) | 63/100 (63.0%) |
+| `rsdev` | 49/60 (81.7%) | **50/60 (83.3%)** |
+
+`TF2` **三关全绿**：
+
+```
+TF2  deriv  pass
+TF2  dpqr   pass
+TF2  rsdev  pass   144.172 vs R 144.172
+```
+
+`TF` 也保持三关全绿（`rsdev 133.116 vs R 133.114`）→ **正态分支改动无回退**。
+
+相对 v6 的**所有**状态变化都在 `skip → pass/fail` 方向
+（`ST3C deriv skip→pass`、`ST3C dpqr skip→fail` 且 `d` 项消失、
+`ZABNB`/`ZASICHEL`/`ZIBNB`/`ZISICHEL deriv skip→fail`）——
+按 D2.19 纪律这是**信息量增加，不是回退**。
+
+**新增测试** `tests/test_tf2_parity.py`（17 项）：score 对自身密元的 FD
+（不依赖 R，参数化 4 档`nu`）、score 对活 R 逐点表、hessian 对 **R 的公式**
+（含 `TF()$d2ldd2` 两参数闭式）、旧转发会失败、R 的 `G.dev.incr` 公式
+（大写 G，小写查是 NULL）、links/valid/初值、`nu <= 2` 时 R 为 NaN 的证据、
+我们地板不压平密度、deviance 双向断言 + 平坦区交叉互评。
+
+**一个被证伪的假设（写下来是因为它反直觉）**：
+我原以为"去掉 `ds1dd` 链式因子会重现缺陷"，写成测试后**失败**——
+去掉后 deviance 仍是 144.172（rel **1.4e-13**），拟合毫发无损。
+原因是 `sigma` 在给定 `mu`/`nu` 时**不独立可识别**：
+`sigma1 = sqrt((nu-2)/nu) * sigma` 是双射，sigma score 的缩放会被
+sigma 估计本身吸收，回到同一个最优。
+
+→ **原缺陷之所以可见，是因为三个 score 同时错 + 密度缺正态分支，
+不是任何单项。** 已把它改成两个测试：
+`test_dropping_the_ds1dd_term_is_absorbed_by_the_other_parameters`
+（钉住这个负面结果，防止有人"简化"回去）和
+`test_dropping_the_normal_limit_branch_does_break_it`
+（去掉正态分支 → deviance 2334.79，**这一项才不可吸收**）。
+
+**D2.20 方法论要点**：
+
+1. **"密度对、导数错"要往密度里看，不是只修导数**。本轮三处根因里有两处
+   是**密度**的问题（`d2ldv2` 用错函数、`dTF` 缺正态分支），
+   修导数只解决了 1/3。
+2. **修好一处可能让结果更差**。score 修好后 deviance 从 3399 涨到 6835 ——
+   **不要在单步变好时停下**（D2.13 的 BCT 教训第三次重演）。
+3. **"RS 会用哪些函数"要逐个查**：deviance 用 `dTF`，导数用 `_log_density`，
+   两者**必须同步**。只改一处等于重新制造密度/导数分裂。
+4. **R 的两参数闭式 ≠ 我们的四参数 AD 版**。`(sigma, nu)` 与
+   `(y, mu, sigma, nu)` 签名不同就足以偷换函数，且**值差 3 倍**。
+5. **别假设每项修复都独立必要**。见上面被证伪的假设 ——
+   `sigma` 方向不可识别，链式项错了也未必显现。
+6. **弱识别平坦区要用"扫参数看目标函数"定性**，不能只看两个停止点差得远。
+7. **本轮四个假发现全在探针侧**：`max(val, -1e-15)` ≠ R 的 `ifelse`；
+   `jsonlite` 的 NULL 渲染成 `{}` 而非 `null`；links 的 JSON 键是
+   `mu.link` 而非 `mu`；`_scanner_sample` 的缓存只装两族导致 4 个 R 对照
+   **静默 skip**（长得和通过一样）。**先查探针这条纪律救了四次。**
+
+**回归**：新增 `test_tf2_parity.py` 17 项；
+`test_st3c_sst_parity.py` 15 项（并修好其 `_scanner_sample` 缓存范围）；
+`test_st1_st2_parity.py` + `test_rs_family_parity_scan.py`；
+能力矩阵与覆盖门禁；覆盖工件同 commit 再生，`coverage_diff_report.py`
+→ `result: OK`。
+
+**既有失败台账不变**：`test_r_consistency_st_compat.py::TestSTCompatConsistency`
+8 个（`R Error: nu must be positive`）—— 上轮已 `git stash` 确认改动前完全相同，
+本轮未触碰该文件。
+
 #### D2.19：`ST3C` / `SST` 的 link 与初值（rsdev rel 1.8e-01 / 8.6e+01 → 2e-06）
 
 **现象**（全族扫描 v9）：

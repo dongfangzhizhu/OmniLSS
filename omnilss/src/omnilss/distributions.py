@@ -1401,18 +1401,29 @@ def TF() -> StudentTFamily:
         y: jnp.ndarray, mu: jnp.ndarray,
         sigma: jnp.ndarray, nu: jnp.ndarray,
     ) -> jnp.ndarray:
+        """Scalar log density for autodiff.
+
+        Mirrors ``dpqr_functions.dTF`` including its ``nu > 1e6`` normal-limit
+        switch.  The two must agree: the RS path differentiates *this* while the
+        deviance increment evaluates ``dTF``, so a branch present in only one
+        of them reintroduces exactly the density/derivative split D2.20 exists
+        to close -- scores that belong to a different function than the one
+        being minimized.
+        """
         y = jnp.asarray(y, dtype=jnp.float64)
         mu = jnp.asarray(mu, dtype=jnp.float64)
         sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), eps)
         nu = jnp.maximum(jnp.asarray(nu, dtype=jnp.float64), eps)  # nu > 0
         z = (y - mu) / sigma
-        return (
+        log_t = (
             gammaln((nu + 1.0) / 2.0)
             - gammaln(nu / 2.0)
             - 0.5 * jnp.log(nu * math.pi)
             - jnp.log(sigma)
             - ((nu + 1.0) / 2.0) * jnp.log1p(jnp.square(z) / nu)
         )
+        log_no = -0.5 * jnp.square(z) - 0.5 * jnp.log(2.0 * math.pi) - jnp.log(sigma)
+        return jnp.where(nu > 1e6, log_no, log_t)
 
     def g_dev_inc(
         y: jnp.ndarray, mu: jnp.ndarray,
@@ -1514,6 +1525,9 @@ def TF2() -> TF2Family:
     """
     fam = TF()
     eps = jnp.finfo(jnp.float64).eps
+    # R's d2ldv2 uses trigamma; jax.scipy.special.polygamma(1, .) is the same
+    # function (agrees with scipy to 1e-16).
+    from jax.scipy.special import polygamma
 
     def _nu_gt2(nu):
         return jnp.maximum(jnp.asarray(nu, dtype=jnp.float64), 2.0 + eps)
@@ -1523,6 +1537,25 @@ def TF2() -> TF2Family:
         sigma = jnp.asarray(sigma, dtype=jnp.float64)
         nu_safe = _nu_gt2(nu)
         return sigma * jnp.sqrt((nu_safe - 2.0) / nu_safe)
+
+    def _ds1dd(nu):
+        """d(sigma1)/d(sigma) = sqrt((nu-2)/nu)  -- R TF2.R's `ds1dd`."""
+        return jnp.sqrt((_nu_gt2(nu) - 2.0) / _nu_gt2(nu))
+
+    def _ds1dv(sigma, nu):
+        """d(sigma1)/d(nu) = sqrt(nu/(nu-2)) * sigma / nu^2  -- R's `ds1dv`.
+
+        Note this is R's own expression, differentiated by hand and not by
+        calculus: the true derivative of sqrt((nu-2)/nu) is
+        `-1 / (nu^2 * sqrt((nu-2)/nu))`.  Multiplying that by sigma gives
+        `-sigma / (nu^2 * sqrt((nu-2)/nu))`, which equals R's
+        `sqrt(nu/(nu-2)) * sigma / nu^2` -- the same value, but R reaches it
+        through the reciprocal form.  Kept verbatim because parity is judged
+        against R, not against the prettiest derivation.
+        """
+        nu_safe = _nu_gt2(nu)
+        sigma = jnp.asarray(sigma, dtype=jnp.float64)
+        return jnp.sqrt(nu_safe / (nu_safe - 2.0)) * sigma / jnp.square(nu_safe)
 
     def g_dev_inc_tf2(y, mu, sigma, nu):
         return fam.g_dev_inc(y, mu, _sigma_scaled(sigma, nu), _nu_gt2(nu))
@@ -1621,23 +1654,79 @@ def TF2() -> TF2Family:
     def r_tf2(n, mu=0.0, sigma=1.0, nu=3.0):
         return fam.r(n, mu, sigma, _nu_gt2(nu))
 
+    # The score/hessian forwarding below used to pass the *raw* sigma straight
+    # through to TF's derivatives.  That is wrong: TF2's density is TF's
+    # density in sigma1 = sqrt((nu-2)/nu) * sigma, so the chain rule contributes
+    # ds1/dd and ds1/dv that were simply missing.  Measured against our own
+    # density at (y=0.3, mu=0, sigma=1, nu=3), every parameter was off:
+    #
+    #     mu  analytic 0.38834951vs FD 1.10091743  (diff 7.1e-01)
+    #     sigma analytic -0.88349515  vs FD -0.66972477 (diff 2.1e-01)
+    #     nu  analytic 0.03111859   vs FD -0.18480405 (diff 2.2e-01)
+    #
+    # The hessians still agreed with the *forwarded* scores to 1e-11, so RS was
+    # iterating a gradient that was internally self-consistent but did not
+    # belong to the density being minimized -- deviance 3399 vs R's 144.172.
+    #
+    # R's own formulas (gamlss.dist TF2.R), transcribed including its
+    # deliberately coarse hessian approximations:
+    #
+    #   dldm   = TF$dldm (y, mu, sigma1, nu)
+    #   dldd   = ds1dd* TF$dldd (y, mu, sigma1, nu)
+    #   dldv   = TF$dldv (y, mu, sigma1, nu) + ds1dv * TF$dldd(y, mu, sigma1, nu)
+    #   d2ldm2 = -(nu+1) / ((nu+3) * sigma1^2)
+    #   d2ldd2 = -ds1dd^2 * (2*nu) / ((nu+3) * sigma1^2)
+    #   d2ldv2 = [trigamma((nu+1)/2) - trigamma(nu/2) + 2(nu+5)/(nu(nu+1)(nu+3))]/4
+    #            + ds1dv^2 * TF$d2ldd2(sigma1, nu),floored at-1e-15
+    #
+    # RS only consumes the diagonal Hessian, so d2ldmdd and friends are not
+    # transcribed.
     def dldm_tf2(y, mu, sigma, nu):
-        return fam.score_functions["mu"](y, mu, sigma, _nu_gt2(nu))
+        return fam.score_functions["mu"](y, mu, _sigma_scaled(sigma, nu), _nu_gt2(nu))
 
     def dldd_tf2(y, mu, sigma, nu):
-        return fam.score_functions["sigma"](y, mu, sigma, _nu_gt2(nu))
+        return _ds1dd(nu) * fam.score_functions["sigma"](
+            y, mu, _sigma_scaled(sigma, nu), _nu_gt2(nu))
 
     def dldn_tf2(y, mu, sigma, nu):
-        return fam.score_functions["nu"](y, mu, sigma, _nu_gt2(nu))
+        nu_safe = _nu_gt2(nu)
+        sigma1 = _sigma_scaled(sigma, nu)
+        return (
+            fam.score_functions["nu"](y, mu, sigma1, nu_safe)
+            + _ds1dv(sigma, nu) * fam.score_functions["sigma"](y, mu, sigma1, nu_safe)
+        )
 
     def d2ldm2_tf2(y, mu, sigma, nu):
-        return fam.hessian_functions["mu"](y, mu, sigma, _nu_gt2(nu))
+        nu_safe = _nu_gt2(nu)
+        sigma1 = _sigma_scaled(sigma, nu_safe)
+        return -(nu_safe + 1.0) / ((nu_safe + 3.0) * jnp.square(sigma1))
 
     def d2ldd2_tf2(y, mu, sigma, nu):
-        return fam.hessian_functions["sigma"](y, mu, sigma, _nu_gt2(nu))
+        nu_safe = _nu_gt2(nu)
+        sigma1 = _sigma_scaled(sigma, nu_safe)
+        s2 = jnp.square(sigma1)
+        return -jnp.square(_ds1dd(nu_safe)) * ((2.0 * nu_safe) / ((nu_safe + 3.0) * s2))
 
     def d2ldn2_tf2(y, mu, sigma, nu):
-        return fam.hessian_functions["nu"](y, mu, sigma, _nu_gt2(nu))
+        nu_safe = _nu_gt2(nu)
+        ds1dv = _ds1dv(sigma, nu_safe)
+        v2 = nu_safe / 2.0
+        v3 = (nu_safe + 1.0) / 2.0
+        val = polygamma(1, v3) - polygamma(1, v2) + (
+            2.0 * (nu_safe + 5.0) / (nu_safe * (nu_safe + 1.0) * (nu_safe + 3.0)))
+        val = val / 4.0
+        # R writes TF()$d2ldd2(sigma1, nu) here -- a two-argument closed form
+        # `-2*nu / ((nu+3) * sigma1^2)`.  Forwarding our own TF hessian instead
+        # (which is autodiff-derived and takes (y, mu, sigma, nu)) silently
+        # substituted a different function: measured at nu = 3 it returns
+        # -1.0 instead of R's -3.0, and the resulting d2ldv2 came out -0.00983
+        # against R's -0.12802 -- a13x error in the only term that steers the
+        # nu direction, which is why the fit ran into the nu > 2 floor
+        # (nu_eta = -36.0) instead of R's optimum at nu_eta = 2.22.
+        # Transcribed rather than derived.
+        val = val + jnp.square(ds1dv) * (
+            -(2.0 * nu_safe) / ((nu_safe + 3.0) * jnp.square(_sigma_scaled(sigma, nu_safe))))
+        return jnp.where(val < -1e-15, val, -1e-15)
 
     return TF2Family(
         name="TF2",

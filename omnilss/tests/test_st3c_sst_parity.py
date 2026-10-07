@@ -174,6 +174,12 @@ def _scanner_sample(family: str) -> dict:
     Cached: `_build_jobs` probes all 146 families (d/p/q grids plus a fitting
     sample each), which took the module from 9 seconds to 28 minutes when it ran
     per test.
+
+    Every family's fit job is cached, not just this module's two.  `_build_jobs`
+    builds them all anyway, so restricting the cache to `FAMILIES` saved nothing
+    and made any other module importing this helper skip with
+    "no scanner fit job for <family>" -- which is how D2.20's four R-backed
+    tests silently skipped on their first run.
     """
     if not _SCANNER_SAMPLES:
         import sys
@@ -184,9 +190,8 @@ def _scanner_sample(family: str) -> dict:
         import rs_family_parity_scan as scan
 
         jobs, index = scan._build_jobs(scan.discover_families(), scan.N_OBS)
-        for nm in FAMILIES:
-            entry = index.get(nm) or {}
-            if entry.get("fit") is not None:
+        for nm, entry in index.items():
+            if isinstance(entry, dict) and entry.get("fit") is not None:
                 _SCANNER_SAMPLES[nm] = jobs[entry["fit"]]["data"]
     if family not in _SCANNER_SAMPLES:
         pytest.skip(f"no scanner fit job for {family}")
