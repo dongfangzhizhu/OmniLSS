@@ -290,8 +290,16 @@ def calibrate(family: str, n: int = 6) -> Calibration:
 
     candidates = _response_candidates(getattr(fam, "type", "Continuous"), n)
     if bd is not None:
-        # Binomial responses are counts in 0..bd, not proportions.
-        candidates.insert(0, np.arange(n, dtype=np.float64) * (bd / max(n - 1, 1)))
+        # Binomial responses are integer counts in 0..bd.  The obvious spelling
+        # -- np.arange(n) * (bd / (n - 1)) -- produces 0, 1.43, 2.86, ... 10 for
+        # n=8, bd=10, and R's dbinom answers every non-integer x with -Inf plus
+        # a "non-integer x" warning.  Half the grid was therefore unevaluable on
+        # the R side while ours happily rounded it, which made the comparison
+        # meaningless in both directions.  Integer grid instead:
+        step = max(int(round(bd / max(n - 1, 1))), 1)
+        int_grid = np.arange(n, dtype=np.float64) * step
+        candidates.insert(0, int_grid[int_grid <= bd])
+        candidates.insert(1, np.arange(n, dtype=np.float64))
 
     scored = [(score(y), i, y) for i, y in enumerate(candidates)]
     best = max(scored, key=lambda item: (item[0], -item[1]))
@@ -644,7 +652,25 @@ def gate_dpqr(family: str, results: list[dict], index: dict) -> dict:
 
 
 def _python_dpqr(family: str, type_char: str, args: list | None):
-    """Evaluate the Python d/p/q for the same grid used to build the R job."""
+    """Evaluate the Python d/p/q for the same grid used to build the R job.
+
+    Arguments are passed **by name**, never positionally.  The R side already
+    does this (``names(aa) <- argnames`` in ``r_parity_batch.R``) because R's
+    ``dBI`` signature is ``(x, bd, mu, log)`` -- ``bd`` comes *before* ``mu``.
+    OurPython signatures do not agree on that order (``dBI(x, mu, bd, log)``),
+    so a positional call silently hands ``mu`` the value 10 and ``bd`` the
+    probability.  Measured on BI at n=8 with bd=10 and mu in 0.35..0.65:
+
+        positional  [3.2e-03, 2.0e+06, 7.5e+24, 9.2e+33, 8.5e+52,
+                     1.1e+62, 1.1e+81, 1.2e+90]
+        by name     [0.0563, 0.0980, 0.2213, 0.2307, 0.2307, 0.2213,
+                     0.0980, 0.0563]
+
+    The 1.2e+90 is exactly the ``d: max rel 1.246e+90`` the scanner reported for
+    BI and DBI -- so that finding was a probe defect, not an implementation one.
+    ``mu`` was clipped to 1 - 1e-10 and the binomial coefficient grew without
+    bound.
+    """
     _add_src()
     from omnilss.distributions import resolve_family  # noqa: PLC0415
 
@@ -660,17 +686,35 @@ def _python_dpqr(family: str, type_char: str, args: list | None):
     # Match the grid used for the R job: q* takes probabilities, d*/p* take
     # quantiles from the family's support.
     if type_char == "q":
+        first_arg = "p"
         first = np.linspace(0.1, 0.9, n)
     else:
+        first_arg = "x" if type_char == "d" else "q"
         first = _family_grids(family, n)[0]
-    call_args = [first]
+    kwargs = {first_arg: first}
     if bd is not None:
-        call_args.append(np.full(n, bd))
-    call_args += [np.asarray(p, dtype=np.float64) for p in parrays]
+        kwargs["bd"] = np.full(n, bd)
+    params = list(getattr(fam, "parameters", ()) or ())
+    for name, p in zip(params, parrays):
+        kwargs[name] = np.asarray(p, dtype=np.float64)
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            return np.asarray(fn(*call_args), dtype=np.float64).ravel()
+            return np.asarray(fn(**kwargs), dtype=np.float64).ravel()
+    except TypeError:
+        # Family whose d/p/q does not accept `bd` as a keyword (e.g. wrappers
+        # with their own signature). Retry positionally so the gate still runs
+        # rather than reporting "no Python function".
+        call_args = [first]
+        if bd is not None:
+            call_args.append(np.full(n, bd))
+        call_args += [np.asarray(p, dtype=np.float64) for p in parrays]
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                return np.asarray(fn(*call_args), dtype=np.float64).ravel()
+        except Exception:
+            return None
     except Exception:
         return None
 
