@@ -84,6 +84,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # that consume it skip cleanly when Rscript is absent.
 R_BI_DEV = 217.97377537960233
 R_DBI_DEV = 217.95942206518868
+# R's sigma coefficient on the same fixture (link scale).  Live R:
+# coef(fit)[["sigma"]][["coefficients"]] on gamlss(cbind(succ, fail) ~ x,
+# family = DBI()).
+R_DBI_SIGMA_COEF = 0.020070403755973468
 
 
 def _fixture() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -368,40 +372,42 @@ def test_bi_deviance_is_far_below_the_old_bug_value():
     assert float(model.deviance) < 300.0
 
 
-def test_dbi_reproduces_our_bi_shell_not_rs_two_parameter_dbi():
-    """DBI parity is **not** yet reachable; pin down exactly how far we get.
+def test_dbi_reaches_rs_two_parameter_parity():
+    """DBI parity became reachable in D2.23 -- this is where it landed.
 
-    R's ``DBI`` estimates two parameters::
+    D2.22 wrote this test the other way round: our ``DBI`` was a
+    single-parameter shell (``parameters ==("mu",)``) forwarding to``BI``, so
+    it returned BI's deviance 217.97377537960304 where R reported
+    217.95942206518868, and the test pinned that gap with::
 
-        DBI mu coef: mu , sigma
-        sigma coefs: 0.020070403755973468
-        deviance:    217.95942206518868
+        assert fam.parameters == ("mu",), (
+            "DBI grew a sigma parameter -- update this test and the D2.22 "
+            "reference numbers; R's DBI has (mu, sigma) and 217.95942206518868"
+        )
 
-    Our ``DBI`` is a single-parameter shell (``parameters == ("mu",)``,
-    ``links == {"mu": "logit"}``) that reduces to BI, so it returns BI's
-    deviance 217.97377537960304 -- the same number, from the same fix, but
-    **not** R's.  Asserting R's number here would be asserting a family
-    implementation that does not exist yet; the sigma parameter is the missing
-    piece and is registered as follow-up work, not silently absorbed.
+    That message was a hand-off, and D2.23 is the hand-off being taken.  The
+    normalising constant ``C`` had to be transcribed from
+    ``R/gamlss.dist/src/getBI_C2.c`` before the sigma direction had any
+    meaning at all; ``test_dbi_double_binomial.py`` covers that and the rest.
 
-    What this test does establish is that the threeD2.22 fixes reach DBI:
-    a fit that used to report 8566.07 with ``converged=True`` now converges
-    onto the binomial likelihood and lands exactly on the BI optimum.
+    The three D2.22 fixes are still what this rests on: a fit that used to
+    report 8566.07 with ``converged=True`` now converges onto the binomial
+    likelihood.  Asserting the coincidence with BI would be the regression --
+    it is asserted *against* here, not for.
     """
     succ, x, bd = _fixture()
     fam = resolve_family("DBI")
-    assert fam.parameters == ("mu",), (
-        "DBI grew a sigma parameter -- update this test and the D2.22 "
-        "reference numbers; R's DBI has (mu, sigma) and 217.95942206518868"
-    )
+    assert fam.parameters == ("mu", "sigma")
     model = _fit("DBI", succ, x, bd)
-    assert float(model.deviance) == pytest.approx(R_BI_DEV, rel=1e-12), (
-        "DBI should currently coincide with BI; if it does not, the binomial "
-        "response convention has drifted again"
+    deviance = float(model.deviance)
+
+    assert deviance != pytest.approx(R_BI_DEV, rel=1e-6), (
+        "DBI is BI again -- the two-parameter likelihood is gone"
     )
-    # And explicitly: R's two-parameter answer is a *different* number that we
-    # do not reach.  Spelled out so nobody reads the coincidence as parity.
-    assert R_DBI_DEV != pytest.approx(float(model.deviance), rel=1e-6)
+    assert deviance == pytest.approx(R_DBI_DEV, rel=1e-5)
+    assert float(
+        np.asarray(model.coefficients["sigma"], dtype=np.float64).ravel()[0]
+    ) == pytest.approx(R_DBI_SIGMA_COEF, rel=1e-2)
 
 
 def test_mu_stays_inside_the_unit_interval():

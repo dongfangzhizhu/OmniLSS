@@ -766,7 +766,7 @@
     },
     "DBI": {
       "name": "DBI",
-      "implementation_status": "compat_alias",
+      "implementation_status": "experimental",
       "features": {
         "rs_fit": "experimental",
         "rs_jax_fit": "unsupported",
@@ -779,7 +779,7 @@
         "production_safe": "experimental"
       },
       "notes": [
-        "public compatibility constructor reuses another numeric kernel; not counted as migrated R behavior",
+        "registered family without enough validation evidence for production use",
         "RS_JAX route is not advertised for this family"
       ]
     },

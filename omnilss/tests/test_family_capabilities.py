@@ -56,8 +56,11 @@ def test_known_core_family_statuses_are_case_insensitive():
 def test_known_compat_alias_families_are_marked_separately_from_evidence():
     # D2.16 used BCCGUNTR as the sample here; it is a full implementation now
     # (its own untruncated density and R's analytic derivatives), so it left
-    # the compat-alias set.  The remaining samples still hold.
-    for family_name in ("DBI", "DBURR12", "COUNT_1_31"):
+    # the compat-alias set.  D2.23 did the same for DBI, which stopped being a
+    # BI forwarder and became a real two-parameter likelihood -- its coverage
+    # ratchet moved DBI/dDBI/pDBI/qDBI/rDBI out of compat_alias in the same
+    # commit.  The remaining samples still hold.
+    for family_name in ("DBURR12", "COUNT_1_31"):
         capability = get_family_capability(family_name)
         assert capability.implementation_status is ImplementationStatus.COMPAT_ALIAS
         assert implementation_status_for_family(family_name) is (
@@ -209,13 +212,17 @@ def test_method_route_capability_report_supports_service_admission():
     assert unknown_family["code"] == "unknown_family"
     assert unknown_family["feature"] == "rs_fit"
 
-    compat = method_route_capability_report("DBI", "RS")
+    # DBI was the sample here until D2.23, when it stopped forwarding to BI and
+    # became a real two-parameter likelihood -- so it is now `experimental`
+    # and requires its own opt-in, covered just above.  DBURR12 is still on the
+    # compat-alias list and keeps this branch exercised.
+    compat = method_route_capability_report("DBURR12", "RS")
     assert compat["ok"] is False
     assert compat["code"] == "compat_alias_requires_opt_in"
     assert compat["implementation_status"] == "compat_alias"
 
     compat_opt_in = method_route_capability_report(
-        "DBI", "RS", allow_compat_alias=True
+        "DBURR12", "RS", allow_compat_alias=True
     )
     assert compat_opt_in["ok"] is True
     assert compat_opt_in["implementation_status"] == "compat_alias"

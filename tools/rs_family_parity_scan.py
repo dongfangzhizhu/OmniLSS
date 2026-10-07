@@ -150,6 +150,7 @@ def _param_range(param: str, link: str) -> tuple[float, float]:
 _DERIV_TOLERANCE: dict[tuple[str, str], float] = {
     ("BCT", "tau"): 1e-2,
     ("ST2", "tau"): 5e-1,
+    ("DBI", "sigma"): 1e-2,
 }
 
 _DERIV_TOLERANCE_NOTE: dict[tuple[str, str], str] = {
@@ -164,6 +165,19 @@ _DERIV_TOLERANCE_NOTE: dict[tuple[str, str], str] = {
         "converged -- identical from h=1e-3 down to 1e-7 -- so this is R's "
         "discretisation, not the step size.  Ours matches R to 1.2e-6; fixing "
         "it would move us away from parity (D2.15)."
+    ),
+    ("DBI", "sigma"): (
+        "R's dDBI switches to plain dbinom when |sigma - 1| < 0.001, so inside "
+        "that window the log-density is *exactly constant* in sigma and any "
+        "central difference of it is 0 -- yet R's own dldd does not switch and "
+        "keeps returning the general-branch value.  R is inconsistent with "
+        "itself there.  Measured on live R at y=4, mu=0.45: R's dldd is "
+        "-0.480365218462 / -0.480176057746 / -0.479987093435 / -0.479421170164 "
+        "at sigma = 0.9995 / 1 / 1.0005 / 1.002, while a central difference of "
+        "R's own dDBI gives 0.000000000000 / 0.000000000000 / -0.479421170829.  "
+        "Ours reproduces R's dldd to 2e-8 (R's numeric.deriv precision), so "
+        "'fixing' this would mean branching our score where R does not -- the "
+        "same trap as Box-Cox: matching R is the goal (D2.23)."
     ),
 }
 
@@ -667,6 +681,18 @@ def gate_dpqr(family: str, results: list[dict], index: dict) -> dict:
         return {"status": "skip", "detail": "no parameter metadata"}
     failures: list[str] = []
     missing_in_r = True
+    # Functions that R does not attach to the family object at all.  These are
+    # `skip`, not `fail`: "R has no such function" and "our value disagrees"
+    # are different statements, and conflating them is what makes a scanner
+    # cry wolf.  Two independent reasons a function lands here:
+    #
+    #   * the family never had one -- DBI ships `pDBI` in the namespace but
+    #     `DBI()$q` is NULL, so `q` has no R counterpart to compare against;
+    #   * the family's slot is a *parameterisation marker* rather than a
+    #     function -- `DBI()$p` is the list `list(mu = TRUE, sigma = TRUE)`,
+    #     which R uses to mean "this function is parameterised", so calling it
+    #     would fail rather than answer.
+    no_r_counterpart = False
     for type_char in ("d", "p", "q"):
         r = results[entry[type_char]]
         if "error" in r:
@@ -674,6 +700,7 @@ def gate_dpqr(family: str, results: list[dict], index: dict) -> dict:
             # (e.g. Python's DPO1 has no R counterpart -- only DPO exists).
             # That is a registry question, not a parity defect, so it skips.
             if "missing function" in r["error"]:
+                no_r_counterpart = True
                 continue
             failures.append(f"{type_char}: R error {r['error'][:60]}")
             continue
@@ -695,6 +722,8 @@ def gate_dpqr(family: str, results: list[dict], index: dict) -> dict:
         return {"status": "skip", "detail": "no d/p/q counterpart in R"}
     if failures:
         return {"status": "fail", "detail": "; ".join(failures)}
+    if no_r_counterpart:
+        return {"status": "pass", "detail": "R attaches no counterpart for some slots"}
     return {"status": "pass", "detail": ""}
 
 

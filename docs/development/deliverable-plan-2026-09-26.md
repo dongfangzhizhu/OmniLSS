@@ -1525,6 +1525,228 @@ DBI   deriv pass   dpqr pass   rsdev fail   FamilyCapabilityError（compat alias
    我们的 `DBI` 与 R 的 `DBI` 连参数个数都不同 —— 这个事实一查就清楚，
    但我是在写断言失败之后才去查的。
 
+#### D2.23：`DBI` 真正的双参数似然（Borg 1988）—— 从 `BI` 转发壳到三关全绿
+
+**现象**：
+
+D2.22 结束时 `DBI` 是 `BI` 的转发壳：`parameters == ("mu",)`、没有 `sigma`、
+同一个 kernel。它报出 `BI` 的 deviance `217.973775379603`，而 R 的 `DBI` 报
+`217.95942206518868`；并且因为登记在 fail-closed 的 `compat_alias` 名单上，
+`rsdev` 关根本不会跑它（`FamilyCapabilityError`）。
+
+```
+DBI   deriv skip   dpqr pass   rsdev fail   FamilyCapabilityError（门禁正确工作）
+```
+
+**根因一：`C` 是有限求和，不是数值积分**。
+
+`dDBI` 是二项 pmf 被ratio 项的幂倾斜、再用 `C(mu, sigma, bd)` 归一化。
+`C` 的入口名（`.C("getBI_C2", ...)`）和 "C" 这个字母都让人以为是数值积分。
+**它不是。** `R/gamlss.dist/src/getBI_C2.c`（65 行，已 vendored 进本仓库）
+就是完整定义，`j = 0..bd` 的有限和。
+
+三个闭式猜测全错（Borg 的 beta 混合、`log B(a,b)` 形式、log-difference），
+**误判的线索**在第一张探针网格上：`mu ∈ {0.2, 0.5, 0.8}` 上 `C` 看起来
+与 `mu` 无关 —— 那张网格**关于 0.5 对称**，而 `C` 也对称。扩到
+0.01/0.99 后依赖性立刻显现。
+
+> **对称于被探测点的探针网格会掩盖你要找的效应。**
+
+**根因二：`GetBI_C` 先做 `sigma <- 1/sigma`**。
+
+再调 C 的 `getBI_C2`，其 `ss` 写成那个值的函数。我们的 `_dbi_log_c` 在
+边界做一次求逆。搞反了会得到一个"看起来合理但不是 R 的"的密度。
+
+**根因三：`dDBI` 在 `|sigma - 1| < 0.001` 时切到纯 `dbinom`**。
+
+这不是优化，是让 `C(1) = 0` 精确而非 `-1.4e-16`。而 R 的
+`sigma.initial` 是 `rep(1.1, length(y))`，所以 RS 拟合会**穿过**这个分支。
+
+**根因四（工具侧）：形状判据只看 `bd`**。
+
+`_dbi_log_c` 原先按 `scalar = jnp.ndim(bd) == 0` 决定是否 squeeze。但扫描器的
+`calibrate` 传的是**标量** `_PROBE_BD = 10.0` 配**长度 n 的参数向量** →
+squeeze 在 `(n,)` 结果上触发 → `cannot reshape array of shape (n,) into shape ()`。
+
+**这个异常读起来完全不像形状 bug**：它到达 `gate_derivatives` 时表现为
+*每个* 探针候选都抛异常，`calibrate` 返回 `ok=False`，族被记成
+`deriv: skip` —— 一处看起来恰似"没有可用支撑网格"的**静默覆盖率损失**。
+修法是按**三个参数的广播形状**决定返回形状，全标量才返回标量。
+
+**根因五（工具侧）：`_DERIV_TOLERANCE` 缺一条登记**。
+
+修好广播后 `deriv` 从 `skip` 变 `fail`，唯一失配点是 `sigma = 1.0` ——
+恰好落在根因三的分支窗口内。活 R 求证：
+
+| sigma | R `dldd` | R 自己密度的中心差分 |
+|---|---|---|
+| 0.9995 | -0.480365218462 | **0.000000000000** |
+| 1.0000 | -0.480176057746 | **0.000000000000** |
+| 1.0005 | -0.479987093435 | （窗口内） |
+| 1.0020 | -0.479421170164 | -0.479421170829 |
+
+窗口内 log-density 关于 sigma **精确为常数**，任何中心差分必然是 0；
+而 R 的 `dldd` **不跟随分支**。**R 与它自己不一致。** 我们逐位复现了
+R 的 `dldd`（实测差 1.24e-08，R 侧 `numeric.deriv` 精度）。按 D2.13
+Box-Cox 同一条纪律，登记容差 + 活 R 证据，**不改我们的代码**。
+
+**活 R 参考（全部求证，非硬编码）**：
+
+```
+DBI()$parameters   mu, sigma          DBI()$d        NULL
+DBI()$p  list(mu=TRUE, sigma=TRUE)   # 参数化标记，不是函数
+DBI()$q        NULL                 pDBI/qDBI 在命名空间但未挂到族上
+DBI()$mu.link  "logit"              DBI()$sigma.link "log"
+DBI()$sigma.initial  expression(sigma <- rep(1.1, length(y)))
+DBI()$mu.initial     expression({ mu <- (y + 0.5)/(bd + 1) })
+DBI()$G.dev.incr     -2 * dDBI(y, mu, sigma, bd, log = TRUE)
+DBI()$d2ldm2        d2ldm <- <dldm>; -dldm^2;  地板 -1e-15
+DBI()$d2ldd2        同上（对 dldd）
+```
+
+**验收**：
+
+| 项目 | 结果 |
+|---|---|
+| `C` 对活 R（224 点，bd 2/5/10/20 × mu × sigma） | worst diff **1.52e-14** |
+| log 密度对活 R | worst diff **4.26e-13** |
+| 密度归一化（每点 $\sum_x d(x) = 1$） | 全部 `1.000000000000` |
+| `pDBI` CDF vs R | 12 位逐位吻合 |
+| `qDBI` quantile vs R | 逐位吻合（`[2,3,4,5,6,10]`） |
+| score 对**我们自己**密度（FD） | 1e-09 .. 1e-10 |
+| score 对活 R | worst ABS `dldm` 2.454e-05 / `dldd` 3.432e-06（R 的 `numeric.deriv`） |
+| Hessian | `-score²` 地板 `-1e-15`（Fisher scoring，不是 `d2logL`） |
+| capability | `ImplementationStatus.EXPERIMENTAL`（脱离 `COMPAT_ALIAS`） |
+**"族变真"会连带打四处断言，全部是期望过时、无一是安全边界受损**：
+
+| 位置 | 原假设 | 处置 |
+|---|---|---|
+| `test_dbi_compat` | `parameters == ("mu",)` | 改为 `("mu","sigma")` + links |
+| `test_bi_dbi_binomial_parity` | 钉住"DBI 还是壳" | 改写为 `test_dbi_reaches_rs_two_parameter_parity`（D2.22 的失败信息本身就是移交说明） |
+| `test_family_capabilities` ×2 | 拿 `DBI` 当 compat_alias 代表样本 | 换成 `DBURR12`（仍在名单），**不删断言** |
+| `test_release1_family_capability_gate` | 断言 `UNSAFE` 里**两种状态都在场** | 改为断言"每族属于二者之一" |
+
+最后一处值得单说：DBI 离开 `COMPAT_ALIAS` 后**不再属于 `UNSAFE`**，而
+`EXPERIMENTAL` 在 `require_production_family_route` 上**没有 opt-in**
+（该函数刻意不提供迁移开关）→ 三条生产路由全部拒绝，代码
+`experimental_requires_opt_in`。**"不再是兼容别名"与"可进生产"是两句话**，
+所以补了 `test_dbi_stays_fail_closed_after_leaving_the_compat_alias_list`
+逐路由钉住，并用 `inspect.signature` 断言 opt-in 不存在 —— 用
+`except TypeError` 探测的话，将来有人**故意**加上这个开关时，测试会以错误的
+理由继续绿。
+
+**全族扫描 v13 → v14**（`--timeout 60`，146 族）：
+
+| 关 | v13 | v14 | 回退 | 增益 |
+|---|---|---|---|---|
+| `deriv` | 134 pass / 10 fail / 2 skip | 134 / 4 / 8 | **0** | 0 |
+| `dpqr` | 65 pass / 35 fail / 46 skip | 60 / 34 / 52 | **0** | 0 |
+| `rsdev` | 50 pass / 10 fail / 85 skip / 1 warn | 53 / 9 / 83 / 1 | **0** | **3**（`BI`/`BB`/`DBI` skip→pass）|
+
+`deriv` 与 `dpqr` 的计数下降**全部**来自 `--timeout 60`：6 个慢族
+（`SI`/`SICHEL`/`ZABNB`/`ZASICHEL`/`ZIBNB`/`ZISICHEL`）被杀，三关一起消失
+（`dpqr` 键整个缺失）。用 300 秒预算补跑，18 项里 **17 项逐项相同**；
+唯一差异 `SI rsdev`（`fail(nan)` → `skip(R未收敛)`）是子集运行改变 rng 流
+位置所致，全量运行下与 v13 一致。**代码零回退。**
+
+
+**RS 拟合**（`default_rng(7)` fixture，60 观测，bd=10）：
+
+| | 我们 | R |
+|---|---|---|
+| deviance | 217.95942032221294 | 217.95942206518868 |
+| rel | **8.0e-09**（我们更低） | |
+
+我们更低 → 先怀疑 R 提前停（D2.18 判据第 2 条）。两步判定都做了。
+**注意**：这个 217.959 的对比跑在 `default_rng(7)` 的自有 fixture 上；
+扫描器 gate 比较的是另一份数据（见下），两者不可混用。
+
+**扫描器 gate 实际比较的那份数据**（`_build_jobs(["DBI"], n=8)`，48 观测，bd=10）：
+
+```
+ours                                            208.042407377517236
+R's dDBI evaluated at OUR coefficients           208.042407377517264
+R's gamlss() deviance                           208.043104514376921
+R's dDBI at R's own fv                          208.043104514376921
+```
+
+R 的密度把我们的数原样返回（差 2.8e-17，末位）→ 两侧最小化**同一目标
+函数**。R 加预算不动：`n.cyc = 20 / 40 / 100 / 300` 全部报
+208.043104514376921。我们低 3.3e-06 rel 是 R 绝对 `c.crit` 提前停，**不是缺陷**。
+
+**复现这份数据要同时对齐三件事，錯任何一件都会得到一个"看起来合理但
+属于别的问题"的数**（本轮为此走了一整段弯路）：
+
+| # | 事实 | 传错的后果 |
+|---|---|---|
+| 1 | `_build_jobs` 共享一条 `default_rng(20261006)` 流（D2.18 判据 1） | `--families DBI` / 39 族前缀 / 146 族全量是三份不同数据 |
+| 2 | `main()` 的 `--n` 默认**8**，不是 `N_OBS`。`n` 传给 `_family_grids` → 决定**响应网格** → 决定**哪 48 个观测**（不是观测**数量**，那恒为 `N_OBS=48`） | dev 113.69 而不是 208.04 |
+| 3 | gate 用 `sigma_formula="~1"`、`max_iter=N_CYC`（20） | 与公开默认不同，数值不同 |
+
+实测三个"看起来都像证据"的数：113.69（`n=N_OBS`）/ 137.57（单族+默认拟合）
+/ 138.44（单族+gate 配置），**没有一个是 gate 真正比较的那个**。
+本轮把这三点做成 `_gate_sample()` 的断言。
+
+### 一个新的 R 探针坑：两参数族的 `coef()` 是**扁平向量**
+
+D2.18 判据第 3 条记录的是"`coefAll()` 返回 link 尺度"。DBI 又暴露了
+**结构**层的同一类错位：
+
+```r
+length(coef(fit))                  # 2  <- 只回了 mu 的 (Intercept), x
+fit$coefficients                   # NULL
+fit[["parameters"]][["mu"]]$coefficients   # subscript out of bounds
+fit$mu.coefficients                # <- 顶层按参数名平铺，DBI 的正解
+fit$sigma.coefficients             # 长度 1（sigma ~ 1 的截距，link 尺度）
+fit$mu.fv / fit$sigma.fv           # 48 个拟合值，不是系数
+o$dDBI                             # NULL（族上没挂 d），要用 gamlss.dist::dDBI
+```
+
+即：**旧版 gamlss 的 `fit[[par]]$coefficients` 形状在当前版本不存在**，
+顶层就是 `<par>.coefficients`。取错会得到 `subscript out of bounds` 或
+`sprintf` 收到无 `dimnames` 的数组——两者都读起来像 R 侧的问题。
+
+**扫描器三关**（D2.23 前 → 后）：
+
+```
+DBI   skip fail pass  ->  pass pass pass
+```
+
+`dpqr` 的 pass 依赖一条工具侧改动：R 的 `DBI()$d` 是 `NULL`（族上没挂
+`dDBI`），所以 R 侧缺对手时记 pass + note 而不是 fail —— 否则会把
+"R 没提供" 记成 "我们不一致"。
+
+**D2.23 方法论要点**：
+
+1. **探针网格对称于被探测点时会掩盖你要找的效应**。`mu ∈ {0.2,0.5,0.8}`
+   上 `C` "与 mu 无关" 是网格的产物，不是 `C` 的性质。发现方式是**扩到
+   不对称网格**，而不是加精度。
+2. **C 入口的名字不承诺它的数学形式**。`.C("getBI_C2")` 读起来像数值积分，
+   源码是 65 行有限和。三个闭式猜测的共同错误是"信名字、不读源码"。
+3. **形状判据必须看全部参数，不能只看一个**。按 `bd` 判标量，在
+   "标量 `bd` + 向量参数"这个**扫描器实际使用的组合**上抛 reshape 异常，
+   而它到达工具层时表现为"所有候选都失败" → 静默 `skip`。
+   **一个坏形状可以伪装成一族没有支撑网格。**
+4. **R 与它自己不一致的地方，要复现 R，不是复现自洽**。`dDBI` 分支而
+   `dldd` 不分支，窗口内 R 自己密度给 0 而 R 的 score 给 -0.48。
+   我们逐位抄了 R，登记 `("DBI","sigma")` 容差 + 活 R 证据表。
+   与 D2.13 Box-Cox 完全同构。
+5. **复现 gate 比较的数据要对齐三件事：族列表、网格 `n`、拟合配置**。
+   只对齐族列表不够——`main()` 的 `--n` 默认是 **8**（不是 `N_OBS`），
+   它经 `_family_grids` 决定响应网格，进而决定**哪 48 个观测**。本轮实测
+   三个"看起来都像证据"的数（113.69 / 137.57 / 138.44）全都不是 gate
+   真正比较的 208.04。**一个复现脚本错了不会报错，它只会给你另一个
+   问题的答案。**
+6. **前缀等价性可以省时间，但只在明确条件下**：`[f for f in families if
+   f <= X]` 与全量对 X 之后的族**完全等价**（rng 状态只取决于 X 之前抽过的
+   量），实测 DBI 的 deviance 在 39 族前缀与 146 族全量下都是
+   113.6901910280584。但这只在"你比的是 X 自己"时成立；要比 gate 的数
+   就得连 `--n` 和拟合配置一起对齐。
+7. **R 拟合对象的结构会随参数个数变**。两参数族 `coef(fit)` 是扁平向量
+   （只回 mu），`fit$coefficients` 是 NULL，`fit[[par]]$coefficients`
+   根本不存在——正解是顶层 `fit$mu.coefficients`。这与 D2.18 判据第 3 条
+   是同一类错位，只是发生在**槽位名**而不是**尺度**上。
+
 #### D2.20：`TF2` 的链式法则项与 `TF` 的正态极限分支（rsdev rel 2.3e+01 →逐位一致）
 
 **现象**（全族扫描 v11）：

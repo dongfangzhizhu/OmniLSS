@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import json
 from pathlib import Path
 
@@ -31,10 +32,23 @@ UNSAFE = tuple(
 
 
 def test_all_known_unsafe_states_are_rejected_with_structured_reason():
-    assert {get_family_capability(name).implementation_status for name in UNSAFE} == {
-        ImplementationStatus.PLACEHOLDER,
-        ImplementationStatus.COMPAT_ALIAS,
-    }
+    # The set membership is derived above (any family that is still a
+    # placeholder or a compat alias), so this asserts the *invariant* -- every
+    # unsafe family is in one of the two fail-closed states -- rather than
+    # asserting that both states are represented.  Those are different claims,
+    # and only the first survives a family leaving the compat-alias list:
+    # DBI did so in D2.23, becoming a real two-parameter likelihood, and the
+    # stronger assertion then failed with "extra items in the right set"
+    # while the gate itself was working exactly as designed.
+    assert UNSAFE, "no family is fail-closed any more -- is that intended?"
+    for family in UNSAFE:
+        assert get_family_capability(family).implementation_status in {
+            ImplementationStatus.PLACEHOLDER,
+            ImplementationStatus.COMPAT_ALIAS,
+        }, (
+            f"{family} is in UNSAFE but its status is "
+            f"{get_family_capability(family).implementation_status}"
+        )
     for family in UNSAFE:
         with pytest.raises(ProductionFamilyRejectedError) as caught:
             require_production_family_route(family, "RS", route="public_fit")
@@ -43,6 +57,46 @@ def test_all_known_unsafe_states_are_rejected_with_structured_reason():
         assert report["route"] == "public_fit"
         assert report["implementation_status"] in {"placeholder", "compat_alias"}
         assert report["code"] in {"placeholder_requires_opt_in", "compat_alias_requires_opt_in"}
+
+
+@pytest.mark.parametrize("route", ("public_fit", "service", "benchmark"))
+def test_dbi_stays_fail_closed_after_leaving_the_compat_alias_list(route):
+    """DBI became a real family in D2.23 -- it must not have become *admitted*.
+
+    DBI dropped out of the compat-alias set (and out of ``UNSAFE`` above) when
+    it stopped forwarding to BI and gained a real two-parameter likelihood.
+    That is the intended direction of travel, but "no longer a compat alias"
+    and "safe for production" are different claims, and only one is true:
+    ``EXPERIMENTAL`` is still rejected on every production route.
+
+    Asserted per route rather than once, because the routes have separate
+    gates and a family can be blocked on one and admitted on another --
+    ``test_experimental_family_is_fail_closed_only_on_production_route``
+    already distinguishes that shape for GA.
+
+    There is deliberately **no opt-in** on this function: its docstring rules
+    out migration flags "so that placeholder and compatibility-alias kernels
+    must never be admitted by public fitting, batch, benchmark, or service
+    routes", and ``EXPERIMENTAL`` inherits that.  Asserted by inspecting the
+    signature rather than by calling it -- a test that discovers the flag is
+    missing by catching ``TypeError`` passes for the wrong reason if the flag
+    is ever added on purpose.
+    """
+    with pytest.raises(ProductionFamilyRejectedError) as caught:
+        require_production_family_route("DBI", "RS", route=route)
+    report = caught.value.to_dict()
+    assert report["ok"] is False
+    assert report["implementation_status"] == "experimental"
+    assert report["code"] == "experimental_requires_opt_in"
+    assert report["route"] == route
+
+    assert "allow_experimental" not in inspect.signature(
+        require_production_family_route
+    ).parameters, (
+        "a production route gained an experimental opt-in; if that was "
+        "deliberate, this test's premise needs revisiting with the same care "
+        "as the gate itself"
+    )
 
 
 def test_implemented_family_is_admitted_and_unsafe_exploratory_fit_is_blocked():

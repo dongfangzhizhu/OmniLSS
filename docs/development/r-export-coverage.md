@@ -42,7 +42,7 @@ Registry metadata only: this report does not establish R export coverage or nume
 | COUNT_2_33 | compat_alias |
 | COUNT_3_32 | compat_alias |
 | COUNT_3_33 | compat_alias |
-| DBI | compat_alias |
+| DBI | experimental |
 | DBURR12 | compat_alias |
 | DEL | experimental |
 | DELAPORT | experimental |

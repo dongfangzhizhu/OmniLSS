@@ -6,7 +6,7 @@
   "current_counts": {
     "missing": 402,
     "placeholder": 10,
-    "compat_alias": 11,
+    "compat_alias": 6,
     "evidence_gap": 35,
     "extra": 300
   },
@@ -32,8 +32,14 @@
     },
     "compat_alias": {
       "new": [],
-      "resolved": [],
-      "current_count": 11,
+      "resolved": [
+        "gamlss.dist::DBI",
+        "gamlss.dist::dDBI",
+        "gamlss.dist::pDBI",
+        "gamlss.dist::qDBI",
+        "gamlss.dist::rDBI"
+      ],
+      "current_count": 6,
       "baseline_count": 11
     },
     "evidence_gap": {
@@ -53,6 +59,26 @@
   },
   "regressions": [],
   "improvements": [
+    {
+      "category": "compat_alias",
+      "symbol": "gamlss.dist::DBI"
+    },
+    {
+      "category": "compat_alias",
+      "symbol": "gamlss.dist::dDBI"
+    },
+    {
+      "category": "compat_alias",
+      "symbol": "gamlss.dist::pDBI"
+    },
+    {
+      "category": "compat_alias",
+      "symbol": "gamlss.dist::qDBI"
+    },
+    {
+      "category": "compat_alias",
+      "symbol": "gamlss.dist::rDBI"
+    },
     {
       "category": "evidence_gap",
       "symbol": "gamlss::coefAll"

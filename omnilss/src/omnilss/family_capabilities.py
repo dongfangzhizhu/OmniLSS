@@ -175,7 +175,12 @@ _PRODUCTION_SAFE = frozenset({"NO"})
 
 _KNOWN_COMPAT_ALIAS_FAMILIES = frozenset(
     {
-        "DBI",
+        # DBI left this set in D2.23: it was a BI forwarder and now has its own
+        # two-parameter likelihood (see omnilss.distributions_dbi).  Removing a
+        # name here is the step that takes a family off the fail-closed
+        # admission gate, so it must not happen before the density, the
+        # scores and the R deviance all match -- which is why the removal is
+        # recorded separately from the implementation commit's test evidence.
         "DBURR12",
         "MULTIN",
         "COUNT_1_31",

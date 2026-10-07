@@ -71,6 +71,31 @@ from omnilss import resolve_family  # noqa: E402
 
 BINOMIAL_FAMILIES = ("BI", "DBI")
 
+# Which of those take a sigma besides mu.  DBI stopped being a BI forwarder in
+# D2.23 -- it is now the two-parameter Double Binomial, so `d(k, bd, mu)` no
+# longer binds and any probe that omits sigma raises TypeError.
+#
+# The failure this caused is worth spelling out: a probe written for
+# one-parameter families does not report "wrong family", it reports
+# `_dbi_dispatch() missing 1 required positional argument: 'sigma'`.Three
+# tests here failed on that before the arity was parameterised, and the
+# naturalbut wrong reaction is to blame the family for being two-parameter.
+TWO_PARAMETER_BINOMIAL = {"DBI"}
+
+
+def _density_kwargs(family, n, mu, bd):
+    """Extra keyword arguments ``family.d`` needs beyond mu and bd.
+
+    The values come from the scanner's own grid rather than a guess: an
+    arbitrary ``sigma`` here makes the final "does the scanner agree with a
+    direct call" comparison fail for a reason that has nothing to do with
+    argument binding, which is the thing this file exists to test.
+    """
+    if family not in TWO_PARAMETER_BINOMIAL:
+        return {}
+    _y, parrays, _bd = scan._family_grids(family, n)
+    return {"sigma": np.asarray(parrays[1], dtype=float)}
+
 
 # ---------------------------------------------------------------------------
 # 1. Argument order.  The regression this guards is silent: positional
@@ -104,6 +129,19 @@ def test_python_dpqr_passes_named_arguments(family):
     # No exp() here: the scanner compares plain densities, not logs.
     cal = scan.calibrate(family, 8)
     mu0 = float(np.asarray(cal.params[0], dtype=float)[0])
+    if family in TWO_PARAMETER_BINOMIAL:
+        # DBI is not dbinom: at sigma = 1 it switches to dbinom (R's own
+        # `abs(sigma - 1) < 0.001` branch), which is the one point where the
+        # closed form below is exact.  sigma == 1 also makes the assertion
+        # *stronger* -- a wrong sigma would not reproduce dbinom.
+        got = float(np.asarray(
+            resolve_family(family).d(0.0, bd=cal.bd, mu=mu0, sigma=1.0, log=True),
+            dtype=float))
+        expected = np.log((1.0 - mu0) ** cal.bd)
+        assert got == pytest.approx(expected, rel=1e-12, abs=1e-12), (
+            f"DBI at sigma=1 must reduce to dbinom; got {got} vs {expected}"
+        )
+        return
     expected = (1.0 - mu0) ** cal.bd
     assert float(d[0]) == pytest.approx(expected, rel=1e-12), (
         f"k=0 density {d[0]} vs closed form (1-mu)^bd = {expected}"
@@ -126,35 +164,48 @@ def test_positional_call_is_wrong_and_the_keyword_path_is_not(family):
     keyword call the scanner now uses is not.  If a future refactor makes the
     two agree, this fails and the explanation needs rewriting -- which is the
     point.
+
+    The two families fail differently, and both outcomes are correct.  ``BI``
+    takes ``(x, bd, mu)``, so a positional call *binds* -- ``bd`` lands on
+    ``mu`` and vice versa -- and returns a confidently wrong density; that is
+    the dangerous case.  ``DBI`` takes ``(x, mu, sigma, bd)`` (D2.23), so the
+    same call has the wrong arity and raises ``TypeError``: also correct, and
+    louder.
     """
     fam = resolve_family(family)
     n = 8
     y, parrays, bd = scan._family_grids(family, n)
     mu = np.asarray(parrays[0], dtype=float)
+    extra = _density_kwargs(family, n, mu, bd)
 
-    positional = np.asarray(
-        fam.d(y, np.full(n, bd), mu, log=True), dtype=float)
+    if family in TWO_PARAMETER_BINOMIAL:
+        with pytest.raises(TypeError):
+            fam.d(y, np.full(n, bd), mu, log=True)
+    else:
+        positional = np.asarray(
+            fam.d(y, np.full(n, bd), mu, log=True), dtype=float)
+        assert np.max(np.abs(positional)) > 10.0, (
+            f"positional call peaks at {np.max(np.abs(positional)):.3e}; the "
+            "mis-binding seems to have been fixed -- update this test's premise"
+        )
+        # The mis-bound call returns +139.03 where a log density must be
+        # non-positive -- not merely large, but outside the range any log
+        # density can take, which states "wrong" more precisely than a
+        # magnitude threshold.
+        assert np.any(positional > 0.0), (
+            f"mis-bound call returned only non-positive values {positional}; "
+            "update this test's premise"
+        )
+        assert np.all(np.isfinite(positional))
+
     keyword = np.asarray(
-        fam.d(y, bd=np.full(n, bd), mu=mu, log=True), dtype=float)
-
-    assert np.max(np.abs(positional)) > 10.0, (
-        f"positional call peaks at {np.max(np.abs(positional)):.3e}; the "
-        "mis-binding seems to have been fixed -- update this test's premise"
-    )
-    # The mis-bound call returns +139.03 where a log density must be non-positive
-    # -- not merely large, but outside the range any log density can take,
-    # which states "wrong" more precisely than a magnitude threshold.
-    assert np.any(positional > 0.0), (
-        f"mis-bound call returned only non-positive values {positional}; "
-        "update this test's premise"
-    )
-    assert np.all(np.isfinite(positional))
+        fam.d(y, bd=np.full(n, bd), mu=mu, log=True, **extra), dtype=float)
     assert np.all(np.isfinite(keyword))
     assert np.all(keyword <= 0.0), f"log density must be <= 0; got {keyword}"
     # The scanner compares plain densities, so compare those too.
     scanner_vals = np.asarray(scan._python_dpqr(family, "d", None), dtype=float)
     keyword_plain = np.asarray(
-        fam.d(y, bd=np.full(n, bd), mu=mu), dtype=float)
+        fam.d(y, bd=np.full(n, bd), mu=mu, **extra), dtype=float)
     np.testing.assert_allclose(scanner_vals, keyword_plain, rtol=1e-12, atol=0.0)
 
 
@@ -180,23 +231,30 @@ def test_both_sides_of_the_comparison_are_now_evaluable():
 
 
 def test_our_density_agrees_with_the_closed_form_on_the_integer_grid():
-    """`dBI` is exact on integer counts; state it independently of any probe.
+    """The binomial density is exact on integer counts; state it without R.
 
     ``dbinom(k; n, p) = C(n,k) p^k (1-p)^(n-k)``, computed here in plain numpy.
     This is the assertion that would have caught the first defect if the scanner
     had ever been fixed in the wrong direction -- e.g. "correcting" ``dBI`` to
     reject the values R rejects, which would have been fixing a tool by
     breaking a verified implementation.
+
+    ``DBI`` reduces to exactly that at ``sigma = 1``: R's own ``dDBI`` switches
+    to ``dbinom`` when ``abs(sigma - 1) < 0.001``, precisely so ``C(1) = 0`` is
+    exact.  So the closed form still applies to it, and checking it there is
+    strictly *stronger* than checking it at an arbitrary sigma -- a ``C`` that
+    had been transcribed wrongly would not collapse to ``dbinom``.
     """
     from math import comb
 
     for family in BINOMIAL_FAMILIES:
         fam = resolve_family(family)
         n_trial, mu = 10, 0.45
+        extra = {"sigma": 1.0} if family in TWO_PARAMETER_BINOMIAL else {}
         for k in range(n_trial + 1):
             expected = comb(n_trial, k) * mu**k * (1.0 - mu) ** (n_trial - k)
             got = float(np.asarray(
-                fam.d(float(k), bd=float(n_trial), mu=mu, log=True),
+                fam.d(float(k), bd=float(n_trial), mu=mu, log=True, **extra),
                 dtype=float))
             assert got == pytest.approx(np.log(expected), rel=1e-12, abs=1e-12), (
                 f"{family} at k={k}: log density {got} vs closed form "
