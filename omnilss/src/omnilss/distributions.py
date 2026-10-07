@@ -1882,15 +1882,15 @@ def BCT() -> BoxCoxTFamily:
 
     def tau_link(x: jnp.ndarray) -> jnp.ndarray:
         x = jnp.asarray(x, dtype=jnp.float64)
-        return jnp.log(jnp.maximum(x - 2.0, eps))
+        return jnp.log(jnp.maximum(x, eps))
 
     def tau_inverse(eta: jnp.ndarray) -> jnp.ndarray:
         eta = jnp.asarray(eta, dtype=jnp.float64)
-        return jnp.exp(eta) + 2.0
+        return jnp.maximum(jnp.exp(eta), eps)
 
     def tau_derivative(eta: jnp.ndarray) -> jnp.ndarray:
         eta = jnp.asarray(eta, dtype=jnp.float64)
-        return jnp.exp(eta)
+        return jnp.maximum(jnp.exp(eta), eps)
 
     def _z_transform(
         y: jnp.ndarray,
@@ -1913,6 +1913,30 @@ def BCT() -> BoxCoxTFamily:
         values = np.array([math.lgamma(float(value)) for value in flat], dtype=np.float64)
         return jnp.asarray(values.reshape(np.asarray(x).shape), dtype=jnp.float64)
 
+    def _log_pt_trunc(sigma: jnp.ndarray, nu: jnp.ndarray, tau: jnp.ndarray) -> jnp.ndarray:
+        """``log(pt(1/(sigma*|nu|), df = tau))`` -- R BCT.R's truncation CDF.
+
+        JAX ships no Student-t CDF (only ``t.pdf`` / ``t.logpdf``), so use the
+        regularized incomplete beta identity already used by ``BCTo``::
+
+            pt(t, df) = 1 - 0.5 * I_{df/(df+t^2)}(df/2, 1/2)     for t > 0
+
+        ``|nu|`` is floored rather than allowed to reach zero so the ``1/|nu|``
+        blow-up stays finite (and differentiable) instead of producing inf/NaN.
+
+        Accuracy caveat: when ``df`` is large *and* the argument is small the
+        regularized beta saturates towards 1, and the ``1 - ...`` cancellation
+        amplifies the absolute error of ``betainc``.  R's own ``dldt`` only ever
+        differentiates this quantity with a 0.01 forward step, so the induced
+        noise floor (~1e-3 relative) is R's, not ours.
+        """
+        from jax.scipy.special import betainc as _betainc
+
+        arg = 1.0 / (sigma * jnp.maximum(jnp.abs(nu), eps))
+        x_beta = tau / (tau + arg * arg)
+        tail = 0.5 * _betainc(tau / 2.0, 0.5, x_beta)
+        return jnp.log(jnp.maximum(1.0 - tail, eps))
+
     def _truncation_log_term(
         sigma: jnp.ndarray, nu: jnp.ndarray, tau: jnp.ndarray
     ) -> jnp.ndarray:
@@ -1923,21 +1947,25 @@ def BCT() -> BoxCoxTFamily:
         ``nu``, so leaving it out of the fitting log-density does not merely
         shift the deviance by a constant -- it also makes every score and
         Hessian wrong, which is what the parity scanner flags for this family.
-
-        JAX ships no Student-t CDF (only ``t.pdf`` / ``t.logpdf``), so use the
-        regularized incomplete beta identity already used by ``BCTo``::
-
-            pt(t, df) = 1 - 0.5 * I_{df/(df+t^2)}(df/2, 1/2)     for t > 0
-
-        ``|nu|`` is floored rather than allowed to reach zero so the ``1/|nu|``
-        blow-up stays finite (and differentiable) instead of producing inf/NaN.
         """
-        from jax.scipy.special import betainc as _betainc
+        return -_log_pt_trunc(sigma, nu, tau)
+
+    def _trunc_hazard(sigma: jnp.ndarray, nu: jnp.ndarray, tau: jnp.ndarray) -> jnp.ndarray:
+        """``h = dt(1/(sigma*|nu|), tau) / pt(1/(sigma*|nu|), tau)``.
+
+        Inverse Mills ratio of the Student-t at the truncation point -- the term
+        R's ``dldd`` and ``dldv`` both need for the truncation constant.
+        """
+        from jax.scipy.special import gammaln as _gammaln
 
         arg = 1.0 / (sigma * jnp.maximum(jnp.abs(nu), eps))
-        x_beta = tau / (tau + arg * arg)
-        tail = 0.5 * _betainc(tau / 2.0, 0.5, x_beta)
-        return -jnp.log(jnp.maximum(1.0 - tail, eps))
+        log_norm = (
+            _gammaln((tau + 1.0) / 2.0)
+            - _gammaln(tau / 2.0)
+            - 0.5 * jnp.log(tau * math.pi)
+        )
+        pdf = jnp.exp(log_norm) * jnp.power(1.0 + arg * arg / tau, -(tau + 1.0) / 2.0)
+        return pdf * jnp.exp(-_log_pt_trunc(sigma, nu, tau))
 
     def _log_density(
         y: jnp.ndarray,
@@ -1950,7 +1978,7 @@ def BCT() -> BoxCoxTFamily:
         mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), eps)
         sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), eps)
         nu = jnp.asarray(nu, dtype=jnp.float64)
-        tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), 2.0 + eps)
+        tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), eps)
         z = _z_transform(y, mu, sigma, nu)
         log_norm = (
             _lgamma_array((tau + 1.0) / 2.0)
@@ -1971,7 +1999,7 @@ def BCT() -> BoxCoxTFamily:
     ) -> jnp.ndarray:
         return -2.0 * _log_density(y, mu, sigma, nu, tau)
 
-    def _numeric_score(
+    def _score(
         parameter: str,
         y: jnp.ndarray,
         mu: jnp.ndarray,
@@ -1979,24 +2007,56 @@ def BCT() -> BoxCoxTFamily:
         nu: jnp.ndarray,
         tau: jnp.ndarray,
     ) -> jnp.ndarray:
-        step = jnp.array(1e-5, dtype=jnp.float64)
-        if parameter == "mu":
-            plus = _log_density(y, jnp.maximum(mu + step, eps), sigma, nu, tau)
-            minus = _log_density(y, jnp.maximum(mu - step, eps), sigma, nu, tau)
-            return (plus - minus) / (2.0 * step)
-        if parameter == "sigma":
-            plus = _log_density(y, mu, jnp.maximum(sigma + step, eps), nu, tau)
-            minus = _log_density(y, mu, jnp.maximum(sigma - step, eps), nu, tau)
-            return (plus - minus) / (2.0 * step)
-        if parameter == "nu":
-            plus = _log_density(y, mu, sigma, nu + step, tau)
-            minus = _log_density(y, mu, sigma, nu - step, tau)
-            return (plus - minus) / (2.0 * step)
-        plus = _log_density(y, mu, sigma, nu, jnp.maximum(tau + step, 2.0 + eps))
-        minus = _log_density(y, mu, sigma, nu, jnp.maximum(tau - step, 2.0 + eps))
-        return (plus - minus) / (2.0 * step)
+        """R BCT.R's closed-form scores ``dldm``/``dldd``/``dldv``/``dldt``.
 
-    def _numeric_hessian(
+        Transcribed verbatim from ``gamlss.dist::BCT()`` rather than derived.
+        Two of them are only *approximately* right even in R (``dldt`` even
+        differentiates ``log pt`` with a hard-coded 0.01 forward step), so
+        "matches the density to 1e-12" is not an achievable target here and is
+        not what parity means for this family -- matching R is.
+        """
+        from jax.scipy.special import digamma as _digamma
+
+        y = jnp.maximum(jnp.asarray(y, dtype=jnp.float64), eps)
+        mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), eps)
+        sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), eps)
+        nu = jnp.asarray(nu, dtype=jnp.float64)
+        tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), eps)
+
+        if parameter == "mu":
+            z = _z_transform(y, mu, sigma, nu)
+            w = (tau + 1.0) / (tau + z * z)
+            return (w * z) / (mu * sigma) + (nu / mu) * (w * z * z - 1.0)
+        if parameter == "sigma":
+            z = _z_transform(y, mu, sigma, nu)
+            w = (tau + 1.0) / (tau + z * z)
+            h = _trunc_hazard(sigma, nu, tau)
+            return (w * z * z - 1.0) / sigma + h / (sigma * sigma * jnp.abs(nu))
+        if parameter == "nu":
+            z = _z_transform(y, mu, sigma, nu)
+            log_ratio = jnp.log(jnp.maximum(y, eps) / jnp.maximum(mu, eps))
+            w = (tau + 1.0) / (tau + z * z)
+            h = _trunc_hazard(sigma, nu, tau)
+            value = (w * z * z) / nu - log_ratio * (
+                w * z * z + (w * z) / (sigma * nu) - 1.0
+            )
+            return value + jnp.sign(nu) * h / (sigma * nu * nu)
+
+        z = _z_transform(y, mu, sigma, nu)
+        w = (tau + 1.0) / (tau + z * z)
+        # R differentiates log pt with a fixed 0.01 forward step; copied as-is
+        # because a more accurate j would drift *away* from R's own dldt.
+        j = (_log_pt_trunc(sigma, nu, tau + 0.01) - _log_pt_trunc(sigma, nu, tau)) / 0.01
+        value = -0.5 * jnp.log1p(z * z / tau) + (w * z * z) / (2.0 * tau)
+        return (
+            value
+            + 0.5 * _digamma((tau + 1.0) / 2.0)
+            - 0.5 * _digamma(tau / 2.0)
+            - 1.0 / (2.0 * tau)
+            - j
+        )
+
+    def _hessian(
         parameter: str,
         y: jnp.ndarray,
         mu: jnp.ndarray,
@@ -2004,48 +2064,70 @@ def BCT() -> BoxCoxTFamily:
         nu: jnp.ndarray,
         tau: jnp.ndarray,
     ) -> jnp.ndarray:
-        step = jnp.array(1e-4, dtype=jnp.float64)
-        center = _log_density(y, mu, sigma, nu, tau)
+        """R BCT.R's diagonal second derivatives.
+
+        ``d2ldm2``/``d2ldd2``/``d2ldv2``/``d2ldt2`` are transcribed verbatim.
+        They are coarse (``d2ldv2`` is literally ``-7*sigma^2/4``) but they are
+        what R feeds to its IRLS, so parity means copying them.
+
+        No ``_BCT_HESS_FLOOR`` clamping here any more: that floor existed to
+        stop the finite-difference Hessian from going unstable, and
+        ``compute_working_weights_and_response`` already applies R's own
+        ``-1e-15`` floor plus a weight clip at the point of use.
+        """
+        from jax.scipy.special import polygamma as _polygamma
+
+        y = jnp.maximum(jnp.asarray(y, dtype=jnp.float64), eps)
+        mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), eps)
+        sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), eps)
+        nu = jnp.asarray(nu, dtype=jnp.float64)
+        tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), eps)
+
         if parameter == "mu":
-            plus = _log_density(y, jnp.maximum(mu + step, eps), sigma, nu, tau)
-            minus = _log_density(y, jnp.maximum(mu - step, eps), sigma, nu, tau)
-        elif parameter == "sigma":
-            plus = _log_density(y, mu, jnp.maximum(sigma + step, eps), nu, tau)
-            minus = _log_density(y, mu, jnp.maximum(sigma - step, eps), nu, tau)
-        elif parameter == "nu":
-            plus = _log_density(y, mu, sigma, nu + step, tau)
-            minus = _log_density(y, mu, sigma, nu - step, tau)
-        else:
-            plus = _log_density(y, mu, sigma, nu, jnp.maximum(tau + step, 2.0 + eps))
-            minus = _log_density(y, mu, sigma, nu, jnp.maximum(tau - step, 2.0 + eps))
-        hess = (plus - 2.0 * center + minus) / jnp.square(step)
-        # Add floor to prevent instability in IWLS
-        # sigma and nu also need floors to prevent collapse
-        hess_floor = _BCT_HESS_FLOOR.get(parameter, -1e-10)
-        return jnp.minimum(hess, hess_floor)
+            return -(tau + 2.0 * nu * nu * sigma * sigma * tau + 1.0) / (
+                tau + 3.0
+            ) / (mu * mu * sigma * sigma)
+        if parameter == "sigma":
+            return -2.0 * tau / (sigma * sigma * (tau + 3.0))
+        if parameter == "nu":
+            return -7.0 * sigma * sigma / 4.0
+
+        value = (
+            _polygamma(1, (tau + 1.0) / 2.0)
+            - _polygamma(1, tau / 2.0)
+            + 2.0 * (tau + 5.0) / (tau * (tau + 1.0) * (tau + 3.0))
+        ) / 4.0
+        return jnp.where(value < -1e-15, value, -1e-15)
 
     return BoxCoxTFamily(
         name="BCT",
         parameters=("mu", "sigma", "nu", "tau"),
         g_dev_inc=g_dev_inc,
         type="Continuous",
-        # "logshiftto2" is the canonical name in links.LINK_REGISTRY; the older
-        # "logshift2" spelling was not resolvable by get_link()/family_factory.
-        links={"mu": "log", "sigma": "log", "nu": "identity", "tau": "logshiftto2"},
-        link_functions={"mu": log_link, "sigma": log_link, "nu": identity_link, "tau": tau_link},
-        link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": identity_inverse, "tau": tau_inverse},
-        link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": identity_derivative, "tau": tau_derivative},
+        # Link functions transcribed from gamlss.dist::BCT():
+        #   mu.link = "identity", sigma.link = "log",
+        #   nu.link = "identity", tau.link = "log"
+        # The old mu link was "log" and tau was "logshiftto2" (i.e. log(tau-2)).
+        # That is not a cosmetic difference: R's dBCT only requires tau > 0, so
+        # under "logshiftto2" RS ran the eta to -35 and stalled against the
+        # implied tau = 2 floor (deviance 209.53 against R's 199.56).  With R's
+        # links the tau direction can actually reach the tau -> infinity
+        # (Box-Cox Gaussian) limit that is BCT's deviance optimum on this data.
+        links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
+        link_functions={"mu": identity_link, "sigma": log_link, "nu": identity_link, "tau": tau_link},
+        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": identity_inverse, "tau": tau_inverse},
+        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": identity_derivative, "tau": tau_derivative},
         score_functions={
-            "mu": lambda y, mu, sigma, nu, tau: _numeric_score("mu", y, mu, sigma, nu, tau),
-            "sigma": lambda y, mu, sigma, nu, tau: _numeric_score("sigma", y, mu, sigma, nu, tau),
-            "nu": lambda y, mu, sigma, nu, tau: _numeric_score("nu", y, mu, sigma, nu, tau),
-            "tau": lambda y, mu, sigma, nu, tau: _numeric_score("tau", y, mu, sigma, nu, tau),
+            "mu": lambda y, mu, sigma, nu, tau: _score("mu", y, mu, sigma, nu, tau),
+            "sigma": lambda y, mu, sigma, nu, tau: _score("sigma", y, mu, sigma, nu, tau),
+            "nu": lambda y, mu, sigma, nu, tau: _score("nu", y, mu, sigma, nu, tau),
+            "tau": lambda y, mu, sigma, nu, tau: _score("tau", y, mu, sigma, nu, tau),
         },
         hessian_functions={
-            "mu": lambda y, mu, sigma, nu, tau: _numeric_hessian("mu", y, mu, sigma, nu, tau),
-            "sigma": lambda y, mu, sigma, nu, tau: _numeric_hessian("sigma", y, mu, sigma, nu, tau),
-            "nu": lambda y, mu, sigma, nu, tau: _numeric_hessian("nu", y, mu, sigma, nu, tau),
-            "tau": lambda y, mu, sigma, nu, tau: _numeric_hessian("tau", y, mu, sigma, nu, tau),
+            "mu": lambda y, mu, sigma, nu, tau: _hessian("mu", y, mu, sigma, nu, tau),
+            "sigma": lambda y, mu, sigma, nu, tau: _hessian("sigma", y, mu, sigma, nu, tau),
+            "nu": lambda y, mu, sigma, nu, tau: _hessian("nu", y, mu, sigma, nu, tau),
+            "tau": lambda y, mu, sigma, nu, tau: _hessian("tau", y, mu, sigma, nu, tau),
         },
         d=dBCT,
         p=pBCT,

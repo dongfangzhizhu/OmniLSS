@@ -28,16 +28,21 @@ regularized incomplete beta identity ``pt = 1 - 0.5*I_{df/(df+t^2)}(df/2, 1/2)``
 -- JAX ships no Student-t CDF, and this is the same construction ``BCTo``'s
 ``_bcto_log_pdf`` already uses.
 
-Known remaining gap (not addressed here)
-----------------------------------------
-``BCT``'s fitting path still uses **numeric** scores and Hessians where R uses
-closed forms (``d2ldd2 = -2*tau/(sigma^2*(tau+3))`` and friends), and its
-``mu`` link is ``log`` where R's is ``identity``.  Swapping the link to
-``identity`` was tried and made the fit *diverge* (``non_finite_deviance``,
-``mu ~ -1.5e7``), so the numeric-derivative implementation is the binding
-constraint.  With ``log`` the fit converges, just slowly: 500 cycles reach
-deviance 137.66 against R's 136.55, where R converges.  Porting R's analytic
-derivatives is the fix; see the D2.12 notes in the deliverable plan.
+Resolved in D2.13
+-----------------
+``BCT``'s fitting path used **numeric** scores and Hessians where R uses closed
+forms, and its links were ``mu: log`` / ``tau: logshiftto2`` against R's
+``identity`` / ``log``.  Both are fixed now; ``test_bct_analytic_derivatives.py``
+covers the replacement and the live-R comparison.  The measured effect on a
+60-point dataset, RS with n_cyc=500:
+
+    baseline (numeric scores, old links)   deviance 200.7269   (R: 199.5647)
+    analytic scores, old links             deviance 209.5343   (worse!)
+    analytic scores + R's links            deviance 199.5666   (rel 9.4e-06)
+
+Note the middle row: porting the derivatives *alone* made the fit worse,
+because ``tau.link = logshiftto2`` implies a ``tau > 2`` floor that RS ran into
+and stalled against.  The order matters -- derivatives first, links second.
 """
 
 import numpy as np
@@ -109,6 +114,22 @@ def test_scores_match_central_differences_of_the_density(bct, param):
 
     ``mu`` passed even before the fix, which is exactly why the defect survived
     -- a parameter-independent constant cancels in its derivative.
+
+    Tolerance note for ``tau``: R's ``BCT()$dldt`` differentiates ``log pt``
+    with a hard-coded 0.01 forward step, so **R's own dldt is ~1e-5 away from
+    the exact derivative of its own density**.  Pinning our score to the finite
+    difference therefore measures R's step size, not our fidelity.  Measured at
+    mu=0.8, sigma=1.5, nu=0.7, tau=4.0 (first y):
+
+        R's dldt                    0.0094931303529283695
+        our analytic score          0.009493130352900836   (|diff to R| 2.8e-14)
+        our finite difference       0.0094747620749124906   (|diff to R| 1.8e-05)
+
+    i.e. the analytic score is ~9 orders of magnitude closer to R than the
+    finite difference is.  ``tau`` gets a looser bound for that reason (5e-5
+    against a measured 1.84e-5); the "is it R or is it the density?" question is
+    settled in ``test_bct_analytic_derivatives.py`` by comparing against live R
+    directly.
     """
     pos = _PARAM_POS[param]
     h = 1e-5
@@ -121,7 +142,8 @@ def test_scores_match_central_differences_of_the_density(bct, param):
     fd = (log_dens(h) - log_dens(-h)) / (2.0 * h)
     analytic = np.asarray(bct.score_functions[param](_Y, _MU, _SIGMA, _NU, _TAU), dtype=np.float64)
     rel = np.abs(analytic - fd) / np.maximum(np.abs(fd), 1.0)
-    assert np.max(rel) < 1e-6, f"{param}: max rel diff {np.max(rel):.3e}"
+    tol = 5e-5 if param == "tau" else 1e-6
+    assert np.max(rel) < tol, f"{param}: max rel diff {np.max(rel):.3e} (tol {tol:.0e})"
 
 
 def test_truncation_term_depends_on_sigma_and_nu(bct):

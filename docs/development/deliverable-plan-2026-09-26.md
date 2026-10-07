@@ -666,6 +666,91 @@ R 收敛在 136.55（rel 2.2e-3，仍高于 1e-3 阈值）。这是收敛速度�
 4. 改 link 前先问"这是错解还是只是优化几何不同" —— 本次两者都不是问题
    的根因，改了反而发散。
 
+**D2.13 交付记录（2026-10-07）：BCT 移植 R 解析导数 + 对齐 R 的 link —— RS deviance rel 9.4e-6**
+
+D2.12 结尾点名"修法是移植 R 的解析导数"，本项按 **先导数、后 link** 的顺序
+执行。顺序不是偏好，是**实测约束**：单独换导数会让拟合变差（见下表）。
+
+**第一步：移植 R 的六个闭式 score 与四个对角二阶导**
+
+从活 R 抄 `BCT()` 的 `dldm / dldd / dldv / dldt` 与 `d2ldm2 / d2ldd2 /
+d2ldv2 / d2ldt2`，替换 `_numeric_score` / `_numeric_hessian`
+（step 1e-5 / 1e-4 的中心差分）。辅助量：
+
+- `dldd` / `dldv` 需要 `h = dt(1/(sigma*|nu|), tau) / pt(1/(sigma*|nu|), tau)`；
+- `dldt` 需要 `digamma`，`d2ldt2` 需要 `trigamma`（`jax.scipy.special.polygamma(1, ·)`）。
+
+R 这几个导数本身**很粗**——`d2ldv2` 字面就是 `-7*sigma^2/4`，`dldt` 更是用
+**硬编码 0.01 前向步长**去微分 `log pt`。所以 parity 的目标是"和 R 一致"，
+不是"和密度精确一致"。删除 `_BCT_HESS_FLOOR`（那个族级夹取是为压制**数值**
+Hessian 不稳而加的，解析化后多余；RS 后端已在使用点做 R 自己的 -1e-15 地板）。
+
+**第二步：对齐 link —— `mu: log → identity`、`tau: logshiftto2 → log`**
+
+同时把 `tau` 的下界从 `2` 改为 `eps`：R 的 `dBCT` 只要求 `tau > 0`
+（`if (any(tau <= 0)) stop(...)`），我们此前把 `tau` 夹在 2 以上，
+而 `logshiftto2` 即 `log(tau - 2)` **隐含 tau > 2 的地板**。
+
+**三步实测对照**（60 点数据集，RS，n_cyc=500；R 报 **199.5647**）：
+
+| 阶段 | deviance | 与 R 之差 |
+|------|----------|-----------|
+| 基线（数值导数 + 旧 link） | 200.7269 | +1.16 |
+| **仅**解析导数（link 未动） | 209.5343 | **+9.97 —— 反而更差** |
+| 解析导数 + R 的 link | **199.5666** | **+0.0019（rel 9.4e-6）** |
+
+中间那行是本项最值得记的东西：解析导数配 `logshiftto2` 时，RS 把
+`tau` 的 eta 一路推到 **-35.35**，即 `tau = exp(-35.35) + 2 = 2.0` ——
+**正好撞在那块隐含地板上走不动**。扫描 tau 可见 deviance 单调下降并在
+`tau → ∞`（Box-Cox 正态极限）处触底，这正是 R 的解所在：
+
+    tau=2.001 → 209.79    tau=10  → 201.45    tau=1e3  → 199.66
+    tau=4     → 204.43    tau=50  → 200.03    tau=1e6  → 199.637
+    R 报 199.5647
+
+也就是说旧 link **够不到**最优解，不是收敛慢。
+
+**顺带修掉两个真实缺陷（都是本次改动暴露的）**
+
+1. **`dBCT` 在 traced 值上崩溃**。截断项原来调 `scipy.stats.t.logcdf`，
+   scipy 会对入参调 `__array__` → `TracerArrayConversionError`。而
+   `fitting_cg` 恰好在 `jit` 内对 `family.d(..., log=True)` 求导来给候选步打分，
+   于是**每个 CG 周期都失败**。改用不完全贝塔恒等式（实测
+   `|betainc - scipy| ≤ 7.3e-15`，远在 12 位要求内）。
+2. **`betainc` 对 `a`/`b` 无梯度**，而 `a = df/2`、df 就是 tau ——
+   按 tau 求导会抛 `Betainc gradient with respect to a and b not supported`，
+   同样致命于 CG。给 `_log_pt_t` 加 `custom_jvp`：对 `arg` 用解析式
+   `d/darg log pt = -pdf/pt`，对 `df` 用中心差分（**R 自己的 `dldt` 就是这么绕的**）。
+
+**验收**：`tests/test_bct_analytic_derivatives.py`（28 项）+ 修正后的
+`tests/test_bct_truncation_parity.py`（9 项），共 **37 项全通过**。
+覆盖：link 与 R 逐个对表、`tau` 下界不再是 2、解析 score 对密度导数
+（tau 阈值 5e-5 且注明 R 自身误差 1.84e-5）、解析 Hessian 严格负、
+**四个 score 与四个二阶导全部对活 R 逐位比对**、`dBCT` 可 jit 可求导、
+`_log_pt_t` 对 scipy、以及 RS deviance 对活 R（rel < 1e-4）。
+
+**一处过期期望已修正**：`test_bct_truncation_parity.py` 原先断言 tau score
+与**我们自己的密度**中心差分 rel < 1e-6。这条现在**在 R 那里就不成立**——
+实测 R 的 `dldt` 距其自身密度的精确导数 1.84e-5，而我们的解析 score 距
+**R** 仅 2.8e-14。改基准为"离活 R 多近"，这才是 parity 的实际契约。
+
+**方法论要点**：
+1. **修复的中间态可能比修复前更差**。导数与 link 是两个耦合变量，
+   单步只改一个会得到误导性的结论；A/B 必须留全tab的中间行。
+2. **"换 link 只改优化几何"这句话有前提**：前提是导数已正确。
+   导数错时，link 决定的是 RS 会撞上哪块隐含地板 —— `logshiftto2`
+   悄悄把 `tau > 2` 写进了 link 里。
+3. **抄 R 的导数就要连粗糙一起抄**。`d2ldv2 = -7σ²/4` 看着该修，
+   但它就是 R 喂给 IRLS 的东西；"改进"会让 parity 变差。
+4. **R 自身的数值近似会污染我们的验收阈值**。断言的基准要问"离谁近"，
+   不能默认"离我们自己的密度近" —— 有时 R 才是更远的那个。
+5. `jax.scipy.stats.t` 只有 `pdf`/`logpdf`（无 `cdf`/`logcdf`），但**对
+   第三参数有梯度**；`betainc` 反之（有 `x` 的梯度，无 `a`/`b` 的）。
+   特殊函数的梯度支持要逐个测，不能靠类推。
+
+**Box-Cox 簇其余族（BCCG / BCPE / 截断克隆壳）的解析导数与 link 尚未移植**，
+是下一项。见下方建议。
+
 ### D1 分布 family d/p/q/r parity（P1，8–12 周）
 
 - 批次 A：ST/SEP/SST（独立参数化、尾部、q 稳健反演）；

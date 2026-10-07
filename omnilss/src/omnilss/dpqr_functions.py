@@ -17,7 +17,8 @@ from .gb1 import dGB1, pGB1, qGB1, rGB1
 import jax
 import jax.numpy as jnp
 import jax.random as jrandom
-from jax.scipy.stats import norm, poisson, gamma, beta, expon, logistic, t
+from jax import custom_jvp as jax_custom_jvp
+from jax.scipy.stats import norm, poisson, gamma, beta, expon, logistic, t as jt
 from jax.scipy.special import gammaln, betaln, ndtri
 from scipy.stats import nbinom as _nbinom_dist
 from scipy.stats import poisson as _pois_dist
@@ -3601,6 +3602,73 @@ def rBEINF(key, n, mu=0.5, sigma=0.1, nu=0.1, tau=0.1):
 # Box-Cox t Distribution (BCT)
 # =============================================================================
 
+def _log_pt_t_value(arg, df):
+    """Undecorated ``log(pt(arg, df))`` -- see :func:`_log_pt_t`."""
+    from jax.scipy.special import betainc as _betainc
+
+    arg = jnp.asarray(arg, dtype=jnp.float64)
+    df = jnp.maximum(jnp.asarray(df, dtype=jnp.float64), 1e-12)
+    x_beta = df / (df + arg * arg)
+    tail = 0.5 * _betainc(df / 2.0, 0.5, x_beta)
+    return jnp.log(jnp.maximum(1.0 - tail, 1e-300))
+
+
+@jax_custom_jvp
+def _log_pt_t(arg, df):
+    """``log(pt(arg, df))`` for ``arg > 0``, without scipy and jit-safe.
+
+    JAX's ``jax.scipy.stats.t`` exposes only ``pdf``/``logpdf`` -- there is no
+    ``cdf``/``logcdf`` -- so fall back to the regularized incomplete beta
+    identity::
+
+        pt(t, df) = 1 - 0.5 * I_{df/(df+t^2)}(df/2, 1/2)     for t > 0
+
+    Accuracy over 100 (sigma, nu, tau) combos spanning the Box-Cox parameter
+    range: worst |betainc - scipy.stats.t.logcdf| = 7.3e-15, i.e. far inside
+    the 12-digit parity the live-R comparison demands.
+
+    Why the custom JVP
+    ------------------
+    ``betainc`` differentiates w.r.t. its third argument but *not* w.r.t.
+    ``a``/``b``, and here ``a = df/2`` while ``df`` is BCT's ``tau`` -- a
+    fitted parameter.  Without the rule below, any gradient of the BCT density
+    w.r.t. ``tau`` raises::
+
+        ValueError: Betainc gradient with respect to a and b not supported.
+
+    which is exactly what the CG algorithm asks for (it differentiates
+    ``family.d(..., log=True)`` to score candidate steps).  So the two tangent
+    directions are supplied explicitly:
+
+    * w.r.t. ``arg``: exact, since d/darg log pt(arg, df) = -pdf(arg, df)/pt(arg, df).
+    * w.r.t. ``df``: central difference.  A closed form needs d/df of the
+      incomplete beta in both arguments; R itself sidesteps the same problem by
+      differencing ``log pt`` with a hard-coded step (0.01, in ``BCT()$dldt``),
+      so this mirrors R's own accuracy trade-off.
+    """
+    return _log_pt_t_value(arg, df)
+
+
+@_log_pt_t.defjvp
+def _log_pt_t_jvp(primals, tangents):
+    arg, df = primals
+    arg_dot, df_dot = tangents
+    primal_out = _log_pt_t_value(arg, df)
+
+    # d/darg log pt = -pdf/pt -- exact.
+    log_pdf = jt.logpdf(arg, df)
+    pt = jnp.exp(-primal_out)
+    d_arg = -jnp.exp(log_pdf) / pt * arg_dot
+
+    # d/ddf by central difference on the undecorated value (see docstring).
+    step = 1e-4 * jnp.maximum(jnp.abs(df), 1.0)
+    d_df = (
+        _log_pt_t_value(arg, df + step) - _log_pt_t_value(arg, df - step)
+    ) / (2.0 * step) * df_dot
+
+    return primal_out, d_arg + d_df
+
+
 def dBCT(x, mu=1.0, sigma=1.0, nu=1.0, tau=10.0, log=False):
     """Density function for Box-Cox t distribution.
     
@@ -3643,7 +3711,7 @@ def dBCT(x, mu=1.0, sigma=1.0, nu=1.0, tau=10.0, log=False):
     x = jnp.maximum(x, eps)
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
-    tau = jnp.maximum(tau, 2.0 + eps)
+    tau = jnp.maximum(tau, eps)
     
     # Box-Cox transformation
     ratio = x / mu
@@ -3666,9 +3734,18 @@ def dBCT(x, mu=1.0, sigma=1.0, nu=1.0, tau=10.0, log=False):
     kernel = -((tau + 1.0) / 2.0) * jnp.log1p(jnp.square(z) / tau)
     
     # Truncation normalization (R BCT.R: loglik - log(pt(1/(sigma*abs(nu)), df=tau)))
-    from scipy.stats import t as t_dist
-    trunc = t_dist.logcdf(np.asarray(1.0 / (sigma * jnp.abs(nu))), np.asarray(tau))
-    trunc = jnp.asarray(trunc, dtype=jnp.float64)
+    #
+    # Uses the incomplete-beta identity rather than scipy.stats.t.logcdf.  scipy
+    # would call __array__ on the argument, which throws TracerArrayConversionError
+    # whenever this runs on a jitted/traced value -- and it *does*: the CG
+    # algorithm evaluates family.d(..., log=True) inside jit to score candidate
+    # steps, so the BCT fit died with
+    #   "The numpy.ndarray conversion method __array__() was called on traced
+    #    array with shape float64[60]"
+    # on every cycle.  jax.scipy.stats.t has no cdf/logcdf at all, hence the
+    # identity pt(t, df) = 1 - 0.5*I_{df/(df+t^2)}(df/2, 1/2).  Measured worst
+    # |betainc - scipy| over 100 (sigma, nu, tau) combos: 7.3e-15.
+    trunc = _log_pt_t(1.0 / (sigma * jnp.abs(nu)), tau)
     
     log_fy = log_norm + jacobian + kernel - trunc
     log_fy = jnp.where(x <= 0.0, -jnp.inf, log_fy)
@@ -3717,7 +3794,7 @@ def pBCT(q, mu=1.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False):
     q = jnp.maximum(q, eps)
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
-    tau = jnp.maximum(tau, 2.0 + eps)
+    tau = jnp.maximum(tau, eps)
     
     # Box-Cox transformation
     ratio = q / mu
@@ -3794,7 +3871,7 @@ def qBCT(p, mu=1.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False):
     eps = jnp.finfo(jnp.float64).eps
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
-    tau = jnp.maximum(tau, 2.0 + eps)
+    tau = jnp.maximum(tau, eps)
     
     # Truncated-t quantile inversion (R BCT.R):
     #   zp = pt(1/(sigma*abs(nu)), df=tau)
@@ -3861,7 +3938,7 @@ def rBCT(key, n, mu=1.0, sigma=1.0, nu=1.0, tau=10.0):
     eps = jnp.finfo(jnp.float64).eps
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
-    tau = jnp.maximum(tau, 2.0 + eps)
+    tau = jnp.maximum(tau, eps)
     
     # Generate t-distributed samples
     # t = Normal / sqrt(Chi2 / df)

@@ -499,8 +499,8 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | - | missing | missing | unverified | not_available | 3 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 2 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 128 |
-| gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 18 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 129 |
+| gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 19 |
 | gamlss.cs | gamlss | - | missing | missing | unverified | not_available | 0 |
 | gamlss.cy | gamlss | - | missing | missing | unverified | not_available | 0 |
 | gamlss.fp | gamlss | - | missing | missing | unverified | not_available | 0 |
@@ -541,7 +541,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | histSmoP | gamlss | histSmoP | public_api | implemented | tested | exported_api | 1 |
 | is.gamlss | gamlss | is_gamlss | public_api | implemented | tested | exported_api | 1 |
 | lms | gamlss | lms | public_api | implemented | tested | exported_api | 1 |
-| lo | gamlss | lo | public_api | implemented | tested | exported_api | 10 |
+| lo | gamlss | lo | public_api | implemented | tested | exported_api | 11 |
 | logSurv | gamlss | logSurv | public_api | implemented | tested | exported_api | 2 |
 | logSurv0 | gamlss | logSurv0 | public_api | implemented | tested | exported_api | 1 |
 | loglogSurv | gamlss | loglogSurv | public_api | implemented | tested | exported_api | 2 |
@@ -625,7 +625,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | BCPE | gamlss.dist | BCPE | public_api | experimental | r_consistency_test | blocked | 8 |
 | BCPEo | gamlss.dist | BCPEo | public_api | implemented | r_consistency_test | exported_api | 3 |
 | BCPEuntr | gamlss.dist | BCPEuntr | public_api | implemented | r_consistency_test | exported_api | 2 |
-| BCT | gamlss.dist | BCT | public_api | experimental | r_consistency_test | blocked | 11 |
+| BCT | gamlss.dist | BCT | public_api | experimental | r_consistency_test | blocked | 12 |
 | BCTo | gamlss.dist | BCTo | public_api | implemented | r_consistency_test | exported_api | 4 |
 | BCTuntr | gamlss.dist | BCTuntr | public_api | implemented | r_consistency_test | exported_api | 2 |
 | BE | gamlss.dist | BE | public_api | experimental | r_consistency_test | blocked | 17 |
@@ -778,7 +778,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | dBCCGo | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
 | dBCPE | gamlss.dist | dBCPE | module_def | experimental | capability:validated | blocked | 2 |
 | dBCPEo | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
-| dBCT | gamlss.dist | dBCT | module_def | experimental | capability:validated | blocked | 3 |
+| dBCT | gamlss.dist | dBCT | module_def | experimental | capability:validated | blocked | 4 |
 | dBCTo | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
 | dBE | gamlss.dist | dBE | module_export | experimental | golden:validated | blocked | 0 |
 | dBEINF | gamlss.dist | dBEINF | module_def | experimental | capability:validated | blocked | 1 |
@@ -1483,14 +1483,14 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | trun.q | gamlss.tr | - | missing | missing | unverified | not_available | 0 |
 | trun.r | gamlss.tr | - | missing | missing | unverified | not_available | 0 |
 | BS | gamlss2 | - | missing | missing | unverified | not_available | 0 |
-| CG | gamlss2 | - | missing | missing | unverified | not_available | 29 |
+| CG | gamlss2 | - | missing | missing | unverified | not_available | 30 |
 | GAIC | gamlss2 | GAIC | module_export | implemented | tested | internal | 3 |
 | GDF | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | KS | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | Kumaraswamy | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | MN | gamlss2 | - | missing | missing | unverified | not_available | 1 |
 | OL | gamlss2 | - | missing | missing | unverified | not_available | 0 |
-| RS | gamlss2 | - | missing | missing | unverified | not_available | 49 |
+| RS | gamlss2 | - | missing | missing | unverified | not_available | 51 |
 | Rsq | gamlss2 | Rsq | module_export | implemented | unverified | internal | 0 |
 | available_families | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | bamlss2 | gamlss2 | - | missing | missing | unverified | not_available | 0 |
