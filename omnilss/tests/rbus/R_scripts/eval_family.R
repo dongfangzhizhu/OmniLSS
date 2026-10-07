@@ -19,15 +19,22 @@ if (!file.exists(arg_file)) {
 
 payload <- fromJSON(arg_file)
 family_name <- payload$family
-func_type <- payload$type  # "d", "p", "q"
+func_type <- payload$type  # "d", "p", "q", or "gdev"
 func_args <- payload$args
 
-# Construct the R function name, e.g. "dNO", "pPO"
-target_func <- paste0(func_type, family_name)
+# Families without a d/p/q in gamlss.dist -- the untruncated Box-Cox group
+# (BCTuntr / BCCGuntr / BCPEuntr) is the motivating case -- still define a
+# G.dev.incr slot, which is -2 * log d and is all there is to compare against.
+use_gdev <- identical(func_type, "gdev")
 
-if (!exists(target_func, mode = "function")) {
-  cat(toJSON(list(error = paste("Function not found:", target_func)), auto_unbox = TRUE))
-  quit(status = 0)
+# Construct the R function name, e.g. "dNO", "pPO"
+target_func <- if (use_gdev) {
+  fam <- get(family_name, mode = "function", envir = asNamespace("gamlss.dist"))
+  fam <- fam()
+  if (is.null(fam$G.dev.incr)) stop("no G.dev.incr slot")
+  fam$G.dev.incr
+} else {
+  get(paste0(func_type, family_name), mode = "function", envir = asNamespace("gamlss.dist"))
 }
 
 # Invoke the function element-wise so that families with imperfect vectorisation

@@ -431,21 +431,27 @@ def BCPEo():
         p=pBCPE,
         q=qBCPE,
         r=rBCPE,
-        links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
+        # gamlss.dist::BCTo() / ::BCPEo() use mu.link = "log".  The "o"
+        # suffix does NOT mean "untruncated": in R, dBCTo's body is identical
+        # to dBCT's (verified with identical(deparse(...)) == TRUE) and the
+        # only difference is this link.  BCCGo already had it right; these two
+        # were on "identity", which silently reported coefficients on the
+        # wrong scale.
+        links={"mu": "log", "sigma": "log", "nu": "identity", "tau": "log"},
         link_functions={
-            "mu": identity_link,
+            "mu": log_link,
             "sigma": log_link,
             "nu": identity_link,
             "tau": log_link,
         },
         link_inverses={
-            "mu": identity_inverse,
+            "mu": log_inverse,
             "sigma": log_inverse,
             "nu": identity_inverse,
             "tau": log_inverse,
         },
         link_derivatives={
-            "mu": identity_derivative,
+            "mu": log_derivative,
             "sigma": log_derivative,
             "nu": identity_derivative,
             "tau": log_derivative,
@@ -517,21 +523,27 @@ def BCTo():
         p=pBCT,
         q=qBCT,
         r=rBCT,
-        links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
+        # gamlss.dist::BCTo() / ::BCPEo() use mu.link = "log".  The "o"
+        # suffix does NOT mean "untruncated": in R, dBCTo's body is identical
+        # to dBCT's (verified with identical(deparse(...)) == TRUE) and the
+        # only difference is this link.  BCCGo already had it right; these two
+        # were on "identity", which silently reported coefficients on the
+        # wrong scale.
+        links={"mu": "log", "sigma": "log", "nu": "identity", "tau": "log"},
         link_functions={
-            "mu": identity_link,
+            "mu": log_link,
             "sigma": log_link,
             "nu": identity_link,
             "tau": log_link,
         },
         link_inverses={
-            "mu": identity_inverse,
+            "mu": log_inverse,
             "sigma": log_inverse,
             "nu": identity_inverse,
             "tau": log_inverse,
         },
         link_derivatives={
-            "mu": identity_derivative,
+            "mu": log_derivative,
             "sigma": log_derivative,
             "nu": identity_derivative,
             "tau": log_derivative,

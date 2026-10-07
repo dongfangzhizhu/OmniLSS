@@ -7,13 +7,13 @@ Registry metadata only: this report does not establish R export coverage or nume
 | BB | experimental |
 | BCCG | experimental |
 | BCCGO | experimental |
-| BCCGUNTR | compat_alias |
+| BCCGUNTR | experimental |
 | BCPE | experimental |
 | BCPEO | experimental |
-| BCPEUNTR | compat_alias |
+| BCPEUNTR | experimental |
 | BCT | experimental |
 | BCTO | experimental |
-| BCTUNTR | compat_alias |
+| BCTUNTR | experimental |
 | BE | experimental |
 | BEINF | experimental |
 | BEINF0 | experimental |

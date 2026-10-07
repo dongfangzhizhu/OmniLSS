@@ -642,9 +642,14 @@ JAX 只有 `t.pdf` / `t.logpdf`，**没有 Student-t CDF**，而该式可微；
 | BCPE | identity | **log** ✗ | log | log ✓ |
 | BCPEo | log | **identity** ✗ | log | log ✓ |
 
-（`BCTUNTR` / `BCCGUNTR` / `BCPEUNTR` / `BCTO` 在 R 里**不存在**，
-它们对应 R 的 `BCTo` / `BCCGo` / `BCPEo`；目前是 `distributions_boxcox_compat.py`
-里的克隆壳，与 DBI 同性质。）
+> **D2.16 已更正**：本段的前提当时是错的。R 里 `BCTo` / `BCCGo` / `BCPEo`
+> 与 `BCT` / `BCCG` / `BCPE` 的 `d` 函数体**逐字相同**
+> （`identical(deparse(body(dBCTo)), deparse(body(dBCT))) == TRUE`），
+> 唯一差别就是 `mu.link` 在 `log` / `identity` 之间切换 —— `o` 后缀
+> **不是** untruncated。真正的无截断族是 R 真实存在的第三组
+> `BCTuntr` / `BCCGuntr` / `BCPEuntr`（`mu.link = identity`，与截断版相同），
+> 我们此前完全没实现：D2.16 补齐了它们（见下）。`BCTo` / `BCPEo` 的
+> `mu.link` 同在 D2.16 从 `identity` 改为 `log`（`BCCGo` 原本就对）。
 
 **为什么本次没顺手改掉 link**：试过了，**改成 `identity` 后拟合直接发散**
 （`mu ~ -1.5e7`、`termination_reason=non_finite_deviance`）。
@@ -808,12 +813,99 @@ R 的目标函数上确实更优。这是 D2.12 记 PE 时同型的弱识别平�
 4. **R 各函数的签名不统一**：同一族里`d2ldm2` 有的带 `y` 有的不带，
    且带 `y` 的**值也可能不依赖 y**（R body 里的 `z` 是死代码）。
    用 `names(formals(...))` 查，不要猜。
+
+**D2.16 交付记录（2026-10-07）：补齐 R 的无截断 Box-Cox 第三组 + 更正 `o` 后缀的误解**
+
+上一轮的建议是**基于一个错误前提**的，纠正它本身就是这次交付的一部分。
+
+**前提错在哪**："R 里 `BCTo` / `BCCGo` / `BCPEo` 是无截断变体，
+我们的 `BCTUNTR` / `BCCGUNTR` / `BCPEUNTR` 是错位的克隆壳"。
+
+在活 R 上逐条验证后：
+
+1. `identical(deparse(body(dBCTo)), deparse(body(dBCT)))` == **TRUE**。
+   `dBCCGo` vs `dBCCG`、`dBCPEo` vs `dBCPE` 同样为 TRUE。
+   `o` 后缀的**唯一**差别是 `mu.link` 在 `log` / `identity` 之间切换。
+   → `o` **不是** untruncated。
+2. R 里**另有**一组真实存在的无截断族：`BCTuntr` / `BCCGuntr` / `BCPEuntr`
+   （`grep("[Uu]ntr", ls(ns))` 命中且在 NAMESPACE 导出里）。
+   它们的 `mu.link` 是 `identity` —— 与**截断版相同**，不是 log。
+3. 这三个族在 R 里**没有 `d` / `p` / `q` 函数**，只有 `G.dev.incr`
+   加一条"`F(1/(sigma*\|nu\|)) < 0.99` 就 warning"。它们的
+   `G.dev.incr` 正是截断版密度去掉 `-log F(1/(sigma*|nu|))`。
+
+所以真正的缺陷是：**这三个名字此前指向截断版实现**（名字说无截断、
+行为有截断），而真正的无截断族**根本没实现**。
+
+**截断进入的三处**（缺任何一处族就不自洽）：
+
+- 密度里的 `-log F(1/(sigma*|nu|))`；
+- `dldd` / `dldv` / `dldt` 里配套的 hazard
+  `h = f(1/(sigma*|nu|)) / F(1/(sigma*|nu|))`（`dldm` 不含，
+  因为截断点不涉及 `mu`）；
+- `p` / `q` 经截断常数重标。
+
+**link 与二阶导数都没变**：`d2ldm2` / `d2ldd2` / `d2ldv2` / `d2ldt2`
+在两版间 `identical()` 为 TRUE（它们都不含截断常数）。
+唯一例外是 `BCPEuntr` 的 `d2ldm2`，它**没有** `BCPE` 里
+`if (any(tau < 1.05)) -dldm^2` 那个分支。
+
+**实现**：新增 `dpqr_functions.d/p/q/rBCTuntr|dBCCGuntr|dBCPEuntr`
+（共用 `_bcx_z` / `_bcx_inv_z`）；`distributions_boxcox_compat.py`
+重写为 `distributions_boxcox_untr.py`，含三套抄自 R 的解析 score 与
+对角 Hessian。`BCTo` / `BCPEo` 的 `mu.link` 同批从 `identity` 改为 `log`
+（`BCCGo` 原本就对）。
+
+**顺带发现并修掉的第二个缺陷**：无截断族的支撑是
+`1 + nu*sigma*z > 0`，而截断族的截断点**恰好就是**这个边界
+（`nu>0` 时 `-1/(sigma*nu)`），所以截断版的 `q` 从来看不见越界的 `z`。
+无截断族会看见（`nu=1.3, sigma=0.7` 时边界 `-1.10`，
+而 t(3.5) 在 `p=0.01` 处是 `-4.06`）。原来的
+`jnp.maximum(q, eps)` 会返回一个极小正数、而它的 CDF 是 **0.17** ——
+回环断裂且静默报错概率。改为返回支撑边界 `0`，并 `p(0) = 0`。
+
+**验收**（40 点严格正数据，RS，两侧数据逐位相同）：
+
+| 族 | 我们 | 活 R | 相对差 |
+|---|---|---|---|
+| BCTUNTR | 109.154038 | 109.154072 | **3.11e-07** |
+| BCCGUNTR | 109.154041 | 109.154184 | **1.31e-06** |
+| BCPEUNTR | 108.313741 | 108.313843 | **9.46e-07** |
+
+全部 score 与对角二阶导对活 R 逐点比对，**最大 rel 9.9e-15**。
+
+**测试**：`tests/test_boxcox_untr_analytic_parity.py`（**40 项**）。
+`tests/test_r_consistency_boxcox_untr_more.py` **整份重写**：它原来断言
+"`BCTUNTR` 的 `d` 等于 R 的 `dBCT`"—— 那正是缺陷本身
+（"和 R 一致"其实是"和错的 R 函数一致"）。现改用 R 的
+`BCTuntr$G.dev.incr` 作参考，`rbus` 的 `eval_family.R` 新增 `gdev` 类型。
+`tests/test_family_capabilities.py` 里拿 `BCCGUNTR` 当 compat-alias 样本
+的那条改用 `DBI` / `DBURR12` / `COUNT_1_31`。
+
+**三个族已从 compat alias 名单移出**（它们不再是别名），
+RS 路由不再报 `FamilyCapabilityError`。
+
+**方法论要点**：
+1. **"族名里的后缀"要从活 R 验证，不能从字面推断。**
+   `o` 看起来像 original/untruncated，实际是 `mu.link` 的差别。
+   一条 `identical(deparse(body(f)), deparse(body(g)))` 就能定案。
+2. **"我们的族等于 R 的某个族"这种断言会把缺陷锁死。**
+   既有测试写的是"`BCTUNTR` 的 `d` 对 `dBCT`"—— 缺陷存在时它一直是绿的。
+   断言的参照物必须先独立确认是对的。
+3. **R 的 `G.dev.incr` 不能向量化调用**：body 首行
+   `z <- ifelse(nu != 0, ...)` 在标量 `nu` 下坍缩成长度 1，
+   于是每个观测的 kernel 都在 `y[1]` 的 `z` 上求值 ——
+   实测首元素正确（3.714485）、其余偏 up to 0.95。R 对照必须逐元素。
+4. **差分对象是 `-g_dev_inc/2` 而不是 `g_dev_inc`**：差后者得到的是
+   2 倍 score，表现为"每个 score 都错 rel 1.5"，看起来像全族皆错。
+5. **支撑边界要单独测**：截断版的 `q` 从不越界，无截断版会 ——
+   沿用截断版的 clamp 会静默返回一个错的概率。
 5. `dnorm(x)` 漏掉 `1/sqrt(2*pi)` 会让 hazard 整体放大 2.5066。
    —— 这条是我自己的探针 typo，但足以伪装成"R 的导数错了"，排查时先怀疑自己。
 
-**遗留**：`BCTo` / `BCCGo` / `BCPEo`（对应我们的 `BCTUNTR` / `BCCGUNTR` /
-`BCPEUNTR` 克隆壳）**尚未对齐**—— 它们现在仍是 `distributions_boxcox_compat.py`
-里对截断版的克隆，而R 的对应族**无截断**。是下一项。
+**遗留**：~~`BCTo` / `BCCGo` / `BCPEo`（对应我们的 `BCTUNTR` / `BCCGUNTR` /
+`BCPEUNTR` 克隆壳）尚未对齐~~ —— **D2.16 已完成**，但不是按上面那条
+错误的对应关系做的，见 D2.16 段。
 
 ### D1 分布 family d/p/q/r parity（P1，8–12 周）
 

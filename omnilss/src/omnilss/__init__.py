@@ -102,7 +102,7 @@ from .dpqr_functions import fittedMN, meanBEINF, meanBEINF0, meanBEINF1, meanZAG
 from .distributions_st_compat import ST1, ST2, ST3, ST4
 from .distributions_count_compat import DBI
 from .distributions_discrete_compat import DBURR12
-from .distributions_boxcox_compat import BCCGuntr, BCPEuntr, BCTuntr
+from .distributions_boxcox_untr import BCCGuntr, BCPEuntr, BCTuntr
 from .distributions3 import (
     pdf,
     log_pdf,

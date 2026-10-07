@@ -175,9 +175,6 @@ _PRODUCTION_SAFE = frozenset({"NO"})
 
 _KNOWN_COMPAT_ALIAS_FAMILIES = frozenset(
     {
-        "BCCGUNTR",
-        "BCPEUNTR",
-        "BCTUNTR",
         "DBI",
         "DBURR12",
         "MULTIN",
@@ -205,7 +202,6 @@ _KNOWN_COMPAT_ALIAS_FAMILIES = frozenset(
 
 _COMPAT_FACTORY_MODULES = frozenset(
     {
-        "omnilss.distributions_boxcox_compat",
         "omnilss.distributions_count_compat",
         "omnilss.distributions_discrete_compat",
         "omnilss.distributions_gen_skeleton_compat",

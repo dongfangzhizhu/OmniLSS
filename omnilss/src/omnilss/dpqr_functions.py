@@ -8512,3 +8512,232 @@ def rNET(key, n, mu=0.0, sigma=1.0, nu=2.0, tau=4.0):
     samples = qNET(u, mu, sigma, nu, tau)
 
     return samples
+
+
+# =============================================================================
+# Untruncated Box-Cox variants (R BCTuntr / BCCGuntr / BCPEuntr)
+# =============================================================================
+#
+# gamlss.dist ships three *separate* families whose only difference from
+# BCT / BCCG / BCPE is that the upper tail beyond 1/(sigma*|nu|) is NOT
+# renormalised away.  The truncation shows up in exactly three places:
+#
+#   * the log-density carries - log(F(1/(sigma*|nu|)))
+#   * the scores dldd / dldv / dldt carry the matching hazard term
+#     (d/dt the truncation constant) -- dldm never does, because the
+#     truncation point does not involve mu
+#   * p/q rescale through the truncation constant
+#
+# Everything else -- the kernels, the standardisation constant c, the
+# mu/sigma/nu links -- is shared verbatim with the truncated families.  R's
+# untruncated families expose *no* d/p/q functions at all (only G.dev.incr
+# plus a warning when F(1/(sigma*|nu|)) < 0.99), so the implementations below
+# are derived from the untruncated G.dev.incr R actually ships rather than
+# transcribed from a named R function.
+
+
+def _bcx_z(x, mu, sigma, nu):
+    """Shared Box-Cox standardisation used by all three untruncated families."""
+    x = jnp.maximum(jnp.asarray(x, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    ratio = x / mu
+    use_log = jnp.abs(nu) < 1e-6
+    return jnp.where(
+        use_log,
+        jnp.log(ratio) / sigma,
+        (jnp.power(ratio, nu) - 1.0) / (nu * sigma),
+    )
+
+
+def _bcx_inv_z(z, mu, sigma, nu):
+    """Inverse of :func:`_bcx_z`.
+
+    The natural support of the Box-Cox transform is ``1 + nu*sigma*z > 0``
+    (``z > -1/(nu*sigma)`` for ``nu > 0``, ``z < 1/(sigma*|nu|)`` for
+    ``nu < 0``).  The truncated families can hide this: R's truncation point
+    ``1/(sigma*|nu|)`` *is* that boundary, so ``qBCT`` never sees a ``z``
+    outside it.  The untruncated families can and do -- at ``p = 0.01`` with
+    ``nu=1.3, sigma=0.7`` the Student-t quantile is ``-4.06`` while the
+    boundary is ``-1.10``.  Clamping to ``eps`` there (as the truncated
+    quantiles do) reports a tiny positive quantile whose CDF comes back as
+    ~0.17, so the round trip breaks; the honest answer is the boundary itself,
+    ``y = 0``.
+
+    ``jnp.power`` is evaluated on both branches, so a negative base has to be
+    removed before the power, not just masked afterwards.
+    """
+    mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    use_log = jnp.abs(nu) < 1e-6
+    term = 1.0 + nu * sigma * z
+    q_boxcox = mu * jnp.power(jnp.maximum(term, 0.0), 1.0 / nu)
+    q_boxcox = jnp.where(term > 0.0, q_boxcox, 0.0)
+    q_log = mu * jnp.exp(sigma * z)
+    return jnp.where(use_log, q_log, q_boxcox)
+
+
+# --- BCTuntr: untruncated Box-Cox t -----------------------------------------
+
+
+def dBCTuntr(x, mu=1.0, sigma=1.0, nu=1.0, tau=10.0, log=False):
+    """Untruncated Box-Cox t log-density -- R ``BCTuntr()$G.dev.incr`` / -2."""
+    x = jnp.asarray(x, dtype=jnp.float64)
+    mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    safe_x = jnp.maximum(x, jnp.finfo(jnp.float64).eps)
+    z = _bcx_z(safe_x, mu, sigma, nu)
+    k = 1.0 / sigma
+    loglik = nu * jnp.log(safe_x / mu) - jnp.log(safe_x) + jnp.log(k)
+    loglik = loglik + gammaln((tau + 1.0) / 2.0) - gammaln(tau / 2.0)
+    loglik = loglik - 0.5 * jnp.log(tau) - gammaln(0.5)
+    loglik = loglik - ((tau + 1.0) / 2.0) * jnp.log1p(jnp.square(z) / tau)
+    loglik = jnp.where(x > 0.0, loglik, -jnp.inf)
+    return loglik if log else jnp.exp(loglik)
+
+
+def pBCTuntr(q, mu=1.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False):
+    """Untruncated Box-Cox t CDF: the plain Student-t CDF at the Box-Cox z."""
+    q = jnp.asarray(q, dtype=jnp.float64)
+    mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    z = _bcx_z(q, mu, sigma, nu)
+    # P(T <= z) = 1 - I_{tau/(tau+z^2)}(tau/2, 1/2)/2  for z > 0
+    from jax.scipy.special import betainc as _betainc
+
+    tail = 0.5 * _betainc(tau / 2.0, 0.5, tau / (tau + z * z))
+    cdf = jnp.where(z > 0.0, 1.0 - tail, tail)
+    cdf = jnp.clip(jnp.where(q > 0.0, cdf, 0.0), 0.0, 1.0)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    return jnp.log(cdf) if log_p else cdf
+
+
+def qBCTuntr(p, mu=1.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False):
+    """Untruncated Box-Cox t quantile function."""
+    p = jnp.asarray(p, dtype=jnp.float64)
+    if log_p:
+        p = jnp.exp(p)
+    if not lower_tail:
+        p = 1.0 - p
+    z = jnp.asarray(_t_dist.ppf(np.asarray(p), np.asarray(tau)), dtype=jnp.float64)
+    return _bcx_inv_z(z, mu, sigma, nu)
+
+
+def rBCTuntr(key, n, mu=1.0, sigma=1.0, nu=1.0, tau=10.0):
+    """Untruncated Box-Cox t random generation."""
+    u = jrandom.uniform(key, shape=(int(n),))
+    return qBCTuntr(u, mu, sigma, nu, tau)
+
+
+# --- BCCGuntr: untruncated Box-Cox Cole-Green -------------------------------
+
+
+def dBCCGuntr(x, mu=1.0, sigma=1.0, nu=1.0, log=False):
+    """Untruncated Box-Cox Cole-Green log-density -- R ``BCCGuntr()$G.dev.incr`` / -2."""
+    x = jnp.asarray(x, dtype=jnp.float64)
+    mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    safe_x = jnp.maximum(x, jnp.finfo(jnp.float64).eps)
+    z = _bcx_z(safe_x, mu, sigma, nu)
+    loglik = (
+        nu * jnp.log(safe_x / mu)
+        - jnp.log(sigma)
+        - 0.5 * jnp.square(z)
+        - jnp.log(safe_x)
+        - 0.5 * np.log(2.0 * np.pi)
+    )
+    loglik = jnp.where(x > 0.0, loglik, -jnp.inf)
+    return loglik if log else jnp.exp(loglik)
+
+
+def pBCCGuntr(q, mu=1.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
+    """Untruncated Box-Cox Cole-Green CDF: plain normal CDF at the Box-Cox z."""
+    q = jnp.asarray(q, dtype=jnp.float64)
+    mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    z = _bcx_z(q, mu, sigma, nu)
+    cdf = jnp.clip(jnp.where(q > 0.0, norm.cdf(z), 0.0), 0.0, 1.0)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    return jnp.log(cdf) if log_p else cdf
+
+
+def qBCCGuntr(p, mu=1.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
+    """Untruncated Box-Cox Cole-Green quantile function."""
+    p = jnp.asarray(p, dtype=jnp.float64)
+    if log_p:
+        p = jnp.exp(p)
+    if not lower_tail:
+        p = 1.0 - p
+    return _bcx_inv_z(norm.ppf(p), mu, sigma, nu)
+
+
+def rBCCGuntr(key, n, mu=1.0, sigma=1.0, nu=1.0):
+    """Untruncated Box-Cox Cole-Green random generation."""
+    u = jrandom.uniform(key, shape=(int(n),))
+    return qBCCGuntr(u, mu, sigma, nu)
+
+
+# --- BCPEuntr: untruncated Box-Cox power exponential ------------------------
+
+
+def dBCPEuntr(x, mu=1.0, sigma=1.0, nu=1.0, tau=2.0, log=False):
+    """Untruncated Box-Cox power-exponential log-density.
+
+    R ``BCPEuntr()$G.dev.incr`` / -2.  Identical to :func:`dBCPE` minus the
+    ``- log(F.T(1/(sigma*|nu|)))`` term.
+    """
+    x = jnp.asarray(x, dtype=jnp.float64)
+    mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    safe_x = jnp.maximum(x, jnp.finfo(jnp.float64).eps)
+    z = _bcx_z(safe_x, mu, sigma, nu)
+    log_c = 0.5 * (-(2.0 / tau) * jnp.log(2.0) + gammaln(1.0 / tau) - gammaln(3.0 / tau))
+    loglik = (nu - 1.0) * jnp.log(safe_x) - nu * jnp.log(mu) - jnp.log(sigma)
+    loglik = loglik + jnp.log(tau) - log_c
+    loglik = loglik - 0.5 * jnp.power(jnp.abs(z / jnp.exp(log_c)), tau)
+    loglik = loglik - (1.0 + 1.0 / tau) * jnp.log(2.0) - gammaln(1.0 / tau)
+    loglik = jnp.where(x > 0.0, loglik, -jnp.inf)
+    return loglik if log else jnp.exp(loglik)
+
+
+def pBCPEuntr(q, mu=1.0, sigma=1.0, nu=1.0, tau=2.0, lower_tail=True, log_p=False):
+    """Untruncated Box-Cox power-exponential CDF: plain F.T at the Box-Cox z."""
+    q = jnp.asarray(q, dtype=jnp.float64)
+    mu = jnp.maximum(jnp.asarray(mu, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    z = _bcx_z(q, mu, sigma, nu)
+    cdf = jnp.clip(jnp.where(q > 0.0, _bcpe_ftrunc(z, tau), 0.0), 0.0, 1.0)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    return jnp.log(cdf) if log_p else cdf
+
+
+def qBCPEuntr(p, mu=1.0, sigma=1.0, nu=1.0, tau=2.0, lower_tail=True, log_p=False):
+    """Untruncated Box-Cox power-exponential quantile function."""
+    p = jnp.asarray(p, dtype=jnp.float64)
+    if log_p:
+        p = jnp.exp(p)
+    if not lower_tail:
+        p = 1.0 - p
+    z = _bcpe_q(np.asarray(p), np.asarray(tau))
+    return _bcx_inv_z(jnp.asarray(z, dtype=jnp.float64), mu, sigma, nu)
+
+
+def rBCPEuntr(key, n, mu=1.0, sigma=1.0, nu=1.0, tau=2.0):
+    """Untruncated Box-Cox power-exponential random generation."""
+    u = jrandom.uniform(key, shape=(int(n),))
+    return qBCPEuntr(u, mu, sigma, nu, tau)

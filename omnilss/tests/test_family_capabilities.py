@@ -54,7 +54,10 @@ def test_known_core_family_statuses_are_case_insensitive():
 
 
 def test_known_compat_alias_families_are_marked_separately_from_evidence():
-    for family_name in ("DBI", "DBURR12", "BCCGUNTR", "COUNT_1_31"):
+    # D2.16 used BCCGUNTR as the sample here; it is a full implementation now
+    # (its own untruncated density and R's analytic derivatives), so it left
+    # the compat-alias set.  The remaining samples still hold.
+    for family_name in ("DBI", "DBURR12", "COUNT_1_31"):
         capability = get_family_capability(family_name)
         assert capability.implementation_status is ImplementationStatus.COMPAT_ALIAS
         assert implementation_status_for_family(family_name) is (
