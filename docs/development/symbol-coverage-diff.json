@@ -7,7 +7,7 @@
     "missing": 402,
     "placeholder": 10,
     "compat_alias": 11,
-    "evidence_gap": 36,
+    "evidence_gap": 35,
     "extra": 300
   },
   "category_meaning": {
@@ -38,8 +38,10 @@
     },
     "evidence_gap": {
       "new": [],
-      "resolved": [],
-      "current_count": 36,
+      "resolved": [
+        "gamlss::coefAll"
+      ],
+      "current_count": 35,
       "baseline_count": 36
     },
     "extra": {
@@ -50,7 +52,12 @@
     }
   },
   "regressions": [],
-  "improvements": [],
+  "improvements": [
+    {
+      "category": "evidence_gap",
+      "symbol": "gamlss::coefAll"
+    }
+  ],
   "ok": true,
   "ratchet_ok": true,
   "ceiling_ok": true

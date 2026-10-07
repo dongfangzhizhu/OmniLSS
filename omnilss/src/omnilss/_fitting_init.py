@@ -86,6 +86,15 @@ def _initial_parameter_value(
             return 1.0  # Kurtosis parameter
         if family.name == "BEINF":
             return 0.1  # Inflation at 1, conservative estimate
+        # Skew-t families: R's own tau.initial, verified against live R.
+        # ST3C -> 10, SST -> 4.  Falling through to the 1.0 default puts the RS
+        # iteration on a bad plateau it never leaves: ST3C then converged with
+        # deviance 168.410 against R's 142.293, stuck at tau = 1.0 while R's
+        # optimum is at tau = 1.8e11 (the t branch's upper end).
+        if family.name == "ST3C":
+            return 10.0
+        if family.name == "SST":
+            return 4.0
         return 1.0
     return 1.0
 

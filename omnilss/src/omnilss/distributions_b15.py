@@ -978,7 +978,17 @@ def _st3c_log_pdf(y, mu, sigma, nu, tau):
     eps = jnp.finfo(jnp.float64).eps
     sigma = jnp.maximum(sigma, eps)
     nu = jnp.maximum(nu, eps)
-    tau = jnp.maximum(tau, 1.0 + eps)
+    # R's ST3C()$tau.valid is `all(tau > 0)` -- no floor at 1.  A `maximum(tau,
+    # 1 + eps)` clamp here made the density *constant* in tau for tau < 1
+    # (measured: tau = 0.3 / 0.5 / 0.7 all returned -1.2309075820904529,
+    # while R returns -1.6432 / -1.4347 / -1.3248).  That is what the
+    # scanner's `dpqr d` gate was reporting as rel 8.2e-02 on the grid
+    # tau = linspace(0.5, 3).
+    #
+    # The floor now sits at R's own boundary only.  Note SST is different:
+    # its m2 carries a (tau - 2) denominator, so R's dSST is NaN below 2 and
+    # its 2 + eps clamp marks a real domain edge rather than narrowing one.
+    tau = jnp.maximum(tau, eps)
 
     e = y - mu
     z = e / sigma
@@ -1080,23 +1090,27 @@ def ST3C():
         p=_st3c_p,
         q=_st3c_q,
         r=_st3c_r,
-        links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
+        # R's ST3C()$nu.link is "log", not "identity" -- verified against live R,
+        # together with nu.valid = all(nu > 0) and nu.initial = 1.  The
+        # neighbouring SEP1/SEP2 do use "identity" for nu, so this is a
+        # per-family fact to look up rather than a pattern to assume.
+        links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "log"},
         link_functions={
             "mu": identity_link,
             "sigma": log_link,
-            "nu": identity_link,
+            "nu": log_link,
             "tau": log_link,
         },
         link_inverses={
             "mu": identity_inverse,
             "sigma": log_inverse,
-            "nu": identity_inverse,
+            "nu": log_inverse,
             "tau": log_inverse,
         },
         link_derivatives={
             "mu": identity_derivative,
             "sigma": log_derivative,
-            "nu": identity_derivative,
+            "nu": log_derivative,
             "tau": log_derivative,
         },
     )
