@@ -222,6 +222,39 @@ _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
             "objective.  Verified on the scanner's exact 48-point sample."
         ),
     ),
+    "BCPE": dict(
+        n_cyc=20,
+        dev_ours=94.1535753952418,
+        dev_r=122.82555373916798,
+        note=(
+            "Same cross-check as ST1, and R's early stop here is even blunter: "
+            "R returns the identical deviance 122.825553739168 at n.cyc = 20, "
+            "30, 100, 300 and 1000 while reporting converged = TRUE.  Its own "
+            "deviance trace is 160.5062 -> 125.5833 -> 123.5814 -> 123.1782 -> "
+            "122.9885 -> 122.8992 -> 122.8605 -> 122.8426 -> 122.8262 -> "
+            "122.8256, i.e. it halts the moment the absolute change drops under "
+            "c_crit = 0.001 (0.0006 at the last step) without ever approaching "
+            "a stationary point: at R's own reported optimum the eta-scale score "
+            "is dldm = -2.1556e+01, sum(dldm * x) = -4.1895, "
+            "sigma * dldd = -4.8000e+01, dldv = -8.2223, tau * dldt = -3.8e-09. "
+            "Our n_cyc = 20 answer of 94.153575 is not yet converged either "
+            "(max_iterations_reached, tau still climbing), and at n_cyc = 40 it "
+            "reaches 94.1150248919.  Both are far below R, and R's own dBCPE "
+            "evaluated at our n_cyc = 40 coefficients returns 94.115024891890670 "
+            "against the 94.115024891890840 we report -- 1.7e-13 apart, so the "
+            "densities agree to the last bit and both sides minimise the same "
+            "objective.\n"
+            "A first pass at this registration told a different story -- that "
+            "the two optima sit in numerically disconnected basins, because "
+            "holding nu and tau at our values makes every sigma below 1.1077 "
+            "(R's included, 0.508149) return deviance Inf.  That reading was "
+            "wrong, and the reason generalises: that slice was taken through a "
+            "point that is itself not stationary, so it measured the path our "
+            "own iterate had walked rather than the objective's terrain.  D2.24 "
+            "found the same shape of mistake in the threshold it first proposed "
+            "for the eta-gradient criterion."
+        ),
+    ),
 }
 
 

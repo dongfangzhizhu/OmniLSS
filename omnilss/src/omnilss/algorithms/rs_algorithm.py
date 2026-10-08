@@ -751,6 +751,100 @@ def _has_converged(dev_old: float, dev_new: float, tol: float, rtol: float) -> b
     return abs_change < tol or rel_change < rtol
 
 
+#: Threshold above which the eta-scale score is *reported* as evidence that the
+#: deviance criterion certified a point that is not stationary (D2.24).
+#:
+#: This is documentation, not a gate.  The first draft of this feature did gate
+#: on it -- ``converged`` was cleared above ``1e-3`` and a new termination reason
+#: ``stalled_at_nonzero_gradient`` was emitted -- on the strength of a clean
+#: separation between "good" families (8.3e-14 .. 9.4e-05) and "bad" ones (1.0
+#: and 1.6e+09).  Measuring whether a gradient step can actually *lower the
+#: deviance* at each of those points refuted it:
+#:
+#:     family   eta_gradient   deviance gain from a Fisher step
+#:     PO           1.6e-03          1.9e-08    <- no descent
+#:     WEI2         1.2e-02          2.9e-06    <- descends
+#:     GG           2.6e-01          8.1e-05    <- descends
+#:     LOGITNO      2.5e+00          9.1e-13    <- no descent
+#:     BCPE         1.2e+00          9.0e-03    <- descends
+#:     LNO          8.8e+12          4.3e+12    <- descends
+#:
+#: PO and WEI2 overlap by a factor of seven, so no threshold on the gradient
+#: separates them: magnitude measures how far the iterate is in score units,
+#: not how much objective is still reachable.  Gating on it would have
+#: mislabelled a converged Poisson fit as stalled while missing nothing.
+#:
+#: The measurement is therefore published as a diagnostic and the caller
+#: decides.  Same shape as the D2.19 parameter-floor judgement: the only
+#: admissible test for "is this really the boundary" is to ask what the
+#: objective does on the other side, never to compare magnitudes.
+ETA_GRADIENT_TOL = 1e-3
+
+
+def eta_gradient_norms(
+    family: FamilyDefinition,
+    y: np.ndarray,
+    fitted_values: Dict[str, np.ndarray],
+    linear_predictors: Dict[str, np.ndarray],
+    design_matrices: Dict[str, np.ndarray],
+    weights: np.ndarray,
+) -> Dict[str, float]:
+    """Return ``max |X' W dlogL/deta|`` per estimated parameter.
+
+    The deviance criterion in :func:`_has_converged` is a statement about *how
+    much the objective moved*, not about *where the iterate sits*.  Both
+    implementations of RS can satisfy it far away from a stationary point:
+    on the Box-Cox ``BCPE`` scanner sample, R stops at deviance 122.825553739
+    and we stop at 94.153575 (94.115025 given 40 cycles), and at R's own
+    reported optimum the eta-scale score is still ``dldm = -21.6``,
+    ``sigma*dldd = -48.0``, ``dldv = -8.2`` -- with ``converged = TRUE``
+    because the deviance moved by less than ``c.crit``.
+
+    This is the quantity an IRLS step actually drives to zero, so it is the
+    only honest companion to the deviance criterion.  The chain rule needs the
+    link derivative at ``eta`` (``dmu/deta``), which is why the natural-scale
+    ``dld`` alone is not comparable across links: for ``BCPE`` ``tau.link`` is
+    ``log`` while ``nu.link`` is ``identity``.
+
+    Kept separate from :func:`rs_step` on purpose.  ``last_gradient_norm``
+    there is ``||dld||`` on the *natural* scale and is recorded *before* the
+    step, so it cannot answer "is the point we are returning stationary".
+    """
+    norms: Dict[str, float] = {}
+    for parameter in family.estimable_parameters:
+        if parameter not in fitted_values or parameter not in design_matrices:
+            continue
+        context = {
+            p: np.asarray(v, dtype=np.float64)
+            for p, v in fitted_values.items()
+            if p != parameter
+        }
+        try:
+            score = np.asarray(
+                family.score_functions[parameter](
+                    y=y, **{parameter: np.asarray(fitted_values[parameter], np.float64)},
+                    **context,
+                ),
+                dtype=np.float64,
+            )
+            eta = np.asarray(linear_predictors.get(parameter), dtype=np.float64)
+            link_deriv = np.asarray(
+                family.link_derivatives[parameter](eta), dtype=np.float64
+            )
+            X = np.asarray(design_matrices[parameter], dtype=np.float64)
+            grad = X.T @ (weights * score * link_deriv)
+        except Exception:
+            # A family whose score cannot be re-evaluated must not make the fit
+            # itself fail; report it as un-measured rather than as zero.
+            norms[parameter] = float("nan")
+            continue
+        finite = grad[np.isfinite(grad)]
+        norms[parameter] = (
+            float(np.abs(finite).max()) if finite.size else float("nan")
+        )
+    return norms
+
+
 def rs_fit(
     formula: str,
     family: Any,
@@ -1332,6 +1426,26 @@ def rs_fit(
     # without re-deriving it from the deviance history.  A non-finite deviance
     # is fail-closed: it can never be reported as a converged fit even if the
     # change criterion happened to pass.
+    #
+    # The deviance criterion is necessary but not sufficient (D2.24): a point
+    # whose deviance stopped moving can still be far from stationary.  The
+    # eta-scale score that would show this is measured below and published as
+    # `eta_gradient_norm`, but it deliberately does **not** gate the flag -- see
+    # the note on ETA_GRADIENT_TOL for the measurement that rules that out.
+    _eta_grad_norms = eta_gradient_norms(
+        family=family,
+        y=y,
+        fitted_values=parameter_values,
+        linear_predictors=linear_predictors,
+        design_matrices=design_matrices,
+        weights=w,
+    )
+    _eta_grad_measured = np.asarray(
+        [v for v in _eta_grad_norms.values() if np.isfinite(v)], dtype=np.float64
+    )
+    _eta_grad_max = (
+        float(_eta_grad_measured.max()) if _eta_grad_measured.size else float("nan")
+    )
     if not np.isfinite(g_dev):
         converged = False
         termination_reason = "non_finite_deviance"
@@ -1527,6 +1641,12 @@ def rs_fit(
                 rs_last_condition_number_by_param
             ),
             "rs_last_gradient_norm_by_param": dict(rs_last_gradient_norm_by_param),
+            # D2.24: the eta-scale score at the point actually being returned.
+            # `rs_last_gradient_norm_by_param` above is natural-scale and taken
+            # *before* the step, so it cannot answer "is this fit stationary";
+            # these two can.  `None` where the score could not be re-evaluated.
+            "eta_gradient_norm_by_param": dict(_eta_grad_norms),
+            "eta_gradient_norm": _eta_grad_max,
             "step_size_by_param": dict(step_sizes),
             "condition_number": _phase1_slots_seed["condition_number"],
             "gradient_norm": _phase1_slots_seed["gradient_norm"],
