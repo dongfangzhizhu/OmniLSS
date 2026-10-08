@@ -1848,6 +1848,163 @@ tau * dldt   = -3.8259e-09
    会报 `max_iterations_reached`。**parity 对照不能把 R 的 `converged`
    当基准**——它是一个被 `c_crit` 绝对判据定义的事实，不是最优性证明。
 
+#### D2.25：零变体的响应 `type` 必须继承底座族（`ZAPIG`/`ZAZIPF` rsdev `inf`）
+
+**现象**（全族扫描，v12 延续）：
+
+```
+ZAPIG    rsdev  fail   python deviance non-finite (inf)
+ZAZIPF   rsdev  fail   python deviance non-finite (inf)
+```
+
+不是"偏大"，是**从第 1 步就 `inf`**，20 步全程 `Change: nan`，
+`termination_reason = non_finite_deviance`。
+
+**逐层剥开**：
+
+1. **不是权重也不是初值**。`g_dev_inc` 探针在
+   `sigma=1/nu=0.5`、`sigma=Rinit/nu=0.1`、
+   以及 `mu ∈ {0.5, 1.0, 2.0, 2.7, 5.0}` 五组取值下**全部**给出
+   `nonfinite = 37/48` —— 与参数取值无关。
+2. **`y == 0` 的 11 行正常**（`g_dev_inc = 4.60517019`，正好 `-2·log(0.1)`），
+   **37 个 `y > 0` 的行全部 `inf`**。所以问题在正值分支，不在零点质量。
+3. **拆到包装层**：`y = [0, 1, 4.397, 6.94]` 上
+   `za_log_pdf` 给 `[-2.30258509, -0.6988129, -inf, -inf]`，
+   而底座 `_pig_log_pdf` **自己就**给 `[-0.85410197, -1.1479953, -inf, -inf]`。
+   包装层是干净的。
+4. **底座守卫**：`pig.py:40` 有
+   `jnp.where((x >= 0) & isfinite(x) & (x == floor(x)), result, -inf)`。
+   我们在**整数处与 R 逐位一致**（`y=1` → `-1.147995299`），递推本身正确。
+
+**R 的 `dPIG` 没有这个守卫**（`tofyPIG2` 配 `-lgamma(x + 1)` 直接在连续点上求值）。
+看起来像"我们比 R 严"，但**先问 R 自己是否真有定义**：
+
+```
+x =  3.990   dPIG(log) = -3.2828318708
+x =  4.000   dPIG(log) = -2.0685967932   <- 函数在整数处跳跃
+x =  4.001   dPIG(log) = -2.0701030215
+p(4.397) = 0.0683250349 落在 p(4)=0.1263629707 与 p(5)=0.1005470760 之间
+sum_{k=0..40} p(k) = 0.999991517838381   <- 只有整数和才等于 1
+```
+
+R 在非整数处的取值是**插值残留，不是概率质量**。R 自己把 `PIG` 归为
+`type = "Discrete"`、`y.valid = all(y >= 0)` —— 它认为非整数是域外，
+只是 `dPIG` 没去拦。**我们的守卫是对的，探针是错的。**
+
+**真正的根因：元数据。** 活 R 全量对照：
+
+| 族 | 我们 | R | 底座 | 底座 type |
+|---|---|---|---|---|
+| `ZAPIG` | **Mixed** | Discrete | `PIG` | Discrete |
+| `ZAZIPF` | **Mixed** | Discrete | `ZIPF` | Discrete |
+| `ZABI` | **Mixed** | Discrete | `BI` | Discrete |
+| `ZANBI` | **Mixed** | Discrete | `NBI` | Discrete |
+| `ZABNB` | **Mixed** | Discrete | `BNB` | Discrete |
+| `ZASICHEL` | **Mixed** | Discrete | `SICHEL` | Discrete |
+| `ZIPIG` | Discrete | Discrete | `PIG` | Discrete |
+| `ZAGA` | Mixed | Mixed | `GA` | Continuous |
+| `ZAIG` | Mixed | Mixed | `IG` | Continuous |
+| `BEOI`/`BEZI` | Mixed | Mixed | `BE` | Continuous |
+
+R 的规则很干净：**变体的 `type` 继承底座；底座连续则记 `Mixed`**
+（把零点质量贴在连续密度上正是 `Mixed` 的含义）。
+
+我们的两个 factory 各自硬编码了一个常量 ——
+`make_zero_altered_family` 写死 `"Mixed"`、`make_zero_inflated_family`
+写死 `"Discrete"`。**ZA/ZI 之分根本不是 R 划的界线**，于是 6 个"离散底座
+的 ZA"全落错边，而它们的 `ZI` 兄弟全对。这个区别只有在这个 bug 里才
+看不出来，因为两种错法方向相反。
+
+**后果链**：`Mixed` → 扫描器 `_response_candidates` 给**连续**网格
+（`np.linspace(0.3, 4.0, n)`）、`_fit_data` 用 `rng.uniform` → 离散
+log-pmf 整段 `-inf` → deviance `inf`。**症状看着像密度缺陷，根因是
+一行元数据。**
+
+**修法**：`_base_response_type(base_name)` 从底座族推导，两个 factory 共用：
+
+```python
+base_type = _resolve(base_name).type
+if base_type == "Discrete":
+    return "Discrete"
+if base_type == "Continuous":
+    return "Mixed"
+raise ValueError(...)
+```
+
+**不逐族手改**：逐族改正是当初写下 `"Mixed"` 的原因，改完下一族还会再犯。
+未知底座名 / 不认识的底座 type **故意抛异常而不是退回默认值** ——
+静默回退就是缺陷本身。
+
+**验收**（整数响应，前缀等价的数据构造）：
+
+| 族 | 前 | 后 |
+|---|---|---|
+| `ZAPIG` | `inf`（`non_finite_deviance`） | `207.09699053568295`（`max_iterations_reached`） |
+| `ZAZIPF` | `inf`（`non_finite_deviance`） | `277.52521560228183`（`max_iterations_reached`） |
+
+22 个 ZA/ZI 族的 `type` 现在与 R **逐个一致**。`ZAPIG.d` 与活 R 逐位
+（rel ≤ 2e-11，8 点全整数）。
+
+**全族扫描变化**（`--timeout 300`）：
+
+```
+deriv  134 pass / 10 fail / 2 skip     （零变化）
+dpqr    65 pass / 35 fail / 46 skip    （零变化）
+rsdev   53→55 pass / 9 fail / 82→80 skip / 2 warn
+
+  ZANBI    skip -> pass    （R 侧原本报 "warning: non-integer x"）
+  ZAPIG    fail -> pass
+  ZAZIPF   fail -> pass
+  ZINBF    skip -> pass
+  ZINBI    pass -> fail    <- 见下
+  ZIPIG    pass -> fail    <- 见下
+```
+
+**`ZINBI`/`ZIPIG` 的 `pass → fail` 不是回退，是基线重算。**
+`_build_jobs` 用**共享** `default_rng(20261006)` 流，某族消耗多少随机数
+取决于它前面排了多少族；`ZANBI` 的 `type` 从 `Mixed` 变 `Discrete` 后，
+`_fit_data` 从 `rng.uniform + rng.random(n)`（30% 零点）切到
+`rng.integers`，**rng 位置从此偏移**，它之后的每一族都换了样本。
+
+判据是**R 侧的数也变了** —— R 完全独立于我们的元数据，它换样本我们必然会看到：
+
+| 族 | R（前） | R（后） |
+|---|---|---|
+| `ZINBI` | 193.246 | **214.757** |
+| `ZIPIG` | 200.994 | **211.767** |
+
+若是我们的代码回归，R 那一侧必须一位不动。**"R 的数也变了"是把"基线重算"
+与"真回退"分开的唯一判据。**
+
+**新测试** `tests/test_zero_variant_response_type.py`（14 项）：断言**规则**
+（变体继承底座、连续底座 → `Mixed`）而不是断言那 6 个名字；两个 factory
+共用同一个 helper（源码级断言，禁止任何字面 `type_="..."` 回到 factory 里）；
+未知底座与不认识底座 type 都要抛；连续网格让离散变体非有限这个
+**机制**本身作为测试保留（走 `log=True` 通道 —— 普通通道把 `-inf` exp 成
+`0.0`，那是有限的，断言会因错误的原因通过）。
+
+**D2.25 方法论要点**：
+
+1. **"我们比 R 严"也要先问 R 自己是否有定义**。R 缺守卫不是许可；
+   拿活 R 在边界另一侧求值（这里：整数和是否等于 1），而不是读 R 的代码
+   猜它想干什么。这与 D2.19/D2.24 的"问目标函数"同源。
+2. **元数据缺陷的伪装能力极强**。症状是 `deviance = inf`，读起来像密度
+   有问题；真实原因是一行 `type_="Mixed"`。**异常量级先怀疑约定层**
+   （D2.21「rel 大到荒谬时先怀疑探针」的元数据版本）—— 这次的探针
+   撒谎不算探针的错，是**元数据先骗了探针**。
+3. **"我们严"和"R 没拦"之间还夹一层"域外"**。R 的 `type`/`y.valid`
+   表达的是域，`dPIG` 的行为是实现；两者不一致时**以域为准**。
+   D2.23 的"`dDBI` 在窗口内切 `dbinom` 但 `dldd` 不跟随"是同一个形状的
+   问题，那次选择了复现 R（因为它在**域内**不一致），这次不该复现
+   （R 在**域外**）。
+4. **逐族修的错要改成规则**。6 个族同源，逐族手改等于把同一个 bug 抄 6 遍。
+   `type` 从底座推导后，这类不匹配**不可表示**。
+5. **观测通道要对**。`family.pdf` 把 `-inf` exp 成 `0.0`，是有限的；
+   断言 `isfinite` 会因错误的原因通过（D2.23 第 3 条第三次重现）。
+6. **"R 的数也变了"是区分基线重算与真回退的唯一判据**。共享 rng 流让
+   "修好一个族"必然扰动它后面所有族的基准（D2.18 纪律 1 的另一面：
+   那个纪律说"子集会改变 R 侧基准"，这里说**修好一个族也会**）。
+
 #### D2.20：`TF2` 的链式法则项与 `TF` 的正态极限分支（rsdev rel 2.3e+01 →逐位一致）
 
 **现象**（全族扫描 v11）：

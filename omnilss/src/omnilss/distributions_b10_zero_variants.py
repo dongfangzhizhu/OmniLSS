@@ -15,12 +15,51 @@ from .families import FamilyDefinition
 from .links import logit_link, logit_inverse, logit_derivative
 
 
+def _base_response_type(base_name: str) -> str:
+    """Return the response ``type`` a ZA/ZI variant inherits from its base.
+
+    R's rule, read off live R for all 22 zero-variant families (D2.25): a
+    variant takes the base family's ``type`` when the base is discrete, and is
+    marked ``"Mixed"`` when the base is continuous -- gluing a point mass at
+    zero onto a positive continuous density is exactly what "Mixed" means.
+    ``ZAPIG()$type`` is ``"Discrete"`` with ``y.valid = all(y >= 0)``, while
+    ``ZAGA()$type`` is ``"Mixed"``.
+
+    This was previously hard-coded to ``"Mixed"`` for zero-*altered* families
+    and ``"Discrete"`` for zero-*inflated* ones.  Both constants were wrong for
+    some base: the six ``ZA`` families over a discrete base (``ZAPIG``,
+    ``ZAZIPF``, ``ZABI``, ``ZANBI``, ``ZABNB``, ``ZASICHEL``) came out
+    ``Mixed`` where R says ``Discrete``, while their ``ZI`` siblings came out
+    right -- the ZA/ZI split was never the distinction R draws.  The
+    consequence was not cosmetic: a ``Mixed`` response grid is continuous, the
+    discrete ``PIG`` log-pdf returns ``-inf`` off the integers, and the RS
+    deviance was ``inf`` from step 1.  Deriving the type from the base makes
+    that whole class of mismatch unrepresentable.
+
+    Resolution failures are deliberately *not* swallowed: an unknown base name
+    must fail loudly here rather than silently inherit a default.  An
+    unrecognised base ``type`` likewise raises -- a silent fallback is the
+    defect being fixed.
+    """
+    from .distribution_registry import resolve as _resolve
+
+    base_type = _resolve(base_name).type
+    if base_type == "Discrete":
+        return "Discrete"
+    if base_type == "Continuous":
+        return "Mixed"
+    raise ValueError(
+        f"cannot derive a response type for a zero-variant over {base_name!r}: "
+        f"base type is {base_type!r}, expected 'Discrete' or 'Continuous'"
+    )
+
+
 def make_zero_altered_family(base_name: str, base_log_pdf_func, base_params: tuple, base_links: dict):
     """Factory to create zero-altered distributions.
-    
+
     Zero-altered (hurdle): Pr(Y=0) = nu, Pr(Y=y|y>0) = (1-nu)*f(y)/[1-f(0)]
     """
-    
+
     @dataclass(frozen=True)
     class ZeroAlteredFamily(FamilyDefinition):
         pass
@@ -88,7 +127,7 @@ def make_zero_altered_family(base_name: str, base_log_pdf_func, base_params: tup
         name=f"ZA{base_name}",
         parameters=za_params,
         log_pdf_func=za_log_pdf,
-        type_="Mixed",
+        type_=_base_response_type(base_name),
         links=za_links,
         link_functions=link_funcs,
         link_inverses=link_invs,
@@ -107,7 +146,7 @@ def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tu
         pass
     
     ZeroInflatedFamily.__name__ = f"ZeroInflated{base_name}Family"
-    
+
     def zi_log_pdf(y, *params):
         """Zero-inflated log-PDF."""
         if base_name == "SICHEL":
@@ -208,7 +247,7 @@ def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tu
         name=f"ZI{base_name}",
         parameters=zi_params,
         log_pdf_func=zi_log_pdf,
-        type_="Discrete",
+        type_=_base_response_type(base_name),
         links=zi_links,
         link_functions=link_funcs,
         link_inverses=link_invs,
