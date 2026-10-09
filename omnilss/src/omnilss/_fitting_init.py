@@ -59,9 +59,28 @@ def _initial_parameter_value(
             return 0.0  # Skewness parameter
         if family.name == "SN2":
             return 1.0  # Scale ratio parameter
+        # Zero-inflated/altered distributions whose zero-mass parameter is
+        # literally `nu` (D2.26).  R starts each of these at
+        # `nu <- rep(0.1, length(y))` -- read off the R sources, e.g.
+        # ZIPIG.R:91, ZAPIG.R, ZAZIPF.R, ZABI.R, ZANBI.R, ZINBI.R, ZIBI.R.
+        # Falling through to the 1.0 default below sends logit(1.0) = +inf
+        # into the eta clip at +15 -- seventeen logit units from R's
+        # logit(0.1) = -2.197 -- and the RS iteration does not recover: on the
+        # ZIPIG gate sample it parked on a sigma plateau whose floor sat 2.86
+        # deviance above R's answer and cycled with period four.
+        #
+        # Only families whose `nu` *is* the zero mass belong here.  ZASICHEL /
+        # ZISICHEL carry the zero mass in `tau` (the base already has `nu`) and
+        # R starts their `nu` at -0.5; ZINBF's `nu` is a shape parameter that R
+        # starts at 2; ZABNB / ZIBNB do start `nu` at 0.1 but it is a shape
+        # parameter, not a probability.  Same parameter name, different role --
+        # the D2.19 lesson.
+        if family.name in ("ZIPIG", "ZAPIG", "ZIBI", "ZAZIPF", "ZABI",
+                           "ZANBI", "ZINBI"):
+            return 0.1  # R's nu.initial: rep(0.1, length(y))
         # Zero-inflated/altered distributions: nu is zero-inflation probability
         # Use logit link, so initial value should be small but positive
-        if family.name in ("ZAGA", "ZAIG", "ZAP", "ZINBI", "ZIP2", "BEZI", "BEOI"):
+        if family.name in ("ZAGA", "ZAIG", "ZAP", "ZIP2", "BEZI", "BEOI"):
             return 0.2  # 20% zero-inflation, reasonable starting point
         if family.name in ("BEINF", "BEINF0", "BEINF1"):
             return 0.1  # 10% inflation at boundary, conservative estimate

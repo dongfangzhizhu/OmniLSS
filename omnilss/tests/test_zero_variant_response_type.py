@@ -163,8 +163,16 @@ def test_the_rs_fit_deviance_is_finite_on_an_integer_response():
         "y ~ x", family="ZAPIG", data={"y": y, "x": x},
         sigma_formula="~1", method="RS", max_iter=20,
     )
+    # The regression this file exists for was `inf`, so finiteness is the
+    # assertion.  The termination reason is deliberately *not* pinned to a
+    # literal: it read `max_iterations_reached` when D2.25 landed and
+    # `relative_deviance_converged` after D2.26 gave the family R's own
+    # nu.initial, which is an improvement.  Asserting the older string would
+    # have turned a fix into a failure.
     assert np.isfinite(model.deviance), model.deviance
-    assert model.termination_reason == "max_iterations_reached"
+    assert model.termination_reason in (
+        "relative_deviance_converged", "max_iterations_reached",
+    )
 
 
 def test_both_factories_derive_the_type_from_one_place():

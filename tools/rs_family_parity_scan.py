@@ -255,6 +255,39 @@ _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
             "for the eta-gradient criterion."
         ),
     ),
+    "ZIPIG": dict(
+        n_cyc=20,
+        dev_ours=207.7863230779,
+        dev_r=211.7673906379,
+        note=(
+            "R's early stop is the c_crit pattern again, and its trajectory is "
+            "the clearest case yet because it *rises* monotonically: 210.6150995933 "
+            "at n.cyc=2, 211.5829342519 at 5, 211.7576497286 at 10, 211.7673906379 "
+            "at 14 and unchanged at 60/200/600.  R's lowest value is behind its "
+            "starting point; it is not descending at all when it stops.\n"
+            "Holding R's own mu and nu and sweeping sigma on the link scale, R's "
+            "own G.dev.incr gives 209.0949097249 at sigma_eta = -2.5 against "
+            "211.7673906379 at R's reported sigma_eta = -1.26766160 -- 2.67 lower, "
+            "three orders of magnitude above the 1e-3 gate tolerance.  At our "
+            "point the same slice has its minimum exactly where we sit: 207.7863230084 "
+            "at sigma_eta = -3.54717651 against 207.8652291058 at -3.0 and "
+            "208.2121591839 at -2.5.  R's ZIPIG()$G.dev.incr evaluated at our "
+            "coefficients returns 207.7863230780 against the 207.7863230779 we "
+            "report -- 1e-10 apart, so the densities agree and both sides "
+            "minimise the same objective.\n"
+            "Reaching that point needed R's own nu.initial.  ZIPIG was absent "
+            "from every branch of _initial_parameter_value and fell through to "
+            "the 1.0 default, i.e. logit(1.0) = +inf into the eta clip at +15 -- "
+            "seventeen logit units from R's logit(0.1) = -2.197.  From there the "
+            "RS iteration parked on a sigma plateau and cycled with period four "
+            "(deviance 3251.14 -> 214.6458 over 18 monotone steps, then 788.22, "
+            "455.26, 816.69, 1450.21, after which iterations 23-30 replayed "
+            "iterations 2-9 to five digits).  With nu.initial = 0.1 the fit "
+            "converges to 207.7863230779 at n.cyc = 20 and stays there at 40, 60 "
+            "and 120, with eta_gradient_norm_by_param = {mu: 0.0165, "
+            "sigma: 0.00148, nu: 8.88e-07}."
+        ),
+    ),
 }
 
 
