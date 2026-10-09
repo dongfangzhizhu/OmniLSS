@@ -54,6 +54,110 @@ def _base_response_type(base_name: str) -> str:
     )
 
 
+# R subtracts a small epsilon from the rescaled probability before inverting it
+# through the base quantile function.  The value is a per-family constant in R,
+# not a derived quantity: sixteen of the eighteen `q` functions read off live R
+# subtract 1e-10, while `qZIBNB` (and `qZINBI`, which does not come from the
+# factory) subtract 1e-7.  Parity means reproducing the constant, so the two
+# values are named rather than smoothed into one.
+_QUANTILE_EPSILON = 1e-10
+_QUANTILE_EPSILON_1E7 = 1e-7
+#: Families whose live-R `q` subtracts 1e-7 instead of 1e-10.
+_ZI_FAMILIES_WITH_THE_COARSE_EPSILON = frozenset({"ZIBNB"})
+
+
+def _zero_variant_tails(base_name: str, *, altered: bool, epsilon: float):
+    """Compose a zero variant's ``p``/``q``/``r`` from its base family's.
+
+    R derives both variants' distributions from the base CDF by a closed-form
+    affine map, and every one of the eighteen families that has a ``p`` in
+    ``gamlss.dist`` uses one of exactly two formulas (read off live R 4.6.0):
+
+    **zero-altered (hurdle)** -- the positive support is the base conditioned
+    on ``Y > 0``, with a point mass ``tau`` glued back at zero::
+
+        p(q) = tau                                     if q == 0
+             = tau + (1-tau)*(F(q) - F(0))/(1 - F(0))   otherwise
+
+    **zero-inflated** -- the base CDF scaled into ``[tau, 1]``::
+
+        p(q) = tau + (1-tau)*F(q)
+
+    Inverting the second is direct; inverting the first additionally has to
+    undo the conditioning, which R writes as ``pnew2 <- F(0)*(1-pnew) + pnew``.
+    Note that ``ZAZIPF`` -- whose base ``ZIPF`` starts at 1, so ``F(0) == 0`` --
+    collapses onto the second formula, and the composition below reproduces it
+    without a special case.  That is the reason to compose from the base CDF
+    rather than to transcribe each family: the degenerate base falls out.
+
+    The tail flags follow R's order, which is not the order a reader expects
+    (``ZAPIG.R`` and the vendored snapshot alike)::
+
+        cdf <- ifelse(q == 0, tau, cdf3)
+        if (!lower.tail) cdf <- 1 - cdf
+        if (log.p)      cdf <- log(cdf)
+        cdf <- ifelse(q < 0, 0, cdf)     # <- after the log
+
+    so ``p(-1, log.p = TRUE)`` is ``0`` rather than ``-Inf``.  Transcribing the
+    flags in the "natural" order would put a ``-Inf`` where R has a ``0``.
+
+    Parameters mirror the base family's parameter order followed by the zero
+    mass, which is the order the family objects themselves use.
+    """
+    from .distribution_registry import resolve as _resolve
+
+    base = _resolve(base_name)
+    base_p, base_q = base.p, base.q
+    # Keyword dispatch, not positional: the base `p`/`q` signatures interleave
+    # fixed parameters (`BI.p(q, mu, bd)`), so a positional call can silently
+    # hand a parameter to the wrong slot.
+    base_names = tuple(base.parameters)
+
+    def variant_p(x, *params, lower_tail=True, log_p=False):
+        base_kwargs = dict(zip(base_names, params[:-1]))
+        tau = params[-1]
+        x = jnp.asarray(x, dtype=jnp.float64)
+        cdf = base_p(x, **base_kwargs)
+        if altered:
+            # R evaluates the base CDF at a zero of the same shape as q, so a
+            # vectorised parameter set gives one hurdle point per element.
+            cdf0 = base_p(jnp.zeros_like(x), **base_kwargs)
+            cdf = tau + (1.0 - tau) * (cdf - cdf0) / (1.0 - cdf0)
+            cdf = jnp.where(x == 0, tau, cdf)
+        else:
+            cdf = tau + (1.0 - tau) * cdf
+        if not lower_tail:
+            cdf = 1.0 - cdf
+        if log_p:
+            cdf = jnp.log(cdf)
+        # R clamps *after* taking the log; see the docstring.
+        return jnp.where(x < 0, 0.0, cdf)
+
+    def variant_q(p, *params, lower_tail=True, log_p=False):
+        base_kwargs = dict(zip(base_names, params[:-1]))
+        tau = params[-1]
+        prob = jnp.exp(jnp.asarray(p, dtype=jnp.float64)) if log_p else jnp.asarray(p, dtype=jnp.float64)
+        prob = prob if lower_tail else 1.0 - prob
+        rescaled = (prob - tau) / (1.0 - tau) - epsilon
+        if altered:
+            cdf0 = base_p(jnp.zeros_like(rescaled), **base_kwargs)
+            rescaled = cdf0 * (1.0 - rescaled) + rescaled
+        rescaled = jnp.where(rescaled > 0, rescaled, 0.0)
+        result = base_q(rescaled, **base_kwargs)
+        # R's `q` functions abort on p outside [0, 1]; vectorised code cannot,
+        # and a quantile there is undefined, so report NaN as pBNI/qZIPF do.
+        return jnp.where((prob >= 0) & (prob <= 1), result, jnp.nan)
+
+    def variant_r(key, n, *params):
+        # Every R `r` for these families is `as.integer(q(runif(n)))`, including
+        # the hurdle ones -- inversion, not a mixture draw.  The one exception is
+        # the BNB block this replaced, which drew a mixture directly; both agree
+        # in distribution, and inversion is what the other eight R functions do.
+        return variant_q(jrandom.uniform(key, (n,), dtype=jnp.float64), *params)
+
+    return {"p": variant_p, "q": variant_q, "r": variant_r}
+
+
 def make_zero_altered_family(base_name: str, base_log_pdf_func, base_params: tuple, base_links: dict):
     """Factory to create zero-altered distributions.
 
@@ -132,6 +236,8 @@ def make_zero_altered_family(base_name: str, base_log_pdf_func, base_params: tup
         link_functions=link_funcs,
         link_inverses=link_invs,
         link_derivatives=link_derivs,
+        **_zero_variant_tails(base_name, altered=True,
+                              epsilon=_QUANTILE_EPSILON),
     )
 
 
@@ -199,48 +305,16 @@ def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tu
                 link_invs[param] = identity_inverse
                 link_derivs[param] = identity_derivative
     
-    extra = {}
-    if base_name == "BNB":
-        from .dpqr_functions import pBNB, qBNB, rBNB
-
-        def zi_p(q, *params, lower_tail=True, log_p=False):
-            base = params[:-1]
-            tau = jnp.clip(params[-1], 0.0, 1.0)
-            prob = pBNB(q, *base, lower_tail=True, log_p=False)
-            f0 = pBNB(0.0, *base, lower_tail=True, log_p=False)
-            out = jnp.where(q < 0, 0.0, jnp.where(q < 0.5, tau + (1-tau)*f0, tau + (1-tau)*prob))
-            if not lower_tail:
-                out = 1.0 - out
-            return jnp.log(out) if log_p else out
-
-        def zi_q(p, *params, lower_tail=True, log_p=False):
-            base = params[:-1]
-            tau = jnp.clip(params[-1], 0.0, 1.0)
-            prob = jnp.exp(p) if log_p else p
-            prob = 1.0 - prob if not lower_tail else prob
-            invalid = (prob < 0) | (prob > 1) | jnp.isnan(prob)
-            at_zero = prob == 0
-            at_one = prob == 1
-            base0 = pBNB(0.0, *base)
-            zi0 = tau + (1.0 - tau) * base0
-            base_prob = (prob - tau) / (1.0 - tau)
-            result = jnp.where(prob <= zi0, 0.0, qBNB(base_prob, *base))
-            result = jnp.where(at_zero, 0.0, result)
-            result = jnp.where(at_one, jnp.inf, result)
-            return jnp.where(invalid, jnp.nan, result)
-
-        def zi_r(key, n, *params):
-            base = params[:-1]
-            tau = jnp.clip(params[-1], 0.0, 1.0)
-            tau = jnp.asarray(tau)
-            batch_shape = jnp.broadcast_shapes(*[jnp.asarray(v).shape for v in (*base, tau)])
-            base = jnp.broadcast_arrays(*[jnp.asarray(v) for v in base])
-            tau = jnp.broadcast_to(tau, batch_shape)
-            k1, k2 = jrandom.split(key)
-            inflated = jrandom.uniform(k1, (n,) + batch_shape) < tau
-            base_samples = rBNB(k2, n, *base)
-            return jnp.where(inflated | (tau == 1), 0, base_samples)
-        extra = {"p": zi_p, "q": zi_q, "r": zi_r}
+    # D2.27: this used to carry a hand-written BNB-only `p`/`q`/`r` block.  It
+    # computed the same thing as the general composition, only with the zero
+    # branch spelled `q < 0.5` instead of `q == 0` -- equivalent for an integer
+    # support, because `pBNB(0)` *is* `f0`.  The composition in
+    # `_zero_variant_tails` replaces all three, and it is what the other eight
+    # factory-built variants had been missing entirely (their `p`/`q` were the
+    # `build_ad_family` placeholders, i.e. all-NaN).
+    epsilon = (_QUANTILE_EPSILON_1E7
+               if f"ZI{base_name}" in _ZI_FAMILIES_WITH_THE_COARSE_EPSILON
+               else _QUANTILE_EPSILON)
 
     return build_ad_family(
         family_class=ZeroInflatedFamily,
@@ -252,7 +326,7 @@ def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tu
         link_functions=link_funcs,
         link_inverses=link_invs,
         link_derivatives=link_derivs,
-        **extra,
+        **_zero_variant_tails(base_name, altered=False, epsilon=epsilon),
     )
 
 

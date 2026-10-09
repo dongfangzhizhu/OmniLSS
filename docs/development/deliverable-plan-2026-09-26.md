@@ -2140,6 +2140,117 @@ if family.name in ("ZIPIG", "ZAPIG", "ZIBI", "ZAZIPF", "ZABI", "ZANBI", "ZINBI")
    这条，两步判定就完整了。**parity 对照的基准不该是 R 的 `converged`
    （D2.24），也不该是 R 的迭代方向单调（这里）。**
 
+#### D2.27：零变体的 `p`/`q`/`r` 必须从底座 CDF 组合（9 族 `dpqr` 从占位 `nan` 到对活 R）
+
+**现象**：`test_r_consistency_zapig` / `test_r_consistency_zazipf` 长期失败
+（D2.25 用 `git stash` 对照确认为既有）。根因不是密度而是**接线**：
+`build_ad_family` 在调用方不提供 `p`/`q`/`r` 时装的是**全 `nan` 占位**，
+而两个零变体 factory 从来没提供过：
+
+- `make_zero_altered_family`（`ZAPIG`/`ZAZIPF`/`ZABI`/`ZANBI`/`ZABNB`）：一个都没装；
+- `make_zero_inflated_family`：只有 `BNB` 底座有一段手写特例（`ZIBNB`），
+  其余（`ZIPIG`/`ZIBI`）也是占位；
+- `ZINBI`（`distributions_b5.py`）：**`pZINBI`/`qZINBI`/`rZINBI` 三个函数
+  写在文件里、却从未传进 `build_ad_family`** —— 能力齐备但没有入口。
+
+探针实测（改动前）：这 9 个族的 `family.p` / `family.q` 对任何输入返回全
+`nan`。预测区间、分位数、采样在零变体上**整体不可用**。
+
+**活 R 的规律（读 R 4.6.0 全部 18 个零变体 `p`/`q` 源码归纳）**：只有两个公式。
+
+- **zero-altered（hurdle）**：正支撑 = 底座条件于 `Y>0`，零点贴回质量 `tau`：
+
+  ```
+  p(q) = tau                                        若 q == 0
+       = tau + (1-tau)*(F(q) - F(0)) / (1 - F(0))    其余
+  ```
+
+- **zero-inflated（线性混合）**：`p(q) = tau + (1-tau)*F(q)`。
+
+反解第二个是直接的；反解第一个要**撤掉截断**，R 写作
+`pnew2 <- F(0)*(1-pnew) + pnew`（`pnew = (p-tau)/(1-tau) - eps`）。
+**`ZAZIPF` 是证明这条规则的退化情形**：底座 `ZIPF` 支撑从 1 开始，
+`F(0) = 0`，hurdle 公式**自动塌缩**成 zero-inflated 那条 ——
+R 靠公式免费拿到这一点，组合实现同样免费拿到，不需要任何特判。
+
+**两个必须照抄的 R 细节**（都验证过）：
+
+1. **tail flag 的顺序不是"自然"顺序**。R 是
+   `cdf → lower.tail 取补 → log → ifelse(q<0, 0, cdf)`——
+   **`q<0` 归零在 log 之后**，所以 `p(-1, log.p=TRUE)` 是 `0` 而不是 `-inf`。
+   按自然顺序重排会通过所有 CDF 测试、只在这一格上静默改变行为。
+2. **反解用的 epsilon 是逐族常数**：16 个族减 `1e-10`，`qZIBNB`（和
+   `qZINBI`，它不走 factory）减 `1e-7`。这是 R 的手改（源码注释
+   "added 28-2-17"），不是推导量 —— **parity 意味着连常数一起抄**。
+
+**修法（规则，不是逐族）**：`distributions_b10_zero_variants.py` 新增
+`_zero_variant_tails(base_name, *, altered, epsilon)`，从注册表解析底座族、
+按**关键字**调用底座 `p`/`q`（位置传参会在 `BI.p(q, mu, bd)` 这类交错签名
+上静默送错槽位），两个 factory 都从它取 `p`/`q`/`r`；`ZIBNB` 的手写特例
+整段删除（它与通用公式等价——`q < 0.5` 分支就是 `q == 0`，因为
+`pBNB(0)` 就是 `f0`）；`r` 一律 `q(uniform)` 反演，与 R 的
+`as.integer(q(runif(n)))` 相同。`ZINBI` 则把已有的三个函数接进
+`build_ad_family`，并把 `qZINBI` 从 cutoff 分支改写成 R 的公式。
+
+**验收**（同族列表 `ZAPIG,ZAZIPF,ZABI,ZANBI,ZABNB,ZIPIG,ZIBI,ZIBNB,ZINBI`
+下 stash 前后对照，**所有状态变化行的 rsdev 数字逐位不变**，排除共享 rng
+流干扰）：
+
+| 族 | `dpqr` 前 → 后 | `rsdev` |
+|---|---|---|
+| `ZAPIG` | fail → **pass** | 206.212 vs R 206.214，逐位不变 |
+| `ZANBI` | fail → **pass** | 209.471 vs R 209.782，逐位不变 |
+| `ZIPIG` | fail → **pass** | 210.717 vs R 212.37，逐位不变（已登记 R 提前停） |
+| `ZABNB` | fail → **pass** | skip（既有，R 报 RS 未收敛） |
+| `ZINBI` | fail → **pass** | 213.778 vs R 213.894，逐位不变 |
+| `ZAZIPF`/`ZABI`/`ZIBI` | skip → skip（R 侧零质量叫 `sigma`，扫描器按我们的参数名传 → R 拒绝 → 无法探测） | 逐位不变 |
+
+数值对照（我方 vs 活 R，最大相对偏差）：`ZAPIG` p `7.2e-16`、`ZAZIPF` p
+`4.7e-16`、`ZANBI` p `1.2e-15`、`ZIPIG` p `9.4e-16`，q 全部逐位（整数）。
+`pZINBI` 对 R `9.8e-13`；重写后 `qZINBI` **逐位**（`0/0/0/2/9/49`）。
+
+**R 侧参数命名差异（记录，不改）**：`ZAZIPF`/`ZABI`/`ZIBI` 的零质量在
+gamlss.dist 里叫 `sigma`，本包按 D2.26 叫 `nu`；`ZABI`/`ZIBI` 还带 `bd`
+（R 默认 1 = 我们实现的 Bernoulli）。R 对照必须传 R 的名字，否则
+`unused argument (nu = ...)`。`test_r_consistency_zazipf` 因此改传
+`sigma` —— 这是修测试传参，不是改族。
+
+**新测试** `tests/test_zero_variant_tails.py`（7 项，R 可用时含活 R 对照）：
+
+- 9 个族的 `p`/`q` 不再全 `nan`（占位连 `p(0)` 都答不了）。
+- `p(0)` 的位置按变体类型断言：**hurdle = `tau`，mixture =
+  `tau+(1-tau)*F(0)`** —— 对两者断言同一个值就是 D2.26 的
+  "同名不同义"陷阱重演。
+- tail flag 顺序：`p(-1, log_p=True) == 0`。
+- `ZAZIPF` 退化情形式：其 CDF（q>0）必须恰为
+  `tau + (1-tau)*pZIPF(q)`。
+- epsilon 常量钉死：`1e-10` 与 `1e-7` 及其归属（`ZIBNB`）。
+- 活 R 对照：9 个族的 `p`（rtol 1e-6）与 `q`（整数部分逐位）。
+
+**残留（归因到**底座**，非接线）**：
+
+- `ZABNB`/`ZIBNB` 的 p 偏差 `~7e-9`：我们的 `pBNB(0) = 0.339670097401`
+  vs R `0.33967009652792979` —— **底座 `pBNB` 自身**的既有偏差。
+- `ZAPIG`/`ZIPIG` 在 `q >= 10001` 时 p 返回 `nan`（`pig.py` 的数值上限），
+  R 给 `0.99999999999999911`（数值饱和）。
+- 极端上尾：R 的 `qPIG` 有 `if (p + 1e-09 >= 1) Inf` 短路，我们的 `qPIG`
+  在 `p=0.9999999999` 给 `62`（R 给 `Inf`）——底座 `PIG` 的 `q` 缺这条规则。
+- `ZAP`/`ZABB`/`ZIBB`/`ZILG` 的 `p`/`q` 仍不可用（见 D2.28 候选）。
+
+**D2.27 方法论要点**：
+
+1. **"能力齐备但没有入口"是静默降级的一种**。`ZINBI` 的 `pZINBI` 写了
+   很久，`ZINBI().p` 却一直是占位 —— 直到有人调用才会发现。接线缺陷和
+   实现缺陷一样要登记。
+2. **对照实验里"族列表不同 = rng 前缀不同"（D2.18 判据 1）在本轮真实
+   踩了一次**：用 4 族列表给 8 族结果做基线，`ZANBI`/`ZIPIG` 的 rsdev
+   "变了"；换成同列表逐位一致。**前缀等价性只在"你比的是 X 自己"时成立。**
+3. **底座退化时通用公式自动特化，是"规则优于逐族"的又一证据**（D2.25
+   `_base_response_type` 的续篇）：`ZAZIPF` 的 `F(0)=0` 让 hurdle 塌缩成
+   mixture，不需要写一行特判。
+4. **R 的常数也是 parity 对象**：`1e-10` vs `1e-7` 的 epsilon 差在整数
+   分位数的边界上可观测（`qZINBI(1)`：49 vs `inf`）。
+
 #### D2.20：`TF2` 的链式法则项与 `TF` 的正态极限分支（rsdev rel 2.3e+01 →逐位一致）
 
 **现象**（全族扫描 v11）：

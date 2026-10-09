@@ -363,8 +363,12 @@ def pZINBI(q, mu=1.0, sigma=1.0, nu=0.3, lower_tail=True, log_p=False):
 def qZINBI(p, mu=1.0, sigma=1.0, nu=0.3, lower_tail=True, log_p=False):
     p, mu, sigma, nu = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64) for v in (p, mu, sigma, nu)])
     p = jnp.exp(p) if log_p else p; p = jnp.where(lower_tail, p, 1-p)
-    size, prob = _zinbi_args(mu, sigma); cutoff = nu + (1-nu)*_nbinom.pmf(0, size, prob)
-    return jnp.where(p <= cutoff, 0.0, _nbinom.ppf(jnp.clip((p-nu)/(1-nu), 0, 1), size, prob))
+    # D2.27: R inverts through qNBI on the rescaled probability, with its own
+    # coarse epsilon: qZINBI subtracts 1e-7 (not the 1e-10 its siblings use)
+    # and clamps at zero, so p = 1 asks qNBI(0.9999999) = 49 rather than the
+    # inf a ppf(1.0) gives.  Live R: qZINBI(0/0.1/0.3/0.5/0.9/1) = 0/0/0/2/9/49.
+    pnew = jnp.maximum((p - nu) / (1.0 - nu) - 1e-7, 0.0)
+    return qNBI(pnew, mu, sigma)
 
 def rZINBI(key, n, mu=1.0, sigma=1.0, nu=0.3):
     k0, k1 = jrandom.split(key); shape = (n,) if all(jnp.asarray(v).ndim == 0 for v in (mu,sigma,nu)) else jnp.broadcast_shapes(jnp.shape(mu),jnp.shape(sigma),jnp.shape(nu))
@@ -382,6 +386,10 @@ def ZINBI() -> ZeroInflatedNegativeBinomial1Family:
         link_functions={"mu": log_link, "sigma": log_link, "nu": logit_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": logit_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": logit_derivative},
+        # D2.27: pZINBI/qZINBI/rZINBI existed here since the family landed but
+        # were never wired in, so `ZINBI().p` answered with build_ad_family's
+        # all-NaN placeholder -- the capability existed and had no entry point.
+        p=pZINBI, q=qZINBI, r=rZINBI,
     )
 
 
