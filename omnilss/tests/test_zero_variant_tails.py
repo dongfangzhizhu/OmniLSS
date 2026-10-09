@@ -28,6 +28,15 @@ The R-side parameter naming is *not* ours for three families: ``ZAZIPF``,
 package follows D2.26 and calls it ``nu``), and the two binomial ones also
 take a ``bd`` that defaults to 1 -- which is exactly the Bernoulli our
 ``_binomial_log_pdf`` implements.  The comparison passes R's names.
+
+D2.28 adds ``ZAP``: it lives in ``distributions_b5`` rather than the b10
+factories and was wired by hand, but its live-R tails are the same hurdle
+composition over ``ppois``/``qpois``, so it reuses the composition layer with
+one transcription difference -- R's ``qZAP`` subtracts *no* epsilon (the
+seventeenth quantile-epsilon variant after the sixteen 1e-10 families and
+ZIBNB/ZINBI's 1e-7).  No black-box input separates 0 from 1e-10 (the shift is
+below CDF granularity), so that zero is pinned by the source comment in
+``distributions_b5.ZAP``, not by a quantile assertion.
 """
 
 from __future__ import annotations
@@ -59,6 +68,10 @@ _PROBES = {
     # Not factory-built: pZINBI/qZINBI/rZINBI were written with the family and
     # never passed to build_ad_family, so `.p` answered with the placeholder.
     "ZINBI": (None, 5.0, 0.4, 0.3, None),
+    # D2.28: built in b5, wired by hand with the composition layer and
+    # epsilon=0 (live R's qZAP subtracts nothing).  The zero mass is R's
+    # ``sigma``, same name on both sides.
+    "ZAP": ("sigma", 4.0, None, 0.25, None),
 }
 
 _QUANTILE_GRID = [0.01, 0.1, 0.3, 0.5, 0.9, 0.999]
@@ -163,8 +176,9 @@ class TestCompositionReplacesThePlaceholders(unittest.TestCase):
 
     def test_the_coarse_quantile_epsilon_is_pinned_to_its_family(self) -> None:
         # Live R subtracts 1e-10 before inverting for sixteen families but
-        # 1e-7 for ZIBNB (and ZINBI, which is not factory-built).  The split
-        # is a transcription fact, not a tunable.
+        # 1e-7 for ZIBNB (and ZINBI, which is not factory-built), and *nothing*
+        # for ZAP (D2.28, pinned by the source comment in b5).  The split is a
+        # transcription fact, not a tunable.
         self.assertEqual(_QUANTILE_EPSILON, 1e-10)
         self.assertEqual(_QUANTILE_EPSILON_1E7, 1e-7)
         self.assertEqual(_ZI_FAMILIES_WITH_THE_COARSE_EPSILON, {"ZIBNB"})

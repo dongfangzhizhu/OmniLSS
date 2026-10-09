@@ -418,6 +418,21 @@ def _zap_log_pdf(y, mu, sigma):
 
 
 def ZAP() -> ZeroAlteredPoissonFamily:
+    # D2.28: ZAP was the one ZA family whose tails were neither factory-composed
+    # (D2.27) nor hand-written, so `build_ad_family` answered every `p`/`q`/`r`
+    # with the all-NaN placeholder.  Live R's pZAP/qZAP are the standard hurdle
+    # composition over ppois/qpois, so the D2.27 composition layer is reused
+    # here with one transcription difference: R's qZAP subtracts *no* epsilon
+    # (`pnew <- (p - sigma)/(1 - sigma)` goes straight to the inversion), the
+    # seventeenth quantile-epsilon variant after D2.27's sixteen 1e-10
+    # families and ZIBNB/ZINBI's 1e-7.  No black-box input separates 0 from
+    # 1e-10 (the shift is below CDF granularity), so the zero is pinned by
+    # this comment against live R source, not by a quantile assertion.
+    # The import stays inside the factory: b10 does not import b5 at module
+    # level, but the registry resolves b5 names by string, so a module-level
+    # import here would put b5 -> b10 -> registry on the import-time path.
+    from .distributions_b10_zero_variants import _zero_variant_tails
+
     return build_ad_family(
         family_class=ZeroAlteredPoissonFamily,
         name="ZAP",
@@ -428,6 +443,7 @@ def ZAP() -> ZeroAlteredPoissonFamily:
         link_functions={"mu": log_link, "sigma": logit_link},
         link_inverses={"mu": log_inverse, "sigma": logit_inverse},
         link_derivatives={"mu": log_derivative, "sigma": logit_derivative},
+        **_zero_variant_tails("PO", altered=True, epsilon=0.0),
     )
 
 

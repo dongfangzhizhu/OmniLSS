@@ -732,7 +732,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | ZAIG | gamlss.dist | ZAIG | public_api | experimental | r_consistency_test | blocked | 11 |
 | ZALG | gamlss.dist | ZALG | public_api | experimental | r_consistency_test | blocked | 6 |
 | ZANBI | gamlss.dist | ZANBI | public_api | experimental | capability:unsupported | blocked | 6 |
-| ZAP | gamlss.dist | ZAP | public_api | experimental | r_consistency_test | blocked | 8 |
+| ZAP | gamlss.dist | ZAP | public_api | experimental | r_consistency_test | blocked | 9 |
 | ZAPIG | gamlss.dist | ZAPIG | public_api | experimental | r_consistency_test | blocked | 7 |
 | ZASICHEL | gamlss.dist | ZASICHEL | public_api | experimental | r_consistency_test | blocked | 8 |
 | ZAZIPF | gamlss.dist | ZAZIPF | public_api | experimental | r_consistency_test | blocked | 7 |
@@ -1135,7 +1135,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | qZAIG | gamlss.dist | qZAIG | module_def | experimental | capability:unsupported | blocked | 1 |
 | qZALG | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | qZANBI | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| qZAP | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
+| qZAP | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 1 |
 | qZAPIG | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | qZASICHEL | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | qZAZIPF | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |

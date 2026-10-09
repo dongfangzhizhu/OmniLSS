@@ -2235,7 +2235,11 @@ gamlss.dist 里叫 `sigma`，本包按 D2.26 叫 `nu`；`ZABI`/`ZIBI` 还带 `bd
   R 给 `0.99999999999999911`（数值饱和）。
 - 极端上尾：R 的 `qPIG` 有 `if (p + 1e-09 >= 1) Inf` 短路，我们的 `qPIG`
   在 `p=0.9999999999` 给 `62`（R 给 `Inf`）——底座 `PIG` 的 `q` 缺这条规则。
-- `ZAP`/`ZABB`/`ZIBB`/`ZILG` 的 `p`/`q` 仍不可用（见 D2.28 候选）。
+- `ZAP` 的 `p`/`q` 曾不可用（D2.28 修复）；`ZILG` 无 R 对应物（活 R 4.6
+  报 could not find function）。**勘误（D2.28）**：本段初稿写
+  "`ZABB`/`ZIBB` 的 `p`/`q` 仍不可用"，这是 D2.27 探测的误判 —— 探测传了
+  `nu=1.0`（非法，`nu` 必须 ∈ (0,1)），`_log_table` 合法地返回 `nan` 被读成
+  "不可用"；用合法参数重探后两者与活 R **逐位一致**，从未有缺陷。
 
 **D2.27 方法论要点**：
 
@@ -2250,6 +2254,63 @@ gamlss.dist 里叫 `sigma`，本包按 D2.26 叫 `nu`；`ZABI`/`ZIBI` 还带 `bd
    mixture，不需要写一行特判。
 4. **R 的常数也是 parity 对象**：`1e-10` vs `1e-7` 的 epsilon 差在整数
    分位数的边界上可观测（`qZINBI(1)`：49 vs `inf`）。
+
+#### D2.28：`ZAP` 的 `p`/`q`/`r` —— 第 17 种分位数 epsilon（`dpqr` fail → pass）
+
+**现象**：全族扫描中 `ZAP` 的 `dpqr` 报
+`p: no finite overlap; q: no finite overlap`。根因与 D2.27 的 9 族同构：
+`ZAP`（`distributions_b5.py`）既不走 b10 的 factory（没有组合的 tails），
+也没有手写的 `p`/`q`/`r` —— `build_ad_family` 装的是全 `nan` 占位。但
+**候选名单先被误判扩大过**：D2.27 收尾时把 `ZABB`/`ZIBB` 也列为"不可用"，
+D2.28 用合法参数重探发现它们的 `p`/`q` **与活 R 逐位一致**，从未有缺陷
+—— 旧探测传了 `nu=1.0`（非法，该族 `nu` 必须 ∈ (0,1)），`_log_table`
+对非法参数合法地返回 `nan`，被读成了"实现缺失"。
+
+**活 R 的 `pZAP`/`qZAP`（R 4.6.0 源码在手）**：`p` 是标准 hurdle 公式
+（底座 `ppois`），与 D2.27 组合层完全同构；`q` 的
+`pnew <- (p - sigma)/(1 - sigma)` **不减任何 epsilon** —— 这是 D2.27
+归纳的"16 族 `1e-10` + `ZIBNB`/`ZINBI` `1e-7`"之外的第 17 种变体：`0`。
+（组合层减 `eps` 后 clamp 与 R 的 `ifelse(pnew > 0, qpois(pnew2), 0)`
+等价：`pnew <= 0` 时 `pnew2 <= F(0)`，`qpois` 在那里本来就得 0。）
+
+**修法**：`ZAP()` 从组合层取 tails ——
+`**_zero_variant_tails("PO", altered=True, epsilon=0.0)`，规则优于逐族
+（D2.25/D2.27 续篇）。import 放在 factory 函数体内：b10 不在模块层
+import b5，但 registry 按字符串解析 b5 名字，模块层 import 会把
+`b5 → b10 → registry` 放上 import 期路径。`epsilon=0` 与 `1e-10` 无黑盒
+输入可区分（位移低于 CDF 粒度），由源码注释对照活 R 源码钉死，不写
+分位数断言。
+
+**验收**（单族列表 `ZAP`，stash 前后对照）：
+
+| 关 | 前 | 后 |
+|---|---|---|
+| `deriv` | pass | pass（逐位不变） |
+| `dpqr` | fail（no finite overlap） | **pass** |
+| `rsdev` | fail `206.212 vs 205.974`（rel `1.153e-03`） | fail，**数字逐位不变** |
+
+rsdev 的既有差距属拟合问题（我们更高 → 按 D2.18 判据 2 是真缺陷），与
+本次接线无关，留待后续。数值对照活 R（`mu=4, sigma=0.25`）：
+`pZAP(0/1/2/3/10)` = `0.25/0.305972081091322/0.417916243273966/
+0.567175126184159/0.99783043850472` 逐位；`qZAP(0.01/0.1/0.25/0.3/0.5/
+0.9/0.999)` = `0/0/0/1/3/6/11` 逐位；`p(-1)=0`、`p(0.5)=0.25`、`p(1e6)=1`。
+
+**新测试**：`tests/test_zero_variant_tails.py` 的 `_PROBES` 加 `ZAP`
+一行（R 侧零质量名 `sigma`，两边同名），自动进入占位替换、零点位置、
+活 R 对照（p rtol 1e-6 + q 整数逐位）四项既有测试；epsilon 测试注释
+补上第 17 种变体。回归：`test_r_consistency_batch5` +
+`test_basic_batch5` + 零变体块全绿；`test_all_families_dpqr_scan` 的
+`DBI` 失败经 stash 对照确认为既有（探针元数，D2.23 已登记）。
+
+**D2.28 方法论要点**：
+
+1. **探测用的参数必须落在参数自己的合法域内。** 非法参数下"合理地返回
+   nan"与"实现缺失"在探针输出上不可区分 —— D2.27 的候选名单因此多写了
+   两个不存在的缺陷。探测结果异常时，第一步是检查探针自己的参数。
+2. **epsilon 词汇表从两个值变三个（`0`/`1e-10`/`1e-7`），且没有规律** ——
+   R 的手改历史就是这样。parity 意味着逐族抄常数，不归纳"应该是多少"。
+3. **"无法黑盒区分的转录常数"用源码注释钉死**：不是所有 parity 事实都
+   能变成断言；写不下断言的，把证据（活 R 源码行为）写在常数旁边。
 
 #### D2.20：`TF2` 的链式法则项与 `TF` 的正态极限分支（rsdev rel 2.3e+01 →逐位一致）
 
