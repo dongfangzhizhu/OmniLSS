@@ -95,7 +95,15 @@ def test_zibnb_dynamic_quantile_inherits_base_search() -> None:
     family = resolve("ZIBNB")
     probability = 0.3 + 0.7 * np.array([0.99, 0.999])
     actual = jax.jit(family.q)(probability, 2500.0, 1.5, 0.8, 0.3)
-    np.testing.assert_array_equal(actual, [23956.0, 99732.0])
+    # D2.29: the second value moved 99732 -> 99726 when dBNB switched to the
+    # accurate lbeta composition.  The inversion target here is
+    # pnew = (0.9993 - 0.3)/0.7 - 1e-7 = 0.9989999..., and scipy's own
+    # betaln cumsum places the crossing at 99726
+    # (cum[99725] = 0.9989998876... <= pnew <= cum[99726] = 0.9989999041...);
+    # the old 99732 carried the ~3.5e-8 jax betaln error through 100k
+    # accumulated terms.  Note qBNB at the plain 0.999 target is 99732 --
+    # different target, different answer, both scipy-confirmed.
+    np.testing.assert_array_equal(actual, [23956.0, 99726.0])
 
 
 def test_zibnb_zero_mass_boundaries_and_sampling_shape() -> None:

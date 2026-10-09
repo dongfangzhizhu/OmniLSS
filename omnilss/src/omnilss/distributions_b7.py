@@ -20,7 +20,7 @@ from dataclasses import dataclass
 import math
 
 import jax.numpy as jnp
-from jax.scipy.special import gammaln, betaln
+from jax.scipy.special import gammaln
 
 from .ad import build_ad_family
 from .dpqr_batch_f import (
@@ -140,8 +140,15 @@ def _bnb_log_pdf(y, mu, sigma, nu):
     k = 1.0 / nu
     
     # log p(y) = lbeta(y+n, m+k) - lbeta(n,m) - lgamma(y+1) - lgamma(k) + lgamma(y+k)
+    # D2.29: via the gammaln composition, not jax.scipy.special.betaln --
+    # the library betaln carries ~3.5e-8 absolute error here while jax's
+    # gammaln is accurate to ~1e-14 (see _lbeta in dpqr_functions).  Kept in
+    # lockstep with dBNB: this is the same density as dpqr_functions.dBNB,
+    # and fixing only one side would re-create the density/derivative split.
+    from .dpqr_functions import _lbeta
+
     log_pdf = (
-        betaln(y + n, m + k) - betaln(n, m) - 
+        _lbeta(y + n, m + k) - _lbeta(n, m) -
         gammaln(y + 1.0) - gammaln(k) + gammaln(y + k)
     )
     

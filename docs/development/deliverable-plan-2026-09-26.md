@@ -2312,6 +2312,78 @@ rsdev 的既有差距属拟合问题（我们更高 → 按 D2.18 判据 2 是�
 3. **"无法黑盒区分的转录常数"用源码注释钉死**：不是所有 parity 事实都
    能变成断言；写不下断言的，把证据（活 R 源码行为）写在常数旁边。
 
+#### D2.29：`PIG` 的 tail 边界与 `BNB` 的 lbeta 精度 —— `jax.scipy.special.betaln` 自带 ~3.5e-8 误差（deriv 3 处 fail → pass）
+
+**现象**：三个扫描器**抓不到**的缺陷（探测网格 q≤10、p≤0.999，全在边界
+之外）+ 一组既有 deriv fail 被顺带根治：
+
+1. `pPIG(q>=10001)` 返回 `nan`（模块 docstring 写"bounded support"当
+   设计），活 R 返回**累积部分和**（`1.0000000000000004`，q=10001 与
+   1e6 相同；R 不 clamp、不 nan，连 >1 都打印出来了）。
+2. `qPIG` 缺 R 的上尾短路 `if (p + 1e-09 >= 1) Inf`（tail 转换**之后**
+   判定；实测 `0.999999999` 已 Inf，`0.999` 仍给 10）——
+   `qPIG(0.9999999999)` 我们扫到 pmf 上限给 `62`，R 给 `Inf`。
+3. `pBNB(0)` 偏差 ~8.7e-10（传导到 `ZABNB`/`ZIBNB` 的 p）。
+4. 既有：`BNB`/`ZABNB`/`ZIBNB` 的 deriv fail（`mu: max rel diff
+   6.080e-02`，打印的 analytic 与 FD 相同——差异藏在更长探针向量里）。
+
+**根因（(3)(4) 同根）**：`jax.scipy.special.betaln` 是**独立实现**，中等
+参数下绝对误差 ~3.5e-8（`betaln(25,4)`：jax `-11.313254234` vs
+scipy/R `-11.3132542698`）；而 **jax 的 `gammaln` 精确到 ~1.4e-14**，教科书
+组合 `gammaln(a)+gammaln(b)-gammaln(a+b)` 反而比库函数准**五个数量级**。
+`dBNB` 的 p 路径直接吃这个误差；`_bnb_log_pdf` 的 AD 导数把它放大到
+`6e-2`（大参数 lgamma 的误差经二阶链式不消去）。10 万级 cumsum 的
+`qBNB` 还会把它累积成 **6 个计数的分位数漂移**（见下）。
+
+**修法**：
+
+- `pig.py`：`pPIG` 去掉 `q>=10001 → nan` 截断（大 q 返回部分和；我们的
+  log 尺度 clamp 落在恰好 `1.0`，与 R 的 `1.0000000000000004` 差
+  4e-16）；`qPIG` 加 `prob + 1e-9 >= 1 → Inf`（照抄 R 源码，含判定位置）。
+- `dpqr_functions.py`：新增 `_lbeta(a,b) = gammaln(a)+gammaln(b)-
+  gammaln(a+b)`（全 jax，lax 循环内可用，scipy 不行），`dBNB` 改用它。
+- `distributions_b7.py`：`_bnb_log_pdf` **同步**改用 `_lbeta` —— 同一
+  密度两个实现只改一侧 = 重新制造密度/导数分裂（D2.20 条款）。
+
+**验收**：
+
+- 活 R 对照（`format(digits=17)`）：`pPIG` 7 点网格 rtol 1e-9 内逐位；
+  `qPIG` 7 点整数逐位 `[0,1,2,2,3,8,18]`；upper-tail 网格
+  `0.05…0.9(lower.tail=FALSE) → [4,3,2,1,1,0,0]` 逐位（短路确实在转换后）。
+- `pBNB(0)` = `0.3396700965279322` vs R `0.33967009652792979`——偏差从
+  `8.7e-10` 降到 **2.4e-15**；5 点网格 rtol 1e-12。
+- parity 扫描（同 10 族列表 `PIG,PIG2,BNB,ZABI,ZIBI,ZABNB,ZIBNB,ZINBI,
+  ZAPIG,ZIPIG`，stash 前后对照）：**deriv 7/10 → 10/10**（BNB/ZABNB/
+  ZIBNB fail→pass，(4) 与 (3) 同根的意外收获）；dpqr 8 pass+2 skip 零
+  变化；rsdev 的 2 处既有 fail（`ZAPIG` 214.358、`ZIPIG` 213.744）数字
+  **逐位不变**。
+- **分位数漂移仲裁**：`test_zibnb_dynamic_quantile_inherits_base_search`
+  的第二值 `99732 → 99726`。scipy `betaln` cumsum 仲裁：反解目标
+  `pnew=0.9989999…` 的跨越点在 99726（`cum[99725]=0.9989998876 ≤ pnew ≤
+  cum[99726]=0.9989999041`），旧 99732 是 jax betaln 误差经 10 万项累积
+  的错值。BNB 直连 `p=0.999` 的契约值 99732 **不变**（不同目标概率）。
+- `test_r_consistency_zabnb` 的 d 关既有失败（0.00819）仍为既有，本轮
+  未触碰。
+
+**新测试** `tests/test_pig_bnb_tail_boundaries.py`（9 项，R 可用时含活 R
+对照）：pPIG 大 q 部分和、饱和渐近（`pPIG(50)` 13 位）、qPIG 短路与
+upper-tail 网格、`pBNB(0)` ulp 级精度钉死、`_bnb_log_pdf` 与 `dBNB`
+lockstep（两实现 log-pdf 逐位一致）、RTestBus 对照 PIG p/q 与 BNB p。
+
+**D2.29 方法论要点**：
+
+1. **库函数也会是缺陷源**：`jax.scipy.special.betaln` 的名字暗示与
+   scipy 同义，实际精度差五个数量级。跨库数值 API 先做一次精度审计
+   （一行对照脚本），别等它渗进 cumsum。
+2. **"组合可能消去"不是拒绝手写的理由**——先测。这里 lgamma 组合比
+   库 betaln 准五 orders，因为它避开了 betaln 自己的坏实现，而不是
+   避开消去。
+3. **扫描器的探测网格覆盖不到 API 的边界**。`q>=10001`/`p→1` 这类
+   边界缺陷要靠"读 R 源码 + 边界对照"主动抓，扫描全绿≠边界正确。
+4. **同一密度的两个实现，改一处必须同步另一处**（D2.20 重申）——本轮
+   `_bnb_log_pdf` 的同步让三个既有 deriv fail 同根消失，反向验证了
+   根因定位。
+
 #### D2.20：`TF2` 的链式法则项与 `TF` 的正态极限分支（rsdev rel 2.3e+01 →逐位一致）
 
 **现象**（全族扫描 v11）：

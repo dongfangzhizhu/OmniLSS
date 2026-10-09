@@ -7191,6 +7191,21 @@ def rBB(key, n, mu=0.5, sigma=1.0, bd=10):
 # BNB (Beta-Negative Binomial) - 3 parameters (simplified to 2: mu, sigma)
 # ------------------------------------------------------------------------------
 
+def _lbeta(a, b):
+    """High-precision ``log Beta(a, b)``.
+
+    D2.29: ``jax.scipy.special.betaln`` carries its own implementation whose
+    absolute error reaches ~3.5e-8 at moderate arguments (betaln(25, 4) is
+    off by -3.5e-8 where scipy and live R agree to 1e-15), while ``jax``'s
+    ``gammaln`` is accurate to ~1.4e-14 -- so the textbook composition
+    ``gammaln(a) + gammaln(b) - gammaln(a + b)`` is *more* accurate than the
+    library call, by five orders of magnitude.  dBNB's CDF/quantile paths run
+    this inside ``lax`` loops, so scipy is not an option; the composition is
+    fully JAX-traceable.
+    """
+    return gammaln(a) + gammaln(b) - gammaln(a + b)
+
+
 def dBNB(x, mu=1.0, sigma=1.0, nu=1.0, log=False):
     """Density function for Beta-Negative Binomial distribution.
 
@@ -7246,7 +7261,7 @@ def dBNB(x, mu=1.0, sigma=1.0, nu=1.0, log=False):
 
     # log p(x)
     log_pdf = (
-        betaln(x + n, m + k) - betaln(n, m) -
+        _lbeta(x + n, m + k) - _lbeta(n, m) -
         gammaln(x + 1.0) - gammaln(k) + gammaln(x + k)
     )
 

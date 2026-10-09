@@ -1,7 +1,12 @@
-"""JAX PIG kernels. Numerical d/p/q support is bounded at 10000.
+"""JAX PIG kernels.
 
-Outside that numerical range return NaN, never a clipped count. Sampling
-uses the unbounded Poisson/inverse-Gaussian mixture (Var(Y)=mu+sigma*mu**2).
+D2.29: the numerical recursion still runs 1..10000, but live R does *not*
+answer ``nan`` outside that range -- ``pPIG`` hands back its accumulated
+partial sum (R prints ``1.0000000000000004`` for ``q >= 10001``, its own
+summation ulp above 1) and ``qPIG`` short-circuits ``p + 1e-9 >= 1`` to
+``Inf`` without scanning.  Both behaviours are reproduced here; only the
+pmf keeps the bounded support.  Sampling uses the unbounded
+Poisson/inverse-Gaussian mixture (Var(Y)=mu+sigma*mu**2).
 """
 
 import jax
@@ -60,7 +65,11 @@ def pPIG(q, mu=1., sigma=1., lower_tail=True, log_p=False):
     total = jnp.where(q < 0, -jnp.inf, jnp.where(jnp.isposinf(q), 0., total))
     result = total if lower_tail else jnp.log(-jnp.expm1(total))
     result = result if log_p else jnp.exp(result)
-    return jnp.where(valid & ~jnp.isnan(q) & ~((q >= 10001) & jnp.isfinite(q)), result, jnp.nan)
+    # D2.29: live R does not truncate -- q = 10001 and q = 1e6 both get the
+    # accumulated partial sum (R's own print saturates a summation ulp above
+    # 1; our log-scale clamp keeps exactly 1.0, within 4e-16 of R).  The old
+    # nan cutoff answered a real question with nan where R answers ~1.
+    return jnp.where(valid & ~jnp.isnan(q), result, jnp.nan)
 
 
 def qPIG(p, mu=1., sigma=1., lower_tail=True, log_p=False, max_value=10000):
@@ -82,7 +91,13 @@ def qPIG(p, mu=1., sigma=1., lower_tail=True, log_p=False, max_value=10000):
         return ratio, mass, total, found
 
     *_, result = jax.lax.fori_loop(1, max_value + 1, step, (ratio, base, base, found))
-    result = jnp.where(prob == 0, 0., jnp.where(prob == 1, jnp.inf, result))
+    # D2.29: R's upper-tail short circuit, verbatim (`if (p[i] + 1e-09 >= 1)
+    # QQQ[i] <- Inf`), checked *after* the tail conversion -- which is where
+    # R checks it too.  Live R: qPIG(0.999999999) is already Inf while 0.999
+    # still resolves; without this we scanned to the pmf cap and answered 62
+    # where R answers Inf.
+    result = jnp.where(prob + 1e-9 >= 1, jnp.inf,
+                       jnp.where(prob == 0, 0., result))
     return jnp.where(valid, result, jnp.nan)
 
 
