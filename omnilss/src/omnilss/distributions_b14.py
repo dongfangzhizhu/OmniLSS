@@ -8,6 +8,7 @@ import jax.numpy as jnp
 from jax.scipy.special import gammaln
 
 from .ad import build_ad_family
+from .dpqr_functions import pJSUo, qJSUo, rJSUo
 from .families import FamilyDefinition
 from .links import (
     log_link, log_inverse, log_derivative,
@@ -167,6 +168,10 @@ def JSUo():
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_jsuo_log_pdf,
         type_="Continuous",
+        d=None,
+        p=pJSUo,
+        q=qJSUo,
+        r=rJSUo,
         links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
         link_functions={
             "mu": identity_link,

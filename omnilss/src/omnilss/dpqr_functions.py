@@ -4332,233 +4332,200 @@ def rBCPE(key, n, mu=1.0, sigma=1.0, nu=1.0, tau=2.0):
 # Johnson SU Distribution (JSU)
 # =============================================================================
 
-def dJSU(x, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, log=False):
+def _jsu_shape_constants(nu, tau):
+    """R JSU.R 的位置/尺度校正常数组 ``(rtau, w, omega, c)`` (D2.34).
+
+    Johnson SU 的 R 参数化里 (mu, sigma) 不是直接作用于 asinh 空间的
+    位置/尺度：密度先经 SU 变换的标准化校正 -- w = exp(1/tau^2),
+    omega = -nu/tau, c = (0.5*(w-1)*(w*cosh(2*omega)+1))^(-0.5)。旧实现
+    （D2.34 之前）漏掉这三项，用的是 z=(x-mu)/sigma 的无中心简化版，
+    密度/CDF/分位数整体是另一个分布（dpqr 三关 rel 0.3~1 的根因）。
+    """
+    rtau = 1.0 / tau
+    # R: ifelse(rtau < 1e-07, 1, exp(rtau^2)) -- huge-tau branch.
+    w = jnp.where(rtau < 1e-7, 1.0, jnp.exp(jnp.square(rtau)))
+    omega = -nu * rtau
+    c = jnp.power(0.5 * (w - 1.0) * (w * jnp.cosh(2.0 * omega) + 1.0), -0.5)
+    return rtau, w, omega, c
+
+
+def _jsu_z(x, mu, sigma, nu, tau):
+    """Standardized SU argument z and the normal score r = -nu + asinh(z)/rtau."""
+    rtau, w, omega, c = _jsu_shape_constants(nu, tau)
+    loc = mu + c * sigma * jnp.sqrt(w) * jnp.sinh(omega)
+    z = (x - loc) / (c * sigma)
+    r = -nu + jnp.arcsinh(z) / rtau
+    return z, r
+
+
+def dJSU(x, mu=0.0, sigma=1.0, nu=1.0, tau=1.0, log=False):
     """Density function for Johnson SU distribution.
-    
-    Parameters
-    ----------
-    x : array_like
-        Quantiles
-    mu : array_like
-        Location parameter
-    sigma : array_like
-        Scale parameter (sigma > 0)
-    nu : array_like
-        Skewness parameter
-    tau : array_like
-        Shape parameter (tau > 0)
-    log : bool
-        If True, return log density
-        
-    Returns
-    -------
-    array_like
-        Density values
-        
-    Notes
-    -----
-    JSU uses sinh transformation:
-    - z = (x - mu) / sigma
-    - w = nu + tau * arcsinh(z)
-    - w ~ N(0, 1)
-    
-    The density includes a Jacobian term for the transformation.
+
+    Transcribed from ``gamlss.dist:::dJSU`` (live R, D2.34):
+
+        rtau = 1/tau;  w = exp(rtau^2);  omega = -nu*rtau
+        c    = (0.5*(w-1)*(w*cosh(2*omega)+1))^(-0.5)
+        z    = (x - (mu + c*sigma*sqrt(w)*sinh(omega))) / (c*sigma)
+        r    = -nu + asinh(z)/rtau
+        logf = -log(sigma) - log(c) - log(rtau) - 0.5*log(z^2+1)
+               - 0.5*log(2*pi) - 0.5*r^2
+
+    The previous implementation used the center-free shortcut
+    ``z = (x-mu)/sigma, w = nu + tau*asinh(z)`` -- a different (wrong)
+    parameterization: density, CDF and quantile were then a different
+    distribution altogether (dpqr rel 0.3..1.0, D2.34).
     """
     x = jnp.asarray(x, dtype=jnp.float64)
     mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
     nu = jnp.asarray(nu, dtype=jnp.float64)
-    tau = jnp.asarray(tau, dtype=jnp.float64)
-    
-    eps = jnp.finfo(jnp.float64).eps
-    sigma = jnp.maximum(sigma, eps)
-    tau = jnp.maximum(tau, eps)
-    
-    # Transformation
-    z = (x - mu) / sigma
-    w = nu + tau * jnp.arcsinh(z)
-    
-    # Log density
+    tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+
+    rtau, w, omega, c = _jsu_shape_constants(nu, tau)
+    z, r = _jsu_z(x, mu, sigma, nu, tau)
+
     log_fy = (
-        jnp.log(tau)
-        - jnp.log(sigma)
+        -jnp.log(sigma)
+        - jnp.log(c)
+        - jnp.log(rtau)
         - 0.5 * jnp.log1p(jnp.square(z))
         - 0.5 * jnp.log(2.0 * jnp.pi)
-        - 0.5 * jnp.square(w)
+        - 0.5 * jnp.square(r)
     )
-    
     return log_fy if log else jnp.exp(log_fy)
 
 
-def pJSU(q, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, lower_tail=True, log_p=False):
+def pJSU(q, mu=0.0, sigma=1.0, nu=1.0, tau=1.0, lower_tail=True, log_p=False):
     """CDF function for Johnson SU distribution.
-    
-    Parameters
-    ----------
-    q : array_like
-        Quantiles
-    mu : array_like
-        Location parameter
-    sigma : array_like
-        Scale parameter (sigma > 0)
-    nu : array_like
-        Skewness parameter
-    tau : array_like
-        Shape parameter (tau > 0)
-    lower_tail : bool
-        If True, return P(X <= q), else P(X > q)
-    log_p : bool
-        If True, return log probability
-        
-    Returns
-    -------
-    array_like
-        Cumulative probabilities
-        
-    Notes
-    -----
-    For JSU:
-    - Transform q to w using sinh transformation
-    - P(X <= q) = P(W <= w) where W ~ N(0, 1)
+
+    Transcribed from ``gamlss.dist:::pJSU`` (live R, D2.34):
+    ``r = -nu + asinh(z)/rtau`` with z from :func:`_jsu_z`, then
+    ``p = Phi(r)``.
     """
     q = jnp.asarray(q, dtype=jnp.float64)
     mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
     nu = jnp.asarray(nu, dtype=jnp.float64)
-    tau = jnp.asarray(tau, dtype=jnp.float64)
-    
-    eps = jnp.finfo(jnp.float64).eps
-    sigma = jnp.maximum(sigma, eps)
-    tau = jnp.maximum(tau, eps)
-    
-    # Transformation
-    z = (q - mu) / sigma
-    w = nu + tau * jnp.arcsinh(z)
-    
-    # Standard normal CDF
-    cdf = norm.cdf(w)
-    
+    tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+
+    _z, r = _jsu_z(q, mu, sigma, nu, tau)
+    cdf = norm.cdf(r)
+
     if not lower_tail:
         cdf = 1.0 - cdf
-    
     if log_p:
         cdf = jnp.log(cdf)
-    
     return cdf
 
 
-def qJSU(p, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, lower_tail=True, log_p=False):
+def qJSU(p, mu=0.0, sigma=1.0, nu=1.0, tau=1.0, lower_tail=True, log_p=False):
     """Quantile function for Johnson SU distribution.
-    
-    Parameters
-    ----------
-    p : array_like
-        Probabilities
-    mu : array_like
-        Location parameter
-    sigma : array_like
-        Scale parameter (sigma > 0)
-    nu : array_like
-        Skewness parameter
-    tau : array_like
-        Shape parameter (tau > 0)
-    lower_tail : bool
-        If True, p is P(X <= q), else P(X > q)
-    log_p : bool
-        If True, p is given as log(probability)
-        
-    Returns
-    -------
-    array_like
-        Quantiles
-        
-    Notes
-    -----
-    For JSU:
-    - Get w = quantile of N(0, 1) at probability p
-    - Transform back: z = sinh((w - nu) / tau)
-    -                 q = mu + sigma * z
+
+    Transcribed from ``gamlss.dist:::qJSU`` (live R, D2.34):
+    ``r = qnorm(p); z = sinh(rtau*(r + nu));
+    q = (mu + c*sigma*sqrt(w)*sinh(omega)) + c*sigma*z``.
+
+    R stops for p outside (0, 1); consistent with this module's other dpqr
+    functions, out-of-range p is clamped instead (domain guards for fitting
+    live in the response-domain layer).
     """
     p = jnp.asarray(p, dtype=jnp.float64)
     mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
     nu = jnp.asarray(nu, dtype=jnp.float64)
-    tau = jnp.asarray(tau, dtype=jnp.float64)
-    
+    tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+
     if log_p:
         p = jnp.exp(p)
-    
     if not lower_tail:
         p = 1.0 - p
-    
+
     eps = jnp.finfo(jnp.float64).eps
-    sigma = jnp.maximum(sigma, eps)
-    tau = jnp.maximum(tau, eps)
-    
-    # Standard normal quantile
-    w = norm.ppf(p)
-    
-    # Inverse transformation
-    # w = nu + tau * arcsinh(z)
-    # arcsinh(z) = (w - nu) / tau
-    # z = sinh((w - nu) / tau)
-    z = jnp.sinh((w - nu) / tau)
-    
-    # Back to original scale
-    q = mu + sigma * z
-    
-    return q
+    p = jnp.clip(p, eps, 1.0 - eps)
+
+    rtau, w, omega, c = _jsu_shape_constants(nu, tau)
+    r = norm.ppf(p)
+    z = jnp.sinh(rtau * (r + nu))
+    return (mu + c * sigma * jnp.sqrt(w) * jnp.sinh(omega)) + c * sigma * z
 
 
-def rJSU(key, n, mu=0.0, sigma=1.0, nu=0.0, tau=1.0):
+def rJSU(key, n, mu=0.0, sigma=1.0, nu=1.0, tau=1.0):
     """Random generation for Johnson SU distribution.
-    
-    Parameters
-    ----------
-    key : jax.random.PRNGKey
-        Random key
-    n : int
-        Number of observations
-    mu : array_like
-        Location parameter
-    sigma : array_like
-        Scale parameter (sigma > 0)
-    nu : array_like
-        Skewness parameter
-    tau : array_like
-        Shape parameter (tau > 0)
-        
-    Returns
-    -------
-    array_like
-        Random samples
-        
-    Notes
-    -----
-    Generation algorithm:
-    1. Generate w ~ N(0, 1)
-    2. Transform: z = sinh((w - nu) / tau)
-    3.            x = mu + sigma * z
+
+    Same construction as live R (``gamlss.dist:::rJSU``): uniforms through
+    the quantile function.
     """
+    u = jrandom.uniform(key, shape=(n,))
+    return qJSU(u, mu, sigma, nu, tau)
+
+
+# =============================================================================
+# Johnson SU distribution, original parameterization (JSUo)
+# =============================================================================
+
+def pJSUo(q, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, lower_tail=True, log_p=False):
+    """CDF function for the original Johnson SU parameterization.
+
+    Transcribed from ``gamlss.dist:::pJSUo`` (live R, D2.34):
+    ``z = (q-mu)/sigma; r = nu + tau*asinh(z); p = pnorm(r)``.
+    Before this the family carried the nan placeholder installed by
+    ``build_ad_family`` when no ``p=`` is supplied (D2.27 pattern):
+    every call returned NaN while R returned a finite CDF.
+    """
+    q = jnp.asarray(q, dtype=jnp.float64)
     mu = jnp.asarray(mu, dtype=jnp.float64)
-    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
     nu = jnp.asarray(nu, dtype=jnp.float64)
-    tau = jnp.asarray(tau, dtype=jnp.float64)
-    
+    tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+
+    z = (q - mu) / sigma
+    r = nu + tau * jnp.arcsinh(z)
+    cdf = norm.cdf(r)
+
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = jnp.log(cdf)
+    return cdf
+
+
+def qJSUo(p, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, lower_tail=True, log_p=False):
+    """Quantile function for the original Johnson SU parameterization.
+
+    Transcribed from ``gamlss.dist:::qJSUo`` (live R, D2.34):
+    ``r = qnorm(p); z = sinh((r-nu)/tau); q = mu + sigma*z``.
+
+    R stops for p outside (0, 1); consistent with this module's other dpqr
+    functions, out-of-range p is clamped instead (domain guards for fitting
+    live in the response-domain layer).
+    """
+    p = jnp.asarray(p, dtype=jnp.float64)
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), jnp.finfo(jnp.float64).eps)
+
+    if log_p:
+        p = jnp.exp(p)
+    if not lower_tail:
+        p = 1.0 - p
+
     eps = jnp.finfo(jnp.float64).eps
-    sigma = jnp.maximum(sigma, eps)
-    tau = jnp.maximum(tau, eps)
-    
-    # Generate standard normal samples
-    w = jrandom.normal(key, shape=(n,))
-    
-    # Inverse transformation
-    z = jnp.sinh((w - nu) / tau)
-    
-    # Back to original scale
-    samples = mu + sigma * z
-    
-    return samples
+    p = jnp.clip(p, eps, 1.0 - eps)
+
+    r = norm.ppf(p)
+    z = jnp.sinh((r - nu) / tau)
+    return mu + sigma * z
+
+
+def rJSUo(key, n, mu=0.0, sigma=1.0, nu=0.0, tau=1.0):
+    """Random generation for the original Johnson SU parameterization.
+
+    Same construction as live R (``gamlss.dist:::rJSUo``): uniforms through
+    the quantile function.
+    """
+    u = jrandom.uniform(key, shape=(n,))
+    return qJSUo(u, mu, sigma, nu, tau)
 
 
 # =============================================================================

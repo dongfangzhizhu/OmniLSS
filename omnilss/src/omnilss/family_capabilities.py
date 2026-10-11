@@ -131,6 +131,7 @@ _R_CONSISTENCY_EVIDENCE = frozenset(
         "GU",
         "IG",
         "IGAMMA",
+        "JSUo",
         "LO",
         "LOGNO",
         "LOGNO2",

@@ -2614,6 +2614,91 @@ pSEP 自洽，我们的 q 也落同一点。**教训：给"高精度重解"当�
    探测网格落在温和区时这些 artifact 不可见，但它们随时可能污染
    手工构造的对照实验。
 
+#### D2.34：`JSU` 的参数化张冠李戴与 `JSUo` 的 nan 占位（dpqr fail → pass；rsdev 登记第三例）
+
+**现象**（gate 复现）：
+
+```
+JSU   dpqr   fail   d: max rel 0.39; p: max rel 0.33; q: max rel 1.04
+JSU   rsdev  fail   deviance 142.029 vs R 141.415  (rel 4.3e-03)
+```
+
+**根因一（主）：JSU 与 JSUo 是 R 的两个不同参数化，我们错把 JSUo 公式当 JSU**。
+我们的 `dJSU/pJSU/qJSU` 用的是无中心简化变换 `z=(x-mu)/sigma, r=nu+tau*asinh(z)`
+——那是 R 的 `dJSUo`（original Johnson 直参参数化）逐字公式。R 的 `dJSU` 带位置/
+尺度校正项（活 R 源码，D2.34 转写）：
+
+```
+rtau = 1/tau;  w = exp(rtau^2);  omega = -nu*rtau
+c    = (0.5*(w-1)*(w*cosh(2*omega)+1))^(-0.5)
+z    = (x - (mu + c*sigma*sqrt(w)*sinh(omega))) / (c*sigma)
+r    = -nu + asinh(z)/rtau
+logf = -log(sigma) - log(c) - log(rtau) - 0.5*log(z^2+1) - 0.5*log(2*pi) - 0.5*r^2
+```
+
+修法：`dpqr_functions.py` 的 JSU 四函数整块按 R 公式重写（新增
+`_jsu_shape_constants` / `_jsu_z` 辅助；默认签名改 R 的 `nu=1.0`）；
+`distributions.py` 的 `JSU()._log_density` 同步改（score/hessian 是围绕它的
+数值差分、g_dev 是 -2*它，自动跟随）。修后 dpqr 三关与活 R 逐位一致
+（rel ~1e-16），deriv pass。
+
+**这是 D2.33 教训的自食**："我们的族等于 R 的某族"的断言若存在，会把
+JSU 锁死在 JSUo 公式上。同名不同义家族（JSU/JSUo、SHASH/SHASHo、
+BCPE/BCPEo）排查时第一步是确认参数化身份。
+
+**根因二（拟合侧）：初值三件套**。R 的 `JSU()` 族对象：
+`mu.initial=(y+mean(y))/2`（与 PE2 同款 idiom）、`sigma.initial=rep(sd(y)/4)`、
+`nu.initial=rep(0)`、`tau.initial=rep(1)`。我们 nu/tau 原本就对，mu/sigma 走
+默认分支错。`_fitting_init.py` 补 JSU 分支后 rsdev 142.029 → 141.714
+（R=141.415，仍差 2.1e-3——见根因三）。
+
+**根因三（rsdev）：R 提前停，两步判定第三次完整成立（全族流）**。
+登记数字绑定全族流（D2.30 纪律；子列表数字只作初步判定）：
+
+1. **R 轨迹冻结**：deviance 在 n.cyc=11 起冻结于 149.21527701
+   （15/20/40/60/100 全同；nu_eta=-16.365878、tau_eta=2.999468 不再动）。
+2. **cross-check**：R 的 `JSU()$G.dev.incr` 在我们 200 步系数上返回
+   149.1870706003，与我们报告的 149.1870706002586 吻合到 ~1e-10，且比
+   R 的冻结点低 0.028 → 两侧最小化同一目标，R 的停点是 c.crit 在 nu
+   方向长平台上的提前停，不是最优。
+
+JSU 的特殊之处：默认 20 步预算下我们 **高于** R（149.458 vs 149.215），
+"我们更低才能宽限"的方向在默认预算下不成立——nu 沿一条又长又平的
+平台下降（20 步 nu_eta=-5.5、60 步 -21.8、200 步 -49.37 才收敛）。
+故登记 `n_cyc=200`（我们走完平台所需预算），仿 ST1 的 `n_cyc=1000` 模式：
+gate 按登记预算跑我们侧，rel 1.9e-4 < 1e-3 通过。
+
+**顺带修复：JSUo 的 p/q/r 是 nan 占位**（D2.27"能力缺失但静默"模式的
+又一例）。`build_ad_family` 不传 `p=`/`q=` 时装 nan 占位——JSUo 从建族起
+p/q/r 全部返回 NaN，但既有测试在 R 不可达时整体 skip，从未真正跑过。
+本轮 R 可用，`test_r_consistency_jsuo` 首次真跑暴露三层问题：测试族名
+`"JSUO"` R 端不存在（真名 `JSUo`，大小写敏感）、p 关 NaN、以及上面的
+JSU/JSUo 混淆。修法：`dpqr_functions.py` 新增 `pJSUo/qJSUo/rJSUo`（R 闭式
+`p=Phi(nu+tau*asinh(z))`、`q=mu+sigma*sinh((qnorm(p)-nu)/tau)`、r 过 q，
+默认 `nu=0, tau=1`），接线进 `build_ad_family`；测试族名改正 + 补
+r 构造钉（uniform 过 qJSUo，同 R）与 p∘q 互逆断言。
+`family_capabilities.py` 的 `_R_CONSISTENCY_EVIDENCE` 收入 `JSUo`，
+覆盖工件再生 `result: OK`（0 回退、9 项改进：pJSUo/qJSUo/rJSUo
+missing→resolved、DBI×5 compat_alias、coefAll）。
+
+**D2.34 方法论要点**：
+
+1. **同名不同义家族先验身份**：JSU/JSUo、SHASH/SHASHo、BCPE/BCPEo 是
+   R 里并存的两个分布。"o 后缀只改 mu.link"的规则只属于 Box-Cox 簇
+   （BCCGo 等）；JSUo/SHASHo 的 o 是 original 参数化，公式完全不同。
+   三关同挂（d/p/q 一起错）+ 量级 0.3~1 是"送错分布"的签名（D2.21）。
+2. **R-backed 测试在 R 不可达时 skip，长得像通过**——R 一旦可用，
+   首跑可能连环暴露测试自身缺陷（族名大小写、假 skip、真 NaN）。
+   新环境的第一次真跑要当作测试的验收，不当当作回归。
+3. **"我们更高"的提前停需要预算登记**：提前停宽限的既有条目都在
+   "我们跑得更低"的方向上；JSU 是第一例我们默认预算下更高、跑满才
+   更低的情形——登记 `n_cyc` 改变 gate 的比较预算（ST1 模式的本义：
+   "run at the budget its case was established at"），让两侧各在自己的
+   收敛点比较。
+4. **b14 组的 p/q 占位清查**：JSUo 不是唯一的 nan 占位（SHASHo/SHASHo2/
+   BCPEo/BCTo 同状态，不在扫描器 146 族名单内所以 gate 看不见），
+   后续按 D2.31/D2.34 的同款流程补。
+
 #### D2.20：`TF2` 的链式法则项与 `TF` 的正态极限分支（rsdev rel 2.3e+01 →逐位一致）
 
 **现象**（全族扫描 v11）：

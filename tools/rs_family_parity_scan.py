@@ -438,6 +438,34 @@ _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
             "that made ZIPIG's registration look broken on a 10-family run)."
         ),
     ),
+    "JSU": dict(
+        n_cyc=200,
+        dev_ours=149.1870706002586,
+        dev_r=149.21527701,
+        note=(
+            "Full-family-stream adjudication (D2.34, the two-step recipe).\n"
+            "Step 1: R's trajectory freezes at iteration 11 -- deviance "
+            "149.21527701 identical at n.cyc = 15, 20, 40, 60 and 100, with "
+            "nu_eta = -16.365878 and tau_eta = 2.999468 unmoved from n.cyc = 11 "
+            "on.  At the gate's default budget of 20 cycles our fit sits at "
+            "149.458, ABOVE R's 149.215 -- the wrong direction for the "
+            "early-stop admission -- because nu descends along a long, flat "
+            "plateau: our 20-cycle nu_eta is -5.5, our 60-cycle -21.8, and the "
+            "fit only converges (relative_deviance_converged) at n.cyc = 200 "
+            "with nu_eta = -49.37.\n"
+            "Step 2: R's own JSU()$G.dev.incr evaluated at our 200-cycle "
+            "coefficients returns 149.1870706003 against the 149.1870706002586 "
+            "we report -- agreement to ~1e-10, and 0.028 below R's frozen "
+            "149.21527701, so both sides minimise the same objective and R's "
+            "halt is a c.crit stop on the nu plateau, not an optimum.  The "
+            "same two-step verdict was first established on an isolated "
+            "adjudication sample (R frozen at 141.41484076, cross-check "
+            "141.4090207784 identical to ours) and then re-verified on the "
+            "full-family stream before registration; n_cyc = 200 is the budget "
+            "our side needs to walk off the plateau, mirroring ST1's n_cyc = "
+            "1000 registration."
+        ),
+    ),
 }
 
 

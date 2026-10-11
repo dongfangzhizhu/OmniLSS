@@ -8,14 +8,14 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - R packages parsed: 12 (out of scope: gamlss2)
 - R exported symbols: 1080 (in scope: 1036)
-- Python surface matched: 678 / missing: 402
+- Python surface matched: 681 / missing: 399
 - Family-linked symbols: 531 (dpqr kernels: 424)
 - Python-only public exports: 300
 
-- **surface**: `missing` 402, `module_def` 199, `module_export` 96, `public_api` 191, `registry` 192
-- **kernel**: `compat_alias` 6, `experimental` 510, `implemented` 152, `missing` 402, `placeholder` 10
-- **parity**: `capability:unsupported` 284, `capability:validated` 93, `golden:validated` 36, `r_consistency_test` 134, `tested` 96, `unverified` 437
-- **admission**: `blocked` 526, `exported_api` 85, `internal` 62, `not_available` 402, `production_safe` 5
+- **surface**: `missing` 399, `module_def` 202, `module_export` 96, `public_api` 191, `registry` 192
+- **kernel**: `compat_alias` 6, `experimental` 510, `implemented` 155, `missing` 399, `placeholder` 10
+- **parity**: `capability:unsupported` 284, `capability:validated` 93, `golden:validated` 36, `r_consistency_test` 138, `tested` 95, `unverified` 434
+- **admission**: `blocked` 526, `exported_api` 85, `internal` 65, `not_available` 399, `production_safe` 5
 
 ## Per-package coverage
 
@@ -27,7 +27,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gamlss.add | 5.1-14 | `3c076e78b10c1984` | yes | 15 | 15 | 0 |
 | gamlss.cens | 5.0-8 | `d808f83ace3c6af1` | yes | 5 | 5 | 0 |
 | gamlss.data | 6.0-9 | `d9f9597e6df3f7b9` | yes | 0 | 0 | 0 |
-| gamlss.dist | 6.1-8 | `59a3b7074378aaeb` | yes | 654 | 630 | 593 |
+| gamlss.dist | 6.1-8 | `59a3b7074378aaeb` | yes | 654 | 630 | 596 |
 | gamlss.foreach | 1.1-10 | `819542107cb0994b` | yes | 13 | 13 | 0 |
 | gamlss.ggplots | 2.1-34 | `cbe1ae29a3d583c1` | yes | 109 | 106 | 1 |
 | gamlss.mx | 6.0-4 | `b832557a4937461b` | yes | 12 | 12 | 0 |
@@ -161,7 +161,6 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | pBCTo | gamlss.dist | object | - |
 | pBEo | gamlss.dist | function | R/gamlss.dist/R/BEo.R:74 |
 | pGEOMo | gamlss.dist | function | R/gamlss.dist/R/GEOMo.R:24 |
-| pJSUo | gamlss.dist | function | R/gamlss.dist/R/JSUo.R:169 |
 | pPARETO1o | gamlss.dist | function | R/gamlss.dist/R/PARETO1_mu_fixed.R:24 |
 | pPARETO2o | gamlss.dist | function | R/gamlss.dist/R/PARETO2o.R:21 |
 | pSHASHo | gamlss.dist | function | R/gamlss.dist/R/SHASHo.R:275 |
@@ -175,7 +174,6 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | qBCTo | gamlss.dist | object | - |
 | qBEo | gamlss.dist | function | R/gamlss.dist/R/BEo.R:89 |
 | qGEOMo | gamlss.dist | function | R/gamlss.dist/R/GEOMo.R:41 |
-| qJSUo | gamlss.dist | function | R/gamlss.dist/R/JSUo.R:182 |
 | qPARETO1o | gamlss.dist | function | R/gamlss.dist/R/PARETO1_mu_fixed.R:39 |
 | qPARETO2o | gamlss.dist | function | R/gamlss.dist/R/PARETO2o.R:36 |
 | qSHASHo | gamlss.dist | function | R/gamlss.dist/R/SHASHo.R:298 |
@@ -185,7 +183,6 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | rBCTo | gamlss.dist | object | - |
 | rBEo | gamlss.dist | function | R/gamlss.dist/R/BEo.R:104 |
 | rGEOMo | gamlss.dist | function | R/gamlss.dist/R/GEOMo.R:58 |
-| rJSUo | gamlss.dist | function | R/gamlss.dist/R/JSUo.R:200 |
 | rPARETO1o | gamlss.dist | function | R/gamlss.dist/R/PARETO1_mu_fixed.R:58 |
 | rPARETO2o | gamlss.dist | function | R/gamlss.dist/R/PARETO2o.R:55 |
 | rSHASHo | gamlss.dist | function | R/gamlss.dist/R/SHASHo.R:316 |
@@ -440,7 +437,8 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | special_fit | gamlss2 | function | R/gamlss2/R/specials.R:375 |
 | special_predict | gamlss2 | function | R/gamlss2/R/specials.R:381 |
 | specials | gamlss2 | function | R/gamlss2/R/specials.R:401 |
-| ... | | | 2 more rows in the JSON artifact |
+| step_gamlss2 | gamlss2 | function | R/gamlss2/R/stepwise.R:1057 |
+| stepwise | gamlss2 | function | R/gamlss2/R/stepwise.R:473 |
 
 ## Full matrix
 
@@ -665,7 +663,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | IG | gamlss.dist | IG | public_api | experimental | r_consistency_test | blocked | 13 |
 | IGAMMA | gamlss.dist | IGAMMA | public_api | experimental | r_consistency_test | blocked | 5 |
 | JSU | gamlss.dist | JSU | public_api | experimental | r_consistency_test | blocked | 7 |
-| JSUo | gamlss.dist | JSUo | public_api | implemented | tested | exported_api | 1 |
+| JSUo | gamlss.dist | JSUo | public_api | implemented | r_consistency_test | exported_api | 2 |
 | LG | gamlss.dist | LG | public_api | experimental | r_consistency_test | blocked | 6 |
 | LNO | gamlss.dist | LNO | public_api | experimental | r_consistency_test | blocked | 7 |
 | LO | gamlss.dist | LO | public_api | experimental | r_consistency_test | blocked | 6 |
@@ -945,7 +943,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | pIG | gamlss.dist | pIG | module_export | experimental | golden:validated | blocked | 1 |
 | pIGAMMA | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | pJSU | gamlss.dist | pJSU | module_def | experimental | capability:unsupported | blocked | 1 |
-| pJSUo | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
+| pJSUo | gamlss.dist | pJSUo | module_def | implemented | r_consistency_test | internal | 1 |
 | pLG | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | pLNO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | pLO | gamlss.dist | pLO | module_export | experimental | capability:validated | blocked | 0 |
@@ -1070,7 +1068,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | qIG | gamlss.dist | qIG | module_export | experimental | golden:validated | blocked | 2 |
 | qIGAMMA | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | qJSU | gamlss.dist | qJSU | module_def | experimental | capability:unsupported | blocked | 1 |
-| qJSUo | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
+| qJSUo | gamlss.dist | qJSUo | module_def | implemented | r_consistency_test | internal | 1 |
 | qLG | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 1 |
 | qLNO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | qLO | gamlss.dist | qLO | module_export | experimental | capability:validated | blocked | 0 |
@@ -1187,7 +1185,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | rIG | gamlss.dist | rIG | module_export | experimental | golden:validated | blocked | 0 |
 | rIGAMMA | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | rJSU | gamlss.dist | rJSU | module_def | experimental | capability:unsupported | blocked | 1 |
-| rJSUo | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
+| rJSUo | gamlss.dist | rJSUo | module_def | implemented | r_consistency_test | internal | 1 |
 | rLG | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | rLNO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | rLO | gamlss.dist | rLO | module_export | experimental | capability:validated | blocked | 0 |

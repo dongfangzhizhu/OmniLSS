@@ -1758,19 +1758,35 @@ def JSU() -> JohnsonSUFamily:
         nu: jnp.ndarray,
         tau: jnp.ndarray,
     ) -> jnp.ndarray:
+        """R JSU.R dJSU 的 log 密度（D2.34 逐字转写，与 dpqr_functions.dJSU 同步）。
+
+        旧实现是 ``z=(y-mu)/sigma, w=nu+tau*asinh(z)`` 的无中心简化版——
+        那是另一个分布：dpqr 三关 rel 0.3~1、rsdev 拟合偏大，全部同根。
+        R 的参数化带 SU 校正项：w=exp(1/tau^2), omega=-nu/tau,
+        c=(0.5*(w-1)*(w*cosh(2*omega)+1))^(-0.5)。
+        """
         y = jnp.asarray(y, dtype=jnp.float64)
         mu = jnp.asarray(mu, dtype=jnp.float64)
         sigma = jnp.maximum(jnp.asarray(sigma, dtype=jnp.float64), eps)
         nu = jnp.asarray(nu, dtype=jnp.float64)
         tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), eps)
-        z = (y - mu) / sigma
-        transformed = nu + tau * jnp.arcsinh(z)
+
+        rtau = 1.0 / tau
+        w = jnp.where(rtau < 1e-7, 1.0, jnp.exp(jnp.square(rtau)))
+        omega = -nu * rtau
+        c = jnp.power(0.5 * (w - 1.0) * (w * jnp.cosh(2.0 * omega) + 1.0), -0.5)
+
+        loc = mu + c * sigma * jnp.sqrt(w) * jnp.sinh(omega)
+        z = (y - loc) / (c * sigma)
+        r = -nu + jnp.arcsinh(z) / rtau
+
         return (
-            jnp.log(tau)
-            - jnp.log(sigma)
+            -jnp.log(sigma)
+            - jnp.log(c)
+            - jnp.log(rtau)
             - 0.5 * jnp.log1p(jnp.square(z))
             - 0.5 * jnp.log(2.0 * math.pi)
-            - 0.5 * jnp.square(transformed)
+            - 0.5 * jnp.square(r)
         )
 
     def g_dev_inc(

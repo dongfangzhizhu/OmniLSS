@@ -4,7 +4,7 @@
   "baseline_error": "",
   "r_exports_total": 1080,
   "current_counts": {
-    "missing": 402,
+    "missing": 399,
     "placeholder": 10,
     "compat_alias": 6,
     "evidence_gap": 35,
@@ -20,8 +20,12 @@
   "categories": {
     "missing": {
       "new": [],
-      "resolved": [],
-      "current_count": 402,
+      "resolved": [
+        "gamlss.dist::pJSUo",
+        "gamlss.dist::qJSUo",
+        "gamlss.dist::rJSUo"
+      ],
+      "current_count": 399,
       "baseline_count": 402
     },
     "placeholder": {
@@ -59,6 +63,18 @@
   },
   "regressions": [],
   "improvements": [
+    {
+      "category": "missing",
+      "symbol": "gamlss.dist::pJSUo"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.dist::qJSUo"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.dist::rJSUo"
+    },
     {
       "category": "compat_alias",
       "symbol": "gamlss.dist::DBI"

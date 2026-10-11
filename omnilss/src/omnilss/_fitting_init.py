@@ -247,6 +247,13 @@ def _initial_mu_beta(
         # R PE2 mu.initial (mu uses an identity link):
         #     mu <- (y + mean(y)) / 2
         target = (y + np.mean(y)) / 2.0
+    elif family.name == "JSU":
+        # R JSU mu.initial (mu uses an identity link):
+        #     mu <- (y + mean(y)) / 2
+        # Same idiom as PE2.  D2.34: with the default target=y the RS fit
+        # stopped 0.61 deviance above live R (142.029 vs 141.415) on the
+        # gate sample; with R's start values the two agree to <1e-4.
+        target = (y + np.mean(y)) / 2.0
     else:
         target = y
     wx = x * sqrt_w[:, None]
@@ -394,6 +401,11 @@ def _initial_sigma(
         # mean gives the same intercept-only start as mean(|y-m|)+sd)/2.
         mean_y = np.mean(y)
         sigma = (np.mean(np.abs(y - mean_y)) + np.std(y)) / 2.0
+    elif family.name == "JSU":
+        # R JSU sigma.initial: sigma <- rep(sd(y)/4, length(y)) (D2.34).
+        # The generic residual-scale default put the RS fit 0.61 deviance
+        # above live R on the gate sample.
+        sigma = np.std(y) / 4.0
     else:
         sigma = np.sqrt(np.sum(w * np.square(y - mu)) / np.sum(w))
     # Note: NO uses a log link for sigma, so its link-scale coefficient is
