@@ -213,10 +213,52 @@ def _load_config_mapping(path: Path) -> dict[str, Any]:
             loaded = _minimal_yaml_load(text)
         else:
             yaml = importlib.import_module("yaml")
-            loaded = yaml.safe_load(text) or {}
+
+            class _FamilyKeySafeLoader(yaml.SafeLoader):
+                """SafeLoader with the YAML 1.1 implicit *bool* resolver removed.
+
+                YAML 1.1 resolves unquoted ``NO`` / ``YES`` / ``ON`` / ``OFF``
+                (case-insensitive) to booleans, which silently eats family
+                names used as mapping keys: the documented crossover tables
+                key on family names like ``NO``, so ``NO: 50000`` arrived here
+                as ``False: 50000`` and the threshold was lost (D2.37).  With
+                the resolver gone, keys stay strings; genuine booleans written
+                as *values* are recovered by ``_revive_bool_strings`` below.
+                """
+
+            _BOOL_TAG = "tag:yaml.org,2002:bool"
+            for _first, _resolvers in list(_FamilyKeySafeLoader.yaml_implicit_resolvers.items()):
+                _FamilyKeySafeLoader.yaml_implicit_resolvers[_first] = [
+                    (_tag, _regexp)
+                    for _tag, _regexp in _resolvers
+                    if _tag != _BOOL_TAG
+                ]
+
+            loaded = yaml.load(text, Loader=_FamilyKeySafeLoader) or {}
+            loaded = _revive_bool_strings(loaded)
     if not isinstance(loaded, dict):
         raise ValueError("configuration root must be a mapping")
     return loaded
+
+
+def _revive_bool_strings(value: Any) -> Any:
+    """Re-apply YAML 1.1 bool semantics to string *values* (not keys).
+
+    ``_load_config_mapping`` strips the implicit bool resolver so family-name
+    keys like ``NO`` survive; the price is that genuine booleans come back as
+    their source spelling ("true", "NO", "off", ...).  The config schema only
+    ever uses booleans as scalar values, so converting those strings back
+    here keeps both halves of YAML 1.1's behaviour where each is wanted.
+    """
+    if isinstance(value, dict):
+        return {key: _revive_bool_strings(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_revive_bool_strings(item) for item in value]
+    if isinstance(value, str) and value.strip().lower() in {
+        "true", "false", "yes", "no", "on", "off",
+    }:
+        return value.strip().lower() in {"true", "yes", "on"}
+    return value
 
 
 def _known_family_or_default(family: str) -> bool:

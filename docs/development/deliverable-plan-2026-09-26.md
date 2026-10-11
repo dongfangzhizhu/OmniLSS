@@ -2777,6 +2777,37 @@ bct derivatives、ml sigma scale 全绿（262 项 + 1 skip）；
 4. **R 自身失败 = fixture 病态的铁证**：同一拟合 R 报
    "NA's in the working vector"，我们的测试却期望成功——先在 R 里跑
    测试数据再把它当 fixture。
+#### D2.37：配置加载的 YAML 1.1 布尔陷阱——无引号族名 `NO:` 被吞成 `False`（既有失败 1 → 0）
+
+**现象**：`test_yaml_config_loading`（D2.36 判定为既有失败，HEAD 同样挂）：
+配置文件写
+
+```yaml
+gpu_crossover_n:
+  NO: 50000
+  default: .inf
+```
+
+PyYAML 的 `safe_load` 遵循 YAML 1.1，把无引号 `NO`（以及 `YES`/`ON`/`OFF`/
+`N`/`Y`，大小写不敏感）解析为布尔 → 键变 `False`，随后
+`_apply_threshold_mapping` 报 "Unknown family 'FALSE'"，阈值 50000 丢失、
+读到 inf。自带的 `_minimal_yaml_load`（无 PyYAML 时的回退）反而是对的——
+它把键当字符串。**两个加载器对同一文件语义不一致**才是缺陷本体。
+
+**修法**（`config.py`）：
+
+1. PyYAML 路径改用去掉隐式 bool 解析器的 SafeLoader 子类（键一律留字符串，
+   族名 `NO`/`GA`/`Y`… 都安全）。
+2. `_revive_bool_strings` 递归把字符串**值**（"true"/"false"/"yes"/"no"/
+   "on"/"off"，大小写不敏感）还原为布尔——本 schema 的布尔只出现在值位，
+   键位不会误伤。
+
+**验收**：`test_config_auto_method.py` 46 项全绿（含既有失败转绿）；警告
+"Unknown family 'FALSE'" 消失。
+
+**方法论**：**同一个文件必须两个加载器语义一致**——回退实现是基准语义，
+上游实现（PyYAML 的 YAML 1.1 兼容行为）与它冲突时按用户意图裁决
+（族名键合法），而不是让用户给族名加引号。
 #### D2.36：RS 内层 `glim.fit` 保真对齐 + Box-Cox 初值采纳（SST/BCPE/ST1/ZINBI rsdev → pass；BCPE 登记撤除）
 
 **现象**（monkeypatch 影响面实验，`omnilss/tmp/d236_inner.log`）：
