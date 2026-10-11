@@ -168,5 +168,50 @@ class TestAgainstLiveR(unittest.TestCase):
         np.testing.assert_allclose(ours_p, r_p, rtol=1e-9, atol=1e-12)
 
 
+class TestZAPStartValueAndDensity(unittest.TestCase):
+    """ZAP's start value is live R's, and its density stays self-consistent."""
+
+    def test_the_sigma_start_value_matches_live_r(self) -> None:
+        # Live R: ZAP()$sigma.initial = rep(0.3, length(y)).  We previously
+        # shared 0.1 with ZIP2/ZINBI -- 1.35 logit units below R.
+        from omnilss._fitting_init import _initial_parameter_value
+        from omnilss.distributions import resolve_family
+
+        fam = resolve_family("ZAP")
+        y = np.array([0.0, 1.0, 2.0, 5.0])
+        mu = np.full(4, 2.0)
+        w = np.ones(4)
+        value = _initial_parameter_value(fam, "sigma", y, mu, w)
+        self.assertEqual(float(value), 0.3)
+
+    def test_the_density_stays_self_consistent_on_vector_input(self) -> None:
+        # Live R's dZAP has a vectorisation artifact: dPO(0, mu) collapses to
+        # length 1 (its `ifelse(x < 0, 0, fy)` test is the scalar x), so R's
+        # own dZAP recycles the *first observation's* truncation term across
+        # every row whenever mu varies -- its fitted objective on "y ~ x" is
+        # not its own pointwise formula.  Single-point R matches the formula
+        # exactly, and so do we; this test pins that we keep the pointwise
+        # formula on vector input instead of inheriting the recycle (D2.30
+        # adjudication: an implementation slip, not a convention, so it is
+        # not reproduced).  The hurdle normalisation *divides* by 1-F(0), so
+        # the truncation term enters with a minus sign.
+        from jax.scipy.special import gammaln
+
+        from omnilss.distributions import resolve_family
+
+        fam = resolve_family("ZAP")
+        y = jnp.asarray([0.0, 1.0, 3.0, 5.0, 2.0, 4.0])
+        mu = jnp.asarray([3.68, 3.69, 3.70, 3.71, 3.72, 3.73])
+        sigma = jnp.asarray(0.0625)
+        ours = np.asarray(fam.d(y, mu, sigma, log=True))
+
+        t1 = np.log1p(-0.0625)
+        t2 = np.asarray(y * jnp.log(mu) - mu - gammaln(y + 1.0))
+        trunc = np.log1p(-np.exp(-np.asarray(mu)))
+        expected = np.where(np.asarray(y) == 0, np.log(0.0625),
+                            t1 + t2 - trunc)
+        np.testing.assert_allclose(ours, expected, rtol=0, atol=1e-12)
+
+
 if __name__ == "__main__":
     unittest.main()

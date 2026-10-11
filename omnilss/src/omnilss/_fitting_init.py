@@ -322,8 +322,21 @@ def _initial_sigma(
         else:
             sigma = 0.5  # Fallback if all zeros
     elif family.name in ("ZIP2", "ZINBI", "ZAP"):
-        # Zero-inflated/altered discrete: use simple starting value
-        sigma = 0.1
+        # Zero-inflated/altered discrete starting values.  Live R, read off
+        # each family object (D2.30):
+        #   ZIP2()$sigma.initial / ZAP()$sigma.initial:
+        #       sigma <- rep(0.3, length(y))
+        #   ZINBI()$sigma.initial:
+        #       sigma <- rep(max(((var(y) - mean(y)) / (mean(y)^2)), 0.1), ...)
+        #   ZANBI()$sigma.initial: the same data-driven expression as ZINBI.
+        # Only ZAP moves here: it is the one with a measured rsdev failure
+        # (ours above R), and the 0.1 we shared with ZIP2/ZINBI sits 1.35
+        # logit units below R's 0.3 (logit(0.1) = -2.197 vs
+        # logit(0.3) = -0.847).  ZIP2 and ZINBI keep their current 0.1 --
+        # neither has a failing gate that points at its start value, and
+        # moving them would churn the full-family rsdev baseline without
+        # evidence.  Their R values are recorded above for whoever does.
+        sigma = 0.3 if family.name == "ZAP" else 0.1
     elif family.name == "NBII":
         # NBII: size = mu/sigma, Var(Y) = mu(1 + sigma)
         # Therefore: sigma = Var(Y)/mu - 1

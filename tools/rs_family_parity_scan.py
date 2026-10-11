@@ -288,6 +288,33 @@ _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
             "sigma: 0.00148, nu: 8.88e-07}."
         ),
     ),
+    "ZINBI": dict(
+        n_cyc=20,
+        dev_ours=214.3401622108,
+        dev_r=214.75738739,
+        note=(
+            "Full-family-stream adjudication (D2.30, the two-step recipe).\n"
+            "Step 1: R's trajectory is the plateau pattern -- 214.75738739 at "
+            "n.cyc = 14, unchanged at 20 and 60 (before that it reports "
+            "'Algorithm RS has not yet converged' warnings at 2/5/10 cycles), "
+            "so it halts the moment the absolute change drops under c_crit.\n"
+            "Step 2: R's own ZINBI()$G.dev.incr evaluated at OUR coefficients "
+            "returns 214.340162211 -- identical to the 214.3401622108 we "
+            "report, so the densities agree to the last digit and both sides "
+            "minimise the same objective; our point is 0.417 below R's halt, "
+            "which makes R's plateau an early stop rather than an optimum.  "
+            "The self-check (R's G.dev.incr at R's own coefficients vs R's "
+            "reported G.deviance) differs by 0.0091: R's stored G.deviance is "
+            "the value from the iteration where it stopped, one half-step "
+            "behind its final coefficients.\n"
+            "Stream discipline: the earlier full-family baseline numbers for "
+            "this family bind to the full-family sample stream; running the "
+            "scanner on a sublist shifts every later family's sample and "
+            "produces different numbers on BOTH sides -- that is a stream "
+            "move, not a regression (D2.18 criterion 1, and the same trap "
+            "that made ZIPIG's registration look broken on a 10-family run)."
+        ),
+    ),
 }
 
 
