@@ -71,7 +71,16 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 ## 同名不同义与占位（D2.34/D2.35）
 
 - JSU/JSUo、SHASHo/BCPEo 的 "o"=original 参数化（公式完全不同）；**BCCG/BCT/BCPE 的 mu/nu link=identity，o 变体才是 log**。三关同挂+量级 0.3~1=送错分布签名，先活 R dump 验 link 身份。
-- 提前停登记新情形：默认 20 步我们**高于** R（nu 长平台）→ 登记 `n_cyc=200`，gate 按建立 case 的预算跑。**现存登记：ZIPIG/ZINBI**（BCPE/ST1/JSU 已因 D2.36 内层对齐 gate 直 pass 而撤除）。
+- 提前停登记新情形：默认 20 步我们**高于** R（nu 长平台）→ 登记 `n_cyc=200`，gate 按建立 case 的预算跑。**现存登记：ZIPIG/ZINBI/PE2**（D2.38：PE2 是"R 停在劣质驻点"变体——R 长预算 200 周期也不跟进我们更低且 R 密度逐位验证的点）。BCPE/ST1/JSU 已因 D2.36 内层对齐撤除。
+
+## 逐观测初值 roll-out（D2.38）
+
+- **初始状态是算法对齐的第一粒度**：内层对齐后轨迹仍分道，唯一自由度是初值。R 的 X.initial 是逐观测 fitted values，压缩成系数再重构会改变第一个内层步的工作权重；rs_fit 现把逐观测初值直接交 rs_step（`_initial_mu_target`/`_initial_sigma_fitted`）。
+- 71 族共享 mu.initial=(y+mean(y))/2（live R dump 全量 146 族存 omnilss/tmp/d238_all_initials.json）。**R 的 var()/sd() 全是 n-1 分母**（np.var 默认 ddof=0，移植逐个核对）。
+- roll-out 的回归面 = 所有默认分支的族（两头不靠：旧 warm=mean(y) 常数、roll-out 默认=target=y 都不是 R 表达式）→ 16+2 族回归，port 后全转 pass。**绿族不碰**：ZINBI/PO/GEOM 等 gate 绿族保持旧起点。targeted 判定照旧不可信，登记数字绑定全族流。
+- **重尾族常数起点不能被默认分支覆盖**：PARETO mu.initial=rep(2) 常数，target=y 逐观测 exp(y_i) 在 Pareto(2) 样本爆到 -inf。
+- **NET 缺陷组（下一开发项）**：①nu/tau link log vs R identity（D2.34 同类实锤）②顶层 gamlss() 未给 formula 的形状参数默认 ~1 估计而 R **固定**（nu.coefficients=NULL）③nu/tau 更新无界 ④缺 tau>=nu 域检查。四者一体，拆修任何一半制造新回归（intercept-only 爆 -inf），已整体回撤，NET 保持基线 fail。
+- **LNO intercept-only 既有失败**（stash 验证 HEAD 同挂）：候选后续项。
 - R-backed 测试首次真跑=测试的验收不是回归（skip 假绿）；测试族名用 R 真名大小写。
 - 符号证据按测试文件**标识符引用**判定：fam.p(...) 间接调用不算，按名 import 才算。
 - b14 组 SHASHo/SHASHo2/BCPEo/BCTo 仍是 nan 占位（不在扫描器 146 族名单），待补。
