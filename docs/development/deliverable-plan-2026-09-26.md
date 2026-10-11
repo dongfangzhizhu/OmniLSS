@@ -2497,6 +2497,63 @@ test_high_risk_families 与扫描器契约测试全绿；覆盖工件再生，
    tol 1.2e-4，其返回根自带 ~1e-5 误差。要逐位对齐"R 返回的数"而不
    是"数学正确的数"时，精确求解 + 登记容差 + 活 R 证据表是标准处置。
 
+#### D2.32：dpqr q 关 1e-5 级偏差批量清理 —— 九处 R 自身求解器容差（dpqr fail 9 → 0）
+
+**现象**（D2.30 全族扫描明细，9 个族全是同款 `q: max rel 1e-5 ~ 5e-5`，
+另加 `SEP1 p: max rel 1.134e-06` 边缘超阈）：
+
+```
+IG     q: max rel 1.960e-05      SEP1  q: max rel 2.478e-05
+SEP2   q: max rel 1.511e-05      SHASH q: max rel 2.338e-05
+SN1    q: max rel 1.471e-05      ST1   q: max rel 1.336e-05
+ST2    q: max rel 8.672e-06      ZAIG  q: max rel 8.584e-06
+SEP1   p: max rel 1.134e-06
+```
+
+**两步判定（活 R 源码 + 活 R 自误差实测，缺一不可）**：
+
+1. **源码**：`qIG`/`qSEP1`/`qSEP2`/`qSHASH`/`qSN1`/`qST1`/`qST2` 逐个
+   dump，全是 `uniroot(h1, interval)` **不带 tol 参数**（默认
+   `.Machine$double.eps^0.25 ≈ 1.2e-4`）；`qZAIG` 组合 `qIG`，继承同款
+   误差（`p <= nu` 时显式给 0）。`pSEP1` 是逐点自适应 `integrate`（默认
+   设置）。
+2. **实测**（`omnilss/tmp/d232_measure.R` / `d232_sep1_measure.R`）：
+   对 R **自己的目标函数**做 `tol=1e-14`（q）/ `subdivisions=2000,
+   rel.tol=1e-13`（p）重解，R 默认返回值的自误差：q 关至多 2.9e-5
+   （绝对），pSEP1 至多 1.13e-06（正好等于 gate 报的 1.134e-06）。
+   我们的值与高精度重解逐点吻合到 ~1e-9（最差 ST1 尾部一点 8.5e-5
+   绝对 / 4.4e-6 相对 —— CDF 尾部精度经 1/f 放大，仍远小于登记值）。
+
+**结论**：残差全部是 **R 自身求解器的容差噪声**，不是我们的缺陷。
+同 DBI deriv（D2.23）/SIMPLEX q（D2.31）处置：精确求解 + 登记。
+扫描器 `_DPQR_TOLERANCE` 新增 9 条（8 条 `q`@1e-4 + `SEP1 p`@1e-5），
+note 由共享证据块 + `_Q_UNIROOT_MEASURED` 表程序化生成。
+
+**例外登记在案——`SEP` 不在本批**：R 的 `qSEP` 用黄金分割
+（`tol=1e-06` 作用于 `(F-p)²`），在探测点 `p=0.9, mu=3, sigma=3` 处
+R 自己就错到 `qR=7.28 vs 真根 27.39`（差 20）；且 SEP 的 `d`/`p` 关
+另有 3.9e-1 / 3.3e-1 的大偏差。SEP 需要**单独排查**（约定层嫌疑），
+不与 uniroot 噪声混在一批。
+
+**验收**：8 族子列表扫描 dpqr 8/8 pass（IG/SEP1/SEP2/SHASH/SN1/ST1/
+ST2/ZAIG，其中 ST1 的 rsdev fail 是子列表样本移位的预期假警报——
+本轮无任何拟合路径改动）；新测试 `tests/test_q_uniroot_residual_
+families.py` 17 项（活 R 对照@登记容差 + 自身 p/q 互逆 + SEP1 p）；
+扫描器契约测试 52 项全绿；覆盖工件再生 result: OK。
+
+**D2.32 方法论要点**：
+
+1. **"同症状批量处置"前仍要逐族两步判定**：9 个族的 rel 全在 1e-5
+   量级，但"看起来像"不等于"是"——先 dump 每族 R 源码确认求解器
+   类型，再实测 R 自误差，两步都过才登记。SEP 就是这样被**排除**出批
+   次的（它的黄金分割自误差是 20，不是 1e-5）。
+2. **登记容差是双向的**：note 里同时记录"我们 vs R 的高精度重解"
+   距离（证明我们更准），测试里钉住"我们 vs R 默认值 ≤ 登记值"——
+   将来我们的实现漂移出 R 噪声带时，测试先红。
+3. **测试的探测参数也要走 `_family_grids`**：手写 nu 网格立刻踩了
+   D2.28 的坑两次（SHASH 要 nu>0、ZAIG 要 0<nu<1，R 直接 stop）。
+   探针参数与被测实现一样，都必须在合法域内。
+
 #### D2.20：`TF2` 的链式法则项与 `TF` 的正态极限分支（rsdev rel 2.3e+01 →逐位一致）
 
 **现象**（全族扫描 v11）：

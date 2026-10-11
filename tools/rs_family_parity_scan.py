@@ -188,6 +188,47 @@ _DERIV_TOLERANCE_NOTE: dict[tuple[str, str], str] = {
 # ideal one).
 _DPQR_TOLERANCE: dict[tuple[str, str], float] = {
     ("SIMPLEX", "q"): 1e-4,
+    ("IG", "q"): 1e-4,
+    ("SEP1", "q"): 1e-4,
+    ("SEP2", "q"): 1e-4,
+    ("SHASH", "q"): 1e-4,
+    ("SN1", "q"): 1e-4,
+    ("ST1", "q"): 1e-4,
+    ("ST2", "q"): 1e-4,
+    ("ZAIG", "q"): 1e-4,
+    # R's pSEP1 integrates dSEP1 with adaptive `integrate` at its default
+    # settings per call; measured against a subdivisions=2000, rel.tol=1e-13
+    # re-solve of R's own integrand, R's returned values carry up to 1.13e-06
+    # absolute error on the probe grid (omnilss/tmp/d232_sep1_measure.R) --
+    # exactly the 1.134e-06 the gate saw.  Our values track the re-solve to
+    # ~1e-10, so the residual is R's own quadrature error (D2.32).
+    ("SEP1", "p"): 1e-5,
+}
+
+# Shared evidence block for the eight families whose R quantile function is a
+# uniroot solve at the DEFAULT tolerance (D2.32).  Live-R sources: qIG /
+# qSEP1 / qSEP2 / qSHASH / qSN1 / qST1 / qST2 each build h1 = p<FM>(q) - p and
+# call uniroot(h1, interval) with no tol argument (default
+# .Machine$double.eps^0.25 ~ 1.2e-4); qZAIG composes qIG, inheriting the same
+# error (and answers 0 for p <= nu by an explicit ifelse).  Measured on the
+# probe grids (omnilss/tmp/d232_measure.R): re-solving R's OWN objective at
+# tol=1e-14 puts R's returned roots up to these absolute errors from the true
+# root, and our bisection/ndtri-based values track the tol=1e-14 re-solve to
+# ~1e-9 everywhere (worst: ST1's extreme-tail point at p=0.1, mu=sigma=0.5,
+# nu=-2, tau=0.5 where ours sits 8.5e-5 absolute / 4.4e-6 relative from it --
+# CDF tail precision amplified through 1/f, still well inside 1e-4).  The
+# residual against R is therefore R's own quantile error, not a defect on our
+# side -- same disposition as the DBI deriv registration (D2.23) and SIMPLEX
+# q (D2.31).  Measured max rel on the probe grid per family:
+_Q_UNIROOT_MEASURED = {
+    "IG": "1.96e-05",
+    "SEP1": "2.48e-05",
+    "SEP2": "1.51e-05",
+    "SHASH": "2.34e-05",
+    "SN1": "1.47e-05",
+    "ST1": "1.34e-05",
+    "ST2": "8.67e-06",
+    "ZAIG": "8.58e-06",
 }
 
 _DPQR_TOLERANCE_NOTE: dict[tuple[str, str], str] = {
@@ -202,6 +243,24 @@ _DPQR_TOLERANCE_NOTE: dict[tuple[str, str], str] = {
         "own quantile error, not a defect on our side (D2.31)."
     ),
 }
+
+for _fm, _meas in _Q_UNIROOT_MEASURED.items():
+    _DPQR_TOLERANCE_NOTE.setdefault((_fm, "q"), (
+        f"R's q{_fm} is a uniroot solve at the DEFAULT tolerance "
+        "(.Machine$double.eps^0.25 ~ 1.2e-4) -- live-R source, D2.32; "
+        "qZAIG composes qIG and inherits the same error.  Measured max rel "
+        f"on the probe grid: {_meas} (see the shared evidence block above "
+        "the registry: our values track a tol=1e-14 re-solve of R's own "
+        "objective to ~1e-9, so the residual is R's own quantile error)."
+    ))
+_DPQR_TOLERANCE_NOTE[("SEP1", "p")] = (
+    "R's pSEP1 evaluates adaptive integrate(dSEP1, -Inf, z) at its DEFAULT "
+    "settings per point; measured against a subdivisions=2000, rel.tol=1e-13 "
+    "re-solve of the same integrand, R's values carry up to 1.13e-06 absolute "
+    "error on the probe grid (omnilss/tmp/d232_sep1_measure.R) -- exactly the "
+    "1.134e-06 the gate reported.  Ours matches the re-solve to ~1e-10, so "
+    "the residual is R's own quadrature error, not a defect (D2.32)."
+)
 
 # Binomial denominator used when a family declares a fixed ``bd``.  R's
 # gamlss() takes the binomial response as counts with `bd` as the trial total
