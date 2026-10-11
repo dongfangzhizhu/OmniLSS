@@ -2446,6 +2446,57 @@ artifact 不可见。新测试钉住我们的密度在向量输入下保持逐�
    ≠ 拟合路径（非常数参数）正确。复核拟合级差异要还原拟合时的参数
    形状。
 
+#### D2.31：`SIMPLEX` 的 p/q 修复 —— "已接线但坏了"的占位（dpqr fail → pass）
+
+**现象**：扫描报 `SIMPLEX dpqr fail: p: no Python function; q: no Python function`，
+但 `pSIMPLEX`/`qSIMPLEX` 明明存在且已在 `build_ad_family` 接线（D1.16 时代的
+test_simplex_pqr_no_nan 也一直是绿的）。直接跑探针复现：
+
+```
+TypeError: sub got incompatible shapes for broadcasting: (16384,), (8,)
+```
+
+**根因**：`pSIMPLEX` 内部把积分网格固定为一维 `x_grid(16384)` 再与参数向量
+直接运算 —— 只支持**标量参数**（标量参数下 `atleast_2d` 恰好救回来）；
+`qSIMPLEX` 用 scipy `brentq` 逐元素求解，objective 还把整个 mu/sigma 向量
+整包捕获。既有测试只用标量参数调用 → 一直绿。这是 D2.30 第 4 条
+"常数参数下不可见"的**反方向**实例：dpqr 探测（向量参数）才暴露它。
+
+**修法**（`dpqr_functions.py`）：
+
+1. 抽出共享机制 `_simplex_cdf_grid`（逐参数行的 16384 点累积梯形积分，
+   返回 `(x_grid, cum(N, n_points))`）+ `_simplex_cdf_at`（对预计算 CDF 行
+   做分段线性插值）。Simplex CDF 无闭式，R 用自适应 `integrate` 逐点积分。
+2. `pSIMPLEX` 逐字照抄 R 语义：输入 broadcast（R 的 recycle）；tail/log
+   先变换**再**被边界覆盖；`q<=0 | q>=1` 一律给 **0**（包括 `log.p=TRUE`
+   时给 0 而非 `-inf` —— R 源码显式 `ifelse`，属写出的约定非 artifact，
+   按 D2.25/D2.30 判据复现）。与活 R 实测最大绝对差 8.2e-9。
+3. `qSIMPLEX` 改为 `lax.fori_loop` 向量化二分到机器精度（60 步，区间
+   `(eps, 1-eps)`），替换 scipy brentq 逐元素路径。
+4. 扫描器新增 `_DPQR_TOLERANCE`/`_DPQR_TOLERANCE_NOTE` 登记（镜像
+   `_DERIV_TOLERANCE` 先例），登记 `("SIMPLEX","q")=1e-4`：R 的
+   `qSIMPLEX` 用 **uniroot 默认 tol（1.2e-4）**，对 R 自己的 tol=1e-14
+   重解实测其根自带至多 2.1e-5 绝对误差 —— 我们收敛到真根，残差是 R
+   自身的分位数误差（同 DBI deriv 登记的处置，D2.23）。p 关无需登记
+   （8e-9 << 1e-6）。
+
+**验收**：单族扫描 SIMPLEX 三关全 pass（dpqr fail→pass）；新测试
+`tests/test_simplex_pq_vectorized.py`（向量参数、RTestBus 活 R 对照、
+边界语义含 log.p=TRUE 的 0、p/q 互逆、形状保留）；既有
+test_high_risk_families 与扫描器契约测试全绿；覆盖工件再生，
+`coverage_diff_report` result: OK。
+
+**D2.31 方法论要点**：
+
+1. **"no Python function" 不一定是缺函数**——函数存在但探针一调就崩时
+   也报同一句话。看到这句话先直接调一次探针再下结论。
+2. **"有入口但入口是坏的"与"没入口"同样静默**：D2.27 发现的是"能力
+   齐备但没有接线"（nan 占位），本条是反向——接线了但只对标量参数
+   成立。两者都只有真跑探针才能暴露。
+3. **uniroot/brentq 这类求解器的落点不是数学对象**：R 的 uniroot 默认
+   tol 1.2e-4，其返回根自带 ~1e-5 误差。要逐位对齐"R 返回的数"而不
+   是"数学正确的数"时，精确求解 + 登记容差 + 活 R 证据表是标准处置。
+
 #### D2.20：`TF2` 的链式法则项与 `TF` 的正态极限分支（rsdev rel 2.3e+01 →逐位一致）
 
 **现象**（全族扫描 v11）：

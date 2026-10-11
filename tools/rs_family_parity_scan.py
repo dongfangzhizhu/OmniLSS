@@ -181,6 +181,28 @@ _DERIV_TOLERANCE_NOTE: dict[tuple[str, str], str] = {
     ),
 }
 
+# dpqr gate tolerances.  The default is 1e-6 relative; a family/type pair
+# listed here has a *measured* R-side error larger than that, and the entry
+# documents the live-R evidence (same discipline as _DERIV_TOLERANCE: the
+# gate compares against the number R actually returns, not the mathematically
+# ideal one).
+_DPQR_TOLERANCE: dict[tuple[str, str], float] = {
+    ("SIMPLEX", "q"): 1e-4,
+}
+
+_DPQR_TOLERANCE_NOTE: dict[tuple[str, str], str] = {
+    ("SIMPLEX", "q"): (
+        "R's qSIMPLEX solves uniroot(F(x)-p, c(0.001, 0.999)) with the DEFAULT "
+        "tolerance (.Machine$double.eps^0.25 ~ 1.2e-4).  Measured on live R "
+        "(mu=0.4, sigma=0.8, p=0.1/0.3/0.5/0.7/0.9) against a tol=1e-14 "
+        "re-solve of R's own objective: R's returned roots carry up to 2.1e-05 "
+        "absolute error (1.18e-05 / 9.3e-08 / 2.67e-06 / 7.07e-06 / 2.04e-05).  "
+        "Our bisection converges to the true root of our trapezoid CDF (which "
+        "matches R's pSIMPLEX to ~8e-09 absolute), so the residual vs R is R's "
+        "own quantile error, not a defect on our side (D2.31)."
+    ),
+}
+
 # Binomial denominator used when a family declares a fixed ``bd``.  R's
 # gamlss() takes the binomial response as counts with `bd` as the trial total
 # (a two-column cbind(success, failure) response); our d/p/q take the same.
@@ -809,7 +831,11 @@ def gate_dpqr(family: str, results: list[dict], index: dict) -> dict:
             continue
         scale = np.maximum(np.abs(r_vals[finite]), 1.0)
         rel = np.abs(py_vals[finite] - r_vals[finite]) / scale
-        if np.max(rel) > 1e-6:
+        # _DPQR_TOLERANCE: a registered pair means R's own value carries a
+        # measured error larger than the default (see the note table); the
+        # residual against R is then R's error, not ours (D2.31).
+        tol = _DPQR_TOLERANCE.get((family, type_char), 1e-6)
+        if np.max(rel) > tol:
             failures.append(f"{type_char}: max rel {np.max(rel):.3e}")
     if missing_in_r:
         return {"status": "skip", "detail": "no d/p/q counterpart in R"}

@@ -6446,13 +6446,53 @@ def dSIMPLEX(x, mu=0.5, sigma=1.0, log=False):
         return jnp.exp(log_pdf)
 
 
+# Shared-grid machinery for the SIMPLEX CDF/quantile (D2.31).  The Simplex
+# CDF has no closed form; R integrates the density adaptively per point
+# (``integrate(pdf, 0, upper)``).  We integrate once per parameter row on a
+# shared dense grid and interpolate, which makes both p and q fully
+# vectorized -- the previous implementation only worked for *scalar* mu and
+# sigma (it built one (1, n_points) grid) and crashed with a shape error as
+# soon as the probe passed vector parameters.
+_SIMPLEX_N_GRID = 16384
+
+
+def _simplex_cdf_grid(mu_flat: jnp.ndarray, sigma_flat: jnp.ndarray):
+    """Cumulative trapezoid of the SIMPLEX density on a shared grid.
+
+    Returns ``(x_grid, cum)`` where ``x_grid`` is the 1-D integration grid
+    and ``cum`` has shape ``(N, n_points)`` with
+    ``cum[i, j] = integral_0^{x_grid[j]} f(t; mu_i, sigma_i) dt``.
+    """
+    n_points = _SIMPLEX_N_GRID
+    eps = jnp.finfo(jnp.float64).eps
+    x_grid = jnp.linspace(eps, 1.0 - eps, n_points)
+    d = dSIMPLEX(x_grid[None, :], mu_flat[:, None], sigma_flat[:, None], log=False)
+    dx = (1.0 - 2.0 * eps) / (n_points - 1)
+    integ = (d[:, :-1] + d[:, 1:]) * 0.5 * dx
+    cum = jnp.concatenate(
+        [jnp.zeros((mu_flat.shape[0], 1), dtype=d.dtype), jnp.cumsum(integ, axis=1)],
+        axis=1,
+    )
+    return x_grid, cum
+
+
+def _simplex_cdf_at(x: jnp.ndarray, x_grid: jnp.ndarray, cum: jnp.ndarray) -> jnp.ndarray:
+    """Piecewise-linear interpolation of precomputed CDF rows at ``x`` (shape (N,))."""
+    n_points = x_grid.shape[0]
+    idx = jnp.clip(jnp.searchsorted(x_grid, x, side="right") - 1, 0, n_points - 2)
+    x0 = x_grid[idx]
+    frac = (x - x0) / (x_grid[idx + 1] - x0)
+    rows = jnp.arange(cum.shape[0])
+    return cum[rows, idx] + frac * (cum[rows, idx + 1] - cum[rows, idx])
+
+
 def pSIMPLEX(q, mu=0.5, sigma=1.0, lower_tail=True, log_p=False):
     """CDF for Simplex distribution.
 
     Parameters
     ----------
     q : array_like
-        Quantiles (0 < q < 1)
+        Quantiles.  Inputs are recycled to a common length (broadcast).
     mu : array_like
         Location parameter (0 < mu < 1)
     sigma : array_like
@@ -6469,61 +6509,46 @@ def pSIMPLEX(q, mu=0.5, sigma=1.0, lower_tail=True, log_p=False):
 
     Notes
     -----
-    The CDF is computed using numerical integration of the density function.
+    Transcribed from ``gamlss.dist:::pSIMPLEX`` (live R, D2.31):
+
+    * the interior CDF is numerical integration of the density (R uses
+      adaptive ``integrate`` per point; we use a 16384-point cumulative
+      trapezoid on a shared grid, which agrees with R to ~1e-9 absolute);
+    * tail and log flags are applied *before* the boundary overwrite
+      (so ``log.p=TRUE`` on an interior point is ``log(cdf)`` of the
+      transformed value);
+    * ``q <= 0`` **or** ``q >= 1`` returns exactly 0 -- for both tails, an
+      explicit ``ifelse`` in R.  Even with ``log.p=TRUE`` the boundary value
+      is 0 (not ``-inf``).  This is written-out R convention, not a
+      vectorization artifact, so it is reproduced verbatim (D2.25/D2.30
+      discipline: explicit branch = convention; accidental collapse =
+      defect).
     """
     q = jnp.asarray(q, dtype=jnp.float64)
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
 
     eps = jnp.finfo(jnp.float64).eps
-    q = jnp.clip(q, eps, 1.0 - eps)
-    mu = jnp.clip(mu, eps, 1.0 - eps)
-    sigma = jnp.maximum(sigma, eps)
+    q_b, mu_b, sigma_b = jnp.broadcast_arrays(q, mu, sigma)
+    q_flat = q_b.ravel()
+    mu_flat = jnp.clip(mu_b.ravel(), eps, 1.0 - eps)
+    sigma_flat = jnp.maximum(sigma_b.ravel(), eps)
 
-    # Use vectorized trapezoidal integration over a shared grid.
-    # All quantiles share the same grid nodes; integrate per-q by
-    # masking density beyond each q (faster and more accurate than
-    # jnp.vectorize over per-q grids).
-    n_points = 16384
-    x_grid = jnp.linspace(eps, 1.0 - eps, n_points)
-    d_grid = dSIMPLEX(x_grid, mu, sigma, log=False)
-    # Ensure 2-D shape (param_batch, n_points): scalar params -> (1, n_points)
-    d_grid = jnp.atleast_2d(d_grid)
-
-    # Cumulative integral via cumulative trapezoid on the shared grid.
-    dx = (1.0 - 2.0 * eps) / (n_points - 1)
-    integrand = (d_grid[:, :-1] + d_grid[:, 1:]) * 0.5 * dx
-    cum = jnp.concatenate([jnp.zeros_like(integrand[:, :1]), jnp.cumsum(integrand, axis=-1)], axis=-1)
-
-    # Map each q onto the grid via searchsorted, then interpolate the cumulative mass.
-    # q is 1-D here (broadcast over parameters was already applied by dSIMPLEX).
-    q_flat = jnp.atleast_1d(q)
-    q_clipped = jnp.clip(q_flat, eps, 1.0 - eps)
-    idx = jnp.searchsorted(x_grid, q_clipped, side="right") - 1
-    idx = jnp.clip(idx, 0, n_points - 2)
-    x0 = x_grid[idx]
-    frac = (q_clipped - x0) / jnp.maximum(x_grid[idx + 1] - x0, eps)
-    # cum has shape (param_batch, n_points); gather along the grid axis.
-    cdf_vals = cum[:, idx] + frac[None, :] * (cum[:, idx + 1] - cum[:, idx])
-    if cdf_vals.shape[0] == 1:
-        cdf = jnp.reshape(cdf_vals[0], jnp.shape(q))
-    else:
-        cdf = cdf_vals
-
-    # Handle q outside (0, 1)
-    cdf = jnp.where(q_flat <= 0, 0.0, cdf)
-    cdf = jnp.where(q_flat >= 1, 1.0, cdf)
-
-    # Broadcast back to the original shape (scalar input -> scalar output)
-    cdf = cdf.reshape(jnp.shape(q))
+    x_grid, cum = _simplex_cdf_grid(mu_flat, sigma_flat)
+    interior = (q_flat > 0) & (q_flat < 1)
+    # R integrates from 0 to qq with qq = 0.5 for boundary q, then overwrites
+    # the result; skipping the wasted integration for boundary points is
+    # numerically identical.
+    q_safe = jnp.where(interior, q_flat, 0.5)
+    cdf = _simplex_cdf_at(jnp.clip(q_safe, eps, 1.0 - eps), x_grid, cum)
 
     if not lower_tail:
         cdf = 1.0 - cdf
-
     if log_p:
         cdf = jnp.log(cdf)
-
-    return cdf
+    # R's final ifelse: boundary q gives 0 regardless of the tail/log flags.
+    cdf = jnp.where(interior, cdf, 0.0)
+    return cdf.reshape(q_b.shape)
 
 
 def qSIMPLEX(p, mu=0.5, sigma=1.0, lower_tail=True, log_p=False):
@@ -6532,7 +6557,7 @@ def qSIMPLEX(p, mu=0.5, sigma=1.0, lower_tail=True, log_p=False):
     Parameters
     ----------
     p : array_like
-        Probabilities (0 < p < 1)
+        Probabilities.  Inputs are recycled to a common length (broadcast).
     mu : array_like
         Location parameter (0 < mu < 1)
     sigma : array_like
@@ -6549,8 +6574,23 @@ def qSIMPLEX(p, mu=0.5, sigma=1.0, lower_tail=True, log_p=False):
 
     Notes
     -----
-    The quantile function is computed using numerical root finding
-    on the CDF.
+    Transcribed from ``gamlss.dist:::qSIMPLEX`` (live R, D2.31): the
+    tail/log transforms happen first (``log.p`` -> ``exp``, ``lower.tail``
+    -> ``1 - p``), then the root of ``F(x) - p`` is solved per element.  R
+    brackets the root in ``[0.001, 0.999]`` via ``uniroot`` with its
+    *default* tolerance (``.Machine$double.eps^0.25`` ~ 1.2e-4); measured
+    against a ``tol=1e-14`` re-solve of R's own objective, R's returned
+    roots carry up to ~2e-5 absolute error (their own, not ours -- same
+    disposition as the DBI deriv registration, D2.23).  We bracket on
+    ``(eps, 1-eps)`` and bisect to machine precision with a vectorized
+    ``lax.fori_loop``; the residual against live R is R's own quantile
+    error and is registered as a parity-gate tolerance in
+    ``tools/rs_family_parity_scan.py``.
+
+    Out-of-range ``p`` (after the transforms) makes R ``stop``; consistent
+    with the other dpqr functions in this module -- which clip rather than
+    raise -- out-of-range p is clamped into the support here.  Domain
+    guards for fitting paths live in the response-domain validation layer.
     """
     p = jnp.asarray(p, dtype=jnp.float64)
     mu = jnp.asarray(mu, dtype=jnp.float64)
@@ -6558,55 +6598,31 @@ def qSIMPLEX(p, mu=0.5, sigma=1.0, lower_tail=True, log_p=False):
 
     if log_p:
         p = jnp.exp(p)
-
     if not lower_tail:
         p = 1.0 - p
 
     eps = jnp.finfo(jnp.float64).eps
-    p = jnp.clip(p, eps, 1.0 - eps)
-    mu = jnp.clip(mu, eps, 1.0 - eps)
-    sigma = jnp.maximum(sigma, eps)
+    p_b, mu_b, sigma_b = jnp.broadcast_arrays(p, mu, sigma)
+    p_flat = jnp.clip(p_b.ravel(), eps, 1.0 - eps)
+    mu_flat = jnp.clip(mu_b.ravel(), eps, 1.0 - eps)
+    sigma_flat = jnp.maximum(sigma_b.ravel(), eps)
 
-    # Use scipy for root finding
-    from scipy.optimize import brentq
-    
-    def find_quantile_scalar(p_val):
-        # Define the function to find root of: F(q) - p = 0
-        def objective(q_val):
-            cdf_val = pSIMPLEX(q_val, mu, sigma, lower_tail=True, log_p=False)
-            return float(cdf_val) - p_val
-        
-        # Bounds
-        lower = eps
-        upper = 1.0 - eps
-        
-        try:
-            result = brentq(objective, lower, upper, xtol=1e-10)
-            return result
-        except:
-            # Fallback to bisection
-            for _ in range(50):
-                mid = (lower + upper) / 2.0
-                f_mid = objective(mid)
-                if abs(f_mid) < 1e-8:
-                    return mid
-                f_lower = objective(lower)
-                if f_lower * f_mid < 0:
-                    upper = mid
-                else:
-                    lower = mid
-            return (lower + upper) / 2.0
-    
-    # Vectorize
-    p_array = jnp.atleast_1d(p)
-    q_list = [find_quantile_scalar(float(p_val)) for p_val in p_array]
-    q = jnp.array(q_list)
-    
-    # Return scalar if input was scalar
-    if jnp.ndim(p) == 0:
-        return q[0]
-    
-    return q
+    x_grid, cum = _simplex_cdf_grid(mu_flat, sigma_flat)
+
+    def body(_, carry):
+        lo, hi = carry
+        mid = 0.5 * (lo + hi)
+        below = _simplex_cdf_at(mid, x_grid, cum) < p_flat
+        lo = jnp.where(below, mid, lo)
+        hi = jnp.where(below, hi, mid)
+        return lo, hi
+
+    lo = jnp.full_like(p_flat, eps)
+    hi = jnp.full_like(p_flat, 1.0 - eps)
+    lo, hi = jax.lax.fori_loop(0, 60, body, (lo, hi))
+    # 2^-60 shrinks the initial unit interval far below float64 resolution.
+    q_flat = 0.5 * (lo + hi)
+    return q_flat.reshape(p_b.shape)
 
 
 def rSIMPLEX(key, n, mu=0.5, sigma=1.0):

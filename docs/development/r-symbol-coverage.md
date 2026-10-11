@@ -707,7 +707,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | SHASHo2 | gamlss.dist | SHASHo2 | public_api | implemented | tested | exported_api | 1 |
 | SI | gamlss.dist | SI | public_api | experimental | r_consistency_test | blocked | 5 |
 | SICHEL | gamlss.dist | SICHEL | public_api | experimental | r_consistency_test | blocked | 14 |
-| SIMPLEX | gamlss.dist | SIMPLEX | public_api | experimental | r_consistency_test | blocked | 5 |
+| SIMPLEX | gamlss.dist | SIMPLEX | public_api | experimental | r_consistency_test | blocked | 6 |
 | SN1 | gamlss.dist | SN1 | public_api | experimental | r_consistency_test | blocked | 6 |
 | SN2 | gamlss.dist | SN2 | public_api | experimental | r_consistency_test | blocked | 6 |
 | SST | gamlss.dist | SST | public_api | experimental | r_consistency_test | blocked | 6 |
@@ -875,7 +875,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | dZAIG | gamlss.dist | dZAIG | module_def | experimental | capability:unsupported | blocked | 1 |
 | dZALG | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | dZANBI | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| dZAP | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 1 |
+| dZAP | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 2 |
 | dZAPIG | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | dZASICHEL | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | dZAZIPF | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 1 |
@@ -986,7 +986,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | pSHASHo2 | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
 | pSI | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | pSICHEL | gamlss.dist | pSICHEL | module_def | experimental | r_consistency_test | blocked | 2 |
-| pSIMPLEX | gamlss.dist | pSIMPLEX | module_def | experimental | capability:validated | blocked | 1 |
+| pSIMPLEX | gamlss.dist | pSIMPLEX | module_def | experimental | capability:validated | blocked | 2 |
 | pSN1 | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | pSN2 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | pSST | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
@@ -1111,7 +1111,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | qSHASHo2 | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
 | qSI | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | qSICHEL | gamlss.dist | qSICHEL | module_def | experimental | r_consistency_test | blocked | 3 |
-| qSIMPLEX | gamlss.dist | qSIMPLEX | module_def | experimental | capability:validated | blocked | 0 |
+| qSIMPLEX | gamlss.dist | qSIMPLEX | module_def | experimental | capability:validated | blocked | 1 |
 | qSN1 | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | qSN2 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | qSST | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
@@ -1228,7 +1228,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | rSHASHo2 | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
 | rSI | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | rSICHEL | gamlss.dist | rSICHEL | module_def | experimental | capability:unsupported | blocked | 1 |
-| rSIMPLEX | gamlss.dist | rSIMPLEX | module_def | experimental | capability:validated | blocked | 0 |
+| rSIMPLEX | gamlss.dist | rSIMPLEX | module_def | experimental | capability:validated | blocked | 1 |
 | rSN1 | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | rSN2 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | rSST | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
