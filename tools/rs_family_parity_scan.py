@@ -203,6 +203,26 @@ _DPQR_TOLERANCE: dict[tuple[str, str], float] = {
     # exactly the 1.134e-06 the gate saw.  Our values track the re-solve to
     # ~1e-10, so the residual is R's own quadrature error (D2.32).
     ("SEP1", "p"): 1e-5,
+    # SEP's p/q residuals (D2.33).  Live-R sources: pSEP evaluates adaptive
+    # integrate(dSEP, -Inf, q) at its DEFAULT settings per point -- measured
+    # against a subdivisions=2000, rel.tol=1e-13 re-solve of the same
+    # integrand, R's values carry up to 1.36e-05 absolute error on the probe
+    # grid (omnilss/tmp/d233_sep_measure.R), exactly the 1.364e-05 the gate
+    # reported.  qSEP is a GOLDEN-SECTION search on (F-p)^2 with tol=1e-06
+    # under a RELATIVE criterion (|up-lo| > tol*(|val1|+|val2|)), bracketed
+    # in [mu-5*sigma, mu+5*sigma]; re-solving R's own pSEP at uniroot
+    # tol=1e-14 inside the same bracket puts R's fallpoints up to 3e-07 from
+    # the true root, and the gate's 4.96e-06 max rel is that tolerance plus
+    # R's p-quadrature noise carried through 1/f.  Our brentq-based q lands
+    # within 8e-07 of R everywhere on the grid.  CORRECTION of a D2.32 note:
+    # the earlier claim "R's qSEP is off by 20 (7.28 vs a true root 27.39)"
+    # was an artifact of the high-precision re-solve script -- R's pSEP is
+    # itself non-monotone far in the tail there (pSEP(27.39) = 6.96e-05,
+    # an integrate failure on this sharp density), so the "27.39 root" was
+    # a spurious sign change of a broken CDF.  R's qSEP fallpoint 7.28 is
+    # consistent with R's own pSEP(7.28) = 0.9, and ours agrees to 8e-07.
+    ("SEP", "p"): 1e-4,
+    ("SEP", "q"): 1e-4,
 }
 
 # Shared evidence block for the eight families whose R quantile function is a
@@ -260,6 +280,28 @@ _DPQR_TOLERANCE_NOTE[("SEP1", "p")] = (
     "error on the probe grid (omnilss/tmp/d232_sep1_measure.R) -- exactly the "
     "1.134e-06 the gate reported.  Ours matches the re-solve to ~1e-10, so "
     "the residual is R's own quadrature error, not a defect (D2.32)."
+)
+_DPQR_TOLERANCE_NOTE[("SEP", "p")] = (
+    "R's pSEP evaluates adaptive integrate(dSEP, -Inf, q) at its DEFAULT "
+    "settings per point; measured self-error up to 1.36e-05 on the probe "
+    "grid (omnilss/tmp/d233_sep_measure.R) -- exactly the gate's 1.364e-05. "
+    "Ours (scipy quad, limit=300) tracks the high-precision re-solve; the "
+    "residual is R's own quadrature error (D2.33)."
+)
+_DPQR_TOLERANCE_NOTE[("SEP", "q")] = (
+    "R's qSEP is a golden-section search on (F-p)^2, tol=1e-06 under the "
+    "RELATIVE criterion |up-lo| > tol*(|val1|+|val2|), bracketed in "
+    "[mu-5*sigma, mu+5*sigma].  Re-solving R's own pSEP at uniroot tol=1e-14 "
+    "inside the same bracket puts R's fallpoints up to 3e-07 from the true "
+    "root; the gate's 4.96e-06 max rel is that tolerance plus R's "
+    "p-quadrature noise carried through 1/f.  Ours (bracket-expanding "
+    "brentq, xtol=1e-10) lands within 8e-07 of R on the whole grid.  "
+    "CORRECTION of the D2.32 note: 'R off by 20 (7.28 vs 27.39)' was an "
+    "artifact of that re-solve script -- R's pSEP is non-monotone far in "
+    "that tail (pSEP(27.39)=6.96e-05, an integrate failure), so 27.39 was "
+    "a spurious sign change of a broken CDF; R's fallpoint 7.28 is "
+    "consistent with R's own pSEP(7.28)=0.9 and ours agrees to 8e-07 "
+    "(D2.33)."
 )
 
 # Binomial denominator used when a family declares a fixed ``bd``.  R's

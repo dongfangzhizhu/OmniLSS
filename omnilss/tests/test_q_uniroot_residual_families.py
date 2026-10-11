@@ -51,8 +51,23 @@ Q_FAMILIES = [
     ("SN1", ("mu", "sigma", "nu"), 1e-4, P_GRID),
     ("ST1", ("mu", "sigma", "nu", "tau"), 1e-4, P_GRID),
     ("ST2", ("mu", "sigma", "nu", "tau"), 1e-4, P_GRID),
+    ("SEP", ("mu", "sigma", "nu", "tau"), 1e-4, P_GRID),
     ("ZAIG", ("mu", "sigma", "nu"), 1e-4, np.linspace(0.78, 0.94, 8)),
 ]
+
+
+def test_sep_p_stays_within_r_s_own_quadrature_noise() -> None:
+    """SEP p: R integrates dSEP adaptively per point (D2.33 evidence)."""
+    params = _param_arrays("SEP", ("mu", "sigma", "nu", "tau"))
+    q_grid, parrays, _bd = _family_grids("SEP", 8)
+    q_grid = np.asarray(q_grid, dtype=np.float64)
+    r_vals = RTestBus().eval_family(
+        "SEP", "p", {"q": q_grid.tolist(), **{k: v.tolist() for k, v in params.items()}}
+    )
+    ours = np.asarray(
+        resolve_family("SEP").p(q_grid, *[params[n] for n in ("mu", "sigma", "nu", "tau")])
+    )
+    np.testing.assert_allclose(ours, r_vals, atol=1e-4)
 
 
 def _param_arrays(family: str, names: tuple[str, ...]) -> dict[str, np.ndarray]:
