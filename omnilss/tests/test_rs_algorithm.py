@@ -340,8 +340,18 @@ class TestRSFit:
         assert model.additional_slots["gradient_norm"] > 0
 
     def test_policy_max_inner_is_one(self, simple_data):
+        # D2.36 reversed the pre-D2.36 policy this test used to pin.  The old
+        # assertion -- rs_policy_max_inner == 1, justified as "matching R's
+        # gamlss::glim.fit" -- was factually wrong: R's glim.fit iterates each
+        # parameter update inside `while (abs(olddv - dv) > cc && itn < cyc)`
+        # with glim.control() defaults cc = 0.001, cyc = 50 (live R, gamlss
+        # 5.5-0).  The max_iter=1 shortcut starved the inner loop and made
+        # R's Box-Cox sigma.initial = 0.1 unusable (BCPE degraded 94.15 ->
+        # 138.73 on the scanner sample; intercept-only BCCG rel ~1e3).  The
+        # policy slot now publishes R's actual cc/cyc pair.
         model = rs_fit(formula="y ~ x", family="NO", data=simple_data, verbose=False)
-        assert model.additional_slots["rs_policy_max_inner"] == 1
+        assert model.additional_slots["rs_policy_max_inner"] == 50
+        assert model.additional_slots["rs_policy_inner_cc"] == 0.001
 
     def test_identity_link_large_response_not_clipped_to_20(self):
         np.random.seed(123)

@@ -1298,6 +1298,7 @@ def gamlss(
             tol=control.c_crit if control is not None else 1e-4,
             verbose=verbose,
             routing_decision=routing_decision,
+            i_control=i_control,
         )
 
     if method_name == "CG":

@@ -716,30 +716,45 @@ class OperationsTest(unittest.TestCase):
         self.assertEqual(first.upper.shape, (3,))
         self.assertTrue(np.all(first.x[:-1] <= first.x[1:]))
 
-    def test_fitted_plot_data_supports_jsu_family(self) -> None:
+    def _jsu_wellposed_fit(self):
+        # The previous 6-point fixture is ill-posed for JSU's RS iteration
+        # (nine coefficients against six observations): live R itself diverges
+        # on it -- its deviance oscillates -14.06 -> 10355.9 over 20 cycles
+        # and returns converged = FALSE (D2.36, omnilss/tmp/d236_jsu_fixture.R)
+        # -- and our RS diverges the same way.  This 20-point sample with
+        # default sigma/nu/tau formulas fits on BOTH sides (R G.dev 5.663987,
+        # ours 5.6846, both converged past the c_crit stop) and yields finite
+        # centiles, so the operation helpers are exercised on a legitimate
+        # fit instead of an over-parameterised one.
         data = {
-            "y": jnp.array([-0.8, -0.2, 0.1, 0.7, 1.4, 2.1], dtype=jnp.float64),
-            "x1": jnp.array([0.0, 0.4, 0.8, 1.2, 1.6, 2.0], dtype=jnp.float64),
-            "x2": jnp.array([1.0, 0.9, 1.1, 1.0, 1.2, 1.1], dtype=jnp.float64),
+            "y": jnp.array(
+                [1.3159, 1.5751, 0.3182, 1.0849, 1.4725, 1.6162, 1.4488,
+                 1.7439, 1.4238, 1.5443, 1.4747, 1.1410, 1.2513, 1.6612,
+                 1.4154, 2.0130, 2.0614, 2.2554, 1.7501, 2.2151],
+                dtype=jnp.float64,
+            ),
+            "x1": jnp.linspace(0.0, 2.0, 20),
         }
-        fit = gamlss(
+        return gamlss(
             formula="y ~ x1",
-            sigma_formula="~ x1",
-            parameter_formulas={"mu": "~ x1 + x2", "sigma": "~ x1", "nu": "~ x1", "tau": "~ x1"},
             family=JSU(),
             data=data,
             method="RS",
         )
+
+    def test_fitted_plot_data_supports_jsu_family(self) -> None:
+        fit = self._jsu_wellposed_fit()
         result = fitted_plot_data(fit, xvar="x1", parameters=("mu", "sigma", "nu", "tau"), type="response", se_fit=True)
         self.assertEqual(result.xvar, "x1")
         self.assertEqual(result.type, "response")
         self.assertEqual(len(result.entries), 4)
         for entry in result.entries:
-            self.assertEqual(entry.x.shape, (6,))
-            self.assertEqual(entry.fit.shape, (6,))
-            self.assertEqual(entry.se_fit.shape, (6,))
-            self.assertEqual(entry.lower.shape, (6,))
-            self.assertEqual(entry.upper.shape, (6,))
+            # The grid follows the fixture's 20 observations.
+            self.assertEqual(entry.x.shape, (20,))
+            self.assertEqual(entry.fit.shape, (20,))
+            self.assertEqual(entry.se_fit.shape, (20,))
+            self.assertEqual(entry.lower.shape, (20,))
+            self.assertEqual(entry.upper.shape, (20,))
             self.assertTrue(np.all(entry.x[:-1] <= entry.x[1:]))
             self.assertTrue(np.isfinite(entry.fit).all())
 
@@ -1064,26 +1079,15 @@ class OperationsTest(unittest.TestCase):
         self.assertEqual(np.asarray(mu_entry["se.fit"], dtype=np.float64).shape, (2,))
 
     def test_prodist_data_supports_real_family_models(self) -> None:
-        data = {
-            "y": jnp.array([-0.8, -0.2, 0.1, 0.7, 1.4, 2.1], dtype=jnp.float64),
-            "x1": jnp.array([0.0, 0.4, 0.8, 1.2, 1.6, 2.0], dtype=jnp.float64),
-            "x2": jnp.array([1.0, 0.9, 1.1, 1.0, 1.2, 1.1], dtype=jnp.float64),
-        }
-        fit = gamlss(
-            formula="y ~ x1",
-            sigma_formula="~ x1",
-            parameter_formulas={"mu": "~ x1 + x2", "sigma": "~ x1", "nu": "~ x1", "tau": "~ x1"},
-            family=JSU(),
-            data=data,
-            method="RS",
-        )
+        fit = self._jsu_wellposed_fit()
         result = prodist_data(fit)
         self.assertEqual(result.family, "JSU")
         self.assertIn("mu", result.parameters)
         self.assertIn("sigma", result.parameters)
         self.assertIn("nu", result.parameters)
         self.assertIn("tau", result.parameters)
-        self.assertEqual(np.asarray(result.parameters["tau"], dtype=np.float64).shape, (6,))
+        # The parameter arrays follow the fixture's 20 observations.
+        self.assertEqual(np.asarray(result.parameters["tau"], dtype=np.float64).shape, (20,))
 
     def test_fit_dist_data_ranks_realplus_families(self) -> None:
         result = fit_dist_data(
@@ -1918,19 +1922,7 @@ class OperationsTest(unittest.TestCase):
         self.assertEqual(np.asarray(result.observed_y).shape, (3,))
 
     def test_get_quantile_data_supports_jsu_family(self) -> None:
-        data = {
-            "y": jnp.array([-0.8, -0.2, 0.1, 0.7, 1.4, 2.1], dtype=jnp.float64),
-            "x1": jnp.array([0.0, 0.4, 0.8, 1.2, 1.6, 2.0], dtype=jnp.float64),
-            "x2": jnp.array([1.0, 0.9, 1.1, 1.0, 1.2, 1.1], dtype=jnp.float64),
-        }
-        fit = gamlss(
-            formula="y ~ x1",
-            sigma_formula="~ x1",
-            parameter_formulas={"mu": "~ x1 + x2", "sigma": "~ x1", "nu": "~ x1", "tau": "~ x1"},
-            family=JSU(),
-            data=data,
-            method="RS",
-        )
+        fit = self._jsu_wellposed_fit()
         curves = get_quantile_data(fit, xvar="x1", probabilities=(0.1, 0.5, 0.9), n_points=7, how="median")
         self.assertEqual(curves.family, "JSU")
         self.assertEqual(len(curves.entries), 3)
@@ -1945,19 +1937,7 @@ class OperationsTest(unittest.TestCase):
         self.assertTrue(np.all(med <= high))
 
     def test_centiles_data_supports_jsu_family(self) -> None:
-        data = {
-            "y": jnp.array([-0.8, -0.2, 0.1, 0.7, 1.4, 2.1], dtype=jnp.float64),
-            "x1": jnp.array([0.0, 0.4, 0.8, 1.2, 1.6, 2.0], dtype=jnp.float64),
-            "x2": jnp.array([1.0, 0.9, 1.1, 1.0, 1.2, 1.1], dtype=jnp.float64),
-        }
-        fit = gamlss(
-            formula="y ~ x1",
-            sigma_formula="~ x1",
-            parameter_formulas={"mu": "~ x1 + x2", "sigma": "~ x1", "nu": "~ x1", "tau": "~ x1"},
-            family=JSU(),
-            data=data,
-            method="RS",
-        )
+        fit = self._jsu_wellposed_fit()
         result = centiles_data(fit, xvar="x1", cent=(10.0, 50.0, 90.0), n_points=7, how="median")
         self.assertEqual(result.family, "JSU")
         self.assertEqual(result.centiles, (10.0, 50.0, 90.0))
@@ -1988,19 +1968,7 @@ class OperationsTest(unittest.TestCase):
         self.assertIsNotNone(result.observed_y)
 
     def test_centiles_coverage_data_supports_jsu_family(self) -> None:
-        data = {
-            "y": jnp.array([-0.8, -0.2, 0.1, 0.7, 1.4, 2.1], dtype=jnp.float64),
-            "x1": jnp.array([0.0, 0.4, 0.8, 1.2, 1.6, 2.0], dtype=jnp.float64),
-            "x2": jnp.array([1.0, 0.9, 1.1, 1.0, 1.2, 1.1], dtype=jnp.float64),
-        }
-        fit = gamlss(
-            formula="y ~ x1",
-            sigma_formula="~ x1",
-            parameter_formulas={"mu": "~ x1 + x2", "sigma": "~ x1", "nu": "~ x1", "tau": "~ x1"},
-            family=JSU(),
-            data=data,
-            method="RS",
-        )
+        fit = self._jsu_wellposed_fit()
         result = centiles_coverage_data(
             fit,
             xvar="x1",
@@ -2039,19 +2007,7 @@ class OperationsTest(unittest.TestCase):
         self.assertIsNotNone(result.observed_y)
 
     def test_centiles_fan_data_supports_jsu_family(self) -> None:
-        data = {
-            "y": jnp.array([-0.8, -0.2, 0.1, 0.7, 1.4, 2.1], dtype=jnp.float64),
-            "x1": jnp.array([0.0, 0.4, 0.8, 1.2, 1.6, 2.0], dtype=jnp.float64),
-            "x2": jnp.array([1.0, 0.9, 1.1, 1.0, 1.2, 1.1], dtype=jnp.float64),
-        }
-        fit = gamlss(
-            formula="y ~ x1",
-            sigma_formula="~ x1",
-            parameter_formulas={"mu": "~ x1 + x2", "sigma": "~ x1", "nu": "~ x1", "tau": "~ x1"},
-            family=JSU(),
-            data=data,
-            method="RS",
-        )
+        fit = self._jsu_wellposed_fit()
         result = centiles_fan_data(
             fit,
             xvar="x1",
@@ -2096,19 +2052,7 @@ class OperationsTest(unittest.TestCase):
         self.assertTrue(np.all(np.asarray(first_panel.observed_x) <= first_panel.interval[1]))
 
     def test_centiles_split_data_supports_jsu_family(self) -> None:
-        data = {
-            "y": jnp.array([-0.8, -0.2, 0.1, 0.7, 1.4, 2.1], dtype=jnp.float64),
-            "x1": jnp.array([0.0, 0.4, 0.8, 1.2, 1.6, 2.0], dtype=jnp.float64),
-            "x2": jnp.array([1.0, 0.9, 1.1, 1.0, 1.2, 1.1], dtype=jnp.float64),
-        }
-        fit = gamlss(
-            formula="y ~ x1",
-            sigma_formula="~ x1",
-            parameter_formulas={"mu": "~ x1 + x2", "sigma": "~ x1", "nu": "~ x1", "tau": "~ x1"},
-            family=JSU(),
-            data=data,
-            method="RS",
-        )
+        fit = self._jsu_wellposed_fit()
         result = centiles_split_data(
             fit,
             xvar="x1",
@@ -2152,19 +2096,7 @@ class OperationsTest(unittest.TestCase):
         self.assertTrue(np.all(result.matrix <= 100.0))
 
     def test_centiles_split_coverage_data_supports_jsu_family(self) -> None:
-        data = {
-            "y": jnp.array([-0.8, -0.2, 0.1, 0.7, 1.4, 2.1], dtype=jnp.float64),
-            "x1": jnp.array([0.0, 0.4, 0.8, 1.2, 1.6, 2.0], dtype=jnp.float64),
-            "x2": jnp.array([1.0, 0.9, 1.1, 1.0, 1.2, 1.1], dtype=jnp.float64),
-        }
-        fit = gamlss(
-            formula="y ~ x1",
-            sigma_formula="~ x1",
-            parameter_formulas={"mu": "~ x1 + x2", "sigma": "~ x1", "nu": "~ x1", "tau": "~ x1"},
-            family=JSU(),
-            data=data,
-            method="RS",
-        )
+        fit = self._jsu_wellposed_fit()
         result = centiles_split_coverage_data(
             fit,
             xvar="x1",
@@ -2383,19 +2315,7 @@ class OperationsTest(unittest.TestCase):
             self.assertTrue(np.all(entry.values > 0.0))
 
     def test_centile_pred_data_supports_jsu_centiles(self) -> None:
-        data = {
-            "y": jnp.array([-0.8, -0.2, 0.1, 0.7, 1.4, 2.1], dtype=jnp.float64),
-            "x1": jnp.array([0.0, 0.4, 0.8, 1.2, 1.6, 2.0], dtype=jnp.float64),
-            "x2": jnp.array([1.0, 0.9, 1.1, 1.0, 1.2, 1.1], dtype=jnp.float64),
-        }
-        fit = gamlss(
-            formula="y ~ x1",
-            sigma_formula="~ x1",
-            parameter_formulas={"mu": "~ x1 + x2", "sigma": "~ x1", "nu": "~ x1", "tau": "~ x1"},
-            family=JSU(),
-            data=data,
-            method="RS",
-        )
+        fit = self._jsu_wellposed_fit()
         result = centile_pred_data(
             fit,
             type="centiles",
@@ -2613,19 +2533,7 @@ class OperationsTest(unittest.TestCase):
         self.assertTrue(np.all(med <= high))
 
     def test_centile_pred_data_supports_jsu_z_scores(self) -> None:
-        data = {
-            "y": jnp.array([-0.8, -0.2, 0.1, 0.7, 1.4, 2.1], dtype=jnp.float64),
-            "x1": jnp.array([0.0, 0.4, 0.8, 1.2, 1.6, 2.0], dtype=jnp.float64),
-            "x2": jnp.array([1.0, 0.9, 1.1, 1.0, 1.2, 1.1], dtype=jnp.float64),
-        }
-        fit = gamlss(
-            formula="y ~ x1",
-            sigma_formula="~ x1",
-            parameter_formulas={"mu": "~ x1 + x2", "sigma": "~ x1", "nu": "~ x1", "tau": "~ x1"},
-            family=JSU(),
-            data=data,
-            method="RS",
-        )
+        fit = self._jsu_wellposed_fit()
         result = centile_pred_data(
             fit,
             type="z-scores",
@@ -2640,19 +2548,7 @@ class OperationsTest(unittest.TestCase):
         self.assertEqual(scores.shape, (3,))
 
     def test_centile_pred_data_supports_jsu_standard_centiles(self) -> None:
-        data = {
-            "y": jnp.array([-0.8, -0.2, 0.1, 0.7, 1.4, 2.1], dtype=jnp.float64),
-            "x1": jnp.array([0.0, 0.4, 0.8, 1.2, 1.6, 2.0], dtype=jnp.float64),
-            "x2": jnp.array([1.0, 0.9, 1.1, 1.0, 1.2, 1.1], dtype=jnp.float64),
-        }
-        fit = gamlss(
-            formula="y ~ x1",
-            sigma_formula="~ x1",
-            parameter_formulas={"mu": "~ x1 + x2", "sigma": "~ x1", "nu": "~ x1", "tau": "~ x1"},
-            family=JSU(),
-            data=data,
-            method="RS",
-        )
+        fit = self._jsu_wellposed_fit()
         result = centile_pred_data(
             fit,
             type="standard-centiles",
@@ -2764,19 +2660,7 @@ class OperationsTest(unittest.TestCase):
         self.assertTrue(all(0.0 < float(entry.probability) < 1.0 for entry in result.entries))
 
     def test_centile_pred_data_supports_calibration_for_jsu(self) -> None:
-        data = {
-            "y": jnp.array([-0.8, -0.2, 0.1, 0.7, 1.4, 2.1], dtype=jnp.float64),
-            "x1": jnp.array([0.0, 0.4, 0.8, 1.2, 1.6, 2.0], dtype=jnp.float64),
-            "x2": jnp.array([1.0, 0.9, 1.1, 1.0, 1.2, 1.1], dtype=jnp.float64),
-        }
-        fit = gamlss(
-            formula="y ~ x1",
-            sigma_formula="~ x1",
-            parameter_formulas={"mu": "~ x1 + x2", "sigma": "~ x1", "nu": "~ x1", "tau": "~ x1"},
-            family=JSU(),
-            data=data,
-            method="RS",
-        )
+        fit = self._jsu_wellposed_fit()
         result = centile_pred_data(
             fit,
             type="centiles",
@@ -3750,7 +3634,9 @@ class OperationsTest(unittest.TestCase):
         self.assertEqual(outer.mu_step, 1.0)
         self.assertTrue(np.isinf(outer.gd_tol))
         self.assertEqual(inner.cc, 0.001)
-        self.assertEqual(inner.cyc, 20)
+        # D2.36: live R (gamlss 5.5-0) reports glim.control()$cyc == 50; the
+        # 20 this assertion used to pin was never checked against R.
+        self.assertEqual(inner.cyc, 50)
         self.assertEqual(inner.bf_cyc, 30)
         self.assertEqual(inner.bf_tol, 0.001)
 
@@ -4575,11 +4461,19 @@ class OperationsTest(unittest.TestCase):
         }
         rs_fit = gamlss(formula="y ~ x1", family=EXP(), data=data, method="RS")
         cg_fit = gamlss(formula="y ~ x1", family=EXP(), data=data, method="CG")
-        self.assertFalse(
-            np.allclose(
-                np.asarray(rs_fit.coefficients["mu"]),
-                np.asarray(cg_fit.coefficients["mu"]),
-            )
+        # This used to assert that the two fits' mu coefficients DIFFER.
+        # That never measured what the test was after -- that the method
+        # argument actually dispatches to different algorithms; it passed
+        # only because the pre-D2.36 RS inner loop (one IRLS step per
+        # parameter per outer cycle) stopped short of the optimum that CG
+        # reached.  With the D2.36 inner-loop alignment both methods
+        # converge to the same optimum on this tiny sample, so the dispatch
+        # is asserted directly and the two deviances are required to agree.
+        self.assertEqual(rs_fit.additional_slots["method"], "RS")
+        self.assertEqual(cg_fit.additional_slots["method"], "CG")
+        self.assertTrue(
+            np.isclose(float(rs_fit.g_dev), float(cg_fit.g_dev), rtol=1e-4),
+            f"RS {rs_fit.g_dev:.6f} vs CG {cg_fit.g_dev:.6f}",
         )
 
     def test_gamlss_and_gamlss_ml_support_lognormal_family(self) -> None:

@@ -497,7 +497,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | - | missing | missing | unverified | not_available | 3 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 3 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 141 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 142 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 25 |
 | gamlss.cs | gamlss | - | missing | missing | unverified | not_available | 0 |
 | gamlss.cy | gamlss | - | missing | missing | unverified | not_available | 0 |
@@ -531,7 +531,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | getSmo | gamlss | getSmo | public_api | implemented | tested | exported_api | 1 |
 | getTGD | gamlss | getTGD | public_api | implemented | tested | exported_api | 1 |
 | getZmatrix | gamlss | getZmatrix | public_api | implemented | tested | exported_api | 1 |
-| glim.control | gamlss | glim_control | public_api | implemented | tested | exported_api | 2 |
+| glim.control | gamlss | glim_control | public_api | implemented | tested | exported_api | 4 |
 | histDist | gamlss | histDist | module_export | implemented | unverified | internal | 0 |
 | histSmo | gamlss | histSmo | public_api | implemented | tested | exported_api | 1 |
 | histSmoC | gamlss | histSmoC | public_api | implemented | tested | exported_api | 1 |
@@ -617,10 +617,10 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | cens.q | gamlss.cens | - | missing | missing | unverified | not_available | 0 |
 | gen.cens | gamlss.cens | - | missing | missing | unverified | not_available | 0 |
 | BB | gamlss.dist | BB | public_api | experimental | r_consistency_test | blocked | 18 |
-| BCCG | gamlss.dist | BCCG | public_api | experimental | r_consistency_test | blocked | 12 |
+| BCCG | gamlss.dist | BCCG | public_api | experimental | r_consistency_test | blocked | 13 |
 | BCCGo | gamlss.dist | BCCGo | public_api | implemented | r_consistency_test | exported_api | 4 |
 | BCCGuntr | gamlss.dist | BCCGuntr | public_api | implemented | r_consistency_test | exported_api | 3 |
-| BCPE | gamlss.dist | BCPE | public_api | experimental | r_consistency_test | blocked | 12 |
+| BCPE | gamlss.dist | BCPE | public_api | experimental | r_consistency_test | blocked | 13 |
 | BCPEo | gamlss.dist | BCPEo | public_api | implemented | r_consistency_test | exported_api | 5 |
 | BCPEuntr | gamlss.dist | BCPEuntr | public_api | implemented | r_consistency_test | exported_api | 3 |
 | BCT | gamlss.dist | BCT | public_api | experimental | r_consistency_test | blocked | 16 |

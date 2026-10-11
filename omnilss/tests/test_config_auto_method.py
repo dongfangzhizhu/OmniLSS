@@ -199,7 +199,10 @@ class TestGamlssAutoMethod:
             assert isinstance(routing.get("reason_detail"), str)
             assert routing["reason_detail"]
         if method_used == "RS":
-            assert model.additional_slots.get("rs_policy_max_inner") == 1
+            # D2.36: the slot publishes R's glim.control cc/cyc pair (50/0.001),
+            # not the pre-D2.36 single-step policy.
+            assert model.additional_slots.get("rs_policy_max_inner") == 50
+            assert model.additional_slots.get("rs_policy_inner_cc") == 0.001
 
 
     def test_manual_rs_stores_routing_decision(self):

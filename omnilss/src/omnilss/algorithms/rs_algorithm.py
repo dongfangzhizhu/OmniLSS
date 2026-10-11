@@ -31,6 +31,7 @@ from ..numerical_stability import sanitize_gradient, step_halving
 from ..tensor_protocol import validate_design_matrix, validate_vector
 from ..diagnostic_warnings import evaluate_numerical_warnings
 from ..family_validation import ensure_valid_likelihood_inputs
+from ..controls import GLIMControl, glim_control
 from .stabilized_hessian import stabilize_hessian
 from ..fast_wls import solve_weighted_least_squares_cholesky
 from ._model_metrics import df_fit_with_smooth_edf
@@ -443,8 +444,10 @@ def rs_step(
     offset : np.ndarray, optional
         Offset for this parameter
     max_iter : int, default=1
-        Maximum inner IRLS iterations. Set to 1 (matching R's gamlss::glim.fit)
-        to prevent oscillation near warm-start values.
+        Maximum inner IRLS iterations.  R's glim.fit runs this loop with
+        glim.control()'s cyc = 50 and stops when the absolute global-deviance
+        change falls under cc = 0.001 (D2.36); rs_fit passes those values in.
+        The 1 here is only the standalone-call default.
     tol : float, default=1e-4
         Convergence tolerance for deviance
     step_size : float, default=1.0
@@ -667,7 +670,12 @@ def rs_step(
         dev_incr = np.asarray(family.g_dev_inc(**dev_param_dict), dtype=np.float64)
         deviance = np.sum(weights * dev_incr)
 
-        # Auto step-halving if deviance increases
+        # Auto step-halving if deviance increases.  Break criterion is R's
+        # glim.fit one (D2.36): stop halving as soon as the deviance improves
+        # on the pre-step value by more than cc -- not merely when it stops
+        # increasing (`deviance <= old_deviance`), which keeps halving past
+        # the point R would have accepted and so walks a different trajectory
+        # even when max_iter matches.
         if auto_step and deviance > old_deviance and iteration >= 1:
             for _ in range(5):
                 eta = np.asarray(
@@ -684,7 +692,7 @@ def rs_step(
                     family.g_dev_inc(**dev_param_dict), dtype=np.float64
                 )
                 deviance = np.sum(weights * dev_incr)
-                if deviance <= old_deviance:
+                if (old_deviance - deviance) > tol:
                     break
 
         if verbose:
@@ -864,6 +872,7 @@ def rs_fit(
     raise_on_lambda_failure: bool = False,
     routing_decision: Optional[Dict[str, Any]] = None,
     warm_start_policy: WarmStartPolicy | None = None,
+    i_control: GLIMControl | None = None,
 ) -> GAMLSSModel:
     """Fit GAMLSS model using RS (Rigby-Stasinopoulos) algorithm.
 
@@ -978,6 +987,18 @@ def rs_fit(
     # Resolve family
     family = resolve_family(family)
 
+    # Inner-loop control (D2.36): R's gamlss::glim.fit iterates each parameter
+    # update inside `while (abs(olddv - dv) > cc && itn < cyc)` with
+    # glim.control() defaults cc = 0.001 and cyc = 50 (live R, gamlss 5.5-0).
+    # Before D2.36 this call site hardcoded max_iter=1 -- one IRLS step per
+    # parameter per outer cycle -- which the docstring claimed was "matching
+    # R's gamlss::glim.fit" but is not: it starves the inner loop and left the
+    # Box-Cox sigma.initial = 0.1 start unusable (weights collapse, steps
+    # explode), which is what blocked adopting R's family starting values in
+    # D2.35.
+    if i_control is None:
+        i_control = glim_control()
+
     if verbose:
         print("=" * 70)
         print("RS Algorithm - Full Implementation")
@@ -986,7 +1007,10 @@ def rs_fit(
         print(f"Parameters: {family.parameters}")
         print(f"Max iterations: {max_iter}")
         print(f"Tolerance: {tol}")
-        print("RS inner-loop policy: max_inner=1 (gamlss::glim.fit aligned)")
+        print(
+            "RS inner-loop policy: glim.fit aligned "
+            f"(cc={i_control.cc}, cyc={i_control.cyc})"
+        )
         print("=" * 70)
 
     # Parse formulas
@@ -1260,7 +1284,10 @@ def rs_fit(
                 {p: v for p, v in fixed_parameter_values.items() if p != parameter}
             )
 
-            # Perform RS step for this parameter
+            # Perform RS step for this parameter.  max_iter/tol are R's
+            # glim.control cc/cyc (D2.36): the inner loop keeps iterating
+            # while the absolute global-deviance change exceeds cc, at most
+            # cyc times.
             param_smooth_info = smooth_infos.get(parameter)
             result = rs_step(
                 y=y,
@@ -1271,8 +1298,8 @@ def rs_fit(
                 parameter=parameter,
                 other_parameters=other_params,
                 offset=None,
-                max_iter=1,
-                tol=1e-4,
+                max_iter=i_control.cyc,
+                tol=i_control.cc,
                 step_size=step_sizes.get(parameter, 1.0),
                 auto_step=auto_step,
                 verbose=False,
@@ -1622,7 +1649,8 @@ def rs_fit(
             "rs_converged": converged,
             "step_sizes": step_sizes,
             "auto_step": auto_step,
-            "rs_policy_max_inner": 1,
+            "rs_policy_max_inner": int(i_control.cyc),
+            "rs_policy_inner_cc": float(i_control.cc),
             "method_routing": routing_decision,
             "noObs": int(n),
             "G.deviance": g_dev,

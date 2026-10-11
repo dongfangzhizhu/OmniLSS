@@ -59,6 +59,12 @@ def gamlss_rs_jax(
     It compiles the entire RS fitting loop to XLA and runs it on the
     available device (CPU/GPU/TPU) without host-device round-trips.
 
+    Note (D2.36): the NumPy RS path (``rs_algorithm.rs_fit``) now runs its
+    inner loop with R's glim.fit semantics (cc=0.001, cyc=50 from
+    ``glim_control()``).  This JAX core keeps its own single-step default
+    until its trajectory is verified against live R separately -- do not
+    flip ``max_inner`` here on the strength of the NumPy evidence alone.
+
     Parameters
     ----------
     formula : str

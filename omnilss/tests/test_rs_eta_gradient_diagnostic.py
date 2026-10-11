@@ -23,6 +23,14 @@ anywhere.  We stop for the mirror-image reason -- ``tau`` is still climbing.
 Neither flag was reporting optimality, so this module publishes the quantity
 that does: ``max_p ||X_p' W dlogL/deta_p||_inf`` at the point being returned.
 
+D2.36 postscript: once the inner RS loop ran with R's glim.fit semantics
+(cc=0.001, cyc=50) and the Box-Cox families adopted R's ``sigma.initial=0.1``,
+BCPE converges properly on this data (relative_deviance_converged), so the
+stalled point the "does not gate" test needs is now produced by an outer
+budget of two cycles instead.  The registered deviances above are kept as
+written for the historical record -- the live comparison is now
+ours 122.816234 vs R 122.825553739 (rel 8e-5, a straight gate pass).
+
 Why the chain rule needs the link derivative
 --------------------------------------------
 The natural-scale ``dld`` is not comparable across parameters.  ``BCPE`` has
@@ -239,16 +247,20 @@ def test_an_unmeasurable_score_is_reported_as_nan_not_as_zero():
 def test_the_diagnostic_does_not_clear_the_converged_flag():
     """The D2.24 verdict: report, do not gate.
 
-    ``BCPE`` on this data stops with a large eta gradient and a perfectly
-    ordinary ``max_iterations_reached``.  What must not happen is the flag being
-    silently rewritten by the new measurement -- the first draft did exactly
-    that and would have mislabelled converged fits.
+    What must not happen is the flag being silently rewritten by the
+    measurement -- the first draft did exactly that and would have
+    mislabelled converged fits.
+
+    D2.36 note: with the glim.fit-aligned inner loop (cc=0.001, cyc=50) BCPE
+    genuinely converges on this data under the default budget, so the
+    non-converged point the test needs is now produced by shrinking the
+    *outer* budget to two cycles rather than by the algorithm stalling.
     """
     y, x = _positive_data()
-    model = _fit("BCPE", y, x)
+    model = _fit("BCPE", y, x, max_iter=2)
 
-    assert model.get_slot("eta_gradient_norm") > ETA_GRADIENT_TOL
     assert model.termination_reason == "max_iterations_reached"
+    assert model.get_slot("eta_gradient_norm") > ETA_GRADIENT_TOL
     assert model.converged is False
 
 

@@ -35,15 +35,18 @@ def _initial_parameter_value(
             return 4.0
         if family.name == "JSU":
             return 0.0
-        if family.name == "BCCG":
-            # R BCCG()$nu.initial (live R, D2.35): nu <- rep(0.5, length(y)).
-            # Recorded but not adopted: no failing gate or test points at
-            # the nu start, and moving it churns the RS baseline without
-            # evidence; adopt with the sigma.start rework above.
-            return 1.0
-        if family.name == "BCT":
-            return 1.0
-        if family.name == "BCPE":
+        if family.name in ("BCCG", "BCT", "BCCGo", "BCTo"):
+            # R BCCG()$nu.initial / BCT()$nu.initial (live R, D2.35/D2.36):
+            # nu <- rep(0.5, length(y)); the o variants carry the same start.
+            # D2.35 recorded this but did not adopt it because the inner-RS
+            # defect made the sigma=0.1 start unusable and the two changes
+            # could not be judged independently.  D2.36 fixed the inner loop
+            # (glim.fit cc/cyc) and adopted sigma=0.1; with that in place the
+            # nu start moves the scanner-sample deviance by < 0.03 (d236b)
+            # and live-R parity is the arbiter.
+            return 0.5
+        if family.name in ("BCPE", "BCPEo"):
+            # R BCPE()$nu.initial / BCPEo()$nu.initial (live R): rep(1, ...).
             return 1.0
         if family.name == "GG":
             return 2.0  # Shape parameter, 2.0 is reasonable for gamma-like data
@@ -302,15 +305,17 @@ def _initial_sigma(
     if family.name in ("ZABB", "ZIBB"):
         return 0.1
     # Box-Cox six-family sigma: R's family objects start at
-    # sigma <- rep(0.1, length(y)) (live R, D2.35).  Deliberately NOT
-    # adopted yet: with sigma_eta near log(0.1) = -2.3 our inner RS update
-    # (no working-weight clipping, single-step halving) explodes where R's
-    # glim.fit stays monotone -- on the scanner sample the BCPE fit
-    # degrades from the registered 94.1536 to 138.727 (above R's 122.826),
-    # and the intercept-only BCCG parity tests blow up to rel ~1e3.
-    # Adopt together with the glim.fit fidelity work (weight clip
-    # [1e-10, 1e10], d2ldp2 floor -1e-15, inner cyc loop), then re-run the
-    # full-family gate.
+    # sigma <- rep(0.1, length(y)) (live R, D2.35/D2.36).  Adopted in D2.36
+    # once the inner RS loop ran with R's glim.fit semantics (cc=0.001,
+    # cyc=50): with the old max_iter=1 inner step the 0.1 start collapsed the
+    # working weights and exploded the steps (BCPE 94.15 -> 138.73 on the
+    # scanner sample, intercept-only BCCG rel ~1e3), which is why D2.35
+    # recorded but did not adopt it.  With the cyc=50 inner loop the same
+    # start lands BCPE at 122.816234 against R's 122.825553739 (rel 8e-5,
+    # straight gate pass) on the scanner sample -- see
+    # omnilss/tmp/d236_inner.log.
+    if family.name in ("BCCG", "BCT", "BCPE", "BCCGo", "BCTo", "BCPEo"):
+        return 0.1
     if family.name == "LOGNO":
         log_y = np.log(np.maximum(y, eps))
         sigma = np.sqrt(np.sum(w * np.square(log_y - mu)) / np.sum(w))

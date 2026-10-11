@@ -34,10 +34,16 @@ class GAMLSSControl:
 
 @dataclass(frozen=True)
 class GLIMControl:
-    """Python representation of `glim.control`."""
+    """Python representation of `glim.control`.
+
+    ``cyc`` is the *inner* iteration budget of ``gamlss::glim.fit``.  Live R
+    (gamlss 5.5-0, D2.36) reports ``glim.control()$cyc == 50`` -- the 20 this
+    dataclass carried before D2.36 was never checked against R and is half of
+    what the reference implementation actually allows.
+    """
 
     cc: float = 0.001
-    cyc: int = 20
+    cyc: int = 50
     glm_trace: bool = False
     bf_cyc: int = 30
     bf_tol: float = 0.001
@@ -89,17 +95,17 @@ def gamlss_control(
 
 def glim_control(
     cc: float = 0.001,
-    cyc: int = 20,
+    cyc: int = 50,
     glm_trace: bool = False,
     bf_cyc: int = 30,
     bf_tol: float = 0.001,
     bf_trace: bool = False,
 ) -> GLIMControl:
-    """R reference: `gamlss/R/gamlss-5.R::glim.control`."""
+    """R reference: `gamlss/R/gamlss-5.R::glim.control` (cc=0.001, cyc=50)."""
 
     cc = 0.001 if cc <= 0 else cc
     bf_tol = 0.001 if bf_tol <= 0 else bf_tol
-    cyc = 20 if cyc < 1 else cyc
+    cyc = 50 if cyc < 1 else cyc
     bf_cyc = 30 if bf_cyc < 1 else bf_cyc
     return GLIMControl(
         cc=cc,

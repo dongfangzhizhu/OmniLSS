@@ -2777,6 +2777,78 @@ bct derivatives、ml sigma scale 全绿（262 项 + 1 skip）；
 4. **R 自身失败 = fixture 病态的铁证**：同一拟合 R 报
    "NA's in the working vector"，我们的测试却期望成功——先在 R 里跑
    测试数据再把它当 fixture。
+#### D2.36：RS 内层 `glim.fit` 保真对齐 + Box-Cox 初值采纳（SST/BCPE/ST1/ZINBI rsdev → pass；BCPE 登记撤除）
+
+**现象**（monkeypatch 影响面实验，`omnilss/tmp/d236_inner.log`）：
+
+我们的 `rs_fit` 在每个参数上硬编码 `max_iter=1`（每外层周期每参数仅 1 次
+IRLS 步），其 docstring 声称 "matching R's gamlss::glim.fit" —— **这句话是
+错的**。活 R（gamlss 5.5-0）的 `glim.control()` 默认 `cc=0.001, cyc=50`，
+`glim.fit` 的内层是 `while (abs(olddv - dv) > cc && itn < cyc)`。D2.35 的
+初值采纳被它阻塞：R 的 Box-Cox `sigma.initial=0.1` 在单步内层下权重塌缩、
+步长爆炸（BCPE 94.15→138.73，intercept-only BCCG rel ~1e3）。
+
+**对齐内容**（`rs_algorithm.py` + `controls.py` + `fitting.py`）：
+
+1. `GLIMControl.cyc` 20 → **50**（活 R 真值；20 从未对过 R）。
+2. `rs_fit` 新增 `i_control: GLIMControl | None`，默认 `glim_control()`，
+   把 `max_iter=i_control.cyc`、`tol=i_control.cc` 传入每参数的 `rs_step`。
+   `fitting.py` 的 RS 路径把 `i_control` 接线进去；诊断槽改为
+   `rs_policy_max_inner=50`、新增 `rs_policy_inner_cc=0.001`。
+3. `rs_step` 减半 break 判据改为 R 的 `(olddv - dv) > cc`（原
+   `deviance <= old_deviance` 过度保守，即使 max_iter 相同也会走出不同轨迹）。
+
+**初值采纳**（`_fitting_init.py`，活 R D2.36 dump）：
+
+- Box-Cox 六族 `sigma.initial=rep(0.1)`：采纳（D2.35 记录未采纳的解锁）。
+- `nu.initial`：BCCG/BCT/BCCGo/BCTo = 0.5；BCPE/BCPEo = 1.0（维持）。
+- tau：BCT/BCTo=10、BCPE/BCPEo=2（已在，维持）。
+
+**验收**：
+
+| 证据 | 结果 |
+|---|---|
+| `test_bccg_rs_fit_matches_r_deviance`（intercept-only，活 R） | D2.35 时 171252 vs 166.3 → **pass**（42 测试全绿） |
+| BCPE 扫描样本（n=8 全族流，sigma01+inner50） | 122.816234 vs R 122.825553739（rel 8e-5，**直 pass**） |
+| 登记族漂移（d236b） | ZIPIG/ZINBI/JSU 漂移 ≤2.4e-5 rel，登记数字仍有效 |
+| 全族流 gate | 见下"基线刷新" |
+
+**登记表维护**（`tools/rs_family_parity_scan.py`）：BCPE 条目撤除
+（gate 直 pass 后登记成为死重），证据以注释留存。
+
+**回归**（10 个 D2.36 引入失败，逐个分代码错 vs 期望错）：
+
+- 7 个 JSU operations 测试：6 点 fixture（9 系数 vs 6 观测）病态——活 R
+  自身发散振荡（dev -14.06→10355.9，converged=FALSE，
+  `omnilss/tmp/d236_jsu_fixture.R`）。照 D2.35 BCT 先例换 20 点 seed-6
+  fixture（R G.dev 5.663987 vs 我们 5.6846，双侧收敛、centile 有限），
+  收敛为共享 helper `_jsu_wellposed_fit()`。
+- `test_control_helpers`：cyc 期望 20→50（期望错）。
+- `test_method_specific_updates_change_fit_path`：原断言"RS 与 CG 系数
+  不同"实际测的是"RS 未收敛到 CG 的点"（假象）；改断言 method 分派
+  slot + 两者 deviance rtol 1e-4 一致。
+- `test_the_diagnostic_does_not_clear_the_converged_flag`：BCPE 在新内层
+  下默认预算真收敛；非收敛点改由外层预算 2 周期产生。
+
+**既有失败（非 D2.36）**：`test_yaml_config_loading`——YAML 1.1 把无引号
+族名 `NO:` 解析为布尔 False（"Unknown family 'FALSE'"），HEAD 上同样
+失败，属配置加载独立缺陷（D2.37 候选）。
+
+**方法论要点**：
+
+1. **docstring 声称的"对齐 R"要对照 R 源码逐条核**：max_iter=1 的
+   "matching R" 声称从未被验证，内层循环结构（while 条件、减半 break、
+   cc/cyc 常量）才是对齐单位，不是"做了 IRLS"这个粗粒度事实。
+2. **monkeypatch 影响面实验先行**：改内层语义前先用 5 族 × (baseline,
+   inner50) 双跑量化漂移，登记表维护成本在动手前就已知情。
+3. **初值采纳与其阻塞因素必须同 commit**：D2.35 单独采纳 sigma=0.1
+   反而更差；D2.36 内层对齐后同一改动直 pass——"更忠实的起点"只在
+   "同样忠实的迭代器"下可判。
+4. **子列表扫描 = 假警报**（D2.30 重踩确认）：`--families` 子集改变
+   共享 rng 流顺序，R 侧数字整体漂移（ST1 138.4→141.1 等），targeted
+   扫描的 pass/fail 全部不可信，登记判定只能以全族流为准。
+5. **fixture 病态先问活 R**：R 自身发散是 fixture 不合法的铁证（第三例：
+   BCT 6 点 D2.35、JSU 6 点 D2.36）。
 
 #### D2.20：`TF2` 的链式法则项与 `TF` 的正态极限分支（rsdev rel 2.3e+01 →逐位一致）
 
