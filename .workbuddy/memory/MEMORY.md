@@ -71,7 +71,7 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 ## 同名不同义与占位（D2.34/D2.35）
 
 - JSU/JSUo、SHASHo/BCPEo 的 "o"=original 参数化（公式完全不同）；**BCCG/BCT/BCPE 的 mu/nu link=identity，o 变体才是 log**。三关同挂+量级 0.3~1=送错分布签名，先活 R dump 验 link 身份。
-- 提前停登记新情形：默认 20 步我们**高于** R（nu 长平台）→ 登记 `n_cyc=200`，gate 按建立 case 的预算跑。现存登记：ST1/ZIPIG/ZINBI/JSU。
+- 提前停登记新情形：默认 20 步我们**高于** R（nu 长平台）→ 登记 `n_cyc=200`，gate 按建立 case 的预算跑。**现存登记：ZIPIG/ZINBI**（BCPE/ST1/JSU 已因 D2.36 内层对齐 gate 直 pass 而撤除）。
 - R-backed 测试首次真跑=测试的验收不是回归（skip 假绿）；测试族名用 R 真名大小写。
 - 符号证据按测试文件**标识符引用**判定：fam.p(...) 间接调用不算，按名 import 才算。
 - b14 组 SHASHo/SHASHo2/BCPEo/BCTo 仍是 nan 占位（不在扫描器 146 族名单），待补。
