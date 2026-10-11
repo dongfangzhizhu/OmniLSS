@@ -2842,10 +2842,20 @@ IRLS 步），其 docstring 声称 "matching R's gamlss::glim.fit" —— **这�
 | `test_bccg_rs_fit_matches_r_deviance`（intercept-only，活 R） | D2.35 时 171252 vs 166.3 → **pass**（42 测试全绿） |
 | BCPE 扫描样本（n=8 全族流，sigma01+inner50） | 122.816234 vs R 122.825553739（rel 8e-5，**直 pass**） |
 | 登记族漂移（d236b） | ZIPIG/ZINBI/JSU 漂移 ≤2.4e-5 rel，登记数字仍有效 |
-| 全族流 gate | 见下"基线刷新" |
+| 全族流基线（d236_full_scan，146 族） | rsdev **57 pass / 6 fail / 2 warn / 81 skip**（旧 56/6/4/80） |
 
-**登记表维护**（`tools/rs_family_parity_scan.py`）：BCPE 条目撤除
-（gate 直 pass 后登记成为死重），证据以注释留存。
+**全族流净变化**（对照 D2.34 基线 `d234_full_scan.json`）：
+
+- **4 族 rsdev 转 pass**：BCPE（warn→122.816 vs R 122.826）、JSU
+  （fail→149.183 vs R 149.215，rel 2.1e-4）、SST（fail→135.126 vs R
+  135.126 逐位）、ST1（warn→138.434 vs R 138.379，rel 3.9e-4）。
+- **2 族转差**（内层轨迹连锁，D2.38 排查项）：PE pass→fail（120.119 vs
+  R 119.334，我们高 0.7——真缺陷方向）、ST2 pass→fail（131.091 vs R
+  133.064，我们低 2 个单位——先走两步判定疑 R 提前停）。
+- SI deriv 探针超时（fail→skip，本质仍未 pass）；deriv/dpqr 其余 145 族
+  状态不变。
+- **登记表维护**：BCPE/ST1/JSU 三条撤除（gate 直 pass 后登记成为死重），
+  证据以注释留存；现存 ZIPIG/ZINBI 两条（全族流数字与登记值一致）。
 
 **回归**（10 个 D2.36 引入失败，逐个分代码错 vs 期望错）：
 

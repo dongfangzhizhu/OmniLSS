@@ -330,21 +330,14 @@ _PROBE_BD = 10.0
 # our density disagrees with R and the family is a genuine defect.  Comparing
 # two deviance numbers alone settles nothing.
 _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
-    "ST1": dict(
-        n_cyc=1000,
-        dev_ours=134.604639,
-        dev_r=138.379017,
-        note=(
-            "R's RS stops at iteration 5 with c_crit=0.001 satisfied on an "
-            "absolute deviance change: its tau is already frozen at the normal "
-            "limit (tau_eta 129.2813 from iteration 3 onward) and nu never "
-            "leaves 0.462.  Our RS keeps descending to nu=10.45 and a deviance "
-            "3.8 lower.  R's own dST1, evaluated at our coefficients, returns "
-            "134.604639 -- identical to the deviance we report (1.3e-07 apart, "
-            "R's own vectorised-ifelse quirk), so both sides minimise the same "
-            "objective.  Verified on the scanner's exact 48-point sample."
-        ),
-    ),
+    # "ST1" was registered here through D2.30 (n_cyc=1000, dev_ours=134.604639,
+    # dev_r=138.379017, "R stops early": R froze at iteration 5 with tau at the
+    # normal limit while our RS descended to a deviance 3.8 lower, cross-checked
+    # bit-for-bit with R's own dST1).  D2.36 removed it: once the inner RS loop
+    # ran with R's glim.fit semantics (cc=0.001, cyc=50) our n_cyc=1000 fit
+    # lands at 138.434 against R's 138.379 -- rel 3.9e-4, a straight gate pass
+    # with no registration needed.  The historical evidence is preserved in
+    # the D2.36 log.
     # "BCPE" was registered here through D2.34 (n_cyc=20, dev_ours=94.153575,
     # dev_r=122.82555373916798, "R stops early").  D2.36 removed it: once the
     # inner RS loop ran with R's glim.fit semantics (cc=0.001, cyc=50) and the
@@ -413,34 +406,13 @@ _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
             "that made ZIPIG's registration look broken on a 10-family run)."
         ),
     ),
-    "JSU": dict(
-        n_cyc=200,
-        dev_ours=149.1870706002586,
-        dev_r=149.21527701,
-        note=(
-            "Full-family-stream adjudication (D2.34, the two-step recipe).\n"
-            "Step 1: R's trajectory freezes at iteration 11 -- deviance "
-            "149.21527701 identical at n.cyc = 15, 20, 40, 60 and 100, with "
-            "nu_eta = -16.365878 and tau_eta = 2.999468 unmoved from n.cyc = 11 "
-            "on.  At the gate's default budget of 20 cycles our fit sits at "
-            "149.458, ABOVE R's 149.215 -- the wrong direction for the "
-            "early-stop admission -- because nu descends along a long, flat "
-            "plateau: our 20-cycle nu_eta is -5.5, our 60-cycle -21.8, and the "
-            "fit only converges (relative_deviance_converged) at n.cyc = 200 "
-            "with nu_eta = -49.37.\n"
-            "Step 2: R's own JSU()$G.dev.incr evaluated at our 200-cycle "
-            "coefficients returns 149.1870706003 against the 149.1870706002586 "
-            "we report -- agreement to ~1e-10, and 0.028 below R's frozen "
-            "149.21527701, so both sides minimise the same objective and R's "
-            "halt is a c.crit stop on the nu plateau, not an optimum.  The "
-            "same two-step verdict was first established on an isolated "
-            "adjudication sample (R frozen at 141.41484076, cross-check "
-            "141.4090207784 identical to ours) and then re-verified on the "
-            "full-family stream before registration; n_cyc = 200 is the budget "
-            "our side needs to walk off the plateau, mirroring ST1's n_cyc = "
-            "1000 registration."
-        ),
-    ),
+    # "JSU" was registered here through D2.34 (n_cyc=200, dev_ours=149.1870706002586,
+    # dev_r=149.21527701, "R stops early on the nu plateau", two-step
+    # adjudication with R's own G.dev.incr agreeing to ~1e-10 at our
+    # coefficients).  D2.36 removed it: with the glim.fit-aligned inner loop
+    # (cc=0.001, cyc=50) our n_cyc=200 fit lands at 149.183 against R's
+    # 149.215 -- rel 2.1e-4, a straight gate pass on the full-family stream
+    # (omnilss/tmp/d236_full_scan.json).
 }
 
 
