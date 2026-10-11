@@ -26,6 +26,14 @@ def _initial_parameter_value(
             return float(np.clip(zero_fraction, 0.05, 0.95))
         if family.name == "PE":
             return 1.8
+        if family.name == "ST2":
+            # R ST2()$nu.initial (live R, D2.38): nu <- rep(0.1, length(y)),
+            # and ST2's nu link is *identity*.  The generic 1.0 default put
+            # the fit on a different trajectory from R's (old rsdev failure:
+            # ours 131.09 vs R 133.064 -- we were *lower*, i.e. ahead of R on
+            # a different path).  With R's start values the trajectory locks
+            # onto R's and the final deviance agrees to ~1e-5.
+            return 0.1
         if family.name == "TF":
             return 10.0
         if family.name == "TF2":
@@ -54,6 +62,26 @@ def _initial_parameter_value(
             return 1.0  # Shape parameter 1, start from symmetric case for stability
         if family.name == "DEL":
             return 0.5  # Poisson component, small starting value
+        if family.name in ("SN1", "ST4", "GIG"):
+            # R nu.initial (live R, D2.38):
+            #   SN1()$nu.initial: nu <- rep(0.1, length(y)), nu link identity.
+            #   ST4()$nu.initial: nu <- rep(5, length(y)), log link.
+            #   GIG()$nu.initial: nu <- rep(-0.5, length(y)), nu link
+            #     *identity* -- GIG's nu is a negative shape index by
+            #     convention and the +1.0 generic default starts the IRLS on
+            #     the wrong side of the density's support split.
+            if family.name == "SN1":
+                return 0.1
+            if family.name == "ST4":
+                return 5.0
+            return -0.5
+        if family.name == "ZANBI":
+            # R ZANBI()$nu.initial (live R, D2.38):
+            #     nu <- rep(max(sum(y == 0)/length(y), 0.01), length(y))
+            # The observed zero fraction, floored at 0.01 -- not the generic
+            # 1.0, which starts the logit eta ~15 units away from R's.
+            zero_fraction = float(np.average(np.asarray(y) == 0, weights=w))
+            return max(zero_fraction, 0.01)
         if family.name == "NET":
             return 1.0  # Threshold k1, 1.0 is reasonable starting value
         if family.name == "GT":
@@ -132,22 +160,42 @@ def _initial_parameter_value(
             return 10.0
         if family.name == "SST":
             return 4.0
+        if family.name == "ST2":
+            # R ST2()$tau.initial (live R, D2.38): tau <- rep(5, length(y)).
+            # The generic 1.0 default sat 1.6 log units below R's start and
+            # put the first tau working-response step on a different path.
+            return 5.0
+        if family.name == "ST4":
+            # R ST4()$tau.initial (live R, D2.38): tau <- rep(5, length(y)).
+            return 5.0
         return 1.0
     return 1.0
 
 
 
 
-def _initial_mu_beta(
+def _initial_mu_target(
     family: FamilyDefinition,
-    x: np.ndarray,
     y: np.ndarray,
     w: np.ndarray,
     fixed_parameter_values: Mapping[str, np.ndarray] | None = None,
 ) -> np.ndarray:
-    """Construct a family-aware starting point for the mu predictor."""
+    """Per-observation link-scale starting vector for the mu predictor.
 
-    sqrt_w = np.sqrt(w)
+    This is a port of R ``gamlss.family``'s ``mu.initial`` expressions: in
+    live R the *fitted values* that enter the first ``glim.fit`` for ``mu``
+    are the per-observation vector produced by that expression (D2.38), not a
+    coefficient-space compression of it.  The returned vector is on the
+    *link* scale (for identity-link families it is the response-scale start
+    itself; for log-link families it is ``log`` of it).
+
+    rs_fit hands this vector to ``rs_step`` as the initial fitted state, so
+    the first inner IRLS iteration reproduces R's first ``glim.fit``
+    iteration exactly (working weights/response are evaluated at the same
+    per-observation values).  ``_initial_mu_beta`` is its coefficient-space
+    (WLS) compression, kept for callers that need starting coefficients.
+    """
+
     if family.name == "NO":
         # Deliberately target=y, not R's NO()$mu.initial=(y+mean)/2: the ML
         # one-step contract (test_gamlss_ml_sigma_scale_matches_rs_path) pins
@@ -216,21 +264,85 @@ def _initial_mu_beta(
         target = np.log(clipped / (1.0 - clipped))
     elif family.name == "WEI":
         target = np.log(np.maximum(y, np.finfo(np.float64).eps))
-    elif family.name in ("BCCG", "BCT", "BCPE"):
-        # R BCCG()/BCT()/BCPE() mu.initial (live R, D2.35):
+    elif family.name in (
+        "BCCG", "BCT", "BCPE", "PE", "ST2",
+        "SN1", "SST", "ST3", "ST3C", "ST4", "TF",
+    ):
+        # R mu.initial (live R, D2.35/D2.38):
         #     mu <- (y + mean(y))/2
-        # These three carry mu.link = "identity" (verified against live R --
+        # All of these carry mu.link = "identity" (verified against live R --
         # the "o" suffix variants are the ones with mu.link = "log"), so the
         # response-scale start is used as-is.  The previous target=log(y)
         # assumed a log link the family does not have: the WLS fit then
         # predicted log-scale values through the identity inverse, producing
-        # negative fitted mu on positive-support densities.
+        # negative fitted mu on positive-support densities.  PE/ST2 were
+        # adopted in D2.38 along with the per-observation rollout and their
+        # RS trajectories locked onto live R's (PE final 119.3285 vs R
+        # 119.3342; ST2 133.0626 vs R 133.0640 on the scanner samples).
+        # SN1/SST/ST3/ST3C/ST4/TF regressed in the same D2.38 rollout
+        # (their old warm start was mean(y), whose first IRLS step differs
+        # from R's) and were ported in the same pass.
         target = (y + np.mean(y)) / 2.0
-    elif family.name in ("BCCGo", "BCTo", "BCPEo"):
+    elif family.name in ("BCCGo", "BCTo", "BCPEo", "GPO"):
         # Same R mu.initial expression, but these carry mu.link = "log", so
-        # the link-scale target is log of the response-scale start.
+        # the link-scale target is log of the response-scale start.  GPO was
+        # added in D2.38 (live R dump): with target=y through a log link the
+        # fit started at exp(OLS(y~x)) and parked 1.17 deviance above R;
+        # with R's start it reproduces R to 6 decimals (212.424994 vs
+        # 212.4250).
         eps = np.finfo(np.float64).eps
         target = np.log(np.maximum((y + np.mean(y)) / 2.0, eps))
+    elif family.name in ("DPO", "PARETO"):
+        # R DPO()/PARETO()$mu.initial (live R, D2.38), log link:
+        #   DPO:    mu <- (y + mean(y))/2   (y is a count, strictly positive)
+        #   PARETO: mu <- rep(2, length(y)) -- a *constant* 2, not data-driven.
+        # PARETO matters for the per-observation rollout: its heavy-tailed
+        # samples sent the generic target=y start to exp(y_i), which on a
+        # Pareto(2) draw reaches exp(~30) and blew the intercept-only fit to
+        # deviance -inf (test_r_consistency_batch7_8 Pareto intercept-only).
+        eps = np.finfo(np.float64).eps
+        if family.name == "DPO":
+            target = np.log(np.maximum((y + np.mean(y)) / 2.0, eps))
+        else:
+            target = np.full(y.shape, np.log(2.0), dtype=np.float64)
+    elif family.name == "DEL":
+        # R DEL()$mu.initial (live R, D2.38): mu <- y + mean(y)/2, log link.
+        # Note the asymmetric form (y + mean/2), not (y + mean)/2 -- same
+        # parameter name, different expression, the D2.19 lesson.
+        eps = np.finfo(np.float64).eps
+        target = np.log(np.maximum(y + np.mean(y) / 2.0, eps))
+    elif family.name == "LQNO":
+        # R LQNO()$mu.initial (live R, D2.38): mu <- abs((y + mean(y))/2),
+        # log link.  LQNO's support includes y = 0 (locally-normal
+        # parametrization of a discrete distribution), hence R's abs().
+        eps = np.finfo(np.float64).eps
+        target = np.log(np.maximum(np.abs((y + np.mean(y)) / 2.0), eps))
+    elif family.name in ("PIG", "ZANBI", "GIG", "ZIPIG", "ZAPIG"):
+        # R mu.initial (live R, D2.38): mu <- (y + mean(y))/2, log link for
+        # all five.  PIG previously started at exp(OLS(y~x)) through its log
+        # link and its rsdev regressed when the per-observation rollout
+        # changed the trajectory; ZANBI fell through to target=y in the same
+        # rollout; ZIPIG/ZAPIG joined after scan2 showed their registered
+        # numbers drifting for the same reason (the rollout silently changed
+        # their mu start from the compressed OLS to the per-observation y,
+        # neither of which is R's (y+mean(y))/2).
+        eps = np.finfo(np.float64).eps
+        target = np.log(np.maximum((y + np.mean(y)) / 2.0, eps))
+    elif family.name in ("GU", "RG"):
+        # R GU()$mu.initial / RG()$mu.initial (live R, D2.38):
+        #     mu <- (y + mean(y))/2, identity link for both (RG is the
+        #     reverse Gumbel; same start).
+        target = (y + np.mean(y)) / 2.0
+    elif family.name == "NOF":
+        # R NOF()$mu.initial (live R, D2.38): mu <- (y + mean(y))/2,
+        # identity link.
+        target = (y + np.mean(y)) / 2.0
+    elif family.name == "NO2":
+        # R NO2()$mu.initial (live R, D2.38): mu <- y + 1e-05, identity
+        # link.  Numerically indistinguishable from target=y for the fit,
+        # kept explicit because the *pair* (mu, sigma) is what R starts
+        # from and NO2's sigma start is a variance (see _initial_sigma).
+        target = y + 1e-5
     elif family.name == "GA":
         target = np.log(np.maximum(y, np.finfo(np.float64).eps))
     elif family.name == "GG":
@@ -255,8 +367,19 @@ def _initial_mu_beta(
     elif family.name == "LO":
         target = y
     elif family.name == "NET":
-        # NET: mu uses identity link
-        target = y
+        # Deliberately NOT R's NET()$mu.initial = (y - mean(y))/2 (live R,
+        # D2.38): adopting it exploded the intercept-only fit to deviance
+        # -inf because NET's nu/tau IRLS updates are unbounded on our side
+        # (nu walks to the eta clip and sigma follows at -3e9) and a
+        # per-observation mu start evaluates the working weights at the raw
+        # response values.  NET's real defect group -- nu/tau link identity
+        # in R vs our log (D2.34 class), the top-level semantics of
+        # *fixing* shape parameters whose formula is absent (R reports
+        # nu.coefficients = NULL), the unbounded nu/tau updates and the
+        # missing tau >= nu domain check in our density -- is registered as
+        # the follow-up item; the mean(y) constant start keeps the old
+        # trajectory until that group is fixed in one pass.
+        target = np.full(y.shape, float(np.mean(y)), dtype=np.float64)
     elif family.name == "WEI2":
         # R WEI2 mu.initial (mu uses a log link, so the link-scale target is
         # log(mu)):  s.Y.s <- 1.283/sqrt(var(log(y)));
@@ -267,6 +390,12 @@ def _initial_mu_beta(
         log_y = np.log(np.maximum(y, eps))
         s_y_s = 1.283 / np.sqrt(np.var(log_y))
         target = -s_y_s * log_y - 0.5772
+    elif family.name == "WEI3":
+        # R WEI3 mu.initial (live R, D2.38): mu <- y + 0.01, log link.
+        # Note the additive constant differs from SI's +0.5 and RGE's
+        # +0.45*sd(y) -- same idiom family, different constants.
+        eps = np.finfo(np.float64).eps
+        target = np.log(np.maximum(y + 0.01, eps))
     elif family.name == "RGE":
         # R RGE mu.initial (mu uses an identity link):
         #     mu <- y + 0.45 * sd(y)
@@ -284,6 +413,27 @@ def _initial_mu_beta(
         target = (y + np.mean(y)) / 2.0
     else:
         target = y
+    return target
+
+
+def _initial_mu_beta(
+    family: FamilyDefinition,
+    x: np.ndarray,
+    y: np.ndarray,
+    w: np.ndarray,
+    fixed_parameter_values: Mapping[str, np.ndarray] | None = None,
+) -> np.ndarray:
+    """Coefficient-space (WLS) compression of :func:`_initial_mu_target`.
+
+    Kept for callers that need starting *coefficients* (CG initial state,
+    JAX path, rs_fit bookkeeping).  rs_fit itself no longer derives the
+    initial fitted values from this compression: the per-observation target
+    vector is handed to ``rs_step`` directly so the first inner iteration
+    matches R's ``glim.fit`` (D2.38).
+    """
+
+    sqrt_w = np.sqrt(w)
+    target = _initial_mu_target(family, y, w, fixed_parameter_values)
     wx = x * sqrt_w[:, None]
     wy = target * sqrt_w
     beta_mu, _, _, _ = np.linalg.lstsq(wx, wy, rcond=None)
@@ -412,12 +562,67 @@ def _initial_sigma(
         # Generalized Gamma: Use conservative starting value
         # Similar to Gamma but more stable
         sigma = 0.5
-    elif family.name == "NET":
-        # NET: Use conservative starting value
-        sigma = 1.0
     elif family.name == "PE":
         mean_y = np.sum(w * y) / np.sum(w)
         sigma = (np.sum(w * np.abs(y - mean_y)) / np.sum(w) + np.sqrt(np.sum(w * np.square(y - mean_y)) / np.sum(w))) / 2.0
+    elif family.name in ("ST2", "JSU", "ST4", "SN1"):
+        # R sigma.initial (live R, D2.38): sigma <- rep(sd(y)/4, ...) for
+        # ST2 (D2.38), JSU (D2.34), ST4 and SN1 (both D2.38), with R's sd()
+        # on the n-1 denominator.  ST2 previously fell through to the
+        # generic residual-scale default; with R's start the RS trajectory
+        # locks onto live R's (scanner sample 133.0626 vs R 133.0640).
+        # JSU's ddof=0 vs R's n-1 denominator moves the scalar by O(n^-1)
+        # and its gate stays green, so it is left untouched.
+        sigma = np.std(y, ddof=1) / 4.0 if family.name != "JSU" else np.std(y) / 4.0
+    elif family.name == "GPO":
+        # R GPO()$sigma.initial (live R, D2.38): sigma <- rep(0.1, length(y)).
+        # The generic residual-scale default (~1.9 on the scanner sample)
+        # started sigma 20x above R and the fit parked 1.17 deviance above
+        # R's answer; with rep(0.1) the trajectory reproduces R to six
+        # decimals (212.424994 vs 212.4250).
+        sigma = 0.1
+    elif family.name == "DPO":
+        # R DPO()$sigma.initial (live R, D2.38): sigma <- rep(1, length(y)).
+        sigma = 1.0
+    elif family.name == "GU":
+        # R GU()$sigma.initial (live R, D2.38):
+        #     sigma <- rep(sqrt(6) * sd(y) / pi, length(y))
+        # The Gumbel scale from the n-1 sd.  The generic residual-scale
+        # default is biased for GU's heavy right tail and the RS trajectory
+        # diverged from R's.
+        sigma = np.sqrt(6.0) * np.std(y, ddof=1) / np.pi
+    elif family.name in ("DEL", "LQNO"):
+        # R DEL()$sigma.initial (live R, D2.38):
+        #     sigma <- rep(max((var(y) - mean(y)) / mean(y)^2, 0.1), ...)
+        # R LQNO()$sigma.initial (live R, D2.38):
+        #     sigma <- rep(abs(var(y)/mean(y) - 1) / mean(y), length(y))
+        # R's var() uses the n-1 denominator.  DEL clamps at 0.1 (a
+        # variance/mean ratio below 0.1 under-disperses the start); LQNO
+        # takes the absolute value instead (its mean can be near zero).
+        mean_y = np.mean(y)
+        var_y = np.var(y, ddof=1)
+        if family.name == "DEL":
+            sigma = max((var_y - mean_y) / max(mean_y**2, eps), 0.1)
+        else:
+            sigma = abs(var_y / max(mean_y, eps) - 1.0) / max(mean_y, eps)
+    elif family.name in ("PIG",):
+        # R PIG()$sigma.initial (live R, D2.38): the same
+        # max((var(y) - mean(y)) / mean(y)^2, 0.1) overdispersion start as
+        # DEL.  The generic residual-scale default ignores PIG's
+        # variance-mean coupling and the RS trajectory diverged from R's.
+        mean_y = np.mean(y)
+        var_y = np.var(y, ddof=1)
+        sigma = max((var_y - mean_y) / max(mean_y**2, eps), 0.1)
+    elif family.name == "NO2":
+        # R NO2()$sigma.initial (live R, D2.38): sigma <- rep(var(y), ...).
+        # A *variance*, not an sd -- through sigma's log link the two differ
+        # by a factor of 2 in eta (0.69 log units), which is exactly the
+        # kind of half-scale start the trajectory does not walk off.
+        sigma = np.var(y, ddof=1)
+    elif family.name == "NOF":
+        # R NOF()$sigma.initial (live R, D2.38):
+        #     sigma <- rep(0.2 * sd(y) / sqrt(abs(mean(y))), length(y))
+        sigma = 0.2 * np.std(y, ddof=1) / np.sqrt(abs(np.mean(y)))
     elif family.name in ("YULE", "WARING"):
         # R initializes WARING at sigma = 1; using a much smaller value sends
         # the fit too close to the boundary before the first update.
@@ -425,10 +630,10 @@ def _initial_sigma(
             sigma = 1.0
         else:
             sigma = 2.0  # YULE
-    elif family.name == "WEI2":
-        # R WEI2 sigma.initial: s.Y.s <- 1.283/sqrt(var(log(y)));
-        #                       sigma <- rep(s.Y.s, length(y))
-        # (Weibull shape parameter; response scale, log link downstream.)
+    elif family.name in ("WEI2", "WEI3"):
+        # R WEI2/WEI3 sigma.initial (live R, D2.38):
+        #     s.Y.s <- 1.283/sqrt(var(log(y))); sigma <- rep(s.Y.s, ...)
+        # (Weibull shape parameter; R's var() uses the n-1 denominator.)
         eps = np.finfo(np.float64).eps
         log_y = np.log(np.maximum(y, eps))
         sigma = 1.283 / np.sqrt(np.var(log_y))
@@ -441,11 +646,6 @@ def _initial_sigma(
         # mean gives the same intercept-only start as mean(|y-m|)+sd)/2.
         mean_y = np.mean(y)
         sigma = (np.mean(np.abs(y - mean_y)) + np.std(y)) / 2.0
-    elif family.name == "JSU":
-        # R JSU sigma.initial: sigma <- rep(sd(y)/4, length(y)) (D2.34).
-        # The generic residual-scale default put the RS fit 0.61 deviance
-        # above live R on the gate sample.
-        sigma = np.std(y) / 4.0
     else:
         sigma = np.sqrt(np.sum(w * np.square(y - mu)) / np.sum(w))
     # Note: NO uses a log link for sigma, so its link-scale coefficient is
@@ -458,4 +658,45 @@ def _initial_sigma(
 
 
 
-__all__ = ["_initial_parameter_value", "_initial_mu_beta", "_initial_sigma"]
+def _initial_sigma_fitted(
+    family: FamilyDefinition,
+    y: np.ndarray,
+    mu: np.ndarray,
+    w: np.ndarray,
+    fixed_parameter_values: Mapping[str, np.ndarray] | None = None,
+) -> np.ndarray:
+    """Per-observation sigma starting vector (R's ``sigma.initial`` state).
+
+    Most R families start sigma at ``rep(<scalar>, length(y))`` -- for those
+    this is just the scalar broadcast to a vector, matching the response
+    scale that enters R's first ``glim.fit`` for sigma.  PE / PE2 are the
+    exceptions with a genuinely per-observation expression
+    ``(abs(y - mean(y)) + sd(y)) / 2`` (live R, D2.38): R's ``sd()`` uses the
+    n-1 denominator, and the per-observation spread is *not* cosmetic -- it
+    sets the working weights of mu's and nu's first inner steps, which is
+    what locked the PE trajectory onto R's bit-for-bit (initial deviance
+    91.394523 = live R on the scanner sample).
+    """
+
+    if family.name in ("PE", "PE2"):
+        mean_y = float(np.mean(y))
+        sd_y = float(np.std(y, ddof=1))
+        sigma_vec = (np.abs(y - mean_y) + sd_y) / 2.0
+    else:
+        sigma_vec = np.full(
+            np.asarray(y).shape,
+            _initial_sigma(family, y, mu, w, fixed_parameter_values),
+            dtype=np.float64,
+        )
+    return np.maximum(sigma_vec, 1e-6)
+
+
+
+
+__all__ = [
+    "_initial_parameter_value",
+    "_initial_mu_beta",
+    "_initial_mu_target",
+    "_initial_sigma",
+    "_initial_sigma_fitted",
+]

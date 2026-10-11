@@ -60,15 +60,22 @@ class NoWarmStart:
 class FamilyHeuristicInit:
     """Heuristic initialization with stable defaults for common parameters.
 
-    For a small set of families the generic ``mu = mean(y)`` heuristic is
-    structurally wrong because their ``mu`` is not a location/mean parameter
-    (e.g. WEI2 parameterizes the Weibull with a *rate* ``mu``, where
-    ``E[Y] = Gamma(1 + 1/sigma) / mu``).  For those families ``fitted["mu"]``
-    is intentionally omitted so that ``rs_fit`` falls through to the
-    family-aware ``_initial_mu_beta()`` initialiser, which ports R's
-    ``gamlss.family`` ``mu.initial`` expressions (the same policy the outer
-    loop already applies to non-mu parameters, see the Phase 2.1 note in
-    ``rs_algorithm.rs_fit``).
+    D2.38: ``rs_fit`` no longer consumes ``initial_fitted`` from this policy
+    for the default (family-heuristic) path.  The initial *fitted values*
+    now come from the family-aware per-observation initialisers
+    (``_initial_mu_target`` / ``_initial_sigma_fitted`` /
+    ``_initial_parameter_value``), which port R's ``gamlss.family``
+    ``mu.initial`` / ``sigma.initial`` / ``nu.initial`` expressions: live R
+    hands the per-observation vector to the first ``glim.fit``, and the RS
+    trajectory only reproduces R's when our initial state matches (the old
+    ``mu = mean(y)`` heuristic put PE/ST2/GPO/NET on trajectories that ended
+    up to 4.8e-2 rel away from R's deviance).  Custom policies passed
+    explicitly via ``warm_start_policy`` keep their legacy contract (their
+    ``initial_fitted["mu"]`` is still consumed).
+
+    The policy object itself remains the timing/metadata seam for warm-start
+    cost measurement and the marker type rs_fit uses to decide between the
+    family-aware path and a caller-supplied policy.
     """
 
     name = "family_heuristic"

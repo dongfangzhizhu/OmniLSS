@@ -2891,6 +2891,96 @@ IRLS 步），其 docstring 声称 "matching R's gamlss::glim.fit" —— **这�
 5. **fixture 病态先问活 R**：R 自身发散是 fixture 不合法的铁证（第三例：
    BCT 6 点 D2.35、JSU 6 点 D2.36）。
 
+#### D2.38：RS 逐观测初值 roll-out——PE/ST2/GPO 的轨迹分道点归因与 17 族 R 初值移植（rsdev 基线 57/6/2 → 59 pass/3 fail/2 warn）
+
+**现象**（D2.36 全族流转差的 3 族 + 基线遗留）：
+
+```
+PE   rsdev  fail   120.119 vs R 119.334  (rel 6.6e-3，我们高——真缺陷方向)
+ST2  rsdev  fail   131.091 vs R 133.064  (rel 1.5e-2，我们低)
+GPO  rsdev  fail   213.594 vs R 212.425  (rel 5.5e-3，内层改动前后不变)
+```
+
+**根因（两步判定之前的分道点考古）**：
+
+1. R 的 fix 开关实验（`mu.fix/sigma.fix/nu.fix`）+ `glim.control(glm.trace=TRUE)`
+   逐迭代对照把分道点钉死在**初始状态**：R 的实际初始点是
+   `mu.initial/sigma.initial` 的**逐观测**向量（PE 样本上 dev=91.394523，
+   与我们按表达式重算逐位一致），而 `rs_fit` 把初值经 lstsq 压缩成
+   系数再重构 fitted（mu 走 warm start 的 `mean(y)` 常数、sigma 走标量），
+   初始 dev=143.08——两边从第一周期就走不同轨迹。
+2. identity link 下 R 的第一次 mu IRLS 步的工作响应 z=y，但工作权重
+   在逐观测 sigma 初值处取值——sigma 的逐观测性影响 mu 内层循环，
+   所以"压缩起点 + 相同迭代器"无法复现 R 的轨迹。
+3. 修复 = roll-out：`rs_fit` 初始化把逐观测初值**直接作为 fitted 状态**
+   交给 `rs_step`（系数仅作簿记），`_initial_mu_beta` 拆出
+   `_initial_mu_target`（逐观测 link-scale 向量）。PE 原型先验证：
+   初始 91.394523 与 R 逐位一致，周期 1 三步 123.7098/141.1259/130.7936
+   对照 R 123.7098/141.126/130.7936 全部命中，终值 119.3285 vs
+   R 119.3342（rel 4.8e-5）。
+
+**逐观测初值表达的 R 证据链**（live R dump，`omnilss/tmp/d238_all_initials.json`）：
+
+- 71 族共享 `mu <- (y + mean(y))/2`（log 33 族 / identity 30 族 / logit 8 族）。
+- 真逐观测 sigma：PE/PE2 `(abs(y-mean)+sd)/2`——R 的 `sd()` 是 n-1 分母
+  （ddof 弄错时初始 dev 90.93 vs 91.39，修正后逐位）。
+- 本轮移植的族（gate fail 指向才动，绿族一律不碰）：
+  PE/ST2/GPO/DPO/DEL/LQNO/NO2/NOF/PIG/RG/SN1/SST/ST3/ST3C/ST4/TF/WEI3/
+  ZANBI/GIG/ZIPIG/ZAPIG/PARETO。
+- R 的 `var()/sd()` 全部 n-1 分母（我们的 `np.var` 默认 ddof=0，移植时逐个核对）。
+
+**roll-out 的回归面（全族扫描三轮）**：第一轮暴露 16 族新回归
+（DEL/DPO/GU/LQNO/NO2/NOF/PIG/RG/SN1/SST/ST3/ST3C/ST4/TF/WEI3/ZANBI）——
+它们的旧 warm 起点（`mean(y)` 常数）与 R 的真实 mu.initial 都不相同，
+roll-out 把起点换成 `target=y`（也不是 R 的表达式），两头不靠。逐一
+port R 表达式后全部转 pass。第二轮暴露 ZIPIG（登记数字漂移）/ZAPIG
+（新回归）——同样机制，port 后 ZIPIG 落点 207.786301 回到登记值
+207.786323（1e-7），ZAPIG 207.0969 vs R 207.098（rel 5e-6）。
+
+**PE2 的两步判定（新登记）**：R 短预算停 125.9294（周期末变化 9e-4 触发
+c.crit），长预算（c.crit=1e-9, n.cyc=200）只降到 125.7922；R 的 dPE2 在
+我们系数上逐位返回 122.176634——我们更低且在合法域内，R 停在劣质驻点。
+按 ZIPIG/ZINBI 先例登记 `_RSDEV_R_STOPPED_EARLY["PE2"]`（初始点
+82.877441 与 R 逐位一致）。
+
+**NET 的半途撤回（诚实记录）**：dump 发现我们 NET 的 nu/tau link 是 log
+而活 R 是 identity（D2.34 同类），port 初值（mu=(y−mean)/2、nu=1.5、
+sigma=sd+0.001）后初始点 277.009286 与 R 逐位一致，但 intercept-only
+测试爆炸到 dev=-inf。根因是 NET 的深层缺陷组：nu/tau 更新无界（nu 走到
+eta clip）、缺 `tau >= nu` 域检查（R 的 dNET 直接拒绝我们落点）、以及
+顶层 `gamlss()` 对未给 formula 的形状参数默认 `~1` 估计而 R 是**固定**
+（实测 `nu.coefficients = NULL`）。三者一体，单修 link 制造回归——
+本轮回撤全部 NET 改动（mu 常数 mean(y) 起点 + 注释登记），NET 保持
+基线 fail（4.79e-2），完整修复列为下一开发项。
+
+**基线变化**（扫描 3，全部 146 族）：
+
+| gate | D2.36 基线 | D2.38 | 净变化 |
+|---|---|---|---|
+| deriv | 137/6/3 | 137/6/3 | 不变 |
+| dpqr | 81/18/47 | 81/18/47 | 不变 |
+| rsdev | 57 pass/6 fail/2 warn/81 skip | 59 pass/3 fail/2 warn/81 skip | PE/ST2/GPO/PE2(warn) 出列；登记 +PE2 |
+
+现存 rsdev fail：GIG（家族实现不完整，deriv/dpqr 同挂）、NET（缺陷组，
+见上）。warn：ZIPIG/ZINBI/PE2（R-stopping-early 登记，数字均在容差内）。
+
+**方法论要点**：
+
+1. **"初始状态"是算法对齐的第一粒度**：内层循环（D2.36）对齐之后，
+   轨迹仍分道，唯一剩下的自由度就是初值——fix 开关实验 + 逐迭代 trace
+   是把分道点钉死的工具，不要在落点上猜。
+2. **逐观测性不是实现细节**：R 的 mu.initial/sigma.initial 是逐观测
+   fitted values，压缩成系数再重构会改变第一个内层步的工作权重。我们的
+   `rs_step` 本来就以 fitted_values 为主状态，roll-out 是顺水推舟。
+3. **roll-out 类改动的回归面 = 所有默认分支的族**：71 族共享一个表达式
+   意味着默认分支一动就是全族事件，必须全族扫描三轮（改前基线/修复中/
+   最终），targeted 判定照旧不可信。
+4. **绿族不碰**（D2.30 纪律）在 roll-out 里同样成立：ZINBI/PO/GEOM 等
+   gate 绿的族保持旧起点表达式，哪怕它与 R 不同——记录在案即可。
+5. **半途而废的修复比不修更危险**（NET 教训）：link 身份、顶层参数固定
+   语义、更新无界、域约束是同一组缺陷，拆开修任何一半都会制造新回归；
+   回撤并登记，让下一轮整组处理。
+
 #### D2.20：`TF2` 的链式法则项与 `TF` 的正态极限分支（rsdev rel 2.3e+01 →逐位一致）
 
 **现象**（全族扫描 v11）：

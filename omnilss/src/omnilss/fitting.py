@@ -36,8 +36,10 @@ from ._fitting_utils import (
 )
 from ._fitting_init import (
     _initial_mu_beta as _initial_mu_beta_shared,
+    _initial_mu_target as _initial_mu_target_shared,
     _initial_parameter_value as _initial_parameter_value_shared,
     _initial_sigma as _initial_sigma_shared,
+    _initial_sigma_fitted as _initial_sigma_fitted_shared,
 )
 from ._fitting_residuals import (
     _build_rqres_callable as _build_rqres_callable_shared,
@@ -508,6 +510,16 @@ def _initial_mu_beta(
     return _initial_mu_beta_shared(family, x, y, w, fixed_parameter_values)
 
 
+def _initial_mu_target(
+    family: FamilyDefinition,
+    y: np.ndarray,
+    w: np.ndarray,
+    fixed_parameter_values: Mapping[str, np.ndarray] | None = None,
+) -> np.ndarray:
+    """Per-observation link-scale mu starting vector (R's ``mu.initial``)."""
+    return _initial_mu_target_shared(family, y, w, fixed_parameter_values)
+
+
 def _initial_sigma(
     family: FamilyDefinition,
     y: np.ndarray,
@@ -517,6 +529,17 @@ def _initial_sigma(
 ) -> float:
     """Construct a family-aware starting point for the sigma parameter."""
     return _initial_sigma_shared(family, y, mu, w, fixed_parameter_values)
+
+
+def _initial_sigma_fitted(
+    family: FamilyDefinition,
+    y: np.ndarray,
+    mu: np.ndarray,
+    w: np.ndarray,
+    fixed_parameter_values: Mapping[str, np.ndarray] | None = None,
+) -> np.ndarray:
+    """Per-observation sigma starting vector (R's ``sigma.initial`` state)."""
+    return _initial_sigma_fitted_shared(family, y, mu, w, fixed_parameter_values)
 
 
 def gamlss_ml(

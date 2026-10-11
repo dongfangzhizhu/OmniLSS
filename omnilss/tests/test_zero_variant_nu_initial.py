@@ -37,9 +37,13 @@ def _nu_start(name: str) -> float:
 
 #: Zero-variants whose zero-mass parameter *is* `nu`, and where R starts it at
 #: `rep(0.1, length(y))`.  Read off the R sources line by line -- ZIPIG.R:91 is
-#: `nu <- rep(0.1, length(y))`, ZAPIG.R / ZAZIPF.R / ZABI.R / ZANBI.R /
-#: ZINBI.R / ZIBI.R agree.  Not inferred from the name.
-_R_NU_INITIAL_0_1 = ("ZIPIG", "ZAPIG", "ZIBI", "ZAZIPF", "ZABI", "ZANBI", "ZINBI")
+#: `nu <- rep(0.1, length(y))`, ZAPIG.R / ZAZIPF.R / ZABI.R / ZINBI.R /
+#: ZIBI.R agree.  Not inferred from the name.
+#: ZANBI was listed here through D2.26 but D2.38's live-R dump of the family
+#: *object* shows ZANBI()$nu.initial is data-driven --
+#: `rep(max(sum(y == 0)/length(y), 0.01), length(y))` -- not the constant 0.1
+#: the source read suggested; it is asserted separately below.
+_R_NU_INITIAL_0_1 = ("ZIPIG", "ZAPIG", "ZIBI", "ZAZIPF", "ZABI", "ZINBI")
 
 #: Zero-variants over a *continuous* base, which R starts elsewhere.  Listed so
 #: that widening the 0.1 branch cannot quietly capture them: R's ZAGA / ZAIG
@@ -72,6 +76,26 @@ def test_a_zero_variant_starts_at_rs_nu_initial(name):
     seventeen logit units from R's start.
     """
     assert _nu_start(name) == 0.1
+
+
+def test_zanbi_nu_initial_is_the_observed_zero_fraction():
+    """D2.38: live R's ZANBI()$nu.initial is data-driven, not a constant.
+
+    The family object reads `nu <- rep(max(sum(y == 0)/length(y), 0.01),
+    length(y))` -- the observed zero fraction floored at 0.01.  The generic
+    1.0 default starts logit(1.0) = +inf, seventeen logit units away.
+    """
+    y = np.array([0.0, 0.0, 1.0, 2.0, 3.0, 0.0, 4.0, 5.0])
+    mu = np.full(y.shape, float(np.mean(y)))
+    start = _initial_parameter_value(resolve("ZANBI"), "nu", y, mu, np.ones(y.size))
+    assert start == pytest.approx(3.0 / 8.0)
+
+    all_positive = np.array([1.0, 2.0, 3.0, 4.0])
+    mu_pos = np.full(all_positive.shape, float(np.mean(all_positive)))
+    start_pos = _initial_parameter_value(
+        resolve("ZANBI"), "nu", all_positive, mu_pos, np.ones(all_positive.size)
+    )
+    assert start_pos == pytest.approx(0.01)
 
 
 @pytest.mark.parametrize("name", sorted(_NOT_THE_ZERO_MASS))

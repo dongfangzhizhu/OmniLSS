@@ -413,6 +413,33 @@ _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
     # (cc=0.001, cyc=50) our n_cyc=200 fit lands at 149.183 against R's
     # 149.215 -- rel 2.1e-4, a straight gate pass on the full-family stream
     # (omnilss/tmp/d236_full_scan.json).
+    "PE2": dict(
+        n_cyc=20,
+        dev_ours=122.176634,
+        dev_r=125.9294,
+        note=(
+            "D2.38 two-step adjudication on the full-family-stream sample.\n"
+            "Step 1: R's trajectory is the c.crit pattern -- 125.9303 at cycle 6 "
+            "then 125.9294 at cycle 7, where the cycle-end change (9e-4) drops "
+            "under c.crit = 0.001 and R halts (converged: TRUE).  A long-budget "
+            "run (c.crit = 1e-9, n.cyc = 200) only descends to 125.7922 -- 0.14 "
+            "in 193 extra cycles -- so R is nowhere near our 122.176634 and the "
+            "gap is not a stopping-budget artifact; R's glim.fit trajectory "
+            "from R's own initial values simply never enters the basin we reach "
+            "once the per-observation mu.initial/sigma.initial rollout (D2.38) "
+            "starts us where R starts.\n"
+            "Step 2: R's own dPE2 evaluated at OUR coefficients returns "
+            "122.176634 -- identical to the 122.176634 we report, so the "
+            "densities agree to the last digit and both sides minimise the "
+            "same objective; our point is 3.7 below R's halt, all inside "
+            "PE2's legal parameter domain.\n"
+            "Initial state (both sides agree bit-for-bit): deviance 82.877441 "
+            "at mu = (y+mean(y))/2, sigma = (|y-mean|+sd)/2 per observation "
+            "(R's sd on the n-1 denominator), nu = 1.8.\n"
+            "Stream discipline: numbers bind to the full-family sample stream "
+            "(D2.30); a sublist run shifts them on BOTH sides."
+        ),
+    ),
 }
 
 

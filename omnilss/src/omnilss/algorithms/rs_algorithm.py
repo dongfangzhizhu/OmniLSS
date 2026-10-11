@@ -975,8 +975,10 @@ def rs_fit(
         _fixed_parameter_formula,
         _fixed_parameter_term,
         _initial_mu_beta,
+        _initial_mu_target,
         _initial_parameter_value,
         _initial_sigma,
+        _initial_sigma_fitted,
         _is_intercept_only_formula,
         _parse_formula,
         _resolve_fixed_parameter_values,
@@ -1079,8 +1081,30 @@ def rs_fit(
 
         if mu_smooth_info is not None:
             beta_mu = _weighted_least_squares(mu_X, y, w, smooth_info=mu_smooth_info)
+            mu_linear = mu_X @ beta_mu
         else:
-            if warm_mu is not None:
+            # D2.38: with the default (family heuristic) policy the initial
+            # *fitted values* are R's per-observation ``mu.initial`` vector
+            # (link-scale), not a coefficient-space compression of it.  Live
+            # R hands the per-observation vector to the first ``glim.fit`` --
+            # working weights/response of the first inner iteration are
+            # evaluated there -- so the RS trajectory only locks onto R's
+            # when our initial state matches.  Compressing the start through
+            # lstsq first (the previous behaviour) put PE/ST2/GPO/NET on
+            # different trajectories that ended up to 4.8e-2 rel away from
+            # R's deviance.  The coefficients are still the WLS compression
+            # of the same target (bookkeeping until the first rs_step
+            # recomputes them from the working response).
+            use_family_init = isinstance(warm_start, FamilyHeuristicInit)
+            if use_family_init:
+                eta_target = _initial_mu_target(
+                    family, y, w, fixed_parameter_values=fixed_parameter_values
+                )
+                beta_mu = _initial_mu_beta(
+                    family, mu_X, y, w, fixed_parameter_values=fixed_parameter_values
+                )
+                mu_linear = np.asarray(eta_target, dtype=np.float64)
+            elif warm_mu is not None:
                 warm_mu = np.asarray(warm_mu, dtype=np.float64)
                 if warm_mu.shape == (n,):
                     eta_warm_mu = np.asarray(
@@ -1090,16 +1114,18 @@ def rs_fit(
                         dtype=np.float64,
                     )
                     beta_mu, _, _, _ = np.linalg.lstsq(mu_X, eta_warm_mu, rcond=None)
+                    mu_linear = mu_X @ beta_mu
                 else:
                     beta_mu = _initial_mu_beta(
                         family, mu_X, y, w, fixed_parameter_values=fixed_parameter_values
                     )
+                    mu_linear = mu_X @ beta_mu
             else:
                 beta_mu = _initial_mu_beta(
                     family, mu_X, y, w, fixed_parameter_values=fixed_parameter_values
                 )
+                mu_linear = mu_X @ beta_mu
 
-        mu_linear = mu_X @ beta_mu
         mu = np.asarray(
             family.link_inverses["mu"](jnp.asarray(mu_linear, dtype=jnp.float64)),
             dtype=np.float64,
@@ -1151,16 +1177,28 @@ def rs_fit(
         # warm_start_result is intentionally not consulted here; see NOTE above.
         warm_param = None
 
-        # Initialize linear predictor
-        eta_init = np.full(
-            n,
-            float(
-                np.asarray(
-                    family.link_functions[parameter](
-                        jnp.asarray([initial_value], dtype=jnp.float64)
-                    ),
-                    dtype=np.float64,
-                )[0]
+        # D2.38: the initial *fitted values* handed to rs_step are the
+        # per-observation response-scale start vector -- R's ``sigma.initial``
+        # state -- not its coefficient-space compression.  For
+        # intercept-only formulas the compression is lossless and nothing
+        # changes numerically; PE/PE2 carry a genuinely per-observation
+        # expression, and for richer formulas R also starts from the
+        # (constant) vector before the first glim.fit compresses it.
+        if parameter == "sigma":
+            param_start = _initial_sigma_fitted(
+                family,
+                y,
+                parameter_values["mu"],
+                w,
+                fixed_parameter_values=fixed_parameter_values,
+            )
+        else:
+            param_start = np.full(n, float(initial_value), dtype=np.float64)
+
+        # Initialize linear predictor (per-observation, link scale)
+        eta_init = np.asarray(
+            family.link_functions[parameter](
+                jnp.asarray(param_start, dtype=jnp.float64)
             ),
             dtype=np.float64,
         )
@@ -1170,18 +1208,20 @@ def rs_fit(
             beta_param = _weighted_least_squares(
                 param_X, eta_init, w, smooth_info=param_smooth_info
             )
+            eta_param = param_X @ beta_param
+            param_value = np.asarray(
+                family.link_inverses[parameter](
+                    jnp.asarray(eta_param, dtype=jnp.float64)
+                ),
+                dtype=np.float64,
+            )
+            # Ensure sigma is not too small to avoid numerical issues
+            if parameter == "sigma":
+                param_value = np.maximum(param_value, 1e-6)
         else:
             beta_param, _, _, _ = np.linalg.lstsq(param_X, eta_init, rcond=None)
-
-        eta_param = param_X @ beta_param
-        param_value = np.asarray(
-            family.link_inverses[parameter](jnp.asarray(eta_param, dtype=jnp.float64)),
-            dtype=np.float64,
-        )
-
-        # Ensure sigma is not too small to avoid numerical issues
-        if parameter == "sigma":
-            param_value = np.maximum(param_value, 1e-6)
+            eta_param = eta_init
+            param_value = param_start
 
         parameter_values[parameter] = param_value
         coefficients[parameter] = beta_param
