@@ -36,6 +36,10 @@ def _initial_parameter_value(
         if family.name == "JSU":
             return 0.0
         if family.name == "BCCG":
+            # R BCCG()$nu.initial (live R, D2.35): nu <- rep(0.5, length(y)).
+            # Recorded but not adopted: no failing gate or test points at
+            # the nu start, and moving it churns the RS baseline without
+            # evidence; adopt with the sigma.start rework above.
             return 1.0
         if family.name == "BCT":
             return 1.0
@@ -96,9 +100,15 @@ def _initial_parameter_value(
             return 1.0
         if family.name == "BCT":
             return 10.0  # Degrees of freedom, higher starting value for stability
+        if family.name == "BCTo":
+            # R BCTo()$tau.initial (live R, D2.35): tau <- rep(10, length(y))
+            return 10.0
         if family.name == "GB2":
             return 1.0  # Shape parameter 2, start from symmetric case for stability
         if family.name == "BCPE":
+            return 2.0
+        if family.name == "BCPEo":
+            # R BCPEo()$tau.initial (live R, D2.35): tau <- rep(2, length(y))
             return 2.0
         if family.name == "NET":
             return 2.0  # Threshold k2, must be >= nu, 2.0 > 1.0
@@ -136,6 +146,12 @@ def _initial_mu_beta(
 
     sqrt_w = np.sqrt(w)
     if family.name == "NO":
+        # Deliberately target=y, not R's NO()$mu.initial=(y+mean)/2: the ML
+        # one-step contract (test_gamlss_ml_sigma_scale_matches_rs_path) pins
+        # the stored sigma intercept to the residual scale, and OLS-on-y is
+        # the mu MLE that keeps that contract exact.  No gate points at the
+        # NO start values (rsdev pass), so R's start is recorded here for
+        # whoever re-opens initial-value fidelity for NO.
         target = y
     elif family.name == "PO":
         target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
@@ -197,12 +213,21 @@ def _initial_mu_beta(
         target = np.log(clipped / (1.0 - clipped))
     elif family.name == "WEI":
         target = np.log(np.maximum(y, np.finfo(np.float64).eps))
-    elif family.name == "BCCG":
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
-    elif family.name == "BCT":
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
-    elif family.name == "BCPE":
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
+    elif family.name in ("BCCG", "BCT", "BCPE"):
+        # R BCCG()/BCT()/BCPE() mu.initial (live R, D2.35):
+        #     mu <- (y + mean(y))/2
+        # These three carry mu.link = "identity" (verified against live R --
+        # the "o" suffix variants are the ones with mu.link = "log"), so the
+        # response-scale start is used as-is.  The previous target=log(y)
+        # assumed a log link the family does not have: the WLS fit then
+        # predicted log-scale values through the identity inverse, producing
+        # negative fitted mu on positive-support densities.
+        target = (y + np.mean(y)) / 2.0
+    elif family.name in ("BCCGo", "BCTo", "BCPEo"):
+        # Same R mu.initial expression, but these carry mu.link = "log", so
+        # the link-scale target is log of the response-scale start.
+        eps = np.finfo(np.float64).eps
+        target = np.log(np.maximum((y + np.mean(y)) / 2.0, eps))
     elif family.name == "GA":
         target = np.log(np.maximum(y, np.finfo(np.float64).eps))
     elif family.name == "GG":
@@ -276,6 +301,16 @@ def _initial_sigma(
     eps = np.finfo(np.float64).eps
     if family.name in ("ZABB", "ZIBB"):
         return 0.1
+    # Box-Cox six-family sigma: R's family objects start at
+    # sigma <- rep(0.1, length(y)) (live R, D2.35).  Deliberately NOT
+    # adopted yet: with sigma_eta near log(0.1) = -2.3 our inner RS update
+    # (no working-weight clipping, single-step halving) explodes where R's
+    # glim.fit stays monotone -- on the scanner sample the BCPE fit
+    # degrades from the registered 94.1536 to 138.727 (above R's 122.826),
+    # and the intercept-only BCCG parity tests blow up to rel ~1e3.
+    # Adopt together with the glim.fit fidelity work (weight clip
+    # [1e-10, 1e10], d2ldp2 floor -1e-15, inner cyc loop), then re-run the
+    # full-family gate.
     if family.name == "LOGNO":
         log_y = np.log(np.maximum(y, eps))
         sigma = np.sqrt(np.sum(w * np.square(log_y - mu)) / np.sum(w))

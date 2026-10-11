@@ -1,13 +1,15 @@
 # OmniLSS 项目长期记忆
 
-> 纪律条目按"踩过的坑"组织。新条目先找归属，合并而非追加。## 跑测试 / 覆盖工件
+> 纪律条目按"踩过的坑"组织。新条目先找归属，合并而非追加。
+
+## 跑测试 / 覆盖工件
 
 - tests/ 425 文件全量 >1.5h → **分块跑**；慢批 `run_in_background`（前台 2min 超时=SIGTERM 假失败）。
-- **tests/ 或源码变更 → 同 commit 再生覆盖工件**：`tools/generate_coverage_artifacts.py --date` + `coverage_diff_report.py` → `result: OK`。既有失败判定：已提交 `git checkout <c>~1`，未提交 `git stash -u`。
+- **tests/ 或源码变更 → 同 commit 再生覆盖工件**：`generate_coverage_artifacts.py --date` + `coverage_diff_report.py` → `result: OK`。既有失败判定：已提交 `git checkout <c>~1`，未提交 `git stash -u`。
 
 ## 四条通用纪律
 
-1. 既有用例失败，先分代码错 vs 期望错。
+1. 既有用例失败，先分代码错 vs 期望错（D2.35：7 个失败 5 个是期望错）。
 2. "R 没说" ≠ 常识可补；假拒绝比漏检更糟。
 3. 写断言前先看实际数值、也看对通道（`-inf` 被把 exp 成 0.0；密度非有限走 log=True）。
 4. **活 R 对照是唯一可信 parity 证据**。bridge：`tests._r_bridge_helper`；family 传字符串名；R 的 stop() → RuntimeError。
@@ -22,7 +24,7 @@
 
 ## 族 parity 扫描器（排查族缺陷默认入口）
 
-`tools/rs_family_parity_scan.py`，146 族**必须后台** + `--timeout`（默认 180s 必需；慢族 300s 补跑）。坑：deriv 对响应约定错位盲（dpqr 才抓）；skip≠fail 且可能是探针元数错伪装；**探测参数必须落在参数自己的合法域**（D2.28）。
+`tools/rs_family_parity_scan.py`，146 族**必须后台** + `--timeout`（默认 180s 必需；慢族 300s 补跑）。坑：deriv 对响应约定错位盲（dpqr 才抓）；skip≠fail 且可能是探针元数错伪装；探测参数必须落在**参数自己的合法域**（D2.28）。
 
 ## 收敛与地板
 
@@ -34,7 +36,7 @@
 
 ## rel 荒谬 = 约定层问题
 
-1e90/inf 不是数值分歧，是参数/约定送错的签名（dpqr 按名传参；离散网格必须整数）。共享 rng 流级联判据："**R 侧数字也变**"。
+1e90/inf 不是数值分歧，是参数/约定送错的签名。共享 rng 流级联判据："**R 侧数字也变**"。
 
 ## 密度/导数分裂
 
@@ -44,11 +46,11 @@
 
 ## R 探针读取要点
 
-$nu.initial 是 expression 要 eval；jsonlite 丢命名用 as.list；R 的 NULL 双判空；gamlss.family 无 d/p/q 槽；gamlss() 的 start= 只接受 gamlss 对象；`G.dev.incr` 收**逐观测拟合值**（eta 重构+逆 link）。
+$nu.initial 是 expression 要 eval；jsonlite 丢命名用 as.list；R 的 NULL 双判空；gamlss.family 无 d/p/q 槽；`G.dev.incr` 收**逐观测拟合值**（eta 重构+逆 link）。
 
 ## 零变体 p/q/r（D2.27/D2.28）
 
-build_ad_family 不传 p/q/r 装 **nan 占位**（能力缺失静默）。hurdle `p=tau@0`，否则 `tau+(1-tau)(F-F0)/(1-F0)`；mixture `tau+(1-tau)F`。组合 `_zero_variant_tails`；epsilon 封闭词汇：ZAP=0、16 族 1e-10、ZIBNB/ZINBI=1e-7。
+build_ad_family 不传 p/q/r 装 **nan 占位**（能力缺失静默）。hurdle `p=tau@0`，否则 `tau+(1-tau)(F-F0)/(1-F0)`；mixture `tau+(1-tau)F`；组合 `_zero_variant_tails`；epsilon 封闭词汇：ZAP=0、16 族 1e-10、ZIBNB/ZINBI=1e-7。
 
 ## 数值库精度（D2.29）
 
@@ -58,13 +60,14 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 
 登记数字只在**全族流**有效；子列表跑 → 样本移位假警报（重建见 tools/d230_refit_full_stream.py）。cross-check 前先验证 **R 自身自洁**（R 的 dZAP recycle artifact；实现失误不复现，约定差异才复现）。helper 缓存排序前缀到目标族为止（精确等价快 4 倍）。
 
-## 同名不同义与占位（D2.34）
+## 同名不同义与占位（D2.34/D2.35）
 
-- JSU/JSUo、SHASHo/BCPEo 的 "o"=original 参数化（公式完全不同）；"o 只改 link"仅限 Box-Cox 簇。三关同挂+量级 0.3~1=送错分布签名。排查第一步验参数化身份。
-- 提前停登记新情形：默认 20 步我们**高于** R（nu 长平台）→ 登记 `n_cyc=200`，gate 按建立 case 的预算跑（ST1 模式本义）。
-- R-backed 测试首次真跑=测试的验收不是回归（R 不可达时 skip 假绿）；测试族名用 R 真名大小写（JSUo 非 JSUO）。
+- JSU/JSUo、SHASHo/BCPEo 的 "o"=original 参数化（公式完全不同）；**BCCG/BCT/BCPE 的 mu/nu link=identity，o 变体才是 log**。三关同挂+量级 0.3~1=送错分布签名，先活 R dump 验 link 身份。
+- 提前停登记新情形：默认 20 步我们**高于** R（nu 长平台）→ 登记 `n_cyc=200`，gate 按建立 case 的预算跑。
+- R-backed 测试首次真跑=测试的验收不是回归（skip 假绿）；测试族名用 R 真名大小写。
 - 符号证据按测试文件**标识符引用**判定：fam.p(...) 间接调用不算，按名 import 才算。
-- b14 组 SHASHo/SHASHo2/BCPEo/BCTo 仍是 nan 占位（不在扫描器 146 族名单，gate 盲区），待补。
+- b14 组 SHASHo/SHASHo2/BCPEo/BCTo 仍是 nan 占位（不在扫描器 146 族名单），待补。
+- **初值采纳须过组合二分+全族流 gate**（D2.35）：R 的 Box-Cox sigma.initial=0.1 在我们内层 RS 下爆炸——初值保真被 glim.fit 内层保真阻塞，先对齐再采纳；数值在 _initial_sigma 注释。R 自身失败=fixture 病态铁证。
 
 ## 环境（用户 2026-10-10 明确）
 

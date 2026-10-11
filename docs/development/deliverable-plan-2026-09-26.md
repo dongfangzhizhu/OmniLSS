@@ -2699,6 +2699,85 @@ missing→resolved、DBI×5 compat_alias、coefAll）。
    BCPEo/BCTo 同状态，不在扫描器 146 族名单内所以 gate 看不见），
    后续按 D2.31/D2.34 的同款流程补。
 
+#### D2.35：`test_operations` 七个既有失败 —— Box-Cox 三族 link 期望错、NO 的 link 尺度断言过时、初值修复的边界（7 fail → 0）
+
+**现象**（既有失败，与本轮无关的独立排查）：
+
+```
+test_gamlss_ml_fits_initial_normal_model_in_float64      sigma 系数 -35.70
+test_{bccg,bct,bcpe}_family_and_resolution_work          mu 期望 exp(eta) 实际 eta
+test_gamlss_ml_and_gamlss_support_{bccg,bct,bcpe}_family fitted(mu) 含负值
+```
+
+**根因一（纯期望错）：R 的 BCCG/BCT/BCPE 默认 `mu.link="identity"`、
+`nu.link="identity"`**（活 R 验证；"o 只改 mu.link=log" 意味着 BCCGo 等
+o 变体才是 log）。三个 resolution 测试按 `exp(eta)` 断言 mu/nu 的逆
+link——那是 BCCGo 的 link 集，不是 BCCG 的。修法：改测试期望为
+恒等（mu/nu == eta），BCT 的 `tau > 2.0` 同理改为 `tau > 0.0`（log link
+逆在 eta=0 处 tau=1，是合法自由度）。
+
+**根因二（纯期望错）：NO 测试的符号断言过时**。y=[1,2,3,4]、
+x1=[0,1,2,3] 是完全线性响应（OLS 残差恰为 0），初始 sigma=残差尺度=0，
+夹到 eps 后 link 尺度系数 = log(eps) = -35.70。H3 修复把 sigma 系数从
+参数尺度改为 link 尺度存储后，`assertGreater(coef, 0)` 就注定失败
+（任何残差尺度 < 1 的数据 log 后都是负的——这正是 link 尺度的本义）。
+修法：断言改为 link 尺度一致性——fitted sigma > 0 且系数 ==
+log(mean(fitted sigma))（与 test_gamlss_ml_sigma_scale 同款契约）。
+
+**根因三（真缺陷，mu 初值）：`_initial_mu_beta` 的 BCCG/BCT/BCPE 分支
+写的是 `target=log(y)`**——按 log link 设计的 link 尺度目标，但这三族的
+mu link 是 identity：WLS 拟合 log(y) 后经恒等逆 link 直接输出，正支撑
+密度得到负 fitted mu（g_dev 里 log(y/mu) 对 mu<0 是 nan）。
+R 的 `mu.initial = (y + mean(y))/2`（三族与三个 o 变体同款表达式）。
+修法：identity 族 target=(y+mean)/2；o 变体（log link）
+target=log((y+mean)/2)。**只采纳 mu 修复**，rsdev 全族流端到端验证
+BCPE 回到登记值 94.153575。
+
+**根因四（记录在案、暂不采纳）：R 的 sigma/nu/tau 初值**。
+R 的 BCCG/BCT/BCPE（含 o 变体）`sigma.initial = rep(0.1)`、
+BCCG/BCT `nu.initial = rep(0.5)`。组合二分实验（全族流 BCPE 样本，
+monkeypatch `_initial_mu_beta`/`_initial_sigma`）：
+
+| 组合 | deviance |
+|---|---|
+| 旧 mu + 旧 sigma | 94.153575（=登记值） |
+| 新 mu + 旧 sigma | 94.153575（mu 修复无害） |
+| 新 mu + sigma=0.1 | **138.726543（劣于 R 的 122.826）** |
+| 旧 mu + sigma=0.1 | **138.726543** |
+
+sigma=0.1 是唯一的退化源：我们的内层 RS 更新没有 R 的 glim.fit
+防护（工作权重夹取 [1e-10, 1e10]、d2ldp2 地板 -1e-15、内层 cyc 循环），
+小 sigma 起点下权重退化、步长爆炸——拦路测试：BCCG intercept-only parity
+rel ~1e3、analytic parity 171252 vs 166.3。**初值保真被 RS 内层保真
+阻塞**：先做 glim.fit 语义对齐，再回头采纳 sigma/nu 起点（数值已记录
+在 `_initial_sigma` 注释）。
+
+**顺带修复：`test_fitted_plot_data_supports_bct_family` 的病态 fixture**。
+原 6 点数据对 BCT RS 是过参数化（9 系数 vs 6 观测）——活 R 自己在同一
+拟合上第 17 迭代报 "NA's in the working vector"（四组候选 6 点样本
+逐一验证全部失败）。换 20 点样本 + 默认 sigma/nu/tau 公式：两侧收敛到
+同一最优（R 2.0292 / 我们 2.0291，mu>0 双侧成立）。
+
+**验收**：test_operations 188 项全绿（原 7 fail → 0）；
+batch1_bc（BCCG/BCPE intercept-only parity）、analytic parity、
+bct derivatives、ml sigma scale 全绿（262 项 + 1 skip）；
+覆盖工件再生 `result: OK`。
+
+**D2.35 方法论要点**：
+
+1. **"修期望"先于"修代码"**：7 个失败里 5 个是测试期望错（link 真值、
+   过时的存储尺度断言、病态 fixture），只有 1 个是真代码缺陷（mu 初值）。
+   纪律 1（分代码错 vs 期望错）逐个做完才动手。
+2. **活 R 是 link 真值的唯一来源**：`"o 只改 mu.link"` 的记忆规则方向
+   反了——BCCG 是 identity、BCCGo 才是 log。先 dump `BCCG()$mu.link`
+   再写断言。
+3. **初值采纳必须过组合二分 + 全族流 gate**：R 的起点值不是免费的真值，
+   我们的迭代器没有 R 的内层防护时，"更忠实"的起点反而更远。monkeypatch
+   组合实验（A/B/C/D 四象限）把退化源精确定位到单一参数。
+4. **R 自身失败 = fixture 病态的铁证**：同一拟合 R 报
+   "NA's in the working vector"，我们的测试却期望成功——先在 R 里跑
+   测试数据再把它当 fixture。
+
 #### D2.20：`TF2` 的链式法则项与 `TF` 的正态极限分支（rsdev rel 2.3e+01 →逐位一致）
 
 **现象**（全族扫描 v11）：

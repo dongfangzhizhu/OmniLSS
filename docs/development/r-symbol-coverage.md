@@ -618,7 +618,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gen.cens | gamlss.cens | - | missing | missing | unverified | not_available | 0 |
 | BB | gamlss.dist | BB | public_api | experimental | r_consistency_test | blocked | 18 |
 | BCCG | gamlss.dist | BCCG | public_api | experimental | r_consistency_test | blocked | 12 |
-| BCCGo | gamlss.dist | BCCGo | public_api | implemented | r_consistency_test | exported_api | 3 |
+| BCCGo | gamlss.dist | BCCGo | public_api | implemented | r_consistency_test | exported_api | 4 |
 | BCCGuntr | gamlss.dist | BCCGuntr | public_api | implemented | r_consistency_test | exported_api | 3 |
 | BCPE | gamlss.dist | BCPE | public_api | experimental | r_consistency_test | blocked | 12 |
 | BCPEo | gamlss.dist | BCPEo | public_api | implemented | r_consistency_test | exported_api | 5 |

@@ -744,15 +744,25 @@ class OperationsTest(unittest.TestCase):
             self.assertTrue(np.isfinite(entry.fit).all())
 
     def test_fitted_plot_data_supports_bct_family(self) -> None:
+        # The previous 6-point fixture is ill-posed for BCT's RS iteration
+        # (nine coefficients against six observations): live R itself fails
+        # on it with "NA's in the working vector" before its 17th iteration,
+        # and with R's own start values our RS diverges the same way (D2.35).
+        # This 20-point sample with default sigma/nu/tau formulas converges
+        # on BOTH sides to the same optimum (R deviance 2.0292, ours
+        # 2.0291, mu > 0 on both), so it tests the plotting machinery on a
+        # legitimate fit instead of an over-parameterised one.
         data = {
-            "y": jnp.array([0.8, 1.0, 1.4, 2.0, 2.8, 3.9], dtype=jnp.float64),
-            "x1": jnp.array([0.0, 0.4, 0.8, 1.2, 1.6, 2.0], dtype=jnp.float64),
-            "x2": jnp.array([1.0, 0.9, 1.1, 1.0, 1.2, 1.1], dtype=jnp.float64),
+            "y": jnp.array(
+                [1.3629, 1.3695, 1.2580, 1.1563, 1.4236, 2.0015, 1.6122,
+                 1.4610, 1.6968, 1.7941, 2.0461, 2.4213, 2.0291, 2.5617,
+                 2.7940, 2.0137, 2.7042, 2.5778, 2.1280, 3.1137],
+                dtype=jnp.float64,
+            ),
+            "x1": jnp.linspace(0.0, 2.0, 20),
         }
         fit = gamlss(
             formula="y ~ x1",
-            sigma_formula="~ x1",
-            parameter_formulas={"mu": "~ x1 + x2", "sigma": "~ x1", "nu": "~ x1", "tau": "~ x1"},
             family=BCT(),
             data=data,
             method="RS",
@@ -760,9 +770,9 @@ class OperationsTest(unittest.TestCase):
         result = fitted_plot_data(fit, xvar="x1", parameters=("mu", "sigma", "nu", "tau"), type="response", se_fit=True)
         self.assertEqual(len(result.entries), 4)
         for entry in result.entries:
-            self.assertEqual(entry.x.shape, (6,))
-            self.assertEqual(entry.fit.shape, (6,))
-            self.assertEqual(entry.se_fit.shape, (6,))
+            self.assertEqual(entry.x.shape, (20,))
+            self.assertEqual(entry.fit.shape, (20,))
+            self.assertEqual(entry.se_fit.shape, (20,))
             self.assertTrue(np.all(np.isfinite(entry.fit)))
         self.assertTrue(np.all(result.entries[0].fit > 0.0))
         self.assertTrue(np.all(result.entries[1].fit > 0.0))
@@ -3761,7 +3771,18 @@ class OperationsTest(unittest.TestCase):
         self.assertEqual(np.asarray(fit.fitted_values["mu"]).dtype, np.float64)
         self.assertEqual(model_matrix(fit, "mu").shape, (4, 3))
         self.assertEqual(formula(fit, "mu"), "y ~ x1 + x2")
-        self.assertGreater(float(fit.coefficients["sigma"][0]), 0.0)
+        # The sigma coefficient is stored on the link scale (H3): for an
+        # intercept-only sigma formula it is log(sigma), so a sign assertion
+        # is meaningless -- the residual-scale start of this exactly-linear
+        # response (y = 1 + x1, zero residuals) is ~0, whose log is a large
+        # negative number.  Assert the fitted scale is positive and the
+        # coefficient is its log instead (link-scale storage contract).
+        sigma_coef = float(fit.coefficients["sigma"][0])
+        sigma_fit = np.asarray(fit.fitted_values["sigma"], dtype=np.float64)
+        self.assertTrue(np.all(sigma_fit > 0.0))
+        np.testing.assert_allclose(
+            sigma_coef, np.log(float(np.mean(sigma_fit))), rtol=1e-9, atol=1e-12
+        )
         self.assertTrue(fit.additional_slots["converged"])
         self.assertEqual(len(fit.additional_slots["deviance_history"]), 1)
 
@@ -3860,7 +3881,11 @@ class OperationsTest(unittest.TestCase):
         mu = family.link_inverses["mu"](eta)
         sigma = family.link_inverses["sigma"](eta)
         nu = family.link_inverses["nu"](eta)
-        np.testing.assert_allclose(np.asarray(mu), np.exp([0.0, 1.0]))
+        # R's BCCG() carries mu.link = "identity" and nu.link = "identity"
+        # (live R, D2.35); only sigma uses the log link.  The previous
+        # expectations assumed exp inverses for mu, which is BCCGo's link
+        # set, not BCCG's.
+        np.testing.assert_allclose(np.asarray(mu), [0.0, 1.0])
         np.testing.assert_allclose(np.asarray(sigma), np.exp([0.0, 1.0]))
         np.testing.assert_allclose(np.asarray(nu), [0.0, 1.0])
         self.assertIsInstance(BCCG(), BoxCoxColeGreenFamily)
@@ -3873,10 +3898,15 @@ class OperationsTest(unittest.TestCase):
         sigma = family.link_inverses["sigma"](eta)
         nu = family.link_inverses["nu"](eta)
         tau = family.link_inverses["tau"](eta)
-        np.testing.assert_allclose(np.asarray(mu), np.exp([0.0, 1.0]))
+        # R's BCT() carries mu.link = "identity" and nu.link = "identity"
+        # (live R, D2.35); sigma/tau use the log link.
+        np.testing.assert_allclose(np.asarray(mu), [0.0, 1.0])
         np.testing.assert_allclose(np.asarray(sigma), np.exp([0.0, 1.0]))
         np.testing.assert_allclose(np.asarray(nu), [0.0, 1.0])
-        self.assertTrue(np.all(np.asarray(tau) > 2.0))
+        # BCT's tau uses the log link, so the inverse at eta = 0 is 1.0 --
+        # valid t degrees of freedom, but not > 2.  Assert positivity (the
+        # support), as the BCPE test below does.
+        self.assertTrue(np.all(np.asarray(tau) > 0.0))
         self.assertIsInstance(BCT(), BoxCoxTFamily)
 
     def test_bcpe_family_and_resolution_work(self) -> None:
@@ -3887,7 +3917,9 @@ class OperationsTest(unittest.TestCase):
         sigma = family.link_inverses["sigma"](eta)
         nu = family.link_inverses["nu"](eta)
         tau = family.link_inverses["tau"](eta)
-        np.testing.assert_allclose(np.asarray(mu), np.exp([0.0, 1.0]))
+        # R's BCPE() carries mu.link = "identity" and nu.link = "identity"
+        # (live R, D2.35); sigma/tau use the log link.
+        np.testing.assert_allclose(np.asarray(mu), [0.0, 1.0])
         np.testing.assert_allclose(np.asarray(sigma), np.exp([0.0, 1.0]))
         np.testing.assert_allclose(np.asarray(nu), [0.0, 1.0])
         self.assertTrue(np.all(np.asarray(tau) > 0.0))
