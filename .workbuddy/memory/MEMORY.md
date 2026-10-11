@@ -58,16 +58,23 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 
 ## 登记绑定样本流；cross-check 先验 R 自洁（D2.30）
 
-登记数字只在**全族流**有效；子列表跑 → 样本移位假警报（重建见 tools/d230_refit_full_stream.py）。cross-check 前先验证 **R 自身自洁**（R 的 dZAP recycle artifact；实现失误不复现，约定差异才复现）。helper 缓存排序前缀到目标族为止（精确等价快 4 倍）。
+登记数字只在**全族流**有效；子列表跑 → 样本移位假警报（D2.36 重踩确认：`--families` 子集使 R 侧数字整体漂移，targeted 扫描 pass/fail 全部不可信）。cross-check 前先验证 **R 自身自洁**（R 的 dZAP recycle artifact；实现失误不复现，约定差异才复现）。helper 缓存排序前缀到目标族为止（精确等价快 4 倍）。
+
+## 算法对齐粒度（D2.36）
+
+- "对齐 R 的 glim.fit" 的对齐单位是**内层循环结构**：`while(|olddv-dv|>cc && itn<cyc)`，cc=0.001、**cyc=50**（活 R；GLIMControl 旧值 20 从未对过）；减半 break `(olddv-dv)>cc` 非 `dv<=olddv`。docstring 声称的 "matching R" 必须对照源码逐条核。
+- **初值采纳与其阻塞因素必须同 commit**：内层对齐后 Box-Cox sigma=0.1+BCCG/BCT nu=0.5 直 pass（BCPE 122.816 vs R 122.826，登记撤除）。改内层语义前先 monkeypatch 影响面实验（登记族漂移 ≤2.4e-5 rel 则登记数字仍有效）。
+- monkeypatch 实验与实现**语义必须完全一致**（d236b 只 patch 了 max_iter/tol，实现还改了减半判据 → ZIPIG 数字又漂）。
+- **JSU 拟合轨迹缺陷待修**（D2.37 候选）：与 R 同初值下多数 20 点样本我们停在 ~640 劣质驻点（R<6），scan 样本侥幸走对。
+- fixture 病态铁证三例：BCT 6 点（D2.35）、JSU 6 点（D2.36，R 振荡 -14→10355）；修法=20 点双侧收敛样本 + 共享 helper。
 
 ## 同名不同义与占位（D2.34/D2.35）
 
 - JSU/JSUo、SHASHo/BCPEo 的 "o"=original 参数化（公式完全不同）；**BCCG/BCT/BCPE 的 mu/nu link=identity，o 变体才是 log**。三关同挂+量级 0.3~1=送错分布签名，先活 R dump 验 link 身份。
-- 提前停登记新情形：默认 20 步我们**高于** R（nu 长平台）→ 登记 `n_cyc=200`，gate 按建立 case 的预算跑。
+- 提前停登记新情形：默认 20 步我们**高于** R（nu 长平台）→ 登记 `n_cyc=200`，gate 按建立 case 的预算跑。现存登记：ST1/ZIPIG/ZINBI/JSU。
 - R-backed 测试首次真跑=测试的验收不是回归（skip 假绿）；测试族名用 R 真名大小写。
 - 符号证据按测试文件**标识符引用**判定：fam.p(...) 间接调用不算，按名 import 才算。
 - b14 组 SHASHo/SHASHo2/BCPEo/BCTo 仍是 nan 占位（不在扫描器 146 族名单），待补。
-- **初值采纳须过组合二分+全族流 gate**（D2.35）：R 的 Box-Cox sigma.initial=0.1 在我们内层 RS 下爆炸——初值保真被 glim.fit 内层保真阻塞，先对齐再采纳；数值在 _initial_sigma 注释。R 自身失败=fixture 病态铁证。
 
 ## 环境（用户 2026-10-10 明确）
 
