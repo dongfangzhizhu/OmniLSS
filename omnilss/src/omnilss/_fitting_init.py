@@ -82,8 +82,6 @@ def _initial_parameter_value(
             # 1.0, which starts the logit eta ~15 units away from R's.
             zero_fraction = float(np.average(np.asarray(y) == 0, weights=w))
             return max(zero_fraction, 0.01)
-        if family.name == "NET":
-            return 1.0  # Threshold k1, 1.0 is reasonable starting value
         if family.name == "GT":
             return 5.0  # Degrees of freedom, reasonable starting value
         if family.name == "SHASH":
@@ -141,8 +139,6 @@ def _initial_parameter_value(
         if family.name == "BCPEo":
             # R BCPEo()$tau.initial (live R, D2.35): tau <- rep(2, length(y))
             return 2.0
-        if family.name == "NET":
-            return 2.0  # Threshold k2, must be >= nu, 2.0 > 1.0
         if family.name == "GT":
             return 2.0  # Shape exponent, 2.0 is close to normal
         if family.name == "SHASH":
@@ -367,19 +363,14 @@ def _initial_mu_target(
     elif family.name == "LO":
         target = y
     elif family.name == "NET":
-        # Deliberately NOT R's NET()$mu.initial = (y - mean(y))/2 (live R,
-        # D2.38): adopting it exploded the intercept-only fit to deviance
-        # -inf because NET's nu/tau IRLS updates are unbounded on our side
-        # (nu walks to the eta clip and sigma follows at -3e9) and a
-        # per-observation mu start evaluates the working weights at the raw
-        # response values.  NET's real defect group -- nu/tau link identity
-        # in R vs our log (D2.34 class), the top-level semantics of
-        # *fixing* shape parameters whose formula is absent (R reports
-        # nu.coefficients = NULL), the unbounded nu/tau updates and the
-        # missing tau >= nu domain check in our density -- is registered as
-        # the follow-up item; the mean(y) constant start keeps the old
-        # trajectory until that group is fixed in one pass.
-        target = np.full(y.shape, float(np.mean(y)), dtype=np.float64)
+        # R NET()$mu.initial (live R, D2.39): mu <- (y - mean(y))/2, identity
+        # link.  D2.38 had to keep the mean(y) constant start because our
+        # NET still *estimated* nu/tau with unbounded updates and a per-
+        # observation start blew the fit to -inf.  D2.39 fixed NET at the
+        # family level (nu/tau marked non-estimable, R's parameters=FALSE
+        # semantics) and switched their links to identity, so the R start is
+        # adoptable now and the trajectory locks onto live R's.
+        target = (y - np.mean(y)) / 2.0
     elif family.name == "WEI2":
         # R WEI2 mu.initial (mu uses a log link, so the link-scale target is
         # log(mu)):  s.Y.s <- 1.283/sqrt(var(log(y)));

@@ -411,6 +411,16 @@ def _net_r(key, n, mu=0.0, sigma=1.0, nu=1.5, tau=2.0):
 
 
 def NET() -> NormalExponentialTFamily:
+    # D2.39: live R's NET.R marks `parameters = list(mu=TRUE, sigma=TRUE,
+    # nu=FALSE, tau=FALSE)` -- nu and tau are *non-estimable* shape constants
+    # that R fixes at nu.initial = 1.5 / tau.initial = 2.  R's gamlss returns
+    # nu.coefficients = NULL for NET even when an explicit nu.formula is
+    # passed (verified against live R: fitted nu/tau stay 1.5/2).  The old
+    # links here were also the D2.34 "same name, different meaning" trap:
+    # R's nu.link / tau.link are *identity*, our log links started the IRLS
+    # at eta=log(1.5)=0.405 / log(2)=0.693 and the unbounded nu/tau updates
+    # walked the fit 4.8e-2 rel away from R's deviance with nu violating the
+    # tau >= nu domain (live R's dNET stops on it).
     return build_ad_family(
         family_class=NormalExponentialTFamily,
         name="NET",
@@ -420,10 +430,12 @@ def NET() -> NormalExponentialTFamily:
         p=_net_p,
         q=_net_q,
         r=_net_r,
-        links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "log"},
-        link_functions={"mu": identity_link, "sigma": log_link, "nu": log_link, "tau": log_link},
-        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
-        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative, "tau": log_derivative},
+        fixed_parameters=("nu", "tau"),
+        fixed_parameter_defaults={"nu": 1.5, "tau": 2.0},
+        links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "identity"},
+        link_functions={"mu": identity_link, "sigma": log_link, "nu": identity_link, "tau": identity_link},
+        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": identity_inverse, "tau": identity_inverse},
+        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": identity_derivative, "tau": identity_derivative},
     )
 
 

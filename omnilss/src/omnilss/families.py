@@ -58,6 +58,14 @@ class FamilyDefinition:
     q: Callable[..., Any] | None = None  # Quantile function
     r: Callable[..., Any] | None = None  # Random generation function
     constructor_parameters: Mapping[str, Any] | None = None
+    # Default values for fixed (non-estimable) parameters that are NOT data
+    # supplied.  R marks such parameters as `parameters = list(..., nu=FALSE)`
+    # in the family object -- they never enter estimation no matter what
+    # formula the caller passes (live R: NET() marks nu/tau FALSE, and
+    # gamlss(y~1, family=NET) returns nu.coefficients = NULL even *with*
+    # nu.formula).  NET's nu/tau are the motivation (D2.39): they are fixed
+    # shape constants at R's nu.initial/tau.initial, 1.5 and 2.
+    fixed_parameter_defaults: Mapping[str, float] | None = None
 
     def pdf(self, *args: Any, **kwargs: Any) -> Any:
         """Evaluate the density/PMF through the standard ``d`` function."""
@@ -102,4 +110,5 @@ class FamilyDefinition:
             q=mapping.get("q"),
             r=mapping.get("r"),
             constructor_parameters=mapping.get("constructor_parameters"),
+            fixed_parameter_defaults=mapping.get("fixed_parameter_defaults"),
         )

@@ -79,7 +79,7 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 - 71 族共享 mu.initial=(y+mean(y))/2（live R dump 全量 146 族存 omnilss/tmp/d238_all_initials.json）。**R 的 var()/sd() 全是 n-1 分母**（np.var 默认 ddof=0，移植逐个核对）。
 - roll-out 的回归面 = 所有默认分支的族（两头不靠：旧 warm=mean(y) 常数、roll-out 默认=target=y 都不是 R 表达式）→ 16+2 族回归，port 后全转 pass。**绿族不碰**：ZINBI/PO/GEOM 等 gate 绿族保持旧起点。targeted 判定照旧不可信，登记数字绑定全族流。
 - **重尾族常数起点不能被默认分支覆盖**：PARETO mu.initial=rep(2) 常数，target=y 逐观测 exp(y_i) 在 Pareto(2) 样本爆到 -inf。
-- **NET 缺陷组（下一开发项）**：①nu/tau link log vs R identity（D2.34 同类实锤）②顶层 gamlss() 未给 formula 的形状参数默认 ~1 估计而 R **固定**（nu.coefficients=NULL）③nu/tau 更新无界 ④缺 tau>=nu 域检查。四者一体，拆修任何一半制造新回归（intercept-only 爆 -inf），已整体回撤，NET 保持基线 fail。
+- **NET 缺陷组（D2.39 修复中，语义已修正）**：R 的 NET.R 在 family 对象里标记 `parameters=list(mu=T,sigma=T,nu=F,tau=F)`——**族级** non-estimable 标记（JSU 等族未给 formula 仍估计，实测 nu.coefficients 非 NULL），不是全局顶层语义；nu/tau 固定于 nu.initial/tau.initial=1.5/2，给了 formula 也忽略（nu.coefficients=NULL）。修法=族级 fixed_parameters+fixed_parameter_defaults（新机制）+link identity；density 里 tau=max(tau,nu) 静默 clamp vs R dNET 的 stop 是另一处 dpqr 对齐待办。
 - **LNO intercept-only 既有失败**（stash 验证 HEAD 同挂）：候选后续项。
 - R-backed 测试首次真跑=测试的验收不是回归（skip 假绿）；测试族名用 R 真名大小写。
 - 符号证据按测试文件**标识符引用**判定：fam.p(...) 间接调用不算，按名 import 才算。

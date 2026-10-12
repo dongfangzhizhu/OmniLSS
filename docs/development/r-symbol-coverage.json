@@ -22,7 +22,7 @@
   },
   "provenance": {
     "r_namespace_sha256": "b51a29f54229ba5860387759ddf95f670613e80c1c86ccd16e2ed564bfbe1c2f",
-    "python_surface_sha256": "11a071e7469546f019e430e3871112da64773daf507ae1f951be60153e648309",
+    "python_surface_sha256": "7b9bb2faf7f84b56a18b323fc5da0457fe40abc8e1205089353c26e3d7f64391",
     "test_suite_sha256": "b8c4104bcb4b4fb5fad06205126a8493967dadcac9c2c55cd60fb6b9bbc4b1da",
     "golden_manifest_sha256": "1502a1f0762b3553eac269c464c6e0d653cbdb0060ec66f7f9df3fb67c17c573"
   },

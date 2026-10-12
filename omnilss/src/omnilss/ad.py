@@ -59,6 +59,7 @@ def build_ad_family(
     link_inverses: Mapping[str, Callable[..., Any]] | None = None,
     link_derivatives: Mapping[str, Callable[..., Any]] | None = None,
     fixed_parameters: tuple[str, ...] | None = None,
+    fixed_parameter_defaults: Mapping[str, Any] | None = None,
     d: Callable[..., Any] | None = None,
     p: Callable[..., Any] | None = None,
     q: Callable[..., Any] | None = None,
@@ -245,6 +246,7 @@ def build_ad_family(
         score_functions=score_functions,
         hessian_functions=hessian_functions,
         fixed_parameters=fixed_parameters,
+        fixed_parameter_defaults=fixed_parameter_defaults,
         constructor_parameters=constructor_parameters,
         d=_d_final,  # Add d function
         p=_p_final,  # Add p function

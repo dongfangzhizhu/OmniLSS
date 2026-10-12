@@ -241,8 +241,19 @@ def _resolve_fixed_parameter_values(
     n_obs: int,
 ) -> dict[str, np.ndarray]:
     resolved: dict[str, np.ndarray] = {}
+    defaults = family.fixed_parameter_defaults or {}
     for parameter in family.fixed_parameters or ():
         if parameter not in data:
+            # D2.39: families whose fixed parameters are shape *constants*
+            # (R marks them `parameters = list(..., nu=FALSE)` in the family
+            # object) carry their defaults here -- NET's nu=1.5 / tau=2 come
+            # from R's NET()$nu.initial / $tau.initial.  Data-supplied fixed
+            # parameters (BI's bd) have no default and still raise.
+            if parameter in defaults:
+                default = float(defaults[parameter])
+                resolved[parameter] = np.full(n_obs, default, dtype=np.float64)
+                continue
+
             # Special case: BI family's bd parameter defaults to 1 (Bernoulli)
             if family.name == "BI" and parameter == "bd":
                 resolved[parameter] = np.ones(n_obs, dtype=np.float64)

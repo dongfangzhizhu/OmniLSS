@@ -2981,6 +2981,59 @@ eta clip）、缺 `tau >= nu` 域检查（R 的 dNET 直接拒绝我们落点）
    语义、更新无界、域约束是同一组缺陷，拆开修任何一半都会制造新回归；
    回撤并登记，让下一轮整组处理。
 
+#### D2.39：NET 缺陷组整组修复——族级 non-estimable 标记 + link identity（rsdev 143.029373 vs R 143.0294，intercept-only 411.974150 vs R 411.9742）
+
+**D2.38 留下的证据与一个修正**：D2.38 实测出 NET 四件套（link 身份、
+顶层"固定"语义、nu/tau 更新无界、tau>=nu 域检查）并整体回撤。D2.39
+先修正了一个错误归因：R 的"未给 formula 则固定"**不是**全局顶层语义
+——JSU（4 参数族）不给 nu.formula/tau.formula 时 nu.coefficients 非
+NULL（实测 -3.055588），照样估计。真正的机制在族级：`NET.R` 的 family
+对象标记
+
+```r
+parameters = list(mu = TRUE, sigma = TRUE, nu = FALSE, tau = FALSE)
+```
+
+nu/tau 是 non-estimable 形状常数，固定于 nu.initial=1.5/tau.initial=2；
+给了 nu.formula 也被忽略（nu.coefficients=NULL，实测）。
+
+**修法（三项一体）**：
+
+1. `FamilyDefinition` 新增 `fixed_parameter_defaults`：data 型 fixed
+   参数（BI 的 bd）之外，支持"初值型"固定参数——data 缺失时回退到
+   family 自带常数。`build_ad_family` 透传。
+2. `NET` 定义：`fixed_parameters=("nu","tau")` +
+   `fixed_parameter_defaults={"nu":1.5,"tau":2.0}` + nu/tau link 改
+   identity（R 的 `nu.link="identity"`——我们的 log links 是 D2.34
+   "同名不同义"重现）。nu/tau 不再进入 IRLS，"更新无界"随之消失；
+   density 里的 `tau=max(tau,nu)` 静默 clamp 保留为 JAX 数值保护
+   （R 的 dNET 是 stop，dpqr 对齐另行登记）。
+3. `_initial_mu_target` 恢复 R 的 `mu <- (y - mean(y))/2`（D2.38 被迫
+   用 mean(y) 常数的原因——nu/tau 无界更新——已随 fixed 消失）。
+
+**验收**：
+
+| 场景 | 我们 | 活 R |
+|---|---|---|
+| 扫描 gate 落点（rsdev） | 143.029373 | 143.0294（rel 2e-7） |
+| intercept-only（seed 222，n=100） | 411.974150 | 411.9742（rel 1e-7） |
+| intercept-only 系数 | mu=4.96247, sigma_eta=0.45499 | mu=4.96241, sigma_eta=0.45499 |
+
+两步判定闭合：R 的 dNET 在我们系数上返回 411.9742，与我们报告的
+deviance 逐位一致（intercept-only 场景）；`deviance(model)` 的
+G.dev.incr 槽就是 `-2*dNET(..., log=TRUE)`（NET.R:85），无饱和修正。
+
+**方法论要点**：
+
+1. **"R 固定 vs R 估计"是族级属性**：不要从一个族（NET）的表象推
+   全局语义——JSU 反例一测就出。family 对象的 `parameters=FALSE`
+   标记才是源头，它和"初值表达式"是两回事。
+2. **跨 R 环境对比数据要用同一份样本**：numpy 与 R 的 rnorm 是不同
+   随机流，测试（r_bridge 传 numpy y）与手工探针（R 自生成）的数字
+   不可互换——D2.39 的 338.22/411.97 迷惑正是这么来的。
+3. **族级 fixed 参数的默认值机制**：data 型（bd）与初值型（NET nu/tau）
+   分开——前者必须由数据提供，后者由 family 携带 R 的初值常数。
+
 #### D2.20：`TF2` 的链式法则项与 `TF` 的正态极限分支（rsdev rel 2.3e+01 →逐位一致）
 
 **现象**（全族扫描 v11）：
