@@ -4,7 +4,7 @@
   "baseline_error": "",
   "r_exports_total": 1080,
   "current_counts": {
-    "missing": 399,
+    "missing": 395,
     "placeholder": 10,
     "compat_alias": 6,
     "evidence_gap": 35,
@@ -21,11 +21,15 @@
     "missing": {
       "new": [],
       "resolved": [
+        "gamlss.dist::dSHASHo2",
         "gamlss.dist::pJSUo",
+        "gamlss.dist::pSHASHo2",
         "gamlss.dist::qJSUo",
-        "gamlss.dist::rJSUo"
+        "gamlss.dist::qSHASHo2",
+        "gamlss.dist::rJSUo",
+        "gamlss.dist::rSHASHo2"
       ],
-      "current_count": 399,
+      "current_count": 395,
       "baseline_count": 402
     },
     "placeholder": {
@@ -65,7 +69,15 @@
   "improvements": [
     {
       "category": "missing",
+      "symbol": "gamlss.dist::dSHASHo2"
+    },
+    {
+      "category": "missing",
       "symbol": "gamlss.dist::pJSUo"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.dist::pSHASHo2"
     },
     {
       "category": "missing",
@@ -73,7 +85,15 @@
     },
     {
       "category": "missing",
+      "symbol": "gamlss.dist::qSHASHo2"
+    },
+    {
+      "category": "missing",
       "symbol": "gamlss.dist::rJSUo"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.dist::rSHASHo2"
     },
     {
       "category": "compat_alias",

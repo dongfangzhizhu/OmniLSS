@@ -38,13 +38,15 @@ SKIP = {
 #   D1-E 批次三: LQNO, MN3, MN4, MN5, MULTIN（MULTIN 是 MN3 的别名克隆）
 #   D1-E 批次四: EGB2, EXGAUS
 #   PIG2（b13 早已接线）
+#   D2.40: SHASHO2（密度参数化纠错 + p/q/r 补齐 + R 闭式导数 overrides，
+#         见 tests/test_shasho2_parity.py）
 KNOWN_NAN_PLACEHOLDER = {
     "BCCGO", "BCPEO", "BCTO", "BEINF0", "BEINF1", "BEOI", "BEZI",
     "DPO", "DPO1",
     "GENERALISEDPOISSON", "GIG", "GP", "GPO", "IGA", "IGAMMA", "JSUO", "LG",
     "LNO", "LOGITNO", "LOGNO2", "LOGSHASH", "LOGSHASHO", "NBF", "NET",
     "PARETO1O", "PARETO2", "SEP", "SEP1", "SEP2",
-    "SEP3", "SEP4", "SHASHO2", "SI", "SST", "ST3", "ST3C", "ST4", "ST5",
+    "SEP3", "SEP4", "SI", "SST", "ST3", "ST3C", "ST4", "ST5",
     "WARING", "YULE", "ZABI", "ZABNB", "ZALG", "ZANBI",
     "ZAP", "ZAPIG", "ZASICHEL", "ZAZIPF", "ZIBI", "ZIBNB", "ZINBF",
     "ZINBI", "ZIP2", "ZIPIG", "ZISICHEL",
@@ -72,7 +74,7 @@ def _default_params(name: str) -> dict | None:
         p = {"mu": 0.0, "sigma": 1.0, "nu": 5.0}
     elif name in {"ST1", "ST2", "ST3", "ST3C", "ST4"}:
         p = {"mu": 0.0, "sigma": 1.0, "nu": 0.5, "tau": 5.0}
-    elif name in {"SHASH", "SHASHo"}:
+    elif name in {"SHASH", "SHASHo", "SHASHo2"}:
         p = {"mu": 0.0, "sigma": 1.0, "nu": 0.5, "tau": 1.0}
     return p
 

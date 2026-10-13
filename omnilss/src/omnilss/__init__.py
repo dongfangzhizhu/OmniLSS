@@ -58,7 +58,7 @@ from .distributions import (
 )
 from .distributions_b1 import GU, IGAMMA, NBII, PARETO2, RG
 from .distributions_b2 import LOGNO2, NO2, PE, SIMPLEX, exGAUS
-from .distributions_b3 import GT, SHASH, SN1, SN2
+from .distributions_b3 import GT, SHASH, SN1, SN2, SHASHo
 from .distributions_b4 import BEINF, BEINF0, BEINF1, BEOI, BEZI
 from .distributions_b5 import ZAGA, ZAIG, ZAP, ZIP2, ZINBI
 from .distributions_b6 import DEL, DPO, PIG, SI, SICHEL, WARING, YULE
@@ -82,7 +82,7 @@ from .distributions_b10_zero_variants import (
 from .distributions_b11 import GB1, GIG
 from .distributions_b12 import GAF, NOF, RGE, WEI2, WEI3, BEo, GEOMo, PARETO2o
 from .distributions_b13 import DELAPORT, IGA, LOGITNO, PE2, PIG2, GeneralisedPoisson
-from .distributions_b14 import ST5, BCPEo, BCTo, JSUo, SHASHo, SHASHo2
+from .distributions_b14 import ST5, BCPEo, BCTo, JSUo, SHASHo2
 from .distributions_b15 import (
     EGB2,
     GPO,

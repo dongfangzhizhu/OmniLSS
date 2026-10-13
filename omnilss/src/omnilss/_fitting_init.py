@@ -84,10 +84,12 @@ def _initial_parameter_value(
             return max(zero_fraction, 0.01)
         if family.name == "GT":
             return 5.0  # Degrees of freedom, reasonable starting value
-        if family.name == "SHASH":
-            return 1.0  # Skewness parameter
-        if family.name == "SHASHo":
-            return 0.0  # Skewness parameter (original parameterization)
+        if family.name in ("SHASH", "SHASHo", "SHASHo2"):
+            # R nu.initial (vendored SHASH.R / SHASHo.R / SHASHo2.R, all
+            # three identical): nu <- rep(0.5, length(y)).  The previous
+            # entries here (SHASH 1.0, SHASHo 0.0) were pre-D2.38 guesses
+            # that contradicted the R sources; 0.5 is what live R uses.
+            return 0.5
         if family.name == "SN1":
             return 0.0  # Skewness parameter
         if family.name == "SN2":
@@ -141,10 +143,11 @@ def _initial_parameter_value(
             return 2.0
         if family.name == "GT":
             return 2.0  # Shape exponent, 2.0 is close to normal
-        if family.name == "SHASH":
-            return 1.0  # Kurtosis parameter
-        if family.name == "SHASHo":
-            return 1.0  # Kurtosis parameter
+        if family.name in ("SHASH", "SHASHo", "SHASHo2"):
+            # R tau.initial (vendored SHASH.R / SHASHo.R / SHASHo2.R):
+            # tau <- rep(0.5, length(y)).  The previous entries here
+            # (SHASH 1.0, SHASHo 1.0) contradicted the R sources.
+            return 0.5
         if family.name == "BEINF":
             return 0.1  # Inflation at 1, conservative estimate
         # Skew-t families: R's own tau.initial, verified against live R.
@@ -402,6 +405,13 @@ def _initial_mu_target(
         # stopped 0.61 deviance above live R (142.029 vs 141.415) on the
         # gate sample; with R's start values the two agree to <1e-4.
         target = (y + np.mean(y)) / 2.0
+    elif family.name in ("SHASH", "SHASHo", "SHASHo2"):
+        # R mu.initial (vendored SHASH.R / SHASHo.R / SHASHo2.R, all three
+        # identical): mu <- (y + mean(y))/2.  D2.40: without this entry the
+        # family falls into the generic target=y fallback, which zeroes the
+        # generic sigma start (RMSE(y, y) = eps) and the first RS cycle
+        # collapses sigma to its floor -- see the note in _initial_sigma.
+        target = (y + np.mean(y)) / 2.0
     else:
         target = y
     return target
@@ -457,6 +467,22 @@ def _initial_sigma(
     # omnilss/tmp/d236_inner.log.
     if family.name in ("BCCG", "BCT", "BCPE", "BCCGo", "BCTo", "BCPEo"):
         return 0.1
+    if family.name in ("SHASH", "SHASHo", "SHASHo2"):
+        # R sigma.initial (vendored SHASH.R / SHASHo.R / SHASHo2.R, all
+        # three identical): sigma <- rep(sd(y)/5, length(y)); R's sd() is
+        # the n-1 estimator (D2.38).
+        #
+        # Why this is a hard failure rather than a slow start: without an
+        # entry the family falls through to the generic residual scale
+        # below, which is evaluated against the generic mu start
+        # ``target = y`` -- RMSE(y, y) = 0, floored to eps.  At sigma=eps
+        # the SHASH log-density's curvature in sigma flips sign (measured
+        # +5.07e30 on a 40-point probe), the IRLS weight clips to its
+        # 1e-10 floor, and the first sigma step sends eta to -1e41: the
+        # fit collapses to deviance ~1e13 while live R converges to 26.02
+        # on the same data.  Same signature already bit SHASH and SHASHo
+        # (not just the new SHASHo2).
+        return float(np.std(y, ddof=1) / 5.0)
     if family.name == "LOGNO":
         log_y = np.log(np.maximum(y, eps))
         sigma = np.sqrt(np.sum(w * np.square(log_y - mu)) / np.sum(w))

@@ -5324,6 +5324,142 @@ def rSHASH(key, n, mu=0.0, sigma=1.0, nu=0.0, tau=1.0):
 
 
 # =============================================================================
+# SHASHo2 — Sinh-Arcsinh, original parameterization 2 (Jones & Pewsey 2009)
+#
+# Transcribed from ``gamlss.dist:::dSHASHo2`` / ``pSHASHo2`` / ``qSHASHo2`` /
+# ``rSHASHo2`` (vendored R/gamlss.dist/R/SHASHo2.R, verified against live
+# gamlss.dist 6.1.1).  The distinction from ``SHASHo`` is the scale of ``z``:
+#   SHASHo : z = (x - mu) / sigma,      loglik has + log(tau)
+#   SHASHo2: z = (x - mu) / (sigma*tau), loglik has no log(tau) term
+# Both share arg = tau*asinh(z) - nu, c = cosh(arg), r = sinh(arg).
+# =============================================================================
+
+def dSHASHo2(x, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, log=False):
+    """Density function for the SHASH original-2 parameterization.
+
+    R source (``gamlss.dist:::dSHASHo2``)::
+
+        z <- (x - mu) / (sigma * tau)
+        c <- cosh(tau * asinh(z) - nu)
+        r <- sinh(tau * asinh(z) - nu)
+        loglik <- -log(sigma) - 0.5*log(2*pi) - 0.5*log(1 + z^2)
+                  + log(c) - 0.5 * r^2
+    """
+    x = jnp.asarray(x, dtype=jnp.float64)
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    tau = jnp.asarray(tau, dtype=jnp.float64)
+
+    eps = jnp.finfo(jnp.float64).eps
+    sigma = jnp.maximum(sigma, eps)
+    tau = jnp.maximum(tau, eps)
+
+    z = (x - mu) / (sigma * tau)
+    arg = tau * jnp.arcsinh(z) - nu
+    c = jnp.cosh(arg)
+    r = jnp.sinh(arg)
+
+    log_fy = (
+        -jnp.log(sigma)
+        - 0.5 * jnp.log(2.0 * jnp.pi)
+        - 0.5 * jnp.log1p(jnp.square(z))
+        + jnp.log(jnp.maximum(c, eps))
+        - 0.5 * jnp.square(r)
+    )
+    return log_fy if log else jnp.exp(log_fy)
+
+
+def pSHASHo2(q, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, lower_tail=True, log_p=False):
+    """CDF function for the SHASH original-2 parameterization.
+
+    R source (``gamlss.dist:::pSHASHo2``)::
+
+        z <- (q - mu) / (sigma * tau)
+        r <- sinh(tau * asinh(z) - nu)
+        p <- pNO(r)          # = pnorm(r)
+    """
+    q = jnp.asarray(q, dtype=jnp.float64)
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    tau = jnp.asarray(tau, dtype=jnp.float64)
+
+    eps = jnp.finfo(jnp.float64).eps
+    sigma = jnp.maximum(sigma, eps)
+    tau = jnp.maximum(tau, eps)
+
+    z = (q - mu) / (sigma * tau)
+    r = jnp.sinh(tau * jnp.arcsinh(z) - nu)
+    cdf = norm.cdf(r)
+
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = jnp.log(cdf)
+    return cdf
+
+
+def qSHASHo2(p, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, lower_tail=True, log_p=False):
+    """Quantile function for the SHASH original-2 parameterization.
+
+    R source (vendored ``gamlss.dist`` 6.1-8, ``R/gamlss.dist/R/SHASHo2.R``)::
+
+        q <- mu + (tau * sigma) * sinh((1/tau) * asinh(qnorm(p)) + nu/tau)
+        q[p == 0] <- -Inf ; q[p == 1] <- Inf ; q[p < 0 | p > 1] <- NaN
+
+    Boundary contract -- and the R version split behind it
+    ------------------------------------------------------
+    The limit branches are not special-cased: ``qnorm(0) = -Inf`` already
+    maps through ``asinh``/``sinh`` to ``-Inf``, and ``qnorm`` returns NaN
+    outside (0, 1), reproducing the vendored source's explicit assignments
+    exactly.  This is also base R's ``qnorm`` convention and what the
+    sibling ``qSHASH`` in this file does.
+
+    Note the two gamlss.dist versions disagree here.  The installed 6.1.1
+    has ``if (any(p <= 0) | any(p >= 1)) stop("p must be between 0 and 1")``
+    active and no boundary assignments; the vendored 6.1-8 (newer, and the
+    transcription reference for this tree) comments the check out and adds
+    the assignments above.  Live R therefore *raises* at p <= 0 / p >= 1
+    while we return the continuous extension.  The choice is deliberate:
+    raising from a quantile function is precisely what upstream removed it
+    for (``rqres`` evaluates q at the boundary), it would make ``r`` -- which
+    draws uniforms and pushes them through q -- fragile, and the parity
+    gate only samples interior probabilities (``linspace(0.1, 0.9, n)`` in
+    ``tools/rs_family_parity_scan.py``), so no gate row is affected.
+    ``tests/test_shasho2_parity.py`` pins both sides of the split.
+    """
+    p = jnp.asarray(p, dtype=jnp.float64)
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    tau = jnp.asarray(tau, dtype=jnp.float64)
+
+    if log_p:
+        p = jnp.exp(p)
+    if not lower_tail:
+        p = 1.0 - p
+
+    eps = jnp.finfo(jnp.float64).eps
+    sigma = jnp.maximum(sigma, eps)
+    tau = jnp.maximum(tau, eps)
+
+    r = norm.ppf(p)
+    q = mu + (tau * sigma) * jnp.sinh(jnp.arcsinh(r) / tau + nu / tau)
+    return q
+
+
+def rSHASHo2(key, n, mu=0.0, sigma=1.0, nu=0.0, tau=1.0):
+    """Random generation for the SHASH original-2 parameterization.
+
+    Same construction as live R (``gamlss.dist:::rSHASHo2``): uniforms
+    through the quantile function.
+    """
+    u = jrandom.uniform(key, shape=(n,))
+    return qSHASHo2(u, mu, sigma, nu, tau)
+
+
+# =============================================================================
 # Generalized t Distribution (GT)
 # =============================================================================
 

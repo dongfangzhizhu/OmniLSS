@@ -8,7 +8,7 @@ import jax.numpy as jnp
 from jax.scipy.special import gammaln
 
 from .ad import build_ad_family
-from .dpqr_functions import pJSUo, qJSUo, rJSUo
+from .dpqr_functions import pJSUo, qJSUo, rJSUo, pSHASHo2, qSHASHo2, rSHASHo2
 from .families import FamilyDefinition
 from .links import (
     log_link, log_inverse, log_derivative,
@@ -17,64 +17,16 @@ from .links import (
 
 
 # ============================================================================
-# SHASHo - SHASH Original Parameterization
-# ============================================================================
-
-@dataclass(frozen=True)
-class SHASHoFamily(FamilyDefinition):
-    """SHASH Original parameterization family."""
-    pass
-
-
-def _shasho_log_pdf(y, mu, sigma, nu, tau):
-    """SHASH Original log-PDF."""
-    eps = jnp.finfo(jnp.float64).eps
-    sigma = jnp.maximum(sigma, eps)
-    tau = jnp.maximum(tau, eps)
-    
-    z = (y - mu) / sigma
-    r = jnp.sinh((jnp.arcsinh(z) - nu) / tau)
-    
-    return (
-        -jnp.log(sigma) - jnp.log(tau)
-        - 0.5 * jnp.log(2.0 * jnp.pi)
-        - 0.5 * jnp.log1p(z * z)
-        - 0.5 * r * r
-    )
-
-
-def SHASHo():
-    """SHASH with original parameterization."""
-    return build_ad_family(
-        family_class=SHASHoFamily,
-        name="SHASHo",
-        parameters=("mu", "sigma", "nu", "tau"),
-        log_pdf_func=_shasho_log_pdf,
-        type_="Continuous",
-        links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
-        link_functions={
-            "mu": identity_link,
-            "sigma": log_link,
-            "nu": identity_link,
-            "tau": log_link,
-        },
-        link_inverses={
-            "mu": identity_inverse,
-            "sigma": log_inverse,
-            "nu": identity_inverse,
-            "tau": log_inverse,
-        },
-        link_derivatives={
-            "mu": identity_derivative,
-            "sigma": log_derivative,
-            "nu": identity_derivative,
-            "tau": log_derivative,
-        },
-    )
-
-
-# ============================================================================
 # SHASHo2 - SHASH Original 2
+#
+# NOTE: a second (wrong) ``SHASHo`` factory used to live in this file.  It was
+# deleted in D2.40: its density (``sinh((asinh(z)-nu)/tau)`` with a ``-log``
+# on tau and no ``log cosh`` term) is not R's ``dSHASHo``, and since
+# ``omnilss/__init__.py`` re-exported *this* module's symbol, the public
+# ``omnilss.SHASHo()`` returned the wrong distribution while the registry's
+# ``SHASHO`` resolved to the correct one in ``distributions_b3``.  The single
+# SHASHo implementation now lives in ``distributions_b3.SHASHo`` (verified
+# against live R); ``distributions_o_alias_compat`` clones from there.
 # ============================================================================
 
 @dataclass(frozen=True)
@@ -84,22 +36,117 @@ class SHASHo2Family(FamilyDefinition):
 
 
 def _shasho2_log_pdf(y, mu, sigma, nu, tau):
-    """SHASH Original 2 log-PDF with different parameterization."""
+    """SHASH Original-2 log-PDF -- delegates to the one and only SHASHo2 density.
+
+    Transcribed from ``gamlss.dist:::dSHASHo2`` (live R 6.1.1, verified):
+    ``z = (y-mu)/(sigma*tau)``, ``arg = tau*asinh(z) - nu``,
+    ``loglik = -log(sigma) - 0.5*log(2*pi) - 0.5*log(1+z^2) + log(cosh(arg))
+    - 0.5*sinh(arg)^2`` -- note **no** ``log(tau)`` term (it is absorbed into
+    the ``1/tau`` inside ``z``).
+
+    The independent reimplementation this replaces used ``z = (y-mu)/sigma``,
+    ``sinh(tau*asinh(z) + nu)`` and a spurious ``+ log(tau)``: a different
+    distribution from R's.  Delegating to ``dSHASHo2`` keeps the scoring path
+    and the public ``d`` on the same formula (one family, one density).
+    """
+    from .dpqr_functions import dSHASHo2
+
+    return dSHASHo2(y, mu, sigma, nu, tau, log=True)
+
+
+# ---------------------------------------------------------------------------
+# R's closed-form scores / diagonal second derivatives for SHASHo2 (D2.40).
+#
+# Why these exist: the AD Hessian is the *true* second derivative of the
+# log-density, and for SHASHo2 it is **positive over most of a typical
+# sample** (measured 32/40 observations at R's own start values on the
+# parity sample).  R feeds the IRLS ``d2ldX2 = -dldX^2`` instead -- an
+# observed-information approximation that is negative by construction.  A
+# positive Hessian makes the IRLS weight ``w = -(d2/deta^2)`` negative,
+# which clips to the 1e-10 floor in ``fitting.rs_step`` and explodes the
+# step: the first RS cycle drove mu to +-1e8 and sigma to eps, deviance NaN,
+# while live R converged to 26.02 on the same data.  D2.15 established the
+# target is *what R feeds the IRLS*: a better second derivative makes
+# parity worse.  Transcribed verbatim from the vendored gamlss.dist 6.1-8
+# (``R/gamlss.dist/R/SHASHo2.R``, family-object slots dldm/dldd/dldv/dldt
+# and d2ldm2/d2ldd2/d2ldv2/d2ldt2).
+# ---------------------------------------------------------------------------
+
+def _shasho2_parts(y, mu, sigma, nu, tau):
+    """R's z / x / c / r with sigma, tau guarded as in ``dSHASHo2``."""
     eps = jnp.finfo(jnp.float64).eps
     sigma = jnp.maximum(sigma, eps)
     tau = jnp.maximum(tau, eps)
-    
-    # Alternative transformation
-    z = (y - mu) / sigma
-    asinh_z = jnp.arcsinh(z)
-    r = jnp.sinh(tau * asinh_z + nu)
-    
+    z = (y - mu) / (sigma * tau)
+    x = tau * jnp.arcsinh(z) - nu
+    return z, x, jnp.cosh(x), jnp.sinh(x), sigma, tau
+
+
+def _shasho2_dldm(y, mu, sigma, nu, tau):
+    # R: dldm <- (1/(tau*sigma*(1+z^2)^.5)) *
+    #        (r*tau*c - (tau*sinh(x))/c + z/(1+z^2)^.5)
+    z, x, c, r, sigma, tau = _shasho2_parts(y, mu, sigma, nu, tau)
+    s = jnp.sqrt(1.0 + jnp.square(z))
+    return (1.0 / (tau * sigma * s)) * (r * tau * c - (tau * jnp.sinh(x)) / c + z / s)
+
+
+def _shasho2_dldd(y, mu, sigma, nu, tau):
+    # R: dldd <- (z/(sigma*(1+z^2)^.5)) *
+    #        (r*tau*c - (tau*sinh(x))/c + z/(1+z^2)^.5) - 1/sigma
+    z, x, c, r, sigma, tau = _shasho2_parts(y, mu, sigma, nu, tau)
+    s = jnp.sqrt(1.0 + jnp.square(z))
+    return (z / (sigma * s)) * (r * tau * c - (tau * jnp.sinh(x)) / c + z / s) - 1.0 / sigma
+
+
+def _shasho2_dldv(y, mu, sigma, nu, tau):
+    # R: dldv <- r*cosh(x) - (1/c)*sinh(x)
+    z, x, c, r, sigma, tau = _shasho2_parts(y, mu, sigma, nu, tau)
+    return r * c - jnp.sinh(x) / c
+
+
+def _shasho2_dldt(y, mu, sigma, nu, tau):
+    # R: dldt <- (-r*cosh(x) + (1/c)*sinh(x)) *
+    #        (asinh(z) + (1/(1+z^2)^.5)*(-z)) + z^2/(tau*(1+z^2))
+    z, x, c, r, sigma, tau = _shasho2_parts(y, mu, sigma, nu, tau)
+    s = jnp.sqrt(1.0 + jnp.square(z))
     return (
-        -jnp.log(sigma) + jnp.log(tau)
-        - 0.5 * jnp.log(2.0 * jnp.pi)
-        - 0.5 * jnp.log1p(z * z)
-        - 0.5 * r * r
+        (-r * c + jnp.sinh(x) / c) * (jnp.arcsinh(z) - z / s)
+        + jnp.square(z) / (tau * (1.0 + jnp.square(z)))
     )
+
+
+def _shasho2_d2ldm2(y, mu, sigma, nu, tau):
+    d = _shasho2_dldm(y, mu, sigma, nu, tau)
+    return -d * d
+
+
+def _shasho2_d2ldd2(y, mu, sigma, nu, tau):
+    d = _shasho2_dldd(y, mu, sigma, nu, tau)
+    return -d * d
+
+
+def _shasho2_d2ldv2(y, mu, sigma, nu, tau):
+    d = _shasho2_dldv(y, mu, sigma, nu, tau)
+    return -d * d
+
+
+def _shasho2_d2ldt2(y, mu, sigma, nu, tau):
+    d = _shasho2_dldt(y, mu, sigma, nu, tau)
+    return -d * d
+
+
+_SHASHO2_SCORES = {
+    "mu": _shasho2_dldm,
+    "sigma": _shasho2_dldd,
+    "nu": _shasho2_dldv,
+    "tau": _shasho2_dldt,
+}
+_SHASHO2_HESSIANS = {
+    "mu": _shasho2_d2ldm2,
+    "sigma": _shasho2_d2ldd2,
+    "nu": _shasho2_d2ldv2,
+    "tau": _shasho2_d2ldt2,
+}
 
 
 def SHASHo2():
@@ -129,6 +176,11 @@ def SHASHo2():
             "nu": identity_derivative,
             "tau": log_derivative,
         },
+        score_overrides=_SHASHO2_SCORES,
+        hessian_overrides=_SHASHO2_HESSIANS,
+        p=pSHASHo2,
+        q=qSHASHo2,
+        r=rSHASHo2,
     )
 
 
