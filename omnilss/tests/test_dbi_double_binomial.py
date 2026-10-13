@@ -60,15 +60,24 @@ Final deviance: same objective, R stops marginally early
 --------------------------------------------------------
 On the exact sample ``gate_rs_deviance`` compares (48 observations, bd = 10)::
 
-    R's dDBI at OUR coefficients  208.042407377517264
-    our reported deviance          208.042407377517236
+    R's dDBI at OUR coefficients  208.04234639211853
+    our reported deviance          208.04234639211847
     R's gamlss() deviance          208.043104514376921
     R's dDBI at R's own fv         208.043104514376921
 
-R's density returns our number to the last bit, so both sides minimise the
-same objective and our being 3.3e-06 *below* R is its absolute ``c.crit``
-halting it -- D2.18's criterion 2.  Not a defect.  Raising R's budget does not
-move it: n.cyc = 20 / 40 / 100 / 300 all report 208.043104514376921.
+R's density returns our number to 2.7e-16 -- the last bit -- so both sides
+minimise the same objective and our being 3.6e-06 *below* R is its absolute
+``c.crit`` halting it -- D2.18's criterion 2.  Not a defect.  Raising R's
+budget does not move it: n.cyc = 20 / 40 / 100 / 300 all report
+208.043104514376921.
+
+The pinned ``OURS_GATE_DEV`` was re-measured in D2.41: D2.36's inner-loop
+alignment and D2.38's initial-value roll-out moved our trajectory by
+6.1e-05 (both readings below R, both converging), so the D2.22-era
+constant no longer described the fit.  The re-measurement re-ran live R
+on the same sample and confirmed the two parity facts above *before* the
+constant was touched -- an updated constant without that probe would just
+be a new stale number.
 
 Reproducing that comparison needs three things aligned, and misaligning any
 one produces a plausible number about a different question: the job list
@@ -119,9 +128,14 @@ R_DBI_SIGMA_COEF = 0.020070403755973468
 # have to hold for these numbers to mean anything.  R at n.cyc = 20, 40, 100
 # and 300 all report R_GATE_DEV unchanged, so R has stopped for its own
 # reasons; our being lower is its absolute c.crit, cross-checked by R's own
-# dDBI returning OURS_GATE_DEV at our coefficients to 2.8e-17.
+# dDBI returning OURS_GATE_DEV at our coefficients to 2.7e-16.
+#
+# OURS_GATE_DEV re-measured in D2.41 (live R probe, same sample and control):
+# the D2.36 inner-loop alignment and the D2.38 initial-value roll-out moved
+# our trajectory by 6.1e-05, and the D2.22-era constant went stale while the
+# test kept passing its *relative* assertions -- the pin is what caught it.
 R_GATE_DEV = 208.043104514376921
-OURS_GATE_DEV = 208.042407377517236
+OURS_GATE_DEV = 208.04234639211847
 
 
 def _fixture_7():
@@ -639,15 +653,15 @@ def test_scanner_sample_deviance_is_the_same_objective_as_r():
     """Both sides minimise the same thing; ours is marginally lower.
 
     The decisive number is R's **own density** evaluated at **our**
-    coefficients::
+    coefficients (live R probe, D2.41)::
 
-        R's dDBI at OUR coefficients  208.042407377517264
-        our reported deviance          208.042407377517236
+        R's dDBI at OUR coefficients  208.04234639211853
+        our reported deviance          208.04234639211847
         R's gamlss() deviance          208.043104514376921
         R's dDBI at R's own fv         208.043104514376921
 
-    R's density returns our number to 2.8e-17 -- the last bit -- so the two
-    sides optimise an identical objective and our being 3.3e-06 *below* R is
+    R's density returns our number to 2.7e-16 -- the last bit -- so the two
+    sides optimise an identical objective and our being 3.6e-06 *below* R is
     its absolute ``c.crit`` halting it (D2.18 criterion 2), not a defect.
     Raising R's budget confirms it stops for its own reasons: n.cyc = 20, 40,
     100 and 300 all report 208.043104514376921 unchanged.

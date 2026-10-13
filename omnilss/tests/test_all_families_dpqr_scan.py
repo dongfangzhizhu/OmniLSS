@@ -66,6 +66,15 @@ def _default_params(name: str) -> dict | None:
         p = {"mu": 0.3, "sigma": 0.2}
     elif name == "BB":
         p = {"mu": 0.5, "sigma": 0.2, "bd": 10.0}
+    elif name == "BI":
+        # bd is BI's *fixed* parameter: the R dBI/pBI/qBI functions take it
+        # positionally, and bd = None silently selects the Bernoulli branch.
+        # An explicit denominator exercises the general binomial instead.
+        p = {"mu": 0.5, "bd": 10.0}
+    elif name == "DBI":
+        # bd is DBI's fixed parameter and dDBI/pDBI/qDBI all require it
+        # positionally -- there is no default to fall back on.
+        p = {"mu": 0.5, "sigma": 1.2, "bd": 10.0}
     elif name in {"GU", "LO"}:
         p = {"mu": 0.0, "sigma": 1.0}
     elif name in {"BCCG", "BCT", "BCPE", "BCCGo", "BCTo", "BCPEo"}:
@@ -94,10 +103,20 @@ def test_all_families_dpqr_finite_and_monotone() -> None:
         if params is None:
             continue
         par = tuple(fam.parameters)
+        # Fixed parameters (DBI's and BI's binomial denominator `bd`) are
+        # positional arguments of the R d/p/q functions even though the
+        # fitter holds them fixed, so the scan has to pass them.  Skipping
+        # them made DBI raise `TypeError: _dbi_dispatch() missing 1 required
+        # positional argument: 'bd'` -- a gate failure that read as a family
+        # defect but was the harness never calling the family the way R
+        # does.  (BB already lists `bd` in `parameters`, hence the filter.)
+        fixed = tuple(
+            k for k in (getattr(fam, "fixed_parameters", ()) or ()) if k not in par
+        )
         try:
             # d: finite at a few points
             xs = np.linspace(0.2, 2.0, 5)
-            args = [params.get(k, 0.5) for k in par]
+            args = [params.get(k, 0.5) for k in par + fixed]
             d = np.asarray(fam.d(jnp.asarray(xs), *args))
             if not np.all(np.isfinite(d)):
                 failures.append(f"{name}: d non-finite")

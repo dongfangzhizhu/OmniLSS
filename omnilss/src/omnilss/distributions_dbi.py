@@ -116,6 +116,15 @@ __all__ = ["DBI", "DBIFamily", "dbi_log_c", "dbi_log_pdf"]
 
 _EPS = jnp.finfo(jnp.float64).eps
 
+# R's `0:q` sequence operator, measured on live R 6.1.1: `0:2.9999999` is
+# 0,1,2,3 while `0:2.999999` is 0,1,2 -- the endpoint is inclusive up to an
+# absolute fuzz of ~1e-7 (the same threshold near 30, so it is absolute, not
+# relative).  ``pDBI`` sums over ``0:q``, so the CDF steps at integers *plus*
+# this fuzz.  Getting it wrong shifts the p staircase by one step for any q
+# within ~1e-7 of an integer -- invisible on coarse grids, exact on a
+# digits=17 probe.
+_COLON_FUZZ = 1e-7
+
 
 def _dbi_log_c(mu, sigma, bd):
     """``C(mu, sigma, bd)`` transcribed from ``getBI_C2.c``.
@@ -194,7 +203,32 @@ dbi_log_c = _dbi_log_c
 
 
 def _dbi_log_pdf(x, mu, sigma, bd):
-    """``dDBI(..., log = TRUE)`` transcribed from ``dDBI.R``."""
+    """``dDBI(..., log = TRUE)`` transcribed from ``dDBI.R``.
+
+    Three contract details that only a non-integer ``x`` exposes, all
+    measured on live R 6.1.1 (digits=17 probes, ``mu=0.5, sigma=1.2,
+    bd=10``):
+
+    1. **``x`` is *not* rounded.**  Every term except ``lchoose`` uses the
+       raw ``x``: ``x*logofx``, ``(bd-x)*logofbd_x``, ``(x/sigma)*log(mu)``
+       all see 0.2 / 0.65 / 1.55 verbatim.  ``lchoose(bd, x)`` *does* round
+       -- R's ``lchoose`` rounds both arguments half-to-even
+       (``lchoose(10, 1.5) == lchoose(10, 2)``, measured).  The result is a
+       chimera: ``lchoose`` at the integer, everything else at the raw
+       value.  Rounding ``x`` up front (the previous implementation) made
+       ``d(0.65) == d(1.0)`` exactly, which is not R at any non-integer.
+    2. **``dbinom`` branch returns 0 for a non-integer ``x``.**  R's
+       ``dbinom`` refuses non-integer ``x`` (``-Inf`` on the log scale, with
+       a warning), so the ``|sigma - 1| < 0.001`` branch is *not* the
+       general formula rounded.
+    3. **Outside the support the density is 0.**  ``fy[x < 0] <- 0`` and
+       ``fy[x > bd] <- 0`` are the vendored 6.1-8 last lines; the installed
+       6.1.1 instead ``stop()``s for ``bd < x``.  We follow the vendored
+       source (the SHASHo2 boundary-contract convention): a density that
+       returns 0 outside its support is the usable contract, and a
+       ``stop()`` from inside a vectorised JAX kernel is not something the
+       fitter could catch anyway.
+    """
     x = jnp.asarray(x, dtype=jnp.float64)
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
@@ -202,11 +236,23 @@ def _dbi_log_pdf(x, mu, sigma, bd):
 
     mu = jnp.clip(mu, _EPS, 1.0 - _EPS)
     sigma = jnp.clip(sigma, _EPS, None)
+    # The clip only keeps intermediates finite; the raw x decides the
+    # support test at the end, exactly as R's two `fy[...] <- 0` lines do.
     y = jnp.clip(x, 0.0, bd)
-    y = jnp.round(y)
 
     logofy = jnp.where(y > 0.0, jnp.log(jnp.maximum(y, _EPS)), 1.0)
     logofn_y = jnp.where(bd > y, jnp.log(jnp.maximum(bd - y, _EPS)), 1.0)
+
+    # Contract (1): lchoose rounds both arguments, half-to-even.  jnp.round
+    # is half-to-even, as is R's round() -- lchoose(10, 0.5) == lchoose(10, 0)
+    # and lchoose(10, 1.5) == lchoose(10, 2), both measured.
+    y_int = jnp.round(y)
+    bd_int = jnp.round(bd)
+    lchoose = (
+        gammaln(bd_int + 1.0)
+        - gammaln(y_int + 1.0)
+        - gammaln(bd_int - y_int + 1.0)
+    )
 
     # R's binomial branch, verbatim: `abs(sigma - 1) < 0.001`.
     binom_ll = (
@@ -216,10 +262,11 @@ def _dbi_log_pdf(x, mu, sigma, bd):
         + y * jnp.log(mu)
         + (bd - y) * jnp.log1p(-mu)
     )
+    # Contract (2): dbinom refuses a non-integer x.
+    binom_ll = jnp.where(y == y_int, binom_ll, -jnp.inf)
+
     general_ll = (
-        gammaln(bd + 1.0)
-        - gammaln(y + 1.0)
-        - gammaln(bd - y + 1.0)
+        lchoose
         + y * logofy
         + (bd - y) * logofn_y
         - bd * jnp.log(jnp.maximum(bd, _EPS))
@@ -231,8 +278,8 @@ def _dbi_log_pdf(x, mu, sigma, bd):
         + _dbi_log_c(mu, sigma, bd)
     )
     ll = jnp.where(jnp.abs(sigma - 1.0) < 0.001, binom_ll, general_ll)
-    # dDBI's last line: fy <- ifelse(x < 0, 0, fy)
-    return jnp.where(x < 0.0, -jnp.inf, ll)
+    # Contract (3): dDBI's last lines: fy[x < 0] <- 0; fy[x > bd] <- 0.
+    return jnp.where((x < 0.0) | (x > bd), -jnp.inf, ll)
 
 
 dbi_log_pdf = _dbi_log_pdf
@@ -324,6 +371,10 @@ def _dbi_quantile(p, mu, sigma, bd):
 
     The ``+ 1e-09 >= 1`` branch is R's own tolerance and is kept: ``p = 1.0``
     must return ``bd`` rather than the last ``j`` whose CDF is 0.9999999999.
+
+    The installed 6.1.1 also ``stop()``s for ``p < 0`` or ``p > 1.0001``,
+    where the vendored 6.1-8 assigns NaN; both versions agree on every
+    ``p`` in ``[0, 1]``, which is what the parity gate and the scan sample.
     """
     p_arr = jnp.asarray(p, dtype=jnp.float64)
     bd_arr = jnp.asarray(bd, dtype=jnp.float64)
@@ -373,16 +424,31 @@ def _dbi_cdf(q, mu, sigma, bd):
     R's body (transcribed from ``dDBI.R``)::
 
         fn <- function(q, mu, sigma, bd) sum(dDBI(0:q, mu = mu, sigma = sigma, bd = bd))
-        cdf <- Vcdf(q, mu, sigma, bd)
-        cdf <- ifelse(lower.tail, cdf, 1 - cdf)
-        cdf <- ifelse(log.p, log(cdf), cdf)
-        cdf <- ifelse(q < 0, 0, cdf)
+        cdf <- Vcdf(q = q, mu = mu, sigma = sigma, bd = bd)
+        cdf <- if (lower.tail) cdf else 1 - cdf
+        cdf <- if (log.p) log(cdf) else cdf
+        cdf[q < 0] <- 0
+        cdf[q > bd] <- 1
 
-    Two transcription notes.  ``sum()`` over ``0:q`` means the CDF steps at the
-    integers, so a non-integer ``q`` truncates rather than interpolating -- and
-    a ``q`` above ``bd`` runs past the support, which is R's behaviour and is
-    kept.  Only the lower-tail, non-log form is wired up: the family's ``p``
-    slot in R is the *parameterisation marker* ``list(mu = TRUE, sigma = TRUE)``
+    ``sum()`` over ``0:q`` means the CDF steps at the integers -- and at
+    R's ``:`` fuzz, so the upper end is ``floor(q + 1e-7)`` rather than a
+    plain floor (see ``_COLON_FUZZ``; measured on live R, where
+    ``pDBI(2.9999999) == pDBI(3.0)`` but ``pDBI(2.999999) == pDBI(2.0)``).
+    The sum is capped at each observation's *own* ``bd``: R's ``dDBI``
+    contributes 0 beyond it, so summing past it would double-count ``d(bd)``
+    on a mixed-``bd`` call.
+
+    Two boundary notes.  ``cdf[q > bd] <- 1`` is the vendored 6.1-8 line and
+    is kept: the installed 6.1.1 has no such line and instead returns the
+    raw sum for ``q`` in ``(bd, bd + 1)`` -- measured 0.99999999999999967
+    where we return 1, a 3.3e-16 absolute difference -- and raises for
+    ``q >= bd + 1``, where ``0:q`` finally steps past ``bd`` into the
+    ``stop()`` in ``dDBI``.  We follow the vendored source (the SHASHo2
+    boundary-contract convention): exactly 1 beyond the support is the
+    usable contract.
+
+    Only the lower-tail, non-log form is wired up: the family's ``p`` slot
+    in R is the *parameterisation marker* ``list(mu = TRUE, sigma = TRUE)``
     rather than a function, so there is no R default-argument call to match.
     """
     q_arr = jnp.asarray(q, dtype=jnp.float64)
@@ -396,7 +462,9 @@ def _dbi_cdf(q, mu, sigma, bd):
     bd_arr = jnp.broadcast_to(bd_arr, shape)
     mu_arr = jnp.broadcast_to(mu_arr, shape)
     sigma_arr = jnp.broadcast_to(sigma_arr, shape)
-    q_int = jnp.clip(jnp.round(q_arr), 0.0, jnp.max(bd_arr))
+    # R's `0:q` with its fuzz, capped at this observation's own bd.
+    q_int = jnp.minimum(jnp.floor(q_arr + _COLON_FUZZ), bd_arr)
+    q_int = jnp.maximum(q_int, 0.0)
     # 0, 1, ..., bd  as a trailing axis, masked down to each observation's q.
     n_max = int(jnp.max(bd_arr))
     grid = jnp.arange(0, n_max + 1, dtype=jnp.float64)[None, :]
@@ -408,9 +476,23 @@ def _dbi_cdf(q, mu, sigma, bd):
         sigma_arr[..., None],
         bd_arr[..., None],
     )
-    cols = jnp.where(active, jnp.exp(cols), 0.0)
-    total = jnp.sum(cols, axis=-1)
-    return jnp.where(q_arr < 0.0, 0.0, total).reshape(shape)
+    # A running sum, not `jnp.sum`: R's `pDBI` is `sum(dDBI(0:q))` and its
+    # `qDBI` re-derives the *same* sequential sum inside its loop, so R's
+    # `q(p(j))` is bit-exact.  Pairwise summation here made `q(p(18))`
+    # return 19 -- `cumsum`'s cdf[18] sat one ULP below `sum`'s total, and
+    # R's `p <= cumpro` test then failed at 18 and passed at 19.
+    pmf = jnp.where(active, jnp.exp(cols), 0.0)
+    cdf = jnp.cumsum(pmf, axis=-1)
+    # Gather at each observation's own q_int.  Flattened to 2-D because
+    # `take_along_axis` requires matching ranks and the broadcast shape
+    # here is `shape + (n_max + 1,)` for any rank of `shape`.
+    flat = cdf.reshape(-1, cdf.shape[-1])
+    idx = q_int.reshape(-1, 1).astype(jnp.int32)
+    total = jnp.take_along_axis(flat, idx, axis=-1)[..., 0]
+    # pDBI's last lines: cdf[q < 0] <- 0; cdf[q > bd] <- 1.
+    return jnp.where(
+        q_arr > bd_arr, 1.0, jnp.where(q_arr < 0.0, 0.0, total)
+    ).reshape(shape)
 
 
 def _g_dev_inc(y, mu, sigma, bd=None, **_):
@@ -430,10 +512,21 @@ def DBI() -> FamilyDefinition:
     because ``sigma = 1`` is the branch point where R swaps in plain
     ``dbinom`` and the ``sigma`` derivative goes flat.
 
-    ``q`` is ``None`` because R attaches no ``qDBI`` to the family
-    (``DBI()$q`` is NULL).  Leaving it unset is the honest answer: a quantile
-    function that R does not provide has nothing to be checked against, and a
-    scan that reported "our q disagrees" would be inventing a defect.
+    R attaches neither ``qDBI`` nor ``rDBI`` to the family object
+    (``DBI()$q`` and ``DBI()$r`` are NULL), so neither slot has a
+    default-argument call to be checked against.  ``q`` is nonetheless
+    wired: the R *function* exists, is deterministic, and is the inverse of
+    the same finite sum, so it turns an unmeasurable slot into a parity
+    check.  ``r`` stays unset -- the vendored ``rDBI`` is ``qDBI(runif(n))``
+    with no family slot and no fitting role, so there is nothing to gain by
+    inventing a random stream for it.
+
+    ``bd`` is a **fixed** parameter: the fitter holds it at the value in the
+    data, but the R ``d``/``p``/``q`` functions take it positionally, so
+    every dpqr entry point here requires it.  A caller that reaches
+    ``fam.d(x, mu, sigma)`` without it gets a ``TypeError``, which is the
+    correct signal -- guessing a binomial denominator silently is how the
+    pre-D2.23 shell scored Bernoulli deviances for a count response.
     """
     dldm, dldd = _score_factory(None)
     return DBIFamily(
