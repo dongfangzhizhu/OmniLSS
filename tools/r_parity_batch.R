@@ -23,9 +23,40 @@ suppressPackageStartupMessages(library(gamlss.dist))
 args_all <- commandArgs(trailingOnly = TRUE)
 jobs <- fromJSON(args_all[1], simplifyVector = FALSE)
 
+# Resolve a gamlss.dist function by name, exact match first and
+# case-insensitively second.  gamlss.dist spells the "original parameterisation"
+# families with a lowercase trailing "o" (PARETO1o, BCCGo, BCPEo, BCTo, JSUo,
+# SHASHo, SHASHo2, BEo, EXGAUS, GEOMo, PARETO2o) while the OmniLSS registry
+# aliases them with a capital "O".  A plain paste0(type, family) lookup
+# therefore failed for every one of those families -- the same defect the
+# RTestBus bridge (omnilss/tests/rbus/R_scripts/eval_family.R) had.  Both
+# bridges share this resolver's contract.
+resolve_gamlss_dist_function <- function(name) {
+  ns <- asNamespace("gamlss.dist")
+  exports <- getNamespaceExports(ns)
+  if (name %in% exports) {
+    return(get(name, mode = "function", envir = ns))
+  }
+  matches <- exports[tolower(exports) == tolower(name)]
+  if (length(matches) == 1) {
+    return(get(matches[[1]], mode = "function", envir = ns))
+  }
+  if (length(matches) == 0) {
+    stop(sprintf("no function '%s' in gamlss.dist", name))
+  }
+  stop(sprintf(
+    "ambiguous function name '%s' (matches %s)",
+    name, paste(matches, collapse = ", ")
+  ))
+}
+
 run_dpqr <- function(payload) {
   fname <- paste0(payload$type, payload$family)
-  if (!exists(fname, mode = "function")) {
+  target <- tryCatch(
+    resolve_gamlss_dist_function(fname),
+    error = function(e) NULL
+  )
+  if (is.null(target)) {
     return(list(error = paste("missing function", fname)))
   }
   argnames <- unlist(payload$argnames)
@@ -43,7 +74,7 @@ run_dpqr <- function(payload) {
       } else if (payload$type == "d") {
         aa[["log"]] <- log_p
       }
-      as.numeric(do.call(fname, aa))
+      as.numeric(do.call(target, aa))
     })
     list(values = as.numeric(out))
   }, error = function(e) list(error = conditionMessage(e)))
@@ -52,7 +83,7 @@ run_dpqr <- function(payload) {
 run_fit <- function(payload) {
   df <- as.data.frame(lapply(payload$data, function(v) as.numeric(unlist(v))))
   tryCatch({
-    fam <- get(payload$family, mode = "function")
+    fam <- resolve_gamlss_dist_function(payload$family)
     # Binomial response convention (D2.22).  R's gamlss() rejects a binomial
     # family outright unless the response is the two-column
     # cbind(success, failure) matrix:

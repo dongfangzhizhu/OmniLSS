@@ -27,14 +27,41 @@ func_args <- payload$args
 # G.dev.incr slot, which is -2 * log d and is all there is to compare against.
 use_gdev <- identical(func_type, "gdev")
 
+# Resolve a gamlss.dist function by name, exact match first and
+# case-insensitively second.  gamlss.dist spells the "original parameterisation"
+# families with a lowercase trailing "o" (PARETO1o, BCCGo, BCPEo, BCTo, JSUo,
+# SHASHo, SHASHo2, BEo, EXGAUS, GEOMo, PARETO2o) while the OmniLSS registry
+# aliases them with a capital "O".  A plain get(paste0(type, family)) therefore
+# failed with "could not find function" for every one of those families -- the
+# dpqr gate silently skipped them and the R consistency tests hard-errored,
+# neither of which is a statement about the families themselves.
+resolve_gamlss_dist_function <- function(name) {
+  ns <- asNamespace("gamlss.dist")
+  exports <- getNamespaceExports(ns)
+  if (name %in% exports) {
+    return(get(name, mode = "function", envir = ns))
+  }
+  matches <- exports[tolower(exports) == tolower(name)]
+  if (length(matches) == 1) {
+    return(get(matches[[1]], mode = "function", envir = ns))
+  }
+  if (length(matches) == 0) {
+    stop(sprintf("no function '%s' in gamlss.dist", name))
+  }
+  stop(sprintf(
+    "ambiguous function name '%s' (matches %s)",
+    name, paste(matches, collapse = ", ")
+  ))
+}
+
 # Construct the R function name, e.g. "dNO", "pPO"
 target_func <- if (use_gdev) {
-  fam <- get(family_name, mode = "function", envir = asNamespace("gamlss.dist"))
+  fam <- resolve_gamlss_dist_function(family_name)
   fam <- fam()
   if (is.null(fam$G.dev.incr)) stop("no G.dev.incr slot")
   fam$G.dev.incr
 } else {
-  get(paste0(func_type, family_name), mode = "function", envir = asNamespace("gamlss.dist"))
+  resolve_gamlss_dist_function(paste0(func_type, family_name))
 }
 
 # Invoke the function element-wise so that families with imperfect vectorisation

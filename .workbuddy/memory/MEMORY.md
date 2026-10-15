@@ -12,7 +12,7 @@
 1. 既有用例失败，先分代码错 vs 期望错（D2.35：7 个失败 5 个是期望错）。
 2. "R 没说" ≠ 常识可补；假拒绝比漏检更糟。
 3. 写断言前先看实际数值、也看对通道（`-inf` 被把 exp 成 0.0；密度非有限走 log=True）。
-4. **活 R 对照是唯一可信 parity 证据**。bridge：`tests._r_bridge_helper`；family 传字符串名；R 的 stop() → RuntimeError。
+4. **活 R 对照是唯一可信 parity 证据**。bridge：`tests._r_bridge_helper`；family 传字符串名；R 的 stop() → RuntimeError。**R 桥拼名必须对 namespace exports 精确优先 + 大小写兜底**（D2.42：`paste0(func, family)` 对 11 个混合大小写族必挂——R 导出名小写尾 `o`：PARETO1o/BCCGo/BCPEo/BCTo/JSUo/SHASHo/SHASHo2/BEo/EXGAUS/GEOMo/PARETO2o，我们别名用大写 `O`；探针报错被 skip 吞掉 = 门禁静默失效）。
 
 ## parity 五判据（D2.18）
 
@@ -81,9 +81,10 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 - **重尾族常数起点不能被默认分支覆盖**：PARETO mu.initial=rep(2) 常数，target=y 逐观测 exp(y_i) 在 Pareto(2) 样本爆到 -inf。
 - **NET 缺陷组（D2.39 修复中，语义已修正）**：R 的 NET.R 在 family 对象里标记 `parameters=list(mu=T,sigma=T,nu=F,tau=F)`——**族级** non-estimable 标记（JSU 等族未给 formula 仍估计，实测 nu.coefficients 非 NULL），不是全局顶层语义；nu/tau 固定于 nu.initial/tau.initial=1.5/2，给了 formula 也忽略（nu.coefficients=NULL）。修法=族级 fixed_parameters+fixed_parameter_defaults（新机制）+link identity；density 里 tau=max(tau,nu) 静默 clamp vs R dNET 的 stop 是另一处 dpqr 对齐待办。
 - **LNO intercept-only 既有失败**（stash 验证 HEAD 同挂）：候选后续项。
+- **R 的 score 槽可能与 G.deviance 自相矛盾（D2.42 PARETO1o 幽灵项）**：dldd 无 support 守卫而密度边界为 0，mu=min(y) 使最小观测永在边界 → IRLS 固定点是 `sigma=n/Σlog(y/mu)`（含边界观测的幽灵 1/σ 项，其 deviance 贡献为 0）。R 落点与闭式 10 位一致 + c.crit=1e-10 不动 = 固定点非提前停；我们低于/高于都要先算这个闭式再定性。修法=score_overrides/hessian_overrides 装 R 闭式（D2.40 SHASHo2 模式）。**固定 mu 的数据依赖默认**（rep(min(y))）走 `_resolve_fixed_parameter_values(family, data, n_obs, y)` 族名特例，不走常数 defaults；residual 路径要显式取 fixed_parameter_values 的 mu。
 - R-backed 测试首次真跑=测试的验收不是回归（skip 假绿）；测试族名用 R 真名大小写。
 - 符号证据按测试文件**标识符引用**判定：fam.p(...) 间接调用不算，按名 import 才算。
-- b14 组 SHASHo/SHASHo2/BCPEo/BCTo 仍是 nan 占位（不在扫描器 146 族名单），待补。
+- b14 组 BCPEo/BCTo 仍是 nan 占位（SHASHo/SHASHo2 已于 D2.40/D2.42 交付）；混合大小写族 BCCGO/BCPEO/BCTO/BEO/EXGAUS/GEOMO/PARETO2O 的 dpqr 接线状态待查（R 桥大小写缺陷 D2.42 已修，门禁可真实探测）。
 
 ## 环境（用户 2026-10-10 明确）
 

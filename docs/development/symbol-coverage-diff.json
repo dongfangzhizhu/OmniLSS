@@ -4,10 +4,10 @@
   "baseline_error": "",
   "r_exports_total": 1080,
   "current_counts": {
-    "missing": 395,
+    "missing": 391,
     "placeholder": 10,
     "compat_alias": 6,
-    "evidence_gap": 35,
+    "evidence_gap": 34,
     "extra": 300
   },
   "category_meaning": {
@@ -21,15 +21,19 @@
     "missing": {
       "new": [],
       "resolved": [
+        "gamlss.dist::dPARETO1o",
         "gamlss.dist::dSHASHo2",
         "gamlss.dist::pJSUo",
+        "gamlss.dist::pPARETO1o",
         "gamlss.dist::pSHASHo2",
         "gamlss.dist::qJSUo",
+        "gamlss.dist::qPARETO1o",
         "gamlss.dist::qSHASHo2",
         "gamlss.dist::rJSUo",
+        "gamlss.dist::rPARETO1o",
         "gamlss.dist::rSHASHo2"
       ],
-      "current_count": 395,
+      "current_count": 391,
       "baseline_count": 402
     },
     "placeholder": {
@@ -53,9 +57,10 @@
     "evidence_gap": {
       "new": [],
       "resolved": [
+        "gamlss.dist::PARETO1o",
         "gamlss::coefAll"
       ],
-      "current_count": 35,
+      "current_count": 34,
       "baseline_count": 36
     },
     "extra": {
@@ -69,11 +74,19 @@
   "improvements": [
     {
       "category": "missing",
+      "symbol": "gamlss.dist::dPARETO1o"
+    },
+    {
+      "category": "missing",
       "symbol": "gamlss.dist::dSHASHo2"
     },
     {
       "category": "missing",
       "symbol": "gamlss.dist::pJSUo"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.dist::pPARETO1o"
     },
     {
       "category": "missing",
@@ -85,11 +98,19 @@
     },
     {
       "category": "missing",
+      "symbol": "gamlss.dist::qPARETO1o"
+    },
+    {
+      "category": "missing",
       "symbol": "gamlss.dist::qSHASHo2"
     },
     {
       "category": "missing",
       "symbol": "gamlss.dist::rJSUo"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.dist::rPARETO1o"
     },
     {
       "category": "missing",
@@ -114,6 +135,10 @@
     {
       "category": "compat_alias",
       "symbol": "gamlss.dist::rDBI"
+    },
+    {
+      "category": "evidence_gap",
+      "symbol": "gamlss.dist::PARETO1o"
     },
     {
       "category": "evidence_gap",

@@ -265,7 +265,7 @@ def cg_fit_v2(
         else np.asarray(weights, dtype=np.float64)
     )
 
-    fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n)
+    fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n, y)
     design_matrices: Dict[str, np.ndarray] = {}
     predictor_labels: Dict[str, list[str]] = {}
     smooth_infos: Dict[str, Any] = {}

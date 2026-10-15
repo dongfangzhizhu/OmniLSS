@@ -161,7 +161,7 @@ def gamlss_rs_jax(
     n = len(y)
     w = np.ones(n, dtype=np.float64) if weights is None else np.asarray(weights, dtype=np.float64)
 
-    fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n)
+    fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n, y)
 
     # ── Build design matrices ─────────────────────────────────────────────────
     design_matrices_np: dict[str, np.ndarray] = {}

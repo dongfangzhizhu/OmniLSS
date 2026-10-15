@@ -455,6 +455,13 @@ def _initial_sigma(
     eps = np.finfo(np.float64).eps
     if family.name in ("ZABB", "ZIBB"):
         return 0.1
+    if family.name == "PARETO1o":
+        # R PARETO1o()$sigma.initial (live R, PARETO1_mu_fixed.R):
+        #     sigma <- rep(0.5, length(y))
+        # The generic residual-scale default would evaluate the spread
+        # against the *fitted* mu; PARETO1o's mu is fixed at min(y), so that
+        # spread is not the scale R starts from.
+        return 0.5
     # Box-Cox six-family sigma: R's family objects start at
     # sigma <- rep(0.1, length(y)) (live R, D2.35/D2.36).  Adopted in D2.36
     # once the inner RS loop ran with R's glim.fit semantics (cc=0.001,

@@ -239,7 +239,16 @@ def _resolve_fixed_parameter_values(
     family: FamilyDefinition,
     data: Mapping[str, Any],
     n_obs: int,
+    y: np.ndarray,
 ) -> dict[str, np.ndarray]:
+    """Resolve the per-observation values of the family's fixed parameters.
+
+    ``y`` (the response vector) is required because one family's default is
+    data-dependent: PARETO1o fixes ``mu`` at ``rep(min(y), length(y))`` (R's
+    ``mu.initial``).  The constant defaults (NET's nu/tau) live in
+    ``family.fixed_parameter_defaults``; data-supplied fixed parameters
+    (BI's/DBI's ``bd``) still win over both.
+    """
     resolved: dict[str, np.ndarray] = {}
     defaults = family.fixed_parameter_defaults or {}
     for parameter in family.fixed_parameters or ():
@@ -257,6 +266,17 @@ def _resolve_fixed_parameter_values(
             # Special case: BI family's bd parameter defaults to 1 (Bernoulli)
             if family.name == "BI" and parameter == "bd":
                 resolved[parameter] = np.ones(n_obs, dtype=np.float64)
+                continue
+
+            # Special case: PARETO1o fixes mu at R's mu.initial,
+            # rep(min(y), length(y)) (PARETO1_mu_fixed.R, live R verified).
+            # It is *data-dependent*, which is why it cannot live in the
+            # constant fixed_parameter_defaults mapping above.  The minimum
+            # observation then sits exactly on the support edge, matching R.
+            if family.name == "PARETO1o" and parameter == "mu":
+                resolved[parameter] = np.full(
+                    n_obs, float(np.min(y)), dtype=np.float64
+                )
                 continue
 
             raise ValueError(
@@ -597,7 +617,7 @@ def gamlss_ml(
     )
 
     y = np.asarray(data[response_name], dtype=np.float64)
-    fixed_parameter_values = _resolve_fixed_parameter_values(family, data, len(y))
+    fixed_parameter_values = _resolve_fixed_parameter_values(family, data, len(y), y)
     if weights is None:
         w = np.ones_like(y, dtype=np.float64)
     else:
@@ -727,10 +747,14 @@ def gamlss_ml(
     g_dev = float(np.sum(np.asarray(family.g_dev_inc(**dev_kwargs)) * w))
     deviance_history = (g_dev,)
 
+    # Residuals are a function of the *effective* fitted values: for a family
+    # with a fixed mu (PARETO1o) the fitted mu is the fixed value, not the
+    # WLS compression of the mu formula that the local ``mu`` still holds.
+    mu_for_residuals = fixed_parameter_values.get("mu", mu)
     residual_values = (
-        rqres_callable(y=y, mu=mu, sigma=parameter_values.get("sigma"))
+        rqres_callable(y=y, mu=mu_for_residuals, sigma=parameter_values.get("sigma"))
         if rqres_callable is not None
-        else _compute_residuals(family, y, mu, parameter_values.get("sigma"))
+        else _compute_residuals(family, y, mu_for_residuals, parameter_values.get("sigma"))
     )
 
     # Compute df_fit including smooth terms
@@ -1254,7 +1278,7 @@ def gamlss(
 
         y = np.asarray(data[response_name], dtype=np.float64)
         n = len(y)
-        fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n)
+        fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n, y)
 
         if weights is None:
             w = np.ones(n, dtype=np.float64)
@@ -1468,7 +1492,7 @@ def gamlss(
 
     y = np.asarray(data[response_name], dtype=np.float64)
     n = len(y)
-    fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n)
+    fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n, y)
     parameter_designs: dict[str, np.ndarray] = {}
     parameter_labels: dict[str, list[str]] = {}
     smooth_infos: dict[str, Any] = {"mu": mu_smooth_info}

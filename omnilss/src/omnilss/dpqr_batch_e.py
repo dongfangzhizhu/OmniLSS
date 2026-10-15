@@ -24,6 +24,21 @@ Batch 2 (PE2 / NOF / GAF) adds two more documented deviations:
   ``log_p``.
 * ``dGAF`` applies ``ifelse(x <= 0, 0, fy)`` *after* the ``log`` branch, so R's
   log-density for ``x <= 0`` is ``0`` (i.e. density 1).  We return ``-inf``.
+
+Batch 3 (PARETO1o, the fixed-mu Pareto Type 1) adds four, all verified on live
+R 6.1.1 against the vendored 6.1-8 sources:
+
+* ``pPARETO1o`` ignores ``log.p`` (the same ``cdf < - log(cdf)`` typo, still
+  present in the installed package).  We honour it.
+* ``pPARETO1o`` applies ``ifelse(q <= mu, 0, cdf)`` *after* the
+  ``lower.tail`` flip, so R's upper tail is ``0`` at and below the support
+  edge.  We return the mathematically correct ``1``.
+* ``dPARETO1o`` returns ``0`` on the log scale outside the support (the
+  ``dGAF`` pattern again).  We return ``-inf``; the family's ``g_dev_inc``
+  reproduces R's ``-2 * 0`` on that path.
+* Live ``qPARETO1o`` *stops* for ``p`` outside ``(0, 1)``; the vendored
+  source instead assigns ``q[p == 0] <- 0``, contradicting its own support
+  (infimum ``mu``).  We return the support infimum at ``p <= 0``.
 """
 
 from __future__ import annotations
@@ -43,6 +58,12 @@ _NAN = jnp.nan
 R_QUIRKS: dict[str, str] = {
     "PARETO": "pPARETO 忽略 log.p（R 源码 `cdf < - log(cdf)` 笔误）；qPARETO 忽略 lower.tail",
     "PARETO1": "pPARETO1 忽略 log.p（同上笔误）；qPARETO1 忽略 lower.tail",
+    "PARETO1o": (
+        "pPARETO1o 忽略 log.p（同一笔误，活 R 6.1.1 实测仍在）；"
+        "pPARETO1o 的 lower.tail 翻转之后才 ifelse(q<=mu, 0, ...)，上尾在 support 边缘被 clamp 到 0（数学上为 1）；"
+        "dPARETO1o 的 log 密度在 support 外返回 0（ifelse 在 log 分支之后）；"
+        "活 R qPARETO1o 对 p∉(0,1) stop，vendored 的 q[p==0]<-0 与自身 support（下确界 mu）矛盾"
+    ),
     "NOF": "qNOF 未把 log.p 传给 qnorm",
     "GAF": "dGAF 在 log 分支之后才做 ifelse(x<=0, 0, fy)，导致 log 密度返回 0",
 }
@@ -189,6 +210,99 @@ def qPARETO1(p, mu=1.0, lower_tail=True, log_p=False):
 def rPARETO1(key, n, mu=1.0):
     """Inverse-transform sampler for the one-parameter Pareto distribution."""
     return qPARETO1(jr.uniform(key, (int(n),), dtype=jnp.float64), mu)
+
+
+# ---------------------------------------------------------------------------
+# PARETO1o - Pareto Type 1 with mu FIXED (2-parameter, R PARETO1_mu_fixed.R)
+# ---------------------------------------------------------------------------
+#
+# R's family object marks ``mu`` non-estimable (``parameters = list(mu = FALSE,
+# sigma = TRUE)``) and fixes it at ``mu.initial = rep(min(y), length(y))``;
+# only ``sigma`` is fitted.  The d/p/q/r functions still take ``mu`` as a
+# regular positional argument -- "fixed" is a *fitting-level* property, the
+# same split DBI's ``bd`` and NET's ``nu``/``tau`` already have.
+
+
+def dPARETO1o(x, mu=1.0, sigma=0.5, log=False):
+    """Density of the fixed-mu Pareto Type 1 (support ``y > mu``).
+
+    R's ``dPARETO1o`` computes ``lfy`` unconditionally and only then applies
+    ``fy <- ifelse(x <= mu, 0, fy)`` -- *after* the ``log`` branch.  So on the
+    log scale R returns ``0`` (not ``-Inf``) outside the support, the same
+    quirk ``dGAF`` has (see ``R_QUIRKS``).  We return ``-inf``; the family's
+    ``g_dev_inc`` reproduces R's ``-2 * 0`` separately (see
+    ``distributions_b16._pareto1o_log_pdf``).
+    """
+    x, mu, sigma = jnp.broadcast_arrays(
+        jnp.asarray(x, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+    )
+    inside = (x > mu) & (mu > 0.0) & (sigma > 0.0)
+    xs = jnp.where(inside, x, 2.0)
+    value = jnp.where(
+        inside,
+        jnp.log(sigma) + sigma * jnp.log(mu) - (sigma + 1.0) * jnp.log(xs),
+        -_INF,
+    )
+    value = jnp.where((mu > 0.0) & (sigma > 0.0), value, _NAN)
+    return value if log else jnp.exp(value)
+
+
+def pPARETO1o(q, mu=1.0, sigma=0.5, lower_tail=True, log_p=False):
+    """CDF of the fixed-mu Pareto Type 1 (support ``y > mu``).
+
+    ``cdf = 1 - (mu/q)^sigma`` evaluated as ``-expm1(sigma*log(mu/q))`` so the
+    cancellation near ``q = mu`` keeps full relative precision (R's literal
+    ``1 - (mu/q)^sigma`` loses ~9 digits a decade inside the boundary).
+
+    R applies ``ifelse(q <= mu, 0, cdf)`` *after* the ``lower.tail`` flip, so
+    R's upper tail is 0 (not 1) at and below the support edge; we return the
+    mathematically correct 1 there (documented in ``R_QUIRKS``).  R also
+    ignores ``log.p`` outright (the ``cdf < - log(cdf)`` typo, confirmed on
+    live R 6.1.1); we honour it.
+    """
+    q, mu, sigma = jnp.broadcast_arrays(
+        jnp.asarray(q, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+    )
+    valid = (mu > 0.0) & (sigma > 0.0)
+    inside = (q > mu) & valid
+    qs = jnp.where(inside, q, 2.0)
+    mus = jnp.where(valid, mu, 1.0)
+    cdf = jnp.where(inside, -jnp.expm1(sigma * (jnp.log(mus) - jnp.log(qs))), 0.0)
+    value = _apply_tail(cdf, lower_tail, log_p)
+    return jnp.where(valid, value, _NAN)
+
+
+def qPARETO1o(p, mu=1.0, sigma=0.5, lower_tail=True, log_p=False):
+    """Quantile of the fixed-mu Pareto Type 1 (support ``y > mu``).
+
+    Live R 6.1.1 *stops* for any ``p`` outside the open interval (0, 1)
+    (``p must be between 0 and 1``); the vendored 6.1-8 source instead
+    assigns ``q[p == 0] <- 0`` -- which contradicts its own support, whose
+    infimum is ``mu``, not 0 -- plus ``Inf`` at 1 and ``NaN`` outside
+    [0, 1].  We keep the house convention (``qPARETO`` above): the support
+    infimum at ``p <= 0``, ``Inf`` at ``p >= 1``, ``NaN`` for ``NaN``.
+    """
+    p, mu, sigma = jnp.broadcast_arrays(
+        jnp.asarray(p, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+    )
+    prob = _prob_from_p(p, lower_tail, log_p)
+
+    def value_fn(pr):
+        return mu * jnp.power(1.0 - pr, -1.0 / sigma)
+
+    value = _quantile_from_prob(prob, value_fn, low=mu, high=_INF)
+    return jnp.where((mu > 0.0) & (sigma > 0.0), value, _NAN)
+
+
+def rPARETO1o(key, n, mu=1.0, sigma=0.5):
+    """Inverse-transform sampler for the fixed-mu Pareto Type 1."""
+    return qPARETO1o(jr.uniform(key, (int(n),), dtype=jnp.float64), mu, sigma)
 
 
 # ---------------------------------------------------------------------------

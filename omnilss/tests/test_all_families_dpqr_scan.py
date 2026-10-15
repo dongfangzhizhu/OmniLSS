@@ -40,12 +40,14 @@ SKIP = {
 #   PIG2（b13 早已接线）
 #   D2.40: SHASHO2（密度参数化纠错 + p/q/r 补齐 + R 闭式导数 overrides，
 #         见 tests/test_shasho2_parity.py）
+#   D2.42: PARETO1O（fixed-mu Pareto Type 1 的 p/q/r 补齐 + fixed mu 机制
+#         + R 闭式导数 overrides，见 tests/test_r_consistency_pareto1o.py）
 KNOWN_NAN_PLACEHOLDER = {
     "BCCGO", "BCPEO", "BCTO", "BEINF0", "BEINF1", "BEOI", "BEZI",
     "DPO", "DPO1",
     "GENERALISEDPOISSON", "GIG", "GP", "GPO", "IGA", "IGAMMA", "JSUO", "LG",
     "LNO", "LOGITNO", "LOGNO2", "LOGSHASH", "LOGSHASHO", "NBF", "NET",
-    "PARETO1O", "PARETO2", "SEP", "SEP1", "SEP2",
+    "PARETO2", "SEP", "SEP1", "SEP2",
     "SEP3", "SEP4", "SI", "SST", "ST3", "ST3C", "ST4", "ST5",
     "WARING", "YULE", "ZABI", "ZABNB", "ZALG", "ZANBI",
     "ZAP", "ZAPIG", "ZASICHEL", "ZAZIPF", "ZIBI", "ZIBNB", "ZINBF",
@@ -85,6 +87,10 @@ def _default_params(name: str) -> dict | None:
         p = {"mu": 0.0, "sigma": 1.0, "nu": 0.5, "tau": 5.0}
     elif name in {"SHASH", "SHASHo", "SHASHo2"}:
         p = {"mu": 0.0, "sigma": 1.0, "nu": 0.5, "tau": 1.0}
+    elif name == "PARETO1O":
+        # mu is the family-level fixed lower bound (support y > mu); keep it
+        # strictly inside the scan grid so every xs is in support.
+        p = {"mu": 0.5, "sigma": 0.5}
     return p
 
 

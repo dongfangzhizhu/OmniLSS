@@ -109,39 +109,92 @@ class Pareto1oFamily(FamilyDefinition):
 
 def _pareto1o_log_pdf(y: Array, mu: Array, sigma: Array) -> Array:
     """Log-PDF for PARETO1o distribution.
-    
+
     log f(y|mu,sigma) = log(sigma) + sigma*log(mu) - (sigma+1)*log(y)
+
+    Outside the support (y <= mu) R's ``dPARETO1o`` returns ``0`` **on the
+    log scale** as well: it computes ``lfy`` first and only then applies
+    ``fy <- ifelse(x <= mu, 0, fy)``, i.e. the ``ifelse`` sits *after* the
+    ``log`` branch (live R 6.1.1 verified).  The consequence that matters is
+    ``G.dev.incr = -2 * dPARETO1o(y, mu, sigma, log = TRUE) = 0`` there, not
+    ``+inf`` -- and with ``mu`` fixed at ``min(y)`` the minimum observation
+    always sits exactly on the boundary, so every PARETO1o fit evaluates the
+    deviance at that point.  We therefore return ``0.0`` (not ``-inf``) to
+    keep ``g_dev_inc`` on R's contract.  The *density* is unaffected: the
+    family wires the explicit ``dPARETO1o`` kernel, which returns 0 outside
+    the support (``exp(0) = 1`` would be wrong).
     """
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    y = jnp.maximum(y, eps)
-    
-    log_pdf = jnp.log(sigma) + sigma * jnp.log(mu) - (sigma + 1.0) * jnp.log(y)
-    
-    # Zero density for y <= mu
-    log_pdf = jnp.where(y > mu, log_pdf, -jnp.inf)
-    
-    return log_pdf
+    interior = jnp.log(sigma) + sigma * jnp.log(mu) - (sigma + 1.0) * jnp.log(y)
+    return jnp.where(y > mu, interior, 0.0)
+
+
+# R's own derivative slots for PARETO1o (PARETO1_mu_fixed.R), transcribed
+# verbatim -- including the parts that are inconsistent with R's density:
+#
+#   dldd  <- (1/sigma) + log(mu) - log(y)      # NO support guard
+#   d2ldd2 <- -1/sigma^2                        # NO support guard
+#
+# R's ``dPARETO1o`` is zero for ``y <= mu`` (and hence so is its
+# ``G.dev.incr`` contribution), but ``dldd`` keeps evaluating the interior
+# formula there.  With ``mu`` fixed at ``min(y)`` the minimum observation
+# always sits exactly on the edge, so its phantom ``1/sigma`` term is part of
+# *every* PARETO1o fit: R's IRLS fixed point for sigma is
+# ``n / sum(log(y/mu))`` (all n observations), while the deviance R reports
+# excludes the boundary observation.  Measured on live R 6.1.1 (n = 30
+# Pareto(1, 0.7) sample): R lands at eta = -0.18359862254654988, which is
+# ``log(n / sum(log(y/mu)))`` to 10 digits, and does not move under
+# ``c.crit = 1e-10`` -- i.e. it is R's fixed point, not an early stop.  To
+# keep our fit (and reported deviance) on R's, the sigma score/hessian must
+# be R's unguarded formulas; the AD-of-log_pdf versions vanish at
+# ``y <= mu`` and would land at the deviance minimum instead (143.15351
+# against R's 143.18722 on that sample -- lower, but a different model
+# answer).  Only ``sigma`` needs an override: ``mu`` is fixed, and the AD
+# values already equal R's interior formulas elsewhere.
+
+
+def _pareto1o_dldd(y: Array, mu: Array, sigma: Array) -> Array:
+    """R's ``dldd`` slot: ``(1/sigma) + log(mu) - log(y)``, unguarded."""
+    return 1.0 / sigma + jnp.log(mu) - jnp.log(y)
+
+
+def _pareto1o_d2ldd2(y: Array, mu: Array, sigma: Array) -> Array:
+    """R's ``d2ldd2`` slot: ``-1/sigma^2``, unguarded."""
+    return jnp.full_like(jnp.asarray(y, dtype=jnp.float64), -1.0 / (sigma * sigma))
+
+
+_PARETO1O_SCORES = {"sigma": _pareto1o_dldd}
+_PARETO1O_HESSIANS = {"sigma": _pareto1o_d2ldd2}
 
 
 def PARETO1o() -> Pareto1oFamily:
     """Pareto Type 1 with fixed mu.
 
     R's ``PARETO1o`` defaults are ``mu.link = "log"`` / ``sigma.link = "log"``
-    (``PARETO1_mu_fixed.R``).
-
-    Returns:
-        Pareto1oFamily with automatic differentiation support
+    (``PARETO1_mu_fixed.R``).  ``mu`` is *fixed*: the family object marks it
+    ``parameters = list(mu = FALSE, sigma = TRUE)`` and pins it at
+    ``mu.initial = rep(min(y), length(y))`` -- a data-dependent default, which
+    is why it is resolved in ``fitting._resolve_fixed_parameter_values``
+    rather than in a constant ``fixed_parameter_defaults`` mapping.  ``sigma``
+    starts at R's ``rep(0.5, length(y))`` (see ``_initial_sigma``).
     """
+    from .dpqr_batch_e import dPARETO1o, pPARETO1o, qPARETO1o, rPARETO1o
+
     return build_ad_family(
         family_class=Pareto1oFamily,
         log_pdf_func=_pareto1o_log_pdf,
         name="PARETO1o",
         parameters=("mu", "sigma"),
+        fixed_parameters=("mu",),
         links={"mu": "log", "sigma": "log"},
         link_functions={"mu": log_link, "sigma": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative},
+        score_overrides=_PARETO1O_SCORES,
+        hessian_overrides=_PARETO1O_HESSIANS,
+        d=dPARETO1o,
+        p=pPARETO1o,
+        q=qPARETO1o,
+        r=rPARETO1o,
     )
 
 

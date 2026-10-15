@@ -1036,7 +1036,7 @@ def rs_fit(
         w = np.asarray(weights, dtype=np.float64)
 
     # Get fixed parameter values
-    fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n)
+    fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n, y)
 
     # Build design matrices for all parameters
     design_matrices = {}

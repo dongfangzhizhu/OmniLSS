@@ -38,6 +38,7 @@ from omnilss.dpqr_batch_e import (  # noqa: E402
     dNOF,
     dPARETO,
     dPARETO1,
+    dPARETO1o,
     dPE2,
     dRGE,
     dWEI2,
@@ -46,6 +47,7 @@ from omnilss.dpqr_batch_e import (  # noqa: E402
     pNOF,
     pPARETO,
     pPARETO1,
+    pPARETO1o,
     pPE2,
     pRGE,
     pWEI2,
@@ -54,6 +56,7 @@ from omnilss.dpqr_batch_e import (  # noqa: E402
     qNOF,
     qPARETO,
     qPARETO1,
+    qPARETO1o,
     qPE2,
     qRGE,
     qWEI2,
@@ -62,6 +65,7 @@ from omnilss.dpqr_batch_e import (  # noqa: E402
     rNOF,
     rPARETO,
     rPARETO1,
+    rPARETO1o,
     rPE2,
     rRGE,
     rWEI2,
@@ -167,6 +171,17 @@ CASES = {
         [(1.0, 1.0, 2.0), (2.0, 0.5, 1.0), (3.0, 0.8, 3.0)],
         [0.3, 1.0, 2.0, 5.0],
         0.0,
+    ),
+    # --- Batch 3: fixed-mu Pareto Type 1 (D2.42) ---------------------------
+    # R's family object fixes mu (parameters=list(mu=FALSE, sigma=TRUE)) but
+    # the d/p/q kernels still take it positionally, same split as DBI's bd.
+    # xs must clear every mu in the grid (support is y > mu); R's upper tail
+    # is clamped to 0 at the edge (see R_QUIRKS), hence excluded there.
+    "PARETO1o": (
+        dPARETO1o, pPARETO1o, qPARETO1o, rPARETO1o,
+        [(0.5, 0.5), (1.0, 1.0), (2.0, 2.0)],
+        [2.1, 3.0, 10.0, 50.0, 200.0],
+        0.5,
     ),
 }
 
@@ -311,8 +326,8 @@ class TestBatchERConsistency(unittest.TestCase):
                 np.testing.assert_allclose(got, exp, rtol=1e-8, atol=1e-10, err_msg=f"{name} p params={params}")
 
     def test_upper_tail_cdf_matches_r(self) -> None:
-        """上尾对照：PARETO/PARETO1 因 R 缺陷被排除，其余族必须与 R 一致。"""
-        excluded = {"PARETO", "PARETO1"}
+        """上尾对照：PARETO/PARETO1/PARETO1o 因 R 缺陷被排除，其余族必须与 R 一致。"""
+        excluded = {"PARETO", "PARETO1", "PARETO1o"}
         for name, (_dfun, pfun, _q, _r, grid, xs, _low) in CASES.items():
             if name in excluded:
                 continue
