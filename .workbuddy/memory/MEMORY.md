@@ -54,7 +54,7 @@ build_ad_family 不传 p/q/r 装 **nan 占位**（能力缺失静默）。hurdle
 
 ## 数值库精度（D2.29）
 
-jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同名数值函数先做精度对照再信。**
+jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同名数值函数先做精度对照再信。** JAX `norm.ppf`（ndtri）在 p 距 1 的 1e-5 内相对精度退化 ~1e-6，被 sinh（导数 cosh(r)~50）放大成 ~3e-4 往返误差（D2.43 实测；R qnorm 同区更准）——q 类函数的尾部 roundtrip 断言要掩码避开该区。
 
 ## 登记绑定样本流；cross-check 先验 R 自洁（D2.30）
 
@@ -84,7 +84,8 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 - **R 的 score 槽可能与 G.deviance 自相矛盾（D2.42 PARETO1o 幽灵项）**：dldd 无 support 守卫而密度边界为 0，mu=min(y) 使最小观测永在边界 → IRLS 固定点是 `sigma=n/Σlog(y/mu)`（含边界观测的幽灵 1/σ 项，其 deviance 贡献为 0）。R 落点与闭式 10 位一致 + c.crit=1e-10 不动 = 固定点非提前停；我们低于/高于都要先算这个闭式再定性。修法=score_overrides/hessian_overrides 装 R 闭式（D2.40 SHASHo2 模式）。**固定 mu 的数据依赖默认**（rep(min(y))）走 `_resolve_fixed_parameter_values(family, data, n_obs, y)` 族名特例，不走常数 defaults；residual 路径要显式取 fixed_parameter_values 的 mu。
 - R-backed 测试首次真跑=测试的验收不是回归（skip 假绿）；测试族名用 R 真名大小写。
 - 符号证据按测试文件**标识符引用**判定：fam.p(...) 间接调用不算，按名 import 才算。
-- b14 组 BCPEo/BCTo 仍是 nan 占位（SHASHo/SHASHo2 已于 D2.40/D2.42 交付）；混合大小写族 BCCGO/BCPEO/BCTO/BEO/EXGAUS/GEOMO/PARETO2O 的 dpqr 接线状态待查（R 桥大小写缺陷 D2.42 已修，门禁可真实探测）。
+- b14 组 BCPEo/BCTo 仍是 nan 占位（SHASHo/SHASHo2 已于 D2.40/D2.42/D2.43 交付）；混合大小写族 BCCGO/BCPEO/BCTO/BEO/EXGAUS/GEOMO/PARETO2O 的 dpqr 接线状态待查（R 桥大小写缺陷 D2.42 已修，门禁可真实探测）。
+- **SHASH（非 o）密度积分缺陷待查**（D2.43 新发现）：同 profile 下 SHASH 密度积分 [-40,40]=0.9601、[-400,400]=0.9998（SHASHo=1.0 精确）——SHASH 族 dpqr 路径既存问题。
 
 ## 环境（用户 2026-10-10 明确）
 

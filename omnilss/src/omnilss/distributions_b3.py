@@ -66,18 +66,52 @@ def _shasho_p(x, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, lower_tail=True, log_p=Fals
 
 
 def _shasho_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, lower_tail=True, log_p=False):
+    """Quantile of the original-parameterization sinh-arcsinh (``qSHASHo``).
+
+    Boundary contract follows the vendored 6.1-8 source::
+
+        q[p == 0] <- -Inf ; q[p == 1] <- Inf
+        q[p <  0] <- NaN  ; q[p >  1] <- NaN
+
+    while the *installed* 6.1.1 instead stops for any ``p`` outside the
+    open interval (0, 1) -- the same install-vs-vendored split SHASHo2's
+    quantile has (pinned on both sides in
+    ``tests/test_r_consistency_shasho.py``).  We follow vendored: the
+    support is the whole real line, so ±Inf are the continuous extensions
+    at ``p = 0`` / ``p = 1``.  The previous implementation clipped ``p``
+    into ``(eps, 1 - eps)``, which returned finite values there -- neither
+    vendored's ±Inf nor live R's stop.
+    """
     p, mu, sigma, nu, tau = [jnp.asarray(v, dtype=jnp.float64) for v in (p, mu, sigma, nu, tau)]
     if log_p:
         p = jnp.exp(p)
     if not lower_tail:
         p = 1.0 - p
     eps = jnp.finfo(jnp.float64).eps
-    p = jnp.clip(p, eps, 1.0 - eps)
     sigma = jnp.maximum(sigma, eps)
     tau = jnp.maximum(tau, eps)
     r = norm.ppf(p)
-    z = jnp.sinh((jnp.arcsinh(r) + nu) / tau)
-    return mu + sigma * z
+    value = mu + sigma * jnp.sinh((jnp.arcsinh(r) + nu) / tau)
+    value = jnp.where(p == 0.0, -jnp.inf, value)
+    value = jnp.where(p == 1.0, jnp.inf, value)
+    value = jnp.where((p < 0.0) | (p > 1.0), jnp.nan, value)
+    return value
+
+
+def _shasho_r(key, n, mu=0.0, sigma=1.0, nu=0.0, tau=1.0):
+    """Inverse-transform sampler -- R's ``rSHASHo`` construction exactly.
+
+    R's source is ``p <- runif(n); qSHASHo(p, mu, sigma, nu, tau)``; using
+    the same construction here (instead of a dedicated sampler) is what
+    makes sampler/CDF drift structurally impossible.  ``runif`` returns
+    [0, 1), so a draw can land on exactly 0 -- which maps to -Inf, the
+    same as R's own behaviour.
+    """
+    import jax.random as random
+
+    return _shasho_q(
+        random.uniform(key, shape=(int(n),), dtype=jnp.float64), mu, sigma, nu, tau
+    )
 
 
 def _sn1_p(x, mu=0.0, sigma=1.0, nu=0.0, lower_tail=True, log_p=False):
@@ -305,6 +339,7 @@ def SHASHo() -> SinhArcsinhOFamily:
         link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": identity_derivative, "tau": log_derivative},
         p=_shasho_p,
         q=_shasho_q,
+        r=_shasho_r,
     )
 
 
