@@ -1056,6 +1056,13 @@ def gate_rs_deviance(family: str, results: list[dict], index: dict, fit_data) ->
                 sigma_formula="~1",
                 method="RS",
                 max_iter=n_cyc,
+                # The scanner is migration/smoke-test work by definition: it
+                # is the tool that produces the evidence a compatibility
+                # alias needs before it can leave the fail-closed set.  Without
+                # the opt-in, every implemented-but-still-listed family would
+                # report ``fail: python raised FamilyCapabilityError`` -- a
+                # capability-policy answer masquerading as a parity failure.
+                allow_compat_alias=True,
             )
     except Exception as exc:
         return {"status": "fail", "detail": f"python raised {type(exc).__name__}: {exc}"[:90]}

@@ -349,6 +349,7 @@ def _weighted_least_squares(
 def _require_method_family_capability(
     family_name: str, method_name: str, *, allow_experimental: bool = True,
     formulas: Mapping[str, str] | None = None,
+    allow_compat_alias: bool = False,
 ) -> None:
     """Validate method/family support before starting an expensive fit."""
 
@@ -358,7 +359,8 @@ def _require_method_family_capability(
         from .family_capabilities import method_route_capability_report
 
         report = method_route_capability_report(
-            family_name, method_name, strict=not allow_experimental, formulas=formulas
+            family_name, method_name, strict=not allow_experimental,
+            formulas=formulas, allow_compat_alias=allow_compat_alias,
         )
         if not report["ok"]:
             from .family_capabilities import FamilyCapabilityError
@@ -370,7 +372,8 @@ def _require_method_family_capability(
     # historical opt-in policy for experimental families. Production routes use
     # require_production_family_route(), which is deliberately fail-closed.
     report = method_route_capability_report(
-        family_name, method_name, strict=not allow_experimental
+        family_name, method_name, strict=not allow_experimental,
+        allow_compat_alias=allow_compat_alias,
     )
     if report["code"] == "unknown_method":
         return
@@ -865,6 +868,7 @@ def gamlss(
     i_control: GLIMControl | None = None,
     verbose: bool = False,
     strict_capabilities: bool = False,
+    allow_compat_alias: bool = False,
     # New optimizer parameters
     optimizer: str = "adam",
     learning_rate: float = 0.01,
@@ -1229,6 +1233,7 @@ def gamlss(
                 "sigma": sigma_formula,
                 **(parameter_formulas or {}),
             },
+            allow_compat_alias=allow_compat_alias,
         )
 
     # Handle new optimizer methods

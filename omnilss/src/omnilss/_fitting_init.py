@@ -26,6 +26,11 @@ def _initial_parameter_value(
             return float(np.clip(zero_fraction, 0.05, 0.95))
         if family.name == "PE":
             return 1.8
+        if family.name == "DBURR12":
+            # R DBURR12()$nu.initial (discBURR12.R): nu <- rep(2, length(y)),
+            # nu link log.  Same value as TF2's 4? No: 2, and the link is log
+            # -- do not fold into any branch above (D2.19 lesson).
+            return 2.0
         if family.name == "ST2":
             # R ST2()$nu.initial (live R, D2.38): nu <- rep(0.1, length(y)),
             # and ST2's nu link is *identity*.  The generic 1.0 default put
@@ -462,6 +467,9 @@ def _initial_sigma(
         # against the *fitted* mu; PARETO1o's mu is fixed at min(y), so that
         # spread is not the scale R starts from.
         return 0.5
+    if family.name == "DBURR12":
+        # R DBURR12()$sigma.initial (discBURR12.R): sigma <- rep(2, length(y)).
+        return 2.0
     # Box-Cox six-family sigma: R's family objects start at
     # sigma <- rep(0.1, length(y)) (live R, D2.35/D2.36).  Adopted in D2.36
     # once the inner RS loop ran with R's glim.fit semantics (cc=0.001,
