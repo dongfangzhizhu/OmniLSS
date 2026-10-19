@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import jax
 import jax.random as jrandom
 
-from .ad import build_ad_family
+from .ad import build_ad_family, _prepare_jax_args
 from .families import FamilyDefinition
 from .links import logit_link, logit_inverse, logit_derivative
 
@@ -158,10 +158,16 @@ def _zero_variant_tails(base_name: str, *, altered: bool, epsilon: float):
     return {"p": variant_p, "q": variant_q, "r": variant_r}
 
 
-def make_zero_altered_family(base_name: str, base_log_pdf_func, base_params: tuple, base_links: dict):
+def make_zero_altered_family(base_name: str, base_log_pdf_func, base_params: tuple, base_links: dict,
+                             score_overrides=None, hessian_overrides=None):
     """Factory to create zero-altered distributions.
 
     Zero-altered (hurdle): Pr(Y=0) = nu, Pr(Y=y|y>0) = (1-nu)*f(y)/[1-f(0)]
+
+    ``score_overrides`` / ``hessian_overrides`` are forwarded to
+    ``build_ad_family``; the SICHEL-based variants need them because their AD
+    scores differentiate through the defective Bessel JVP (see
+    ``distributions_b6._sichel_dldm``).
     """
 
     @dataclass(frozen=True)
@@ -236,12 +242,15 @@ def make_zero_altered_family(base_name: str, base_log_pdf_func, base_params: tup
         link_functions=link_funcs,
         link_inverses=link_invs,
         link_derivatives=link_derivs,
+        score_overrides=score_overrides,
+        hessian_overrides=hessian_overrides,
         **_zero_variant_tails(base_name, altered=True,
                               epsilon=_QUANTILE_EPSILON),
     )
 
 
-def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tuple, base_links: dict):
+def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tuple, base_links: dict,
+                              score_overrides=None, hessian_overrides=None):
     """Factory to create zero-inflated distributions.
     
     Zero-inflated: Pr(Y=0) = nu + (1-nu)*f(0), Pr(Y=y|y>0) = (1-nu)*f(y)
@@ -326,6 +335,8 @@ def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tu
         link_functions=link_funcs,
         link_inverses=link_invs,
         link_derivatives=link_derivs,
+        score_overrides=score_overrides,
+        hessian_overrides=hessian_overrides,
         **_zero_variant_tails(base_name, altered=False, epsilon=epsilon),
     )
 
@@ -334,6 +345,9 @@ def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tu
 
 # Import base distributions
 from .distributions_b6 import _sichel_log_pdf, _pig_log_pdf
+from .distributions_b6 import _sichel_dldm as _sichel_base_dldm
+from .distributions_b6 import _sichel_dldd as _sichel_base_dldd
+from .distributions_b6 import _r_negative_information
 from .distributions_b7 import _bb_log_pdf
 from .distributions_b9 import _lg_log_pdf, _zipf_log_pdf
 
@@ -460,6 +474,159 @@ def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
     return jax.vmap(scalar)(*(v.ravel() for v in args)).reshape(args[0].shape)
 
 
+# ------------------------------------------------------------------
+# R's own derivative slots for ZISICHEL / ZASICHEL (ZISICHEL.R / ZASICHEL.R).
+#
+# Same root cause as SICHEL itself: the AD scores differentiate
+# ``_zero_sichel_log_pdf`` -> ``_sichel_log_pdf`` -> the defective Bessel JVP
+# (bessel.py ``_log_bessel_kv_jvp``).  Gate 2 measured mu off by 6.1e-01
+# (ZISICHEL) / 5.5e-01 (ZASICHEL), sigma by 7.9e-01 / 1.1e+00, nu by
+# 6.3e-01 / 1.3e+00 rel.  R's slots are transcribed below, zero-variant
+# wrappers included, in exactly R's structure (the y == 0 branches call the
+# SICHEL slots at zero).
+#
+# ZISICHEL (R, verbatim):
+#   dldm0 = (1-tau)*f0/(tau + (1-tau)*f0) * SICHEL$dldm(0, ...)
+#   dldm  = y == 0 ? dldm0 : SICHEL$dldm(y, ...)
+#   dldd0 = (1-tau)*f0/(tau + (1-tau)*f0) * SICHEL$dldd(0, ...)
+#   dldd  = y == 0 ? dldd0 : SICHEL$dldd(y, ...)
+#   dldv  = numeric.deriv(dZISICHEL(y, ..., log=TRUE), "nu", delta=0.001)
+#   dldt0 = (1 - f0)/(tau + (1-tau)*f0);  dldt = y == 0 ? dldt0 : -1/(1-tau)
+#
+# ZASICHEL (R, verbatim):
+#   dldm0 = SICHEL$dldm(y, ...) + f0*SICHEL$dldm(0, ...)/(1 - f0)
+#   dldm  = y == 0 ? 0 : dldm0
+#   dldd0 = SICHEL$dldd(y, ...) + f0*SICHEL$dldd(0, ...)/(1 - f0)   [sigma floored at 1e-6]
+#   dldd  = y == 0 ? 0 : dldd0
+#   dldv  = numeric.deriv(dZASICHEL(y, ..., log=TRUE), "nu", delta=0.001)
+#   dldt  = y == 0 ? 1/tau : -1/(1-tau)
+#
+# with f0 = dSICHEL(0, mu, sigma, nu).  Every d2ldX2 is -score^2 clamped at
+# -1e-15, except ZASICHEL's d2ldt2, which R writes as -1/(tau*(1-tau)).
+# gamlss's numeric.deriv is a *forward* difference (see b6._sichel_dldv).
+# ------------------------------------------------------------------
+
+_sichel_log_pdf_v = jax.vmap(_sichel_log_pdf)
+_R_NUMERIC_DERIV_DELTA = 0.001
+
+
+def _zero_sichel_f0(mu, sigma, nu):
+    """``dSICHEL(0, mu, sigma, nu)`` -- the base density at zero."""
+    return jnp.exp(_sichel_log_pdf_v(jnp.zeros_like(mu), mu, sigma, nu))
+
+
+def _neg_info(score_fn):
+    """Wrap a score slot into R's ``-score^2`` clamped at ``-1e-15``."""
+    def hess(*args):
+        return _r_negative_information(score_fn(*args))
+    hess.__name__ = f"d2_{getattr(score_fn, '__name__', 'slot')}"
+    return hess
+
+
+def _zisichel_dldm(y, mu, sigma, nu, tau):
+    (y, mu, sigma, nu, tau), scalar = _prepare_jax_args((y, mu, sigma, nu, tau))
+    zeros = jnp.zeros_like(y)
+    f0 = _zero_sichel_f0(mu, sigma, nu)
+    d0 = (1.0 - tau) * f0 / (tau + (1.0 - tau) * f0) * _sichel_base_dldm(zeros, mu, sigma, nu)
+    out = jnp.where(y == 0, d0, _sichel_base_dldm(y, mu, sigma, nu))
+    return out[0] if scalar else out
+
+
+def _zisichel_dldd(y, mu, sigma, nu, tau):
+    (y, mu, sigma, nu, tau), scalar = _prepare_jax_args((y, mu, sigma, nu, tau))
+    zeros = jnp.zeros_like(y)
+    f0 = _zero_sichel_f0(mu, sigma, nu)
+    d0 = (1.0 - tau) * f0 / (tau + (1.0 - tau) * f0) * _sichel_base_dldd(zeros, mu, sigma, nu)
+    out = jnp.where(y == 0, d0, _sichel_base_dldd(y, mu, sigma, nu))
+    return out[0] if scalar else out
+
+
+def _zisichel_dldv(y, mu, sigma, nu, tau):
+    (y, mu, sigma, nu, tau), scalar = _prepare_jax_args((y, mu, sigma, nu, tau))
+    delta = _R_NUMERIC_DERIV_DELTA
+    f = jax.vmap(lambda a, b, c, d, e: _zero_sichel_log_pdf(a, b, c, d, e, altered=False))
+    out = (f(y, mu, sigma, nu + delta, tau) - f(y, mu, sigma, nu, tau)) / delta
+    return out[0] if scalar else out
+
+
+def _zisichel_dldt(y, mu, sigma, nu, tau):
+    (y, mu, sigma, nu, tau), scalar = _prepare_jax_args((y, mu, sigma, nu, tau))
+    f0 = _zero_sichel_f0(mu, sigma, nu)
+    d0 = (1.0 - f0) / (tau + (1.0 - tau) * f0)
+    out = jnp.where(y == 0, d0, -1.0 / (1.0 - tau))
+    return out[0] if scalar else out
+
+
+def _zasichel_dldm(y, mu, sigma, nu, tau):
+    (y, mu, sigma, nu, tau), scalar = _prepare_jax_args((y, mu, sigma, nu, tau))
+    zeros = jnp.zeros_like(y)
+    f0 = _zero_sichel_f0(mu, sigma, nu)
+    d0 = _sichel_base_dldm(y, mu, sigma, nu) \
+        + f0 * _sichel_base_dldm(zeros, mu, sigma, nu) / (1.0 - f0)
+    out = jnp.where(y == 0, 0.0, d0)
+    return out[0] if scalar else out
+
+
+def _zasichel_dldd(y, mu, sigma, nu, tau):
+    (y, mu, sigma, nu, tau), scalar = _prepare_jax_args((y, mu, sigma, nu, tau))
+    zeros = jnp.zeros_like(y)
+    # R floors sigma at 1e-6 inside its dldd/d2ldd2 before calling SICHEL's.
+    sigma = jnp.maximum(sigma, 1e-6)
+    f0 = _zero_sichel_f0(mu, sigma, nu)
+    d0 = _sichel_base_dldd(y, mu, sigma, nu) \
+        + f0 * _sichel_base_dldd(zeros, mu, sigma, nu) / (1.0 - f0)
+    out = jnp.where(y == 0, 0.0, d0)
+    return out[0] if scalar else out
+
+
+def _zasichel_dldv(y, mu, sigma, nu, tau):
+    (y, mu, sigma, nu, tau), scalar = _prepare_jax_args((y, mu, sigma, nu, tau))
+    delta = _R_NUMERIC_DERIV_DELTA
+    f = jax.vmap(lambda a, b, c, d, e: _zero_sichel_log_pdf(a, b, c, d, e, altered=True))
+    out = (f(y, mu, sigma, nu + delta, tau) - f(y, mu, sigma, nu, tau)) / delta
+    return out[0] if scalar else out
+
+
+def _zasichel_dldt(y, mu, sigma, nu, tau):
+    (y, mu, sigma, nu, tau), scalar = _prepare_jax_args((y, mu, sigma, nu, tau))
+    out = jnp.where(y == 0, 1.0 / tau, -1.0 / (1.0 - tau))
+    return out[0] if scalar else out
+
+
+def _zasichel_d2ldt2(y, mu, sigma, nu, tau):
+    """R's ZASICHEL ``d2ldt2`` is *not* ``-dldt^2``: it is -1/(tau*(1-tau))."""
+    (y, mu, sigma, nu, tau), scalar = _prepare_jax_args((y, mu, sigma, nu, tau))
+    out = -1.0 / (tau * (1.0 - tau))
+    out = jnp.where(out < -1e-15, out, -1e-15)
+    return out[0] if scalar else out
+
+
+_ZISICHEL_SCORES = {
+    "mu": _zisichel_dldm,
+    "sigma": _zisichel_dldd,
+    "nu": _zisichel_dldv,
+    "tau": _zisichel_dldt,
+}
+_ZISICHEL_HESSIANS = {
+    "mu": _neg_info(_zisichel_dldm),
+    "sigma": _neg_info(_zisichel_dldd),
+    "nu": _neg_info(_zisichel_dldv),
+    "tau": _neg_info(_zisichel_dldt),
+}
+_ZASICHEL_SCORES = {
+    "mu": _zasichel_dldm,
+    "sigma": _zasichel_dldd,
+    "nu": _zasichel_dldv,
+    "tau": _zasichel_dldt,
+}
+_ZASICHEL_HESSIANS = {
+    "mu": _neg_info(_zasichel_dldm),
+    "sigma": _neg_info(_zasichel_dldd),
+    "nu": _neg_info(_zasichel_dldv),
+    "tau": _zasichel_d2ldt2,
+}
+
+
 # ZASICHEL - Zero-Altered Sichel
 def ZASICHEL():
     """Zero-Altered Sichel distribution."""
@@ -467,7 +634,9 @@ def ZASICHEL():
         "SICHEL",
         _sichel_log_pdf,
         ("mu", "sigma", "nu"),
-        {"mu": "log", "sigma": "log", "nu": "identity"}
+        {"mu": "log", "sigma": "log", "nu": "identity"},
+        score_overrides=_ZASICHEL_SCORES,
+        hessian_overrides=_ZASICHEL_HESSIANS,
     )
     def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
         return _zero_sichel_probability(q, mu, sigma, nu, tau, altered=True,
@@ -484,14 +653,16 @@ def ZASICHEL():
         return _zero_sichel_density(x, mu, sigma, nu, tau, altered=True, log=log)
     return replace(family, d=d, p=p, q=q, r=r)
 
-# ZISICHEL - Zero-Inflated Sichel  
+# ZISICHEL - Zero-Inflated Sichel
 def ZISICHEL():
     """Zero-Inflated Sichel distribution."""
     family = make_zero_inflated_family(
         "SICHEL",
         _sichel_log_pdf,
         ("mu", "sigma", "nu"),
-        {"mu": "log", "sigma": "log", "nu": "identity"}
+        {"mu": "log", "sigma": "log", "nu": "identity"},
+        score_overrides=_ZISICHEL_SCORES,
+        hessian_overrides=_ZISICHEL_HESSIANS,
     )
     def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
         return _zero_sichel_probability(q, mu, sigma, nu, tau, altered=False,

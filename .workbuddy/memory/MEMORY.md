@@ -46,7 +46,7 @@
 
 ## R 探针读取要点
 
-$nu.initial 是 expression 要 eval；jsonlite 丢命名用 as.list；R 的 NULL 双判空；gamlss.family 无 d/p/q 槽；`G.dev.incr` 收**逐观测拟合值**（eta 重构+逆 link）。
+$nu.initial 是 expression 要 eval；jsonlite 丢命名用 as.list；R 的 NULL 双判空；gamlss.family 无 d/p/q 槽；`G.dev.incr` 收**逐观测拟合值**（eta 重构+逆 link）。**gamlss 的 `numeric.deriv` 是前向差分**（`get("numeric.deriv", envir=asNamespace("gamlss"))`，delta=0.001；实测 = (f(x+δ)-f(x))/δ，非中心差），且按名重求值调用帧表达式——**变量必须先绑定**（`ND(exp(0.0),"nu")` 报 `object 'nu' not found`）。
 
 ## 零变体 p/q/r（D2.27/D2.28）
 
@@ -86,6 +86,13 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 - 符号证据按测试文件**标识符引用**判定：fam.p(...) 间接调用不算，按名 import 才算。
 - b14 组 BCPEo/BCTo 仍是 nan 占位（SHASHo/SHASHo2 已于 D2.40/D2.42/D2.43 交付）；混合大小写族 BCCGO/BCPEO/BCTO/BEO/EXGAUS/GEOMO/PARETO2O 的 dpqr 接线状态待查（R 桥大小写缺陷 D2.42 已修，门禁可真实探测）。
 - **SHASH（非 o）密度积分缺陷待查**（D2.43 新发现）：同 profile 下 SHASH 密度积分 [-40,40]=0.9601、[-400,400]=0.9998（SHASHo=1.0 精确）——SHASH 族 dpqr 路径既存问题。
+
+## 缺陷登记（D2.44）
+
+- **Bessel JVP 渐近近似（未修，影响 GIG/SI）**：`bessel.py::_log_bessel_kv_jvp` 用 `-1 - nu/(x+|nu|+1)` 代替 `-(K_{nu+1}/K_nu) - nu/x` 且丢 nu 切线 → primal 精确、AD 评分全错（密度全对）。SICHEL/ZISICHEL/ZASICHEL 已用 R 闭式 overrides 旁路（D2.44）；公共 JVP 不动，GIG/SI 待独立任务。
+- **SICHEL 族拟合慢（实测）**：`_sichel_log_pdf` 与 `tofySICHEL` 都是 `lax.scan` 固定 100000 步（掩码但全跑）→ 单槽 0.3~0.9s、200 周期 10~20 分钟。修法范式：`dpqr_functions.py` 7454/7547 的 `lax.while_loop` 动态上界。批量测试只构造族不拟合，故从未暴露。
+- **DBURR12 别名错误**：离散 Burr XII（`Sur=(1+(y/mu)^sigma)^(-nu)`，nu>0、link 全 log、初值 sigma=nu=2）≠ SICHEL；registry 现指向 SICHEL 内核，且 dpqr gate 因 R 拒绝负 nu 校准网格而 skip → 错误密度从未被对照。
+- **R 侧自身失败**：gamlss 的 ZISICHEL 在零多样本拟合报 `NA/NaN/Inf in foreign function call (arg 5)`（SICHEL/ZASICHEL 同样本正常）→ rsdev gate 对 ZISICHEL 无 R 参照。
 
 ## 环境（用户 2026-10-10 明确）
 

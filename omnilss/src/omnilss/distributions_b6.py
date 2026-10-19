@@ -26,7 +26,7 @@ import jax.numpy as jnp
 from jax.scipy.special import gammaln, betaln, logsumexp
 from jax.scipy.special import i0e, i1e  # Modified Bessel functions
 
-from .ad import build_ad_family
+from .ad import build_ad_family, _prepare_jax_args
 from .families import FamilyDefinition
 from .links import (
     identity_derivative,
@@ -224,6 +224,99 @@ def _sichel_log_pdf(y, mu, sigma, nu):
     return jnp.where(valid & ~undefined, log_pdf, jnp.nan)
 
 
+# ------------------------------------------------------------------
+# R's own derivative slots for SICHEL (R/gamlss.dist/R/SICHEL-10-09-12.R),
+# transcribed verbatim -- including R's approximations.
+#
+# Why overrides instead of AD: the log-density reaches log(K_nu(.)) through
+# ``bessel.log_bessel_kv``, whose custom JVP (bessel.py ``_log_bessel_kv_jvp``)
+# uses the *asymptotic* tangent ``-1 - nu/(x + |nu| + 1)`` in place of the
+# true ``d/dx log K_nu = -(K_{nu+1}/K_nu) - nu/x`` and drops the ``nu``
+# tangent entirely.  The primal is exact (scipy), so the density is right
+# while every AD score is wrong: gate 2 of ``tools/rs_family_parity_scan.py``
+# measured mu off by 9.3e-01, sigma by 1.2e+00 and nu by 6.3e-01 rel on the
+# standard grid.  Handing in R's closed forms (the D2.40/D2.42 pattern)
+# fixes the scores *and* keeps the IRLS working weights on R's own formulas
+# -- R's approximations included, which is what parity means here.
+#
+# R's slots, verbatim (each with ``sigma <- ifelse(sigma>10000 & nu>0,
+# 10000, sigma)`` applied first):
+#
+#   dldm   = (y - ty)/mu                         ty = tofySICHEL(y, mu, sigma, nu)
+#   dldd   = ((ty*(c + sigma*mu)/mu) - sigma*y - c)/sigma^2 + dcdd*(ty - y)/c
+#            c    = exp(log K_{nu+1}(1/sigma) - log K_nu(1/sigma))
+#            dcdd = (c*sigma*(2*nu + 1) + 1 - c^2)/sigma^2
+#   dldv   = numeric.deriv(dSICHEL(y, mu, sigma, nu, log=TRUE), "nu", delta=0.001)
+#   d2ldX2 = -dldX^2, clamped at -1e-15          (R's negative-information convention)
+#
+# gamlss's ``numeric.deriv`` is *not* stats' central difference: dumped from
+# the installed namespace it is a forward difference,
+# ``(f(nu + delta) - f(nu))/delta``.  ``tofySICHEL`` (dpqr_functions.py) is
+# already the parity-verified transcription of R's ``.C("tofySICHEL1")``
+# recursion, so the slots below reuse it rather than re-deriving ``ty``.
+# ------------------------------------------------------------------
+
+#: gamlss's ``numeric.deriv`` default step as used by SICHEL's ``dldv``.
+_R_NUMERIC_DERIV_DELTA = 0.001
+
+
+def _r_negative_information(score):
+    """R's ``d2ldX2`` convention: ``-score^2`` clamped at ``-1e-15``."""
+    h = -score * score
+    return jnp.where(h < -1e-15, h, -1e-15)
+
+
+def _sichel_dldm(y, mu, sigma, nu):
+    """R's ``dldm`` slot: ``(y - ty)/mu``."""
+    from .dpqr_functions import tofySICHEL
+
+    (y, mu, sigma, nu), scalar = _prepare_jax_args((y, mu, sigma, nu))
+    # R clamps sigma inside every derivative slot before evaluating ty.
+    sigma = jnp.where((sigma > 10000.0) & (nu > 0), 10000.0, sigma)
+    out = (y - tofySICHEL(y, mu, sigma, nu)) / mu
+    return out[0] if scalar else out
+
+
+def _sichel_dldd(y, mu, sigma, nu):
+    """R's ``dldd`` slot, transcribed from SICHEL-10-09-12.R lines 52-60."""
+    from .bessel import log_bessel_kv
+    from .dpqr_functions import tofySICHEL
+
+    (y, mu, sigma, nu), scalar = _prepare_jax_args((y, mu, sigma, nu))
+    sigma = jnp.where((sigma > 10000.0) & (nu > 0), 10000.0, sigma)
+    ty = tofySICHEL(y, mu, sigma, nu)
+    inv_sigma = 1.0 / sigma
+    log_k_nu = log_bessel_kv(nu, inv_sigma)
+    c = jnp.exp(log_bessel_kv(nu + 1.0, inv_sigma) - log_k_nu)
+    dcdd = (c * sigma * (2.0 * nu + 1.0) + 1.0 - c * c) / (sigma * sigma)
+    out = ((ty * (c + sigma * mu) / mu) - sigma * y - c) / (sigma * sigma) \
+        + dcdd * (ty - y) / c
+    return out[0] if scalar else out
+
+
+def _sichel_dldv(y, mu, sigma, nu):
+    """R's ``dldv`` slot: a forward difference of the log density in ``nu``.
+
+    R has no analytic ``nu`` derivative; it calls gamlss's ``numeric.deriv``
+    with ``delta=0.001``, which (dumped from the installed namespace) is a
+    forward difference.  Reproduced against our own parity-verified density
+    so the IRLS working weights see exactly the approximation R's see.
+    """
+    (y, mu, sigma, nu), scalar = _prepare_jax_args((y, mu, sigma, nu))
+    delta = _R_NUMERIC_DERIV_DELTA
+    log_pdf = jax.vmap(_sichel_log_pdf)
+    out = (log_pdf(y, mu, sigma, nu + delta) - log_pdf(y, mu, sigma, nu)) / delta
+    return out[0] if scalar else out
+
+
+_SICHEL_SCORES = {"mu": _sichel_dldm, "sigma": _sichel_dldd, "nu": _sichel_dldv}
+_SICHEL_HESSIANS = {
+    "mu": lambda y, mu, sigma, nu: _r_negative_information(_sichel_dldm(y, mu, sigma, nu)),
+    "sigma": lambda y, mu, sigma, nu: _r_negative_information(_sichel_dldd(y, mu, sigma, nu)),
+    "nu": lambda y, mu, sigma, nu: _r_negative_information(_sichel_dldv(y, mu, sigma, nu)),
+}
+
+
 def SICHEL() -> SichelFamily:
     from .dpqr_functions import pSICHEL, qSICHEL, rSICHEL
     return build_ad_family(
@@ -236,6 +329,8 @@ def SICHEL() -> SichelFamily:
         link_functions={"mu": log_link, "sigma": log_link, "nu": identity_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": identity_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": identity_derivative},
+        score_overrides=_SICHEL_SCORES,
+        hessian_overrides=_SICHEL_HESSIANS,
         p=pSICHEL,
         q=qSICHEL,
         r=rSICHEL,
