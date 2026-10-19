@@ -90,7 +90,7 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 ## 缺陷登记（D2.44）
 
 - **标量内核禁用 `_prepare_jax_args`**（D2.45 坑）：它把参数 flatten 成 1-D，标量内核因此返回 `(1,)` 而非 `()`，vmap 后成 `(n,1)`，`g_dev_inc` 与 `weights` 广播 → deviance 变成 n 倍（实测 3350.48 vs 111.68）。密度/CDF 内核只用 `jnp.broadcast_arrays`；score 槽才用 `_prepare_jax_args`（它需要标量输入的 0-d 解包）。
-- **DBURR12 不是 SICHEL**（D2.45 已修）：离散 Burr XII，`Sur=(1+(y/mu)^sigma)^(-nu)`，nu>0、三个 link 全 log、初值 sigma=nu=2。**别名继承 SICHEL 的 nu.link=identity 会让 dpqr 门禁因负 nu 网格静默 skip** —— 门禁失效可以是 metadata 造成的。安装版 `qDBURR12` = `round(w-1)` + 负值截 0 + p∉(0,1) stop，与 vendored `trunc` 不同，且 round 不是 CDF 逆。
+- **DBURR12 不是 SICHEL**（D2.45 已修，D2.46 解锁准入）：离散 Burr XII，`Sur=(1+(y/mu)^sigma)^(-nu)`，nu>0、三个 link 全 log、初值 sigma=nu=2；现居 `omnilss/distributions_dburr12.py`，状态 EXPERIMENTAL。**别名继承 SICHEL 的 nu.link=identity 会让 dpqr 门禁因负 nu 网格静默 skip** —— 门禁失效可以是 metadata 造成的。安装版 `qDBURR12` = `round(w-1)` + 负值截 0 + p∉(0,1) stop，与 vendored `trunc` 不同，且 round 不是 CDF 逆。**别名判定有两条来源**：`_KNOWN_COMPAT_ALIAS_FAMILIES`（族名）+ `_COMPAT_FACTORY_MODULES`（模块名），少改一条状态不变。
 - **Bessel JVP 渐近近似（未修，影响 GIG/SI）**：`bessel.py::_log_bessel_kv_jvp` 用 `-1 - nu/(x+|nu|+1)` 代替 `-(K_{nu+1}/K_nu) - nu/x` 且丢 nu 切线 → primal 精确、AD 评分全错（密度全对）。SICHEL/ZISICHEL/ZASICHEL 已用 R 闭式 overrides 旁路（D2.44）；公共 JVP 不动，GIG/SI 待独立任务。
 - **SICHEL 族拟合慢（实测）**：`_sichel_log_pdf` 与 `tofySICHEL` 都是 `lax.scan` 固定 100000 步（掩码但全跑）→ 单槽 0.3~0.9s、200 周期 10~20 分钟。修法范式：`dpqr_functions.py` 7454/7547 的 `lax.while_loop` 动态上界。批量测试只构造族不拟合，故从未暴露。
 - **DBURR12 别名错误**：离散 Burr XII（`Sur=(1+(y/mu)^sigma)^(-nu)`，nu>0、link 全 log、初值 sigma=nu=2）≠ SICHEL；registry 现指向 SICHEL 内核，且 dpqr gate 因 R 拒绝负 nu 校准网格而 skip → 错误密度从未被对照。

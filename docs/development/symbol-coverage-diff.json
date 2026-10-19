@@ -6,7 +6,7 @@
   "current_counts": {
     "missing": 391,
     "placeholder": 10,
-    "compat_alias": 6,
+    "compat_alias": 1,
     "evidence_gap": 34,
     "extra": 300
   },
@@ -46,12 +46,17 @@
       "new": [],
       "resolved": [
         "gamlss.dist::DBI",
+        "gamlss.dist::DBURR12",
         "gamlss.dist::dDBI",
+        "gamlss.dist::dDBURR12",
         "gamlss.dist::pDBI",
+        "gamlss.dist::pDBURR12",
         "gamlss.dist::qDBI",
-        "gamlss.dist::rDBI"
+        "gamlss.dist::qDBURR12",
+        "gamlss.dist::rDBI",
+        "gamlss.dist::rDBURR12"
       ],
-      "current_count": 6,
+      "current_count": 1,
       "baseline_count": 11
     },
     "evidence_gap": {
@@ -122,7 +127,15 @@
     },
     {
       "category": "compat_alias",
+      "symbol": "gamlss.dist::DBURR12"
+    },
+    {
+      "category": "compat_alias",
       "symbol": "gamlss.dist::dDBI"
+    },
+    {
+      "category": "compat_alias",
+      "symbol": "gamlss.dist::dDBURR12"
     },
     {
       "category": "compat_alias",
@@ -130,11 +143,23 @@
     },
     {
       "category": "compat_alias",
+      "symbol": "gamlss.dist::pDBURR12"
+    },
+    {
+      "category": "compat_alias",
       "symbol": "gamlss.dist::qDBI"
     },
     {
       "category": "compat_alias",
+      "symbol": "gamlss.dist::qDBURR12"
+    },
+    {
+      "category": "compat_alias",
       "symbol": "gamlss.dist::rDBI"
+    },
+    {
+      "category": "compat_alias",
+      "symbol": "gamlss.dist::rDBURR12"
     },
     {
       "category": "evidence_gap",

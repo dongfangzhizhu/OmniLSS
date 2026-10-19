@@ -182,7 +182,15 @@ _KNOWN_COMPAT_ALIAS_FAMILIES = frozenset(
         # admission gate, so it must not happen before the density, the
         # scores and the R deviance all match -- which is why the removal is
         # recorded separately from the implementation commit's test evidence.
-        "DBURR12",
+        #
+        # DBURR12 left it in D2.46.  D2.45 replaced the SICHEL forwarder with
+        # the real discretised Burr XII and produced the three pieces of
+        # evidence this set asks for: gate 1 dpqr passes against live R
+        # (d/p rel <= 8.3e-14, q bit-for-bit), gate 2 deriv passes for all
+        # three slots (rel <= 2.2e-13), and the end-to-end fit agrees with
+        # R's deviance to 7.9e-7 on a digits=17 sample.  Gate 3 on the
+        # scanner's sample still skips because *R* does not converge there in
+        # 20 cycles, so the fit evidence is the dedicated test.
         "MULTIN",
         "COUNT_1_31",
         "COUNT_1_22",
@@ -209,7 +217,10 @@ _KNOWN_COMPAT_ALIAS_FAMILIES = frozenset(
 _COMPAT_FACTORY_MODULES = frozenset(
     {
         "omnilss.distributions_count_compat",
-        "omnilss.distributions_discrete_compat",
+        # DBURR12 left this module in D2.46 (its implementation moved to
+        # omnilss.distributions_dburr12), so the name is no longer a compat
+        # marker -- leaving it here would keep any future family added to that
+        # module silently classified as an alias.
         "omnilss.distributions_gen_skeleton_compat",
     }
 )

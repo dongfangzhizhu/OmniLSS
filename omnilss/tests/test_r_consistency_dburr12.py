@@ -58,7 +58,7 @@ import numpy as np  # noqa: E402
 import pytest  # noqa: E402
 
 from omnilss.distribution_registry import resolve  # noqa: E402
-from omnilss.distributions_discrete_compat import (  # noqa: E402
+from omnilss.distributions_dburr12 import (  # noqa: E402
     _DBURR12_HESSIANS,
     _DBURR12_SCORES,
     _dburr12_log_pdf,
@@ -416,7 +416,7 @@ def test_hessian_is_minus_score_squared_without_a_floor(pi):
 
 def test_negative_information_wrapper_does_not_floor():
     """A tiny score must give ``-1e-18``, not the Sichel ``-1e-15`` floor."""
-    from omnilss.distributions_discrete_compat import (
+    from omnilss.distributions_dburr12 import (
         _dburr12_negative_information,
     )
 
@@ -510,10 +510,10 @@ def test_initial_values_are_r_starting_points():
 def test_fit_matches_live_r(r_fit_probe):
     """Intercept-only fit: deviance and link-scale coefficients.
 
-    The family is still listed as a compatibility alias, so the fail-closed
-    admission gate needs the explicit opt-in -- this test is exactly the
-    evidence that retires that listing (measured: deviance rel 7.9e-7, we are
-    *lower*, i.e. slightly further along the same optimum).
+    This is the evidence that retired the compatibility-alias listing
+    (D2.46): the fit goes through the public API with no opt-in, and the
+    deviance agrees with R to rel 7.9e-7 (we are *lower*, i.e. slightly
+    further along the same optimum).
     """
     from omnilss.controls import GAMLSSControl
     from omnilss.fitting import gamlss
@@ -525,7 +525,6 @@ def test_fit_matches_live_r(r_fit_probe):
         family=FAMILY,
         data={"y": FIT_Y},
         control=GAMLSSControl(n_cyc=200, c_crit=0.001, trace=False),
-        allow_compat_alias=True,
     )
     assert fit.convergence_status() is True, fit.termination_reason
     assert float(fit.deviance) == pytest.approx(float(ref["deviance"]),

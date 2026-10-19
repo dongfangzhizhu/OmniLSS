@@ -101,7 +101,7 @@ _BUILTIN_FAMILY_FACTORIES: dict[str, tuple[str, str]] = {
     "WARING": ("omnilss.distributions_b6", "WARING"),
     "BB": ("omnilss.distributions_b7", "BB"),
     "DBI": ("omnilss.distributions_dbi", "DBI"),
-    "DBURR12": ("omnilss.distributions_discrete_compat", "DBURR12"),
+    "DBURR12": ("omnilss.distributions_dburr12", "DBURR12"),
     "BNB": ("omnilss.distributions_b7", "BNB"),
     "MN3": ("omnilss.distributions_b7", "MN3"),
     "MN4": ("omnilss.distributions_b7", "MN4"),
