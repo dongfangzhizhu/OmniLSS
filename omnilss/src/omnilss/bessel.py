@@ -69,49 +69,81 @@ def _log_bessel_kv_scipy(nu, x):
 
 def _log_bessel_iv_jvp(primals, tangents):
     """Custom JVP rule for log(I_ν(x)).
-    
-    d/dx log(I_ν(x)) = I'_ν(x) / I_ν(x)
-                     = [I_{ν-1}(x) + I_{ν+1}(x)] / [2 * I_ν(x)]
-                     ≈ I_{ν+1}(x) / I_ν(x)  (using recurrence)
-    
-    For simplicity, we use: d/dx log(I_ν(x)) ≈ 1 - ν/x  (asymptotic)
+
+    The previous rule used the asymptotic tangent ``1 - nu/(x + |nu| + 1)``
+    and ignored the ``nu`` tangent; both are replaced here (D2.47, same
+    defect as the K rule).
+
+    d/dx log(I_ν(x)) = I'_ν(x) / I_ν(x) = I_{ν+1}(x)/I_ν(x) + ν/x
+        (from I'_ν = (I_{ν-1} + I_{ν+1})/2 and I_{ν-1} - I_{ν+1} = 2ν I_ν/x)
+
+    d/dν log(I_ν(x)) has no closed form here, so it is a central difference
+    of the exact primal with ``_ORDER_TANGENT_STEP`` -- see the K rule for
+    the measured accuracy.
     """
     nu, x = primals
     nu_dot, x_dot = tangents
-    
-    # Primal output
+
     primal_out = log_bessel_iv(nu, x)
-    
-    # Tangent: d/dx log(I_ν(x)) ≈ 1 - ν/x for large x
-    # For better accuracy, use: ≈ 1 - ν/(x + ν)
+
     eps = jnp.finfo(jnp.float64).eps
     x_safe = jnp.maximum(x, eps)
-    tangent_out = x_dot * (1.0 - nu / (x_safe + jnp.abs(nu) + 1.0))
-    
+    log_ratio = log_bessel_iv(nu + 1.0, x_safe) - log_bessel_iv(nu, x_safe)
+    ratio = jnp.exp(jnp.clip(log_ratio, -745.0, 709.0))
+    d_dx = ratio + nu / x_safe
+    d_dnu = _log_bessel_order_tangent(log_bessel_iv, nu, x_safe)
+
+    tangent_out = nu_dot * d_dnu + x_dot * d_dx
     return primal_out, tangent_out
+
+
+#: Central-difference step for the *order* (nu) tangent of ``log K_nu`` /
+#: ``log I_nu``.  scipy exposes no derivative with respect to the order, so
+#: the tangent is ``(f(nu+h) - f(nu-h)) / 2h`` on the exact primal.  With
+#: h = 1e-5 the truncation error is O(h^2) ~ 1e-10 relative and the roundoff
+#: contribution eps/h ~ 2e-11 -- measured against a Richardson-extrapolated
+#: reference below 3e-9 on the (nu, x) grid the families use.
+_ORDER_TANGENT_STEP = 1e-5
+
+
+def _log_bessel_order_tangent(primal_fn, nu, x):
+    """d/dnu of a log-Bessel function, as a central difference."""
+    h = _ORDER_TANGENT_STEP
+    return (primal_fn(nu + h, x) - primal_fn(nu - h, x)) / (2.0 * h)
 
 
 def _log_bessel_kv_jvp(primals, tangents):
     """Custom JVP rule for log(K_ν(x)).
-    
-    d/dx log(K_ν(x)) = K'_ν(x) / K_ν(x)
-                     = -[K_{ν-1}(x) + K_{ν+1}(x)] / [2 * K_ν(x)]
-                     ≈ -K_{ν+1}(x) / K_ν(x)  (using recurrence)
-    
-    For simplicity, we use: d/dx log(K_ν(x)) ≈ -1 - ν/x  (asymptotic)
+
+    The previous rule substituted the *asymptotic* tangent
+    ``-1 - nu/(x + |nu| + 1)`` for the true derivative and dropped the
+    ``nu`` tangent entirely.  The primal is exact (scipy), so every density
+    was right while every AD score was wrong -- measured by gate 2 of
+    ``tools/rs_family_parity_scan.py`` as mu off by 9.3e-01 (SICHEL),
+    4.98e-01 (GIG) and 6.42e-01 (SI) relative (D2.44/D2.47).
+
+    d/dx log(K_ν(x)) = K'_ν(x)/K_ν(x) = -K_{ν+1}(x)/K_ν(x) + ν/x
+        (K'_ν = -(K_{ν-1} + K_{ν+1})/2 and K_{ν-1} - K_{ν+1} = -2ν K_ν/x,
+        so K'_ν = -K_{ν+1} + (ν/x)K_ν)
+
+    d/dν log(K_ν(x)) has no closed form in scipy; it is a central difference
+    of the exact primal (``_ORDER_TANGENT_STEP``).
     """
     nu, x = primals
     nu_dot, x_dot = tangents
-    
-    # Primal output
+
     primal_out = log_bessel_kv(nu, x)
-    
-    # Tangent: d/dx log(K_ν(x)) ≈ -1 - ν/x for large x
-    # For better accuracy, use: ≈ -1 - ν/(x + ν)
+
     eps = jnp.finfo(jnp.float64).eps
     x_safe = jnp.maximum(x, eps)
-    tangent_out = x_dot * (-1.0 - nu / (x_safe + jnp.abs(nu) + 1.0))
-    
+    # K_{nu+1}/K_nu evaluated in log space; the clip only binds where the
+    # ratio would overflow/underflow double anyway (x -> 0 or huge |nu|).
+    log_ratio = log_bessel_kv(nu + 1.0, x_safe) - log_bessel_kv(nu, x_safe)
+    ratio = jnp.exp(jnp.clip(log_ratio, -745.0, 709.0))
+    d_dx = -ratio + nu / x_safe
+    d_dnu = _log_bessel_order_tangent(log_bessel_kv, nu, x_safe)
+
+    tangent_out = nu_dot * d_dnu + x_dot * d_dx
     return primal_out, tangent_out
 
 
