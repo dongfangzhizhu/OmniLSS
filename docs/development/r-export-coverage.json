@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-10-20T00:09:08.785591+00:00",
+  "generated_at": "2026-10-20T23:33:35.800763+00:00",
   "source_repo_root": "D:\\AI\\my\\githubprojs\\OmniLSS",
   "stats": {
     "total_registered": 146,
     "status_distribution": {
-      "experimental": 121,
+      "experimental": 122,
       "compat_alias": 20,
-      "placeholder": 4,
+      "placeholder": 3,
       "implemented": 1
     },
     "validated_count": 1,
-    "experimental_count": 121,
+    "experimental_count": 122,
     "compat_alias_count": 20,
-    "placeholder_count": 4,
+    "placeholder_count": 3,
     "missing_count": 0
   },
   "families": {
@@ -512,7 +512,7 @@
       "evidence_tier_fitting": "EXPERIMENTAL"
     },
     "GIG": {
-      "implementation_status": "placeholder",
+      "implementation_status": "experimental",
       "is_production_safe": false,
       "has_dqr": false,
       "has_fitting": false,

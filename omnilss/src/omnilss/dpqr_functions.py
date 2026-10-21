@@ -2047,7 +2047,16 @@ def rNBI(key, n, mu=1.0, sigma=1.0):
 
 def dNBII(x, mu=1.0, sigma=1.0, log=False):
     """Density function for Negative Binomial Type II distribution.
-    
+
+    R ``gamlss.dist::dNBII`` (6.1.1) evaluates
+    ``dnbinom(x, size = mu/sigma, mu = mu)`` and switches to
+    ``dpois(x, lambda = mu)`` once ``sigma < 1e-04`` -- its own
+    numerical-safety valve as ``size`` grows past ~1e4 (scipy's nbinom
+    stays accurate there; the branch is reproduced for parity).  The
+    threshold is strict: at exactly 1e-04 R still takes the nbinom path.
+    R's trailing ``ifelse(x < 0, 0, fy)`` runs after the log branch, so
+    ``x < 0`` maps to 0 in both modes (not ``-inf`` in log mode).
+
     Parameters
     ----------
     x : array_like
@@ -2058,7 +2067,7 @@ def dNBII(x, mu=1.0, sigma=1.0, log=False):
         Dispersion parameter
     log : bool
         If True, return log density
-        
+
     Returns
     -------
     array_like
@@ -2067,15 +2076,20 @@ def dNBII(x, mu=1.0, sigma=1.0, log=False):
     x = jnp.asarray(x, dtype=jnp.float64)
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
-    
-    size = 1.0 / (sigma * mu)
-    log_fy = (gammaln(x + size) - gammaln(size) - gammaln(x + 1.0) +
+
+    # NBII has size = mu/sigma (whereas NBI has size = 1/sigma).
+    size = mu / sigma
+    log_nb = (gammaln(x + size) - gammaln(size) - gammaln(x + 1.0) +
               size * jnp.log(size / (size + mu)) +
               x * jnp.log(mu / (size + mu)))
-    
-    log_fy = jnp.where(x < 0, -jnp.inf, log_fy)
-    
-    return log_fy if log else jnp.exp(log_fy)
+    log_pois = -mu + x * jnp.log(mu) - gammaln(x + 1.0)
+    log_fy = jnp.where(sigma < 1e-4, log_pois, log_nb)
+
+    value = log_fy if log else jnp.exp(log_fy)
+    # R applies the support branch after the log branch: x < 0 yields 0 even
+    # when log = TRUE (NBII.R's trailing ifelse).  Reproduced verbatim; x=0
+    # is a valid count and keeps its positive mass.
+    return jnp.where(x < 0, 0.0, value)
 
 
 
@@ -2424,26 +2438,39 @@ def pNBII(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
 
     NBII has ``size = mu / sigma`` and mean ``mu``.  The previous normal
     approximation was not reliable in the tails and did not match ``dNBII``.
+    R switches to ``ppois`` once ``sigma < 1e-04`` (pNBII.R); the Poisson
+    branch is reproduced here for parity -- see ``dNBII``.
+
+    R applies ``lower.tail``/``log.p`` *inside* pnbinom/ppois and masks
+    ``q < 0`` to 0 afterwards, so the q<0 answer is 0 in every mode -- the
+    upper tail at q<0 is 0 (not 1) and log.p at q<0 is 0 (not -Inf).
     """
     q = np.asarray(q, dtype=np.float64)
     mu = np.asarray(mu, dtype=np.float64)
     sigma = np.asarray(sigma, dtype=np.float64)
     size = np.maximum(mu / np.maximum(sigma, 1e-10), 1e-10)
     p_param = np.clip(size / (size + np.maximum(mu, 1e-10)), 1e-10, 1.0 - 1e-10)
-    cdf = _nbinom_dist.cdf(np.floor(q), size, p_param)
-    cdf = np.where(q < 0, 0.0, np.minimum(cdf, 1.0))
-    
+    cdf_nb = _nbinom_dist.cdf(np.floor(q), size, p_param)
+    cdf_pois = _pois_dist.cdf(np.floor(q), np.maximum(mu, 1e-10))
+    cdf = np.where(sigma < 1e-4, cdf_pois, cdf_nb)
+    cdf = np.minimum(cdf, 1.0)
+
     if not lower_tail:
         cdf = 1.0 - cdf
-    
+
     if log_p:
         cdf = jnp.log(cdf)
-    
+
+    cdf = np.where(q < 0, 0.0, cdf)
+
     return cdf
 
 
 def qNBII(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
-    """Quantile for NBII using its exact negative-binomial parameterization."""
+    """Quantile for NBII using its exact negative-binomial parameterization.
+
+    R switches to ``qpois`` once ``sigma < 1e-04`` (qNBII.R); see ``dNBII``.
+    """
     p = np.asarray(p, dtype=np.float64)
     mu = np.asarray(mu, dtype=np.float64)
     sigma = np.asarray(sigma, dtype=np.float64)
@@ -2454,11 +2481,49 @@ def qNBII(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     p = np.clip(p, 1e-10, 1.0 - 1e-10)
     size = np.maximum(mu / np.maximum(sigma, 1e-10), 1e-10)
     p_param = np.clip(size / (size + np.maximum(mu, 1e-10)), 1e-10, 1.0 - 1e-10)
-    return np.maximum(np.floor(_nbinom_dist.ppf(p, size, p_param)), 0.0)
+    q_nb = np.maximum(np.floor(_nbinom_dist.ppf(p, size, p_param)), 0.0)
+    q_pois = np.maximum(np.floor(_pois_dist.ppf(p, np.maximum(mu, 1e-10))), 0.0)
+    return np.where(sigma < 1e-4, q_pois, q_nb)
 
 
 def rNBII(key, n, mu=1.0, sigma=1.0):
-    """Random generation for NBII using gamma-Poisson mixture."""
+    """Random generation for NBII using gamma-Poisson mixture.
+
+    Parameters
+    ----------
+    key : jax.random.PRNGKey
+        Random key
+    n : int
+        Number of observations
+    mu : array_like
+        Mean parameter
+    sigma : array_like
+        Dispersion parameter
+
+    Returns
+    -------
+    array_like
+        Random samples (integers)
+
+    Notes
+    -----
+    R's ``rNBII`` draws ``qNBII(runif(n), mu, sigma)`` (uniform quantile
+    inversion); like ``rNBI`` above this is the distributionally equivalent
+    gamma-Poisson mixture, not a stream replica.  NBII has
+    ``size = mu/sigma`` (R's ``dNBII``), so the mixing gamma carries shape
+    ``mu/sigma`` and scale ``sigma``: E[Y] = mu, Var(Y) = mu*(1 + sigma).
+    """
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+
+    key1, key2 = jrandom.split(key)
+    size = mu / sigma
+    scale = sigma
+
+    lambda_vals = jrandom.gamma(key1, size, shape=(n,)) * scale
+    return jrandom.poisson(key2, lambda_vals)
+
+
 # For ZIP - Zero-Inflated Poisson
 ZIP_QUANTILE_MAX_COUNT = 10_000
 

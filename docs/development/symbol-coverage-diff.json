@@ -5,7 +5,7 @@
   "r_exports_total": 1080,
   "current_counts": {
     "missing": 391,
-    "placeholder": 10,
+    "placeholder": 5,
     "compat_alias": 1,
     "evidence_gap": 34,
     "extra": 300
@@ -38,8 +38,14 @@
     },
     "placeholder": {
       "new": [],
-      "resolved": [],
-      "current_count": 10,
+      "resolved": [
+        "gamlss.dist::GIG",
+        "gamlss.dist::dGIG",
+        "gamlss.dist::pGIG",
+        "gamlss.dist::qGIG",
+        "gamlss.dist::rGIG"
+      ],
+      "current_count": 5,
       "baseline_count": 10
     },
     "compat_alias": {
@@ -120,6 +126,26 @@
     {
       "category": "missing",
       "symbol": "gamlss.dist::rSHASHo2"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::GIG"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::dGIG"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::pGIG"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::qGIG"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::rGIG"
     },
     {
       "category": "compat_alias",

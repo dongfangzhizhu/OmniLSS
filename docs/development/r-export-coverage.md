@@ -59,7 +59,7 @@ Registry metadata only: this report does not establish R export coverage or nume
 | GEOM | experimental |
 | GEOMO | experimental |
 | GG | experimental |
-| GIG | placeholder |
+| GIG | experimental |
 | GP | experimental |
 | GPO | experimental |
 | GT | experimental |

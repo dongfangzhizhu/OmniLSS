@@ -398,18 +398,26 @@ def _nb2_log_pdf(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp.nda
     y = jnp.maximum(y, 0.0)
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
-    
+
     # In NBII, size = mu / sigma (Whereas NBI has size = 1 / sigma)
     size = mu / sigma
-    
+
     # dnbinom(x, size, mu) log PDF formulation
-    return (
+    log_nb = (
         gammaln(y + size)
         - gammaln(size)
         - gammaln(y + 1.0)
         + size * jnp.log(size / (size + mu))
         + y * jnp.log(mu / (size + mu))
     )
+    # R's dNBII switches to dpois once sigma < 1e-04 (its own
+    # numerical-safety valve as size = mu/sigma grows past ~1e4; live R
+    # 6.1.1, NBII.R).  R's G.dev.incr is -2*dNBII(..., log=TRUE), so the
+    # branch has to live here too -- otherwise the fitting deviance would
+    # disagree with R in exactly that region.  The score slots (dldm/dldd)
+    # carry no such branch in R and stay unbranched here.
+    log_pois = -mu + y * jnp.log(mu) - gammaln(y + 1.0)
+    return jnp.where(sigma < 1e-4, log_pois, log_nb)
 
 
 def NBII() -> NegativeBinomial2Family:
@@ -424,7 +432,12 @@ def NBII() -> NegativeBinomial2Family:
     - size = mu / sigma
     - E(Y) = mu
     - Var(Y) = mu + mu²/size = mu(1 + sigma)
-    
+
+    Density branch (live R 6.1.1): R's dNBII -- and hence G.dev.incr,
+    which is ``-2*dNBII(..., log=TRUE)`` -- switches to dpois once
+    ``sigma < 1e-04``.  ``_nb2_log_pdf`` reproduces that branch; the score
+    slots (dldm/dldd) carry no branch in R and none here.
+
     R source reference:
     - file: `gamlss.dist/R/NBII.R`
     - function: `NBII()`
