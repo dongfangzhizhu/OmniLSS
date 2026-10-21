@@ -80,6 +80,8 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 - roll-out 的回归面 = 所有默认分支的族（两头不靠：旧 warm=mean(y) 常数、roll-out 默认=target=y 都不是 R 表达式）→ 16+2 族回归，port 后全转 pass。**绿族不碰**：ZINBI/PO/GEOM 等 gate 绿族保持旧起点。targeted 判定照旧不可信，登记数字绑定全族流。
 - **重尾族常数起点不能被默认分支覆盖**：PARETO mu.initial=rep(2) 常数，target=y 逐观测 exp(y_i) 在 Pareto(2) 样本爆到 -inf。
 - **`_initial_mu_target` 漏族名 = 指数爆炸（D2.50 NBII）**：通用 fallback `target=y` 是 **response 尺度**，rs_fit 按 **link 尺度**消费——log-link 族漏分支 → mu=exp(y)（e^7..e^15）→ 初值 deviance 4.8e6。**通用 fallback 只对 identity-link 族安全**；sigma 初值同理必须用 R 的原始矩表达式（var(y)，n-1），不能用对初始 mu 的残差方差。
+- **族对象 `.name` 大小写 ≠ registry key（D2.51 exGAUS）**：registry key 大写 `EXGAUS`，但 `distributions_b2` 的 `build_ad_family(name="exGAUS")` 让族对象 `.name` 是**小写**。`_initial_*` 全部门 `family.name`——分支写大写静默不匹配（无报错，直接继续走 fallback，症状=缺陷依旧）。加族条目前先 `resolve_family(X).name` 打印核实；漏族名与写错大小写是同一个静默 fallback 坑。
+- **通用 sigma 默认值 = 未登记族的默认陷阱（D2.51 exGAUS，第三例）**：族没有 sigma 条目时，通用默认对**初始 mu** 求残差尺度；若 mu 也落 `target=y` 默认 → RMSE(y,y)=0 → eps 地板 1e-6 → log-link IRLS 权重塌缩、deviance 差 66 倍（exGAUS 9856.41 vs R 146.905；SHASH 族 D2.40 同款，NBII D2.50 是 mu 侧同源）。**mu/sigma/nu 三个初值要一起补**——只补 mu 不补 sigma 仍在地板上。
 - **RS 外循环收敛判据 = 纯绝对（D2.50，R gamlss-5.R:305）**：`G.dev.old<-G.dev+1` 播种 + `abs(change)>c.crit`；R 2003 年主动移除过相对变体。带相对项会在**伪造首查**上误触发（初值 deviance>1/rtol → rel<rtol → "0 迭代收敛" converged=True）——发散起点被报成收敛拟合。`_has_converged` 已改绝对-only。
 - **门禁样本小 y 掩盖初值缺陷（D2.50）**：146 族扫描样本 y≤7 时 exp(y) 可恢复 → 全绿；只有 n=100/y≤15 的 consistency 测试暴露。**gate 绿 ≠ 族健康**，初值类缺陷要专门构造重尾/大值样本验。
 - **NET 缺陷组（D2.39 修复中，语义已修正）**：R 的 NET.R 在 family 对象里标记 `parameters=list(mu=T,sigma=T,nu=F,tau=F)`——**族级** non-estimable 标记（JSU 等族未给 formula 仍估计，实测 nu.coefficients 非 NULL），不是全局顶层语义；nu/tau 固定于 nu.initial/tau.initial=1.5/2，给了 formula 也忽略（nu.coefficients=NULL）。修法=族级 fixed_parameters+fixed_parameter_defaults（新机制）+link identity；density 里 tau=max(tau,nu) 静默 clamp vs R dNET 的 stop 是另一处 dpqr 对齐待办。
@@ -87,7 +89,7 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 - **R 的 score 槽可能与 G.deviance 自相矛盾（D2.42 PARETO1o 幽灵项）**：dldd 无 support 守卫而密度边界为 0，mu=min(y) 使最小观测永在边界 → IRLS 固定点是 `sigma=n/Σlog(y/mu)`（含边界观测的幽灵 1/σ 项，其 deviance 贡献为 0）。R 落点与闭式 10 位一致 + c.crit=1e-10 不动 = 固定点非提前停；我们低于/高于都要先算这个闭式再定性。修法=score_overrides/hessian_overrides 装 R 闭式（D2.40 SHASHo2 模式）。**固定 mu 的数据依赖默认**（rep(min(y))）走 `_resolve_fixed_parameter_values(family, data, n_obs, y)` 族名特例，不走常数 defaults；residual 路径要显式取 fixed_parameter_values 的 mu。
 - R-backed 测试首次真跑=测试的验收不是回归（skip 假绿）；测试族名用 R 真名大小写。
 - 符号证据按测试文件**标识符引用**判定：fam.p(...) 间接调用不算，按名 import 才算。
-- b14 组 BCPEo/BCTo 仍是 nan 占位（SHASHo/SHASHo2 已于 D2.40/D2.42/D2.43 交付）；混合大小写族 BCCGO/BCPEO/BCTO/BEO/EXGAUS/GEOMO/PARETO2O 的 dpqr 接线状态待查（R 桥大小写缺陷 D2.42 已修，门禁可真实探测）。
+- b14 组 BCPEo/BCTo 仍是 nan 占位（SHASHo/SHASHo2 已于 D2.40/D2.42/D2.43 交付）；混合大小写族 BCCGO/BCPEO/BCTO/BEO/GEOMO/PARETO2O 的 dpqr 接线状态待查（R 桥大小写缺陷 D2.42 已修，门禁可真实探测）。**EXGAUS dpqr 已验（D2.51：d/p pass，q 的 1.71e-06 残留是 R uniroot 默认容差误差，已入 _Q_UNIROOT_MEASURED）**。
 - **SHASH（非 o）密度积分缺陷待查**（D2.43 新发现）：同 profile 下 SHASH 密度积分 [-40,40]=0.9601、[-400,400]=0.9998（SHASHo=1.0 精确）——SHASH 族 dpqr 路径既存问题。
 
 ## 缺陷登记（D2.44）
