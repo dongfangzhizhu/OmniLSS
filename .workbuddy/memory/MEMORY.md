@@ -46,7 +46,7 @@
 
 ## R 探针读取要点
 
-$nu.initial 是 expression 要 eval；jsonlite 丢命名用 as.list；R 的 NULL 双判空；gamlss.family 无 d/p/q 槽；`G.dev.incr` 收**逐观测拟合值**（eta 重构+逆 link）。**gamlss 的 `numeric.deriv` 是前向差分**（`get("numeric.deriv", envir=asNamespace("gamlss"))`，delta=0.001；实测 = (f(x+δ)-f(x))/δ，非中心差），且按名重求值调用帧表达式——**变量必须先绑定**（`ND(exp(0.0),"nu")` 报 `object 'nu' not found`）。
+$nu.initial 是 expression 要 eval；jsonlite 丢命名用 as.list；R 的 NULL 双判空；gamlss.family 无 d/p/q 槽；`G.dev.incr` 收**逐观测拟合值**（eta 重构+逆 link）。**gamlss 的 `numeric.deriv` 是前向差分**（`get("numeric.deriv", envir=asNamespace("gamlss"))`，delta=0.001；实测 = (f(x+δ)-f(x))/δ，非中心差），且按名重求值调用帧表达式——**变量必须先绑定**（`ND(exp(0.0),"nu")` 报 `object 'nu' not found`）。**仓库 vendored 的 R 源码不可全信（D2.50：NBII.R pNBII 分支条件与活 R 相反）**——initial/分支语义以活 R `deparse(body(...))` 为准。
 
 ## 零变体 p/q/r（D2.27/D2.28）
 
@@ -79,6 +79,9 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 - 71 族共享 mu.initial=(y+mean(y))/2（live R dump 全量 146 族存 omnilss/tmp/d238_all_initials.json）。**R 的 var()/sd() 全是 n-1 分母**（np.var 默认 ddof=0，移植逐个核对）。
 - roll-out 的回归面 = 所有默认分支的族（两头不靠：旧 warm=mean(y) 常数、roll-out 默认=target=y 都不是 R 表达式）→ 16+2 族回归，port 后全转 pass。**绿族不碰**：ZINBI/PO/GEOM 等 gate 绿族保持旧起点。targeted 判定照旧不可信，登记数字绑定全族流。
 - **重尾族常数起点不能被默认分支覆盖**：PARETO mu.initial=rep(2) 常数，target=y 逐观测 exp(y_i) 在 Pareto(2) 样本爆到 -inf。
+- **`_initial_mu_target` 漏族名 = 指数爆炸（D2.50 NBII）**：通用 fallback `target=y` 是 **response 尺度**，rs_fit 按 **link 尺度**消费——log-link 族漏分支 → mu=exp(y)（e^7..e^15）→ 初值 deviance 4.8e6。**通用 fallback 只对 identity-link 族安全**；sigma 初值同理必须用 R 的原始矩表达式（var(y)，n-1），不能用对初始 mu 的残差方差。
+- **RS 外循环收敛判据 = 纯绝对（D2.50，R gamlss-5.R:305）**：`G.dev.old<-G.dev+1` 播种 + `abs(change)>c.crit`；R 2003 年主动移除过相对变体。带相对项会在**伪造首查**上误触发（初值 deviance>1/rtol → rel<rtol → "0 迭代收敛" converged=True）——发散起点被报成收敛拟合。`_has_converged` 已改绝对-only。
+- **门禁样本小 y 掩盖初值缺陷（D2.50）**：146 族扫描样本 y≤7 时 exp(y) 可恢复 → 全绿；只有 n=100/y≤15 的 consistency 测试暴露。**gate 绿 ≠ 族健康**，初值类缺陷要专门构造重尾/大值样本验。
 - **NET 缺陷组（D2.39 修复中，语义已修正）**：R 的 NET.R 在 family 对象里标记 `parameters=list(mu=T,sigma=T,nu=F,tau=F)`——**族级** non-estimable 标记（JSU 等族未给 formula 仍估计，实测 nu.coefficients 非 NULL），不是全局顶层语义；nu/tau 固定于 nu.initial/tau.initial=1.5/2，给了 formula 也忽略（nu.coefficients=NULL）。修法=族级 fixed_parameters+fixed_parameter_defaults（新机制）+link identity；density 里 tau=max(tau,nu) 静默 clamp vs R dNET 的 stop 是另一处 dpqr 对齐待办。
 - **LNO intercept-only 既有失败**（stash 验证 HEAD 同挂）：候选后续项。
 - **R 的 score 槽可能与 G.deviance 自相矛盾（D2.42 PARETO1o 幽灵项）**：dldd 无 support 守卫而密度边界为 0，mu=min(y) 使最小观测永在边界 → IRLS 固定点是 `sigma=n/Σlog(y/mu)`（含边界观测的幽灵 1/σ 项，其 deviance 贡献为 0）。R 落点与闭式 10 位一致 + c.crit=1e-10 不动 = 固定点非提前停；我们低于/高于都要先算这个闭式再定性。修法=score_overrides/hessian_overrides 装 R 闭式（D2.40 SHASHo2 模式）。**固定 mu 的数据依赖默认**（rep(min(y))）走 `_resolve_fixed_parameter_values(family, data, n_obs, y)` 族名特例，不走常数 defaults；residual 路径要显式取 fixed_parameter_values 的 mu。
