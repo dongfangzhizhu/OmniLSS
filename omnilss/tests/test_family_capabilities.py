@@ -71,7 +71,10 @@ def test_known_compat_alias_families_are_marked_separately_from_evidence():
 
 
 def test_ad_families_without_explicit_dpqr_are_marked_placeholder():
-    for family_name in ("GIG",):
+    # GIG was this test's sample until D2.48, when it gained d/p/q/r plus R's
+    # derivative slots and moved to EXPERIMENTAL.  LOGSHASH still holds the
+    # placeholder branch.
+    for family_name in ("LOGSHASH",):
         capability = get_family_capability(family_name)
         assert capability.implementation_status is ImplementationStatus.PLACEHOLDER
         assert implementation_status_for_family(family_name) is (
@@ -191,14 +194,15 @@ def test_method_route_capability_report_supports_service_admission():
     assert experimental["code"] == "experimental_requires_opt_in"
     assert experimental["status"] == "experimental"
 
-    unsupported = method_route_capability_report("GIG", "RS_JAX")
+    # LOGSHASH holds the placeholder branch GIG held until D2.48.
+    unsupported = method_route_capability_report("LOGSHASH", "RS_JAX")
     assert unsupported["ok"] is False
     assert unsupported["code"] == "placeholder_requires_opt_in"
     assert unsupported["feature"] == "rs_jax_fit"
     assert unsupported["implementation_status"] == "placeholder"
 
     unsupported_with_placeholder_opt_in = method_route_capability_report(
-        "GIG", "RS_JAX", allow_placeholder=True
+        "LOGSHASH", "RS_JAX", allow_placeholder=True
     )
     assert unsupported_with_placeholder_opt_in["ok"] is False
     assert unsupported_with_placeholder_opt_in["code"] == "unsupported_route"

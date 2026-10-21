@@ -42,10 +42,13 @@ SKIP = {
 #         见 tests/test_shasho2_parity.py）
 #   D2.42: PARETO1O（fixed-mu Pareto Type 1 的 p/q/r 补齐 + fixed mu 机制
 #         + R 闭式导数 overrides，见 tests/test_r_consistency_pareto1o.py）
+#   D2.48: GIG（密度参数化纠错为 R 的 c 形式 + p/q/r 数值内核 + R 槽位
+#         overrides，见 tests/test_gig_parity.py；q 关按 R 的 uniroot 误差
+#         登记 ("GIG","q")=1e-4）
 KNOWN_NAN_PLACEHOLDER = {
     "BCCGO", "BCPEO", "BCTO", "BEINF0", "BEINF1", "BEOI", "BEZI",
     "DPO", "DPO1",
-    "GENERALISEDPOISSON", "GIG", "GP", "GPO", "IGA", "IGAMMA", "JSUO", "LG",
+    "GENERALISEDPOISSON", "GP", "GPO", "IGA", "IGAMMA", "JSUO", "LG",
     "LNO", "LOGITNO", "LOGNO2", "LOGSHASH", "LOGSHASHO", "NBF", "NET",
     "PARETO2", "SEP", "SEP1", "SEP2",
     "SEP3", "SEP4", "SI", "SST", "ST3", "ST3C", "ST4", "ST5",

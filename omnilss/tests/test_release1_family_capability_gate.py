@@ -24,7 +24,7 @@ UNSAFE = tuple(
     capability.name
     for capability in (
         get_family_capability(name)
-        for name in ("GIG", "DBI", "NBI")
+        for name in ("LOGSHASH", "DBI", "NBI")
     )
     if capability.implementation_status
     in {ImplementationStatus.PLACEHOLDER, ImplementationStatus.COMPAT_ALIAS}
@@ -37,9 +37,10 @@ def test_all_known_unsafe_states_are_rejected_with_structured_reason():
     # unsafe family is in one of the two fail-closed states -- rather than
     # asserting that both states are represented.  Those are different claims,
     # and only the first survives a family leaving the compat-alias list:
-    # DBI did so in D2.23, becoming a real two-parameter likelihood, and the
-    # stronger assertion then failed with "extra items in the right set"
-    # while the gate itself was working exactly as designed.
+    # DBI did so in D2.23, becoming a real two-parameter likelihood, and GIG
+    # did so in D2.48, gaining d/p/q/r plus R's derivative slots.  The stronger
+    # assertion then failed with "extra items in the right set" while the gate
+    # itself was working exactly as designed.
     assert UNSAFE, "no family is fail-closed any more -- is that intended?"
     for family in UNSAFE:
         assert get_family_capability(family).implementation_status in {
@@ -101,10 +102,11 @@ def test_dbi_stays_fail_closed_after_leaving_the_compat_alias_list(route):
 
 def test_implemented_family_is_admitted_and_unsafe_exploratory_fit_is_blocked():
     assert require_production_family_route("NO", "RS", route="public_fit")["ok"] is True
-    # GIG is a placeholder family: the rejection reason must name that state,
-    # not the generic "feature unavailable" wording.
+    # GIG was this sample until D2.48; LOGSHASH is a placeholder family now,
+    # so the rejection reason must name that state, not the generic "feature
+    # unavailable" wording.
     with pytest.raises(FamilyCapabilityError, match="placeholder numeric behavior"):
-        gamlss("y ~ x", family="GIG", data={"y": [1.0, 2.0], "x": [0.0, 1.0]})
+        gamlss("y ~ x", family="LOGSHASH", data={"y": [1.0, 2.0], "x": [0.0, 1.0]})
 
 
 def test_experimental_family_is_fail_closed_only_on_production_route():

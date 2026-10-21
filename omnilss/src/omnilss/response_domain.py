@@ -130,6 +130,10 @@ _RESPONSE_DOMAINS: dict[str, ResponseDomain] = {
     # --- all(y > 0) ---
     "GA": _all_positive,
     "EXP": _all_positive,
+    # GIG.R:124 -- y.valid = function(y) all(y>0).  Added with the D2.48
+    # delivery: live R's gamlss() rejects a negative GIG response with
+    # "response variable out of range", so the check belongs here.
+    "GIG": _all_positive,
     "PARETO1": _all_positive,
     "WEI": _all_positive,
     "WEI2": _all_positive,

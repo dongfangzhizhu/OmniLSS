@@ -27,66 +27,51 @@ class GIGFamily(FamilyDefinition):
 
 
 def _gig_log_pdf(y, mu, sigma, nu):
-    """Generalized Inverse Gaussian log-PDF.
-    
-    Parameters:
-    - mu: location parameter (> 0)
-    - sigma: scale parameter (> 0)
-    - nu: shape parameter (can be negative)
-    
-    The GIG distribution is defined as:
-    f(y; λ, χ, ψ) ∝ y^(λ-1) * exp(-(χ/y + ψ*y)/2)
-    
-    Parameterization:
-    - λ = nu
-    - χ = 1/sigma^2
-    - ψ = 1/(mu^2 * sigma^2)
-    
-    This ensures E[Y] = mu.
+    """Generalized Inverse Gaussian log-PDF in R's parameterization.
+
+    Delegates to :func:`omnilss.gig.log_density`, the parity-verified
+    transcription of ``dGIG`` from the installed gamlss.dist 6.1.1
+    (``c = K_{nu+1}(1/sigma^2)/K_nu(1/sigma^2)``; see the gig module
+    docstring for the full contract and the parameterization correction
+    this replaces -- the previous ``chi=1/sigma^2, psi=1/(mu^2 sigma^2)``
+    form was a different distribution, off by 8.08e-02 rel against live R).
+
+    Scalar kernel: ``build_ad_family`` vmaps it, so no broadcasting or
+    ``_prepare_jax_args`` here (D2.45 shape contract).
     """
-    from .bessel import log_bessel_kv
-    
-    eps = jnp.finfo(jnp.float64).eps
-    y = jnp.maximum(y, eps)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    
-    # Parameterization
-    lambda_ = nu
-    chi = 1.0 / (sigma * sigma)
-    psi = 1.0 / (mu * mu * sigma * sigma)
-    
-    # Normalizing constant: K_λ(sqrt(χψ))
-    sqrt_chi_psi = jnp.sqrt(chi * psi)
-    log_bessel_k = log_bessel_kv(lambda_, sqrt_chi_psi)
-    
-    # Log-PDF
-    log_pdf = (
-        (lambda_ - 1.0) * jnp.log(y)
-        - 0.5 * (chi / y + psi * y)
-        - log_bessel_k
-        - 0.5 * lambda_ * jnp.log(chi / psi)
-    )
-    
-    return log_pdf
+    from .gig import log_density
+
+    return log_density(y, mu, sigma, nu)
 
 
 def GIG():
     """Generalized Inverse Gaussian distribution.
-    
+
     A three-parameter distribution that includes inverse Gaussian
     and gamma as special cases.
-    
+
     Parameters:
     - mu: location (> 0)
     - sigma: scale (> 0)
     - nu: shape (can be negative)
-    
+
     Link functions:
     - mu: log
     - sigma: log
     - nu: identity
+
+    Notes
+    -----
+    Delivered against live R (installed gamlss.dist 6.1.1) in the D2.48
+    batch: density parameterization corrected to R's ``c`` form, p/q/r
+    wired (numerical quadrature CDF + log-space bisection quantile),
+    and R's own derivative slots transcribed as overrides -- including
+    the expected-Hessian ``d2ldm2`` and the ``-score^2`` conventions for
+    ``d2ldd2``/``d2ldv2``, which is what RS parity requires.  See
+    ``omnilss/gig.py`` for the full contract.
     """
+    from .gig import GIG_HESSIANS, GIG_SCORES, dGIG, pGIG, qGIG, rGIG
+
     return build_ad_family(
         family_class=GIGFamily,
         name="GIG",
@@ -109,6 +94,12 @@ def GIG():
             "sigma": log_derivative,
             "nu": identity_derivative,
         },
+        score_overrides=GIG_SCORES,
+        hessian_overrides=GIG_HESSIANS,
+        d=dGIG,
+        p=pGIG,
+        q=qGIG,
+        r=rGIG,
     )
 
 

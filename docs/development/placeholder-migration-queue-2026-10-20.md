@@ -63,7 +63,7 @@
 |---|---|---|---|---|
 | [x] | `GB1` | `GB1` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `GB2` | `GB2` | experimental | 状态已离开 placeholder（experimental） |
-| [ ] | `GIG` | `GIG` | 占位 |  |
+| [x] | `GIG` | `GIG` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `NO2` | `NO2` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `NOF` | `NOF` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `PARETO` | `PARETO` | experimental | 状态已离开 placeholder（experimental） |
@@ -85,4 +85,4 @@
 
 ## 附录：尚未在任何批次中的状态
 
-当前 placeholder 家族总数（批次内）：2
+当前 placeholder 家族总数（批次内）：1

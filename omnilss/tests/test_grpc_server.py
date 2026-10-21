@@ -968,7 +968,11 @@ def test_grpc_fit_blocks_placeholder_family_before_backend(monkeypatch) -> None:
     response = service.Fit(
         fit_pb2.FitRequest(
             formula="y ~ x",
-            family="GIG",
+            # LOGSHASH is the remaining placeholder family: GIG left the
+            # placeholder set when the D2.48 delivery gave it real dpqr
+            # implementations (implementation_status is now "experimental"),
+            # which made this test assert the wrong rejection code.
+            family="LOGSHASH",
             data_json=json.dumps({"y": [1.0], "x": [0.0]}),
             method="RS",
         ),

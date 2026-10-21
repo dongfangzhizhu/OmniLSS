@@ -25,8 +25,8 @@ except ModuleNotFoundError:  # pragma: no cover - direct script execution
         source_evidence,
     )
 
-CASE_ID = "family-capability-gate-gig-rs-seed-20260722"
-FAMILY = "GIG"
+CASE_ID = "family-capability-gate-logshash-rs-seed-20260722"
+FAMILY = "LOGSHASH"
 METHOD = "RS"
 SEED = 20260722
 

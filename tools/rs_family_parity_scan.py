@@ -151,10 +151,23 @@ _DERIV_TOLERANCE: dict[tuple[str, str], float] = {
     ("BCT", "tau"): 1e-2,
     ("ST2", "tau"): 5e-1,
     ("DBI", "sigma"): 1e-2,
+    ("GIG", "nu"): 1e-2,
 }
 
 _DERIV_TOLERANCE_NOTE: dict[tuple[str, str], str] = {
     ("BCT", "tau"): "R's dldt uses a 0.01 forward step on log pt; ours is 2.8e-14 from R",
+    ("GIG", "nu"): (
+        "R's GIG dldv is gamlss's numeric.deriv on dGIG(log=TRUE) with "
+        "delta=0.01 -- dumped from the installed namespace it is a forward "
+        "difference, so R's own nu score carries an O(delta) truncation "
+        "error.  We transcribe that approximation verbatim (bit-level: "
+        "measured against live R at digits=17 on two probe points, max rel "
+        "9.7e-12), while the gate's central difference of our density sees "
+        "the true derivative -- the gate reported analytic [-0.01961 "
+        "-0.09093] vs fd [-0.01954 -0.09185], i.e. 1.739e-03, which is R's "
+        "discretisation, not ours.  Tightening the derivative would move us "
+        "away from R, the BCT-tau situation (D2.48)."
+    ),
     ("ST2", "tau"): (
         "R's dldt holds w fixed while differencing pt(w, df=tau+1), so it omits "
         "dw/dtau -- w = nu*sqrt(lam)*z depends on tau through lam.  Measured on "
@@ -223,6 +236,20 @@ _DPQR_TOLERANCE: dict[tuple[str, str], float] = {
     # consistent with R's own pSEP(7.28) = 0.9, and ours agrees to 8e-07.
     ("SEP", "p"): 1e-4,
     ("SEP", "q"): 1e-4,
+    # GIG (D2.48).  R's pGIG integrates the mu=1 density from 0.001 to q/mu
+    # with adaptive integrate; by the exact scaling property that is
+    # F(q) - F(0.001*mu), and the residual against the true CDF is R's own
+    # quadrature error (measured <= 1.24e-06 absolute at mu=1, sigma=1,
+    # nu=0, q=100 where R returns 0.999998759019705 against a true 1.0;
+    # our quadrature is 4.4e-16 there).  On the gate's own probe grid the
+    # d/p residual stays under the default 1e-6, so only q needs a slot:
+    # qGIG is uniroot at the DEFAULT tolerance on R's quadrature CDF, and
+    # re-solving the true CDF at tol=1e-14 puts R's roots up to 5.7e-04
+    # away (deep tail: the CDF error amplified through 1/f).  Ours bisects
+    # in log space to machine precision on the composite Gauss-Legendre
+    # CDF, so the residual is R's quantile error -- the IG/SEP/SIMPLEX
+    # disposition.  Measured max rel on the gate grid: 2.108e-05.
+    ("GIG", "q"): 1e-4,
 }
 
 # Shared evidence block for the eight families whose R quantile function is a

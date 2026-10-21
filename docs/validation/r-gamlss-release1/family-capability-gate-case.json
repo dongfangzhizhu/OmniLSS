@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "case_id": "family-capability-gate-gb2-rs-seed-20260722",
-  "family": "GB2",
+  "case_id": "family-capability-gate-logshash-rs-seed-20260722",
+  "family": "LOGSHASH",
   "method": "RS",
   "seed": 20260722,
   "fixed_r_sources": {
@@ -22,17 +22,17 @@
   "implementation_status": "placeholder",
   "admission": {
     "ok": false,
-    "family": "GB2",
+    "family": "LOGSHASH",
     "method": "RS",
     "feature": "rs_fit",
     "status": null,
     "implementation_status": "placeholder",
-    "strict": false,
-    "allow_experimental": true,
+    "strict": true,
+    "allow_experimental": false,
     "allow_compat_alias": false,
     "allow_placeholder": false,
     "code": "placeholder_requires_opt_in",
-    "message": "family 'GB2' method 'RS' has placeholder numeric behavior; pass allow_placeholder=True only for explicit migration or smoke-test work",
+    "message": "family 'LOGSHASH' method 'RS' has placeholder numeric behavior; pass allow_placeholder=True only for explicit migration or smoke-test work",
     "route": "benchmark"
   },
   "evidence_paths": [

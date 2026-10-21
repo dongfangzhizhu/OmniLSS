@@ -47,6 +47,19 @@ from omnilss.distributions_b6 import _sichel_log_pdf  # noqa: E402
 
 RSCRIPT = shutil.which("Rscript")
 
+#: Per-(family, parameter) tolerance for the score-vs-central-difference
+#: self-consistency check below, mirroring the parity scanner's
+#: ``_DERIV_TOLERANCE`` discipline: where R's own slot is a coarse finite
+#: difference, the true derivative of our density is a *different* number and
+#: the tight default would fail on R's discretisation, not ours.
+#: GIG nu (D2.48): R's dGIG nu slot is gamlss's ``numeric.deriv`` forward
+#: difference with delta=0.01, transcribed verbatim (bit-level 9.7e-12 vs live
+#: R at digits=17).  On this test's grid the central difference sees the true
+#: derivative, measured gap 1.4687e-02 relative / 5.4568e-03 absolute.
+_SELF_CONSISTENCY_TOLERANCE = {
+    ("GIG", "nu"): (2e-2, 6e-3),
+}
+
 #: (nu, x) grid spanning the order and argument ranges the families use:
 #: SICHEL/PIG evaluate log K_nu at 1/sigma and at alpha, GIG at
 #: sqrt(chi*psi) with nu in (-2, 2).
@@ -263,8 +276,8 @@ def test_family_scores_match_their_own_density(family):
 
     This is what gate 2 measures: each score against a central difference of
     ``log(fam.d)``.  It says nothing about whether the density is right (that
-    is gate 1's job, and GIG's density is still a placeholder), only that the
-    scores differentiate it -- which is exactly what the broken JVP broke.
+    is gate 1's job), only that the scores differentiate it -- which is
+    exactly what the broken JVP broke.
     """
     from omnilss.distribution_registry import resolve
 
@@ -292,7 +305,14 @@ def test_family_scores_match_their_own_density(family):
         minus = np.asarray(log_density_at(base[k] - h))
         fd = (plus - minus) / (2 * h)
         score = np.asarray(fn(y, *base))
-        np.testing.assert_allclose(score, fd, rtol=1e-4, atol=1e-6,
+        # GIG nu is R's own numeric.deriv forward difference (delta=0.01), so
+        # its truncation error shows up here as a 1.47e-02 relative gap against
+        # the true derivative of our density -- the same disposition the
+        # parity scanner registers at _DERIV_TOLERANCE[("GIG","nu")].  mu and
+        # sigma stay at the default tight tolerance, which is what pins the
+        # D2.47 JVP fix.
+        rtol, atol = _SELF_CONSISTENCY_TOLERANCE.get((family, name), (1e-4, 1e-6))
+        np.testing.assert_allclose(score, fd, rtol=rtol, atol=atol,
                                    err_msg=f"{family}:{name}")
 
 

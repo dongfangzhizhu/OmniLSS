@@ -280,11 +280,21 @@ def test_strict_capabilities_reject_experimental_ga_rs_route():
 
     # The capability report now supplies the real reason, so the assertion is on
     # the rejection code's wording rather than the old generic fallback.
+    #
+    # GA's response domain is y > 0 and ``gamlss`` validates the response
+    # *before* the capability gate, so the data has to be strictly positive
+    # for the capability rejection to be what fires.  The shared
+    # ``_make_no_data()`` helper produces a negative draw with its fixed seed
+    # (measured -0.776), which raised ResponseDomainError instead and made
+    # this test fail at HEAD as a pre-existing defect.
+    rng = np.random.default_rng(20260517)
+    x = rng.normal(size=40)
+    y = np.exp(0.2 * x) + 0.5
     with pytest.raises(FamilyCapabilityError, match="experimental"):
         gamlss(
             "y ~ x",
             family=GA(),
-            data=_make_no_data(),
+            data={"y": y, "x": x},
             method="RS",
             strict_capabilities=True,
         )
