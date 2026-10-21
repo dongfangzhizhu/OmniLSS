@@ -236,6 +236,18 @@ _DPQR_TOLERANCE: dict[tuple[str, str], float] = {
     # consistent with R's own pSEP(7.28) = 0.9, and ours agrees to 8e-07.
     ("SEP", "p"): 1e-4,
     ("SEP", "q"): 1e-4,
+    # exGAUS (D2.51).  R's qexGAUS builds h1 = pexGAUS(q, ...) - p and
+    # calls uniroot(h1, interval) with no tol argument -- the same
+    # default-tolerance solve as IG/SEP/ST1 below.  Measured on live R
+    # (gamlss.dist 6.1.1) on the gate's own probe grid (p = 0.1..0.9,
+    # mu = sigma = nu = 0.5..3): R's own roundtrip |pexGAUS(qexGAUS(p)) - p|
+    # reaches 5.3e-07, a tol=1e-15 re-solve of R's own objective puts R's
+    # returned roots up to 2.7e-06 away, and our bisection tracks the
+    # re-solve to ~1e-09 (worst 5.9e-06 absolute at the flat deep-tail
+    # point, 7.5e-07 relative).  Ours roundtrips through our CDF to
+    # 3.3e-16.  The residual vs R is therefore R's quantile error; the
+    # gate's 1.71e-06 max rel is that, not a defect on our side.
+    ("EXGAUS", "q"): 1e-4,
     # GIG (D2.48).  R's pGIG integrates the mu=1 density from 0.001 to q/mu
     # with adaptive integrate; by the exact scaling property that is
     # F(q) - F(0.001*mu), and the residual against the true CDF is R's own
@@ -252,12 +264,12 @@ _DPQR_TOLERANCE: dict[tuple[str, str], float] = {
     ("GIG", "q"): 1e-4,
 }
 
-# Shared evidence block for the eight families whose R quantile function is a
+# Shared evidence block for the nine families whose R quantile function is a
 # uniroot solve at the DEFAULT tolerance (D2.32).  Live-R sources: qIG /
-# qSEP1 / qSEP2 / qSHASH / qSN1 / qST1 / qST2 each build h1 = p<FM>(q) - p and
-# call uniroot(h1, interval) with no tol argument (default
-# .Machine$double.eps^0.25 ~ 1.2e-4); qZAIG composes qIG, inheriting the same
-# error (and answers 0 for p <= nu by an explicit ifelse).  Measured on the
+# qSEP1 / qSEP2 / qSHASH / qSN1 / qST1 / qST2 / qEXGAUS each build
+# h1 = p<FM>(q) - p and call uniroot(h1, interval) with no tol argument
+# (default .Machine$double.eps^0.25 ~ 1.2e-4); qZAIG composes qIG, inheriting
+# the same error (and answers 0 for p <= nu by an explicit ifelse).  Measured on the
 # probe grids (omnilss/tmp/d232_measure.R): re-solving R's OWN objective at
 # tol=1e-14 puts R's returned roots up to these absolute errors from the true
 # root, and our bisection/ndtri-based values track the tol=1e-14 re-solve to
@@ -276,6 +288,7 @@ _Q_UNIROOT_MEASURED = {
     "ST1": "1.34e-05",
     "ST2": "8.67e-06",
     "ZAIG": "8.58e-06",
+    "EXGAUS": "1.71e-06",
 }
 
 _DPQR_TOLERANCE_NOTE: dict[tuple[str, str], str] = {

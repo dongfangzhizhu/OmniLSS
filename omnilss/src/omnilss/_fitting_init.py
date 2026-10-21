@@ -130,6 +130,15 @@ def _initial_parameter_value(
         if family.name == "PE2":
             # R gamlss.dist PE2 nu.initial: nu <- rep(1.8, length(y))
             return 1.8
+        if family.name == "exGAUS":
+            # R exGAUS()$nu.initial (live R, gamlss.dist 6.1.1, verified via
+            # deparse of the family object):
+            #     nu <- rep(max(2 * (mean(y) - median(y)), 0.1), length(y))
+            # The exponential component's rate, from the mean-median
+            # difference (a skewness moment), floored at 0.1.  nu.link is
+            # log.  The generic 1.0 default starts the fit an order of
+            # magnitude off R's rate on typical right-skewed samples.
+            return float(max(2.0 * (np.mean(y) - np.median(y)), 0.1))
         return 1.0
     if parameter == "tau":
         if family.name == "JSU":
@@ -430,6 +439,19 @@ def _initial_mu_target(
         # generic sigma start (RMSE(y, y) = eps) and the first RS cycle
         # collapses sigma to its floor -- see the note in _initial_sigma.
         target = (y + np.mean(y)) / 2.0
+    elif family.name == "exGAUS":
+        # R exGAUS()$mu.initial (live R, gamlss.dist 6.1.1, verified via
+        # deparse of the family object): mu <- (y + mean(y))/2
+        # mu.link is "identity" (sigma/nu are log), so the response-scale
+        # start is used as-is.  Without this entry the family fell into the
+        # generic target=y fallback; mu itself is the smaller of the three
+        # start-value defects (the sigma floor below is the catastrophic
+        # one), but R's start is the same expression as the identity-link
+        # group above and adopting it keeps the first inner step aligned.
+        # NOTE the casing: the registry key is EXGAUS but the family
+        # object's .name is "exGAUS" (distributions_b2.py passes
+        # name="exGAUS") -- these branches must key on the latter.
+        target = (y + np.mean(y)) / 2.0
     else:
         target = y
     return target
@@ -637,6 +659,19 @@ def _initial_sigma(
         # JSU's ddof=0 vs R's n-1 denominator moves the scalar by O(n^-1)
         # and its gate stays green, so it is left untouched.
         sigma = np.std(y, ddof=1) / 4.0 if family.name != "JSU" else np.std(y) / 4.0
+    elif family.name == "exGAUS":
+        # R exGAUS()$sigma.initial (live R, gamlss.dist 6.1.1, verified via
+        # deparse of the family object):
+        #     sigma <- rep(sd(y)/2, length(y))
+        # R's sd() is the n-1 estimator (D2.38).  This is the *hard* failure
+        # of the missing entry: the generic residual-scale default evaluates
+        # the spread against the generic mu start (target=y), i.e.
+        # RMSE(y, y) = 0, so sigma started at the eps floor -- the same
+        # signature that hit SHASH/SHASHo/SHASHo2 (D2.40).  On the scanner
+        # sample the fit ran at deviance 9856.41 against R's 146.905
+        # (rel 6.6e+01) and never converged; with R's start the trajectory
+        # locks onto live R's.
+        sigma = np.std(y, ddof=1) / 2.0
     elif family.name == "GPO":
         # R GPO()$sigma.initial (live R, D2.38): sigma <- rep(0.1, length(y)).
         # The generic residual-scale default (~1.9 on the scanner sample)
