@@ -752,11 +752,24 @@ def rs_step(
     )
 
 
-def _has_converged(dev_old: float, dev_new: float, tol: float, rtol: float) -> bool:
-    """Relative + absolute convergence criterion."""
-    abs_change = abs(dev_old - dev_new)
-    rel_change = abs_change / (abs(dev_old) + 1e-10)
-    return abs_change < tol or rel_change < rtol
+def _has_converged(dev_old: float, dev_new: float, tol: float) -> bool:
+    """Absolute deviance-change criterion, matching R's RS outer loop.
+
+    R (gamlss-5.R:305) runs ``while (abs(G.dev.old-G.dev) > c.crit && iter <
+    n.cyc)`` after seeding ``G.dev.old <- G.dev+1`` -- absolute-only.  R even
+    documents *removing* a relative variant of this test on 2003-06-11
+    (gamlss-5.R:376-377: "taken out (abs((G.dev-G.dev.old)/(0.1+abs(G.dev.old)))
+    <c.crit&&iter<=n.cyc)").
+
+    The relative branch this function used to carry misfired on exactly that
+    seeded iteration: the fabricated change is 1.0, so once the *starting*
+    deviance exceeds 1/rtol the relative test declares convergence before a
+    single outer cycle runs.  Measured on the NBII y~x sample in D2.50:
+    initial deviance 4.77e6 -> rel change 2.1e-7 < 1e-6 -> "Converged in 0
+    iterations", converged=True, on a point 3 orders of magnitude from R's
+    answer.  A diverged start was reported as a converged fit.
+    """
+    return abs(dev_old - dev_new) < tol
 
 
 #: Threshold above which the eta-scale score is *reported* as evidence that the
@@ -1290,7 +1303,12 @@ def rs_fit(
     }
 
     core_rs_t0 = time.perf_counter()
-    while not _has_converged(g_dev_old, g_dev, tol, rtol) and iteration < max_iter:
+    # D2.50: absolute-only, exactly R's `abs(G.dev.old-G.dev) > c.crit` -- see
+    # _has_converged for why the relative branch was removed (it fired on the
+    # fabricated first check whenever the starting deviance exceeded 1/rtol).
+    # `rtol` is retained in the signature for API compatibility but no longer
+    # participates: no caller ever passed it, and R has no relative term.
+    while not _has_converged(g_dev_old, g_dev, tol) and iteration < max_iter:
         iteration += 1
         g_dev_old = g_dev
 
@@ -1486,8 +1504,9 @@ def rs_fit(
             if verbose:
                 print(f"  WARNING: Global deviance increased!")
 
-    # Check convergence
-    if _has_converged(g_dev_old, g_dev, tol, rtol):
+    # Check convergence (absolute criterion, R's `abs(G.dev.old-G.dev) < c.crit`
+    # at gamlss-5.R:708)
+    if _has_converged(g_dev_old, g_dev, tol):
         converged = True
     # Classify the outcome so callers can tell "converged" from "diverged"
     # without re-deriving it from the deviance history.  A non-finite deviance

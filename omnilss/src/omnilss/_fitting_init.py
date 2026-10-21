@@ -321,9 +321,22 @@ def _initial_mu_target(
         # parametrization of a discrete distribution), hence R's abs().
         eps = np.finfo(np.float64).eps
         target = np.log(np.maximum(np.abs((y + np.mean(y)) / 2.0), eps))
-    elif family.name in ("PIG", "ZANBI", "GIG", "ZIPIG", "ZAPIG"):
+    elif family.name in ("PIG", "ZANBI", "GIG", "ZIPIG", "ZAPIG", "NBII"):
         # R mu.initial (live R, D2.38): mu <- (y + mean(y))/2, log link for
-        # all five.  PIG previously started at exp(OLS(y~x)) through its log
+        # all six.  NBII.R:70 (gamlss.dist 6.1.1) carries the identical
+        # expression; it joined this group in D2.50 because the generic
+        # ``target = y`` fallback below is on the *response* scale and
+        # rs_fit consumes this vector as the link-scale linear predictor:
+        # through NBII's log link the start became ``exp(y)`` (e^7 .. e^15 on
+        # the test_r_consistency_nbii sample), the initial deviance was
+        # 4.8e6, and the outer loop exited after zero iterations.
+        #
+        # Do NOT fold "NBI" in here: live R NBI()$mu.initial is the same
+        # ``(y + mean(y))/2`` (NBI.R:46), but our NBI branch below predates
+        # D2.38, its gate is green, and the D2.38 rule is to move a green
+        # family's start only on evidence.  R's expression is recorded here
+        # for whoever re-opens NBI initial-value fidelity.
+        # PIG previously started at exp(OLS(y~x)) through its log
         # link and its rsdev regressed when the per-observation rollout
         # changed the trajectory; ZANBI fell through to target=y in the same
         # rollout; ZIPIG/ZAPIG joined after scan2 showed their registered
@@ -470,6 +483,16 @@ def _initial_sigma(
     if family.name == "DBURR12":
         # R DBURR12()$sigma.initial (discBURR12.R): sigma <- rep(2, length(y)).
         return 2.0
+    if family.name == "GIG":
+        # R GIG()$sigma.initial (live R, gamlss.dist 6.1.1):
+        #     sigma <- sd(y)/mean(y)
+        # log link.  R's sd() is the n-1 estimator (D2.38).  The generic
+        # residual-scale default below divides by the fitted mu instead of
+        # mean(y) and starts the IRLS on a different point than R's.
+        mean_y = float(np.mean(y))
+        if mean_y <= eps:
+            return 0.5
+        return float(np.std(y, ddof=1) / mean_y)
     # Box-Cox six-family sigma: R's family objects start at
     # sigma <- rep(0.1, length(y)) (live R, D2.35/D2.36).  Adopted in D2.36
     # once the inner RS loop ran with R's glim.fit semantics (cc=0.001,
@@ -567,13 +590,21 @@ def _initial_sigma(
         # evidence.  Their R values are recorded above for whoever does.
         sigma = 0.3 if family.name == "ZAP" else 0.1
     elif family.name == "NBII":
-        # NBII: size = mu/sigma, Var(Y) = mu(1 + sigma)
-        # Therefore: sigma = Var(Y)/mu - 1
-        mean_component = np.maximum(mu, eps)
-        variance_component = np.sum(w * np.square(y - mu)) / np.sum(w)
-        mean_level = np.sum(w * mean_component) / np.sum(w)
-        # sigma = (variance - mean) / mean
-        sigma = np.maximum((variance_component - mean_level) / np.maximum(mean_level, eps), eps)
+        # R NBII()$sigma.initial (NBII.R:71-72, live R gamlss.dist 6.1.1):
+        #     sigma <- rep(max(((var(y)/mean(y)) - 1), 0.1), length(y))
+        # Var(Y) = mu + sigma*mu  =>  sigma = (Var(Y) - E[Y]) / E[Y], the
+        # method-of-moments estimator on the *raw* response -- R's var() is
+        # the n-1 estimator (D2.38).
+        #
+        # The previous branch evaluated the same ratio on the *residual*
+        # variance about the initial mu instead of var(y).  With the generic
+        # mu start that residual is meaningless: on the test_r_consistency_nbii
+        # y~x sample it produced sigma ~ 3.0e6 (residuals of exp(y) against
+        # y, before D2.50 fixed the mu start), which sent the fit to deviance
+        # 877.4 in 20 cycles against R's 463.9.
+        mean_y = float(np.mean(y))
+        var_y = float(np.var(y, ddof=1))
+        sigma = max(var_y / max(mean_y, eps) - 1.0, 0.1)
     elif family.name == "PARETO2":
         # PARETO2: shape = 1/sigma, need sigma < 1 for finite mean
         # Use coefficient of variation as a guide
