@@ -91,6 +91,8 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 - 符号证据按测试文件**标识符引用**判定：fam.p(...) 间接调用不算，按名 import 才算。
 - b14 组 BCPEo/BCTo 仍是 nan 占位（SHASHo/SHASHo2 已于 D2.40/D2.42/D2.43 交付）；混合大小写族 BCCGO/BCPEO/BCTO/BEO/GEOMO/PARETO2O 的 dpqr 接线状态待查（R 桥大小写缺陷 D2.42 已修，门禁可真实探测）。**EXGAUS dpqr 已验（D2.51：d/p pass，q 的 1.71e-06 残留是 R uniroot 默认容差误差，已入 _Q_UNIROOT_MEASURED）**。
 - **SHASH（非 o）密度积分缺陷待查**（D2.43 新发现）：同 profile 下 SHASH 密度积分 [-40,40]=0.9601、[-400,400]=0.9998（SHASHo=1.0 精确）——SHASH 族 dpqr 路径既存问题。
+- **LOGSHASH 已交付（D2.52）**：安装版 gamlss.dist 6.1.1 **没有** LOGSHASH/LOGSHASHo（vendored 是更新开发版；exports 实测无）——无活 R 直接对照时，若 R 把该族定义为另一族的**变换**（LOGSHASH = SHASH 的 log 变换，Jacobian 1/x），就对**活 R 的基族在变换后参数上**验全部契约；拟合 parity 用 G.dev_新族(y) = G.dev_基族(变换后) + 常数（对数雅可比参数无关）。旧实现的密度是另一套自洽参数化（过得了 AD deriv 闸但不是 R 的分布）——**deriv 闸只验自洽，不验是 R 的分布**。qSHASH 求逆已从 z 空间 Newton 加固为 s=asinh(z) 空间括号二分（旧法尾部导数塌缩+clip 冻结：rel 0.81 vs R、p 距 1 的 1e-16 内 NaN）。
+- **R 自己的 q 函数会在极端 profile 挂死**（D2.52：qSHASH 在 nu=0.05/tau=2.0 下 uniroot 区间扩张 while 不返回）——测试网格要避开两侧都算不出的 profile 并记录理由；"R 没说"在这里的形态是"R 算不出"。
 
 ## 缺陷登记（D2.44）
 
