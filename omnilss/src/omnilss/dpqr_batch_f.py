@@ -377,6 +377,111 @@ def rexGAUS(key, n, mu=5.0, sigma=1.0, nu=1.0):
 
 
 # ---------------------------------------------------------------------------
+# LOGSHASH - log Sinh-Arcsinh: the log-transform of SHASH, mu real on the
+# log-y scale, sigma/nu/tau > 0 (nu >= 0 in the dpqr contract)
+#
+# R source: the gamlss.dist development file R/gamlss.dist/R/LOGSHASH.R
+# (Mikis, 15-07-2025).  The family is NOT in the installed gamlss.dist 6.1.1
+# (verified live: "LOGSHASH" %in% getNamespaceExports("gamlss.dist") is FALSE),
+# so there is no live R function to diff against directly.  R nevertheless
+# defines LOGSHASH *literally* as a transform of SHASH, which IS installed --
+# every value below is therefore checkable against live R's SHASH at the
+# transformed arguments:
+#     dLOGSHASH(x) = dSHASH(log(x)) / x      (Jacobian of the log map)
+#     pLOGSHASH(q) = pSHASH(log(q))
+#     qLOGSHASH(p) = exp(qSHASH(p))
+# and the family object's ten score slots are SHASH's own slots evaluated at
+# log(y), so the log-likelihood differs from a SHASH fit on log(y) only by the
+# constant sum(log(y)) -- which makes end-to-end fit parity verifiable too.
+#
+# R boundary quirks, pinned here.  In R's source the support assignments come
+# *after* the log/tail transforms, so the logged value is 0, not -inf:
+#     dLOGSHASH: ft[x <= 0] <- 0                     (log mode gives 0)
+#     pLOGSHASH: cdf[q <= 0] <- 0 ; cdf[q == Inf] <- 1 (log.p gives 0)
+#     qLOGSHASH: q[p == 0] <- 0 ; q[p == 1] <- Inf ; p outside [0,1] -> NaN
+# Validation: R's d/p/q all stop on sigma < 0, tau < 0 or nu < 0; we return
+# NaN there (the dexGAUS convention).  The family object itself declares
+# nu.valid = TRUE -- R's own inconsistency, reproduced as-is.
+# ---------------------------------------------------------------------------
+
+
+def dLOGSHASH(x, mu=0.0, sigma=1.0, nu=0.5, tau=0.5, log=False):
+    """Density of the log-Sinh-Arcsinh distribution.
+
+    dLOGSHASH(x) = dSHASH(log(x)) / x; the support is x > 0 and R assigns 0
+    at x <= 0 *after* the log branch, so in log=True mode the value there is
+    0, not -inf (the dGIG/dNBII quirk).
+    """
+    from .dpqr_functions import dSHASH
+
+    x, mu, sigma, nu, tau = _broadcast((x, mu, sigma, nu, tau))
+    valid = (sigma > 0.0) & (tau > 0.0) & (nu > 0.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    safe_nu = jnp.where(nu > 0.0, nu, 1.0)
+    safe_tau = jnp.where(tau > 0.0, tau, 1.0)
+    support = x > 0.0
+    safe_x = jnp.where(support, x, 1.0)
+    log_x = jnp.log(safe_x)
+    # One kernel with the public dSHASH: no second transcription to drift.
+    log_dens = dSHASH(log_x, mu, safe_sigma, safe_nu, safe_tau, log=True) - log_x
+    value = log_dens if log else jnp.exp(log_dens)
+    # R's ft[x <= 0] <- 0 lands *after* the exp/log branch, so the quirk is
+    # 0 in BOTH modes (log mode gives 0, not -inf) -- the dGIG/dNBII shape.
+    value = jnp.where(support, value, 0.0)
+    return jnp.where(valid, value, _NAN)
+
+
+def pLOGSHASH(q, mu=0.0, sigma=1.0, nu=0.5, tau=0.5, lower_tail=True, log_p=False):
+    """CDF of the log-Sinh-Arcsinh distribution: pSHASH(log(q))."""
+    from .dpqr_functions import pSHASH
+
+    q, mu, sigma, nu, tau = _broadcast((q, mu, sigma, nu, tau))
+    valid = (sigma > 0.0) & (tau > 0.0) & (nu > 0.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    safe_nu = jnp.where(nu > 0.0, nu, 1.0)
+    safe_tau = jnp.where(tau > 0.0, tau, 1.0)
+    support = q > 0.0
+    safe_q = jnp.where(support, q, 1.0)
+    cdf = pSHASH(jnp.log(safe_q), mu, safe_sigma, safe_nu, safe_tau)
+    cdf = _apply_tail(cdf, lower_tail, log_p)
+    # R's post-transform assignments (so log.p mode gives 0 at q <= 0).
+    cdf = jnp.where(support, cdf, 0.0)
+    cdf = jnp.where(jnp.isposinf(q), 1.0, cdf)
+    return jnp.where(valid, cdf, _NAN)
+
+
+def qLOGSHASH(p, mu=0.0, sigma=1.0, nu=0.5, tau=0.5, lower_tail=True, log_p=False):
+    """Quantile of the log-Sinh-Arcsinh distribution: exp(qSHASH(p))."""
+    from .dpqr_functions import qSHASH
+
+    p, mu, sigma, nu, tau = _broadcast((p, mu, sigma, nu, tau))
+    valid = (sigma > 0.0) & (tau > 0.0) & (nu > 0.0)
+    safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
+    safe_nu = jnp.where(nu > 0.0, nu, 1.0)
+    safe_tau = jnp.where(tau > 0.0, tau, 1.0)
+    prob = _prob_from_p(p, lower_tail, log_p)
+    # R assigns the boundaries *after* the exp, and qSHASH's Newton loop
+    # answers NaN at p == 1 (norm.ppf(1) = inf poisons the iteration), so the
+    # explicit assignments are load-bearing, not cosmetic.
+    value = jnp.exp(qSHASH(prob, mu, safe_sigma, safe_nu, safe_tau))
+    value = jnp.where(prob <= 0.0, 0.0, value)
+    value = jnp.where(prob >= 1.0, _INF, value)
+    value = jnp.where((prob < 0.0) | (prob > 1.0), _NAN, value)
+    return jnp.where(valid, value, _NAN)
+
+
+def rLOGSHASH(key, n, mu=0.0, sigma=1.0, nu=0.5, tau=0.5):
+    """Sampler for the log-Sinh-Arcsinh distribution.
+
+    R's route is qLOGSHASH(runif(n), ...); using the same construction
+    (instead of a dedicated sampler) is what makes sampler/CDF drift
+    structurally impossible -- the _shasho_r precedent.
+    """
+    u = jr.uniform(key, (int(n),), dtype=jnp.float64)
+    return qLOGSHASH(u, mu, sigma, nu, tau)
+
+
+# ---------------------------------------------------------------------------
 # EGB2 - exponential generalized beta type 2, mu real, sigma/nu/tau > 0
 # ---------------------------------------------------------------------------
 

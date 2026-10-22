@@ -139,6 +139,12 @@ def _initial_parameter_value(
             # log.  The generic 1.0 default starts the fit an order of
             # magnitude off R's rate on typical right-skewed samples.
             return float(max(2.0 * (np.mean(y) - np.median(y)), 0.1))
+        if family.name == "LOGSHASH":
+            # R LOGSHASH()$nu.initial (gamlss.dist development source):
+            #     nu <- rep(.5, length(y))
+            # nu.link is log.  Not in installed gamlss.dist 6.1.1;
+            # provenance is the vendored development source.
+            return 0.5
         return 1.0
     if parameter == "tau":
         if family.name == "JSU":
@@ -181,6 +187,12 @@ def _initial_parameter_value(
         if family.name == "ST4":
             # R ST4()$tau.initial (live R, D2.38): tau <- rep(5, length(y)).
             return 5.0
+        if family.name == "LOGSHASH":
+            # R LOGSHASH()$tau.initial (gamlss.dist development source):
+            #     tau <- rep(.5, length(y))
+            # tau.link is log.  Not in installed gamlss.dist 6.1.1;
+            # provenance is the vendored development source.
+            return 0.5
         return 1.0
     return 1.0
 
@@ -452,6 +464,17 @@ def _initial_mu_target(
         # object's .name is "exGAUS" (distributions_b2.py passes
         # name="exGAUS") -- these branches must key on the latter.
         target = (y + np.mean(y)) / 2.0
+    elif family.name == "LOGSHASH":
+        # R LOGSHASH()$mu.initial (gamlss.dist development source
+        # R/gamlss.dist/R/LOGSHASH.R, Mikis 15-07-2025):
+        #     mu <- (log(y) + mean(log(y)))/2
+        # mu.link is "identity" and mu lives on the log-y scale, so the
+        # link-scale target is that expression as-is.  The family is not in
+        # the installed gamlss.dist 6.1.1, so there is no live family object
+        # to deparse -- provenance is the vendored development source.
+        eps = np.finfo(np.float64).eps
+        log_y = np.log(np.maximum(y, eps))
+        target = (log_y + np.mean(log_y)) / 2.0
     else:
         target = y
     return target
@@ -744,6 +767,18 @@ def _initial_sigma(
         # mean gives the same intercept-only start as mean(|y-m|)+sd)/2.
         mean_y = np.mean(y)
         sigma = (np.mean(np.abs(y - mean_y)) + np.std(y)) / 2.0
+    elif family.name == "LOGSHASH":
+        # R LOGSHASH()$sigma.initial (gamlss.dist development source
+        # R/gamlss.dist/R/LOGSHASH.R, Mikis 15-07-2025):
+        #     sigma <- rep(sd(log(y))/5, length(y))
+        # R's sd() is the n-1 estimator (D2.38), and the spread is on the
+        # log-y scale -- the same expression family as the S-hash trio
+        # (sd(y)/5 there, sd(log(y))/5 here because LOGSHASH is their
+        # log-transform).  Not in installed gamlss.dist 6.1.1; provenance
+        # is the vendored development source.
+        eps = np.finfo(np.float64).eps
+        log_y = np.log(np.maximum(y, eps))
+        sigma = np.std(log_y, ddof=1) / 5.0
     else:
         sigma = np.sqrt(np.sum(w * np.square(y - mu)) / np.sum(w))
     # Note: NO uses a log link for sigma, so its link-scale coefficient is

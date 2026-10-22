@@ -5,7 +5,7 @@
   "r_exports_total": 1080,
   "current_counts": {
     "missing": 391,
-    "placeholder": 5,
+    "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 34,
     "extra": 300
@@ -40,12 +40,17 @@
       "new": [],
       "resolved": [
         "gamlss.dist::GIG",
+        "gamlss.dist::LOGSHASH",
         "gamlss.dist::dGIG",
+        "gamlss.dist::dLOGSHASH",
         "gamlss.dist::pGIG",
+        "gamlss.dist::pLOGSHASH",
         "gamlss.dist::qGIG",
-        "gamlss.dist::rGIG"
+        "gamlss.dist::qLOGSHASH",
+        "gamlss.dist::rGIG",
+        "gamlss.dist::rLOGSHASH"
       ],
-      "current_count": 5,
+      "current_count": 0,
       "baseline_count": 10
     },
     "compat_alias": {
@@ -133,7 +138,15 @@
     },
     {
       "category": "placeholder",
+      "symbol": "gamlss.dist::LOGSHASH"
+    },
+    {
+      "category": "placeholder",
       "symbol": "gamlss.dist::dGIG"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::dLOGSHASH"
     },
     {
       "category": "placeholder",
@@ -141,11 +154,23 @@
     },
     {
       "category": "placeholder",
+      "symbol": "gamlss.dist::pLOGSHASH"
+    },
+    {
+      "category": "placeholder",
       "symbol": "gamlss.dist::qGIG"
     },
     {
       "category": "placeholder",
+      "symbol": "gamlss.dist::qLOGSHASH"
+    },
+    {
+      "category": "placeholder",
       "symbol": "gamlss.dist::rGIG"
+    },
+    {
+      "category": "placeholder",
+      "symbol": "gamlss.dist::rLOGSHASH"
     },
     {
       "category": "compat_alias",

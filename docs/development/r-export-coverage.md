@@ -75,7 +75,7 @@ Registry metadata only: this report does not establish R export coverage or nume
 | LOGITNO | experimental |
 | LOGNO | experimental |
 | LOGNO2 | experimental |
-| LOGSHASH | placeholder |
+| LOGSHASH | experimental |
 | LOGSHASHO | experimental |
 | LQNO | experimental |
 | MN3 | experimental |

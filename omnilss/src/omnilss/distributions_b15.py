@@ -1473,52 +1473,64 @@ class LOGSHASHFamily(FamilyDefinition):
 
 
 def _logshash_log_pdf(y, mu, sigma, nu, tau):
-    """Log SHASH log-PDF."""
+    """LOGSHASH log-density.
+
+    Delegates to dpqr_batch_f.dLOGSHASH so the AD gradients and the public d
+    share one kernel.  R defines the family as the log-transform of SHASH
+    (dLOGSHASH(x) = dSHASH(log(x))/x), and the family object's score slots
+    are SHASH's slots at log(y) -- the Jacobian -log(y) is constant in the
+    parameters, so those slots are exactly the gradients of this function.
+    The previous implementation used a different (Jones-Pewsey style)
+    sinh((asinh(z)-nu)/tau) parameterisation with no log(c) term --
+    self-consistent enough to pass the AD deriv gate, but not R's
+    distribution.
+    """
+    from .dpqr_batch_f import dLOGSHASH
+
     eps = jnp.finfo(jnp.float64).eps
-    y = jnp.maximum(y, eps)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    tau = jnp.maximum(tau, eps)
-    
-    log_y = jnp.log(y)
-    z = (log_y - mu) / sigma
-    r = jnp.sinh((jnp.arcsinh(z) - nu) / tau)
-    
-    return (
-        -jnp.log(y) - jnp.log(sigma) - jnp.log(tau)
-        - 0.5 * jnp.log(2.0 * jnp.pi)
-        - 0.5 * jnp.log1p(z * z)
-        - 0.5 * r * r
+    return dLOGSHASH(
+        y, mu, jnp.maximum(sigma, eps), jnp.maximum(nu, eps), jnp.maximum(tau, eps), log=True
     )
 
 
 def LOGSHASH():
-    """Log SHASH distribution."""
+    """Log SHASH distribution (R LOGSHASH).
+
+    Links are R's defaults (gamlss.dist development source, 15-07-2025):
+    mu.link="identity", sigma/nu/tau.link="log".  The previous wiring had
+    mu on log and nu on identity -- both wrong.
+    """
+    from .dpqr_batch_f import dLOGSHASH, pLOGSHASH, qLOGSHASH, rLOGSHASH
+
     return build_ad_family(
         family_class=LOGSHASHFamily,
         name="LOGSHASH",
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_logshash_log_pdf,
         type_="Continuous",
-        links={"mu": "log", "sigma": "log", "nu": "identity", "tau": "log"},
+        links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "log"},
         link_functions={
-            "mu": log_link,
+            "mu": identity_link,
             "sigma": log_link,
-            "nu": identity_link,
+            "nu": log_link,
             "tau": log_link,
         },
         link_inverses={
-            "mu": log_inverse,
+            "mu": identity_inverse,
             "sigma": log_inverse,
-            "nu": identity_inverse,
+            "nu": log_inverse,
             "tau": log_inverse,
         },
         link_derivatives={
-            "mu": log_derivative,
+            "mu": identity_derivative,
             "sigma": log_derivative,
-            "nu": identity_derivative,
+            "nu": log_derivative,
             "tau": log_derivative,
         },
+        d=dLOGSHASH,
+        p=pLOGSHASH,
+        q=qLOGSHASH,
+        r=rLOGSHASH,
     )
 
 
