@@ -363,6 +363,28 @@ _SUPPORT_BOUNDS: dict[str, tuple[int, int]] = {
     "MN5": (1, 5),
 }
 
+#: Families on the closed unit interval whose boundaries carry point masses
+#: (mixtures with an atom at 0 and/or 1).  A generic grid either leaves
+#: [0, 1] (0..7 scored 8 "good" points against our permissive density and R
+#: answered 0 outside) or misses the atoms; linspace(0, 1, n) covers the
+#: atoms and the interior in one grid.  Whichever edge is not an atom simply
+#: scores 0 and the n-1 threshold still holds.
+_UNIT_SUPPORT = frozenset({"BEINF", "BEINF0", "BEINF1", "BEZI", "BEOI"})
+
+#: Where the unit-interval families put their atoms, used by _fit_data.
+#: The Mixed sampler always injected a 30% zero mass, which is wrong for the
+#: two families whose support is (0, 1] -- R answered their fits with
+#: "response variable out of range" and the rsdev gate stayed a skip.  For
+#: an atom-0 family the historic zero injection is kept (it is what BEINF
+#: and BEZI passed with); for an atom-1-only family the same 30% goes to 1.
+_UNIT_ATOMS: dict[str, tuple[bool, bool]] = {
+    "BEINF": (True, True),
+    "BEINF0": (True, False),
+    "BEZI": (True, False),
+    "BEINF1": (False, True),
+    "BEOI": (False, True),
+}
+
 # ---------------------------------------------------------------------------
 # rsdev: families where R's RS halts before it reaches the optimum we find
 # ---------------------------------------------------------------------------
@@ -587,6 +609,16 @@ def calibrate(family: str, n: int = 6) -> Calibration:
         lo, hi = bounds
         support = np.resize(np.arange(lo, hi + 1, dtype=np.float64), n)
         return Calibration(y=support, params=parrays, bd=bd, ok=score(support) == n)
+
+    if family in _UNIT_SUPPORT:
+        # Closed unit interval with point masses at the boundaries (see
+        # _UNIT_SUPPORT).  The grid is fixed rather than scored: an interior
+        # grid can out-score it (the non-atom edge is a zero-density point)
+        # and would then silently drop the atom the family exists to model.
+        # ok needs every point but the non-atom edge (at most one) to
+        # evaluate to a finite, positive density.
+        grid = np.linspace(0.0, 1.0, n)
+        return Calibration(y=grid, params=parrays, bd=bd, ok=score(grid) >= n - 1)
 
     candidates = _response_candidates(getattr(fam, "type", "Continuous"), n)
     if bd is not None:
@@ -933,9 +965,16 @@ def _fit_data(family: str, rng: np.random.Generator, y_grid: np.ndarray) -> dict
         y = rng.uniform(lo, hi, n)
         if kind == "Mixed":
             # Zero-inflated / zero-adjusted: keep a point mass at zero so the
-            # mixture component is actually exercised.
+            # mixture component is actually exercised.  Families on (0, 1]
+            # have no zero atom -- injecting one made R reject the fit
+            # ("response variable out of range"), so their 30% goes to the
+            # one atom instead (see _UNIT_ATOMS).
+            atoms = _UNIT_ATOMS.get(family, (True, False))
             mask = rng.random(n) < 0.3
-            y[mask] = 0.0
+            if atoms[0]:
+                y[mask] = 0.0
+            elif atoms[1]:
+                y[mask] = 1.0
 
     if "bd" in fixed:
         # Binomial: y is a success count in 0..bd.  The calibrated grid for

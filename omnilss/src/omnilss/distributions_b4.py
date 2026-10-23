@@ -73,8 +73,15 @@ def _beinf_log_pdf(y, mu, sigma, nu, tau):
     log_cont = _beta_log_pdf(y, a, b) - log_denom
     log_at0 = jnp.log(nu) - log_denom
     log_at1 = jnp.log(tau) - log_denom
-    # Use soft routing via where; AD differentiates through the chosen branch
-    return jnp.where(y <= 0.0, log_at0, jnp.where(y >= 1.0, log_at1, log_cont))
+    # R routing for dBEINF is by *exact* equality (BEINF.R): 0 and 1 carry the
+    # boundary masses, the open interval carries the beta density, and
+    # "fy <- ifelse(x < 0 | x > 1, 0, fy)" zeroes everything outside.  Testing
+    # y <= 0 / y >= 1 instead sent every x > 1 to the tau mass at 1 (measured:
+    # dBEINF(2) came out tau/(1+nu+tau) where R answers 0), which is how the
+    # scanner probe grid -- 0..7 for a [0,1] family -- produced its
+    # "d: max rel 4.286e-01".
+    result = jnp.where(y == 0.0, log_at0, jnp.where(y == 1.0, log_at1, log_cont))
+    return jnp.where((y < 0.0) | (y > 1.0), -jnp.inf, result)
 
 
 def BEINF() -> BetaInflatedFamily:
@@ -113,7 +120,12 @@ def _beinf0_log_pdf(y, mu, sigma, nu):
     log_denom = jnp.log1p(nu)
     log_cont = _beta_log_pdf(y, a, b) - log_denom
     log_at0 = jnp.log(nu) - log_denom
-    return jnp.where(y <= 0.0, log_at0, log_cont)
+    # R (BEINF0.R): x == 0 carries the mass, 0 < x < 1 the beta density, and
+    # "fy <- ifelse(x < 0 | x >= 1, 0, fy)" -- x >= 1 is zero, unlike BEINF
+    # where x = 1 is a mass point.  The old y <= 0 routing ran x >= 1 through
+    # the beta density clipped to 1-eps, measured 1.7e+11 at x = 1.
+    result = jnp.where(y == 0.0, log_at0, log_cont)
+    return jnp.where((y < 0.0) | (y >= 1.0), -jnp.inf, result)
 
 
 def _beinf0_p(q, mu=0.5, sigma=0.1, nu=0.1, lower_tail=True, log_p=False):
@@ -227,7 +239,12 @@ def _beinf1_log_pdf(y, mu, sigma, nu):
     log_denom = jnp.log1p(nu)
     log_cont = _beta_log_pdf(y, a, b) - log_denom
     log_at1 = jnp.log(nu) - log_denom
-    return jnp.where(y >= 1.0, log_at1, log_cont)
+    # R (BEINF1.R): x == 1 carries the mass, 0 < x < 1 the beta density, and
+    # "fy <- ifelse(x <= 0 | x > 1, 0, fy)" zeroes x = 0 and everything
+    # outside -- note this is a *different* boundary rule from BEINF, where
+    # x = 0 is a mass point (the D2.19 lesson: same family name, own rules).
+    result = jnp.where(y == 1.0, log_at1, log_cont)
+    return jnp.where((y <= 0.0) | (y > 1.0), -jnp.inf, result)
 
 
 def _beinf1_p(q, mu=0.5, sigma=0.1, nu=0.1, lower_tail=True, log_p=False):
@@ -343,7 +360,13 @@ def _bezi_log_pdf(y, mu, sigma, nu):
     b = jnp.maximum((1.0 - mu) * sigma, eps)
     log_cont = jnp.log1p(-nu) + _beta_log_pdf(y, a, b)
     log_at0 = jnp.log(nu)
-    return jnp.where(y <= 0.0, log_at0, log_cont)
+    # R (BEZI.r): x == 0 carries the mass, 0 < x < 1 the continuous part, and
+    # "fy <- ifelse(x < 0 | x >= 1, 0, fy)" zeroes x >= 1 and x < 0.  The old
+    # y <= 0 routing sent every x > 1 through the beta density (clipped to
+    # 1-eps inside _beta_log_pdf), measured at 3121.8 for x = 2.41 at
+    # mu = 0.39, sigma = 1.21 -- the scanner 3.122e+03.
+    result = jnp.where(y == 0.0, log_at0, log_cont)
+    return jnp.where((y < 0.0) | (y >= 1.0), -jnp.inf, result)
 
 
 def _bezi_p(q, mu=0.5, sigma=1.0, nu=0.1, lower_tail=True, log_p=False):
@@ -459,7 +482,11 @@ def _beoi_log_pdf(y, mu, sigma, nu):
     b = jnp.maximum((1.0 - mu) * sigma, eps)
     log_cont = jnp.log1p(-nu) + _beta_log_pdf(y, a, b)
     log_at1 = jnp.log(nu)
-    return jnp.where(y >= 1.0, log_at1, log_cont)
+    # R (BEOI.r): x == 1 carries the mass, 0 < x < 1 the continuous part, and
+    # "fy <- ifelse(x <= 0 | x > 1, 0, fy)" -- x = 0 is zero mass here, unlike
+    # BEINF where it is a mass point.
+    result = jnp.where(y == 1.0, log_at1, log_cont)
+    return jnp.where((y <= 0.0) | (y > 1.0), -jnp.inf, result)
 
 
 def _beoi_p(q, mu=0.5, sigma=1.0, nu=0.1, lower_tail=True, log_p=False):

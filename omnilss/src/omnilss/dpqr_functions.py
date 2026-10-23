@@ -25,6 +25,7 @@ from scipy.stats import poisson as _pois_dist
 from scipy.stats import gamma as _gamma_dist
 from scipy.stats import t as _t_dist
 from scipy.stats import betabinom as _betabinom_dist, binom as _binom_dist
+from scipy.stats import norm as _norm_dist
 
 
 # =============================================================================
@@ -3438,7 +3439,13 @@ def _beinf_logpdf(x: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray,
     log_at_0 = jnp.log(nu) - log_denom
     log_at_1 = jnp.log(tau) - log_denom
     log_cont = log_beta_pdf - log_denom
-    return jnp.where(x <= eps, log_at_0, jnp.where(x >= 1.0 - eps, log_at_1, log_cont))
+    # R (BEINF.R) routes by exact equality and zeroes outside the support:
+    # "fy <- ifelse(x < 0 | x > 1, 0, fy)".  The eps-threshold routing merged
+    # every x <= eps into the zero atom and every x >= 1-eps into the one
+    # atom, so dBEINF(-0.5) answered nu/(1+nu+tau) and dBEINF(2) answered
+    # tau/(1+nu+tau) where R answers 0 (D2.55).
+    result = jnp.where(x == 0.0, log_at_0, jnp.where(x == 1.0, log_at_1, log_cont))
+    return jnp.where((x < 0.0) | (x > 1.0), -jnp.inf, result)
 
 
 @jax.jit
@@ -6449,6 +6456,7 @@ def pPARETO2(q, mu=1.0, sigma=0.5, lower_tail=True, log_p=False):
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
 
     eps = jnp.finfo(jnp.float64).eps
+    q_orig = q
     q = jnp.maximum(q, eps)
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
@@ -6456,8 +6464,9 @@ def pPARETO2(q, mu=1.0, sigma=0.5, lower_tail=True, log_p=False):
     # F(q) = 1 - [μ / (q + μ)]^(1/σ)
     cdf = 1.0 - jnp.power(mu / (q + mu), 1.0 / sigma)
 
-    # Handle q <= 0
-    cdf = jnp.where(q <= 0, 0.0, cdf)
+    # Handle q <= 0 against the *raw* q: guarding the clipped value never
+    # fires (the clip raises 0 to eps, so F(eps) = 3.3e-16 leaks through).
+    cdf = jnp.where(q_orig <= 0, 0.0, cdf)
 
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -6504,6 +6513,7 @@ def qPARETO2(p, mu=1.0, sigma=0.5, lower_tail=True, log_p=False):
     if not lower_tail:
         p = 1.0 - p
 
+    p_orig = p
     eps = jnp.finfo(jnp.float64).eps
     p = jnp.clip(p, eps, 1.0 - eps)
     mu = jnp.maximum(mu, eps)
@@ -6512,7 +6522,108 @@ def qPARETO2(p, mu=1.0, sigma=0.5, lower_tail=True, log_p=False):
     # Q(p) = μ * [(1 - p)^(-σ) - 1]
     q = mu * (jnp.power(1.0 - p, -sigma) - 1.0)
 
+    # R qPARETO2 sets the boundary values explicitly (p == 0 -> 0,
+    # p == 1 -> Inf, out of range -> NaN); the eps clip above only
+    # approximates them.
+    q = jnp.where(p_orig == 0.0, 0.0, q)
+    q = jnp.where(p_orig == 1.0, jnp.inf, q)
+    q = jnp.where((p_orig < 0.0) | (p_orig > 1.0), jnp.nan, q)
+
     return q
+
+
+
+
+def pIGAMMA(q, mu=1.0, sigma=0.5, lower_tail=True, log_p=False):
+    """CDF for the inverse gamma family (R IGA.R pIGAMMA).
+
+    R:  alpha <- 1/sigma^2
+        lcdf <- pgamma((mu*(alpha+1))/q, shape=alpha, lower.tail=FALSE, log.p=TRUE)
+        cdf[q<=0] <- 0; cdf[q>=Inf] <- 1
+
+    Note R flips lower_tail *after* the log conversion, so log.p with
+    lower_tail=False answers 1 - log(cdf) (the R_QUIRKS pattern); the
+    default path -- the one the scanner probes -- is unaffected.
+    """
+    q = np.asarray(q, dtype=np.float64)
+    mu = np.asarray(mu, dtype=np.float64)
+    sigma = np.asarray(sigma, dtype=np.float64)
+    alpha = 1.0 / np.square(sigma)
+    # q <= 0 is overwritten to 0 below; keep the survival call finite.
+    safe_q = np.where(q > 0.0, q, np.inf)
+    lcdf = _gamma_dist.logsf((mu * (alpha + 1.0)) / safe_q, a=alpha)
+    cdf = lcdf if log_p else np.exp(lcdf)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    cdf = np.where(q <= 0.0, 0.0, cdf)
+    cdf = np.where(np.isposinf(q), 1.0, cdf)
+    return cdf
+
+
+def qIGAMMA(p, mu=1.0, sigma=0.5, lower_tail=True, log_p=False):
+    """Quantile of the inverse gamma family (R IGA.R qIGAMMA).
+
+    R:  nu <- -1; p <- 1-p; z <- qGA(p, mu=1, sigma=sigma*abs(nu));
+        y <- mu*(1+sigma^2)*z^(1/nu)   (= mu*(1+sigma^2)/z)
+        y[p==0] <- 0; y[p==1] <- Inf      -- on the *flipped* p, as R does.
+    """
+    p = np.asarray(p, dtype=np.float64)
+    mu = np.asarray(mu, dtype=np.float64)
+    sigma = np.asarray(sigma, dtype=np.float64)
+    if log_p:
+        p = np.exp(p)
+    if not lower_tail:
+        p = 1.0 - p
+    flipped = 1.0 - p
+    safe = np.clip(flipped, 1e-12, 1.0 - 1e-12)
+    z = _gamma_dist.ppf(safe, a=1.0 / np.square(sigma), scale=np.square(sigma))
+    y = mu * (1.0 + np.square(sigma)) / z
+    y = np.where(flipped == 0.0, 0.0, y)
+    y = np.where(flipped == 1.0, np.inf, y)
+    y = np.where((flipped < 0.0) | (flipped > 1.0), np.nan, y)
+    return y
+
+
+def pLOGNO2(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
+    """CDF for the log-normal family in the LOGNO2 parameterisation.
+
+    R (logNO2.R pLOGNO2): qz <- log(q);
+        cdf <- pnorm(qz, mean=log(mu), sd=sigma, lower.tail, log.p);
+        cdf[q<=0] <- 0
+    """
+    q = np.asarray(q, dtype=np.float64)
+    mu = np.asarray(mu, dtype=np.float64)
+    sigma = np.asarray(sigma, dtype=np.float64)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        qz = np.log(q)
+    cdf = _norm_dist.cdf(qz, loc=np.log(mu), scale=sigma)
+    if not lower_tail:
+        cdf = 1.0 - cdf
+    if log_p:
+        cdf = np.log(cdf)
+    cdf = np.where(q <= 0.0, 0.0, cdf)
+    return cdf
+
+
+def qLOGNO2(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
+    """Quantile for the LOGNO2 parameterisation (R logNO2.R qLOGNO2).
+
+    R:  qz <- qnorm(p, mean=log(mu), sd=sigma, lower.tail); qy <- exp(qz);
+        qy[p==0] <- -Inf; qy[p==1] <- Inf; out of range -> NaN.
+    """
+    p = np.asarray(p, dtype=np.float64)
+    mu = np.asarray(mu, dtype=np.float64)
+    sigma = np.asarray(sigma, dtype=np.float64)
+    if log_p:
+        p = np.exp(p)
+    p_orig = p
+    if not lower_tail:
+        p = 1.0 - p
+    qy = np.exp(_norm_dist.ppf(p, loc=np.log(mu), scale=sigma))
+    qy = np.where(p_orig == 0.0, -np.inf, qy)
+    qy = np.where(p_orig == 1.0, np.inf, qy)
+    qy = np.where((p_orig < 0.0) | (p_orig > 1.0), np.nan, qy)
+    return qy
 
 
 def rPARETO2(key, n, mu=1.0, sigma=0.5):
