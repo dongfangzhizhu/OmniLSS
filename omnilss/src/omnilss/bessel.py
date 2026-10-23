@@ -20,51 +20,43 @@ except ImportError:
 
 
 def _log_bessel_iv_scipy(nu, x):
-    """Compute log(I_ν(x)) using scipy."""
+    """Compute log(I_ν(x)) using scipy's exponentially-scaled form.
+
+    ive(v, x) = I_v(x) * exp(-x) does not overflow, so
+    log(I) = log(ive) + x is exact across the whole range -- the raw iv
+    reaches inf near x ~ 700 and the previous clamp/asymptotic branch
+    lost the (4*nu^2-1)/(8x) correction there.
+    """
     import numpy as np
+    from scipy.special import ive
+
     nu_np = np.asarray(nu, dtype=np.float64)
     x_np = np.asarray(x, dtype=np.float64)
-    
-    # Compute I_ν(x)
-    iv_val = iv(nu_np, x_np)
-    
-    # Safety: if iv_val is too small, use log-space computation
-    # For large x, log(I_ν(x)) ≈ x - 0.5*log(2πx)
-    eps = np.finfo(np.float64).eps
-    safe_val = np.maximum(iv_val, eps)
-    result = np.log(safe_val)
-    
-    # For very large x where iv might overflow/underflow, use asymptotic
-    large_x = x_np > 700.0
-    if np.any(large_x):
-        log_asymptotic = x_np - 0.5 * np.log(2.0 * np.pi * x_np)
-        result = np.where(large_x, log_asymptotic, result)
-    
-    return result
+    scaled = ive(nu_np, x_np)
+    return np.log(np.maximum(scaled, np.finfo(np.float64).tiny)) + x_np
 
 
 def _log_bessel_kv_scipy(nu, x):
-    """Compute log(K_ν(x)) using scipy."""
+    """Compute log(K_ν(x)) using scipy's exponentially-scaled form.
+
+    K_ν(x) itself drops below double eps for x >~ 35 (K_2(50) = 3.4e-23),
+    so the previous "safety" clamp maximum(kv, eps) silently replaced every
+    large-argument log(K) with log(eps) = -36.04 and zeroed the normalizer
+    differences the Sichel-family densities depend on
+    (log K_ν(α) - log K_ν(1/σ)).  Measured consequence: SI's density came
+    out 1.04e+04 times too large at mu=10, sigma=0.02, nu=2 (D2.53).
+    kve(v, x) = K_v(x) * exp(x) does not underflow, so
+    log(K) = log(kve) - x is exact across the whole range (verified against
+    log(kv) where kv itself is representable, and against the known
+    asymptotic at x = 700 where kv underflows to 0).
+    """
     import numpy as np
+    from scipy.special import kve
+
     nu_np = np.asarray(nu, dtype=np.float64)
     x_np = np.asarray(x, dtype=np.float64)
-    
-    # Compute K_ν(x)
-    kv_val = kv(nu_np, x_np)
-    
-    # Safety: if kv_val is too small, use log-space computation
-    # For large x, log(K_ν(x)) ≈ -x + 0.5*log(π/(2x))
-    eps = np.finfo(np.float64).eps
-    safe_val = np.maximum(kv_val, eps)
-    result = np.log(safe_val)
-    
-    # For very large x where kv might underflow to 0, use asymptotic
-    large_x = x_np > 700.0
-    if np.any(large_x):
-        log_asymptotic = -x_np + 0.5 * np.log(np.pi / (2.0 * x_np))
-        result = np.where(large_x, log_asymptotic, result)
-    
-    return result
+    scaled = kve(nu_np, x_np)
+    return np.log(np.maximum(scaled, np.finfo(np.float64).tiny)) - x_np
 
 
 def _log_bessel_iv_jvp(primals, tangents):

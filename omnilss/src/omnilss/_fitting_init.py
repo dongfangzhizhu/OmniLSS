@@ -80,6 +80,15 @@ def _initial_parameter_value(
             if family.name == "ST4":
                 return 5.0
             return -0.5
+        if family.name == "SI":
+            # R SI()$nu.initial (SI.R:110, live R gamlss.dist 6.1.1):
+            #     nu <- rep(-0.5, length(y)), nu link identity.
+            # Negative, like GIG's -0.5 just above: the Sichel nu indexes
+            # the Bessel-K ratio that defines the distribution, and the
+            # generic +1.0 default starts the IRLS on the wrong side of
+            # that parametrisation.  On the scanner sample the old start
+            # (with the mu/sigma defaults) ended at nu = +4.09.
+            return -0.5
         if family.name == "ZANBI":
             # R ZANBI()$nu.initial (live R, D2.38):
             #     nu <- rep(max(sum(y == 0)/length(y), 0.01), length(y))
@@ -342,6 +351,19 @@ def _initial_mu_target(
         # parametrization of a discrete distribution), hence R's abs().
         eps = np.finfo(np.float64).eps
         target = np.log(np.maximum(np.abs((y + np.mean(y)) / 2.0), eps))
+    elif family.name == "SI":
+        # R SI()$mu.initial (SI.R:107, live R gamlss.dist 6.1.1):
+        #     mu <- y + 0.5, log link.
+        # Same "+constant on the raw counts" idiom as WEI3's +0.01 and
+        # RGE's +0.45*sd(y) -- each family its own constant.  Without this
+        # entry SI fell through to the generic target=y fallback, which for
+        # the log link becomes exp(y) through rs_fit's link-scale
+        # consumption (the D2.50 NBII signature); on the scanner sample
+        # (counts 0..7) the fit parked at deviance 221.609 against R's
+        # 220.619 (rel 4.49e-03, converged=False), with sigma on its eps
+        # floor and nu on the wrong side of zero.
+        eps = np.finfo(np.float64).eps
+        target = np.log(np.maximum(y + 0.5, eps))
     elif family.name in ("PIG", "ZANBI", "GIG", "ZIPIG", "ZAPIG", "NBII"):
         # R mu.initial (live R, D2.38): mu <- (y + mean(y))/2, log link for
         # all six.  NBII.R:70 (gamlss.dist 6.1.1) carries the identical
@@ -650,6 +672,19 @@ def _initial_sigma(
         mean_y = float(np.mean(y))
         var_y = float(np.var(y, ddof=1))
         sigma = max(var_y / max(mean_y, eps) - 1.0, 0.1)
+    elif family.name == "SI":
+        # R SI()$sigma.initial (SI.R:108-109, live R gamlss.dist 6.1.1):
+        #     sigma <- rep(max(((var(y)-mean(y))/(mean(y)^2)), 0.1),
+        #                  length(y))
+        # The Sichel dispersion on the method-of-moments route, floored at
+        # 0.1; R's var() is the n-1 estimator (D2.38).  This is the *hard*
+        # half of the missing entry: the generic residual-scale default
+        # evaluates the spread against the generic mu start (target=y), so
+        # RMSE(y, y) = 0 and sigma began on the eps floor -- the EXGAUS
+        # (D2.51) signature.
+        mean_y = float(np.mean(y))
+        var_y = float(np.var(y, ddof=1))
+        sigma = max((var_y - mean_y) / max(mean_y * mean_y, eps), 0.1)
     elif family.name == "PARETO2":
         # PARETO2: shape = 1/sigma, need sigma < 1 for finite mean
         # Use coefficient of variation as a guide
