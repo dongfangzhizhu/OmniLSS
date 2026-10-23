@@ -349,6 +349,20 @@ _DPQR_TOLERANCE_NOTE[("SEP", "q")] = (
 # (a two-column cbind(success, failure) response); our d/p/q take the same.
 _PROBE_BD = 10.0
 
+#: Families whose response support is a finite integer set *smaller* than the
+#: generic probe grid.  R's references `stop()` outside it -- `dMN3` says
+#: "x must be 1, 2 or 3" -- so a probe grid that spills past the support
+#: cannot be evaluated on the R side at all, and the gate reported a bogus
+#: failure ("R error x must be 1, 2 or 3") rather than a comparison.  For
+#: these the support itself is the probe grid; ``ok`` then means every
+#: support point evaluates to a finite, positive density, not that ``n - 1``
+#: points do (MN3's whole support holds three).
+_SUPPORT_BOUNDS: dict[str, tuple[int, int]] = {
+    "MN3": (1, 3),
+    "MN4": (1, 4),
+    "MN5": (1, 5),
+}
+
 # ---------------------------------------------------------------------------
 # rsdev: families where R's RS halts before it reaches the optimum we find
 # ---------------------------------------------------------------------------
@@ -560,6 +574,20 @@ def calibrate(family: str, n: int = 6) -> Calibration:
         floor = 1e-6 * np.max(dens[good])
         return int(np.sum(good & (dens >= floor)))
 
+    bounds = _SUPPORT_BOUNDS.get(family)
+    if bounds is not None:
+        # The support itself is the probe grid (see _SUPPORT_BOUNDS): it is
+        # what R can evaluate, and it can hold fewer points than the generic
+        # n - 1 threshold (MN3's support is three points wide).  The grid is
+        # tiled back up to ``n`` so it keeps the same length as ``parrays`` --
+        # the job payloads pair point i with parameter combo i, and R
+        # recycles unequal lengths into NA (both defects surfaced while
+        # wiring this up: broadcasting raised on our side, and R answered
+        # "missing value where TRUE/FALSE needed").
+        lo, hi = bounds
+        support = np.resize(np.arange(lo, hi + 1, dtype=np.float64), n)
+        return Calibration(y=support, params=parrays, bd=bd, ok=score(support) == n)
+
     candidates = _response_candidates(getattr(fam, "type", "Continuous"), n)
     if bd is not None:
         # Binomial responses are integer counts in 0..bd.  The obvious spelling
@@ -693,6 +721,23 @@ def gate_derivatives(family: str) -> dict:
     extra = {"bd": cal.bd} if cal.bd is not None else {}
     failures: list[str] = []
 
+    def call(f, *args, **kwargs):
+        """Call with the probe fixed parameter, falling back without it.
+
+        ``bd`` is a *fixed* parameter: the d/p/q wrappers accept it per call
+        (the scanner passes one bd per observation), but the AD score
+        functions bake it into the closure and reject it as a keyword.
+        Without this fallback a TypeError/ValueError from the extra argument
+        reads as a derivative defect -- ZABB/ZIBB went from pass to fail
+        exactly that way once bd became a declared fixed parameter (D2.54).
+        """
+        if kwargs:
+            try:
+                return f(*args, **kwargs)
+            except (TypeError, ValueError):
+                pass
+        return f(*args)
+
     for k, pname in enumerate(params):
         fn = score_fns.get(pname)
         if fn is None:
@@ -707,7 +752,7 @@ def gate_derivatives(family: str) -> dict:
             """
             args = list(base)
             args[k] = value
-            dens = np.asarray(d_fn(y, *args, **extra), dtype=np.float64)
+            dens = np.asarray(call(d_fn, y, *args, **extra), dtype=np.float64)
             with np.errstate(divide="ignore", invalid="ignore"):
                 return np.log(dens)
 
@@ -723,7 +768,7 @@ def gate_derivatives(family: str) -> dict:
             continue
 
         try:
-            analytic = np.asarray(fn(y, *base, **extra), dtype=np.float64)
+            analytic = np.asarray(call(fn, y, *base, **extra), dtype=np.float64)
         except Exception as exc:
             failures.append(f"{pname}: raised {type(exc).__name__}")
             continue

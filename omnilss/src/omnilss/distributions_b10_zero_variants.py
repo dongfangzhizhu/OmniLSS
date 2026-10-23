@@ -9,6 +9,8 @@ from dataclasses import dataclass, replace
 import jax.numpy as jnp
 import jax
 import jax.random as jrandom
+import numpy as np
+import numpy as np
 
 from .ad import build_ad_family, _prepare_jax_args
 from .families import FamilyDefinition
@@ -704,6 +706,25 @@ def ZIPIG():
 # NOTE: BB requires 'bd' (binomial denominator) parameter
 # These need special handling with bd as a fixed parameter
 
+def _static_bd(value):
+    """Collapse an R-style bd vector to the static Python int ZABB needs.
+
+    The d/p/q contract carries bd per observation (R's functions rep() it to
+    the response length), while the ZABB kernels size an internal grid with
+    bd and therefore require one Python int -- the scanner's probe passes
+    np.full(n, 10.0) and the calibration passes the float 10.0, both of which
+    the family lambda must accept.  Raises when the vector is not constant or
+    not a positive integer.
+    """
+    arr = np.asarray(value, dtype=np.float64)
+    first = float(arr.ravel()[0]) if arr.size else float("nan")
+    if arr.size and not np.all(arr == first):
+        raise ValueError("bd must be constant across observations")
+    if not np.isfinite(first) or first != int(first) or first < 1:
+        raise ValueError("bd must be a positive integer")
+    return int(first)
+
+
 def ZABB(bd=10):
     """Zero-Altered Beta Binomial distribution.
     
@@ -730,9 +751,10 @@ def ZABB(bd=10):
         parameters=("mu", "sigma", "nu"),
         log_pdf_func=zabb_log_pdf,
         type_="Discrete",
-        d=lambda x,mu=.5,sigma=.1,nu=.1,log=False: dZABB(x,mu,sigma,nu,bd,log),
-        p=lambda q,mu=.5,sigma=.1,nu=.1,lower_tail=True,log_p=False: pZABB(q,mu,sigma,nu,bd,lower_tail,log_p),
-        q=lambda p,mu=.5,sigma=.1,nu=.1,lower_tail=True,log_p=False: qZABB(p,mu,sigma,nu,bd,lower_tail,log_p),
+        fixed_parameters=("bd",),
+        d=lambda x,mu=.5,sigma=.1,nu=.1,bd=bd,log=False: dZABB(x,mu,sigma,nu,_static_bd(bd),log),
+        p=lambda q,mu=.5,sigma=.1,nu=.1,bd=bd,lower_tail=True,log_p=False: pZABB(q,mu,sigma,nu,_static_bd(bd),lower_tail,log_p),
+        q=lambda p,mu=.5,sigma=.1,nu=.1,bd=bd,lower_tail=True,log_p=False: qZABB(p,mu,sigma,nu,_static_bd(bd),lower_tail,log_p),
         r=lambda key,n,mu=.5,sigma=.1,nu=.1: rZABB(key,n,mu,sigma,nu,bd),
         links={"mu": "logit", "sigma": "log", "nu": "logit"},
         link_functions={
@@ -778,9 +800,10 @@ def ZIBB(bd=10):
         parameters=("mu", "sigma", "nu"),
         log_pdf_func=zibb_log_pdf,
         type_="Discrete",
-        d=lambda x,mu=.5,sigma=.5,nu=.1,log=False: dZIBB(x,mu,sigma,nu,bd,log),
-        p=lambda q,mu=.5,sigma=.5,nu=.1,lower_tail=True,log_p=False: pZIBB(q,mu,sigma,nu,bd,lower_tail,log_p),
-        q=lambda p,mu=.5,sigma=.5,nu=.1,lower_tail=True,log_p=False: qZIBB(p,mu,sigma,nu,bd,lower_tail,log_p),
+        fixed_parameters=("bd",),
+        d=lambda x,mu=.5,sigma=.5,nu=.1,bd=bd,log=False: dZIBB(x,mu,sigma,nu,_static_bd(bd),log),
+        p=lambda q,mu=.5,sigma=.5,nu=.1,bd=bd,lower_tail=True,log_p=False: pZIBB(q,mu,sigma,nu,_static_bd(bd),lower_tail,log_p),
+        q=lambda p,mu=.5,sigma=.5,nu=.1,bd=bd,lower_tail=True,log_p=False: qZIBB(p,mu,sigma,nu,_static_bd(bd),lower_tail,log_p),
         r=lambda key,n,mu=.5,sigma=.5,nu=.1: rZIBB(key,n,mu,sigma,nu,bd),
         links={"mu": "logit", "sigma": "log", "nu": "logit"},
         link_functions={
