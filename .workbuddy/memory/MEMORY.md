@@ -93,6 +93,9 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 - **SHASH（非 o）密度积分缺陷待查**（D2.43 新发现）：同 profile 下 SHASH 密度积分 [-40,40]=0.9601、[-400,400]=0.9998（SHASHo=1.0 精确）——SHASH 族 dpqr 路径既存问题。
 - **LOGSHASH 已交付（D2.52）**：安装版 gamlss.dist 6.1.1 **没有** LOGSHASH/LOGSHASHo（vendored 是更新开发版；exports 实测无）——无活 R 直接对照时，若 R 把该族定义为另一族的**变换**（LOGSHASH = SHASH 的 log 变换，Jacobian 1/x），就对**活 R 的基族在变换后参数上**验全部契约；拟合 parity 用 G.dev_新族(y) = G.dev_基族(变换后) + 常数（对数雅可比参数无关）。旧实现的密度是另一套自洽参数化（过得了 AD deriv 闸但不是 R 的分布）——**deriv 闸只验自洽，不验是 R 的分布**。qSHASH 求逆已从 z 空间 Newton 加固为 s=asinh(z) 空间括号二分（旧法尾部导数塌缩+clip 冻结：rel 0.81 vs R、p 距 1 的 1e-16 内 NaN）。
 - **R 自己的 q 函数会在极端 profile 挂死**（D2.52：qSHASH 在 nu=0.05/tau=2.0 下 uniroot 区间扩张 while 不返回）——测试网格要避开两侧都算不出的 profile 并记录理由；"R 没说"在这里的形态是"R 算不出"。
+- **特殊函数包装的 eps 钳制陷阱（D2.53，影响全部 Bessel 族）**：`_log_bessel_kv_scipy` 曾用 `maximum(kv, eps)` 防下溢再取 log——但 K_nu(x) 在 x >~ 35 就小于 eps（K_2(50)=3.4e-23），此后所有 log(K) 静默变成 log(eps)=-36.04，Sichel 归一化差 log K(α)-log K(1/σ) 归零 → SI 密度最大偏 1.04e+04 倍、质量和不归一。**对特殊函数取 log 必须用指数缩放变体**（scipy `kve(v,x)=K_v(x)e^x` → `log K = log(kve) - x`；iv 用 `ive`）。修后对活 R 1e-12、对 scipy 全域 1.5e-15。dpqr 闸没暴露只因校准网格都在小参数区——**闸绿 ≠ 内核全域正确**。
+- **跨库签名坑**：R 的 `besselK` 是 **(x, nu)**，scipy 的 `kv` 是 **(nu, x)**——写反静默对照转置族（D2.53 R 探针踩过）；R 的 `besselK(x, 负nu)` 可用、x>~740 下溢到 0（log 得 -Inf）。
+- **SI rsdev 已修（D2.53）**：初值三缺陷（同 EXGAUS/NBII 签名第三族）+ 上述 Bessel 钳制。修后 rsdev 闸**全绿**（146 族无 rsdev fail；剩余既有：BCTO deriv、一批 dpqr fail/skip、三个 R 提前停登记 ZIPIG/ZINBI/PE2）。SI 似然面有极长平坦 nu 斜脊：我们精确 AD 分数沿脊爬向更优点（R 的 dldv 前向差跟不上，PE2 处置），1000 周期 nu=8.5 仍在爬、converged 长期 False——该族拟合的预期行为。
 
 ## 缺陷登记（D2.44）
 
