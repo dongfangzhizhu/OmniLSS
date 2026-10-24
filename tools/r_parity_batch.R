@@ -102,10 +102,21 @@ run_fit <- function(payload) {
     }
     form <- as.formula(form_text)
     sigma_form <- if (is.null(payload$sigma_formula)) ~1 else as.formula(payload$sigma_formula)
-    fit <- gamlss(
-      form, family = fam, data = df,
-      sigma.formula = sigma_form,
-      control = gamlss.control(n.cyc = as.numeric(payload$n_cyc), trace = FALSE)
+    # Warnings are recorded, not fatal: R emits "Algorithm RS has not yet
+    # converged" for any fit that hits its cycle budget, and the fit still
+    # returns a deviance worth comparing.  Turning that warning into an error
+    # made every such family an unmeasurable rsdev skip (BCTO in D2.58).
+    fit_warnings <- character(0)
+    fit <- withCallingHandlers(
+      gamlss(
+        form, family = fam, data = df,
+        sigma.formula = sigma_form,
+        control = gamlss.control(n.cyc = as.numeric(payload$n_cyc), trace = FALSE)
+      ),
+      warning = function(w) {
+        fit_warnings <<- c(fit_warnings, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
     )
     coefs <- lapply(fit$parameters, function(p) {
       as.numeric(unlist(fit[[paste0(p, ".coefficients")]]))
@@ -114,10 +125,10 @@ run_fit <- function(payload) {
     list(
       deviance = as.numeric(fit$G.deviance),
       converged = as.logical(fit$converged),
-      coefficients = coefs
+      coefficients = coefs,
+      warnings = if (length(fit_warnings)) fit_warnings else NULL
     )
-  }, error = function(e) list(error = conditionMessage(e)),
-     warning = function(w) list(error = paste("warning:", conditionMessage(w))))
+  }, error = function(e) list(error = conditionMessage(e)))
 }
 
 res <- lapply(jobs, function(p) {

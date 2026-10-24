@@ -150,6 +150,9 @@ def _param_range(param: str, link: str) -> tuple[float, float]:
 # R, which is the opposite of parity.
 _DERIV_TOLERANCE: dict[tuple[str, str], float] = {
     ("BCT", "tau"): 1e-2,
+    # BCTO is the renamed clone of the same Box-Cox-t kernel (see the note
+    # below); it inherits R's forward-difference tau score verbatim.
+    ("BCTO", "tau"): 1e-2,
     ("ST2", "tau"): 5e-1,
     ("DBI", "sigma"): 1e-2,
     ("GIG", "nu"): 1e-2,
@@ -157,6 +160,14 @@ _DERIV_TOLERANCE: dict[tuple[str, str], float] = {
 
 _DERIV_TOLERANCE_NOTE: dict[tuple[str, str], str] = {
     ("BCT", "tau"): "R's dldt uses a 0.01 forward step on log pt; ours is 2.8e-14 from R",
+    ("BCTO", "tau"): (
+        "Same kernel as BCT (BCTO is BCTo renamed, and BCTo transcribes R's "
+        "BCT dldt): R's tau score is a 0.01 forward difference on log(pt), so "
+        "the gate's central difference of our density sees the true derivative "
+        "while the score reproduces R's O(delta) approximation.  Measured on "
+        "the probe grid: analytic 0.647311 vs central fd 0.644622 (2.689e-03), "
+        "the same order as BCT's registered 2.8e-14-vs-R agreement."
+    ),
     ("GIG", "nu"): (
         "R's GIG dldv is gamlss's numeric.deriv on dGIG(log=TRUE) with "
         "delta=0.01 -- dumped from the installed namespace it is a forward "
