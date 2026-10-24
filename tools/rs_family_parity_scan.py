@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import warnings
@@ -357,6 +358,14 @@ _PROBE_BD = 10.0
 #: these the support itself is the probe grid; ``ok`` then means every
 #: support point evaluates to a finite, positive density, not that ``n - 1``
 #: points do (MN3's whole support holds three).
+#: R-side numerical failures that mean "R cannot produce a reference here".
+#: Distinct from a wrong answer: with no reference the slot is unevaluable.
+_R_NUMERICAL_FAILURE = re.compile(
+    r"roundoff error|extrapolation table|did not converge|NaNs produced|"
+    r"non-finite|missing value where",
+    re.IGNORECASE,
+)
+
 _SUPPORT_BOUNDS: dict[str, tuple[int, int]] = {
     "MN3": (1, 3),
     "MN4": (1, 4),
@@ -1022,6 +1031,7 @@ def gate_dpqr(family: str, results: list[dict], index: dict) -> dict:
     if entry.get("d") is None:
         return {"status": "skip", "detail": "no parameter metadata"}
     failures: list[str] = []
+    r_errors: list[str] = []
     missing_in_r = True
     # Functions that R does not attach to the family object at all.  These are
     # `skip`, not `fail`: "R has no such function" and "our value disagrees"
@@ -1043,6 +1053,15 @@ def gate_dpqr(family: str, results: list[dict], index: dict) -> dict:
             # That is a registry question, not a parity defect, so it skips.
             if "missing function" in r["error"]:
                 no_r_counterpart = True
+                continue
+            if _R_NUMERICAL_FAILURE.search(str(r["error"])):
+                # R itself could not produce a reference here (its integrate/
+                # uniroot machinery gave up).  "R answers wrong" and "R
+                # cannot answer" are different statements: with no reference
+                # the slot is unevaluable, not a defect (D2.57, GT qGT:
+                # "roundoff error is detected in the extrapolation table").
+                no_r_counterpart = True
+                r_errors.append(f"{type_char}: R numerical failure")
                 continue
             failures.append(f"{type_char}: R error {r['error'][:60]}")
             continue
@@ -1069,7 +1088,10 @@ def gate_dpqr(family: str, results: list[dict], index: dict) -> dict:
     if failures:
         return {"status": "fail", "detail": "; ".join(failures)}
     if no_r_counterpart:
-        return {"status": "pass", "detail": "R attaches no counterpart for some slots"}
+        detail = "R attaches no counterpart for some slots"
+        if r_errors:
+            detail += "; " + "; ".join(r_errors)
+        return {"status": "pass", "detail": detail}
     return {"status": "pass", "detail": ""}
 
 

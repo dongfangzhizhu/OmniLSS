@@ -2738,9 +2738,13 @@ def pGU(q, mu=0.0, sigma=1.0, zeta=0.0, lower_tail=True, log_p=False):
     sigma = np.asarray(sigma, dtype=np.float64)
     zeta = np.asarray(zeta, dtype=np.float64)
     
-    # For zeta close to 0, use standard Gumbel CDF: F(x) = exp(-exp(-(x-mu)/sigma))
+    # R pGU (GU.R) is the *minimum* Gumbel: F(x) = 1 - exp(-exp(z)), z=(x-mu)/sigma.
+    # This module had the maximum-Gumbel form here and the minimum-Gumbel form
+    # on pRG -- p and q were swapped between the two families while dGU/dRG
+    # were already on the right sides (measured: pGU(0.3,0.5,0.5) answered
+    # 0.2249 where live R answers 0.4885, D2.57).
     z = (q - mu) / sigma
-    cdf = np.exp(-np.exp(-z))
+    cdf = 1.0 - np.exp(-np.exp(z))
     
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -2785,8 +2789,13 @@ def qGU(p, mu=0.0, sigma=1.0, zeta=0.0, lower_tail=True, log_p=False):
     if not lower_tail:
         p_val = 1.0 - p_val
     
-    # Standard Gumbel inverse CDF (valid for zeta=0): Q(p) = mu - sigma * log(-log(p))
-    q = mu - sigma * np.log(-np.log(p_val))
+    # R qGU (GU.R): Q(p) = mu + sigma*log(-log(1-p)); the endpoints are
+    # assigned explicitly (p==0 -> -Inf, p==1 -> Inf, out of range -> NaN).
+    p_orig = p_val
+    q = mu + sigma * np.log(-np.log(1.0 - p_val))
+    q = np.where(p_orig == 0.0, -np.inf, q)
+    q = np.where(p_orig == 1.0, np.inf, q)
+    q = np.where((p_orig < 0.0) | (p_orig > 1.0), np.nan, q)
     
     return q
 
@@ -2877,8 +2886,12 @@ def pRG(q, mu=0.0, sigma=1.0, lower_tail=True, log_p=False):
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     
-    z = (mu - q) / sigma
-    cdf = 1.0 - jnp.exp(-jnp.exp(-z))
+    # R pRG (RG.R) is the *maximum* Gumbel: F(x) = exp(-exp(-(q-mu)/sigma)).
+    # The comment above pGU explains the swap between the two families.  Note
+    # the sign: this kernel used to build z as (mu-q)/sigma, which turns the
+    # maximum-Gumbel form into the minimum-Gumbel one.
+    z = (q - mu) / sigma
+    cdf = jnp.exp(-jnp.exp(-z))
     
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -2920,7 +2933,15 @@ def qRG(p, mu=0.0, sigma=1.0, lower_tail=True, log_p=False):
     if not lower_tail:
         p = 1.0 - p
     
-    q = mu + sigma * jnp.log(-jnp.log(1.0 - p))
+    # R qRG (RG.R): Q(p) = mu - sigma*log(-log(p)); p==1 -> Inf.  R also sets
+    # q[p==0] <- 0 for this family -- a quirk (the support is the whole line,
+    # so the correct value is -Inf, which is what we return and what the
+    # neighbouring families do).
+    p_orig = p
+    q = mu - sigma * jnp.log(-jnp.log(p))
+    q = jnp.where(p_orig == 0.0, -jnp.inf, q)
+    q = jnp.where(p_orig == 1.0, jnp.inf, q)
+    q = jnp.where((p_orig < 0.0) | (p_orig > 1.0), jnp.nan, q)
     
     return q
 
@@ -5682,8 +5703,13 @@ def pGT(q, mu=0.0, sigma=1.0, nu=2.0, tau=2.0, lower_tail=True, log_p=False):
                              jnp.array([_mu]), jnp.array([_sigma]),
                              jnp.array([_nu]), jnp.array([_tau]))[0])
 
-        lower_bound = mu_i - 10.0 * sigma_i
-        result, _ = quad(integrand_i, lower_bound, float(q_val))
+        # R pGT integrates from -Inf.  A truncated lower bound at
+        # mu - 10 sigma loses real mass for the heavy-tailed corners: at
+        # nu = tau = 0.5 the density decays like |z|^(-1), so the mass below
+        # mu - 10 sigma is not small -- measured 0.0534 of the total at
+        # (mu, sigma, nu, tau) = (0.5, 0.5, 0.5, 0.5), which is exactly the
+        # 5.34e-02 the scanner reported (D2.57).
+        result, _ = quad(integrand_i, -np.inf, float(q_val), limit=200)
         cdf_values.append(result)
 
     cdf = jnp.asarray(cdf_values, dtype=jnp.float64).reshape(np.asarray(q).shape)

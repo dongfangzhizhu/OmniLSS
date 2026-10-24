@@ -1025,7 +1025,11 @@ def _st3c_p(q, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False
         mui = float(mu_arr[i % len(mu_arr)])
         si = max(float(sigma_arr[i % len(sigma_arr)]), 1e-16)
         nui = max(float(nu_arr[i % len(nu_arr)]), 1e-16)
-        ti = max(float(tau_arr[i % len(tau_arr)]), 1.0 + 1e-16)
+        # R allows tau < 1 (df < 1): ST3C.R's C routine has no floor, and
+        # live R answers pST3C(-1, mu=0, sigma=1, nu=0.5, tau=0.5) = 0.6058544583.
+        # Flooring at 1 silently turned df = 0.5 into df = 1 (measured
+        # 0.699467 where R answers 0.715361 at the scanner probe point, D2.57).
+        ti = max(float(tau_arr[i % len(tau_arr)]), 1e-12)
         e = qi - mui
         nu2 = nui * nui
         if e < 0:
@@ -1062,7 +1066,11 @@ def _st3c_q(p, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False
         mui = float(mu_arr[i % len(mu_arr)])
         si = max(float(sigma_arr[i % len(sigma_arr)]), 1e-16)
         nui = max(float(nu_arr[i % len(nu_arr)]), 1e-16)
-        ti = max(float(tau_arr[i % len(tau_arr)]), 1.0 + 1e-16)
+        # R allows tau < 1 (df < 1): ST3C.R's C routine has no floor, and
+        # live R answers pST3C(-1, mu=0, sigma=1, nu=0.5, tau=0.5) = 0.6058544583.
+        # Flooring at 1 silently turned df = 0.5 into df = 1 (measured
+        # 0.699467 where R answers 0.715361 at the scanner probe point, D2.57).
+        ti = max(float(tau_arr[i % len(tau_arr)]), 1e-12)
         nu2 = nui * nui
         if pi < 1.0 / (1.0 + nu2):
             q = mui + (si / nui) * _spt.ppf(pi * (1.0 + nu2) / 2.0, ti)

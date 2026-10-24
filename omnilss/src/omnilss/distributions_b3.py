@@ -174,18 +174,21 @@ def _attach_numeric_real_line_dpq(family_class: type[FamilyDefinition], log_pdf_
 
     def _cdf_scalar(x, params):
         x = float(x)
-        lo, hi = _guess_bounds(params)
-        if x <= lo:
-            return 0.0
-        if x >= hi:
-            return 1.0
 
         def safe_pdf(t):
             value = _pdf_scalar(t, params)
             return value if np.isfinite(value) else 0.0
 
-        numerator = quad(safe_pdf, lo, x, limit=200)[0]
-        denominator = quad(safe_pdf, lo, hi, limit=200)[0]
+        # Integrate over the whole line, the way R does (pGT calls
+        # integrate(dGT, -Inf, endInt)).  The old finite window
+        # mu +/- (8*max(|sigma|,1) + 8) was harmless for the light-tailed
+        # SHASH but wrong for GT: at nu = tau = 0.5 the GT density decays
+        # like |z|^(-1) and the window dropped 0.0534 of the mass at
+        # (mu, sigma, nu, tau) = (0.5, 0.5, 0.5, 0.5), which the
+        # renormalisation then spread back over the window -- the
+        # "p: max rel 5.340e-02" the scanner reported (D2.57).
+        numerator = quad(safe_pdf, -np.inf, x, limit=200)[0]
+        denominator = quad(safe_pdf, -np.inf, np.inf, limit=200)[0]
         if not np.isfinite(denominator) or denominator <= 0.0:
             return np.nan
         return numerator / denominator
