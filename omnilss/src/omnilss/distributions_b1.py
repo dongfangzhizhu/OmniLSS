@@ -31,6 +31,12 @@ from .links import (
     log_inverse,
     log_link,
 )
+from .dpqr_functions import (
+    dGU, pGU, qGU, rGU,
+    dRG, pRG, qRG, rRG,
+    dPARETO2, pPARETO2, qPARETO2,
+    pIGAMMA, qIGAMMA,
+)
 
 # ------------------------------------------------------------------
 # 1. Gumbel (GU)
@@ -50,7 +56,11 @@ def _gu_log_pdf(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp.ndar
 
 
 def GU() -> GumbelFamily:
-    from .dpqr_functions import dGU, pGU, qGU, rGU
+    from .dpqr_functions import (
+        dGU, pGU, qGU, rGU,
+        dPARETO2, pPARETO2, qPARETO2,
+        pIGAMMA, qIGAMMA,
+    )
     
     base_family = build_ad_family(
         family_class=GumbelFamily,
@@ -188,6 +198,8 @@ def IGAMMA() -> InverseGammaFamily:
         parameters=("mu", "sigma"),
         log_pdf_func=_igamma_log_pdf,
         type_="Continuous",
+        p=pIGAMMA,
+        q=qIGAMMA,
         links={"mu": "log", "sigma": "log"},
         link_functions={"mu": log_link, "sigma": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse},
@@ -315,6 +327,9 @@ def PARETO2() -> Pareto2Family:
         parameters=("mu", "sigma"),
         log_pdf_func=_pareto2_log_pdf,
         type_="Continuous",
+        d=dPARETO2,
+        p=pPARETO2,
+        q=qPARETO2,
         links={"mu": "log", "sigma": "log"},
         link_functions={"mu": log_link, "sigma": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse},

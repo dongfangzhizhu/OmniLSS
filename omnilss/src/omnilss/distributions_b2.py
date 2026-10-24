@@ -31,7 +31,7 @@ from .links import (
     logit_inverse,
     logit_link,
 )
-from .dpqr_functions import dPE, pPE, qPE, rPE
+from .dpqr_functions import dPE, pPE, qPE, rPE, pLOGNO2, qLOGNO2
 
 # ------------------------------------------------------------------
 # 1. NO2 — Normal parameterized by variance σ²
@@ -114,6 +114,8 @@ def LOGNO2() -> LogNormal2Family:
         parameters=("mu", "sigma"),
         log_pdf_func=_logno2_log_pdf,
         type_="Continuous",
+        p=pLOGNO2,
+        q=qLOGNO2,
         links={"mu": "log", "sigma": "log"},
         link_functions={"mu": log_link, "sigma": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse},
