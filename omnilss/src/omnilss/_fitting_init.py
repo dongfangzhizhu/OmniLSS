@@ -108,6 +108,14 @@ def _initial_parameter_value(
             return 0.0  # Skewness parameter
         if family.name == "SN2":
             return 1.0  # Scale ratio parameter
+        if family.name in ("SEP", "SEP1", "SEP2"):
+            # R SEP.R / SEP1.R / SEP2.R: nu <- rep(0.1, length(y)) (the
+            # skewness parameter).  The generic 1.0 default starts the
+            # log-link nu an order of magnitude off R's.
+            return 0.1
+        if family.name in ("BNB", "ZABNB", "ZIBNB"):
+            # R BNB.R / ZABNB.R / ZIBNB.R: nu <- rep(0.1, length(y))
+            return 0.1
         # Zero-inflated/altered distributions whose zero-mass parameter is
         # literally `nu` (D2.26).  R starts each of these at
         # `nu <- rep(0.1, length(y))` -- read off the R sources, e.g.
@@ -156,6 +164,18 @@ def _initial_parameter_value(
             return 0.5
         return 1.0
     if parameter == "tau":
+        if family.name == "ZABNB":
+            # R ZABNB.R: tau <- rep(sum(y == 0)/length(y), length(y)) -- the
+            # observed zero fraction of the altered component.
+            zero_fraction = float(np.average(np.asarray(y) == 0, weights=w))
+            return max(zero_fraction, 1e-6)
+        if family.name == "ZIBNB":
+            # R ZIBNB.R: tau <- rep(0.1, length(y))
+            return 0.1
+        if family.name in ("SEP", "SEP1", "SEP2"):
+            # R SEP.R / SEPP1.R / SEP2.R: tau <- rep(1.6, length(y)) (the
+            # tail-weight / shape parameter).
+            return 1.6
         if family.name == "JSU":
             return 1.0
         if family.name == "BCT":
@@ -414,10 +434,32 @@ def _initial_mu_target(
     elif family.name == "EXP":
         target = np.log(np.maximum(y, np.finfo(np.float64).eps))
     elif family.name == "LOGNO":
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
+        # R LOGNO()$mu.initial (logNO.R): mu <- (log(y)+mean(log(y)))/2.
+        # The generic per-observation log(y) makes _initial_sigma's residual
+        # spread identically zero (see the sigma entry), which is the
+        # eps-floor collapse.
+        log_y = np.log(np.maximum(y, np.finfo(np.float64).eps))
+        target = (log_y + np.mean(log_y)) / 2.0
     elif family.name == "LNO":
-        # LNO is alias for LOGNO (identity link for mu)
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
+        # R LNO()$mu.initial is the same expression (LNO is LOGNO renamed in
+        # gamlss.dist's compat layer; mu.link is identity either way).
+        log_y = np.log(np.maximum(y, np.finfo(np.float64).eps))
+        target = (log_y + np.mean(log_y)) / 2.0
+    elif family.name == "LOGNO2":
+        # R LOGNO2()$mu.initial (logNO2.R): mu <- exp((log(y)+mean(log(y)))/2).
+        # LOGNO2's mu link is log, so the link-scale target is the exponent.
+        log_y = np.log(np.maximum(y, np.finfo(np.float64).eps))
+        target = (log_y + np.mean(log_y)) / 2.0
+    elif family.name in ("SEP", "SEP1", "SEP2", "SN2", "EGB2"):
+        # R SEP.R / SEP1.R / SEP2.R / SN2.R / EGB2.R, all identical:
+        #     mu <- (y+mean(y))/2
+        # The generic target=y fallback leaves the residual spread in
+        # _initial_sigma at sd(y)/2 instead of R's fixed scale, and the
+        # sigma entry below then has nothing to key on.
+        target = (y + np.mean(y)) / 2.0
+    elif family.name in ("BNB", "ZABNB", "ZIBNB"):
+        # R BNB.R / ZABNB.R / ZIBNB.R, all identical: mu <- (y+mean(y))/2
+        target = (y + np.mean(y)) / 2.0
     elif family.name == "NBI":
         target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
     elif family.name == "IG":
@@ -588,13 +630,38 @@ def _initial_sigma(
         # on the same data.  Same signature already bit SHASH and SHASHo
         # (not just the new SHASHo2).
         return float(np.std(y, ddof=1) / 5.0)
-    if family.name == "LOGNO":
+    if family.name in ("LOGNO", "LNO", "LOGNO2"):
+        # R (logNO.R / logNO2.R, both identical):
+        #     sigma <- rep(sd(log(y)), length(y))
+        # A fixed scale, NOT the residual spread against the mu target.  The
+        # old residual form evaluated against the per-observation mu target
+        # (log(y)), so the residual was identically zero and sigma started on
+        # the eps floor -- measured 2.22e-16 for all three, and the first IRLS
+        # step sent the log-scale sigma to -13.8 (= log 1e-6), collapsing the
+        # deviance to ~1e13 where R converges (LNO 137.87 on the scanner
+        # sample).  Same signature as SI (D2.53) and SHASH (D2.36).
         log_y = np.log(np.maximum(y, eps))
-        sigma = np.sqrt(np.sum(w * np.square(log_y - mu)) / np.sum(w))
-    elif family.name == "LNO":
-        # LNO is alias for LOGNO
-        log_y = np.log(np.maximum(y, eps))
-        sigma = np.sqrt(np.sum(w * np.square(log_y - mu)) / np.sum(w))
+        sigma = float(np.std(log_y, ddof=1))
+    elif family.name in ("SEP", "SEP1", "SEP2"):
+        # R SEP.R / SEP1.R / SEP2.R: sigma <- rep(sd(y)/4, length(y))
+        sigma = float(np.std(y, ddof=1) / 4.0)
+    elif family.name == "SN2":
+        # R SN2.R: sigma <- rep(sd(y), length(y))
+        sigma = float(np.std(y, ddof=1))
+    elif family.name == "EGB2":
+        # R EGB2.R: sigma <- rep(0.1, length(y))
+        sigma = 0.1
+    elif family.name in ("BNB", "ZABNB", "ZIBNB"):
+        # R BNB.R / ZABNB.R / ZIBNB.R, all identical:
+        #     sigma <- rep(max(((var(y)-mean(y))/(mean(y)^2)), 0.1), length(y))
+        # The dispersion ratio on the method-of-moments route, floored at 0.1
+        # (R's var() is the n-1 estimator).  The old generic residual form
+        # evaluated against the per-observation mu target and returned exactly
+        # 0, so all three started on the eps floor -- the same signature as
+        # LNO/SEP above and SI (D2.53).
+        mean_y = float(np.mean(y))
+        var_y = float(np.var(y, ddof=1))
+        sigma = max((var_y - mean_y) / max(mean_y * mean_y, eps), 0.1)
     elif family.name == "GA":
         centered = (y - mu) / np.maximum(mu, eps)
         sigma = np.sqrt(np.sum(w * np.square(centered)) / np.sum(w))

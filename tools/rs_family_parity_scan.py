@@ -509,6 +509,34 @@ _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
     # (cc=0.001, cyc=50) our n_cyc=200 fit lands at 149.183 against R's
     # 149.215 -- rel 2.1e-4, a straight gate pass on the full-family stream
     # (omnilss/tmp/d236_full_scan.json).
+    "SEP": dict(
+        n_cyc=20,
+        dev_ours=126.9315204295313,
+        dev_r=127.121134,
+        note=(
+            "D2.59 two-step adjudication on the full-family-stream sample.\n"
+            "Step 1: R does not converge at all at the scanner budget: "
+            "gamlss(..., n.cyc = 20) returns deviance 127.121134 with "
+            "converged = FALSE, and a longer run (n.cyc = 100) errors out with "
+            "a NA-in-the-working-vector failure for parameter tau, so R has no "
+            "further trajectory to compare against.\n"
+            "Step 2: R own dSEP evaluated at our coefficients (mu = "
+            "2.1282345038289296 + 0.09375915394091454*x, sigma = "
+            "exp(0.34749569255167634), nu = 0.2713708701869533 on the identity "
+            "link, tau = exp(2.325027789242001)) returns log-likelihood "
+            "-63.465760214765673, i.e. deviance 126.93152042953135 -- identical "
+            "to the 126.9315204295313 we report.  The densities agree to the "
+            "last digit and our point is 0.19 below R halted one, all inside "
+            "the legal parameter domain.\n"
+            "Reaching that point needed R own initial values: before D2.59 SEP "
+            "fell through to target = y and a residual-scale sigma, which put "
+            "sigma on the eps floor and collapsed the deviance to 1.34e12.  "
+            "With R mu.initial = (y+mean(y))/2, sigma.initial = sd(y)/4, "
+            "nu.initial = 0.1 and tau.initial = 1.6 the fit lands here.\n"
+            "Stream discipline: numbers bind to the full-family sample stream "
+            "(D2.30); a sublist run shifts them on BOTH sides."
+        ),
+    ),
     "PE2": dict(
         n_cyc=20,
         dev_ours=122.176634,
