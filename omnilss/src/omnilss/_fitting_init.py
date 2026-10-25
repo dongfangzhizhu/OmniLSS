@@ -48,6 +48,13 @@ def _initial_parameter_value(
             return 4.0
         if family.name == "JSU":
             return 0.0
+        if family.name == "JSUo":
+            # R JSUo()$nu.initial (live gamlss.dist 6.1.1): nu <- rep(0,
+            # length(y)), nu link identity.  NOTE the casing: the registry
+            # key is JSUO but the family object's .name is "JSUo" -- a
+            # branch written with the registry spelling silently falls
+            # through to the generic 1.0 (D2.51 lesson).
+            return 0.0
         if family.name in ("BCCG", "BCT", "BCCGo", "BCTo"):
             # R BCCG()$nu.initial / BCT()$nu.initial (live R, D2.35/D2.36):
             # nu <- rep(0.5, length(y)); the o variants carry the same start.
@@ -178,6 +185,10 @@ def _initial_parameter_value(
             return 1.6
         if family.name == "JSU":
             return 1.0
+        if family.name == "JSUo":
+            # R JSUo()$tau.initial (live gamlss.dist 6.1.1): tau <- rep(0.5,
+            # length(y)), tau link log.  Family object .name is "JSUo".
+            return 0.5
         if family.name == "BCT":
             return 10.0  # Degrees of freedom, higher starting value for stability
         if family.name == "BCTo":
@@ -508,6 +519,13 @@ def _initial_mu_target(
         # stopped 0.61 deviance above live R (142.029 vs 141.415) on the
         # gate sample; with R's start values the two agree to <1e-4.
         target = (y + np.mean(y)) / 2.0
+    elif family.name == "JSUo":
+        # R JSUo()$mu.initial (live gamlss.dist 6.1.1): mu <- (y+mean(y))/2,
+        # mu link identity.  Family object .name is "JSUo" (registry key
+        # JSUO).  Without this entry the generic target=y fallback plus the
+        # residual-scale sigma put the fit on the eps floor and it diverged
+        # to mu ~ 1.9e7 (deviance 1613.89 against R's 146.78).
+        target = (y + np.mean(y)) / 2.0
     elif family.name in ("SHASH", "SHASHo", "SHASHo2"):
         # R mu.initial (vendored SHASH.R / SHASHo.R / SHASHo2.R, all three
         # identical): mu <- (y + mean(y))/2.  D2.40: without this entry the
@@ -784,6 +802,14 @@ def _initial_sigma(
         # JSU's ddof=0 vs R's n-1 denominator moves the scalar by O(n^-1)
         # and its gate stays green, so it is left untouched.
         sigma = np.std(y, ddof=1) / 4.0 if family.name != "JSU" else np.std(y) / 4.0
+    elif family.name == "JSUo":
+        # R JSUo()$sigma.initial (live gamlss.dist 6.1.1):
+        #     sigma <- rep(0.1, length(y))
+        # A fixed scale, not a residual spread.  Family object .name is
+        # "JSUo" (registry key JSUO) -- the residual fallback evaluated
+        # against the per-observation mu target returned exactly 0 here
+        # (same eps-floor signature as SI/exGAUS/NBII/SHASH).
+        sigma = 0.1
     elif family.name == "exGAUS":
         # R exGAUS()$sigma.initial (live R, gamlss.dist 6.1.1, verified via
         # deparse of the family object):

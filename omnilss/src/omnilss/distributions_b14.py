@@ -212,6 +212,87 @@ def _jsuo_log_pdf(y, mu, sigma, nu, tau):
     )
 
 
+# ---------------------------------------------------------------------------
+# R's closed-form scores / diagonal second derivatives for JSUo (D2.60).
+#
+# Why these exist: the AD Hessian is the *true* second derivative of the
+# log-density, while live R's JSUo() feeds the IRLS the observed-information
+# approximation d2ldX2 = -dldX^2 for every parameter (floored at -1e-15
+# inside the family function; the floor is re-applied downstream in
+# compute_working_weights_and_response).  The two differ, and the IRLS
+# step is built from the Hessian -- so with the AD Hessian our trajectory
+# leaves R's from the very first inner fit even when the initial values
+# match.  Measured on the scanner sample: with R's initials alone the first
+# RS cycle landed at mu = [3.41, -0.51] against R's [1.84, +0.36] (slope
+# sign flipped), and the 20-cycle deviance stayed 0.4% above R's.  The
+# scores themselves are the true derivatives and already matched R's dldm
+# through the deriv gate; transcribing them here keeps the family off the
+# AD path entirely (same pattern as SHASHo2 in D2.40).
+#
+# Transcribed from live gamlss.dist 6.1.1 (JSUo() family-object slots
+# dldm/dldd/dldv/dldt and d2ldm2/d2ldd2/d2ldv2/d2ldt2).
+# ---------------------------------------------------------------------------
+
+def _jsuo_dldm(y, mu, sigma, nu, tau):
+    z = (y - mu) / sigma
+    r = nu + tau * jnp.arcsinh(z)
+    return z / (sigma * (z * z + 1.0)) + (r * tau) / (sigma * jnp.sqrt(z * z + 1.0))
+
+
+def _jsuo_dldd(y, mu, sigma, nu, tau):
+    z = (y - mu) / sigma
+    r = nu + tau * jnp.arcsinh(z)
+    return -1.0 / (sigma * (z * z + 1.0)) + (r * tau * z) / (
+        sigma * jnp.sqrt(z * z + 1.0)
+    )
+
+
+def _jsuo_dldv(y, mu, sigma, nu, tau):
+    z = (y - mu) / sigma
+    r = nu + tau * jnp.arcsinh(z)
+    return -r
+
+
+def _jsuo_dldt(y, mu, sigma, nu, tau):
+    z = (y - mu) / sigma
+    r = nu + tau * jnp.arcsinh(z)
+    return (1.0 + r * nu - r * r) / tau
+
+
+def _jsuo_d2ldm2(y, mu, sigma, nu, tau):
+    d = _jsuo_dldm(y, mu, sigma, nu, tau)
+    return -d * d
+
+
+def _jsuo_d2ldd2(y, mu, sigma, nu, tau):
+    d = _jsuo_dldd(y, mu, sigma, nu, tau)
+    return -d * d
+
+
+def _jsuo_d2ldv2(y, mu, sigma, nu, tau):
+    d = _jsuo_dldv(y, mu, sigma, nu, tau)
+    return -d * d
+
+
+def _jsuo_d2ldt2(y, mu, sigma, nu, tau):
+    d = _jsuo_dldt(y, mu, sigma, nu, tau)
+    return -d * d
+
+
+_JSUO_SCORES = {
+    "mu": _jsuo_dldm,
+    "sigma": _jsuo_dldd,
+    "nu": _jsuo_dldv,
+    "tau": _jsuo_dldt,
+}
+_JSUO_HESSIANS = {
+    "mu": _jsuo_d2ldm2,
+    "sigma": _jsuo_d2ldd2,
+    "nu": _jsuo_d2ldv2,
+    "tau": _jsuo_d2ldt2,
+}
+
+
 def JSUo():
     """Johnson SU with original parameterization."""
     return build_ad_family(
@@ -224,6 +305,8 @@ def JSUo():
         p=pJSUo,
         q=qJSUo,
         r=rJSUo,
+        score_overrides=_JSUO_SCORES,
+        hessian_overrides=_JSUO_HESSIANS,
         links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
         link_functions={
             "mu": identity_link,
