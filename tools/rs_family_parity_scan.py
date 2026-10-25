@@ -846,13 +846,14 @@ def calibrate(family: str, n: int = 6) -> Calibration:
     from omnilss.distributions import resolve_family  # noqa: PLC0415
 
     fam = resolve_family(family)
-    params = list(fam.parameters)
+    fixed = tuple(getattr(fam, "fixed_parameters", ()) or ())
+    # bd is a constant, not a probe dimension; every other parameter is.
+    params = [p for p in fam.parameters if p != "bd"]
     links = fam.links or {}
     parrays = [
         np.linspace(*_param_range(p, links.get(p, "")), n)
         for p in params
     ]
-    fixed = tuple(getattr(fam, "fixed_parameters", ()) or ())
     bd = _PROBE_BD if "bd" in fixed else None
 
     def score(y: np.ndarray) -> int:
@@ -1022,7 +1023,7 @@ def gate_derivatives(family: str) -> dict:
     if not score_fns or d_fn is None:
         return {"status": "skip", "detail": "no score_functions or density"}
 
-    params = list(fam.parameters)
+    params = [p for p in fam.parameters if p != "bd"]
     try:
         cal = calibrate(family, N_GRID)
     except Exception as exc:  # pragma: no cover - defensive
@@ -1031,47 +1032,58 @@ def gate_derivatives(family: str) -> dict:
         return {"status": "skip", "detail": "no support grid yields a finite density"}
 
     y = cal.y
-    base = list(cal.params)
-    extra = {"bd": cal.bd} if cal.bd is not None else {}
+    # Probe parameters vary; a declared fixed parameter (bd) holds its probe
+    # value.  Calls are made POSITIONALLY over fam.parameters so that every
+    # consumer sees the layout it declares: BB keeps bd in parameters (so the
+    # fit can honour it from the data) and its AD closures take four
+    # positional arguments, while ZABB bakes bd into the closure and declares
+    # three.  Mixing positional parameters with a keyword bd is what broke
+    # BB's deriv gate when the parameter lists were first de-duplicated
+    # (D2.69): the AD closures rebuild their argument list from keywords and
+    # require *all* of it that way.
+    base_map = dict(zip(params, cal.params))
+    fixed_values = {"bd": cal.bd} if cal.bd is not None else {}
     failures: list[str] = []
 
-    def call(f, *args, **kwargs):
-        """Call with the probe fixed parameter, falling back without it.
+    def full_args(values: dict, *, density: bool = False) -> list:
+        """The complete parameter vector in fam.parameters order.
 
-        ``bd`` is a *fixed* parameter: the d/p/q wrappers accept it per call
-        (the scanner passes one bd per observation), but the AD score
-        functions bake it into the closure and reject it as a keyword.
-        Without this fallback a TypeError/ValueError from the extra argument
-        reads as a derivative defect -- ZABB/ZIBB went from pass to fail
-        exactly that way once bd became a declared fixed parameter (D2.54).
+        density=True appends any fixed parameter the family does NOT declare
+        in its parameters tuple (DBI and the zero-variant families take bd
+        positionally at the end of their d/p/q signatures but keep it out of
+        the parameter list).  Score functions never see it: their closures
+        are built over the declared parameters only.
         """
-        if kwargs:
-            try:
-                return f(*args, **kwargs)
-            except (TypeError, ValueError):
-                pass
-        return f(*args)
+        args = [
+            fixed_values[p] if p in fixed_values else values[p]
+            for p in fam.parameters
+        ]
+        if density:
+            for p, v in fixed_values.items():
+                if p not in fam.parameters:
+                    args.append(v)
+        return args
 
-    for k, pname in enumerate(params):
+    for pname in params:
         fn = score_fns.get(pname)
         if fn is None:
             continue
 
         def loglik_at(value: np.ndarray) -> np.ndarray:
-            """Log-likelihood at parameter k = ``value``.
+            """Log-likelihood at pname = value.
 
-            ``fam.d`` returns a *density*, so it must be logged before
+            fam.d returns a *density*, so it must be logged before
             differencing -- differencing the density itself yields the
             derivative of the density, not the score.
             """
-            args = list(base)
-            args[k] = value
-            dens = np.asarray(call(d_fn, y, *args, **extra), dtype=np.float64)
+            values = dict(base_map)
+            values[pname] = value
+            dens = np.asarray(d_fn(y, *full_args(values, density=True)), dtype=np.float64)
             with np.errstate(divide="ignore", invalid="ignore"):
                 return np.log(dens)
 
         h = 1e-5
-        grid = base[k]
+        grid = np.asarray(base_map[pname], dtype=np.float64)
         try:
             fd = (loglik_at(grid + h) - loglik_at(grid - h)) / (2.0 * h)
         except Exception as exc:
@@ -1082,7 +1094,17 @@ def gate_derivatives(family: str) -> dict:
             continue
 
         try:
-            analytic = np.asarray(call(fn, y, *base, **extra), dtype=np.float64)
+            # Score signatures come in three shapes: bd declared inside the
+            # parameter tuple (BB), bd trailing and optional (BI's dldm),
+            # or no bd at all because the closure bakes it (ZABB/ZIBB/DBI).
+            # Try the full vector first and fall back without the trailing
+            # fixed value, so one probe serves all three.
+            try:
+                analytic = np.asarray(
+                    fn(y, *full_args(base_map, density=True)), dtype=np.float64
+                )
+            except TypeError:
+                analytic = np.asarray(fn(y, *full_args(base_map)), dtype=np.float64)
         except Exception as exc:
             failures.append(f"{pname}: raised {type(exc).__name__}")
             continue
@@ -1193,10 +1215,23 @@ def _safe_family(family: str):
 
 
 def _family_parameters(family: str) -> tuple[str, ...] | None:
+    """Parameters the probes vary: everything except declared fixed ones.
+
+    A fixed parameter (bd for BB/BI/DBI and the zero-variant beta-binomial
+    families) is carried separately as a probe constant, exactly once.  BB
+    used to declare bd in *both* parameters and fixed_parameters, which made
+    every probe pass it twice -- "dBB() got multiple values" -- and that is
+    why BB's deriv and dpqr gates never ran (D2.69).
+    """
     try:
-        return tuple(resolve_family(family).parameters)
+        fam = resolve_family(family)
     except Exception:
         return None
+    # Only bd: it is the one fixed parameter the probes can carry as a
+    # constant (see _PROBE_BD).  Other fixed parameters -- PARETO1O's mu,
+    # NET's nu/tau -- need data-dependent values and stay probe dimensions
+    # exactly as before; filtering them out broke both families (D2.69).
+    return tuple(p for p in fam.parameters if p != "bd")
 
 
 def _fit_data(family: str, rng: np.random.Generator, y_grid: np.ndarray) -> dict[str, list[float]]:
@@ -1411,7 +1446,7 @@ def _python_dpqr(family: str, type_char: str, args: list | None):
     kwargs = {first_arg: first}
     if bd is not None:
         kwargs["bd"] = np.full(n, bd)
-    params = list(getattr(fam, "parameters", ()) or ())
+    params = [p for p in (getattr(fam, "parameters", ()) or ()) if p != "bd"]
     for name, p in zip(params, parrays):
         kwargs[name] = np.asarray(p, dtype=np.float64)
     try:
