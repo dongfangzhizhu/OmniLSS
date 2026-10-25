@@ -445,6 +445,59 @@ _UNIT_ATOMS: dict[str, tuple[bool, bool]] = {
 # minimise the same objective and the gap is R's early stop; if it does not,
 # our density disagrees with R and the family is a genuine defect.  Comparing
 # two deviance numbers alone settles nothing.
+#: Families whose *R-side reference* is numerically invalid, with the evidence
+#: that establishes it.  A different failure mode from _RSDEV_R_STOPPED_EARLY:
+#: there R is at a real (if inferior) point; here R's reported deviance is not
+#: the likelihood at any point -- R's own optimisation drives sigma onto the
+#: double-precision floor (2.220446e-16), its density loses ~5-10% accuracy
+#: there through catastrophic cancellation in the lbeta differences, and its
+#: outer loop is oscillating (converged = FALSE, per-cycle deviance jumping by
+#: ~10), so G.deviance is a stale mid-cycle number rather than the value at
+#: the coefficients it reports.  The gate therefore compares against the
+#: deviance R's own density returns at a numerically safe sigma (the 1e-4..1e-10
+#: plateau), which is reproducible with live R.
+_RSDEV_R_REFERENCE_INVALID: dict[str, dict] = {
+    "ZABNB": dict(
+        reported=202.9046037917726,
+        valid_at=214.832625,
+        valid_sigma=1e-10,
+        dev_ours=211.718924,
+        note=(
+            "D2.64, full-family-stream sample.  R's ZABNB fit at n.cyc=20 ends\n"
+            "with sigma = exp(-36.043655) = 2.220446e-16 (the double epsilon),\n"
+            "converged = FALSE, and its per-cycle deviance jumping between 189\n"
+            "and 214.  Sweeping sigma at R's own fitted mu/nu/tau through R's\n"
+            "own dZABNB gives 214.832625 / 214.825477 / 214.825406 / 214.825431\n"
+            "/ 214.827885 / 213.304614 / 204.911418 at sigma = 1e-4 / 1e-6 /\n"
+            "1e-8 / 1e-10 / 1e-12 / 1e-15 / eps: the likelihood is flat at\n"
+            "214.825 from 1e-6 to 1e-10 and then collapses as the floor is\n"
+            "approached, so 202.9046 (the reported G.deviance) is not the\n"
+            "deviance at any sigma -- not even at R's own final coefficients.\n"
+            "Our fit stops at 211.718924, below R's numerically valid\n"
+            "214.832625.  Our own density returns NaN at sigma = eps (the same\n"
+            "cancellation), which is why we do not follow R onto the floor."
+        ),
+    ),
+    "ZIBNB": dict(
+        reported=199.4437321287374,
+        valid_at=221.374813,
+        valid_sigma=1e-10,
+        dev_ours=221.176844,
+        note=(
+            "D2.64, full-family-stream sample.  Same signature as ZABNB: R's\n"
+            "fit ends at sigma = exp(-36.056196) = 2.220446e-16 with\n"
+            "converged = FALSE, and a sigma sweep at R's own fitted mu/nu/tau\n"
+            "through R's own dZIBNB gives 221.378914 / 221.374853 / 221.374813\n"
+            "/ 221.374791 / 221.374273 / 221.097451 / 219.848274 at\n"
+            "sigma = 1e-4 / 1e-6 / 1e-8 / 1e-10 / 1e-12 / 1e-15 / eps.\n"
+            "R's reported 199.4437 is 22 units below the flat part of its own\n"
+            "likelihood and is a stale mid-cycle value (the per-cycle deviance\n"
+            "oscillates between 195 and 219).  Our 221.176844 is below R's\n"
+            "numerically valid 221.374813."
+        ),
+    ),
+}
+
 _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
     # "ST1" was registered here through D2.30 (n_cyc=1000, dev_ours=134.604639,
     # dev_r=138.379017, "R stops early": R froze at iteration 5 with tau at the
@@ -1284,6 +1337,39 @@ def gate_rs_deviance(family: str, results: list[dict], index: dict, fit_data) ->
         # families whose case was checked against R's own density -- and only
         # when the numbers still match what was recorded, so a later
         # regression cannot quietly ride in on the old note.
+        # R's reference can be *numerically invalid* while its iteration
+        # wanders and its density loses accuracy at the sigma floor (D2.64,
+        # ZABNB/ZIBNB).  There the honest comparison is against the deviance
+        # R's own density returns at a numerically safe sigma, and our point
+        # has to be below that -- both conditions are re-checked against the
+        # recorded numbers so a regression cannot ride in on the note.
+        bad = _RSDEV_R_REFERENCE_INVALID.get(family)
+        if bad is not None:
+            same = (
+                abs(py_dev - bad["dev_ours"]) <= 1e-3 * max(abs(bad["dev_ours"]), 1.0)
+                and abs(r_dev - bad["reported"]) <= 1e-3 * max(abs(bad["reported"]), 1.0)
+            )
+            below_valid = py_dev < bad["valid_at"]
+            if same and below_valid:
+                return {
+                    "status": "warn",
+                    "detail": (
+                        f"R's reported deviance {r_dev:.6g} is numerically invalid "
+                        f"(sigma hits the {2.220446e-16:.3e} floor; R's own density "
+                        f"at sigma={bad['valid_sigma']:g} gives {bad['valid_at']:.6g}); "
+                        f"ours {py_dev:.6g} is below that"
+                    ),
+                }
+            if same:
+                return {
+                    "status": "fail",
+                    "detail": (
+                        f"deviance {py_dev:.6g} vs R {r_dev:.6g} (rel {rel:.3e}); "
+                        f"registered as R-reference-invalid but ours is NOT below "
+                        f"R's valid value {bad['valid_at']:.6g} -- re-verify"
+                    ),
+                }
+
         rec = _RSDEV_R_STOPPED_EARLY.get(family)
         if rec is not None and py_dev < r_dev:
             same = (

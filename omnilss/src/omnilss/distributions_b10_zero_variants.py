@@ -895,6 +895,209 @@ def ZANBI():
 
 # ZINBI already exists in distributions.py, so we skip it here
 
+# ---------------------------------------------------------------------------
+# R's BNB scores and the hurdle/zero-inflated corrections on top of them
+# (D2.64).
+#
+# Why these exist: R's ZABNB()/ZIBNB() feed the IRLS hurdle-corrected scores
+# with d2ldX2 = -dld^2, and ZABNB's tau slot is not even that -- it is
+# -1/(tau (1 - tau)).  Our factory path feeds the AD true second derivative of
+# the wrapped density, which leaves R's trajectory from the first inner step
+# (the JSUO/ST5 situation, D2.60/D2.62).  Measured before the fix: ZABNB
+# 211.719 vs R 202.905, ZIBNB 221.177 vs R 199.444.
+#
+# Transcribed from live gamlss.dist 6.1.1:
+#   BNB()$dldm/dldd/dldv
+#   ZABNB()$dldm/dldd/dldv  = BNB dld at y plus f0*dld(0)/(1-f0), 0 at y == 0
+#   ZABNB()$dldt            = 1/tau at y == 0, else -1/(1-tau)
+#   ZABNB()$d2ldt2          = -1/(tau*(1-tau))          [NOT -dldt^2]
+#   ZIBNB()$dldm/dldd/dldv  = BNB dld(y) at y > 0, else
+#                             (1-tau) f0 dld(0) / (tau + (1-tau) f0)
+#   ZIBNB()$dldt            = (1-f0)/(tau + (1-tau) f0) at y == 0,
+#                             else -1/(1-tau)
+#   everything's d2ldX2      = -dld^2, floored at -1e-15
+# ---------------------------------------------------------------------------
+
+def _bnb_parts(mu, sigma, nu):
+    """R's m / n / k for the Beta Negative Binomial."""
+    eps = jnp.finfo(jnp.float64).eps
+    sigma = jnp.maximum(sigma, eps)
+    nu = jnp.maximum(nu, eps)
+    return (1.0 / sigma) + 1.0, (mu * nu) / sigma, 1.0 / nu
+
+
+def _bnb_dldm(y, mu, sigma, nu):
+    from jax.scipy.special import digamma
+
+    m, n, k = _bnb_parts(mu, sigma, nu)
+    c = nu / sigma
+    return c * (digamma(y + n) + digamma(n + m) - digamma(n) - digamma(y + n + m + k))
+
+
+def _bnb_dldd(y, mu, sigma, nu):
+    from jax.scipy.special import digamma
+
+    m, n, k = _bnb_parts(mu, sigma, nu)
+    s2 = jnp.square(sigma)
+    mn = mu * nu
+    return (
+        -(mn / s2) * digamma(y + n)
+        - (1.0 / s2) * digamma(m + k)
+        - (1.0 / s2) * (mn + 1.0) * digamma(n + m)
+        + (mn / s2) * digamma(n)
+        + (1.0 / s2) * digamma(m)
+        + (1.0 / s2) * (mn + 1.0) * digamma(y + n + m + k)
+    )
+
+
+def _bnb_dldv(y, mu, sigma, nu):
+    from jax.scipy.special import digamma
+
+    m, n, k = _bnb_parts(mu, sigma, nu)
+    inv_nu2 = 1.0 / jnp.square(nu)
+    ms = mu / sigma
+    return (
+        -inv_nu2 * digamma(y + k)
+        + ms * digamma(y + n)
+        - inv_nu2 * digamma(m + k)
+        + ms * digamma(n + m)
+        + inv_nu2 * digamma(k)
+        - ms * digamma(n)
+        - (ms - inv_nu2) * digamma(y + n + m + k)
+    )
+
+
+def _bnb_f0(mu, sigma, nu):
+    """R's dBNB(0, mu, sigma, nu) -- the base density at zero."""
+    return jnp.exp(_bnb_log_pdf(jnp.zeros_like(jnp.asarray(mu, dtype=jnp.float64)),
+                                mu, sigma, nu))
+
+
+def _zabnb_dldm(y, mu, sigma, nu, tau):
+    zeros = jnp.zeros_like(jnp.asarray(mu, dtype=jnp.float64))
+    f0 = _bnb_f0(mu, sigma, nu)
+    corr = f0 * _bnb_dldm(zeros, mu, sigma, nu) / (1.0 - f0)
+    return jnp.where(y == 0, 0.0, _bnb_dldm(y, mu, sigma, nu) + corr)
+
+
+def _zabnb_dldd(y, mu, sigma, nu, tau):
+    sigma = jnp.where(sigma < 1e-06, 1e-06, sigma)
+    zeros = jnp.zeros_like(jnp.asarray(mu, dtype=jnp.float64))
+    f0 = _bnb_f0(mu, sigma, nu)
+    corr = f0 * _bnb_dldd(zeros, mu, sigma, nu) / (1.0 - f0)
+    return jnp.where(y == 0, 0.0, _bnb_dldd(y, mu, sigma, nu) + corr)
+
+
+def _zabnb_dldv(y, mu, sigma, nu, tau):
+    zeros = jnp.zeros_like(jnp.asarray(mu, dtype=jnp.float64))
+    f0 = _bnb_f0(mu, sigma, nu)
+    corr = f0 * _bnb_dldv(zeros, mu, sigma, nu) / (1.0 - f0)
+    return jnp.where(y == 0, 0.0, _bnb_dldv(y, mu, sigma, nu) + corr)
+
+
+def _zabnb_dldt(y, mu, sigma, nu, tau):
+    return jnp.where(y == 0, 1.0 / tau, -1.0 / (1.0 - tau))
+
+
+def _neg_sq_floor_1e15(d):
+    v = -d * d
+    return jnp.where(v < -1e-15, v, -1e-15)
+
+
+def _zabnb_d2ldm2(y, mu, sigma, nu, tau):
+    return _neg_sq_floor_1e15(_zabnb_dldm(y, mu, sigma, nu, tau))
+
+
+def _zabnb_d2ldd2(y, mu, sigma, nu, tau):
+    return _neg_sq_floor_1e15(_zabnb_dldd(y, mu, sigma, nu, tau))
+
+
+def _zabnb_d2ldv2(y, mu, sigma, nu, tau):
+    return _neg_sq_floor_1e15(_zabnb_dldv(y, mu, sigma, nu, tau))
+
+
+def _zabnb_d2ldt2(y, mu, sigma, nu, tau):
+    v = -1.0 / (tau * (1.0 - tau))
+    return jnp.where(v < -1e-15, v, -1e-15)
+
+
+_ZABNB_SCORES = {
+    "mu": _zabnb_dldm,
+    "sigma": _zabnb_dldd,
+    "nu": _zabnb_dldv,
+    "tau": _zabnb_dldt,
+}
+_ZABNB_HESSIANS = {
+    "mu": _zabnb_d2ldm2,
+    "sigma": _zabnb_d2ldd2,
+    "nu": _zabnb_d2ldv2,
+    "tau": _zabnb_d2ldt2,
+}
+
+
+def _zibnb_dldm(y, mu, sigma, nu, tau):
+    zeros = jnp.zeros_like(jnp.asarray(mu, dtype=jnp.float64))
+    f0 = _bnb_f0(mu, sigma, nu)
+    at0 = (1.0 - tau) * f0 * _bnb_dldm(zeros, mu, sigma, nu) / (
+        tau + (1.0 - tau) * f0
+    )
+    return jnp.where(y == 0, at0, _bnb_dldm(y, mu, sigma, nu))
+
+
+def _zibnb_dldd(y, mu, sigma, nu, tau):
+    zeros = jnp.zeros_like(jnp.asarray(mu, dtype=jnp.float64))
+    f0 = _bnb_f0(mu, sigma, nu)
+    at0 = (1.0 - tau) * f0 * _bnb_dldd(zeros, mu, sigma, nu) / (
+        tau + (1.0 - tau) * f0
+    )
+    return jnp.where(y == 0, at0, _bnb_dldd(y, mu, sigma, nu))
+
+
+def _zibnb_dldv(y, mu, sigma, nu, tau):
+    zeros = jnp.zeros_like(jnp.asarray(mu, dtype=jnp.float64))
+    f0 = _bnb_f0(mu, sigma, nu)
+    at0 = (1.0 - tau) * f0 * _bnb_dldv(zeros, mu, sigma, nu) / (
+        tau + (1.0 - tau) * f0
+    )
+    return jnp.where(y == 0, at0, _bnb_dldv(y, mu, sigma, nu))
+
+
+def _zibnb_dldt(y, mu, sigma, nu, tau):
+    f0 = _bnb_f0(mu, sigma, nu)
+    at0 = (1.0 - f0) / (tau + (1.0 - tau) * f0)
+    return jnp.where(y == 0, at0, -1.0 / (1.0 - tau))
+
+
+def _zibnb_d2ldm2(y, mu, sigma, nu, tau):
+    return _neg_sq_floor_1e15(_zibnb_dldm(y, mu, sigma, nu, tau))
+
+
+def _zibnb_d2ldd2(y, mu, sigma, nu, tau):
+    return _neg_sq_floor_1e15(_zibnb_dldd(y, mu, sigma, nu, tau))
+
+
+def _zibnb_d2ldv2(y, mu, sigma, nu, tau):
+    return _neg_sq_floor_1e15(_zibnb_dldv(y, mu, sigma, nu, tau))
+
+
+def _zibnb_d2ldt2(y, mu, sigma, nu, tau):
+    return _neg_sq_floor_1e15(_zibnb_dldt(y, mu, sigma, nu, tau))
+
+
+_ZIBNB_SCORES = {
+    "mu": _zibnb_dldm,
+    "sigma": _zibnb_dldd,
+    "nu": _zibnb_dldv,
+    "tau": _zibnb_dldt,
+}
+_ZIBNB_HESSIANS = {
+    "mu": _zibnb_d2ldm2,
+    "sigma": _zibnb_d2ldd2,
+    "nu": _zibnb_d2ldv2,
+    "tau": _zibnb_d2ldt2,
+}
+
+
 # ZABNB - Zero-Altered Beta Negative Binomial
 def ZABNB():
     """Zero-Altered Beta Negative Binomial distribution."""
@@ -902,7 +1105,9 @@ def ZABNB():
         "BNB",
         _bnb_log_pdf,
         ("mu", "sigma", "nu"),
-        {"mu": "log", "sigma": "log", "nu": "log"}
+        {"mu": "log", "sigma": "log", "nu": "log"},
+        score_overrides=_ZABNB_SCORES,
+        hessian_overrides=_ZABNB_HESSIANS,
     )
 
 # ZIBNB - Zero-Inflated Beta Negative Binomial
@@ -912,7 +1117,9 @@ def ZIBNB():
         "BNB",
         _bnb_log_pdf,
         ("mu", "sigma", "nu"),
-        {"mu": "log", "sigma": "log", "nu": "log"}
+        {"mu": "log", "sigma": "log", "nu": "log"},
+        score_overrides=_ZIBNB_SCORES,
+        hessian_overrides=_ZIBNB_HESSIANS,
     )
 
 # ZINBF - Zero-Inflated Negative Binomial (Famoye parameterization)
