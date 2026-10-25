@@ -68,6 +68,19 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 - **JSU 拟合轨迹缺陷待修**（D2.37 候选）：与 R 同初值下多数 20 点样本我们停在 ~640 劣质驻点（R<6），scan 样本侥幸走对。
 - fixture 病态铁证三例：BCT 6 点（D2.35）、JSU 6 点（D2.36，R 振荡 -14→10355）；修法=20 点双侧收敛样本 + 共享 helper。
 
+## IRLS 的 Hessian 形式是 parity 的第二道初值（D2.60/D2.62 确立）
+
+- **R 的 d2ldX2 常常不是真二阶导，而是观测信息近似 -dldX²**，且逐族地板不同（JSUO/SEP1/SHASH/ST5 全是 -1e-15；ST5 的 nu/tau 是 -1e-4；ZABNB 的 d2ldt2 是 -1/(tau(1-tau))）。我们的 build_ad_family 默认喂**真二阶导**——初值对齐后轨迹仍在第一个内层步分道（JSUO：第一周期 mu 斜率反号 3.41/-0.51 vs R 1.84/+0.36；只补初值 147.365 vs R 146.778 仍 fail，补 hessian 后 146.843 pass）。
+- **诊断顺序**：①活 R dump 四个 dld* 与 d2ld*2（`deparse(f$d2ldm2)`）；②若 hessian 是 -score² 形式 → 写 `hessian_overrides`；③先用 monkeypatch 验证（直接改 `fam.hessian_functions[par]` 再 fit，family 对象每次新建所以安全），确认 deviance 贴近 R 再落源码。
+- **score 也要转写时优先闭式**：用 `jax.vmap(jax.grad(...))` 造 hessian 会在**标量输入**下炸（vmap 要求 rank≥1）——闭式 elementwise 无此问题（D2.62 踩过）。
+- **不是所有族都在分道**：修好初值后多数族直接 pass；hessian 形式只在"初值对 + 仍差 1e-3~1e-2"时才是首选嫌疑。判断依据是**逐周期系数对比**（max_iter=k, k=1..6 双方 dump），不是单点 deviance。
+
+## d2ldt2 特殊形式清单（活 R，遇族先查）
+
+- ZABNB：d2ldt2 = **-1/(tau*(1-tau))**（不是 -score²）；其余三参数是 hurdle 修正后的 -dld²（`dld0 = BNB$dld(y)+dBNB(0)*BNB$dld(0)/(1-dBNB(0))`，y==0 时 dld≡0）。
+- ZIBNB：dldt 分段（y==0 时 `(1-f0)/(tau+(1-tau)f0)`，否则 `-1/(1-tau)`），d2ld*2 全 -dld²。
+- ST5：mu/sigma 地板 -1e-15、nu/tau 地板 **-1e-4**。
+
 ## 同名不同义与占位（D2.34/D2.35）
 
 - JSU/JSUo、SHASHo/BCPEo 的 "o"=original 参数化（公式完全不同）；**BCCG/BCT/BCPE 的 mu/nu link=identity，o 变体才是 log**。三关同挂+量级 0.3~1=送错分布签名，先活 R dump 验 link 身份。
