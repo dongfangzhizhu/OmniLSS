@@ -156,6 +156,10 @@ _DERIV_TOLERANCE: dict[tuple[str, str], float] = {
     ("ST2", "tau"): 5e-1,
     ("DBI", "sigma"): 1e-2,
     ("GIG", "nu"): 1e-2,
+    # SEP1's tau score is R's dldt verbatim (D2.61): an analytic dldf plus a
+    # finite difference of a *simplified* CDF term.  Valid only where the
+    # negative tail is negligible -- see the note.
+    ("SEP1", "tau"): 1e-2,
 }
 
 _DERIV_TOLERANCE_NOTE: dict[tuple[str, str], str] = {
@@ -190,6 +194,22 @@ _DERIV_TOLERANCE_NOTE: dict[tuple[str, str], str] = {
         "converged -- identical from h=1e-3 down to 1e-7 -- so this is R's "
         "discretisation, not the step size.  Ours matches R to 1.2e-6; fixing "
         "it would move us away from parity (D2.15)."
+    ),
+    ("SEP1", "tau"): (
+        "R's SEP1 dldt is an analytic dldf plus a two-sided difference "
+        "(t1 = tau+2e-5, t2 = tau-2e-5) of the CDF part, and that CDF term is "
+        "written log(1 + pgamma(s, 1/tau)) -- without the sign(w) that the "
+        "real lcdf carries.  For w > 0 (or where the tail mass is tiny) the "
+        "two agree to 1e-10; for w < 0 in the tail they do not.  Measured on "
+        "live R (omnilss/tmp/sep1_dldt_probe.R), R's own dldt vs a central "
+        "difference (h = 1e-6) of R's own dSEP1: rel 8.1e-11 / 1.1e-10 / "
+        "4.4e-11 / 5.7e-01 / 1.1e-10 at (y, mu, sigma, nu, tau) = "
+        "(0.5,2,1,0,2) / (1,2,1,-0.5,1) / (2.5,2,0.5,0.5,2) / "
+        "(4,2,0.5,-1,1.5) / (0.1,2,1.5,-0.8,2.5) -- i.e. R is off by 57% at "
+        "the fourth point, not us.  We transcribe R's formula so the IRLS "
+        "sees exactly what R's does; on the gate's calibrated grid the gap "
+        "is 1.489e-03 (analytic 0.63253/-0.39022 vs fd 0.63253/-0.38873).  "
+        "Fixing the derivative would move us away from R (D2.15)."
     ),
     ("DBI", "sigma"): (
         "R's dDBI switches to plain dbinom when |sigma - 1| < 0.001, so inside "

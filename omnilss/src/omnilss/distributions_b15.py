@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import jax
 import jax.numpy as jnp
 import jax.random as jrandom
-from jax.scipy.special import gammaln, betaln
+from jax.scipy.special import gammainc, gammaln, betaln
 from scipy.stats import nbinom as _nbinom
 from scipy.stats import poisson as _poisson
 from jax.scipy.stats import t as _jst, norm as _jnorm
@@ -252,6 +252,145 @@ def _sep1_r(key, n, mu=0.0, sigma=1.0, nu=0.0, tau=2.0):
     return _sep1_q(u, mu, sigma, nu, tau)
 
 
+# ---------------------------------------------------------------------------
+# R's closed-form scores / diagonal second derivatives for SEP1 (D2.61).
+#
+# Why these exist: SEP1's density reaches gammainc(1/tau, s).  JAX can
+# differentiate that once (igamma_grad_a covers d/da), so the score functions
+# build and the deriv gate passed -- but the *second* derivative re-enters
+# igamma_grad_a and raises "Differentiation rule for 'igamma_grad_a' not
+# implemented".  The RS fit needs the Hessian, so SEP1 could not be fitted at
+# all: rsdev reported "python raised NotImplementedError" on every sample.
+# This is exactly the BCT/BCPE pattern documented in build_ad_family: hand in
+# R's own derivatives instead of teaching JAX another special function.
+#
+# R's SEP1() slots, transcribed verbatim from live gamlss.dist 6.1.1:
+#   dldm/dldd/dldv   closed forms built from lpdf, lcdf and pgamma
+#   dldt             analytic part + a *forward difference* of the CDF part
+#                    in tau (t1 = tau + 2e-5, t2 = tau - 2e-5) -- R itself
+#                    cannot differentiate pgamma(s, 1/tau) in tau, so parity
+#                    means using R's difference, not a better derivative.
+#   d2ldX2           -dldX^2 (observed information), floored downstream.
+#
+# Note on z == 0: R's dldt contains |z|^tau * log|z|, which is 0 * -Inf = NaN
+# at z = 0 exactly.  An exact zero would poison the whole score vector, and
+# the true limit there is 0, so the log argument is floored at eps.
+# ---------------------------------------------------------------------------
+
+def _sep1_deriv_parts(y, mu, sigma, nu, tau):
+    """R's z / w / s / lpdf / lcdf, guarded as in the density."""
+    eps = jnp.finfo(jnp.float64).eps
+    sigma = jnp.maximum(sigma, eps)
+    tau = jnp.maximum(tau, eps)
+    z = (y - mu) / sigma
+    w = nu * z
+    s = jnp.power(jnp.abs(w), tau) / tau
+    lpdf = (1.0 - 1.0 / tau) * jnp.log(tau) - s - gammaln(1.0 / tau) - jnp.log(2.0)
+    pgamma_s = gammainc(1.0 / tau, s)
+    lcdf = jnp.log(0.5 * (1.0 + pgamma_s * jnp.sign(w)))
+    lcdf2 = jnp.log(
+        0.5
+        + w * jnp.exp(
+            (1.0 - 1.0 / tau) * jnp.log(tau) - gammaln(1.0 / tau) - jnp.log(2.0)
+        )
+    )
+    lcdf = jnp.where(s == 0, lcdf2, lcdf)
+    return z, w, s, lpdf, lcdf
+
+
+def _sep1_dldm(y, mu, sigma, nu, tau):
+    z, w, s, lpdf, lcdf = _sep1_deriv_parts(y, mu, sigma, nu, tau)
+    z_abs = jnp.abs(z)
+    return (
+        -jnp.exp(lpdf - lcdf) * nu / sigma
+        + jnp.sign(z) * jnp.power(z_abs, tau - 1.0) / sigma
+    )
+
+
+def _sep1_dldd(y, mu, sigma, nu, tau):
+    z, w, s, lpdf, lcdf = _sep1_deriv_parts(y, mu, sigma, nu, tau)
+    return (
+        -jnp.exp(lpdf - lcdf) * nu * z / sigma
+        + (jnp.power(jnp.abs(z), tau) - 1.0) / sigma
+    )
+
+
+def _sep1_dldv(y, mu, sigma, nu, tau):
+    z, w, s, lpdf, lcdf = _sep1_deriv_parts(y, mu, sigma, nu, tau)
+    dwdv = w / nu
+    return jnp.exp(lpdf - lcdf) * dwdv
+
+
+def _sep1_dldt(y, mu, sigma, nu, tau):
+    from jax.scipy.special import digamma
+
+    eps = jnp.finfo(jnp.float64).eps
+    tau = jnp.maximum(tau, eps)
+    z, w, s, lpdf, lcdf = _sep1_deriv_parts(y, mu, sigma, nu, tau)
+    z_abs = jnp.abs(z)
+    # R: dldf <- (log(tau) + tau - 1 + digamma(1/tau)
+    #             - tau*|z|^tau*log|z| + |z|^tau) / tau^2
+    z_log = jnp.log(jnp.where(z_abs > 0.0, z_abs, eps))
+    z_tau = jnp.power(z_abs, tau)
+    dldf = (
+        jnp.log(tau) + tau - 1.0 + digamma(1.0 / tau)
+        - tau * z_tau * z_log + z_tau
+    ) / (tau * tau)
+    # R's forward difference for the CDF part (delta = 2e-5 either side).
+    t1 = tau + 2e-05
+    t2 = tau - 2e-05
+    w_abs = jnp.abs(w)
+    s1 = jnp.power(w_abs, t1) / t1
+    s2 = jnp.power(w_abs, t2) / t2
+    dldcdf1 = jnp.sign(w) * (
+        jnp.log(1.0 + gammainc(1.0 / t1, s1))
+        - jnp.log(1.0 + gammainc(1.0 / t2, s2))
+    ) / 4e-05
+    lcdf1 = jnp.log(
+        0.5 + w * jnp.exp((1.0 - 1.0 / t1) * jnp.log(t1) - gammaln(1.0 / t1) - jnp.log(2.0))
+    )
+    lcdf2 = jnp.log(
+        0.5 + w * jnp.exp((1.0 - 1.0 / t2) * jnp.log(t2) - gammaln(1.0 / t2) - jnp.log(2.0))
+    )
+    dldcdf2 = (lcdf1 - lcdf2) / 4e-05
+    dldcdf = jnp.where(s == 0, dldcdf2, dldcdf1)
+    return dldf + dldcdf
+
+
+def _sep1_d2ldm2(y, mu, sigma, nu, tau):
+    d = _sep1_dldm(y, mu, sigma, nu, tau)
+    return -d * d
+
+
+def _sep1_d2ldd2(y, mu, sigma, nu, tau):
+    d = _sep1_dldd(y, mu, sigma, nu, tau)
+    return -d * d
+
+
+def _sep1_d2ldv2(y, mu, sigma, nu, tau):
+    d = _sep1_dldv(y, mu, sigma, nu, tau)
+    return -d * d
+
+
+def _sep1_d2ldt2(y, mu, sigma, nu, tau):
+    d = _sep1_dldt(y, mu, sigma, nu, tau)
+    return -d * d
+
+
+_SEP1_SCORES = {
+    "mu": _sep1_dldm,
+    "sigma": _sep1_dldd,
+    "nu": _sep1_dldv,
+    "tau": _sep1_dldt,
+}
+_SEP1_HESSIANS = {
+    "mu": _sep1_d2ldm2,
+    "sigma": _sep1_d2ldd2,
+    "nu": _sep1_d2ldv2,
+    "tau": _sep1_d2ldt2,
+}
+
+
 def SEP1():
     """Skew Exponential Power Type 1 (R SEP1)."""
     return build_ad_family(
@@ -260,6 +399,8 @@ def SEP1():
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_sep1_log_pdf,
         type_="Continuous",
+        score_overrides=_SEP1_SCORES,
+        hessian_overrides=_SEP1_HESSIANS,
         p=_sep1_p,
         q=_sep1_q,
         r=_sep1_r,
