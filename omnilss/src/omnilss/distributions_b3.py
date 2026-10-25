@@ -288,6 +288,135 @@ def _shash_log_pdf(y, mu, sigma, nu, tau):
     return -jnp.log(sigma) - 0.5 * math.log(2.0 * math.pi) - 0.5 * jnp.log1p(z**2) + jnp.log(jnp.maximum(c, eps)) - 0.5 * r**2
 
 
+# ---------------------------------------------------------------------------
+# R's closed-form scores and -score^2 Hessians for SHASH / SHASHo (D2.66).
+#
+# R's SHASH() and SHASHo() carry the full derivative slots, and every one of
+# their d2ldX2 is the observed-information form -dldX^2 floored at -1e-15.
+# Our AD path feeds the true second derivative instead, so the IRLS weights
+# differ and the trajectories drift apart: measured on the scanner sample,
+# SHASH 136.687 vs R 136.387 and SHASHo 128.778 vs R 128.618 -- a ~1e-3
+# relative gap that swapping only the Hessian narrowed to 136.647 but did not
+# close.  Transcribing both the scores and the Hessians takes the family off
+# the AD path entirely (the SEP1/JSUO/ST5 pattern).
+#
+# Transcribed from live gamlss.dist 6.1.1 SHASH()$dldm/dldd/dldv/dldt and
+# SHASHo()$dldm/dldd/dldv/dldt (see the D2.66 log for the deparsed bodies).
+# ---------------------------------------------------------------------------
+
+def _shash_parts(y, mu, sigma, nu, tau):
+    """R's z / a / r / c / h with the density's guards."""
+    eps = jnp.finfo(jnp.float64).eps
+    sigma = jnp.maximum(sigma, eps)
+    tau = jnp.maximum(tau, eps)
+    z = (y - mu) / sigma
+    a = jnp.arcsinh(z)
+    et = jnp.exp(tau * a)
+    en = jnp.exp(-nu * a)
+    r = 0.5 * (et - en)
+    c = 0.5 * (tau * et + nu * en)
+    h = 0.5 * (tau * tau * et - nu * nu * en)
+    return z, a, r, c, h, sigma, tau
+
+
+def _shash_common(y, mu, sigma, nu, tau):
+    """R's (dldr*drdz + dldc*dcdz + dldz) term."""
+    z, a, r, c, h, sigma, tau = _shash_parts(y, mu, sigma, nu, tau)
+    s = jnp.sqrt(1.0 + z * z)
+    dldz = -z / (1.0 + z * z)
+    dcdz = h / s
+    drdz = c / s
+    return (-r) * drdz + (1.0 / c) * dcdz + dldz
+
+
+def _shash_dldm(y, mu, sigma, nu, tau):
+    z, a, r, c, h, sigma, tau = _shash_parts(y, mu, sigma, nu, tau)
+    return _shash_common(y, mu, sigma, nu, tau) * (-1.0 / sigma)
+
+
+def _shash_dldd(y, mu, sigma, nu, tau):
+    z, a, r, c, h, sigma, tau = _shash_parts(y, mu, sigma, nu, tau)
+    return _shash_common(y, mu, sigma, nu, tau) * (-z / sigma) - 1.0 / sigma
+
+
+def _shash_dldv(y, mu, sigma, nu, tau):
+    z, a, r, c, h, sigma, tau = _shash_parts(y, mu, sigma, nu, tau)
+    drdv = 0.5 * a * jnp.exp(-nu * a)
+    dcdv = 0.5 * (1.0 - nu * a) * jnp.exp(-nu * a)
+    return (-r) * drdv + (1.0 / c) * dcdv
+
+
+def _shash_dldt(y, mu, sigma, nu, tau):
+    z, a, r, c, h, sigma, tau = _shash_parts(y, mu, sigma, nu, tau)
+    drdt = 0.5 * a * jnp.exp(tau * a)
+    dcdt = 0.5 * (1.0 + tau * a) * jnp.exp(tau * a)
+    return (-r) * drdt + (1.0 / c) * dcdt
+
+
+def _shasho_parts(y, mu, sigma, nu, tau):
+    eps = jnp.finfo(jnp.float64).eps
+    sigma = jnp.maximum(sigma, eps)
+    tau = jnp.maximum(tau, eps)
+    z = (y - mu) / sigma
+    a = jnp.arcsinh(z)
+    x = tau * a - nu
+    return z, a, jnp.sinh(x), jnp.cosh(x), jnp.sinh(x), sigma, tau
+
+
+def _shasho_dldm(y, mu, sigma, nu, tau):
+    z, a, r, c, sinh_x, sigma, tau = _shasho_parts(y, mu, sigma, nu, tau)
+    s = jnp.sqrt(1.0 + z * z)
+    return (1.0 / (sigma * s)) * (r * tau * c - (tau * sinh_x) / c + z / s)
+
+
+def _shasho_dldd(y, mu, sigma, nu, tau):
+    z, a, r, c, sinh_x, sigma, tau = _shasho_parts(y, mu, sigma, nu, tau)
+    s = jnp.sqrt(1.0 + z * z)
+    return (z / (sigma * s)) * (r * tau * c - (tau * sinh_x) / c + z / s) - 1.0 / sigma
+
+
+def _shasho_dldv(y, mu, sigma, nu, tau):
+    z, a, r, c, sinh_x, sigma, tau = _shasho_parts(y, mu, sigma, nu, tau)
+    return r * c - sinh_x / c
+
+
+def _shasho_dldt(y, mu, sigma, nu, tau):
+    z, a, r, c, sinh_x, sigma, tau = _shasho_parts(y, mu, sigma, nu, tau)
+    return (-r * c + sinh_x / c) * a + 1.0 / tau
+
+
+def _neg_sq_floor(d):
+    v = -d * d
+    return jnp.where(v < -1e-15, v, -1e-15)
+
+
+_SHASH_SCORES = {
+    "mu": _shash_dldm,
+    "sigma": _shash_dldd,
+    "nu": _shash_dldv,
+    "tau": _shash_dldt,
+}
+_SHASH_HESSIANS = {
+    "mu": lambda y, mu, sigma, nu, tau: _neg_sq_floor(_shash_dldm(y, mu, sigma, nu, tau)),
+    "sigma": lambda y, mu, sigma, nu, tau: _neg_sq_floor(_shash_dldd(y, mu, sigma, nu, tau)),
+    "nu": lambda y, mu, sigma, nu, tau: _neg_sq_floor(_shash_dldv(y, mu, sigma, nu, tau)),
+    "tau": lambda y, mu, sigma, nu, tau: _neg_sq_floor(_shash_dldt(y, mu, sigma, nu, tau)),
+}
+
+_SHASHO_SCORES = {
+    "mu": _shasho_dldm,
+    "sigma": _shasho_dldd,
+    "nu": _shasho_dldv,
+    "tau": _shasho_dldt,
+}
+_SHASHO_HESSIANS = {
+    "mu": lambda y, mu, sigma, nu, tau: _neg_sq_floor(_shasho_dldm(y, mu, sigma, nu, tau)),
+    "sigma": lambda y, mu, sigma, nu, tau: _neg_sq_floor(_shasho_dldd(y, mu, sigma, nu, tau)),
+    "nu": lambda y, mu, sigma, nu, tau: _neg_sq_floor(_shasho_dldv(y, mu, sigma, nu, tau)),
+    "tau": lambda y, mu, sigma, nu, tau: _neg_sq_floor(_shasho_dldt(y, mu, sigma, nu, tau)),
+}
+
+
 def SHASH() -> SinhArcsinhFamily:
     _attach_numeric_real_line_dpq(SinhArcsinhFamily, _shash_log_pdf)
     return build_ad_family(
@@ -296,6 +425,8 @@ def SHASH() -> SinhArcsinhFamily:
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_shash_log_pdf,
         type_="Continuous",
+        score_overrides=_SHASH_SCORES,
+        hessian_overrides=_SHASH_HESSIANS,
         links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "log"},
         link_functions={"mu": identity_link, "sigma": log_link, "nu": log_link, "tau": log_link},
         link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
@@ -336,6 +467,8 @@ def SHASHo() -> SinhArcsinhOFamily:
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_shasho_log_pdf,
         type_="Continuous",
+        score_overrides=_SHASHO_SCORES,
+        hessian_overrides=_SHASHO_HESSIANS,
         links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
         link_functions={"mu": identity_link, "sigma": log_link, "nu": identity_link, "tau": log_link},
         link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": identity_inverse, "tau": log_inverse},
