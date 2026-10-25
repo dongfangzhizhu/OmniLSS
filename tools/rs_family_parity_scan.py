@@ -494,6 +494,36 @@ _RSDEV_PATH_DIVERGENT: dict[str, dict] = {
     ),
 }
 
+#: Families whose live-R fit *diverges* at the gate budget: the reference is
+#: not merely stale or floor-degraded, R's own iteration leaves the parameter
+#: region and its reported deviance is astronomically worse than anything it
+#: produced on the way.  The gate compares against the best value R reached
+#: anywhere along its trace, which is the strongest statement R's own run
+#: supports, and requires our fit to beat it.
+_RSDEV_R_DIVERGED: dict[str, dict] = {
+    "GT": dict(
+        reported=153864.963870,
+        best_trace=120.685644,
+        best_trace_cycle=6,
+        dev_ours=116.798974,
+        note=(
+            "D2.68, full-family-stream sample.  R's GT fit is well behaved "
+            "through cycle 6 (139.796 / 132.873 / 129.2329 / 126.9127 / "
+            "124.6797 / 120.6856) and then jumps to 174198.8 at cycle 7, "
+            "creeping down to 153865 by cycle 20 (converged = FALSE).  The "
+            "jump is R's own: its nu coefficient freezes at 7.5125 for the "
+            "whole run while tau runs away.  There is therefore no R "
+            "reference at the gate budget -- the best value R ever reached "
+            "is 120.6856 at cycle 6.  Before D2.68 our side matched R's "
+            "self-destruction (1424.36) because GT had no initial values: mu "
+            "fell through to target=y and sigma to the eps floor "
+            "(2.2e-16), which sent the first mu inner fit to 1.2e6.  With "
+            "R's mu.initial = (y+mean(y))/2 and sigma.initial = sd(y)/4 our "
+            "fit descends monotonically to 116.798974 at cycle 20."
+        ),
+    ),
+}
+
 _RSDEV_R_REFERENCE_INVALID: dict[str, dict] = {
     "ZABNB": dict(
         reported=202.9046037917726,
@@ -1474,6 +1504,33 @@ def gate_rs_deviance(family: str, results: list[dict], index: dict, fit_data) ->
         # R's own density returns at a numerically safe sigma, and our point
         # has to be below that -- both conditions are re-checked against the
         # recorded numbers so a regression cannot ride in on the note.
+        # R's own fit diverged: compare against the best value it reached
+        # anywhere along its trace, not the blown-up endpoint (D2.68, GT).
+        diverged = _RSDEV_R_DIVERGED.get(family)
+        if diverged is not None:
+            same = (
+                abs(py_dev - diverged["dev_ours"]) <= 1e-3 * max(abs(diverged["dev_ours"]), 1.0)
+                and abs(r_dev - diverged["reported"]) <= 1e-3 * max(abs(diverged["reported"]), 1.0)
+            )
+            if same and py_dev < diverged["best_trace"]:
+                return {
+                    "status": "warn",
+                    "detail": (
+                        f"R's fit diverged (reported {r_dev:.6g}); R's best along its "
+                        f"trace is {diverged['best_trace']:.6g} at cycle "
+                        f"{diverged['best_trace_cycle']}, ours {py_dev:.6g} is below it"
+                    ),
+                }
+            if same:
+                return {
+                    "status": "fail",
+                    "detail": (
+                        f"deviance {py_dev:.6g} vs R {r_dev:.6g} (rel {rel:.3e}); "
+                        f"registered as R-diverged but ours is NOT below R's best "
+                        f"trace value {diverged['best_trace']:.6g} -- re-verify"
+                    ),
+                }
+
         # A trajectory that splits on a flat ridge at an inner-loop threshold
         # knife-edge: identical up to the split cycle, identical densities,
         # converging to the same region at a longer budget (D2.67, SHASH).

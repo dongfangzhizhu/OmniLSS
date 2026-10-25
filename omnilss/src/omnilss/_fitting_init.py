@@ -551,6 +551,13 @@ def _initial_mu_target(
         # sigma astronomically large, log(1-u) went to -inf and the deviance
         # came out infinite on every sample.
         target = (y + np.mean(y)) / 2.0
+    elif family.name == "GT":
+        # R GT()$mu.initial (live gamlss.dist 6.1.1):
+        #     mu <- (y + mean(y))/2,  mu link identity.
+        # GT had no entries at all: the generic target=y start plus a
+        # residual-scale sigma on the eps floor made the first mu inner fit
+        # run away to 1.2e6 and the deviance to 1521 on cycle 1.
+        target = (y + np.mean(y)) / 2.0
     elif family.name == "BCPEUNTR":
         # R BCPEuntr()$mu.initial (live gamlss.dist 6.1.1):
         #     mu <- y + 1e-04
@@ -844,6 +851,10 @@ def _initial_sigma(
         sigma = 0.1
     elif family.name == "ST5":
         # R ST5()$sigma.initial (live gamlss.dist 6.1.1):
+        #     sigma <- rep(sd(y)/4, length(y))
+        sigma = float(np.std(y, ddof=1) / 4.0)
+    elif family.name == "GT":
+        # R GT()$sigma.initial (live gamlss.dist 6.1.1):
         #     sigma <- rep(sd(y)/4, length(y))
         sigma = float(np.std(y, ddof=1) / 4.0)
     elif family.name == "BCPEUNTR":
