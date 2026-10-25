@@ -37,13 +37,17 @@ def _nu_start(name: str) -> float:
 
 #: Zero-variants whose zero-mass parameter *is* `nu`, and where R starts it at
 #: `rep(0.1, length(y))`.  Read off the R sources line by line -- ZIPIG.R:91 is
-#: `nu <- rep(0.1, length(y))`, ZAPIG.R / ZAZIPF.R / ZABI.R / ZINBI.R /
-#: ZIBI.R agree.  Not inferred from the name.
+#: `nu <- rep(0.1, length(y))`, and ZAPIG.R / ZAZIPF.R / ZINBI.R agree.  Not
+#: inferred from the name.
 #: ZANBI was listed here through D2.26 but D2.38's live-R dump of the family
 #: *object* shows ZANBI()$nu.initial is data-driven --
 #: `rep(max(sum(y == 0)/length(y), 0.01), length(y))` -- not the constant 0.1
 #: the source read suggested; it is asserted separately below.
-_R_NU_INITIAL_0_1 = ("ZIPIG", "ZAPIG", "ZIBI", "ZAZIPF", "ZABI", "ZINBI")
+#: ZABI/ZIBI were listed here too, on the strength of the same file names.
+#: D2.71 read the lines instead: both say
+#: `sigma.initial <- expression(sigma <- rep(0.3, length(y)))`.  They are
+#: asserted separately, below.
+_R_NU_INITIAL_0_1 = ("ZIPIG", "ZAPIG", "ZAZIPF", "ZINBI")
 
 #: Zero-variants over a *continuous* base, which R starts elsewhere.  Listed so
 #: that widening the 0.1 branch cannot quietly capture them: R's ZAGA / ZAIG
@@ -76,6 +80,24 @@ def test_a_zero_variant_starts_at_rs_nu_initial(name):
     seventeen logit units from R's start.
     """
     assert _nu_start(name) == 0.1
+
+
+@pytest.mark.parametrize("name", ("ZABI", "ZIBI"))
+def test_the_binomial_zero_variants_start_their_zero_mass_at_0_3(name):
+    """R ZABI.R / ZIBI.R: `sigma.initial <- rep(0.3, length(y))`.
+
+    These two sat in the 0.1 branch until D2.71 because the note cited their
+    file names next to families that really do start at 0.1.  Both sources say
+    0.3, and live R 4.6 + gamlss.dist 6.1.1 confirms it:
+
+        ZABI()$sigma.initial  ->  expression(sigma <- rep(0.3, length(y)))
+        ZIBI()$sigma.initial  ->  expression(sigma <- rep(0.3, length(y)))
+
+    The value matters here because the zero mass of a *binomial* variant is
+    the parameter R's `dldd` divides by: starting at 0.1 instead of 0.3 moves
+    the first sigma step by a factor of three (0.9 vs 0.7 in the denominator).
+    """
+    assert _nu_start(name) == 0.3
 
 
 def test_zanbi_nu_initial_is_the_observed_zero_fraction():
@@ -199,8 +221,12 @@ def test_known_nu_initial_gaps_against_r():
         "ZAIG": (0.2, 0.5),
         "BEZI": (0.2, 0.3),
         "BEOI": (0.2, 0.3),
-        "ZABNB": (1.0, 0.1),
-        "ZIBNB": (1.0, 0.1),
+        # ZABNB/ZIBNB are no longer gaps: D2.59 added both to the
+        # `nu <- rep(0.1, length(y))` branch (their zero mass is `tau`, but
+        # their `nu` -- the base BNB's shape -- is what R starts at 0.1).
+        # Kept in the table so a future edit to that branch is still noticed.
+        "ZABNB": (0.1, 0.1),
+        "ZIBNB": (0.1, 0.1),
         "ZASICHEL": (1.0, -0.5),
         "ZISICHEL": (1.0, -0.5),
         # No R counterpart at all, so there is nothing to converge to.

@@ -84,13 +84,18 @@ def test_zabi_basic():
     """Test ZABI distribution basic functionality."""
     family = ZABI()
     assert family.name == "ZABI"
-    assert family.parameters == ("mu", "nu")
-    
+    # D2.71: bd (the binomial denominator) is part of the parameter layout,
+    # exactly as in R's dZABI(x, bd, mu, sigma).  It is declared fixed, so
+    # the fit takes it from the data; d/p/q default it to 1 (Bernoulli).
+    assert family.parameters == ("mu", "nu", "bd")
+    assert tuple(family.fixed_parameters) == ("bd",)
+
     y = jnp.array([0.0, 1.0, 2.0, 5.0])
     mu = jnp.array([0.5, 0.5, 0.5, 0.5])
     nu_zero = jnp.array([0.3, 0.3, 0.3, 0.3])
-    
-    pdf = family.pdf(y, mu, nu_zero)
+    bd = jnp.full(4, 5.0)
+
+    pdf = family.pdf(y, mu, nu_zero, bd)
     assert pdf.shape == y.shape
     assert jnp.all(jnp.isfinite(pdf))
     assert jnp.all(pdf >= 0)
@@ -100,13 +105,18 @@ def test_zibi_basic():
     """Test ZIBI distribution basic functionality."""
     family = ZIBI()
     assert family.name == "ZIBI"
-    assert family.parameters == ("mu", "nu")
-    
+    # D2.71: bd (the binomial denominator) is part of the parameter layout,
+    # exactly as in R's dZIBI(x, bd, mu, sigma).  It is declared fixed, so
+    # the fit takes it from the data; d/p/q default it to 1 (Bernoulli).
+    assert family.parameters == ("mu", "nu", "bd")
+    assert tuple(family.fixed_parameters) == ("bd",)
+
     y = jnp.array([0.0, 1.0, 2.0, 5.0])
     mu = jnp.array([0.5, 0.5, 0.5, 0.5])
     nu_zero = jnp.array([0.3, 0.3, 0.3, 0.3])
-    
-    pdf = family.pdf(y, mu, nu_zero)
+    bd = jnp.full(4, 5.0)
+
+    pdf = family.pdf(y, mu, nu_zero, bd)
     assert pdf.shape == y.shape
     assert jnp.all(jnp.isfinite(pdf))
     assert jnp.all(pdf >= 0)

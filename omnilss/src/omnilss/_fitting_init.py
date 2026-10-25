@@ -137,7 +137,9 @@ def _initial_parameter_value(
         # Zero-inflated/altered distributions whose zero-mass parameter is
         # literally `nu` (D2.26).  R starts each of these at
         # `nu <- rep(0.1, length(y))` -- read off the R sources, e.g.
-        # ZIPIG.R:91, ZAPIG.R, ZAZIPF.R, ZABI.R, ZANBI.R, ZINBI.R, ZIBI.R.
+        # ZIPIG.R:91, ZAPIG.R, ZAZIPF.R, ZANBI.R, ZINBI.R.
+        # ZABI.R / ZIBI.R used to be listed here too; D2.71 read the lines and
+        # both say `rep(0.3, length(y))` -- they have their own branch above.
         # Falling through to the 1.0 default below sends logit(1.0) = +inf
         # into the eta clip at +15 -- seventeen logit units from R's
         # logit(0.1) = -2.197 -- and the RS iteration does not recover: on the
@@ -150,8 +152,16 @@ def _initial_parameter_value(
         # starts at 2; ZABNB / ZIBNB do start `nu` at 0.1 but it is a shape
         # parameter, not a probability.  Same parameter name, different role --
         # the D2.19 lesson.
-        if family.name in ("ZIPIG", "ZAPIG", "ZIBI", "ZAZIPF", "ZABI",
-                           "ZANBI", "ZINBI"):
+        if family.name in ("ZIBI", "ZABI"):
+            # R ZIBI.R / ZABI.R, live gamlss.dist 6.1.1:
+            #     sigma.initial <- expression(sigma <- rep(0.3, length(y)))
+            # The zero mass of the *binomial* variants starts at 0.3, not at
+            # the 0.1 the other zero-mass families use (D2.71).  It read as
+            # 0.1 here only because both families used to be built by the
+            # generic Bernoulli factory, whose note cited them by file name
+            # without the value being checked.
+            return 0.3
+        if family.name in ("ZIPIG", "ZAPIG", "ZAZIPF", "ZANBI", "ZINBI"):
             return 0.1  # R's nu.initial: rep(0.1, length(y))
         # Zero-inflated/altered distributions: nu is zero-inflation probability
         # Use logit link, so initial value should be small but positive
@@ -299,6 +309,13 @@ def _initial_mu_target(
         # Zero-altered/inflated: use log link, exclude zeros from initialization
         # For zeros, use small positive value
         target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
+    elif family.name in ("ZABI", "ZIBI"):
+        # R ZABI.R / ZIBI.R, live gamlss.dist 6.1.1:
+        #     mu.initial <- expression(mu <- rep(0.5, length(y)))
+        # mu.link is logit, so the *link-scale* target is logit(0.5) = 0.  A
+        # constant start, deliberately not data-driven -- the generic path
+        # started from the response's own location instead (D2.71).
+        target = np.zeros_like(y, dtype=np.float64)
     elif family.name in ("BI", "DBI"):
         # R BI()$mu.initial / DBI()$mu.initial (verified against live R):
         #     expression({ mu <- (y + 0.5)/(bd + 1) })

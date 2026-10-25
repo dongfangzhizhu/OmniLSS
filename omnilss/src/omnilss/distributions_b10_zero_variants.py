@@ -823,25 +823,320 @@ def ZIBB(bd=10):
         },
     )
 
+# ---------------------------------------------------------------------------
+# ZABI / ZIBI -- the two binomial zero variants, with R's bd (D2.71)
+# ---------------------------------------------------------------------------
+#
+# R builds both on the *binomial* with an explicit denominator (bd, the size
+# of dbinom) plus a zero mass:
+#
+#     ZABI (hurdle)   f(0)   = nu
+#                     f(y>0) = (1-nu) f(y) / (1 - f(0))
+#     ZIBI (inflated) f(0)   = nu + (1-nu) f(0)
+#                     f(y>0) = (1-nu) f(y)          with f = dbinom(., bd, mu)
+#
+# The generic factories above build ZA*/ZI* over a *bd-less* base -- correct
+# for the Bernoulli case, and the reason these two families could not express
+# anything else.  Two measured consequences (D2.70 log):
+#
+#   * ZIBI could not be measured at all.  The scan draws its fitting sample
+#     over the family's response range; with no bd that range was the generic
+#     discrete 0..7, six values a Bernoulli does not have, so the "density
+#     disagreement" that kept ZIBI out of the probe map was our own density
+#     answering for y > 1 -- not a difference with R.
+#   * R takes bd as a fixed parameter exactly like BI(), so dBI(y, bd, mu)
+#     with bd > 1 has to be expressible.
+#
+# Scores are R's own transcriptions rather than AD's: R uses the
+# observed-information approximation (d2ldm2 = -dldm^2, d2ldd2 = -dldd^2);
+# ZABI instead uses the exact -1/(nu(1-nu)) for its zero mass.  Feeding exact
+# second derivatives changes the IRLS step from the first inner loop on -- the
+# D2.40/D2.54 lesson.
+
+
+def _binomial_bd_log_pdf(y, mu, bd):
+    """log dbinom(y, size=bd, prob=mu), -inf off the support.
+
+    R's dBI is the plain binomial with the count as its response, so this is
+    the base both variants need.  Values with y > bd or a non-integer y are
+    outside the support: R's dZABI/dZIBI set those to zero mass rather than
+    evaluating dbinom there, which is what the mask reproduces.
+    """
+    from jax.scipy.special import gammaln
+
+    y = jnp.asarray(y, dtype=jnp.float64)
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    bd = jnp.asarray(bd, dtype=jnp.float64)
+    eps = jnp.finfo(jnp.float64).eps
+    mu = jnp.clip(mu, eps, 1.0 - eps)
+    bd = jnp.maximum(bd, 1.0)
+    valid = (y >= 0.0) & (y <= bd) & (y == jnp.floor(y))
+    y_safe = jnp.where(valid, y, 0.0)
+    log_dens = (
+        gammaln(bd + 1.0)
+        - gammaln(y_safe + 1.0)
+        - gammaln(bd - y_safe + 1.0)
+        + y_safe * jnp.log(mu)
+        + (bd - y_safe) * jnp.log1p(-mu)
+    )
+    return jnp.where(valid, log_dens, -jnp.inf)
+
+
+def _binomial_bd_dldm(y, mu, bd):
+    """R's BI()$dldm(y, mu, bd): (y - bd*mu)/(mu*(1-mu))."""
+    eps = jnp.finfo(jnp.float64).eps
+    y = jnp.asarray(y, dtype=jnp.float64)
+    mu = jnp.clip(jnp.asarray(mu, dtype=jnp.float64), eps, 1.0 - eps)
+    bd = jnp.maximum(jnp.asarray(bd, dtype=jnp.float64), 1.0)
+    return (y - bd * mu) / (mu * (1.0 - mu))
+
+
+def _binomial_zero_f0(mu, bd):
+    """The base mass at zero, dBI(0, bd, mu) = (1-mu)^bd."""
+    eps = jnp.finfo(jnp.float64).eps
+    mu = jnp.clip(jnp.asarray(mu, dtype=jnp.float64), eps, 1.0 - eps)
+    bd = jnp.maximum(jnp.asarray(bd, dtype=jnp.float64), 1.0)
+    return jnp.exp(bd * jnp.log1p(-mu))
+
+
+def _binomial_zero_nu(nu):
+    eps = jnp.finfo(jnp.float64).eps
+    return jnp.clip(jnp.asarray(nu, dtype=jnp.float64), eps, 1.0 - eps)
+
+
+def _zabi_log_pdf(y, mu, nu, bd):
+    """R dZABI: log(nu) at zero, the rest conditioned on Y > 0."""
+    y = jnp.asarray(y, dtype=jnp.float64)
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    nu = _binomial_zero_nu(nu)
+    bd = jnp.asarray(bd, dtype=jnp.float64)
+    log_base = _binomial_bd_log_pdf(y, mu, bd)
+    f0 = _binomial_zero_f0(mu, bd)
+    log_cont = jnp.log1p(-nu) + log_base - jnp.log1p(-f0)
+    return jnp.where(y == 0, jnp.log(nu), log_cont)
+
+
+def _zibi_log_pdf(y, mu, nu, bd):
+    """R dZIBI: the base CDF's zero mass scaled into [nu, 1]."""
+    y = jnp.asarray(y, dtype=jnp.float64)
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    nu = _binomial_zero_nu(nu)
+    bd = jnp.asarray(bd, dtype=jnp.float64)
+    log_base = _binomial_bd_log_pdf(y, mu, bd)
+    f0 = _binomial_zero_f0(mu, bd)
+    log_at0 = jnp.log(nu + (1.0 - nu) * f0)
+    log_cont = jnp.log1p(-nu) + log_base
+    return jnp.where(y == 0, log_at0, log_cont)
+
+
+def _zabi_dldm(y, mu, nu, bd):
+    """R ZABI()$dldm."""
+    y = jnp.asarray(y, dtype=jnp.float64)
+    zeros = jnp.zeros_like(y)
+    f0 = _binomial_zero_f0(mu, bd)
+    value = _binomial_bd_dldm(y, mu, bd) + (
+        f0 * _binomial_bd_dldm(zeros, mu, bd) / (1.0 - f0)
+    )
+    return jnp.where(y == 0, 0.0, value)
+
+
+def _zabi_dldd(y, mu, nu, bd):
+    """R ZABI()$dldd: 1/nu at zero, -1/(1-nu) elsewhere."""
+    y = jnp.asarray(y, dtype=jnp.float64)
+    nu = _binomial_zero_nu(nu)
+    return jnp.where(y == 0, 1.0 / nu, -1.0 / (1.0 - nu))
+
+
+def _zabi_d2ldm2(y, mu, nu, bd):
+    """R ZABI()$d2ldm2: zero at y == 0, -dldm^2 elsewhere."""
+    score = _zabi_dldm(y, mu, nu, bd)
+    y = jnp.asarray(y, dtype=jnp.float64)
+    return jnp.where(y == 0, 0.0, -score * score)
+
+
+def _zabi_d2ldd2(y, mu, nu, bd):
+    """R ZABI()$d2ldd2: -1/(nu*(1-nu)), not -dldd^2."""
+    nu = _binomial_zero_nu(nu)
+    return -1.0 / (nu * (1.0 - nu))
+
+
+def _zibi_dldm(y, mu, nu, bd):
+    """R ZIBI()$dldm."""
+    y = jnp.asarray(y, dtype=jnp.float64)
+    zeros = jnp.zeros_like(y)
+    nu = _binomial_zero_nu(nu)
+    f0 = _binomial_zero_f0(mu, bd)
+    weight = (1.0 - nu) * f0 / (nu + (1.0 - nu) * f0)
+    at_zero = weight * _binomial_bd_dldm(zeros, mu, bd)
+    return jnp.where(y == 0, at_zero, _binomial_bd_dldm(y, mu, bd))
+
+
+def _zibi_dldd(y, mu, nu, bd):
+    """R ZIBI()$dldd."""
+    y = jnp.asarray(y, dtype=jnp.float64)
+    nu = _binomial_zero_nu(nu)
+    f0 = _binomial_zero_f0(mu, bd)
+    at_zero = (1.0 - f0) / (nu + (1.0 - nu) * f0)
+    return jnp.where(y == 0, at_zero, -1.0 / (1.0 - nu))
+
+
+def _zibi_d2ldm2(y, mu, nu, bd):
+    score = _zibi_dldm(y, mu, nu, bd)
+    return -score * score
+
+
+def _zibi_d2ldd2(y, mu, nu, bd):
+    score = _zibi_dldd(y, mu, nu, bd)
+    return -score * score
+
+
+def _zabi_probability(q, mu, nu, bd, *, lower_tail, log_p):
+    """R pZABI: hurdle mass at zero, then the base CDF renormalised."""
+    from .dpqr_functions import pBI
+
+    q = jnp.asarray(q, dtype=jnp.float64)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    bd_arr = jnp.asarray(bd, dtype=jnp.float64)
+    cdf = pBI(q, mu=mu, bd=bd_arr)
+    cdf0 = pBI(jnp.zeros_like(q), mu=mu, bd=bd_arr)
+    adjusted = nu + (1.0 - nu) * (cdf - cdf0) / (1.0 - cdf0)
+    value = jnp.where(q == 0, nu, adjusted)
+    if not lower_tail:
+        value = 1.0 - value
+    if log_p:
+        value = jnp.log(value)
+    # R clamps *after* the log, so p(-1, log.p=TRUE) is 0, not -Inf.
+    value = jnp.where(q < 0, 0.0, value)
+    return jnp.where(q > bd_arr, 1.0, value)
+
+
+def _zibi_probability(q, mu, nu, bd, *, lower_tail, log_p):
+    """R pZIBI: the base CDF scaled into [nu, 1]."""
+    from .dpqr_functions import pBI
+
+    q = jnp.asarray(q, dtype=jnp.float64)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    bd_arr = jnp.asarray(bd, dtype=jnp.float64)
+    value = nu + (1.0 - nu) * pBI(q, mu=mu, bd=bd_arr)
+    if not lower_tail:
+        value = 1.0 - value
+    if log_p:
+        value = jnp.log(value)
+    value = jnp.where(q < 0, 0.0, value)
+    return jnp.where(q > bd_arr, 1.0, value)
+
+
+def _binomial_zero_quantile(p, mu, nu, bd, *, altered, lower_tail, log_p):
+    """R qZABI / qZIBI.
+
+    Both undo the zero mass by pnew <- (p - nu)/(1 - nu) - 1e-10 and hand pnew
+    to qbinom.  The hurdle additionally has to re-inflate through
+    F(0)*(1-pnew) + pnew, R's own spelling.
+    """
+    from .dpqr_functions import pBI, qBI
+
+    prob = jnp.asarray(p, dtype=jnp.float64)
+    if log_p:
+        prob = jnp.exp(prob)
+    if not lower_tail:
+        prob = 1.0 - prob
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    bd_arr = jnp.asarray(bd, dtype=jnp.float64)
+    rescaled = (prob - nu) / (1.0 - nu) - _QUANTILE_EPSILON
+    if altered:
+        cdf0 = pBI(jnp.zeros_like(rescaled), mu=mu, bd=bd_arr)
+        rescaled = cdf0 * (1.0 - rescaled) + rescaled
+    positive = rescaled > 0
+    quantile = qBI(jnp.where(positive, rescaled, 0.5), mu=mu, bd=bd_arr)
+    quantile = jnp.where(positive, quantile, 0.0)
+    quantile = jnp.where(prob == 0, 0.0, quantile)
+    quantile = jnp.where(prob == 1, bd_arr, quantile)
+    # R: q[p < 0] <- NaN; q[p > 1] <- NaN.
+    return jnp.where((prob >= 0) & (prob <= 1), quantile, jnp.nan)
+
+
+def _make_binomial_zero_variant(name, *, altered):
+    """Build ZABI/ZIBI with R's parameter layout: (mu, nu) + fixed bd."""
+    from .links import identity_derivative, identity_inverse, identity_link
+
+    @dataclass(frozen=True)
+    class _BinomialZeroFamily(FamilyDefinition):
+        pass
+
+    _BinomialZeroFamily.__name__ = f"{name}Family"
+
+    log_pdf_func = _zabi_log_pdf if altered else _zibi_log_pdf
+    dldm = _zabi_dldm if altered else _zibi_dldm
+    dldd = _zabi_dldd if altered else _zibi_dldd
+    d2ldm2 = _zabi_d2ldm2 if altered else _zibi_d2ldm2
+    d2ldd2 = _zabi_d2ldd2 if altered else _zibi_d2ldd2
+
+    def _d(x, mu=0.5, nu=0.1, bd=1.0, log=False):
+        log_value = log_pdf_func(x, mu, nu, bd)
+        return log_value if log else jnp.exp(log_value)
+
+    def _p(q, mu=0.5, nu=0.1, bd=1.0, lower_tail=True, log_p=False):
+        fn = _zabi_probability if altered else _zibi_probability
+        return fn(q, mu, nu, bd, lower_tail=lower_tail, log_p=log_p)
+
+    # The first argument is named `p`, not `prob`: the parity probe passes
+    # d/p/q arguments **by name** (R's dZIBI is (x, bd, mu, sigma), ours is
+    # (x, mu, nu, bd), so position must not matter), and it calls the quantile
+    # with `p=`.  Named `prob`, the call raised TypeError and fell back to the
+    # positional path, which handed bd=10 to `mu` -- reported as "q: max rel
+    # 1.000e+00" on both families (D2.71).
+    def _q(p, mu=0.5, nu=0.1, bd=1.0, lower_tail=True, log_p=False):
+        return _binomial_zero_quantile(
+            p, mu, nu, bd, altered=altered,
+            lower_tail=lower_tail, log_p=log_p,
+        )
+
+    def _r(key, n, mu=0.5, nu=0.1, bd=1.0):
+        draws = _q(jrandom.uniform(key, (n,)), mu, nu, bd)
+        return jnp.asarray(jnp.round(draws), dtype=jnp.float64)
+
+    return build_ad_family(
+        family_class=_BinomialZeroFamily,
+        name=name,
+        # bd is listed as a parameter *and* declared fixed, the BB pattern: the
+        # AD closures and the score transcriptions both need to see it, while
+        # the fit resolves it from the data instead of estimating it.
+        parameters=("mu", "nu", "bd"),
+        log_pdf_func=log_pdf_func,
+        type_="Discrete",
+        links={"mu": "logit", "nu": "logit", "bd": "identity"},
+        link_functions={"mu": logit_link, "nu": logit_link, "bd": identity_link},
+        link_inverses={"mu": logit_inverse, "nu": logit_inverse, "bd": identity_inverse},
+        link_derivatives={"mu": logit_derivative, "nu": logit_derivative, "bd": identity_derivative},
+        fixed_parameters=("bd",),
+        fixed_parameter_defaults={"bd": 1.0},
+        d=_d,
+        p=_p,
+        q=_q,
+        r=_r,
+        score_overrides={"mu": dldm, "nu": dldd},
+        hessian_overrides={"mu": d2ldm2, "nu": d2ldd2},
+    )
+
+
 # ZABI - Zero-Altered Binomial
 def ZABI():
-    """Zero-Altered Binomial distribution."""
-    return make_zero_altered_family(
-        "BI",
-        _binomial_log_pdf,
-        ("mu",),
-        {"mu": "logit"}
-    )
+    """Zero-Altered (hurdle) Binomial, R's ZABI() + d/p/q/rZABI.
+
+    bd (the binomial denominator) is a fixed parameter: supply it in the data
+    like BI(), or leave it out for the Bernoulli default of 1.
+    """
+    return _make_binomial_zero_variant("ZABI", altered=True)
+
 
 # ZIBI - Zero-Inflated Binomial
 def ZIBI():
-    """Zero-Inflated Binomial distribution."""
-    return make_zero_inflated_family(
-        "BI",
-        _binomial_log_pdf,
-        ("mu",),
-        {"mu": "logit"}
-    )
+    """Zero-Inflated Binomial, R's ZIBI() + d/p/q/rZIBI.
+
+    bd (the binomial denominator) is a fixed parameter: supply it in the data
+    like BI(), or leave it out for the Bernoulli default of 1.
+    """
+    return _make_binomial_zero_variant("ZIBI", altered=False)
 
 # ZAZIPF - Zero-Altered Zipf
 def ZAZIPF():

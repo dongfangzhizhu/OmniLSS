@@ -389,12 +389,14 @@ _PROBE_BD = 10.0
 #: on ZAZIPF the densities agree to 1e-16 with (mu, nu) <-> (mu, sigma).
 _R_ARGNAME_MAP: dict[tuple[str, str], str] = {
     ("ZABI", "nu"): "sigma",
+    ("ZIBI", "nu"): "sigma",
     ("ZAZIPF", "nu"): "sigma",
-    # ZIBI is deliberately absent: live R's dZIBI disagrees with our density
-    # on part of the sample (ours 64.668 vs R 78.270 at our own fitted
-    # parameters, with the first observations agreeing to 1e-16), so probing
-    # it turns a skip into a fail without telling us which side is wrong.
-    # That is the next investigation (D2.70 log), not a probe question.
+    # ZIBI was absent through D2.70: its gate compared 64.668 against R's
+    # 78.270 and there was no telling which side was wrong.  D2.71 found the
+    # answer, and it was not this map -- the fitting sample itself was
+    # illegal (our Bernoulli support is {0,1}, the generic discrete grid is
+    # 0..7).  With bd support in the families (R's dZIBI/dZABI default bd=1)
+    # the sample is legal and the probe can run.
 }
 
 #: Fixed parameters whose probe value is a known constant rather than a grid.
@@ -424,12 +426,12 @@ _SUPPORT_BOUNDS: dict[str, tuple[int, int]] = {
     "MN3": (1, 3),
     "MN4": (1, 4),
     "MN5": (1, 5),
-    # ZABI/ZIBI are zero-altered/inflated over a *Bernoulli* here: our
-    # factories build them on the bd-less binomial, and R's dZABI/dZIBI
-    # default to bd = 1, so the legal response is {0, 1}.  A 0..7 grid made R
-    # answer "x must be <= the binomial denominator 1" (D2.70).  Supporting
-    # bd > 1 is an implementation gap in the families, not a probe question.
-    "ZABI": (0, 1),
+    # ZABI/ZIBI now take R's binomial denominator, so the probe passes
+    # bd = _PROBE_BD and the legal response is 0.._PROBE_BD.  Before D2.71 the
+    # families were Bernoulli-only, which is why ZABI needed a (0, 1) bound
+    # and ZIBI could not be fitted or probed at all (D2.70/D2.71).
+    "ZABI": (0, int(_PROBE_BD)),
+    "ZIBI": (0, int(_PROBE_BD)),
 }
 
 #: Families on the closed unit interval whose boundaries carry point masses
@@ -594,6 +596,85 @@ _RSDEV_R_REFERENCE_INVALID: dict[str, dict] = {
         ),
     ),
 }
+
+#: Families whose *own density* is not elementwise, so R's reported deviance
+#: is not the deviance of the likelihood it prints.
+#:
+#: Distinct from :data:`_RSDEV_R_REFERENCE_INVALID` above, where R's density is
+#: right but its *parameter value* is at a floating-point floor.  Here the
+#: parameter is fine and the density is wrong: R's `dZIBI` computes its zero
+#: branch as `log(sigma + (1-sigma)*dBI(0, bd, mu))`, and R's `dBI` is
+#: `dbinom(x, size, prob)`.  With a scalar `x = 0` and a **vector** `mu`,
+#: `dbinom` returns a scalar (it does not recycle `prob` against a length-one
+#: `x`), so `dBI(0, bd, mu)` is `(1 - mu[1])^bd` -- the same number for every
+#: row.  `ifelse` then recycles it, and every y == 0 observation is scored with
+#: row 1's base mass.
+#:
+#: Measured (D2.71, live R 4.6.0 + gamlss.dist 6.1.1)::
+#:
+#:     dBI(0, bd = 1, mu = c(0.1, 0.2, 0.3))       -> 0.9        (length 1)
+#:     dBI(c(0, 0, 0), bd = 1, mu = c(0.1, 0.2, 0.3)) -> 0.9 0.8 0.7
+#:     dZIBI(c(0,0,0), bd = 1, mu = c(0.1,0.2,0.3), sigma = 0.3, log = TRUE)
+#:                                                 -> -0.07257069 x3
+#:
+#: `valid_at` below is R's own density re-evaluated elementwise at R's own
+#: fitted coefficients (`dbinom(0, bd, mu)` per row instead of row 1): that is
+#: the deviance R's likelihood actually implies, and it is the number to
+#: compare against.
+#:
+#: Both binomial zero variants carry the defect, in different branches:
+#:
+#:   * `dZIBI` collapses in its **zero** branch (above);
+#:   * `dZABI` collapses in its **non-zero** branch, through the hurdle
+#:     correction `-log(1 - dBI(0, bd[x!=0], mu[x!=0]))` -- the same scalar `x`
+#:     argument, so the correction is row 1's for every positive observation.
+#:
+#: dZABI's *zero* branch is fine (`log(sigma)` with no `dBI` call), which is why
+#: the defect stayed invisible for so long: on a bd = 1 sample with a
+#: near-constant mu (D2.70's degenerate Bernoulli) the recycled correction is
+#: essentially the right one, and ZABI's rsdev passed.  With bd = 10 and mu
+#: varying over 0.38..0.50 it is not: row 45 (y = 2) is scored with
+#: dBI(0, bd, mu) = 0.018728 instead of its own 0.008355.
+_RSDEV_R_DENSITY_RECYCLED: dict[str, dict] = {
+    "ZABI": dict(
+        reported=217.12261793693773,
+        valid_at=217.37267065897811,
+        dev_ours=217.35866001773957,
+        note=(
+            "D2.71, full-family-stream sample (bd = 10, grid size 8).  R's\n"
+            "ZABI fit ends with sigma = 0.125 and converged = TRUE, and reports\n"
+            "217.122618.  Re-evaluating R's own density elementwise at R's own\n"
+            "fitted mu gives 217.372671 -- the recycled hurdle correction makes\n"
+            "R's number 0.25 too small.  Our fit stops at 217.358660, below the\n"
+            "elementwise reference.  The mechanism is pinned independently of\n"
+            "this sample in\n"
+            "omnilss/tests/test_binomial_zero_variants_bd.py, which asserts\n"
+            "that R's own dZABI answers the same value for two rows with\n"
+            "different mu while ours differs."
+        ),
+    ),
+    "ZIBI": dict(
+        reported=211.99820054100502,
+        valid_at=211.78536661648022,
+        dev_ours=211.77783972614498,
+        note=(
+            "D2.71, full-family-stream sample (bd = 10, grid size 8).  R's\n"
+            "ZIBI fit ends with sigma = 0.164636864 and converged = TRUE, and\n"
+            "reports 211.998201.  Re-evaluating R's own density elementwise at\n"
+            "R's own fitted mu gives 211.785367 -- the row-1 recycling inflates\n"
+            "R's number by 0.21.  Our fit stops at 211.777840, below the\n"
+            "elementwise reference.  The mechanism is pinned independently of\n"
+            "this sample in\n"
+            "omnilss/tests/test_binomial_zero_variants_bd.py:\n"
+            "dBI(0, bd = 1, mu = c(0.1, 0.2, 0.3)) answers 0.9 (length one,\n"
+            "mu[1] only) where dBI(c(0, 0, 0), ...) answers 0.9 0.8 0.7.  The\n"
+            "comparison before D2.71 (ours 64.668 vs R 78.270) was not this\n"
+            "defect at all -- that sample was outside the support (Bernoulli\n"
+            "grid 0..7), which is what the families' bd support fixed."
+        ),
+    ),
+}
+
 
 _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
     # "ST1" was registered here through D2.30 (n_cyc=1000, dev_ours=134.604639,
@@ -1674,6 +1755,36 @@ def gate_rs_deviance(family: str, results: list[dict], index: dict, fit_data) ->
                         f"deviance {py_dev:.6g} vs R {r_dev:.6g} (rel {rel:.3e}); "
                         f"registered as R-reference-invalid but ours is NOT below "
                         f"R's valid value {bad['valid_at']:.6g} -- re-verify"
+                    ),
+                }
+
+        recycled = _RSDEV_R_DENSITY_RECYCLED.get(family)
+        if recycled is not None:
+            same = (
+                abs(py_dev - recycled["dev_ours"])
+                <= 1e-3 * max(abs(recycled["dev_ours"]), 1.0)
+                and abs(r_dev - recycled["reported"])
+                <= 1e-3 * max(abs(recycled["reported"]), 1.0)
+            )
+            if same and py_dev < recycled["valid_at"]:
+                return {
+                    "status": "warn",
+                    "detail": (
+                        f"R's reported deviance {r_dev:.6g} is scored with a "
+                        f"density that is not elementwise (R's own density "
+                        f"evaluated elementwise gives "
+                        f"{recycled['valid_at']:.6g}); ours {py_dev:.6g} is "
+                        f"below that"
+                    ),
+                }
+            if same:
+                return {
+                    "status": "fail",
+                    "detail": (
+                        f"deviance {py_dev:.6g} vs R {r_dev:.6g} (rel {rel:.3e}); "
+                        f"registered as R-density-recycled but ours is NOT below "
+                        f"the elementwise reference {recycled['valid_at']:.6g} "
+                        f"-- re-verify"
                     ),
                 }
 

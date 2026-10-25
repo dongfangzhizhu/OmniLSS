@@ -22,6 +22,12 @@ def _clone(base: FamilyDefinition, name: str, family_class) -> FamilyDefinition:
         score_functions=base.score_functions,
         hessian_functions=base.hessian_functions,
         fixed_parameters=base.fixed_parameters,
+        # D2.71: a cloned family keeps its fixed-parameter *defaults* too.
+        # Dropping them turned ZABI/ZIBI's bd default (1, the Bernoulli) into
+        # "requires fixed parameter 'bd' in data" on every clone-only path --
+        # the registry resolves ZABI/ZIBI through this shell, not through the
+        # builder, so the default had never been reachable.
+        fixed_parameter_defaults=getattr(base, "fixed_parameter_defaults", None),
         constructor_parameters=base.constructor_parameters,
         d=base.d,
         p=base.p,
