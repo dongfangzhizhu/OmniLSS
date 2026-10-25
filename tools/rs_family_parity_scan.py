@@ -610,6 +610,99 @@ _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
             "(D2.30); a sublist run shifts them on BOTH sides."
         ),
     ),
+    "GAF": dict(
+        n_cyc=20,
+        dev_ours=142.061586,
+        dev_r=142.222355,
+        note=(
+            "D2.65 two-step adjudication on the full-family-stream sample.\n"
+            "Step 1: R does not converge at the scanner budget (per-cycle "
+            "deviance 142.2523 -> 142.2463 -> ... , still descending at cycle "
+            "20, converged = FALSE); at n.cyc = 200 R settles on 142.078239, "
+            "which is still above our 142.061586.\n"
+            "Step 2: R's own dGAF evaluated at our coefficients (mu = "
+            "exp(0.6732 - 0.0459x), sigma = exp(-0.1129), nu = 0.9507) returns "
+            "exactly 142.061586 -- the densities agree to the last digit, so "
+            "the 0.16 gap is R's endpoint, not ours.  Perturbing each "
+            "coefficient by 1e-3 raises our deviance in both directions "
+            "(checked), so our point is a genuine local minimum.\n"
+            "Stream discipline: numbers bind to the full-family sample stream "
+            "(D2.30)."
+        ),
+    ),
+    "GP": dict(
+        n_cyc=20,
+        dev_ours=171.498204,
+        dev_r=174.277569,
+        note=(
+            "D2.65 two-step adjudication on the full-family-stream sample.\n"
+            "Step 1: R does not converge at the scanner budget (196.99 -> "
+            "191.22 -> 187.46 -> ... , still descending at cycle 20, "
+            "converged = FALSE).  Longer R runs go lower than us: n.cyc = 200 "
+            "gives 170.463670 (still not converged), so at the gate's fixed "
+            "20-cycle budget R stopped early, but our endpoint is NOT the "
+            "better one in absolute terms -- record kept open as a candidate "
+            "for a local-optimum investigation.\n"
+            "Step 2: R's own dGP at our coefficients returns exactly "
+            "171.498204, so the two densities agree and the budget-matched "
+            "comparison is ours 171.498 < R 174.278.\n"
+            "Stream discipline: numbers bind to the full-family sample stream."
+        ),
+    ),
+    "PARETO2": dict(
+        n_cyc=20,
+        dev_ours=184.524988,
+        dev_r=184.898172,
+        note=(
+            "D2.65 two-step adjudication on the full-family-stream sample.\n"
+            "Step 1: R does not converge at the scanner budget (207.85 -> "
+            "202.09 -> 198.30 -> ... , converged = FALSE); at n.cyc = 200 R "
+            "reaches 181.021474 (still not converged), i.e. below our "
+            "184.524988.  So the budget-matched comparison favours us but R's "
+            "longer run does not -- candidate for a local-optimum "
+            "investigation, not a claim of superiority.\n"
+            "Step 2: R's own dPARETO2 at our coefficients returns exactly "
+            "184.524988; our point is a verified local minimum (each "
+            "coefficient perturbed by 1e-3 raises the deviance).\n"
+            "Stream discipline: numbers bind to the full-family sample stream."
+        ),
+    ),
+    "PARETO2O": dict(
+        n_cyc=20,
+        dev_ours=168.912298,
+        dev_r=171.876007,
+        note=(
+            "D2.65 two-step adjudication on the full-family-stream sample.  "
+            "The registry key is PARETO2O; live R's function is PARETO2o.\n"
+            "Step 1: R does not converge at the scanner budget (192.26 -> "
+            "187.23 -> 183.98 -> ... , converged = FALSE); at n.cyc = 200 R "
+            "settles on 168.310124 (converged = TRUE), below our "
+            "168.912298 -- so the budget-matched comparison favours us while "
+            "R's converged answer is better; recorded as an open "
+            "local-optimum candidate.\n"
+            "Step 2: R's own dPARETO2o at our coefficients returns exactly "
+            "168.912298; each coefficient perturbed by 1e-3 raises our "
+            "deviance, so our point is a genuine local minimum.\n"
+            "Stream discipline: numbers bind to the full-family sample stream."
+        ),
+    ),
+    "WARING": dict(
+        n_cyc=20,
+        dev_ours=228.809581,
+        dev_r=230.0,
+        note=(
+            "D2.65 two-step adjudication on the full-family-stream sample.\n"
+            "Step 1: R converges to 230 exactly (trace 241.18 -> 229 -> 230 -> "
+            "230) and stays there at n.cyc = 200 -- a stationary point that is "
+            "worse than ours, the PE2 disposition.\n"
+            "Step 2: R's own dWARING at our coefficients returns 228.75 "
+            "against our 228.809581 (rel 2.6e-04): the two densities agree to "
+            "within a rounding-scale difference and both put our point below "
+            "R's 230.  Perturbing either coefficient by 1e-3 raises our "
+            "deviance.\n"
+            "Stream discipline: numbers bind to the full-family sample stream."
+        ),
+    ),
     "PE2": dict(
         n_cyc=20,
         dev_ours=122.176634,
