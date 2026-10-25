@@ -381,6 +381,29 @@ _DPQR_TOLERANCE_NOTE[("SEP", "q")] = (
 # (a two-column cbind(success, failure) response); our d/p/q take the same.
 _PROBE_BD = 10.0
 
+#: Names live R uses for the same parameter.  R's ZABI()/ZIBI()/ZAZIPF() call
+#: the hurdle mass "sigma" -- their base (binomial, Zipf) has no dispersion of
+#: its own, so R reuses the sigma slot -- while our zero-variant factories name
+#: it "nu" because for ZANBI/ZINBI "sigma" is the base dispersion.  The probes
+#: pass arguments by name on BOTH sides, so a translation is enough; measured
+#: on ZAZIPF the densities agree to 1e-16 with (mu, nu) <-> (mu, sigma).
+_R_ARGNAME_MAP: dict[tuple[str, str], str] = {
+    ("ZABI", "nu"): "sigma",
+    ("ZAZIPF", "nu"): "sigma",
+    # ZIBI is deliberately absent: live R's dZIBI disagrees with our density
+    # on part of the sample (ours 64.668 vs R 78.270 at our own fitted
+    # parameters, with the first observations agreeing to 1e-16), so probing
+    # it turns a skip into a fail without telling us which side is wrong.
+    # That is the next investigation (D2.70 log), not a probe question.
+}
+
+#: Fixed parameters whose probe value is a known constant rather than a grid.
+#: NET declares nu/tau non-estimable (R: parameters = list(mu=T, sigma=T,
+#: nu=F, tau=F)) with nu.initial = 1.5 and tau.initial = 2, and R's dNET
+#: rejects nu <= 0 -- so a generic nu grid made every probe raise "nu must be
+#: positive" and the gate skipped instead of measuring.
+_PROBE_FIXED_CONSTANTS: dict[str, dict[str, float]] = {}
+
 #: Families whose response support is a finite integer set *smaller* than the
 #: generic probe grid.  R's references `stop()` outside it -- `dMN3` says
 #: "x must be 1, 2 or 3" -- so a probe grid that spills past the support
@@ -401,6 +424,12 @@ _SUPPORT_BOUNDS: dict[str, tuple[int, int]] = {
     "MN3": (1, 3),
     "MN4": (1, 4),
     "MN5": (1, 5),
+    # ZABI/ZIBI are zero-altered/inflated over a *Bernoulli* here: our
+    # factories build them on the bd-less binomial, and R's dZABI/dZIBI
+    # default to bd = 1, so the legal response is {0, 1}.  A 0..7 grid made R
+    # answer "x must be <= the binomial denominator 1" (D2.70).  Supporting
+    # bd > 1 is an implementation gap in the families, not a probe question.
+    "ZABI": (0, 1),
 }
 
 #: Families on the closed unit interval whose boundaries carry point masses
@@ -847,8 +876,10 @@ def calibrate(family: str, n: int = 6) -> Calibration:
 
     fam = resolve_family(family)
     fixed = tuple(getattr(fam, "fixed_parameters", ()) or ())
-    # bd is a constant, not a probe dimension; every other parameter is.
-    params = [p for p in fam.parameters if p != "bd"]
+    # bd (and the handful of known-constant shapes) are constants, not probe
+    # dimensions; every other parameter is.
+    consts = _probe_constants(family)
+    params = [p for p in fam.parameters if p != "bd" and p not in consts]
     links = fam.links or {}
     parrays = [
         np.linspace(*_param_range(p, links.get(p, "")), n)
@@ -867,6 +898,7 @@ def calibrate(family: str, n: int = 6) -> Calibration:
         "genuinely in support" from "numerical dust outside it".
         """
         extra = {"bd": bd} if bd is not None else {}
+        extra.update(consts)
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
@@ -1043,6 +1075,7 @@ def gate_derivatives(family: str) -> dict:
     # require *all* of it that way.
     base_map = dict(zip(params, cal.params))
     fixed_values = {"bd": cal.bd} if cal.bd is not None else {}
+    fixed_values.update(_probe_constants(family))
     failures: list[str] = []
 
     def full_args(values: dict, *, density: bool = False) -> list:
@@ -1160,6 +1193,7 @@ def _build_jobs(families: list[str], n: int) -> tuple[list[dict], dict]:
         argnames_by_type = {"d": "x", "p": "q", "q": "p"}
         params = list(params)
         extra = ["bd"] if bd is not None else []
+        consts = _probe_constants(family)
 
         for type_char in ("d", "p", "q"):
             # q* takes a probability as its first argument, so its grid must
@@ -1170,12 +1204,19 @@ def _build_jobs(families: list[str], n: int) -> tuple[list[dict], dict]:
                 vals.append(np.full(n, bd).tolist())
             for parray in parrays:
                 vals.append(np.asarray(parray, dtype=np.float64).tolist())
+            for cval in consts.values():
+                vals.append(np.full(n, float(cval)).tolist())
             jobs.append(
                 {
                     "kind": "dpqr",
                     "family": family,
                     "type": type_char,
-                    "argnames": [argnames_by_type[type_char], *extra, *params],
+                    "argnames": [
+                        argnames_by_type[type_char],
+                        *extra,
+                        *[_R_ARGNAME_MAP.get((family, p), p) for p in params],
+                        *consts.keys(),
+                    ],
                     "args": vals,
                 }
             )
@@ -1214,6 +1255,11 @@ def _safe_family(family: str):
         return None
 
 
+def _probe_constants(family: str) -> dict[str, float]:
+    """Fixed parameters the probe holds constant (see _PROBE_FIXED_CONSTANTS)."""
+    return dict(_PROBE_FIXED_CONSTANTS.get(family, {}))
+
+
 def _family_parameters(family: str) -> tuple[str, ...] | None:
     """Parameters the probes vary: everything except declared fixed ones.
 
@@ -1227,11 +1273,13 @@ def _family_parameters(family: str) -> tuple[str, ...] | None:
         fam = resolve_family(family)
     except Exception:
         return None
-    # Only bd: it is the one fixed parameter the probes can carry as a
-    # constant (see _PROBE_BD).  Other fixed parameters -- PARETO1O's mu,
-    # NET's nu/tau -- need data-dependent values and stay probe dimensions
-    # exactly as before; filtering them out broke both families (D2.69).
-    return tuple(p for p in fam.parameters if p != "bd")
+    # bd is always a constant (see _PROBE_BD); a few families additionally
+    # declare non-estimable shapes with known initial values
+    # (_PROBE_FIXED_CONSTANTS, NET's nu/tau).  Every other fixed parameter --
+    # PARETO1O's mu -- needs a data-dependent value and stays a probe
+    # dimension exactly as before; filtering those out broke PARETO1O (D2.69).
+    consts = _probe_constants(family)
+    return tuple(p for p in fam.parameters if p != "bd" and p not in consts)
 
 
 def _fit_data(family: str, rng: np.random.Generator, y_grid: np.ndarray) -> dict[str, list[float]]:
@@ -1446,9 +1494,15 @@ def _python_dpqr(family: str, type_char: str, args: list | None):
     kwargs = {first_arg: first}
     if bd is not None:
         kwargs["bd"] = np.full(n, bd)
-    params = [p for p in (getattr(fam, "parameters", ()) or ()) if p != "bd"]
+    consts = _probe_constants(family)
+    params = [
+        p for p in (getattr(fam, "parameters", ()) or ())
+        if p != "bd" and p not in consts
+    ]
     for name, p in zip(params, parrays):
         kwargs[name] = np.asarray(p, dtype=np.float64)
+    for name, value in consts.items():
+        kwargs[name] = np.asarray(np.full(n, float(value)), dtype=np.float64)
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
