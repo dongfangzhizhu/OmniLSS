@@ -59,6 +59,13 @@ def _initial_parameter_value(
             # R ST5()$nu.initial (live gamlss.dist 6.1.1): nu <- rep(0.03,
             # length(y)), nu link identity.
             return 0.03
+        if family.name == "BCPEUNTR":
+            # R BCPEuntr()$nu.initial (live gamlss.dist 6.1.1):
+            # nu <- rep(1, length(y)), nu link identity -- same as BCPE, but
+            # the family object's .name is "BCPEUNTR" so the BCPE branch
+            # never matched and every parameter fell to the generic default
+            # (stated explicitly here because the tau entry below differs).
+            return 1.0
         if family.name in ("BCCG", "BCT", "BCCGo", "BCTo"):
             # R BCCG()$nu.initial / BCT()$nu.initial (live R, D2.35/D2.36):
             # nu <- rep(0.5, length(y)); the o variants carry the same start.
@@ -197,6 +204,9 @@ def _initial_parameter_value(
             # R ST5()$tau.initial (live gamlss.dist 6.1.1): tau <- rep(3,
             # length(y)), tau link log.
             return 3.0
+        if family.name == "BCPEUNTR":
+            # R BCPEuntr()$tau.initial: tau <- rep(2, length(y)).
+            return 2.0
         if family.name == "BCT":
             return 10.0  # Degrees of freedom, higher starting value for stability
         if family.name == "BCTo":
@@ -541,6 +551,13 @@ def _initial_mu_target(
         # sigma astronomically large, log(1-u) went to -inf and the deviance
         # came out infinite on every sample.
         target = (y + np.mean(y)) / 2.0
+    elif family.name == "BCPEUNTR":
+        # R BCPEuntr()$mu.initial (live gamlss.dist 6.1.1):
+        #     mu <- y + 1e-04
+        # NOT BCPE's (y+mean(y))/2 -- the untruncated family starts a hair
+        # above each observation (mu link identity).  Family object .name is
+        # "BCPEUNTR" (all caps), so the BCPE branch never matched.
+        target = y + 1e-04
     elif family.name in ("SHASH", "SHASHo", "SHASHo2"):
         # R mu.initial (vendored SHASH.R / SHASHo.R / SHASHo2.R, all three
         # identical): mu <- (y + mean(y))/2.  D2.40: without this entry the
@@ -829,6 +846,11 @@ def _initial_sigma(
         # R ST5()$sigma.initial (live gamlss.dist 6.1.1):
         #     sigma <- rep(sd(y)/4, length(y))
         sigma = float(np.std(y, ddof=1) / 4.0)
+    elif family.name == "BCPEUNTR":
+        # R BCPEuntr()$sigma.initial: sigma <- rep(0.1, length(y)) -- the
+        # same fixed start as BCPE, and without it the residual fallback
+        # evaluated against target=y sits on the eps floor.
+        sigma = 0.1
     elif family.name == "exGAUS":
         # R exGAUS()$sigma.initial (live R, gamlss.dist 6.1.1, verified via
         # deparse of the family object):
