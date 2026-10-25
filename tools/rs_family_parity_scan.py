@@ -404,7 +404,17 @@ _R_ARGNAME_MAP: dict[tuple[str, str], str] = {
 #: nu=F, tau=F)) with nu.initial = 1.5 and tau.initial = 2, and R's dNET
 #: rejects nu <= 0 -- so a generic nu grid made every probe raise "nu must be
 #: positive" and the gate skipped instead of measuring.
-_PROBE_FIXED_CONSTANTS: dict[str, dict[str, float]] = {}
+#:
+#: D2.72 fills the table in.  It had been empty since it was written, which is
+#: why NET was the one family with a deriv skip and a dpqr skip at the same
+#: time: the nu/tau grid ran from -2.0 to 3.0 (identity link, symmetric around
+#: the response scale), R stopped on the first negative value, and the gate
+#: recorded "no d/p/q counterpart in R" -- R's dNET/pNET/qNET exist.  With the
+#: constants in place all three gates run, and NET's d/p/q agree with live R
+#: to 1e-16 (d exactly) on the standard grid.
+_PROBE_FIXED_CONSTANTS: dict[str, dict[str, float]] = {
+    "NET": {"nu": 1.5, "tau": 2.0},
+}
 
 #: Families whose response support is a finite integer set *smaller* than the
 #: generic probe grid.  R's references `stop()` outside it -- `dMN3` says
@@ -945,6 +955,37 @@ class Calibration(NamedTuple):
     ok: bool
 
 
+def _our_call_args(fam, first, params_values: dict, bd, consts: dict) -> list:
+    """Positional arguments for one of OUR d/p/q calls, in OUR order.
+
+    The densities that build_ad_family generates are
+    def _d_auto(*args, log=False) -- no named parameters -- so a keyword
+    like nu= is a TypeError, and the call has to be positional.  The order
+    is the family's own parameters tuple, which is NOT the order the probe
+    grids were built in: the grids skip the probe constants (NET's nu/tau)
+    and bd.  NET is what forced this to be written down (D2.72) -- with
+    nu/tau held constant the grids hold only mu/sigma, and a plain append
+    left the two shape constants off, which is why NET's deriv gate read
+    "no support grid yields a finite density" and its dpqr gate read
+    "d: no Python function".
+    """
+    n = len(np.asarray(first))
+    values = dict(params_values)
+    if bd is not None:
+        values["bd"] = np.full(n, bd)
+    values.update({name: np.full(n, float(v)) for name, v in consts.items()})
+    args = [first] + [values[name] for name in fam.parameters if name in values]
+    # Fixed parameters the family keeps OUT of its parameter tuple still have
+    # to reach the call: DBI declares parameters = (mu, sigma) and its
+    # _dbi_dispatch takes bd positionally after them, as do the zero-variant
+    # families' d(x, mu, nu, bd).  Append them at the end, which is where
+    # those signatures put them.  (The old keyword form worked for DBI only
+    # because bd happened to be a named parameter there; the auto-generated
+    # densities have no named parameters at all.)
+    args += [v for name, v in values.items() if name not in fam.parameters]
+    return args
+
+
 def calibrate(family: str, n: int = 6) -> Calibration:
     """Pick a response grid and parameter values suited to ``family``.
 
@@ -967,6 +1008,7 @@ def calibrate(family: str, n: int = 6) -> Calibration:
         for p in params
     ]
     bd = _PROBE_BD if "bd" in fixed else None
+    params_values = dict(zip(params, parrays))
 
     def score(y: np.ndarray) -> int:
         """Count grid points that look like they are inside the support.
@@ -978,12 +1020,13 @@ def calibrate(family: str, n: int = 6) -> Calibration:
         really in support.  Requiring a floor of ``1e-6 * max(d)`` separates
         "genuinely in support" from "numerical dust outside it".
         """
-        extra = {"bd": bd} if bd is not None else {}
-        extra.update(consts)
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                dens = np.asarray(fam.d(y, *parrays, **extra), dtype=np.float64)
+                dens = np.asarray(
+                    fam.d(*_our_call_args(fam, y, params_values, bd, consts)),
+                    dtype=np.float64,
+                )
         except Exception:
             return -1
         good = np.isfinite(dens) & (dens > 0.0)
@@ -1136,7 +1179,12 @@ def gate_derivatives(family: str) -> dict:
     if not score_fns or d_fn is None:
         return {"status": "skip", "detail": "no score_functions or density"}
 
-    params = [p for p in fam.parameters if p != "bd"]
+    # A probe constant is not a probe dimension, exactly as in calibrate():
+    # NET's nu/tau are held at R's non-estimable 1.5/2.0 (D2.72).  Leaving
+    # them in made base_map[pname] raise KeyError, which is the
+    # "scanner raised KeyError: 'nu'" this gate reported.
+    consts = _probe_constants(family)
+    params = [p for p in fam.parameters if p != "bd" and p not in consts]
     try:
         cal = calibrate(family, N_GRID)
     except Exception as exc:  # pragma: no cover - defensive
@@ -1156,7 +1204,7 @@ def gate_derivatives(family: str) -> dict:
     # require *all* of it that way.
     base_map = dict(zip(params, cal.params))
     fixed_values = {"bd": cal.bd} if cal.bd is not None else {}
-    fixed_values.update(_probe_constants(family))
+    fixed_values.update(consts)
     failures: list[str] = []
 
     def full_args(values: dict, *, density: bool = False) -> list:
@@ -1592,10 +1640,16 @@ def _python_dpqr(family: str, type_char: str, args: list | None):
         # Family whose d/p/q does not accept `bd` as a keyword (e.g. wrappers
         # with their own signature). Retry positionally so the gate still runs
         # rather than reporting "no Python function".
-        call_args = [first]
-        if bd is not None:
-            call_args.append(np.full(n, bd))
-        call_args += [np.asarray(p, dtype=np.float64) for p in parrays]
+        # D2.72: the positional order is the family's OWN parameters order,
+        # which is not the order the grids were built in -- parrays skips
+        # the probe constants and bd.  Map each parameter name to its value
+        # before assembling the call.  NET is the case that forced this:
+        # with nu/tau held constant, parrays holds only mu/sigma, and the
+        # old plain append left nu/tau off entirely -- the
+        # "d: no Python function" NET reported.
+        params_values = dict(zip(params, [np.asarray(par, dtype=np.float64)
+                                          for par in parrays]))
+        call_args = _our_call_args(fam, first, params_values, bd, consts)
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
