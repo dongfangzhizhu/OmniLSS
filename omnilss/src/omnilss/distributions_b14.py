@@ -471,6 +471,119 @@ def _st5_r(key, n, mu=0.0, sigma=1.0, nu=0.0, tau=1.0):
     return _st5_q(u, mu, sigma, nu, tau)
 
 
+# ---------------------------------------------------------------------------
+# R's IRLS Hessian form for ST5 (D2.62).
+#
+# R's ST5() carries d2ldX2 = -dldX^2 for every parameter, with the floor at
+# -1e-15 for mu/sigma and **-1e-4** for nu/tau (a coarser floor than the
+# pipeline's own -1e-15).  Our AD path instead feeds the true second
+# derivative, which leaves R's RS trajectory once the fit starts moving --
+# the JSUO situation (D2.60).  R's scores are the exact derivatives (verified
+# against a central difference of R's own dST5: rel 1e-10 at four probe
+# points), and so are our AD scores (the deriv gate passes), so the Hessian
+# overrides are built from the AD score: -dld^2 with R's per-parameter floor.
+# ---------------------------------------------------------------------------
+
+def _st5_deriv_parts(y, mu, sigma, nu, tau):
+    """R's u / r / su, guarded as in the density."""
+    from jax.scipy.special import digamma  # noqa: F401  (used by callers)
+
+    eps = jnp.finfo(jnp.float64).eps
+    sigma = jnp.maximum(sigma, eps)
+    tau = jnp.maximum(tau, eps)
+    d = y - mu
+    u = jnp.sqrt(tau) * d * jnp.power(2.0 * sigma * sigma + tau * d * d, -0.5)
+    r = jnp.sqrt(nu * nu + 2.0 * tau)
+    return u, r, jnp.sqrt(1.0 - u * u)
+
+
+def _st5_dldm(y, mu, sigma, nu, tau):
+    u, r, su = _st5_deriv_parts(y, mu, sigma, nu, tau)
+    num = (
+        (1.0 - nu / r + tau / 2.0) * su * (1.0 + u)
+        - (1.0 + nu / r + tau / 2.0) * su * (1.0 - u)
+    )
+    return num / (sigma * jnp.sqrt(2.0 * tau))
+
+
+def _st5_dldd(y, mu, sigma, nu, tau):
+    u, r, su = _st5_deriv_parts(y, mu, sigma, nu, tau)
+    num = (
+        (1.0 - nu / r + tau / 2.0) * u * (1.0 + u)
+        - (1.0 + nu / r + tau / 2.0) * u * (1.0 - u)
+    )
+    return -1.0 / sigma + num / (sigma * tau)
+
+
+def _st5_dldv(y, mu, sigma, nu, tau):
+    from jax.scipy.special import digamma
+
+    u, r, su = _st5_deriv_parts(y, mu, sigma, nu, tau)
+    val = (
+        -digamma((1.0 + nu / r) / tau)
+        + digamma((1.0 - nu / r) / tau)
+        + jnp.log(1.0 + u)
+        - jnp.log(1.0 - u)
+    )
+    return 2.0 * val / jnp.power(r, 3.0)
+
+
+def _st5_dldt(y, mu, sigma, nu, tau):
+    from jax.scipy.special import digamma
+
+    u, r, su = _st5_deriv_parts(y, mu, sigma, nu, tau)
+    acc = 4.0 * digamma(2.0 / tau) - tau - 4.0 * jnp.log(2.0)
+    acc = acc + (
+        (1.0 - nu / r + tau / 2.0) * u * (1.0 + u)
+        - (1.0 + nu / r + tau / 2.0) * u * (1.0 - u)
+    )
+    acc = acc + 2.0 * (1.0 + nu * (r * r + tau) / jnp.power(r, 3.0)) * (
+        jnp.log(1.0 + u) - digamma((1.0 + nu / r) / tau)
+    )
+    acc = acc + 2.0 * (1.0 - nu * (r * r + tau) / jnp.power(r, 3.0)) * (
+        jnp.log(1.0 - u) - digamma((1.0 - nu / r) / tau)
+    )
+    return -acc / (2.0 * tau * tau)
+
+
+def _st5_neg_sq(d):
+    return -d * d
+
+
+def _st5_d2ldm2(y, mu, sigma, nu, tau):
+    v = _st5_neg_sq(_st5_dldm(y, mu, sigma, nu, tau))
+    return jnp.where(v < -1e-15, v, -1e-15)
+
+
+def _st5_d2ldd2(y, mu, sigma, nu, tau):
+    v = _st5_neg_sq(_st5_dldd(y, mu, sigma, nu, tau))
+    return jnp.where(v < -1e-15, v, -1e-15)
+
+
+def _st5_d2ldv2(y, mu, sigma, nu, tau):
+    v = _st5_neg_sq(_st5_dldv(y, mu, sigma, nu, tau))
+    return jnp.where(v < -1e-4, v, -1e-4)
+
+
+def _st5_d2ldt2(y, mu, sigma, nu, tau):
+    v = _st5_neg_sq(_st5_dldt(y, mu, sigma, nu, tau))
+    return jnp.where(v < -1e-4, v, -1e-4)
+
+
+_ST5_SCORES = {
+    "mu": _st5_dldm,
+    "sigma": _st5_dldd,
+    "nu": _st5_dldv,
+    "tau": _st5_dldt,
+}
+_ST5_HESSIANS = {
+    "mu": _st5_d2ldm2,
+    "sigma": _st5_d2ldd2,
+    "nu": _st5_d2ldv2,
+    "tau": _st5_d2ldt2,
+}
+
+
 def ST5():
     """Skew t Type 5 (Jones & Faddy) distribution."""
     return build_ad_family(
@@ -479,6 +592,8 @@ def ST5():
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_st5_log_pdf,
         type_="Continuous",
+        score_overrides=_ST5_SCORES,
+        hessian_overrides=_ST5_HESSIANS,
         p=_st5_p,
         q=_st5_q,
         r=_st5_r,
