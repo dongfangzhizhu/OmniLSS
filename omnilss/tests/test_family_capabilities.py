@@ -72,9 +72,12 @@ def test_known_compat_alias_families_are_marked_separately_from_evidence():
 
 def test_ad_families_without_explicit_dpqr_are_marked_placeholder():
     # GIG was this test's sample until D2.48, when it gained d/p/q/r plus R's
-    # derivative slots and moved to EXPERIMENTAL.  LOGSHASH still holds the
-    # placeholder branch.
-    for family_name in ("LOGSHASH",):
+    # derivative slots and moved to EXPERIMENTAL.  LOGSHASH followed it out of
+    # the placeholder branch afterwards, and this test kept asserting
+    # PLACEHOLDER for it until D2.73 -- a stale sample, not a live defect.
+    # DPO1 and IGA are the two families still in the branch (the validator's
+    # status distribution counts exactly two).
+    for family_name in ("DPO1", "IGA"):
         capability = get_family_capability(family_name)
         assert capability.implementation_status is ImplementationStatus.PLACEHOLDER
         assert implementation_status_for_family(family_name) is (
@@ -194,15 +197,17 @@ def test_method_route_capability_report_supports_service_admission():
     assert experimental["code"] == "experimental_requires_opt_in"
     assert experimental["status"] == "experimental"
 
-    # LOGSHASH holds the placeholder branch GIG held until D2.48.
-    unsupported = method_route_capability_report("LOGSHASH", "RS_JAX")
+    # DPO1 and IGA hold the placeholder branch GIG held until D2.48 and
+    # LOGSHASH held until D2.73 (see the note on
+    # test_ad_families_without_explicit_dpqr_are_marked_placeholder).
+    unsupported = method_route_capability_report("DPO1", "RS_JAX")
     assert unsupported["ok"] is False
     assert unsupported["code"] == "placeholder_requires_opt_in"
     assert unsupported["feature"] == "rs_jax_fit"
     assert unsupported["implementation_status"] == "placeholder"
 
     unsupported_with_placeholder_opt_in = method_route_capability_report(
-        "LOGSHASH", "RS_JAX", allow_placeholder=True
+        "DPO1", "RS_JAX", allow_placeholder=True
     )
     assert unsupported_with_placeholder_opt_in["ok"] is False
     assert unsupported_with_placeholder_opt_in["code"] == "unsupported_route"

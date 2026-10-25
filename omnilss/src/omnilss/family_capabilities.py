@@ -152,6 +152,22 @@ _R_CONSISTENCY_EVIDENCE = frozenset(
         "ZIP",
         "ZIPF",
         "ZALG",
+        # D2.71 / D2.72: admitted on the strength of test modules that hold
+        # live-R values, not of a hand-written claim.
+        #   ZABI / ZIBI -- omnilss/tests/test_binomial_zero_variants_bd.py
+        #       evaluates R's own dZABI/dZIBI and the family objects' dldm /
+        #       dldd / d2ldd2 at the same grid (d/p to 1e-13, q bit-for-bit),
+        #       and the two live-R tests in TestTheRReferenceIsDefective call
+        #       Rscript directly.
+        #   NET -- omnilss/tests/test_net_probe_reachability.py freezes
+        #       dNET/pNET/qNET at 17 significant digits on the scanner's own
+        #       probe grid (d and p agree exactly, q to 9e-16).
+        # The remaining families with a passing dpqr parity gate are NOT here:
+        # their only evidence is the scanner tool, which is not a test module.
+        # That gap is recorded in the D2.73 log rather than papered over.
+        "NET",
+        "ZABI",
+        "ZIBI",
     }
 )
 
