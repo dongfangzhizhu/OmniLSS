@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from statistics import NormalDist
 
 import jax.numpy as jnp
@@ -120,19 +121,121 @@ def _discrete_midpoint_rqres(
 
 
 
+#: Families with a hand-written residual kernel.  They predate the generic
+#: path below and their values are pinned by tests, so they keep their own
+#: implementation; the generic path must reproduce them (see
+#: omnilss/tests/test_generic_rqres.py).
+_HAND_CODED_RQRES = frozenset({"PO", "BI", "GEOM", "NBI", "ZIP"})
+
+
+def _cdf_is_placeholder(family: FamilyDefinition) -> bool:
+    """True when the family answers its CDF with the build_ad_family stub."""
+    cdf = getattr(family, "p", None)
+    if cdf is None:
+        return True
+    return "placeholder" in getattr(cdf, "__name__", "")
+
+
+def _cdf_call_args(family: FamilyDefinition, values: dict) -> list:
+    """Positional CDF arguments, in the family's own parameters order.
+
+    Same shape as the parity scanner's call assembly: the tuple order is what
+    the family declares, and fixed parameters kept *out* of the tuple (BI's /
+    DBI's / the zero-variant families' bd) are appended where their signatures
+    put them.
+    """
+    declared = tuple(getattr(family, "parameters", ()) or ())
+    args = [
+        np.asarray(values[name], dtype=np.float64)
+        for name in declared
+        if name in values
+    ]
+    args += [
+        np.asarray(value, dtype=np.float64)
+        for name, value in values.items()
+        if name not in declared
+    ]
+    return args
+
+
+def _generic_rqres(family: FamilyDefinition, values: dict) -> np.ndarray:
+    """Randomized-quantile residuals from the family's own CDF.
+
+    R's rqres (gamlss/R/gamlss-5.R) has three branches:
+
+    * Continuous -- u <- cdf(y);
+    * Discrete   -- u ~ U(F(y-1), F(y)); R draws, and a deterministic
+      implementation cannot, so this uses the midpoint (F(y-1)+F(y))/2, the
+      convention the five hand-written kernels already use;
+    * Mixed      -- R needs mass.p / prob.mp and draws uniformly inside the
+      atom mass.  The midpoint of F(y-1) and F(y) is the same quantity in
+      expectation and needs no extra bookkeeping: below the support the CDF is
+      0, so an atom at ymin lands in the lower half of its mass, exactly as
+      R's draw does on average.
+
+    Returns NaN where the CDF answers NaN (outside the support, or a family
+    whose CDF is only valid on part of the line) -- a visibly unusable
+    residual rather than a silently invented one.
+    """
+    y = np.asarray(values["y"], dtype=np.float64)
+    params = {k: v for k, v in values.items() if k != "y"}
+    args = _cdf_call_args(family, params)
+    kind = getattr(family, "type", "Continuous")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        if kind == "Continuous":
+            probabilities = np.asarray(family.p(y, *args), dtype=np.float64)
+        else:
+            lower = np.asarray(family.p(y - 1.0, *args), dtype=np.float64)
+            upper = np.asarray(family.p(y, *args), dtype=np.float64)
+            probabilities = 0.5 * (lower + upper)
+    return _normal_quantile(probabilities)
+
+
 def _build_rqres_callable(family: FamilyDefinition) -> Any | None:
-    if family.name not in {"PO", "BI", "GEOM", "NBI", "ZIP"}:
+    """Return the residual kernel for family, or None when it has no CDF.
+
+    Before D2.74 only PO/BI/GEOM/NBI/ZIP had a kernel, so residuals came back
+    as raw y - mu / Pearson values for the other 141 families -- not comparable
+    across families, which is the whole point of a quantile residual (worm
+    plots, centile diagnostics).  Every family with a real CDF now gets the
+    generic path; the four with the build_ad_family placeholder CDF (DPO1,
+    GENERALISEDPOISSON, IGA, LOGSHASHO) still return None and fall back to the
+    raw residuals.
+    """
+    if family.name in _HAND_CODED_RQRES:
+
+        def rqres(**kwargs: Any) -> jnp.ndarray:
+            y = np.asarray(kwargs["y"], dtype=np.float64)
+            mu = np.asarray(kwargs["mu"], dtype=np.float64)
+            sigma_value = kwargs.get("sigma")
+            sigma = (
+                None
+                if sigma_value is None
+                else np.asarray(sigma_value, dtype=np.float64)
+            )
+            values = _discrete_midpoint_rqres(family, y=y, mu=mu, sigma=sigma)
+            return jnp.asarray(values, dtype=jnp.float64)
+
+        return rqres
+
+    if _cdf_is_placeholder(family):
         return None
 
-    def rqres(**kwargs: Any) -> jnp.ndarray:
-        y = np.asarray(kwargs["y"], dtype=np.float64)
-        mu = np.asarray(kwargs["mu"], dtype=np.float64)
-        sigma_value = kwargs.get("sigma")
-        sigma = None if sigma_value is None else np.asarray(sigma_value, dtype=np.float64)
-        values = _discrete_midpoint_rqres(family, y=y, mu=mu, sigma=sigma)
+    def generic_rqres(**kwargs: Any) -> jnp.ndarray:
+        try:
+            values = _generic_rqres(family, kwargs)
+        except Exception as exc:  # pragma: no cover - defensive
+            warnings.warn(
+                f"rqres failed for family {family.name!r}: "
+                f"{type(exc).__name__}: {exc}. Residuals are NaN.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
+            values = np.full(len(np.asarray(kwargs.get("y", [0.0]))), np.nan)
         return jnp.asarray(values, dtype=jnp.float64)
 
-    return rqres
+    return generic_rqres
 
 
 

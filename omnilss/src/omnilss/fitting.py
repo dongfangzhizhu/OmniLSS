@@ -754,8 +754,17 @@ def gamlss_ml(
     # with a fixed mu (PARETO1o) the fitted mu is the fixed value, not the
     # WLS compression of the mu formula that the local ``mu`` still holds.
     mu_for_residuals = fixed_parameter_values.get("mu", mu)
+    # D2.74: the residual kernel needs EVERY parameter, not just mu/sigma --
+    # the generic quantile residual evaluates the family's own CDF, and a CDF
+    # is a function of all of them (ZIBI's bd, NET's nu/tau, ...).  The dict is
+    # the same one the deviance uses, so the two cannot disagree about which
+    # values were fitted.
+    residual_kwargs = {
+        **dev_kwargs,
+        "mu": mu_for_residuals,
+    }
     residual_values = (
-        rqres_callable(y=y, mu=mu_for_residuals, sigma=parameter_values.get("sigma"))
+        rqres_callable(**residual_kwargs)
         if rqres_callable is not None
         else _compute_residuals(family, y, mu_for_residuals, parameter_values.get("sigma"))
     )
@@ -2059,7 +2068,7 @@ def gamlss(
             "cg_param_slices": getattr(cg_result, "param_slices", None),
         }
     residual_values = (
-        rqres_callable(y=y, mu=mu, sigma=parameter_values.get("sigma"))
+        rqres_callable(**{"y": y, **parameter_values, **fixed_parameter_values})
         if rqres_callable is not None
         else _compute_residuals(family, y, mu, parameter_values.get("sigma"))
     )

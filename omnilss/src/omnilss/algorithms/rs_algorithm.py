@@ -1601,10 +1601,13 @@ def rs_fit(
     mu_vals = parameter_values["mu"]
     sigma_vals = parameter_values.get("sigma", None)
     if rqres_callable is not None:
+        # D2.74: every fitted parameter, not just mu/sigma.  The generic
+        # quantile residual evaluates the family's own CDF, which is a
+        # function of all of them; passing only mu/sigma made ZIBI's CDF fall
+        # back to bd = 1 / nu = 0.1 defaults, so p(y) saturated at 1 for every
+        # y > 1 and all 60 residuals came back as qnorm(1-eps) = 8.126.
         residual_values = rqres_callable(
-            y=y,
-            mu=mu_vals,
-            sigma=sigma_vals,
+            **{"y": y, **parameter_values, **fixed_parameter_values}
         )
     else:
         residual_values = _compute_residuals(family, y, mu_vals, sigma_vals)
