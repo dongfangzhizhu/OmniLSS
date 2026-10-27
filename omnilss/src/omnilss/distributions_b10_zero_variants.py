@@ -436,7 +436,28 @@ def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
         jnp.asarray(v, dtype=jnp.float64) for v in (value, mu, sigma, nu, tau)
     ])
     # Upper tails still need masses beyond the candidate search cap.
-    support = jnp.arange((max_value if lower_tail else SICHEL_PROBABILITY_MAX_COUNT) + 1, dtype=jnp.float64)
+    # D2.75: a lower-tail CDF only needs the masses up to the largest value
+    # asked for.  The full 100001-point support cost about half a second per
+    # observation, which made the generic quantile residual (which evaluates
+    # the CDF) look like a hang.  The truncation is exact -- logsumexp over the
+    # terms with support <= q never sees anything past q -- and a quantile
+    # search or a traced value falls back to the full budget.
+    if quantile or not lower_tail:
+        budget = max_value if lower_tail else SICHEL_PROBABILITY_MAX_COUNT
+    else:
+        try:
+            concrete = np.asarray(args[0], dtype=np.float64)
+        except Exception:  # pragma: no cover - traced value
+            concrete = None
+        if concrete is None:
+            budget = max_value
+        else:
+            finite = concrete[np.isfinite(concrete)]
+            budget = (
+                0 if finite.size == 0
+                else int(min(max_value, max(0.0, float(np.ceil(finite.max())))))
+            )
+    support = jnp.arange(budget + 1, dtype=jnp.float64)
 
     def scalar(v, mm, ss, nn, tt):
         mass = _zero_sichel_log_mass_sequence(
@@ -519,8 +540,13 @@ def _zero_sichel_f0(mu, sigma, nu):
 
 def _neg_info(score_fn):
     """Wrap a score slot into R's ``-score^2`` clamped at ``-1e-15``."""
-    def hess(*args):
-        return _r_negative_information(score_fn(*args))
+    # D2.75: forward **kwargs.  The RS engine calls a hessian slot as
+    # hess_fn(**param_dict) (rs_algorithm.compute_score_hessian), so a
+    # positional-only wrapper raised "hess() got an unexpected keyword
+    # argument 'y'" -- which is why ZASICHEL / ZISICHEL raised on every
+    # fit.  Same positional-vs-keyword trap as the probe assembly (D2.72).
+    def hess(*args, **kwargs):
+        return _r_negative_information(score_fn(*args, **kwargs))
     hess.__name__ = f"d2_{getattr(score_fn, '__name__', 'slot')}"
     return hess
 

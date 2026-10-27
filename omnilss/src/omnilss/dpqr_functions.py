@@ -7896,6 +7896,26 @@ def dSICHEL(x, mu=1.0, sigma=1.0, nu=-0.5, log=False):
     log_value = flat_log.reshape(x.shape)
     return log_value if log else jnp.exp(log_value)
 
+def _sichel_lower_tail_cap(q, lower_tail: bool, max_count: int) -> int:
+    """How many PMF terms a CDF call actually needs (D2.75).
+
+    A lower tail sums the terms up to the largest q in the call; the upper
+    tail sums everything above the smallest q and so needs the whole support.
+    When q is a traced value (inside jit) there is nothing to inspect, and the
+    full range is the safe answer.
+    """
+    if not lower_tail:
+        return int(max_count)
+    try:
+        values = np.asarray(q, dtype=np.float64)
+    except Exception:  # pragma: no cover - traced value
+        return int(max_count)
+    finite = values[np.isfinite(values)]
+    if finite.size == 0:
+        return 0
+    return int(min(max_count, max(0.0, float(np.ceil(finite.max())))))
+
+
 def pSICHEL(q, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
     """CDF for Sichel distribution.
 
@@ -7933,9 +7953,17 @@ def pSICHEL(q, mu=1.0, sigma=1.0, nu=-0.5, lower_tail=True, log_p=False):
     ])
     from .distributions_b6 import SICHEL_PROBABILITY_MAX_COUNT
     from .distributions_b6 import _sichel_log_pmf_sequence
-    support = jnp.arange(SICHEL_PROBABILITY_MAX_COUNT + 1, dtype=jnp.float64)
+    # D2.75: a lower-tail CDF only needs the masses up to the largest quantile
+    # asked for.  Scanning the full 100001-point support every call cost about
+    # half a second per observation, which is why the generic quantile residual
+    # (which evaluates the CDF) made ZASICHEL/ZISICHEL fits look like a hang.
+    # The truncation is exact: logsumexp over the terms with support <= q does
+    # not see anything past q.  The upper tail genuinely needs the full range,
+    # and a traced q (inside jit) cannot be inspected -- both fall back.
+    cap = _sichel_lower_tail_cap(q, lower_tail, SICHEL_PROBABILITY_MAX_COUNT)
+    support = jnp.arange(cap + 1, dtype=jnp.float64)
     def logprob_scalar(qq, mm, ss, nn):
-        log_mass = _sichel_log_pmf_sequence(mm, ss, nn, SICHEL_PROBABILITY_MAX_COUNT)
+        log_mass = _sichel_log_pmf_sequence(mm, ss, nn, cap)
         lower = jax.scipy.special.logsumexp(
             jnp.where(support <= qq, log_mass, -jnp.inf)
         )
@@ -8109,7 +8137,6 @@ def tofySICHEL(y, mu=1.0, sigma=1.0, nu=-0.5):
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     nu = jnp.asarray(nu, dtype=jnp.float64)
     y, mu, sigma, nu = jnp.broadcast_arrays(y, mu, sigma, nu)
-
     def scalar(y_i, mu_i, sigma_i, nu_i):
         valid = ((mu_i > 0) & (sigma_i > 0) & jnp.isfinite(mu_i)
                  & jnp.isfinite(sigma_i) & jnp.isfinite(nu_i))
