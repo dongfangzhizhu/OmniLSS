@@ -43,18 +43,21 @@ def _iga_log_pdf(y, mu, sigma):
 
 
 def IGA():
-    """Inverse Gaussian Alternative distribution."""
-    return build_ad_family(
-        family_class=IGAFamily,
-        name="IGA",
-        parameters=("mu", "sigma"),
-        log_pdf_func=_iga_log_pdf,
-        type_="Continuous",
-        links={"mu": "log", "sigma": "log"},
-        link_functions={"mu": log_link, "sigma": log_link},
-        link_inverses={"mu": log_inverse, "sigma": log_inverse},
-        link_derivatives={"mu": log_derivative, "sigma": log_derivative},
-    )
+    """Inverse Gaussian Alternative distribution.
+
+    D2.77: IGA names the same law as IG -- with lambda = 1/sigma^2 the
+    log-density above is R dIG term for term (the kernels agree to 4.4e-16) --
+    but it was built without d/p/q/r, so pIGA/qIGA answered NaN (the
+    build_ad_family placeholder): no CDF, no quantiles, no quantile residuals,
+    and no R comparison, because gamlss.dist exports no dIGA to compare with.
+
+    It now shares IG builder (kernels, expected-information hessians, links),
+    and the parity scanner maps IGA to R IG when it builds the R jobs.  The
+    family stays separate in the registry, capability matrix and evidence tiers.
+    """
+    from .distributions import _build_inverse_gaussian
+
+    return _build_inverse_gaussian("IGA", IGAFamily, log_pdf_func=_iga_log_pdf)
 
 
 # ============================================================================

@@ -65,7 +65,7 @@ Registry metadata only: this report does not establish R export coverage or nume
 | GT | experimental |
 | GU | experimental |
 | IG | experimental |
-| IGA | placeholder |
+| IGA | experimental |
 | IGAMMA | experimental |
 | JSU | experimental |
 | JSUO | experimental |

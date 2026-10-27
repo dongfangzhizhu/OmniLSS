@@ -168,6 +168,9 @@ _R_CONSISTENCY_EVIDENCE = frozenset(
         "NET",
         "ZABI",
         "ZIBI",
+        # D2.77: IGA -- omnilss/tests/test_iga_shares_ig.py holds live-R
+        # dIG/pIG values (to 1e-13) and pins the identity with IG.
+        "IGA",
     }
 )
 

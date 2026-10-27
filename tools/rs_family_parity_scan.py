@@ -234,6 +234,9 @@ _DERIV_TOLERANCE_NOTE: dict[tuple[str, str], str] = {
 _DPQR_TOLERANCE: dict[tuple[str, str], float] = {
     ("SIMPLEX", "q"): 1e-4,
     ("IG", "q"): 1e-4,
+    # Same kernel, same solver noise: IGA is IG under another registry name
+    # (D2.77), and qIGA is literally qIG, so it inherits qIG's uniroot slack.
+    ("IGA", "q"): 1e-4,
     ("SEP1", "q"): 1e-4,
     ("SEP2", "q"): 1e-4,
     ("SHASH", "q"): 1e-4,
@@ -387,6 +390,23 @@ _PROBE_BD = 10.0
 #: it "nu" because for ZANBI/ZINBI "sigma" is the base dispersion.  The probes
 #: pass arguments by name on BOTH sides, so a translation is enough; measured
 #: on ZAZIPF the densities agree to 1e-16 with (mu, nu) <-> (mu, sigma).
+#: Registry names whose gamlss.dist counterpart has a different name.
+#: The scanner keys everything on OUR name (gates, rows, the fit data), and only
+#: the payload sent to R carries the R name.  D2.77: IGA is the same
+#: distribution as IG (lambda = 1/sigma^2, densities equal to 4e-16) and
+#: gamlss.dist exports no dIGA/pIGA/qIGA, so every IGA probe used to answer
+#: "no d/p/q counterpart in R" -- three gates skipped for a family that was
+#: only ever missing a call site.
+_R_FAMILY_ALIASES: dict[str, str] = {
+    "IGA": "IG",
+}
+
+
+def _r_family_name(family: str) -> str:
+    """The name gamlss.dist knows this family by (identity for most)."""
+    return _R_FAMILY_ALIASES.get(family.upper(), family)
+
+
 _R_ARGNAME_MAP: dict[tuple[str, str], str] = {
     ("ZABI", "nu"): "sigma",
     ("ZIBI", "nu"): "sigma",
@@ -1338,7 +1358,7 @@ def _build_jobs(families: list[str], n: int) -> tuple[list[dict], dict]:
             jobs.append(
                 {
                     "kind": "dpqr",
-                    "family": family,
+                    "family": _r_family_name(family),
                     "type": type_char,
                     "argnames": [
                         argnames_by_type[type_char],
@@ -1359,7 +1379,7 @@ def _build_jobs(families: list[str], n: int) -> tuple[list[dict], dict]:
         jobs.append(
             {
                 "kind": "fit",
-                "family": family,
+                "family": _r_family_name(family),
                 "data": fit_data,
                 # R needs cbind(success, failure) for a binomial family; see
                 # _fit_data's docstring.  Omitted otherwise so the R side keeps

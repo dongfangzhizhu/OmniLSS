@@ -712,62 +712,49 @@ def _ig_log_pdf(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp.ndar
     )
 
 
-def IG() -> InverseGaussianFamily:
-    """Inverse Gaussian family compatible with the staged GAMLSS protocol.
+def _build_inverse_gaussian(name: str, family_class, log_pdf_func=_ig_log_pdf):
+    """Shared builder for IG and IGA (they are the same distribution).
 
-    Staged parameterization:
-    - `E(Y) = mu`
-    - `Var(Y) = sigma^2 * mu^3`
-    
-    Uses JAX auto-differentiation for score functions (first derivatives)
-    but uses expected information (Fisher information) for hessians to ensure
-    numerical stability, following the R GAMLSS implementation.
-    
-    R source reference:
-    - file: `gamlss.dist/R/IG.R`
-    - function: `IG()`
+    D2.77: IGA names the same law as IG -- with lambda = 1/sigma^2 the two
+    log-densities agree to 4.4e-16 -- so it must also get the expected-
+    information hessians.  Built with plain AD hessians, an IGA fit diverged to
+    deviance 8.07e+21 where R answers 153.5; with these it matches.  Keeping
+    one builder is what makes "IGA is IG" true in behaviour and not only on
+    paper.
     """
     from .ad import build_ad_family
-    
-    # Build family with AD for scores
+
     family = build_ad_family(
-        family_class=InverseGaussianFamily,
-        name="IG",
+        family_class=family_class,
+        name=name,
         parameters=("mu", "sigma"),
-        log_pdf_func=_ig_log_pdf,
+        log_pdf_func=log_pdf_func,
         type_="Continuous",
         links={"mu": "log", "sigma": "log"},
         link_functions={"mu": log_link, "sigma": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative},
     )
-    
-    # Override hessians with expected information (Fisher information)
-    # These don't depend on y, which provides better numerical stability
+
+    # Expected information (Fisher information): these do not depend on y,
+    # which is what makes the IRLS step stable for this family.
     def d2ldm2_expected(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray, **kwargs) -> jnp.ndarray:
-        """Expected second derivative wrt mu (Fisher information)."""
         mu = jnp.asarray(mu, dtype=jnp.float64)
         sigma = jnp.asarray(sigma, dtype=jnp.float64)
         eps = jnp.finfo(jnp.float64).eps
         mu = jnp.maximum(mu, eps)
         sigma = jnp.maximum(sigma, eps)
         return -1.0 / (jnp.square(sigma) * jnp.power(mu, 3))
-    
+
     def d2lds2_expected(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray, **kwargs) -> jnp.ndarray:
-        """Expected second derivative wrt sigma (Fisher information)."""
         sigma = jnp.asarray(sigma, dtype=jnp.float64)
         eps = jnp.finfo(jnp.float64).eps
         sigma = jnp.maximum(sigma, eps)
         return -2.0 / jnp.square(sigma)
-    
-    # Replace hessian functions with expected versions
-    hessian_functions = {
-        "mu": d2ldm2_expected,
-        "sigma": d2lds2_expected,
-    }
-    
-    # Create new family with updated hessians
-    return InverseGaussianFamily(
+
+    from .dpqr_functions import dIG, pIG, qIG, rIG
+
+    return family_class(
         name=family.name,
         parameters=family.parameters,
         g_dev_inc=family.g_dev_inc,
@@ -776,13 +763,31 @@ def IG() -> InverseGaussianFamily:
         link_functions=family.link_functions,
         link_inverses=family.link_inverses,
         link_derivatives=family.link_derivatives,
-        score_functions=family.score_functions,  # Keep AD scores
-        hessian_functions=hessian_functions,  # Use expected hessians
+        score_functions=family.score_functions,
+        hessian_functions={"mu": d2ldm2_expected, "sigma": d2lds2_expected},
         d=dIG,
         p=pIG,
         q=qIG,
         r=rIG,
     )
+
+
+def IG() -> InverseGaussianFamily:
+    """Inverse Gaussian family compatible with the staged GAMLSS protocol.
+
+    Staged parameterization:
+    - E(Y) = mu
+    - Var(Y) = sigma^2 * mu^3
+
+    Uses JAX auto-differentiation for score functions (first derivatives)
+    but uses expected information (Fisher information) for hessians to ensure
+    numerical stability, following the R GAMLSS implementation.
+
+    R source reference:
+    - file: gamlss.dist/R/IG.R
+    - function: IG()
+    """
+    return _build_inverse_gaussian("IG", InverseGaussianFamily)
 
 
 def _lo_log_pdf(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp.ndarray:

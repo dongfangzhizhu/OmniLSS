@@ -75,9 +75,10 @@ def test_ad_families_without_explicit_dpqr_are_marked_placeholder():
     # derivative slots and moved to EXPERIMENTAL.  LOGSHASH followed it out of
     # the placeholder branch afterwards, and this test kept asserting
     # PLACEHOLDER for it until D2.73 -- a stale sample, not a live defect.
-    # DPO1 and IGA are the two families still in the branch (the validator's
-    # status distribution counts exactly two).
-    for family_name in ("DPO1", "IGA"):
+    # DPO1 is the last family in the branch: IGA left it in D2.77, when it
+    # turned out to be IG under a different registry name and simply had no
+    # d/p/q wired in (the validator counts exactly one now).
+    for family_name in ("DPO1",):
         capability = get_family_capability(family_name)
         assert capability.implementation_status is ImplementationStatus.PLACEHOLDER
         assert implementation_status_for_family(family_name) is (

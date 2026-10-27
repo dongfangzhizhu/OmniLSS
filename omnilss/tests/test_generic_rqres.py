@@ -62,10 +62,12 @@ class TestCoverage:
     def test_the_four_placeholder_families_still_return_none(self):
         """No CDF means no quantile residual -- not an invented one."""
         placeholder = _cdf_placeholder_families()
+        # IGA left this set in D2.77 (it shares IG's kernels).  The three that
+        # remain have no closed-form CDF in gamlss.dist either, so there is no
+        # reference to implement against.
         assert placeholder == {
             "DPO1",
             "GENERALISEDPOISSON",
-            "IGA",
             "LOGSHASHO",
         }, sorted(placeholder)
         for name in placeholder:
