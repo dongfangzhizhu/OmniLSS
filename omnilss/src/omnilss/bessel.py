@@ -153,12 +153,13 @@ if SCIPY_AVAILABLE:
         """
         # Use pure_callback to call scipy with sequential vmap
         result_shape = jax.ShapeDtypeStruct(jnp.shape(x), jnp.float64)
+        # Same batching argument as log_bessel_kv below (D2.76).
         return jax.pure_callback(
             _log_bessel_iv_scipy,
             result_shape,
             nu,
             x,
-            vmap_method='sequential'
+            vmap_method='expand_dims'
         )
     
     log_bessel_iv.defjvp(_log_bessel_iv_jvp)
@@ -176,12 +177,18 @@ if SCIPY_AVAILABLE:
         """
         # Use pure_callback to call scipy with sequential vmap
         result_shape = jax.ShapeDtypeStruct(jnp.shape(x), jnp.float64)
+        # D2.76: 'sequential' ran one host callback PER ELEMENT, so a score
+        # evaluation over n observations cost n round trips (measured ~1 s at
+        # n = 48, and the RS inner loop needs hundreds of evaluations -- a
+        # ZASICHEL fit on 12 rows took 216 s for a single outer cycle).
+        # _log_bessel_kv_scipy goes through scipy.special.kve, which
+        # broadcasts, so 'expand_dims' batches the whole vmap into one call.
         return jax.pure_callback(
             _log_bessel_kv_scipy,
             result_shape,
             nu,
             x,
-            vmap_method='sequential'
+            vmap_method='expand_dims'
         )
     
     log_bessel_kv.defjvp(_log_bessel_kv_jvp)

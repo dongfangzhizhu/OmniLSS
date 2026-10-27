@@ -8137,6 +8137,24 @@ def tofySICHEL(y, mu=1.0, sigma=1.0, nu=-0.5):
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     nu = jnp.asarray(nu, dtype=jnp.float64)
     y, mu, sigma, nu = jnp.broadcast_arrays(y, mu, sigma, nu)
+
+    # D2.76: the recursion only has to run to the largest count in the call.
+    # It scanned the whole SICHEL_DENSITY_MAX_COUNT = 100000 budget for every
+    # observation inside the vmap; the scan's only job is to catch
+    # j == floor(y), and nothing past the largest y is ever selected, so the
+    # truncation is exact.  A traced y cannot be inspected and keeps the full
+    # budget.
+    try:
+        _y_concrete = np.asarray(y, dtype=np.float64)
+        _finite = _y_concrete[np.isfinite(_y_concrete) & (_y_concrete >= 0.0)]
+        scan_steps = (
+            1 if _finite.size == 0
+            else int(min(SICHEL_DENSITY_MAX_COUNT,
+                         max(1, np.ceil(float(_finite.max())))))
+        )
+    except Exception:  # pragma: no cover - traced value
+        scan_steps = SICHEL_DENSITY_MAX_COUNT
+
     def scalar(y_i, mu_i, sigma_i, nu_i):
         valid = ((mu_i > 0) & (sigma_i > 0) & jnp.isfinite(mu_i)
                  & jnp.isfinite(sigma_i) & jnp.isfinite(nu_i))
@@ -8172,7 +8190,7 @@ def tofySICHEL(y, mu=1.0, sigma=1.0, nu=-0.5):
 
         init = (tofy_0, tofy_0)
         (_, result), _ = jax.lax.scan(scan_fun, init,
-                                      jnp.arange(1, SICHEL_DENSITY_MAX_COUNT + 1))
+                                      jnp.arange(1, scan_steps + 1))
         return jnp.where(valid & support, result, jnp.nan)
 
     flat = jax.vmap(scalar)(y.ravel(), mu.ravel(), sigma.ravel(), nu.ravel())
@@ -8268,6 +8286,7 @@ def tofyS(y, mu=1.0, sigma=1.0, nu=-0.5, max_count=SI_TOFY_MAX_COUNT):
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     nu = jnp.asarray(nu, dtype=jnp.float64)
     y, mu, sigma, nu = jnp.broadcast_arrays(y, mu, sigma, nu)
+
 
     def scalar(y_i, mu_i, sigma_i, nu_i):
         valid = ((mu_i > 0) & (sigma_i > 0) & jnp.isfinite(mu_i)
