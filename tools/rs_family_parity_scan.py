@@ -402,6 +402,8 @@ _R_FAMILY_ALIASES: dict[str, str] = {
     # D2.79: GENERALISEDPOISSON now shares GPO kernels, so the R-side probe
     # is R's GPO (gamlss.dist exports no dGeneralisedPoisson).
     "GENERALISEDPOISSON": "GPO",
+    # D2.80: DPO1 shares DPO kernels (gamlss.dist exports no dDPO1).
+    "DPO1": "DPO",
 }
 
 

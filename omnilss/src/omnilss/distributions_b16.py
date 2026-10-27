@@ -435,59 +435,44 @@ class DPO1Family(FamilyDefinition):
     """
 
 
-def _dpo1_log_pdf(y: Array, mu: Array, sigma: Array) -> Array:
-    """Log-PDF for DPO1 distribution.
-    
-    Uses approximate normalizing constant similar to DPO.
-    """
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.maximum(sigma, eps)
-    y = jnp.maximum(y, 0.0)
-    
-    # Double Poisson log-likelihood
-    # log f(y|mu,sigma) = (y*log(mu) - mu - log(y!))/sigma - 0.5*log(2*pi*sigma*y) + log(C)
-    
-    # Approximate normalizing constant
-    log_c = jnp.where(
-        y > 0.5,
-        0.5 * jnp.log(2.0 * jnp.pi * sigma * y),
-        0.0
-    )
-    
-    # Poisson part.  JAX has no ``jnp.lgamma`` / ``jnp.gammaln`` -- the
-    # log-gamma function lives in ``jax.scipy.special.gammaln`` (equivalently
-    # ``jax.lax.lgamma``).  Calling ``jnp.lgamma`` raised AttributeError, which
-    # made the DPO1 density unusable and broke any fit or scan touching it.
-    log_poisson = y * jnp.log(mu) - mu - jnp.where(y > 0, jsp_gammaln(y + 1.0), 0.0)
-    
-    log_pdf = log_poisson / sigma - 0.5 * jnp.log(2.0 * jnp.pi * sigma * y) + log_c
-    
-    # Zero density for y < 0
-    log_pdf = jnp.where(y >= 0.0, log_pdf, -jnp.inf)
-    
-    return log_pdf
-
-
 def DPO1() -> DPO1Family:
-    """Double Poisson Type 1 distribution.
+    """Double Poisson type 1, sharing DPO kernels (D2.80).
 
-    R's ``DPO1`` defaults are ``mu.link = "log"`` / ``sigma.link = "log"``
-    (``DoublePoisson-30-12-14.R``).
+    The previous body was not a density at all.  It added
+    0.5*log(2*pi*sigma*y) as an "approximate normalizing constant" and then
+    subtracted exactly the same term in the same expression, leaving
 
-    Alternative parameterization with approximate derivatives.
+        log f(y) = (y log mu - mu - log y!) / sigma,
 
-    Returns:
-        DPO1Family with automatic differentiation support
+    i.e. a scaled Poisson that sums to 1 only at sigma = 1, plus a +inf spike
+    at y = 0 (the subtracted log(0)).  Measured: sum over y = +inf for
+    sigma = 1, 0.5 and 2, with mean 3.000 / 0.456 / 10.171 for mu = 3 -- while
+    DPO, the R-verified double Poisson, sums to 1.000 with mean 3.013 / 2.999
+    on the same grid.  The family also had no CDF and was typed Continuous.
+
+    It now shares DPO kernels (density, CDF, quantiles, sampler), the Discrete
+    type and the log links; the scanner probes it as R DPO.  gamlss.dist
+    exports no dDPO1, so DPO was always the only reference.
     """
-    return build_ad_family(
-        family_class=DPO1Family,
-        log_pdf_func=_dpo1_log_pdf,
+    from .distributions_b6 import DPO
+
+    base = DPO()
+    return DPO1Family(
         name="DPO1",
-        parameters=("mu", "sigma"),
-        links={"mu": "log", "sigma": "log"},
-        link_functions={"mu": log_link, "sigma": log_link},
-        link_inverses={"mu": log_inverse, "sigma": log_inverse},
-        link_derivatives={"mu": log_derivative, "sigma": log_derivative},
+        parameters=base.parameters,
+        g_dev_inc=base.g_dev_inc,
+        type=base.type,
+        links=base.links,
+        link_functions=base.link_functions,
+        link_inverses=base.link_inverses,
+        link_derivatives=base.link_derivatives,
+        score_functions=base.score_functions,
+        hessian_functions=base.hessian_functions,
+        fixed_parameters=base.fixed_parameters,
+        d=base.d,
+        p=base.p,
+        q=base.q,
+        r=base.r,
     )
 
 

@@ -62,14 +62,11 @@ class TestCoverage:
     def test_the_four_placeholder_families_still_return_none(self):
         """No CDF means no quantile residual -- not an invented one."""
         placeholder = _cdf_placeholder_families()
-        # IGA left this set in D2.77 (it shares IG's kernels) and
-        # GENERALISEDPOISSON in D2.79 (it shares GPO's).  The two that remain
-        # have no closed-form CDF in gamlss.dist either, so there is no
-        # reference to implement against.
-        assert placeholder == {
-            "DPO1",
-            "LOGSHASHO",
-        }, sorted(placeholder)
+        # IGA left this set in D2.77 (IG kernels), GENERALISEDPOISSON in
+        # D2.79 (GPO kernels) and DPO1 in D2.80 (DPO kernels).  LOGSHASHO is
+        # the last one, and gamlss.dist exports no dLOGSHASHO either -- there
+        # is no reference CDF to implement against.
+        assert placeholder == {"LOGSHASHO"}, sorted(placeholder)
         for name in placeholder:
             assert _build_rqres_callable(resolve(name)) is None
 

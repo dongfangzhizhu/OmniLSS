@@ -489,7 +489,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | - | missing | missing | unverified | not_available | 3 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 4 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 166 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 167 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 40 |
 | gamlss.cs | gamlss | - | missing | missing | unverified | not_available | 0 |
 | gamlss.cy | gamlss | - | missing | missing | unverified | not_available | 0 |
@@ -630,7 +630,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | DBI | gamlss.dist | DBI | public_api | experimental | r_consistency_test | blocked | 13 |
 | DBURR12 | gamlss.dist | DBURR12 | public_api | experimental | r_consistency_test | blocked | 5 |
 | DEL | gamlss.dist | DEL | public_api | experimental | r_consistency_test | blocked | 9 |
-| DPO | gamlss.dist | DPO | public_api | experimental | r_consistency_test | blocked | 7 |
+| DPO | gamlss.dist | DPO | public_api | experimental | r_consistency_test | blocked | 9 |
 | EGB2 | gamlss.dist | EGB2 | public_api | experimental | r_consistency_test | blocked | 5 |
 | EXP | gamlss.dist | EXP | public_api | experimental | r_consistency_test | blocked | 5 |
 | Family | gamlss.dist | - | missing | missing | unverified | not_available | 7 |
@@ -782,7 +782,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | dDBI | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 5 |
 | dDBURR12 | gamlss.dist | dDBURR12 | module_def | experimental | r_consistency_test | blocked | 1 |
 | dDEL | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
-| dDPO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
+| dDPO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 1 |
 | dEGB2 | gamlss.dist | dEGB2 | module_def | experimental | capability:unsupported | blocked | 1 |
 | dEXP | gamlss.dist | dEXP | module_export | experimental | capability:validated | blocked | 0 |
 | dGA | gamlss.dist | dGA | module_export | experimental | golden:validated | blocked | 0 |
@@ -1480,7 +1480,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | Kumaraswamy | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | MN | gamlss2 | - | missing | missing | unverified | not_available | 2 |
 | OL | gamlss2 | - | missing | missing | unverified | not_available | 0 |
-| RS | gamlss2 | - | missing | missing | unverified | not_available | 88 |
+| RS | gamlss2 | - | missing | missing | unverified | not_available | 89 |
 | Rsq | gamlss2 | Rsq | module_export | implemented | unverified | internal | 0 |
 | available_families | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | bamlss2 | gamlss2 | - | missing | missing | unverified | not_available | 0 |

@@ -392,7 +392,7 @@ def _initial_mu_target(
         # 212.4250).
         eps = np.finfo(np.float64).eps
         target = np.log(np.maximum((y + np.mean(y)) / 2.0, eps))
-    elif family.name in ("DPO", "PARETO"):
+    elif family.name in ("DPO", "DPO1", "PARETO"):
         # R DPO()/PARETO()$mu.initial (live R, D2.38), log link:
         #   DPO:    mu <- (y + mean(y))/2   (y is a count, strictly positive)
         #   PARETO: mu <- rep(2, length(y)) -- a *constant* 2, not data-driven.
@@ -401,7 +401,8 @@ def _initial_mu_target(
         # Pareto(2) draw reaches exp(~30) and blew the intercept-only fit to
         # deviance -inf (test_r_consistency_batch7_8 Pareto intercept-only).
         eps = np.finfo(np.float64).eps
-        if family.name == "DPO":
+        if family.name in ("DPO", "DPO1"):
+            # D2.80: DPO1 shares DPO kernels, so it shares DPO's start too.
             target = np.log(np.maximum((y + np.mean(y)) / 2.0, eps))
         else:
             target = np.full(y.shape, np.log(2.0), dtype=np.float64)
@@ -903,7 +904,7 @@ def _initial_sigma(
         # R's answer; with rep(0.1) the trajectory reproduces R to six
         # decimals (212.424994 vs 212.4250).
         sigma = 0.1
-    elif family.name == "DPO":
+    elif family.name in ("DPO", "DPO1"):
         # R DPO()$sigma.initial (live R, D2.38): sigma <- rep(1, length(y)).
         sigma = 1.0
     elif family.name == "GU":

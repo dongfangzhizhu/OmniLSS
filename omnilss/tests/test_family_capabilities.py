@@ -70,21 +70,23 @@ def test_known_compat_alias_families_are_marked_separately_from_evidence():
         assert any("compatibility constructor" in note for note in capability.notes)
 
 
-def test_ad_families_without_explicit_dpqr_are_marked_placeholder():
-    # GIG was this test's sample until D2.48, when it gained d/p/q/r plus R's
-    # derivative slots and moved to EXPERIMENTAL.  LOGSHASH followed it out of
-    # the placeholder branch afterwards, and this test kept asserting
-    # PLACEHOLDER for it until D2.73 -- a stale sample, not a live defect.
-    # DPO1 is the last family in the branch: IGA left it in D2.77, when it
-    # turned out to be IG under a different registry name and simply had no
-    # d/p/q wired in (the validator counts exactly one now).
-    for family_name in ("DPO1",):
-        capability = get_family_capability(family_name)
-        assert capability.implementation_status is ImplementationStatus.PLACEHOLDER
-        assert implementation_status_for_family(family_name) is (
-            ImplementationStatus.PLACEHOLDER
-        )
-        assert any("placeholder numerical behavior" in note for note in capability.notes)
+def test_no_family_is_left_in_the_placeholder_branch():
+    # This test used to assert PLACEHOLDER for one sample family, and the
+    # sample kept going stale (GIG left in D2.48, LOGSHASH afterwards, IGA in
+    # D2.77, GENERALISEDPOISSON in D2.79, DPO1 in D2.80).  There are no
+    # placeholder families left, so the assertion is now about the set -- and
+    # the detector itself is still exercised by
+    # test_dpqr_placeholder_helpers_are_marked_placeholder below.
+    placeholders = [
+        capability.name
+        for capability in list_family_capabilities()
+        if capability.implementation_status is ImplementationStatus.PLACEHOLDER
+    ]
+    assert placeholders == [], placeholders
+    assert all(
+        implementation_status_for_family(name) is not ImplementationStatus.PLACEHOLDER
+        for name in family_capability_names()
+    )
 
 
 def test_dpqr_placeholder_helpers_are_marked_placeholder():
@@ -198,20 +200,15 @@ def test_method_route_capability_report_supports_service_admission():
     assert experimental["code"] == "experimental_requires_opt_in"
     assert experimental["status"] == "experimental"
 
-    # DPO1 and IGA hold the placeholder branch GIG held until D2.48 and
-    # LOGSHASH held until D2.73 (see the note on
-    # test_ad_families_without_explicit_dpqr_are_marked_placeholder).
+    # No family holds the placeholder branch any more (DPO1 was the last,
+    # D2.80), so the placeholder-route assertions moved to the detector test
+    # above.  What still matters here is that a route the family does not
+    # support is refused rather than silently admitted: DPO1 does not
+    # advertise RS_JAX.
     unsupported = method_route_capability_report("DPO1", "RS_JAX")
     assert unsupported["ok"] is False
-    assert unsupported["code"] == "placeholder_requires_opt_in"
+    assert unsupported["code"] == "unsupported_route"
     assert unsupported["feature"] == "rs_jax_fit"
-    assert unsupported["implementation_status"] == "placeholder"
-
-    unsupported_with_placeholder_opt_in = method_route_capability_report(
-        "DPO1", "RS_JAX", allow_placeholder=True
-    )
-    assert unsupported_with_placeholder_opt_in["ok"] is False
-    assert unsupported_with_placeholder_opt_in["code"] == "unsupported_route"
 
     unknown = method_route_capability_report("NO", "NOT_A_METHOD")
     assert unknown["ok"] is False
