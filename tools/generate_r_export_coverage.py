@@ -14,6 +14,29 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parent.parent
 
 
+def _family_has_dqr(name: str) -> bool:
+    """Whether the family really carries d/p/q, not the build_ad_family stub.
+
+    The report used to ask getattr(cap, "dqr", False) for this, but
+    FamilyCapability has no dqr attribute -- the flags live in features under
+    names like rs_fit -- so the field was False for all 146 families,
+    including NO/GA/PO, which plainly ship d/p/q/r.  A coverage report that
+    says every family lacks them is worse than no field at all.
+    """
+    try:
+        from omnilss.distributions import resolve_family  # noqa: PLC0415
+
+        family = resolve_family(name)
+    except Exception:  # pragma: no cover - registry drift is a separate issue
+        return False
+    kernels = [getattr(family, key, None) for key in ("d", "p", "q")]
+    if any(kernel is None for kernel in kernels):
+        return False
+    return not any(
+        "placeholder" in getattr(kernel, "__name__", "") for kernel in kernels
+    )
+
+
 def build_coverage() -> dict:
     """Build the registry inventory without writing any files."""
     # Add omnilss src to path when this module is imported by another tool.
@@ -40,9 +63,10 @@ def build_coverage() -> dict:
             info = {
                 "implementation_status": status,
                 "is_production_safe": bool(cap.is_production_safe),
-                "has_dqr": bool(getattr(cap, "dqr", False)),
-                "has_fitting": bool(getattr(cap, "fitting", False)),
-                "has_smoothing": bool(getattr(cap, "smoothing", False)),
+                # Feature evidence, not a non-existent attribute (D2.78).
+                "has_dqr": _family_has_dqr(name),
+                "has_fitting": cap.status("rs_fit").name != "UNSUPPORTED",
+                "has_smoothing": cap.status("smooth_terms").name != "UNSUPPORTED",
             }
             for key, evidence in (("r_consistency", "evidence_tier_dpqr"), ("rs_fit", "evidence_tier_fitting")):
                 try:
