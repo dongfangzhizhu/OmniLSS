@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-27T22:32:41.932452+00:00",
+  "generated_at": "2026-10-27T22:52:57.909342+00:00",
   "source_repo_root": "D:\\AI\\my\\githubprojs\\OmniLSS",
   "stats": {
     "total_registered": 146,
@@ -478,7 +478,7 @@
     "GENERALISEDPOISSON": {
       "implementation_status": "experimental",
       "is_production_safe": false,
-      "has_dqr": false,
+      "has_dqr": true,
       "has_fitting": true,
       "has_smoothing": true,
       "evidence_tier_dpqr": "UNSUPPORTED",

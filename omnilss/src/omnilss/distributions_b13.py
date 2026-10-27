@@ -281,41 +281,42 @@ class GeneralisedPoissonFamily(FamilyDefinition):
     pass
 
 
-def _gp_log_pdf(y, mu, sigma):
-    """Generalized Poisson log-PDF.
-    
-    GP(mu, sigma) with E[Y] = mu.
-    """
-    eps = jnp.finfo(jnp.float64).eps
-    y = jnp.maximum(y, 0.0)
-    mu = jnp.maximum(mu, eps)
-    sigma = jnp.clip(sigma, -0.99, 0.99)  # Constraint for GP
-    
-    # Parameterization: theta = mu, alpha = sigma
-    theta = mu
-    alpha = sigma
-    
-    lambda_ = theta / (1.0 + alpha)
-    
-    return (
-        jnp.log(lambda_) + (y - 1.0) * jnp.log(lambda_ + alpha * y)
-        - lambda_ - alpha * y
-        - gammaln(y + 1.0)
-    )
-
-
 def GeneralisedPoisson():
-    """Generalized Poisson distribution."""
-    return build_ad_family(
-        family_class=GeneralisedPoissonFamily,
+    """Generalised Poisson in R GPO parameterization (D2.79).
+
+    The previous body implemented the *unshifted* GP1 form
+    (lambda = mu/(1+sigma), p(y) = lambda (lambda + sigma y)^(y-1)
+    exp(-(lambda + sigma y)) / y!), which is a perfectly valid distribution but
+    is **not** mean-parameterized: with mu = 2, sigma = 0.5 the mean came out
+    2.667, and with mu = 5, sigma = 0.2 it came out 5.208.  The docstring above
+    promised E[Y] = mu, R GPO delivers it exactly (2.000 / 5.000 on the same
+    grid), and the family had no CDF at all.
+
+    It now shares GPO kernels -- density, CDF, quantiles, sampler and the sigma
+    link (log, not identity with a clip) -- which are the parity-verified ones
+    (GPO passes deriv/dpqr/rsdev against live R).  The sigma *scale* therefore
+    changes: the old identity link accepted sigma < 0 and clipped it, the log
+    link keeps sigma positive, as in R.
+    """
+    from .distributions_b15 import GPO
+
+    base = GPO()
+    return GeneralisedPoissonFamily(
         name="GeneralisedPoisson",
-        parameters=("mu", "sigma"),
-        log_pdf_func=_gp_log_pdf,
-        type_="Discrete",
-        links={"mu": "log", "sigma": "identity"},
-        link_functions={"mu": log_link, "sigma": identity_link},
-        link_inverses={"mu": log_inverse, "sigma": identity_inverse},
-        link_derivatives={"mu": log_derivative, "sigma": identity_derivative},
+        parameters=base.parameters,
+        g_dev_inc=base.g_dev_inc,
+        type=base.type,
+        links=base.links,
+        link_functions=base.link_functions,
+        link_inverses=base.link_inverses,
+        link_derivatives=base.link_derivatives,
+        score_functions=base.score_functions,
+        hessian_functions=base.hessian_functions,
+        fixed_parameters=base.fixed_parameters,
+        d=base.d,
+        p=base.p,
+        q=base.q,
+        r=base.r,
     )
 
 

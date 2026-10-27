@@ -383,7 +383,7 @@ def _initial_mu_target(
         # (their old warm start was mean(y), whose first IRLS step differs
         # from R's) and were ported in the same pass.
         target = (y + np.mean(y)) / 2.0
-    elif family.name in ("BCCGo", "BCTo", "BCPEo", "GPO"):
+    elif family.name in ("BCCGo", "BCTo", "BCPEo", "GPO", "GENERALISEDPOISSON"):
         # Same R mu.initial expression, but these carry mu.link = "log", so
         # the link-scale target is log of the response-scale start.  GPO was
         # added in D2.38 (live R dump): with target=y through a log link the
@@ -892,8 +892,12 @@ def _initial_sigma(
         # (rel 6.6e+01) and never converged; with R's start the trajectory
         # locks onto live R's.
         sigma = np.std(y, ddof=1) / 2.0
-    elif family.name == "GPO":
+    elif family.name in ("GPO", "GENERALISEDPOISSON"):
         # R GPO()$sigma.initial (live R, D2.38): sigma <- rep(0.1, length(y)).
+        # D2.79: GENERALISEDPOISSON shares GPO kernels, so it needs GPO's start
+        # too; without it the fit parked at 231.063 against R's 218.645
+        # (rel 5.7e-02) purely because sigma began on the generic residual
+        # scale instead of 0.1.
         # The generic residual-scale default (~1.9 on the scanner sample)
         # started sigma 20x above R and the fit parked 1.17 deviance above
         # R's answer; with rep(0.1) the trajectory reproduces R to six

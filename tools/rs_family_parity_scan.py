@@ -399,6 +399,9 @@ _PROBE_BD = 10.0
 #: only ever missing a call site.
 _R_FAMILY_ALIASES: dict[str, str] = {
     "IGA": "IG",
+    # D2.79: GENERALISEDPOISSON now shares GPO kernels, so the R-side probe
+    # is R's GPO (gamlss.dist exports no dGeneralisedPoisson).
+    "GENERALISEDPOISSON": "GPO",
 }
 
 
