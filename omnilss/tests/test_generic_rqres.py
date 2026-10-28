@@ -59,14 +59,14 @@ class TestCoverage:
         assert len(covered) >= 140, len(covered)
         assert set(covered) | placeholder == set(list_families())
 
-    def test_the_four_placeholder_families_still_return_none(self):
-        """No CDF means no quantile residual -- not an invented one."""
+    def test_no_family_is_without_a_cdf_any_more(self):
+        """No CDF would mean no quantile residual -- not an invented one."""
         placeholder = _cdf_placeholder_families()
         # IGA left this set in D2.77 (IG kernels), GENERALISEDPOISSON in
-        # D2.79 (GPO kernels) and DPO1 in D2.80 (DPO kernels).  LOGSHASHO is
-        # the last one, and gamlss.dist exports no dLOGSHASHO either -- there
-        # is no reference CDF to implement against.
-        assert placeholder == {"LOGSHASHO"}, sorted(placeholder)
+        # D2.79 (GPO kernels), DPO1 in D2.80 (DPO kernels) and LOGSHASHO in
+        # D2.81 (its CDF is pSHASHo applied to log y).  The set is empty:
+        # every family in the registry now has a real CDF.
+        assert placeholder == set(), sorted(placeholder)
         for name in placeholder:
             assert _build_rqres_callable(resolve(name)) is None
 

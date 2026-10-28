@@ -501,41 +501,56 @@ class LOGSHASHoFamily(FamilyDefinition):
 
 
 def _logshasho_log_pdf(y: Array, mu: Array, sigma: Array, nu: Array, tau: Array) -> Array:
-    """Log-PDF for LOGSHASHo distribution.
-    
-    log f(y|mu,sigma,nu,tau) = -log(sigma) + log(tau) - 0.5*log(2*pi)
-                                - 0.5*log(1+z^2) + log(c) - 0.5*r^2
-    where:
-        z = (y - mu) / sigma
-        r = sinh(tau * asinh(z) - nu)
-        c = cosh(tau * asinh(z) - nu)
+    """Log-density of the log-Sinh-Arcsinh: Y = exp(X), X ~ SHASHo (D2.81).
+
+    R's own dLOGSHASHo (vendored gamlss.dist/R/LOGSHASHo.R:127) evaluates the
+    SHASH density at z = (x - mu)/sigma -- on x, not on log(x) -- and then
+    masks x <= 0.  R's pLOGSHASHo in the same file does the opposite:
+    cdf <- pSHASHo(log(q), ...).  The two halves of R's own family describe
+    different distributions, and the density half is not a density: with
+    mu = 0, sigma = 1, nu = 0, tau = 1 it integrates to 0.500 over (0, inf),
+    and with mu = -1 to 0.0023.
+
+    Three of the four functions (p, q, r) agree with the log-transform
+    reading, so that is the one implemented here: the density is
+    f_SHASHo(log y) / y, which is exactly d/dy pLOGSHASHo.  The density and
+    the CDF can no longer disagree, and the family integrates to 1.
     """
-    sigma = jnp.maximum(sigma, eps)
-    nu = jnp.maximum(nu, eps)
-    tau = jnp.maximum(tau, eps)
-    
-    z = (y - mu) / sigma
-    
-    # Compute sinh-arcsinh transformation
-    asinh_z = jnp.arcsinh(z)
-    arg = tau * asinh_z - nu
-    
-    r = jnp.sinh(arg)
-    c = jnp.cosh(arg)
-    
-    log_pdf = (
-        -jnp.log(sigma)
-        + jnp.log(tau)
-        - 0.5 * jnp.log(2.0 * jnp.pi)
-        - 0.5 * jnp.log(1.0 + z * z)
-        + jnp.log(c)
-        - 0.5 * r * r
-    )
-    
-    # Zero density for y <= 0
-    log_pdf = jnp.where(y > 0.0, log_pdf, -jnp.inf)
-    
-    return log_pdf
+    from .distributions_b3 import _shasho_log_pdf
+
+    eps = jnp.finfo(jnp.float64).eps
+    y_safe = jnp.maximum(y, eps)
+    log_y = jnp.log(y_safe)
+    log_pdf = _shasho_log_pdf(log_y, mu, sigma, nu, tau) - log_y
+    return jnp.where(y > 0.0, log_pdf, -jnp.inf)
+
+
+def _logshasho_p(q, mu=0.0, sigma=1.0, nu=0.5, tau=0.5, lower_tail=True, log_p=False):
+    """CDF: R pLOGSHASHo -- pSHASHo applied to log(q)."""
+    from .distributions_b3 import _shasho_p
+
+    q = jnp.asarray(q, dtype=jnp.float64)
+    eps = jnp.finfo(jnp.float64).eps
+    cdf = _shasho_p(jnp.log(jnp.maximum(q, eps)), mu, sigma, nu, tau, lower_tail, log_p)
+    if lower_tail:
+        below = -jnp.inf if log_p else 0.0
+    else:
+        below = 0.0
+    return jnp.where(q > 0.0, cdf, below)
+
+
+def _logshasho_q(p, mu=0.0, sigma=1.0, nu=0.5, tau=0.5, lower_tail=True, log_p=False):
+    """Quantile: exp of the SHASHo quantile (the transform is monotone)."""
+    from .distributions_b3 import _shasho_q
+
+    return jnp.exp(_shasho_q(p, mu, sigma, nu, tau, lower_tail, log_p))
+
+
+def _logshasho_r(key, n, mu=0.0, sigma=1.0, nu=0.5, tau=0.5):
+    """Sampler: exp of a SHASHo draw."""
+    from .distributions_b3 import _shasho_r
+
+    return jnp.exp(_shasho_r(key, n, mu, sigma, nu, tau))
 
 
 def LOGSHASHo() -> LOGSHASHoFamily:
@@ -552,6 +567,10 @@ def LOGSHASHo() -> LOGSHASHoFamily:
         log_pdf_func=_logshasho_log_pdf,
         name="LOGSHASHo",
         parameters=("mu", "sigma", "nu", "tau"),
+        type_="Continuous",
+        p=_logshasho_p,
+        q=_logshasho_q,
+        r=_logshasho_r,
         links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "log"},
         link_functions={
             "mu": identity_link,
