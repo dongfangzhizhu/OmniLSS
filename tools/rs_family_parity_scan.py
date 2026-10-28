@@ -688,6 +688,24 @@ _RSDEV_R_DENSITY_RECYCLED: dict[str, dict] = {
             "different mu while ours differs."
         ),
     ),
+    "ZANBI": dict(
+        reported=208.384659,
+        valid_at=209.50928,
+        dev_ours=209.28495,
+        note=(
+            'D2.85.  R dZANBI normalises with fy0 <- dNBI(0, mu=mu, sigma=sigma, log=TRUE),'
+            'and R dNBI does NOT recycle the scalar x against a vector mu: measured on'
+            'live R, length(dNBI(0, mu=c(2,8), sigma=c(0.1,0.1), log=TRUE)) is 1, not 2'
+            '(the value is f0 at the first mu).  So the whole vector shares one f0, while'
+            'our implementation evaluates each observation own -- which is what dZANBI'
+            'own source formula says it should do.  On the scanner sample'
+            '(sigma -> 0.0347, nu = 0.0625) R reports 208.384659; evaluating the'
+            'elementwise formula at R own fitted mu gives 209.50928, i.e. R number is'
+            '1.12 too low.  Our fit stops at 209.28495, below that reference.'
+            'Same defect class as ZABI/ZIBI (D2.71), different route: there dBI ignored'
+            'bd, here dNBI ignores the vector mu.'
+        ),
+    ),
     "ZIBI": dict(
         reported=211.99820054100502,
         valid_at=211.78536661648022,
