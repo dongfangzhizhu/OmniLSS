@@ -1322,23 +1322,37 @@ def gate_derivatives(family: str) -> dict:
 # ---------------------------------------------------------------------------
 
 def _build_jobs(families: list[str], n: int) -> tuple[list[dict], dict]:
-    """Build R jobs for d/p/q plus an RS fit, one entry per family."""
+    """Build R jobs for d/p/q plus an RS fit, one entry per family.
+
+    D2.83: the grids and the fit samples are drawn from ONE shared RNG stream
+    in family order, so a run over a subset used to hand every family a
+    different sample than a full run did -- and the same code produced
+    different pass/fail verdicts depending on how it was invoked (measured:
+    ZAP 206.212 on a subset against 201.76 in the full run that registered the
+    evidence).  The loop below therefore always walks every family in
+    discovery order and draws exactly what a full run would draw; the request
+    list only selects which jobs get emitted.
+    """
     _add_src()
     rng = np.random.default_rng(20261006)
     jobs: list[dict] = []
     index: dict[str, dict] = {}
+    wanted = set(families)
 
-    for family in families:
+    for family in discover_families():
+        selected = family in wanted
         entry: dict[str, dict] = {}
         params = _family_parameters(family)
         if params is None:
-            index[family] = {"dpqr": None}
+            if selected:
+                index[family] = {"dpqr": None}
             continue
 
         try:
             y, parrays, bd = _family_grids(family, n)
         except Exception:
-            index[family] = {"dpqr": None}
+            if selected:
+                index[family] = {"dpqr": None}
             continue
 
         # Argument names follow gamlss.dist convention.  NOTE: the first
@@ -1360,6 +1374,8 @@ def _build_jobs(families: list[str], n: int) -> tuple[list[dict], dict]:
                 vals.append(np.asarray(parray, dtype=np.float64).tolist())
             for cval in consts.values():
                 vals.append(np.full(n, float(cval)).tolist())
+            if not selected:
+                continue
             jobs.append(
                 {
                     "kind": "dpqr",
@@ -1377,10 +1393,14 @@ def _build_jobs(families: list[str], n: int) -> tuple[list[dict], dict]:
             entry[type_char] = len(jobs) - 1
 
         # RS fit job
+        # Always drawn, even for a family we are not reporting on: the stream
+        # has to advance exactly as a full run would advance it.
         fit_data = _fit_data(family, rng, y)
         fixed = tuple(
             getattr(_safe_family(family), "fixed_parameters", ()) or ()
         )
+        if not selected:
+            continue
         jobs.append(
             {
                 "kind": "fit",
