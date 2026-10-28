@@ -688,6 +688,22 @@ _RSDEV_R_DENSITY_RECYCLED: dict[str, dict] = {
             "different mu while ours differs."
         ),
     ),
+    "ZAP": dict(
+        reported=205.2975265687,
+        valid_at=205.0786282268,
+        dev_ours=205.077211,
+        note=(
+            'D2.86.  Same route as ZANBI (D2.85) through a different base: R dZAP'
+            'normalises with fy0 computed from dPO(0, mu), and R dPO does not recycle'
+            'the scalar x against a vector mu -- measured on live R,'
+            'length(dPO(0, mu=c(2,8))) is 1.  So the whole vector shares the first'
+            'observation f0 while ours evaluates each row own.'
+            'On the scanner sample R reports 205.297527 at sigma_eta = -3.1354942159'
+            'and mu = (1.3125593808, -0.0187669487); evaluating OUR elementwise'
+            'density at those exact parameters gives 205.078628, i.e. R number is'
+            '0.219 too high.  Our own fit stops at 205.077211, below that reference.'
+        ),
+    ),
     "ZANBI": dict(
         reported=208.384659,
         valid_at=209.50928,
