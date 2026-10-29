@@ -1,4 +1,4 @@
-"""SEP4 starts where R starts (D2.88).
+"""SEP3 and SEP4 start where R starts (D2.88 / D2.92).
 
 R SEP4.R declares
 
@@ -12,6 +12,11 @@ generic residual scale.  On the scanner sample sigma then hit the log-scale
 floor (log 1e-6) on the very first cycle and mu went to the eta clip: deviance
 1.04e14 at n_cyc = 1 and 1.30e27 at n_cyc = 20.  With R initial values the
 same fit lands at 119.12.
+
+D2.92 adds SEP3: with the generic default it never got below 1932, and with
+these R values it descends to 123.46 by cycle 12 before the family's
+sigma -> 0 degeneracy takes over (rs_fit then falls back to the best finite
+cycle instead of returning inf).
 
 These tests pin the starting values without running a fit.
 """
@@ -50,3 +55,13 @@ def test_nu_and_tau_start_at_two():
     for parameter in ("nu", "tau"):
         value = _initial_parameter_value(family, parameter, y, np.mean(y), np.ones_like(y))
         assert float(value) == 2.0, (parameter, value)
+
+
+def test_sep3_uses_the_same_scale_and_tau_but_nu_one():
+    """R SEP3.R: sigma = sd(y), nu = 1, tau = 2 (not SEP4's nu = 2)."""
+    y = _y()
+    family = resolve("SEP3")
+    sigma = _initial_parameter_value(family, "sigma", y, np.mean(y), np.ones_like(y))
+    np.testing.assert_allclose(float(sigma), float(np.std(y, ddof=1)), rtol=1e-12)
+    assert float(_initial_parameter_value(family, "nu", y, np.mean(y), np.ones_like(y))) == 1.0
+    assert float(_initial_parameter_value(family, "tau", y, np.mean(y), np.ones_like(y))) == 2.0

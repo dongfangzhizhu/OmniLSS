@@ -1290,6 +1290,13 @@ def rs_fit(
     iteration = 0
     converged = False
     deviance_history = [float(g_dev)]
+    # Deliberately NOT seeded with the initial deviance: SEP3's first RS step
+    # moves the deviance *up* (107.52 at the start, 141.86 after cycle 1) and
+    # no cycle ever beats the starting point, so seeding here meant the
+    # snapshot never fired and the fit returned inf (measured, D2.92).  The
+    # fallback is about what the ITERATION achieved, not where it began.
+    best_deviance = None
+    best_state = None
     lambda_update_warnings: list[str] = []
     lambda_update_failed_params: set[str] = set()
     rs_step_halving_by_param: dict[str, int] = {
@@ -1400,6 +1407,13 @@ def rs_fit(
         g_dev_incr = np.asarray(family.g_dev_inc(**dev_kwargs), dtype=np.float64)
         g_dev = np.sum(w * g_dev_incr)
         deviance_history.append(float(g_dev))
+        if np.isfinite(g_dev) and (best_deviance is None or g_dev < best_deviance):
+            best_deviance = float(g_dev)
+            best_state = (
+                {k: np.array(v, dtype=np.float64, copy=True) for k, v in parameter_values.items()},
+                {k: np.array(v, dtype=np.float64, copy=True) for k, v in coefficients.items()},
+                {k: np.array(v, dtype=np.float64, copy=True) for k, v in linear_predictors.items()},
+            )
 
         if verbose:
             print(
@@ -1532,7 +1546,15 @@ def rs_fit(
     _eta_grad_max = (
         float(_eta_grad_measured.max()) if _eta_grad_measured.size else float("nan")
     )
-    if not np.isfinite(g_dev):
+    if not np.isfinite(g_dev) and best_state is not None:
+        parameter_values, coefficients, linear_predictors = best_state
+        dev_kwargs = {"y": y, **parameter_values, **fixed_parameter_values}
+        g_dev = float(
+            np.sum(w * np.asarray(family.g_dev_inc(**dev_kwargs), dtype=np.float64))
+        )
+        converged = False
+        termination_reason = "reverted_to_best_finite"
+    elif not np.isfinite(g_dev):
         converged = False
         termination_reason = "non_finite_deviance"
     elif converged:

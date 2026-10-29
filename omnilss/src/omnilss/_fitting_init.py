@@ -131,6 +131,8 @@ def _initial_parameter_value(
             # skewness parameter).  The generic 1.0 default starts the
             # log-link nu an order of magnitude off R's.
             return 0.1
+        if family.name == "SEP3":
+            return 1.0
         if family.name == "SEP4":
             # R SEP4.R line 214: nu <- rep(2, length(y)).
             return 2.0
@@ -207,11 +209,8 @@ def _initial_parameter_value(
             # R SEP.R / SEPP1.R / SEP2.R: tau <- rep(1.6, length(y)) (the
             # tail-weight / shape parameter).
             return 1.6
-        if family.name == "SEP4":
-            # R SEP4.R line 215: tau <- rep(2, length(y)).  SEP3 keeps the
-            # generic path: with R's SE3 initials it descends to 128.96 by
-            # cycle 10 and then dives (sigma to the log floor, deviance inf)
-            # -- see D2.90.
+        if family.name in ("SEP3", "SEP4"):
+            # R SEP3.R line 196 / SEP4.R line 215: tau <- rep(2, length(y)).
             return 2.0
         if family.name == "JSU":
             return 1.0
@@ -506,7 +505,7 @@ def _initial_mu_target(
         # LOGNO2's mu link is log, so the link-scale target is the exponent.
         log_y = np.log(np.maximum(y, np.finfo(np.float64).eps))
         target = (log_y + np.mean(log_y)) / 2.0
-    elif family.name in ("SEP", "SEP1", "SEP2", "SEP4", "SN2", "EGB2"):
+    elif family.name in ("SEP", "SEP1", "SEP2", "SEP3", "SEP4", "SN2", "EGB2"):
         # R SEP.R / SEP1.R / SEP2.R / SN2.R / EGB2.R, all identical:
         #     mu <- (y+mean(y))/2
         # The generic target=y fallback leaves the residual spread in
@@ -729,7 +728,7 @@ def _initial_sigma(
     elif family.name in ("SEP", "SEP1", "SEP2"):
         # R SEP.R / SEP1.R / SEP2.R: sigma <- rep(sd(y)/4, length(y))
         sigma = float(np.std(y, ddof=1) / 4.0)
-    elif family.name == "SEP4":
+    elif family.name in ("SEP3", "SEP4"):
         # R SEP4.R line 213: sigma <- rep(sd(y), length(y))
         # -- sd, not sd/4.  Without this branch both families fell through to
         # the generic residual scale, sigma hit the log-scale floor
