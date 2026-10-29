@@ -209,9 +209,9 @@ def _initial_parameter_value(
             return 1.6
         if family.name == "SEP4":
             # R SEP4.R line 215: tau <- rep(2, length(y)).  SEP3 keeps the
-            # generic path for now: with R's SE3 initials (nu = 1, tau = 2)
-            # its deviance went from 1933 to +inf on the scanner sample, so
-            # that family needs its own investigation before it is wired up.
+            # generic path: with R's SE3 initials it descends to 128.96 by
+            # cycle 10 and then dives (sigma to the log floor, deviance inf)
+            # -- see D2.90.
             return 2.0
         if family.name == "JSU":
             return 1.0
