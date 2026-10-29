@@ -624,6 +624,34 @@ _RSDEV_R_DIVERGED: dict[str, dict] = {
             "fit descends monotonically to 116.798974 at cycle 20."
         ),
     ),
+    "SEP2": dict(
+        reported=117498.3692839743,
+        best_trace=26034.4670526552,
+        best_trace_cycle=60,
+        dev_ours=115.98,
+        note=(
+            'D2.95.  R own SEP2 fit is still descending into nonsense at every budget:'
+            'sweeping n.cyc on live R gives 463287.7168 at 2, 321533.1838 at 5,'
+            '209468.4130 at 10, 161765.5385 at 14, 117498.3693 at 20, 54237.9972 at 40'
+            'and 26034.4671 at 60 -- for 48 observations.  It never plateaus, so the'
+            'reported 117498 is one sample of a runaway trajectory, not a likelihood at'
+            'any point; the best value R reaches anywhere on its trace is 26034.4671 at'
+            'cycle 60.  Our fit lands at 115.98, two orders of magnitude below that.'
+        ),
+    ),
+    "GT": dict(
+        reported=2573.7484826407,
+        best_trace=126.4220797843,
+        best_trace_cycle=5,
+        dev_ours=122.867,
+        note=(
+            'D2.95.  R own GT fit blows up after a few cycles: sweeping n.cyc on live R'
+            'gives 142.5272 at 2, 126.4221 at 5, 10430.0040 at 10, 7022.2289 at 14,'
+            '2573.7485 at 20, 5393747492 at 40 and 324483079 at 60.  The reported'
+            '2573.7485 is an artefact; the best value R reaches anywhere on its trace'
+            'is 126.4221 at cycle 5, and ours (122.867) is below it.'
+        ),
+    ),
 }
 
 _RSDEV_R_REFERENCE_INVALID: dict[str, dict] = {
