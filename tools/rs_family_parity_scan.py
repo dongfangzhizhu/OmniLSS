@@ -603,27 +603,6 @@ _RSDEV_R_DIVERGED: dict[str, dict] = {
         ),
     ),
 
-    "GT": dict(
-        reported=153864.963870,
-        best_trace=120.685644,
-        best_trace_cycle=6,
-        dev_ours=116.798974,
-        note=(
-            "D2.68, full-family-stream sample.  R's GT fit is well behaved "
-            "through cycle 6 (139.796 / 132.873 / 129.2329 / 126.9127 / "
-            "124.6797 / 120.6856) and then jumps to 174198.8 at cycle 7, "
-            "creeping down to 153865 by cycle 20 (converged = FALSE).  The "
-            "jump is R's own: its nu coefficient freezes at 7.5125 for the "
-            "whole run while tau runs away.  There is therefore no R "
-            "reference at the gate budget -- the best value R ever reached "
-            "is 120.6856 at cycle 6.  Before D2.68 our side matched R's "
-            "self-destruction (1424.36) because GT had no initial values: mu "
-            "fell through to target=y and sigma to the eps floor "
-            "(2.2e-16), which sent the first mu inner fit to 1.2e6.  With "
-            "R's mu.initial = (y+mean(y))/2 and sigma.initial = sd(y)/4 our "
-            "fit descends monotonically to 116.798974 at cycle 20."
-        ),
-    ),
     "SEP2": dict(
         reported=117498.3692839743,
         best_trace=26034.4670526552,
