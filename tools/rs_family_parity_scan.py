@@ -1020,6 +1020,23 @@ _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
             "(D2.30); a sublist run shifts them on BOTH sides."
         ),
     ),
+    "ZAZIPF": dict(
+        n_cyc=20,
+        dev_ours=253.428,
+        dev_r=254.0221775634,
+        note=(
+            'D2.97.  R reports the SAME deviance at every budget: 254.0221775634 at'
+            'n.cyc = 2, 5, 10, 14, 20, 40 and 60 -- it halts the moment the absolute'
+            'change drops under c.crit and never moves again, which is the plateau'
+            'pattern, not an optimum.  Self-check that this is a stopping point and not a'
+            "density difference: evaluating OUR elementwise density at R's own fitted"
+            'parameters (mu = -0.4077391078 + 0.1154482426*x, nu_eta = -1.7676619176 on a'
+            "logit link, so nu = 0.14583333) gives 254.0520519509717 against R's reported"
+            '254.0221775634 -- rel 1.2e-4, so both sides minimise the same objective and'
+            'only the stopping point differs.  Our fit descends to 253.428, 0.594 below'
+            "R's halt."
+        ),
+    ),
 }
 
 
