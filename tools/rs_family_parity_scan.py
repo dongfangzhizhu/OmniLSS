@@ -567,6 +567,42 @@ _RSDEV_PATH_DIVERGENT: dict[str, dict] = {
 #: anywhere along its trace, which is the strongest statement R's own run
 #: supports, and requires our fit to beat it.
 _RSDEV_R_DIVERGED: dict[str, dict] = {
+    "SEP3": dict(
+        reported=136.9656446576,
+        reported_at_n_cyc=20,
+        best_trace=124.3172849763,
+        best_trace_cycle=10,
+        dev_ours=123.46371752589589,
+        note=(
+            'D2.94.  R own SEP3 fit is unstable, not early-stopped: sweeping n.cyc on'
+            'live R gives 140.1742383098 at 2, 135.8619435572 at 5, 124.3172849763 at 10,'
+            '2687.7273835719 at 14, 136.9656446576 at 20 and 7362.4272050501 at 60.  The'
+            'reported 136.9656 is a mid-cycle number from an oscillating trajectory, not'
+            'the likelihood at any converged point; the best value R reaches anywhere on'
+            'its trace is 124.3173 at cycle 10.  Our fit lands at 123.4637, below that.'
+            'Getting there needed R own SEP3 initial values (mu = (y+mean(y))/2,'
+            'sigma = sd(y), nu = 1, tau = 2) plus rs_fit best-finite-cycle fallback'
+            '(D2.92): before either, SEP3 reported inf.'
+        ),
+    ),
+    "SEP4": dict(
+        reported=4281.3573553256,
+        reported_at_n_cyc=20,
+        best_trace=127.4283950023,
+        best_trace_cycle=2,
+        dev_ours=119.1197397744387,
+        note=(
+            'D2.94.  R own SEP4 fit does not converge at all: sweeping n.cyc on live R'
+            'gives 127.4283950023 at 2, 26763.6471361861 at 5, 10598.2091752837 at 10,'
+            '6989.7553018627 at 14, 4281.3573553256 at 20, 10557.6298411140 at 40 and'
+            '530.8039492254 at 60.  The reported 4281.3574 is an artefact of that'
+            'oscillation; the best value R reaches anywhere on its trace is 127.4284 at'
+            'cycle 2.  Our fit lands at 119.1197, below that.  Getting there needed R'
+            'own SEP4 initial values (mu = (y+mean(y))/2, sigma = sd(y), nu = 2, tau = 2)'
+            '-- before them SEP4 reported 1.30e27 (D2.88).'
+        ),
+    ),
+
     "GT": dict(
         reported=153864.963870,
         best_trace=120.685644,
