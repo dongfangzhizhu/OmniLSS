@@ -675,6 +675,28 @@ _RSDEV_R_REFERENCE_INVALID: dict[str, dict] = {
             "numerically valid 221.374813."
         ),
     ),
+    "WARING": dict(
+        reported=208.0000000000,
+        valid_at=221.6614608765,
+        valid_sigma=1e-10,
+        dev_ours=219.499,
+        note=(
+            'D2.99.  R WARING fit at n.cyc = 20 reports 208.0000000000 with'
+            'sigma = exp(-36.0314865932) = 2.2476e-16 -- the double epsilon floor, and the'
+            'value is suspiciously round.  Two independent measurements show it is not a'
+            'likelihood at any point:'
+            "  1. R's OWN dWARING evaluated at R's own fitted mu and its own reported sigma"
+            "     gives 240.0000000000, not 208 -- R's stored G.deviance disagrees with its"
+            '     own density by 32.'
+            "  2. Sweeping sigma at R's own fitted mu through R's own dWARING gives"
+            '     221.6632222879 (1e-4), 221.6614473592 (1e-6), 221.6614295244 (1e-8) and'
+            '     221.6614608765 (1e-10): a flat plateau, which is the number to compare'
+            '     against.'
+            'Our fit lands at 219.499, below that plateau.  This is the same sigma-floor'
+            'pattern as ZABNB (D2.98), with the opposite sign from SEP3/SEP4, where hitting'
+            'the floor produced absurdly LARGE deviances -- here it produces a small one.'
+        ),
+    ),
 }
 
 #: Families whose *own density* is not elementwise, so R's reported deviance
