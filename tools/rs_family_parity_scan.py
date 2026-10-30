@@ -635,10 +635,12 @@ _RSDEV_R_DIVERGED: dict[str, dict] = {
 
 _RSDEV_R_REFERENCE_INVALID: dict[str, dict] = {
     "ZABNB": dict(
-        reported=202.9046037917726,
-        valid_at=214.832625,
+        # D2.98: re-measured on the reproducible sample (D2.83 shifted every
+        # family fit sample).  The D2.64 mechanism below is unchanged.
+        reported=202.8401385265,
+        valid_at=212.7315505540,
         valid_sigma=1e-10,
-        dev_ours=211.718924,
+        dev_ours=209.9115,
         note=(
             "D2.64, full-family-stream sample.  R's ZABNB fit at n.cyc=20 ends\n"
             "with sigma = exp(-36.043655) = 2.220446e-16 (the double epsilon),\n"
