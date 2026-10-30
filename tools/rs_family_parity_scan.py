@@ -658,21 +658,21 @@ _RSDEV_R_REFERENCE_INVALID: dict[str, dict] = {
         ),
     ),
     "ZIBNB": dict(
-        reported=199.4437321287374,
-        valid_at=221.374813,
+        # D2.103: re-measured on the reproducible sample.
+        reported=196.2607344344,
+        valid_at=202.9500332261,
         valid_sigma=1e-10,
-        dev_ours=221.176844,
+        dev_ours=199.046,
         note=(
-            "D2.64, full-family-stream sample.  Same signature as ZABNB: R's\n"
-            "fit ends at sigma = exp(-36.056196) = 2.220446e-16 with\n"
-            "converged = FALSE, and a sigma sweep at R's own fitted mu/nu/tau\n"
-            "through R's own dZIBNB gives 221.378914 / 221.374853 / 221.374813\n"
-            "/ 221.374791 / 221.374273 / 221.097451 / 219.848274 at\n"
-            "sigma = 1e-4 / 1e-6 / 1e-8 / 1e-10 / 1e-12 / 1e-15 / eps.\n"
-            "R's reported 199.4437 is 22 units below the flat part of its own\n"
-            "likelihood and is a stale mid-cycle value (the per-cycle deviance\n"
-            "oscillates between 195 and 219).  Our 221.176844 is below R's\n"
-            "numerically valid 221.374813."
+            'D2.103.  Re-measured on the reproducible sample; the D2.64 sigma-floor'
+            "mechanism below is unchanged.  R's ZIBNB fit at n.cyc = 20 ends with"
+            'sigma = exp(-36.0562194433) = 2.220446e-16 (the double epsilon), and its'
+            'swept deviance oscillates (186.530 / 191.329 / 206.305 / 204.245 / 196.261 /'
+            '193.849 / 191.521 at n.cyc = 2/5/10/14/20/40/60), so the reported 196.2607 is'
+            "not a likelihood at any point.  Sweeping sigma at R's own fitted mu/nu/tau"
+            "through R's own dZIBNB gives 202.9517863422 (1e-4), 202.9500870204 (1e-6),"
+            '202.9500700113 (1e-8) and 202.9500332261 (1e-10): a flat plateau, which is'
+            'the number to compare against.  Our fit lands at 199.046, below it.'
         ),
     ),
     "WARING": dict(
@@ -830,36 +830,17 @@ _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
     # returning our coefficients' deviance bit-for-bit at the old 94.11
     # plateau) is preserved in the D2.36 log and omnilss/tmp/d236_inner.log.
     "ZIPIG": dict(
+        # D2.103: re-measured on the reproducible sample.
         n_cyc=20,
-        dev_ours=207.7863230779,
-        dev_r=211.7673906379,
+        dev_ours=216.232,
+        dev_r=217.308852,
         note=(
-            "R's early stop is the c_crit pattern again, and its trajectory is "
-            "the clearest case yet because it *rises* monotonically: 210.6150995933 "
-            "at n.cyc=2, 211.5829342519 at 5, 211.7576497286 at 10, 211.7673906379 "
-            "at 14 and unchanged at 60/200/600.  R's lowest value is behind its "
-            "starting point; it is not descending at all when it stops.\n"
-            "Holding R's own mu and nu and sweeping sigma on the link scale, R's "
-            "own G.dev.incr gives 209.0949097249 at sigma_eta = -2.5 against "
-            "211.7673906379 at R's reported sigma_eta = -1.26766160 -- 2.67 lower, "
-            "three orders of magnitude above the 1e-3 gate tolerance.  At our "
-            "point the same slice has its minimum exactly where we sit: 207.7863230084 "
-            "at sigma_eta = -3.54717651 against 207.8652291058 at -3.0 and "
-            "208.2121591839 at -2.5.  R's ZIPIG()$G.dev.incr evaluated at our "
-            "coefficients returns 207.7863230780 against the 207.7863230779 we "
-            "report -- 1e-10 apart, so the densities agree and both sides "
-            "minimise the same objective.\n"
-            "Reaching that point needed R's own nu.initial.  ZIPIG was absent "
-            "from every branch of _initial_parameter_value and fell through to "
-            "the 1.0 default, i.e. logit(1.0) = +inf into the eta clip at +15 -- "
-            "seventeen logit units from R's logit(0.1) = -2.197.  From there the "
-            "RS iteration parked on a sigma plateau and cycled with period four "
-            "(deviance 3251.14 -> 214.6458 over 18 monotone steps, then 788.22, "
-            "455.26, 816.69, 1450.21, after which iterations 23-30 replayed "
-            "iterations 2-9 to five digits).  With nu.initial = 0.1 the fit "
-            "converges to 207.7863230779 at n.cyc = 20 and stays there at 40, 60 "
-            "and 120, with eta_gradient_norm_by_param = {mu: 0.0165, "
-            "sigma: 0.00148, nu: 8.88e-07}."
+            'D2.103.  Re-measured on the reproducible sample; the D2.30 plateau evidence'
+            'below is unchanged in mechanism.  Sweeping n.cyc on live R now gives'
+            '217.101023 at 2, 217.201327 at 5, 217.263238 at 10, 217.287561 at 14,'
+            '217.308852 at 20, 217.334548 at 40 and 217.334548 at 60 -- R is not'
+            'descending at all, it drifts up and then freezes, which is the same plateau'
+            "behaviour D2.30 recorded.  Our fit lands at 216.232, below R's halt."
         ),
     ),
     "ZINBI": dict(
@@ -983,21 +964,18 @@ _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
     ),
     "PARETO2O": dict(
         n_cyc=20,
-        dev_ours=168.912298,
-        dev_r=171.876007,
+        # D2.103: re-measured on the reproducible sample.
+        dev_ours=176.072,
+        dev_r=178.983862,
         note=(
-            "D2.65 two-step adjudication on the full-family-stream sample.  "
-            "The registry key is PARETO2O; live R's function is PARETO2o.\n"
-            "Step 1: R does not converge at the scanner budget (192.26 -> "
-            "187.23 -> 183.98 -> ... , converged = FALSE); at n.cyc = 200 R "
-            "settles on 168.310124 (converged = TRUE), below our "
-            "168.912298 -- so the budget-matched comparison favours us while "
-            "R's converged answer is better; recorded as an open "
-            "local-optimum candidate.\n"
-            "Step 2: R's own dPARETO2o at our coefficients returns exactly "
-            "168.912298; each coefficient perturbed by 1e-3 raises our "
-            "deviance, so our point is a genuine local minimum.\n"
-            "Stream discipline: numbers bind to the full-family sample stream."
+            'D2.103.  Re-measured on the reproducible sample; the D2.30/D2.34 evidence'
+            "below is unchanged in mechanism.  Live R's function is PARETO2o (lower-case"
+            'o) -- a sweep that asks for PARETO2O gets nothing back, which is how an'
+            'earlier attempt to re-measure this family silently produced no numbers at all.'
+            'Sweeping n.cyc on live R: 196.016004 at 2, 187.587636 at 5, 182.406644 at 10,'
+            '180.553734 at 14, 178.983862 at 20, 176.837913 at 40 and 176.077439 at 60 --'
+            'still descending, so the reported 178.9839 is a stopping point.  Our fit'
+            "lands at 176.072, below even R's value at n.cyc = 60 (176.0774)."
         ),
     ),
     "WARING": dict(
