@@ -1061,6 +1061,59 @@ _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
             "R's halt."
         ),
     ),
+    "GAF": dict(
+        n_cyc=20,
+        dev_ours=145.152,
+        dev_r=145.327873,
+        note=(
+            "D2.101.  R's GAF fit never converges: sweeping n.cyc on live R gives"
+            '145.378392 at 2, 145.369399 at 5, 145.354905 at 10, 145.343774 at 14,'
+            '145.327873 at 20, 145.281724 at 40 and 145.245264 at 60 -- it is still'
+            'creeping down at 60, so the reported 145.3279 is where the absolute-change'
+            'criterion stopped it, not an optimum.  Our fit lands at 145.152, below'
+            "even R's value at n.cyc = 60.  Note the gap is small (0.13 across the whole"
+            "sweep) -- this family is registered because the gate's 1e-3 threshold is"
+            'tighter than the drift, not because anything is wrong with the fit.'
+        ),
+    ),
+    "GP": dict(
+        n_cyc=20,
+        dev_ours=170.232,
+        dev_r=173.088533,
+        note=(
+            "D2.101.  R's GP fit is still descending after 60 cycles: sweeping n.cyc on"
+            'live R gives 189.322607 at 2, 181.410991 at 5, 176.444505 at 10,'
+            '174.617084 at 14, 173.088533 at 20, 171.101794 at 40 and 170.380407 at 60.'
+            'The reported 173.0885 is a stopping point, not an optimum.  Our fit lands'
+            "at 170.232, below R's value even at n.cyc = 60."
+        ),
+    ),
+    "PARETO2": dict(
+        n_cyc=20,
+        dev_ours=177.963,
+        dev_r=178.280648,
+        note=(
+            "D2.101.  R's PARETO2 fit is still descending after 60 cycles: sweeping"
+            'n.cyc on live R gives 195.016134 at 2, 186.850467 at 5, 181.726596 at 10,'
+            '179.848325 at 14, 178.280648 at 20, 176.256608 at 40 and 175.525198 at 60.'
+            "Our fit lands at 177.963 -- below R's value at the gate budget (178.2806)"
+            "but ABOVE R's value at n.cyc = 60 (175.5252).  Registered as a stopping"
+            'point at the budget the gate uses; the note records that giving R more'
+            'cycles keeps improving it, so this is not a claim that we are better.'
+        ),
+    ),
+    "PE2": dict(
+        n_cyc=20,
+        dev_ours=123.512,
+        dev_r=126.300046,
+        note=(
+            "D2.101.  The clearest plateau of the group: R's PE2 fit gives 128.080179"
+            'at 2, 126.516126 at 5 and then 126.300046 at 10, 14, 20, 40 and 60 --'
+            'unchanged to six decimals from cycle 10 on.  It halts the moment the'
+            'absolute change drops under c.crit.  Our fit lands at 123.512, 2.79 below'
+            "R's halt."
+        ),
+    ),
 }
 
 
