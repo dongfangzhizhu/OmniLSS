@@ -7,6 +7,8 @@
 - tests/ 425 文件全量 >1.5h → **分块跑**；慢批 `run_in_background`（前台 2min 超时=SIGTERM 假失败）。
 - **tests/ 或源码变更 → 同 commit 再生覆盖工件**：`generate_coverage_artifacts.py --date` + `coverage_diff_report.py` → `result: OK`。既有失败判定：已提交 `git checkout <c>~1`，未提交 `git stash -u`。
 
+- 交接文档：仓库根 `HANDOFF.md`（2026-10-31）——新会话入口，含当前状态、已完成/待完成、必踩的坑。
+
 ## 四条通用纪律
 
 1. 既有用例失败，先分代码错 vs 期望错（D2.35：7 个失败 5 个是期望错）。
