@@ -919,63 +919,6 @@ _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
             "(D2.30); a sublist run shifts them on BOTH sides."
         ),
     ),
-    "GAF": dict(
-        n_cyc=20,
-        dev_ours=142.061586,
-        dev_r=142.222355,
-        note=(
-            "D2.65 two-step adjudication on the full-family-stream sample.\n"
-            "Step 1: R does not converge at the scanner budget (per-cycle "
-            "deviance 142.2523 -> 142.2463 -> ... , still descending at cycle "
-            "20, converged = FALSE); at n.cyc = 200 R settles on 142.078239, "
-            "which is still above our 142.061586.\n"
-            "Step 2: R's own dGAF evaluated at our coefficients (mu = "
-            "exp(0.6732 - 0.0459x), sigma = exp(-0.1129), nu = 0.9507) returns "
-            "exactly 142.061586 -- the densities agree to the last digit, so "
-            "the 0.16 gap is R's endpoint, not ours.  Perturbing each "
-            "coefficient by 1e-3 raises our deviance in both directions "
-            "(checked), so our point is a genuine local minimum.\n"
-            "Stream discipline: numbers bind to the full-family sample stream "
-            "(D2.30)."
-        ),
-    ),
-    "GP": dict(
-        n_cyc=20,
-        dev_ours=171.498204,
-        dev_r=174.277569,
-        note=(
-            "D2.65 two-step adjudication on the full-family-stream sample.\n"
-            "Step 1: R does not converge at the scanner budget (196.99 -> "
-            "191.22 -> 187.46 -> ... , still descending at cycle 20, "
-            "converged = FALSE).  Longer R runs go lower than us: n.cyc = 200 "
-            "gives 170.463670 (still not converged), so at the gate's fixed "
-            "20-cycle budget R stopped early, but our endpoint is NOT the "
-            "better one in absolute terms -- record kept open as a candidate "
-            "for a local-optimum investigation.\n"
-            "Step 2: R's own dGP at our coefficients returns exactly "
-            "171.498204, so the two densities agree and the budget-matched "
-            "comparison is ours 171.498 < R 174.278.\n"
-            "Stream discipline: numbers bind to the full-family sample stream."
-        ),
-    ),
-    "PARETO2": dict(
-        n_cyc=20,
-        dev_ours=184.524988,
-        dev_r=184.898172,
-        note=(
-            "D2.65 two-step adjudication on the full-family-stream sample.\n"
-            "Step 1: R does not converge at the scanner budget (207.85 -> "
-            "202.09 -> 198.30 -> ... , converged = FALSE); at n.cyc = 200 R "
-            "reaches 181.021474 (still not converged), i.e. below our "
-            "184.524988.  So the budget-matched comparison favours us but R's "
-            "longer run does not -- candidate for a local-optimum "
-            "investigation, not a claim of superiority.\n"
-            "Step 2: R's own dPARETO2 at our coefficients returns exactly "
-            "184.524988; our point is a verified local minimum (each "
-            "coefficient perturbed by 1e-3 raises the deviance).\n"
-            "Stream discipline: numbers bind to the full-family sample stream."
-        ),
-    ),
     "PARETO2O": dict(
         n_cyc=20,
         # D2.103: re-measured on the reproducible sample.
@@ -1007,33 +950,6 @@ _RSDEV_R_STOPPED_EARLY: dict[str, dict] = {
             "R's 230.  Perturbing either coefficient by 1e-3 raises our "
             "deviance.\n"
             "Stream discipline: numbers bind to the full-family sample stream."
-        ),
-    ),
-    "PE2": dict(
-        n_cyc=20,
-        dev_ours=122.176634,
-        dev_r=125.9294,
-        note=(
-            "D2.38 two-step adjudication on the full-family-stream sample.\n"
-            "Step 1: R's trajectory is the c.crit pattern -- 125.9303 at cycle 6 "
-            "then 125.9294 at cycle 7, where the cycle-end change (9e-4) drops "
-            "under c.crit = 0.001 and R halts (converged: TRUE).  A long-budget "
-            "run (c.crit = 1e-9, n.cyc = 200) only descends to 125.7922 -- 0.14 "
-            "in 193 extra cycles -- so R is nowhere near our 122.176634 and the "
-            "gap is not a stopping-budget artifact; R's glim.fit trajectory "
-            "from R's own initial values simply never enters the basin we reach "
-            "once the per-observation mu.initial/sigma.initial rollout (D2.38) "
-            "starts us where R starts.\n"
-            "Step 2: R's own dPE2 evaluated at OUR coefficients returns "
-            "122.176634 -- identical to the 122.176634 we report, so the "
-            "densities agree to the last digit and both sides minimise the "
-            "same objective; our point is 3.7 below R's halt, all inside "
-            "PE2's legal parameter domain.\n"
-            "Initial state (both sides agree bit-for-bit): deviance 82.877441 "
-            "at mu = (y+mean(y))/2, sigma = (|y-mean|+sd)/2 per observation "
-            "(R's sd on the n-1 denominator), nu = 1.8.\n"
-            "Stream discipline: numbers bind to the full-family sample stream "
-            "(D2.30); a sublist run shifts them on BOTH sides."
         ),
     ),
     "ZAZIPF": dict(
