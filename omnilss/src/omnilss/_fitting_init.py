@@ -312,6 +312,11 @@ def _initial_mu_target(
         target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
     elif family.name == "GEOM":
         target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
+    elif family.name == "GEOMo":
+        # R GEOMo()$mu.initial (live R): mu <- rep(.5, length(y)); the GEOMo
+        # mu link is logit, so eta = logit(0.5) = 0.  Branch on family.name
+        # (the registry key is GEOMO) -- see D2.118.
+        target = np.zeros(y.shape, dtype=np.float64)
     elif family.name == "ZIP":
         target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
     elif family.name in ("YULE", "WARING"):
@@ -373,6 +378,12 @@ def _initial_mu_target(
     elif family.name == "BE":
         clipped = np.clip(y, 1e-6, 1.0 - 1e-6)
         target = np.log(clipped / (1.0 - clipped))
+    elif family.name == "BEo":
+        # R BEo()$mu.initial (live R): mu <- rep(2, length(y)); BEo mu and
+        # sigma links are both log, so eta = log(2).  BEo is the original
+        # parameterisation (mu, sigma are the two beta shapes) -- not the BE
+        # start value.
+        target = np.full(y.shape, np.log(2.0), dtype=np.float64)
     elif family.name == "WEI":
         target = np.log(np.maximum(y, np.finfo(np.float64).eps))
     elif family.name in (
@@ -777,6 +788,10 @@ def _initial_sigma(
         mean_level = np.sum(w * clipped_mu) / np.sum(w)
         denom = np.maximum(mean_level * (1.0 - mean_level), eps)
         sigma = np.maximum(variance_component / denom, eps)
+    elif family.name == "BEo":
+        # R BEo()$sigma.initial (live R): sigma <- rep(2, length(y)); the
+        # sigma link is log and this is the parameter-space value.
+        return 2.0
     elif family.name == "BB":
         sigma = 1.0
     elif family.name == "WEI":
