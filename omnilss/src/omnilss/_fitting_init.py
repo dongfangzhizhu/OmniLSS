@@ -192,7 +192,7 @@ def _initial_parameter_value(
             # log.  The generic 1.0 default starts the fit an order of
             # magnitude off R's rate on typical right-skewed samples.
             return float(max(2.0 * (np.mean(y) - np.median(y)), 0.1))
-        if family.name == "LOGSHASH":
+        if family.name in ("LOGSHASH", "LOGSHASHo"):
             # R LOGSHASH()$nu.initial (gamlss.dist development source):
             #     nu <- rep(.5, length(y))
             # nu.link is log.  Not in installed gamlss.dist 6.1.1;
@@ -266,7 +266,7 @@ def _initial_parameter_value(
         if family.name == "ST4":
             # R ST4()$tau.initial (live R, D2.38): tau <- rep(5, length(y)).
             return 5.0
-        if family.name == "LOGSHASH":
+        if family.name in ("LOGSHASH", "LOGSHASHo"):
             # R LOGSHASH()$tau.initial (gamlss.dist development source):
             #     tau <- rep(.5, length(y))
             # tau.link is log.  Not in installed gamlss.dist 6.1.1;
@@ -628,7 +628,7 @@ def _initial_mu_target(
         # object's .name is "exGAUS" (distributions_b2.py passes
         # name="exGAUS") -- these branches must key on the latter.
         target = (y + np.mean(y)) / 2.0
-    elif family.name == "LOGSHASH":
+    elif family.name in ("LOGSHASH", "LOGSHASHo"):
         # R LOGSHASH()$mu.initial (gamlss.dist development source
         # R/gamlss.dist/R/LOGSHASH.R, Mikis 15-07-2025):
         #     mu <- (log(y) + mean(log(y)))/2
@@ -1006,7 +1006,7 @@ def _initial_sigma(
         # mean gives the same intercept-only start as mean(|y-m|)+sd)/2.
         mean_y = np.mean(y)
         sigma = (np.mean(np.abs(y - mean_y)) + np.std(y)) / 2.0
-    elif family.name == "LOGSHASH":
+    elif family.name in ("LOGSHASH", "LOGSHASHo"):
         # R LOGSHASH()$sigma.initial (gamlss.dist development source
         # R/gamlss.dist/R/LOGSHASH.R, Mikis 15-07-2025):
         #     sigma <- rep(sd(log(y))/5, length(y))
