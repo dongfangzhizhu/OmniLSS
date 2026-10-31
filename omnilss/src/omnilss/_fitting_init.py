@@ -537,7 +537,17 @@ def _initial_mu_target(
         # a different point (the DELAPORT defect, D2.109).
         target = np.log(np.maximum(y, np.finfo(np.float64).eps))
     elif family.name == "IGAMMA":
-        target = np.log(np.maximum(y, np.finfo(np.float64).eps))
+        # D2.127: R IGAMMA()$mu.initial (live R 4.6.0 / gamlss.dist 6.1.1):
+        #     mu <- rep(mean(y), length(y))
+        # A constant vector, NOT the per-observation log(y) start we used to
+        # carry.  mu's link is log, so the link-scale target is log(mean(y)).
+        # With the old start our intercept fit landed at mu=0.6490554 while
+        # live R lands at 0.6490009 -- same likelihood ridge, different
+        # trajectory, and the old start is what made the local intercept-only
+        # regression depend on a loose tolerance.
+        target = np.full(
+            np.asarray(y).shape, np.log(max(float(np.mean(y)), 1e-12)), dtype=np.float64
+        )
     elif family.name == "LO":
         target = y
     elif family.name == "NET":
@@ -882,10 +892,16 @@ def _initial_sigma(
         # sigma = CV^2 / (1 + CV^2), ensure sigma < 1
         sigma = np.clip(cv**2 / (1.0 + cv**2), eps, 0.9)
     elif family.name == "IGAMMA":
-        # IGAMMA: Use a simple fixed starting value
-        # R's formula gives values that are too large and unstable
-        # Start with a conservative small value
-        sigma = 0.5
+        # D2.127: R IGAMMA()$sigma.initial (live R, deparse verified):
+        #     sigma <- rep(((mean(y)^2)/var(y)) + 2, length(y))
+        # R's var() uses the n-1 denominator.  The old constant 0.5 was a
+        # deliberate conservative guess; starting nearly on the optimum is
+        # what made us stop 5.4e-5 short of R's iterate instead of on it.
+        # Same trap as D2.51 case 3: mu and sigma starts must be adopted
+        # together or neither takes effect.
+        mean_component = np.sum(w * y) / np.sum(w)
+        var_component = np.sum(w * np.square(y - mean_component)) / np.sum(w)
+        sigma = (np.square(mean_component) / max(var_component, eps)) + 2.0
     elif family.name == "GG":
         # Generalized Gamma: Use conservative starting value
         # Similar to Gamma but more stable

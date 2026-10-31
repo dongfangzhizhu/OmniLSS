@@ -425,3 +425,45 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 > **下一步建议**（下次会话入口）：
 > 1. **Phase 8 任务 8.3**（用户文档与教程：API 参考 + 迁移对照表 + 8 篇教程校准）。
 > 2. 或 **Phase 8 任务 8.5 剩余**（`gamlss()` method 名与行为一致性核对 + 全库 lint/type 检查）、**Phase 7 任务 7.4**（基准真实化）。
+
+---
+
+## 十五、2026-10-31 会话队列（R 对齐收尾 / 本轮待办）
+
+> 会话入口：`.workbuddy/memory/MEMORY.md` → `HANDOFF.md` → 本节。
+> 活 R 环境证据：R 4.6.0 (2026-04-24 ucrt) + `gamlss` 5.5.0 + `gamlss.dist` 6.1.1。
+> 交付纪律：每完成一个可交付功能单独 commit（中文提交信息 + 任务 ID）。
+
+### 本次会话实测到的事实（先记录再排任务）
+
+1. **IGAMMA 初始值不是 R 的**（D2.127）：`_fitting_init.py` 的 IGAMMA 分支用 `target=log(y)`（逐观测）与 `sigma=0.5`（常数）；
+   而活 R 是 `IGAMMA()$mu.initial = rep(mean(y), length(y))`、`sigma.initial = (mean(y)^2)/var(y) + 2`。
+   同一 intercept-only 数据上：旧初值落 `mu=0.6490554`（4 次迭代）、活 R 落 `mu=0.6490009`（9 次迭代）；
+   真实驻点（score 方程数值根 `mu=0.6491209264 / sigma=-0.7074028547`，与 R `gamlssML` 逐位一致）距离分别为
+   `6.6e-5`（旧初值）、`1.2e-4`（R 的 RS）——而测试里的 golden `0.64881375` 离根 `3.1e-4`，是回放不出来的数。
+   采纳 R 初值后我们落 `mu=0.649000982 / sigma=-0.707333650`，与活 R 差 `8.2e-8`，迭代同为 9 次。
+2. **response domain 表只覆盖 24 个族**（D2.128）：活 R dump 141 个族的 `y.valid`，其中 **120 个有显式谓词**；
+   我们 `_RESPONSE_DOMAINS` 仅 24 条 → 大量“R 会 `stop()`、我们静默接受”的漏检（BE/BEo/GB1/LOGITNO/GEOM/GEOMo/IG/LG/
+   LNO/LOGNO/LOGNO2/NBI/NBII/NBF/PIG/PIG2/PO/SI/DEL/DPO/DBI/DBURR12/BNB/BI/BB/BCCG*/BCPE*/BCT*/GG/GP/GPO/GAF/ZABB 等）。
+   已核对现有 24 条与活 R **逐字一致**（含 BEZI/BEOI/BEINF0/BEINF1），所以没有假拒绝。
+3. **BEOI 那个失败测试的定性**（D2.128）：`test_r_consistency_batch3_4_remaining.py::test_beoi_intercept_only` 造的数据含 15 个精确 0，
+   而活 R `BEOI()$y.valid = all(y > 0 & y <= 1)` **本身就拒绝 0**（BEOI 是 one-inflated，BEZI 才是 zero-inflated）。
+   → 是**测试数据不合法**，不是我方拒绝过严：改成 R 也接受的数据做真对照，并把“R 与我们同拒”另钉成用例。
+
+### 任务队列（按顺序推进）
+
+| ID | 任务 | 状态 | 验收标准 |
+|---|---|---|---|
+| D2.127 | IGAMMA 初值对齐活 R + 更新本地拟合 golden | 🔄 进行中 | intercept-only 与活 R 系数差 <1e-6；`test_igamma_local_fitting.py` 转绿；`test_r_consistency_igamma.py` 保持绿 |
+| D2.128 | `y.valid`(response domain) 全族对齐活 R + 修 BEOI 测试 | ⬜ 待办 | 120 条谓词齐备 + golden 对照测试；BEOI 用例在 R 合法数据上与活 R 一致 |
+| D2.129 | 全族复扫回归（初值 / y.valid 类改动必须过闸） | ⬜ 待办 | `tools/rs_family_parity_scan.py` 一次跑完，rsdev **0 fail** 且不新增 fail |
+| D2.130 | 排查“缺失的影响正常使用的功能”（`gamlss()` 用户面方法齐不齐） | ⬜ 待办 | 对照 R 常用入口列缺口清单并补齐 |
+| 8.3 | Phase 8 用户文档与教程 | ⬜ 待办 | 见第十二节 |
+| 8.5 | `gamlss()` method 名一致性 + 全库 lint/type | ⬜ 待办 | 见第十二节 |
+
+### 本会话纪律补充（踩过即用）
+
+- **“golden 回放不出来”不等于“我们错”**：先算 exact 驻点（`scipy.optimize.root` 解 score 方程，resid ≤ 1e-13）并与 `gamlssML`
+  交叉验证，再判定是 golden 陈旧、R 早停，还是我们真的偏离曲面。
+- **IGAMMA 的 eta clip 是承重的**：去掉 ±15 的 eta 边界，同数据同初值会跑到 `mu=-28.9`（20 次不收敛）；保留边界则 9 次落到 R 的数。
+  后续改初值时不要顺手放宽这里的边界。
