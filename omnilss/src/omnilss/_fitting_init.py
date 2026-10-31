@@ -520,7 +520,10 @@ def _initial_mu_target(
         target = (y + np.mean(y)) / 2.0
     elif family.name == "NBI":
         target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
-    elif family.name == "IG":
+    elif family.name in ("IG", "IGA"):
+        # D2.111: IGA is IG under another registry name (D2.77), so it has
+        # to start where IG starts -- otherwise the same density fits to
+        # a different point (the DELAPORT defect, D2.109).
         target = np.log(np.maximum(y, np.finfo(np.float64).eps))
     elif family.name == "IGAMMA":
         target = np.log(np.maximum(y, np.finfo(np.float64).eps))
@@ -763,7 +766,8 @@ def _initial_sigma(
         variance_component = np.sum(w * np.square(y - mu)) / np.sum(w)
         mean_level = np.sum(w * mean_component) / np.sum(w)
         sigma = np.maximum((variance_component - mean_level) / np.maximum(mean_level**2, eps), eps)
-    elif family.name == "IG":
+    elif family.name in ("IG", "IGA"):
+        # R IG()$sigma.initial: sigma <- sd(y)/mean(y)^1.5.
         centered = (y - mu) / np.maximum(np.power(mu, 1.5), eps)
         sigma = np.sqrt(np.sum(w * np.square(centered)) / np.sum(w))
     elif family.name == "BE":
