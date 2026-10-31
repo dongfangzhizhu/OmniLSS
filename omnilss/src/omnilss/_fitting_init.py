@@ -312,13 +312,6 @@ def _initial_mu_target(
         target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
     elif family.name == "GEOM":
         target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
-    elif family.name == "GEOMO":
-        # R GEOMo()$mu.initial (live R source R/gamlss.dist/R/GEOMo.R line 101):
-        # mu <- rep(.5, length(y)), on a logit link -- so eta = logit(0.5) = 0.
-        # GEOMo is the original parameterisation (mu is a probability), NOT a
-        # GEOM alias: R GEOM()$mu.initial is mean(y) on a log link, so copying
-        # GEOM branch here would be wrong (the D2.110 caveat).
-        target = np.zeros(y.shape, dtype=np.float64)
     elif family.name == "ZIP":
         target = np.log(np.maximum(y + 0.1, np.finfo(np.float64).eps))
     elif family.name in ("YULE", "WARING"):
