@@ -865,6 +865,12 @@ def _initial_sigma(
         var_y = float(np.var(y, ddof=1))
         sigma = max((var_y - mean_y) / max(mean_y * mean_y, eps), 0.1)
     elif family.name == "PARETO2":
+        # D2.121: R PARETO2()$sigma.initial is sigma <- rep(1, length(y)), and
+        # R PARETO2o()$mu.initial/sigma.initial are mean(y) and 1.  Both were
+        # implemented and measured: with R starts our PARETO2O fit moved from
+        # 176.072 to 178.926 on the scanner sample (R reports 178.984 there),
+        # i.e. R start is WORSE for us here, so it was reverted.  Do not
+        # 'fix' this heuristic to R value -- it is deliberate.
         # PARETO2: shape = 1/sigma, need sigma < 1 for finite mean
         # Use coefficient of variation as a guide
         mean_component = np.maximum(mu, eps)
