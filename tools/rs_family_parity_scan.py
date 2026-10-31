@@ -413,6 +413,11 @@ _R_FAMILY_ALIASES: dict[str, str] = {
     "GENERALISEDPOISSON": "GPO",
     # D2.80: DPO1 shares DPO kernels (gamlss.dist exports no dDPO1).
     "DPO1": "DPO",
+    # D2.109: DELAPORT is DEL under another registry name -- measured to
+    # 1e-15 against live R (d/p/q, see
+    # omnilss/tests/test_delaport_is_r_del.py), and since D2.109 the two
+    # start from the same initial values and fit identically.
+    "DELAPORT": "DEL",
 }
 
 

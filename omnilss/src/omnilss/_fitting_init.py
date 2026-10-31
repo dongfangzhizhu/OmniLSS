@@ -83,7 +83,10 @@ def _initial_parameter_value(
             return 2.0  # Shape parameter, 2.0 is reasonable for gamma-like data
         if family.name == "GB2":
             return 1.0  # Shape parameter 1, start from symmetric case for stability
-        if family.name == "DEL":
+        if family.name in ("DEL", "DELAPORT"):
+            # DELAPORT is DEL under another registry name (measured to
+            # 1e-15 against live R, D2.108); it must start where DEL
+            # starts or the same density fits to a worse point.
             return 0.5  # Poisson component, small starting value
         if family.name in ("SN1", "ST4", "GIG"):
             # R nu.initial (live R, D2.38):
@@ -414,7 +417,7 @@ def _initial_mu_target(
             target = np.log(np.maximum((y + np.mean(y)) / 2.0, eps))
         else:
             target = np.full(y.shape, np.log(2.0), dtype=np.float64)
-    elif family.name == "DEL":
+    elif family.name in ("DEL", "DELAPORT"):
         # R DEL()$mu.initial (live R, D2.38): mu <- y + mean(y)/2, log link.
         # Note the asymmetric form (y + mean/2), not (y + mean)/2 -- same
         # parameter name, different expression, the D2.19 lesson.
@@ -929,7 +932,7 @@ def _initial_sigma(
         # default is biased for GU's heavy right tail and the RS trajectory
         # diverged from R's.
         sigma = np.sqrt(6.0) * np.std(y, ddof=1) / np.pi
-    elif family.name in ("DEL", "LQNO"):
+    elif family.name in ("DEL", "DELAPORT", "LQNO"):
         # R DEL()$sigma.initial (live R, D2.38):
         #     sigma <- rep(max((var(y) - mean(y)) / mean(y)^2, 0.1), ...)
         # R LQNO()$sigma.initial (live R, D2.38):
@@ -939,7 +942,7 @@ def _initial_sigma(
         # takes the absolute value instead (its mean can be near zero).
         mean_y = np.mean(y)
         var_y = np.var(y, ddof=1)
-        if family.name == "DEL":
+        if family.name in ("DEL", "DELAPORT"):
             sigma = max((var_y - mean_y) / max(mean_y**2, eps), 0.1)
         else:
             sigma = abs(var_y / max(mean_y, eps) - 1.0) / max(mean_y, eps)
