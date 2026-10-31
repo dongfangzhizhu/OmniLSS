@@ -239,6 +239,7 @@ _DPQR_TOLERANCE: dict[tuple[str, str], float] = {
     ("IGA", "q"): 1e-4,
     ("SEP1", "q"): 1e-4,
     ("SEP2", "q"): 1e-4,
+    ("LOGSHASH", "q"): 1e-4,
     ("SHASH", "q"): 1e-4,
     ("SN1", "q"): 1e-4,
     ("ST1", "q"): 1e-4,
@@ -336,6 +337,14 @@ _DPQR_TOLERANCE_NOTE: dict[tuple[str, str], str] = {
         "Our bisection converges to the true root of our trapezoid CDF (which "
         "matches R's pSIMPLEX to ~8e-09 absolute), so the residual vs R is R's "
         "own quantile error, not a defect on our side (D2.31)."
+    ),
+    ("LOGSHASH", "q"): (
+        "D2.107.  R qLOGSHASH is literally exp(qSHASH(p, mu, sigma, nu, "
+        "tau)) -- read off the vendored source, R/gamlss.dist/R/LOGSHASH.R line 185 -- "
+        "so it inherits qSHASH uniroot slack, the same way IGA inherits qIG (D2.77). "
+        "Measured on live R against the vendored source: max rel 2.338e-05. "
+        "LOGSHASH is only measurable at all because its d/p/q are not exported by "
+        "the installed gamlss.dist; the bridge sources the vendored file."
     ),
 }
 

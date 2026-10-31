@@ -20,6 +20,34 @@ suppressPackageStartupMessages(library(jsonlite))
 suppressPackageStartupMessages(library(gamlss))
 suppressPackageStartupMessages(library(gamlss.dist))
 
+# --- vendored-source fallback (D2.107) -------------------------------------
+# Some families the OmniLSS registry carries are not exported by the
+# installed gamlss.dist, but R's own source for them sits in the vendored
+# snapshot under R/gamlss.dist/R/.  Sourcing those files makes the same
+# gate measurable instead of "no d/p/q counterpart in R".
+#
+# They are sourced into their own environment, never into globalenv and never
+# into the gamlss.dist namespace: the resolver below still prefers the
+# installed package, so a vendored file that happens to define a name the
+# package also exports (DELAPORT.R defines dDEL) cannot shadow it.
+vend_env <- new.env(parent = globalenv())
+vend_dir <- normalizePath(file.path(
+  dirname(sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[1])),
+  "..", "R", "gamlss.dist", "R"
+))
+# Only LOGSHASH is wired up so far.  LOGSHASHO is deliberately NOT:
+# R dLOGSHASHO is not a density -- it integrates to 0.500 at mu = 0
+# (D2.81) -- so sourcing it would turn a clean skip into a fail
+# that no honest tolerance can absorb.
+vend_files <- c("LOGSHASH.R")
+for (vf in vend_files) {
+  tryCatch(
+    sys.source(file.path(vend_dir, vf), envir = vend_env),
+    error = function(e) NULL
+  )
+}
+
+
 args_all <- commandArgs(trailingOnly = TRUE)
 jobs <- fromJSON(args_all[1], simplifyVector = FALSE)
 
@@ -41,7 +69,19 @@ resolve_gamlss_dist_function <- function(name) {
   if (length(matches) == 1) {
     return(get(matches[[1]], mode = "function", envir = ns))
   }
-  if (length(matches) == 0) {
+  # D2.107: not exported by the installed package -- fall back to the vendored
+  # snapshot, which carries R source for a few families the package omits
+  # (LOGSHASH, LOGSHASHo, DELAPORT).  The package always wins when both have
+  # the name, so nothing that already measured against the package changes.
+  if (exists(name, envir = vend_env, mode = "function")) {
+    return(get(name, envir = vend_env, mode = "function"))
+  }
+  vend_names <- ls(vend_env)
+  vend_matches <- vend_names[tolower(vend_names) == tolower(name)]
+  if (length(vend_matches) == 1) {
+    return(get(vend_matches[[1]], envir = vend_env, mode = "function"))
+  }
+  if (length(matches) == 0 && length(vend_matches) == 0) {
     stop(sprintf("no function '%s' in gamlss.dist", name))
   }
   stop(sprintf(
