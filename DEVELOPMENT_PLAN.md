@@ -420,7 +420,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | Phase 6 在线层修复 | ⬜ 待办 | 可并行 |
 | Phase 7 性能规模化 | 🔄 进行中 | 7.2 后端对齐（部分）、7.3 Gram 去重、7.5 缓存线程安全完成；7.1/7.2 剩余/7.4 待专项 |
 | Phase 8 商业闭环 | 🔄 进行中 | 8.1/8.2/8.4/8.5 死代码/8.6 完成；剩 8.3 用户文档与教程、8.5 method 一致性+lint、8.7 发布检查 |
-| R 版本一致性（D2.82–D2.104） | ✅ **里程碑达成** | 最终全族复扫（146 族）：deriv 145 pass/1 skip、dpqr 119 pass/27 skip、rsdev 81 pass/36 warn/29 skip/**0 fail**；每个非 pass 都有可核对的原因（R 未收敛 / R 发散 / R 的 sigma 地板 / R 密度不逐元素 / R 早停）。详见 `.workbuddy/memory/2026-10-23.md`。 |
+| R 版本一致性（D2.82–D2.117） | ✅ **里程碑达成** | 最终全族复扫（146 族，一次跑完）：deriv 144 pass/2 skip、dpqr 120 pass/26 skip、rsdev 82 pass/35 warn/29 skip/**0 fail**；每个非 pass 都有可核对的原因（R 未收敛 / R 发散 / R 的 sigma 地板 / R 密度不逐元素 / R 早停；2 个 deriv skip 是 GT 探针超时与 LOGSHASHO 无有限密度）。详见 \`.workbuddy/memory/2026-10-23.md\` 的 D2.82–D2.117。 |
 
 > **下一步建议**（下次会话入口）：
 > 1. **Phase 8 任务 8.3**（用户文档与教程：API 参考 + 迁移对照表 + 8 篇教程校准）。
