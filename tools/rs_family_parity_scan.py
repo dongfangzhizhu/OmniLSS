@@ -1470,6 +1470,43 @@ def gate_derivatives(family: str) -> dict:
 # Gates 1 and 3: live R comparison
 # ---------------------------------------------------------------------------
 
+# D2.105: per-family sample payload cache, keyed by grid size.  Building it
+# walks every family and costs about 250 s, and D2.83 made even a one-family
+# request pay that so the shared RNG stream advances identically.  Caching
+# it in-process means a session that asks for several families -- or a test
+# that builds the full set and a subset to compare them -- pays it once.
+_PAYLOAD_CACHE: dict[int, dict[str, object]] = {}
+
+
+def _family_payloads(n: int) -> dict[str, object]:
+    """Every family grids and fit sample, in discovery order.
+
+    The RNG is drawn once, here, in family order: that order is what makes a
+    subset run reproducible against a full run (see _build_jobs).
+    """
+    cached = _PAYLOAD_CACHE.get(n)
+    if cached is not None:
+        return cached
+
+    rng = np.random.default_rng(20261006)
+    payloads: dict[str, object] = {}
+    for family in discover_families():
+        params = _family_parameters(family)
+        if params is None:
+            payloads[family] = None
+            continue
+        try:
+            y, parrays, bd = _family_grids(family, n)
+        except Exception:
+            payloads[family] = None
+            continue
+        # Always drawn, even for a family nobody asked for: the stream has
+        # to advance exactly as a full run would advance it.
+        payloads[family] = (y, parrays, bd, _fit_data(family, rng, y))
+    _PAYLOAD_CACHE[n] = payloads
+    return payloads
+
+
 def _build_jobs(families: list[str], n: int) -> tuple[list[dict], dict]:
     """Build R jobs for d/p/q plus an RS fit, one entry per family.
 
@@ -1483,26 +1520,21 @@ def _build_jobs(families: list[str], n: int) -> tuple[list[dict], dict]:
     list only selects which jobs get emitted.
     """
     _add_src()
-    rng = np.random.default_rng(20261006)
     jobs: list[dict] = []
     index: dict[str, dict] = {}
     wanted = set(families)
 
-    for family in discover_families():
+    for family, payload in _family_payloads(n).items():
         selected = family in wanted
         entry: dict[str, dict] = {}
+        if payload is None:
+            if selected:
+                index[family] = {"dpqr": None}
+            continue
+        y, parrays, bd, _fit = payload
+        if not selected:
+            continue
         params = _family_parameters(family)
-        if params is None:
-            if selected:
-                index[family] = {"dpqr": None}
-            continue
-
-        try:
-            y, parrays, bd = _family_grids(family, n)
-        except Exception:
-            if selected:
-                index[family] = {"dpqr": None}
-            continue
 
         # Argument names follow gamlss.dist convention.  NOTE: the first
         # argument is named differently per type -- d* takes `x`, p* takes `q`,
@@ -1542,14 +1574,10 @@ def _build_jobs(families: list[str], n: int) -> tuple[list[dict], dict]:
             entry[type_char] = len(jobs) - 1
 
         # RS fit job
-        # Always drawn, even for a family we are not reporting on: the stream
-        # has to advance exactly as a full run would advance it.
-        fit_data = _fit_data(family, rng, y)
+        fit_data = _fit
         fixed = tuple(
             getattr(_safe_family(family), "fixed_parameters", ()) or ()
         )
-        if not selected:
-            continue
         jobs.append(
             {
                 "kind": "fit",
