@@ -218,13 +218,19 @@ class TestBatch34RemainingConsistency(unittest.TestCase):
         np.random.seed(111)
         n = 100
         
-        # Generate beta data with some zeros and ones
-        # BEOI requires y in [0,1], ensure no exact 0 or 1 in beta part
-        y_beta = np.random.beta(2, 2, 70)
-        y_beta = np.clip(y_beta, 0.001, 0.999)  # Avoid exact boundaries in continuous part
-        y_zeros = np.zeros(15)
+        # Generate a *legal* BEOI sample: continuous mass in (0, 1) plus a
+        # point mass at 1 -- and no zeros.  BEOI is the *one*-inflated
+        # beta (zero-inflated is BEZI), and live R's y.valid predicate is
+        # `all(y > 0 & y <= 1)`: with a zero response R's gamlss() itself
+        # stops (`response variable out of range`), exactly as our
+        # validate_response does.  The previous fixture added 15 zeros, so
+        # neither engine could fit; with a legal sample both agree to 1e-9
+        # (ours / R deviance 62.7755283621, mu 0.0348380764,
+        # sigma 1.3948470833, nu -1.7346010554).
+        y_beta = np.random.beta(2, 2, 85)
+        y_beta = np.clip(y_beta, 0.001, 0.999)  # Stay off both endpoints
         y_ones = np.ones(15)
-        y = np.concatenate([y_beta, y_zeros, y_ones])
+        y = np.concatenate([y_beta, y_ones])
         np.random.shuffle(y)
         
         # Fit with Python
