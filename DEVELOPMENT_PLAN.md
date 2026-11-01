@@ -460,7 +460,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | D2.130 | 排查“缺失的影响正常使用的功能”（`gamlss()` 用户面方法齐不齐） | ✅ 审计完成 | 清单：`docs/development/gamlss-user-surface-gap-audit-2026-11-01.md`（拟合主路径齐备；缺 `*.start` / `*.fix` / `start.from` / `contrasts`） |
 | D2.131a | `mu/sigma/nu/tau.start` 用户入口（R 的参数尺度 + 标量回收） | ✅ 完成 | RS/CG(irls_cross)/MIXED 三条路径接线，RS_JAX/HYBRID/full_hessian 显式拒绝；live R 对照（NO 双起点 / NO sigma 起点 / GA 双起点）deviance 与系数 ≤1e-6；12 条用例全绿 |
 | D2.131b | `mu/sigma/nu/tau.fix` 用户入口 | ✅ 完成 | `mu_fix+mu_start` deviance 63.451059（R 同值）、`sigma_fix+sigma_start` 19.334517（R 同值），`coefficients` 里没有被固定的参数；12 条用例全绿 |
-| D2.132 | `start.from` 热启动 | ⬜ 待办 | 二次拟合迭代数下降，deviance 与一次拟合差 ≤1e-8 |
+| D2.132 | `start.from` 热启动 | ✅ 完成 | 热启动 1 周期达到一次拟合的 deviance（≤1e-10）；与"显式传 fv 当起点"逐位相同（R 侧的恒等式）；对活 R `start.from` deviance 1e-7 |
 | D2.133 | `n.cyc` / `trace` 兼容别名 | ✅ 完成 | `n.cyc=4` 与 `max_iter=4` 逐位同解（同轨迹、同迭代数）；冲突/非法值/非逻辑 `trace` 全部报错；12 条用例全绿 |
 | D2.134 | `contrasts`（依赖公式解析器） | ⬜ 待办 | `contrasts=list(factor="contr.sum")` 与 R 系数布局一致；无因子时报错 |
 | 8.3 | Phase 8 用户文档与教程 | ⬜ 待办 | 见第十二节 |
@@ -599,3 +599,18 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
   `n.cyc` 非正整数（含布尔）、`trace` 非逻辑 → ValueError。
 - 验收：`n.cyc=4` 与 `max_iter=4` 的 deviance、系数、迭代数**逐位相同**（不是"近似同解"），
   `trace=True` 有输出、默认安静；12 条用例全绿。
+
+
+### D2.132 —— `start.from` 热启动（已交付）
+
+- **R 语义**（`gamlss-5.R:965-991`）：传入一个已拟合的 gamlss 对象，把它的**逐观测拟合值**
+  塞回各参数的 `*.start`（`mu.start <- start.from$mu.fv`），并且**清掉**用户显式传的
+  `*.start`；非 gamlss 对象 → `stop("The object in start.from is not a gamlss object")`。
+- **实现**：`gamlss(start_from=<GAMLSSModel>)` 把 `start_from.fitted_values`（参数尺度）
+  直接当 `start_values`，于是完全复用 D2.131a 的通道；同时对非模型对象与
+  “该族没有任何可用拟合值” fail-closed。
+- **验收**：`omnilss/tests/fixtures/r_golden/start_from_2026-11-01.json`（`tmp/d2132_parity.R`）。
+  活 R 侧先自证恒等式：`start.from` 与"显式把 fv 当 start"两种写法的 deviance 完全相同
+  （26.37354825064081），我们这边也是**逐位**相同；再对上 R 的 `start.from` 数
+  （我们 26.373548202995146 vs R 26.37354825064081，rel 1.8e-9）。
+  收敛模型的热启动 1 个周期就回到原 deviance（≤1e-10）。7 条用例全绿。

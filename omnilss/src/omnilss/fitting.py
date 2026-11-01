@@ -986,6 +986,10 @@ def gamlss(
     sigma_fix: bool = False,
     nu_fix: bool = False,
     tau_fix: bool = False,
+    # D2.132: R's start.from -- a fitted gamlss object whose per-parameter
+    # fitted values seed the next fit (gamlss-5.R:965-991).  R clears any
+    # explicitly passed *.start when start.from is given, and we do the same.
+    start_from: Any | None = None,
     control: GAMLSSControl | None = None,
     i_control: GLIMControl | None = None,
     verbose: bool = False,
@@ -1197,6 +1201,28 @@ def gamlss(
     ):
         if _value is not None:
             start_values[_name] = _value
+    if start_from is not None:
+        # R: if (!is.gamlss(start.from)) stop("The object in start.from is not
+        # a gamlss object").  We accept the same thing we return, nothing else.
+        if not hasattr(start_from, "fitted_values") or not hasattr(
+            start_from, "family"
+        ):
+            raise ValueError(
+                "start_from must be a fitted model returned by gamlss(); got "
+                f"{type(start_from).__name__}"
+            )
+        # R only takes the parameters the previous model estimated ("mu" %in%
+        # start.from$parameters) and drops the explicit *.start values.
+        start_values = {
+            name: np.asarray(values, dtype=np.float64)
+            for name, values in dict(start_from.fitted_values).items()
+            if name in family.parameters
+        }
+        if not start_values:
+            raise ValueError(
+                f"start_from model has no fitted values for family {family.name!r}"
+            )
+
     fixed_flags = {
         "mu": mu_fix,
         "sigma": sigma_fix,
