@@ -85,6 +85,9 @@ def test_fit_penalized_wls_manual_lambda():
     
     # 手动指定 lambda
     smooth_fit = SmoothFitInfo(
+            term_index=0,
+            variable="x",
+            smoother="pb",
         basis_columns=(0, 5),
         penalty=penalty,
         lambda_=0.1,  # 手动指定
@@ -121,6 +124,9 @@ def test_fit_penalized_wls_gcv_vs_reml():
     
     # GCV
     smooth_fit_gcv = SmoothFitInfo(
+            term_index=0,
+            variable="x",
+            smoother="pb",
         basis_columns=(0, 5),
         penalty=penalty,
         lambda_=None,
@@ -136,6 +142,9 @@ def test_fit_penalized_wls_gcv_vs_reml():
     
     # REML
     smooth_fit_reml = SmoothFitInfo(
+            term_index=0,
+            variable="x",
+            smoother="pb",
         basis_columns=(0, 5),
         penalty=penalty,
         lambda_=None,
@@ -181,6 +190,9 @@ def test_multiple_smooth_terms():
     # 第一个平滑项（x1）
     penalty1 = np.eye(3)
     smooth_fit1 = SmoothFitInfo(
+            term_index=0,
+            variable="x",
+            smoother="pb",
         basis_columns=(1, 4),  # 列 1-3
         penalty=penalty1,
         lambda_=None,
@@ -190,6 +202,9 @@ def test_multiple_smooth_terms():
     # 第二个平滑项（x2）
     penalty2 = np.eye(3)
     smooth_fit2 = SmoothFitInfo(
+            term_index=0,
+            variable="x",
+            smoother="pb",
         basis_columns=(4, 7),  # 列 4-6
         penalty=penalty2,
         lambda_=None,
@@ -234,6 +249,9 @@ def test_auto_lambda_with_weights():
     penalty[0, 0] = 0
     
     smooth_fit = SmoothFitInfo(
+            term_index=0,
+            variable="x",
+            smoother="pb",
         basis_columns=(0, 4),
         penalty=penalty,
         lambda_=None,
@@ -266,6 +284,9 @@ def test_auto_lambda_fallback():
     penalty = np.zeros((6, 6))
     
     smooth_fit = SmoothFitInfo(
+            term_index=0,
+            variable="x",
+            smoother="pb",
         basis_columns=(0, 6),
         penalty=penalty,
         lambda_=None,
@@ -273,12 +294,26 @@ def test_auto_lambda_fallback():
     )
     
     # 应该能处理而不崩溃（使用默认 lambda=1.0）
-    with pytest.warns(UserWarning, match="Automatic lambda selection failed"):
-        beta = fit_penalized_wls(
-            X, z, w,
-            smooth_fits=[smooth_fit],
-            auto_lambda=True
-        )
+    #
+    # 旧写法靠"零惩罚矩阵"去逼 select_lambda 报错，但选择器对退化惩罚并不抛异常
+    # （它会返回某个 lambda），于是这条用例在很早就变成"什么都没发生"。回退契约
+    # 本身要测的是"选择器抛错时必须 warn 且落到 lambda=1.0"，所以直接让选择器抛。
+    import omnilss.smooth_selection as smooth_selection
+
+    def _always_fails(*args, **kwargs):
+        raise np.linalg.LinAlgError("singular penalty")
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(smooth_selection, "select_lambda", _always_fails)
+    try:
+        with pytest.warns(UserWarning, match="Automatic lambda selection failed"):
+            beta = fit_penalized_wls(
+                X, z, w,
+                smooth_fits=[smooth_fit],
+                auto_lambda=True
+            )
+    finally:
+        monkeypatch.undo()
     
     assert beta is not None
     # 应该使用默认值
@@ -300,6 +335,9 @@ def test_backward_compatibility():
     penalty[0, 0] = 0
     
     smooth_fit = SmoothFitInfo(
+            term_index=0,
+            variable="x",
+            smoother="pb",
         basis_columns=(0, 4),
         penalty=penalty,
         lambda_=0.5,  # 手动指定
