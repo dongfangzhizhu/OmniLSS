@@ -12,6 +12,9 @@ out-of-support data.  Before this module OmniLSS only warned about eta clipping
 and returned a model whose deviance was meaningless.
 """
 
+import json
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -19,6 +22,7 @@ from omnilss import GA, NO, gamlss
 from omnilss.distributions import resolve_family
 from omnilss.response_domain import (
     ResponseDomainError,
+    response_domain_for,
     response_violation_count,
     validate_response,
 )
@@ -78,13 +82,25 @@ def test_unbounded_family_accepts_negative_response():
 
 
 def test_families_without_r_y_valid_stay_permissive():
-    """R declares no ``y.valid`` for these, so Python must not invent one.
+    """R exports no such family, so Python must not invent a restriction.
 
-    BETA, PO, ZINB, ALPHA and DAGUM carry no ``y.valid`` in ``gamlss.dist``.
-    Adding a restriction R does not enforce would reject data R fits happily.
+    BETA, DAGUM, ALPHA and ZINB are absent from the installed `gamlss.dist`
+    6.1.1 export list (checked with `getNamespaceExports`); with no
+    `y.valid` to mirror, adding one would reject data R happily fits.
+
+    PO used to be listed here, and that was the D2.128 bug class: live R's
+    `PO()$y.valid` is `all(y >= 0)`, so a negative Poisson response is
+    refused by R and must be refused here too -- see
+    `test_poisson_rejects_negative_response_like_r`.
     """
-    for family in ("BETA", "PO", "ZINB", "ALPHA", "DAGUM"):
+    for family in ("BETA", "ZINB", "ALPHA", "DAGUM"):
         assert response_violation_count(family, np.array([-1.0, 0.0, 2.0])) == 0
+
+
+def test_poisson_rejects_negative_response_like_r():
+    """R: `PO()$y.valid = all(y >= 0)` (live R 4.6.0 / gamlss.dist 6.1.1)."""
+    assert response_violation_count("PO", np.array([0.0, 3.0])) == 0
+    assert response_violation_count("PO", np.array([-1.0, 3.0])) == 1
 
 
 def test_nan_and_inf_rejected_even_for_unbounded_family():
@@ -189,3 +205,123 @@ def test_r_gamlss_accepts_the_same_in_support_data_python_accepts():
     np.testing.assert_allclose(
         float(py.deviance), float(result["deviance"]), rtol=1e-3, atol=1e-3
     )
+
+
+# ---------------------------------------------------------------------------
+# Full-table parity against the pinned live-R dump (D2.129)
+#
+# `omnilss/tests/fixtures/r_golden/response_domains_y_valid.json` is produced by
+# `tools/generate_response_domain_golden.py` from live R; it holds every
+# exported family's `deparse(body(y.valid))` plus the mapping from our dispatch
+# name to R's name.  These tests need no R at run time and fail loudly on any
+# drift between the table and live R.
+# ---------------------------------------------------------------------------
+
+GOLDEN_PATH = (
+    Path(__file__).parent / "fixtures" / "r_golden" / "response_domains_y_valid.json"
+)
+
+#: `deparse(body(y.valid))` text -> predicate name in omnilss.response_domain.
+#: A body that is not listed here fails the test, so a new R shape can never be
+#: silently mapped to the wrong predicate.
+R_BODY_TO_PREDICATE: dict[str, str] = {
+    "TRUE": "_all_finite",
+    "all(y > 0)": "_all_positive",
+    "all(y >= 0)": "_all_non_negative",
+    "all(y > 0 & y < 1)": "_in_open_unit",
+    "all(y >= 0 & y <= 1)": "_in_closed_unit",
+    "all(y >= 0 & y < 1)": "_in_unit_excl_zero",
+    "all(y > 0 & y <= 1)": "_in_unit_excl_one",
+    "all(y > 1)": "_above_one",
+    "all(y >= 1)": "_at_least_one",
+    "all(y >= 1 & y <= 4)": "_in_closed_1_4",
+    "all(y >= 1 & y <= 5)": "_in_closed_1_5",
+    # Coded factor: the level count is the family's business (see
+    # _FACTOR_LEVEL_FAMILIES), the response itself is unrestricted.
+    "if (is.factor(y)) nlevels(y) == 3 else all(y >= 1 & y <= 3)": "_all_finite",
+}
+
+#: OmniLSS families with no R counterpart at all: the 19 generated skeleton
+#: families (no gamlss.dist export, no vendored source), ZILG plus the two
+#: LOGSHASH variants (absent from gamlss.dist 6.1.1; the vendored development
+#: source declares `y.valid = function(y) TRUE` for both).  They stay on the
+#: permissive default, and this list pins *why*.
+NO_R_REFERENCE_FAMILIES = frozenset(
+    {
+        "ZILG",
+        "LOGSHASH",
+        "LOGSHASHo",
+    }
+    | {
+        name
+        for name in (
+            "BINOM_1_31", "BINOM_2_33", "BINOM_3_33",
+            "CONTR_2_12", "CONTR_3_11", "CONTR_4_13",
+            "CONTR01_2_13", "CONTR01_4_33",
+            "CONTRPLUS_1_1", "CONTRPLUS_2_11", "CONTRPLUS_3_13", "CONTRPLUS_4_33",
+            "COUNT_1_22", "COUNT_1_31", "COUNT_2_32", "COUNT_2_32R",
+            "COUNT_2_33", "COUNT_3_32", "COUNT_3_33",
+        )
+    }
+)
+
+
+@pytest.fixture(scope="module")
+def golden() -> dict:
+    return json.loads(GOLDEN_PATH.read_text(encoding="utf-8"))
+
+
+def _golden_cases(golden: dict) -> list[tuple[str, str, str]]:
+    cases = []
+    for our_name, r_name in sorted(golden["supported"].items()):
+        if r_name is None:
+            continue
+        body = golden["families"][r_name]
+        if body not in R_BODY_TO_PREDICATE:
+            raise AssertionError(
+                f"unclassified R y.valid body for {r_name!r}: {body!r} -- extend "
+                "R_BODY_TO_PREDICATE and the table in omnilss.response_domain"
+            )
+        cases.append((our_name, r_name, R_BODY_TO_PREDICATE[body]))
+    return cases
+
+
+def test_golden_artifact_has_provenance(golden):
+    meta = golden["meta"]
+    assert meta["gamlss_dist"] and meta["r_version"]
+    assert meta["r_dump_generator"].endswith("r_y_valid_dump.R")
+    assert len(golden["families"]) >= 100
+
+
+def test_table_matches_live_r_y_valid(golden):
+    """Every family R restricts resolves to exactly the predicate R declares."""
+    mismatches = []
+    for our_name, r_name, expected in _golden_cases(golden):
+        actual = response_domain_for(our_name).__name__
+        if actual != expected:
+            mismatches.append(f"{our_name} (R {r_name}): {actual} != {expected}")
+    assert not mismatches, "\n".join(mismatches)
+
+
+def test_unmatched_families_are_the_known_set(golden):
+    """No family may lose its R counterpart unnoticed."""
+    unmatched = {name for name, r_name in golden["supported"].items() if r_name is None}
+    assert unmatched == NO_R_REFERENCE_FAMILIES
+
+
+def test_every_restricted_r_family_has_a_table_entry(golden):
+    """Guard against the D2.128 failure mode: R stops, we fit."""
+    missing = [
+        our_name
+        for our_name, r_name, expected in _golden_cases(golden)
+        if expected != "_all_finite"
+        and response_domain_for(our_name).__name__ == "_all_finite"
+    ]
+    assert not missing, f"families R restricts but we accept anything: {missing}"
+
+
+def test_table_lookup_is_case_insensitive(golden):
+    """Case drift between registry key and R name must not silently disable the guard."""
+    assert response_domain_for("BCCGUNTR").__name__ == "_all_positive"
+    assert response_domain_for("bccguntR").__name__ == "_all_positive"
+    assert response_domain_for("exgaus").__name__ == "_all_finite"

@@ -455,8 +455,8 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | ID | 任务 | 状态 | 验收标准 |
 |---|---|---|---|
 | D2.127 | IGAMMA 初值对齐活 R + 更新本地拟合 golden | 🔄 进行中 | intercept-only 与活 R 系数差 <1e-6；`test_igamma_local_fitting.py` 转绿；`test_r_consistency_igamma.py` 保持绿 |
-| D2.128 | `y.valid`(response domain) 全族对齐活 R + 修 BEOI 测试 | ⬜ 待办 | 120 条谓词齐备 + golden 对照测试；BEOI 用例在 R 合法数据上与活 R 一致 |
-| D2.129 | 全族复扫回归（初值 / y.valid 类改动必须过闸） | ⬜ 待办 | `tools/rs_family_parity_scan.py` 一次跑完，rsdev **0 fail** 且不新增 fail |
+| D2.128 | `y.valid`(response domain) 全族对齐活 R + 修 BEOI 测试 | ✅ 完成 | 120 个活 R 谓词 → 82 条表项（43 个 `y>=0`、25 个 `y>0`、5 个 `0<y<1` …）+ golden 工件 + 生成器；BEOI 用例在 R 合法数据上与活 R 一致 |
+| D2.129 | 全族复扫回归（初值 / y.valid 类改动必须过闸） | ✅ 完成 | `tools/rs_family_parity_scan.py` 一次跑完：deriv 145 pass/1 skip、dpqr 121 pass/25 skip、rsdev 82 pass/36 warn/28 skip、**0 fail**（与 D2.127/128 前的 `tmp/scan_2026-10-31.json` 逐字节一致） |
 | D2.130 | 排查“缺失的影响正常使用的功能”（`gamlss()` 用户面方法齐不齐） | ⬜ 待办 | 对照 R 常用入口列缺口清单并补齐 |
 | 8.3 | Phase 8 用户文档与教程 | ⬜ 待办 | 见第十二节 |
 | 8.5 | `gamlss()` method 名一致性 + 全库 lint/type | ⬜ 待办 | 见第十二节 |
@@ -467,3 +467,75 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
   交叉验证，再判定是 golden 陈旧、R 早停，还是我们真的偏离曲面。
 - **IGAMMA 的 eta clip 是承重的**：去掉 ±15 的 eta 边界，同数据同初值会跑到 `mu=-28.9`（20 次不收敛）；保留边界则 9 次落到 R 的数。
   后续改初值时不要顺手放宽这里的边界。
+
+
+---
+
+## 十六、2026-11-01 会话（D2.128 / D2.129 交付）
+
+> 活 R 证据：R 4.6.0 (2026-04-24 ucrt) + `gamlss` 5.5.0 + `gamlss.dist` 6.1.1（本轮全部数字实测）。
+
+### D2.128 —— `family$y.valid` 全族对齐活 R（已交付）
+
+- **证据链**：`tools/r_y_valid_dump.R` 对 `gamlss.dist` 全部 120 个导出族 dump
+  `deparse(body(<FAMILY>()$y.valid))`；`tools/generate_response_domain_golden.py` 把它与我们的
+  146 个族名对齐，产出 `omnilss/tests/fixtures/r_golden/response_domains_y_valid.json`
+  （含 R/gamlss 版本、生成日期、我们的族名 → R 族名映射）。
+- **活 R 的 120 个谓词只有 9 种形状**：`all(y>=0)` 40、`TRUE` 40、`all(y>0)` 24、
+  `all(y>0 & y<1)` 5、`0<=y<1` 2、`0<y<=1` 2、`all(y>=0 & y<=1)` 1、`all(y>1)` 1、
+  `all(y>=1)` 1、`1<=y<=4` 1、`1<=y<=5` 1、MN3/MULTIN 的因子检查 2。
+- **表从 24 条 → 82 条**：`BE/BEo/GB1/LOGITNO/SIMPLEX` 用新谓词 `_in_open_unit`；
+  `PO/NBI/SI/GEOM/BB/BI/DEL…` 全部补上 `all(y>=0)`；`GG/IG/LG/LNO/LOGNO*/GP/BCCG*/BCPE*/BCT*`
+  补上 `all(y>0)`。四个内核别名族（IGA→IG、DPO1→DPO、GENERALISEDPOISSON→GPO、DELAPORT→DEL）
+  按我们的 dispatch 名入表；`MN3/MULTIN` 归入因子级检查。
+- **大小写不再能静默失效**：`BCCGUNTR/BCPEUNTR/BCTUNTR` 的 R 名是 `BCCGuntr/…`，
+  查表在精确名之后退化到大小写不敏感索引（`test_table_lookup_is_case_insensitive`）。
+- **无 R 参照的 22 个族**（19 个 `BINOM_/CONTR_/COUNT_` 骨架族 + ZILG + LOGSHASH/LOGSHASHo）
+  保持宽松默认，并作为清单钉在测试里（`test_unmatched_families_are_the_known_set`）。
+- **活 R 自己纠正了我们的一条“宽松”断言**：旧测试把 PO 列进“R 无 y.valid、应接受负数”，
+  实测 `PO()$y.valid = all(y >= 0)` —— 改成反向断言。
+- 既有 24 条与活 R 逐字一致（D2.128 上一轮的结论未变），所以是“漏检面收口”，不是“假拒绝”。
+
+### D2.129 —— 全族三闸复扫（已交付）
+
+```
+python tools/rs_family_parity_scan.py --json tmp/d2129_scan.json     # 一次跑完
+deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28 skip；0 fail
+```
+
+输出与 D2.127/D2.128 之前的 `tmp/scan_2026-10-31.json` **逐字节一致** → y.valid 收口没有移动任何族的
+拟合轨迹（符合预期：闸的样本本身都在各族支撑内）。
+
+### 全量测试的真实状态（HANDOFF 3.4 首次执行）
+
+把 491 个测试文件按文件分 4 片并行跑（单进程超 1.5 h，2 min 前台会 SIGTERM）：
+
+- 结果 **75 failed**。用 `git worktree` 在 `012a7ff`（本轮改动前的 HEAD）上重跑同一批用例判定归属：
+  **本轮引入 4 个**（已全部修好），**其余 71 个先于本轮存在**。
+- 本轮引入的 4 个：
+  1. `test_optimizer_integration.py::test_different_families` —— 给 LOGNO 喂了含负值的数据；
+     活 R 同样会 `stop`，改按族换数据。
+  2. `test_jax_rs_core.py::test_unsupported_family_raises` —— 用正态样本（含负数）测 NBI 的 RS_JAX 路由拒绝；
+     域闸先于路由触发，改成泊松计数样本（断言仍打路由）。
+  3. `test_symbol_coverage_tool.py` 两条 —— 源码/测试变更导致覆盖工件过期，按纪律再生
+     （`generate_coverage_artifacts.py --date 2026-11-01` + `coverage_diff_report.py` → `result: OK`）。
+- 71 个既有失败按簇归类（**属于工程债，不是本轮范围**，建议后续单独立项）：
+  - 签名漂移：`test_smooth_integration.py`（6 条，`SmoothFitInfo` 缺 3 个位置参数）、
+    `_fitting_residuals.py` `KeyError: 'mu'`（`test_cg_cross_derivatives` 等）、`RTestBus.eval_expr` 不存在（4 条）。
+  - CG/MIXED 路由：`initial_model linear predictor for 'mu' does not match the CG design matrix`（约 10 条）。
+  - ZABB/ZIBB 固定参数 `bd` 未传（`test_zero_bb_*`、`test_model_convergence_reporting`、`dpqr scan` 共 6 条）。
+  - 闸/注册表口径过期：`test_ours_lower_cluster`、`test_pig_api`、`test_ps`、`test_gt_fit_parity`、
+    `test_st1_st2_parity`（沿用旧登记数字）。
+  - 覆盖工件 ratchet 基线陈旧：`test_coverage_diff_report.py::test_checked_in_baseline_and_report_are_fresh`
+    （当前构建比 baseline 多 10 个 placeholder / 多 2 个 evidence_gap）。
+  - R 侧/环境：`sigma must be between 0 and 1`、`nu must be positive`、`p must be between 0 and 1`
+    （`test_r_consistency_tf2`、`test_tf2_parity`、`test_safeguard_diagnostics`），R CMD INSTALL 失败 2 条。
+  - placeholder/能力矩阵断言过期：`test_method_routing_integration`（2）、`test_grpc_server`（1）、
+    `test_release1_family_capability_gate`（3）、`test_multin_constructor`（2）。
+
+### 下一步（按优先级）
+
+1. **D2.130** `gamlss()` 用户面方法缺口清单（对照 R 常用入口）。
+2. 71 个既有失败里挑“挡发布”的簇修：先 CG/MIXED 路由（10 条，同一根因），再 ZABB/ZIBB 的 `bd`（6 条），
+   再 `SmoothFitInfo` 签名（6 条）——这三簇一修就能收回 22 条。
+3. Phase 8 的 8.3（用户文档与教程）与 8.5（method 名一致性 + lint/type）。

@@ -638,7 +638,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | Family.p | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
 | Family.q | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
 | Family.r | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
-| GA | gamlss.dist | GA | public_api | experimental | r_consistency_test | blocked | 54 |
+| GA | gamlss.dist | GA | public_api | experimental | r_consistency_test | blocked | 53 |
 | GAF | gamlss.dist | GAF | public_api | experimental | r_consistency_test | blocked | 7 |
 | GAMLSS | gamlss.dist | - | missing | missing | unverified | not_available | 33 |
 | GB1 | gamlss.dist | GB1 | public_api | experimental | r_consistency_test | blocked | 5 |
@@ -662,7 +662,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | LOGITNO | gamlss.dist | LOGITNO | public_api | experimental | r_consistency_test | blocked | 5 |
 | LOGNO | gamlss.dist | LOGNO | public_api | experimental | r_consistency_test | blocked | 15 |
 | LOGNO2 | gamlss.dist | LOGNO2 | public_api | experimental | r_consistency_test | blocked | 8 |
-| LOGSHASH | gamlss.dist | LOGSHASH | public_api | experimental | capability:unsupported | blocked | 7 |
+| LOGSHASH | gamlss.dist | LOGSHASH | public_api | experimental | capability:unsupported | blocked | 8 |
 | LQNO | gamlss.dist | LQNO | public_api | experimental | r_consistency_test | blocked | 4 |
 | MN3 | gamlss.dist | MN3 | public_api | experimental | r_consistency_test | blocked | 8 |
 | MN4 | gamlss.dist | MN4 | public_api | experimental | r_consistency_test | blocked | 9 |

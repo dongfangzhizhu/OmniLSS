@@ -4,10 +4,22 @@
 
 ## 跑测试 / 覆盖工件
 
-- tests/ 425 文件全量 >1.5h → **分块跑**；慢批 `run_in_background`（前台 2min 超时=SIGTERM 假失败）。
-- **tests/ 或源码变更 → 同 commit 再生覆盖工件**：`generate_coverage_artifacts.py --date` + `coverage_diff_report.py` → `result: OK`。既有失败判定：已提交 `git checkout <c>~1`，未提交 `git stash -u`。
+- 491 个测试文件全量 >1.5h → **按文件分 4 片并行后台跑**（前台 2min 超时=SIGTERM 假失败）；单进程 `-q` 只出点。
+- **tests/ 或源码变更 → 同 commit 再生覆盖工件**：`generate_coverage_artifacts.py --date` + `coverage_diff_report.py` → `result: OK`。**改完测试要最后再生成一次**（先改测试再生成仍会报过期）。
+- **归属判定**：`git worktree add --detach` 到改动前 HEAD 跑同一批 id；但 **worktree 里没有 gitignored 的 `R/`** → `build_coverage` 出全 0 矩阵，**覆盖/能力矩阵类测试在 worktree 的结论不可信**，只信“主树失败、worktree 通过”那几条。
+- **pytest 9 的 FAILED 行带 ` - <reason>` 后缀**：当 id 传回去会报 `file or directory not found: -`，要 `split(" - ")[0]`；长列表用 `pytest @argfile`。
+- 全库现状（2026-11-01 实测）：75 failed，其中 71 个先于 D2.129 存在（簇见 DEVELOPMENT_PLAN 第十六节：CG/MIXED 路由 ~10、ZABB/ZIBB `bd` 6、`SmoothFitInfo` 签名 6、`RTestBus.eval_expr` 4、旧登记数字 5…）。
 
 - 交接文档：仓库根 `HANDOFF.md`（2026-10-31）——新会话入口，含当前状态、已完成/待完成、必踩的坑。
+
+## 响应域 (family$y.valid) —— 只能由活 R dump 生成（D2.128/D2.129）
+
+- R 在 `gamlss-5.R` 拟合前 `if (!family$y.valid(y)) stop("response variable out of range")`；我们在 `fitting.py:1048`（**最前面，先于任何路由**）同样硬拒。`omnilss/src/omnilss/response_domain.py` 的表 **82 条**，逐条由 `tools/generate_response_domain_golden.py`（跑 `tools/r_y_valid_dump.R`）对活 R 生成并钉进 `omnilss/tests/fixtures/r_golden/response_domains_y_valid.json`（`--check` 判过期）。**手工加条目 = 回到 D2.128 之前的漏检面**。
+- 活 R 的 120 个谓词只有 9 种形状：`all(y>=0)` 40 / `TRUE` 40 / `all(y>0)` 24 / `0<y<1` 5 / `0<=y<1` 2 / `0<y<=1` 2 / `0<=y<=1` 1 / `y>1` 1 / `y>=1` 1 / `1<=y<=4` 1 / `1<=y<=5` 1 / MN3+MULTIN 因子分支 2。**`TRUE` 的族（NO/SHASH/ST*/JSU*/PARETO2*/IGAMMA/GB2…）不要自己加限制**：假拒绝比漏检更糟。
+- 22 个无 R 参照的族保持宽松，并且**清单化**在测试里：19 个 `BINOM_/CONTR_/COUNT_` 骨架族 + ZILG + LOGSHASH/LOGSHASHo（后者 vendored 源码写的是 `y.valid=TRUE`）。
+- 名字坑：`BCCGUNTR/BCPEUNTR/BCTUNTR` 的 R 名是 `BCCGuntr/BCPEuntr/BCTuntr`；四个内核别名族（IGA→IG、DPO1→DPO、GENERALISEDPOISSON→GPO、DELAPORT→DEL）按我们 dispatch 的名入表。查表做大小写不敏感兜底，但**表键仍是 `family.name`**。
+- **R 会纠正我们的“宽松”断言**：PO 曾被当成“R 无 y.valid”的族，实测 `PO()$y.valid=all(y>=0)`。凡“R 没说”的结论都要先 dump 一次再信。
+- 域闸先于路由/优化器：**用不合法数据测“更靠后的报错”会先撞 `ResponseDomainError`**（D2.129 踩过 RS_JAX 路由用例与 LOGNO 用例）；修法=换合法数据。
 
 ## 四条通用纪律
 

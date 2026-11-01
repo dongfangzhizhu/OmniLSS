@@ -250,15 +250,22 @@ def test_max_iter_override(simple_data):
 
 
 def test_different_families(simple_data):
-    """测试不同分布族"""
-    # 只测试 NO 和 LOGNO，因为 GA 需要正数据
-    families = ["NO", "LOGNO"]
-    
-    for family in families:
+    """测试不同分布族
+
+    LOGNO 的支撑是 y > 0（活 R `LOGNO()$y.valid = all(y > 0)`），而
+    simple_data 的 y 以 2 为中心、标准差约 3.2，必然含负值——活 R 对这份数据
+    直接 `stop("response variable out of range")`，我们自 D2.129 起同样拒绝。
+    所以按族换数据，而不是把这道闸放松。
+    """
+    cases = {
+        "NO": simple_data,
+        "LOGNO": {"y": np.exp(simple_data["y"] / 3.0), "x": simple_data["x"]},
+    }
+    for family, data in cases.items():
         model = gamlss(
             "y ~ x",
             family=family,
-            data=simple_data,
+            data=data,
             method="joint",
             optimizer="adam",
             learning_rate=0.01,

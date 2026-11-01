@@ -280,9 +280,17 @@ def test_intercept_only(family_name, data_fn, family_fn):
 # ---------------------------------------------------------------------------
 
 def test_unsupported_family_raises():
-    """RS_JAX should raise ValueError for unsupported families."""
+    """RS_JAX should raise ValueError for unsupported families.
+
+    NBI is a count family: R's `NBI()$y.valid = all(y >= 0)`, and since
+    D2.129 the response-domain guard runs before routing, so the negative
+    normal sample would be rejected as out of range instead.  Use counts so
+    the assertion still measures the RS_JAX routing refusal.
+    """
     from omnilss import NBI
-    data = _make_no_data()
+    rng = np.random.default_rng(44)
+    x = rng.standard_normal(N)
+    data = {"y": rng.poisson(np.exp(1.0 + 0.5 * x)).astype(float), "x": x}
     with pytest.raises(ValueError, match="not supported by method='RS_JAX'"):
         gamlss("y ~ x", family=NBI(), data=data, method="RS_JAX")
 
