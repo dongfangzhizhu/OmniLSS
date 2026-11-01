@@ -461,7 +461,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | D2.131a | `mu/sigma/nu/tau.start` 用户入口（R 的参数尺度 + 标量回收） | ✅ 完成 | RS/CG(irls_cross)/MIXED 三条路径接线，RS_JAX/HYBRID/full_hessian 显式拒绝；live R 对照（NO 双起点 / NO sigma 起点 / GA 双起点）deviance 与系数 ≤1e-6；12 条用例全绿 |
 | D2.131b | `mu/sigma/nu/tau.fix` 用户入口 | ✅ 完成 | `mu_fix+mu_start` deviance 63.451059（R 同值）、`sigma_fix+sigma_start` 19.334517（R 同值），`coefficients` 里没有被固定的参数；12 条用例全绿 |
 | D2.132 | `start.from` 热启动 | ⬜ 待办 | 二次拟合迭代数下降，deviance 与一次拟合差 ≤1e-8 |
-| D2.133 | `n.cyc` / `trace` 兼容别名 | ⬜ 待办 | `n.cyc=5` 等价 `max_iter=5`；`trace=TRUE` 走 `verbose` |
+| D2.133 | `n.cyc` / `trace` 兼容别名 | ✅ 完成 | `n.cyc=4` 与 `max_iter=4` 逐位同解（同轨迹、同迭代数）；冲突/非法值/非逻辑 `trace` 全部报错；12 条用例全绿 |
 | D2.134 | `contrasts`（依赖公式解析器） | ⬜ 待办 | `contrasts=list(factor="contr.sum")` 与 R 系数布局一致；无因子时报错 |
 | 8.3 | Phase 8 用户文档与教程 | ⬜ 待办 | 见第十二节 |
 | 8.5 | `gamlss()` method 名一致性 + 全库 lint/type | ⬜ 待办 | 见第十二节 |
@@ -588,3 +588,14 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
   可估参数都有设计矩阵，固定 mu 会让它没有状态可继承），写死在 `gamlss()` 里 fail-closed。
 - R 侧已记录一个“固定 + 起点”会自爆的样本：`mu.fix + sigma.start=0.5` 时 R 自己把 sigma 推到
   3.2e9（sigma.coefficient=21.89），没有拿来做验收对照。
+
+
+### D2.133 —— `n.cyc` / `trace` 兼容别名（已交付）
+
+- R 用户写 `gamlss(y ~ x, family = NO, n.cyc = 5, trace = TRUE)`：`n.cyc` 是外层 RS 周期预算
+  （`gamlss.control` 的字段），`trace` 打逐周期 deviance。我们把两者接成 `max_iter` / `verbose`
+  的别名，R 调用点不用改就能跑。
+- 冲突 fail-closed：`n.cyc` 与 `max_iter` 同时给且不等 → ValueError（选谁都是替用户做决定）；
+  `n.cyc` 非正整数（含布尔）、`trace` 非逻辑 → ValueError。
+- 验收：`n.cyc=4` 与 `max_iter=4` 的 deviance、系数、迭代数**逐位相同**（不是"近似同解"），
+  `trace=True` 有输出、默认安静；12 条用例全绿。

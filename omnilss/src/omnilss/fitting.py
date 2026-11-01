@@ -995,6 +995,12 @@ def gamlss(
     optimizer: str = "adam",
     learning_rate: float = 0.01,
     max_iter: int | None = None,
+    # D2.133: R users write gamlss(..., n.cyc=20, trace=TRUE) -- n.cyc is the
+    # outer RS cycle budget (gamlss.control$n.cyc) and trace the iteration
+    # printout.  Both are accepted here as aliases so an R call site ports
+    # without editing; conflicting values are an error, not a silent pick.
+    n_cyc: int | None = None,
+    trace: bool = False,
     history_size: int = 10,
     **optimizer_kwargs,
 ) -> GAMLSSModel:
@@ -1139,6 +1145,24 @@ def gamlss(
             **(parameter_formulas or {}),
         },
     )
+    if n_cyc is not None:
+        if (
+            isinstance(n_cyc, (bool, np.bool_))
+            or not isinstance(n_cyc, Integral)
+            or n_cyc < 1
+        ):
+            raise ValueError("n_cyc must be a positive integer")
+        if max_iter is not None and int(max_iter) != int(n_cyc):
+            raise ValueError(
+                f"n_cyc={n_cyc!r} conflicts with max_iter={max_iter!r}; pass one"
+            )
+        max_iter = int(n_cyc)
+    if not isinstance(trace, (bool, np.bool_)):
+        raise ValueError(f"trace should be logical True or False, got {trace!r}")
+    if trace:
+        # R's trace prints the outer-cycle deviance; verbose is our equivalent.
+        verbose = True
+
     if max_iter is not None:
         if isinstance(max_iter, (bool, np.bool_)) or not isinstance(max_iter, Integral) or max_iter < 1:
             raise ValueError("max_iter must be a positive integer")
