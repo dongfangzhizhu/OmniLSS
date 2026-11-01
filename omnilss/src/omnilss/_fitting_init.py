@@ -8,6 +8,69 @@ import numpy as np
 from .families import FamilyDefinition
 
 
+def _resolve_start_values(
+    family: FamilyDefinition,
+    start_values: "Mapping[str, Any] | None",
+    n_obs: int,
+):
+    """Normalise R's `mu.start/sigma.start/nu.start/tau.start` arguments.
+
+    R semantics (`gamlss-5.R:1028`):
+
+    .. code-block:: r
+
+        if(!is.null(mu.start))
+              { mu <- if(length(mu.start)>1) mu.start  else rep(mu.start, N)}
+
+    i.e. a scalar is recycled to `rep(x, N)`, a length-`N` vector is used as-is,
+    and — the part that is easy to get wrong — the values are on the
+    **parameter scale**, the same scale as `family$mu.initial`; the linear
+    predictor R hands to `glim.fit` is `mu.linkfun(mu.start)`
+    (`gamlss-5.R:431`).  Callers must convert with the family's link before
+    handing the value to an eta-space initialiser.
+
+    Rejections are caller errors R does not check up front but fails on later
+    inside the density: unknown parameter names, values for parameters the
+    family fixes (`NET`'s nu/tau, `PARETO1o`'s mu), non-finite values and
+    lengths other than 1 or `n_obs`.
+    """
+    if not start_values:
+        return {}
+
+    fixed = set(family.fixed_parameters or ())
+    resolved = {}
+    for raw_name, raw_value in start_values.items():
+        name = str(raw_name).strip().lower()
+        if name not in family.parameters:
+            raise ValueError(
+                f"start value for unknown parameter {raw_name!r}; family "
+                f"{family.name!r} has {list(family.parameters)}"
+            )
+        if name in fixed:
+            raise ValueError(
+                f"family {family.name!r} fixes parameter {name!r}; a start value "
+                "would be ignored, so it is rejected instead"
+            )
+        values = np.asarray(raw_value, dtype=np.float64)
+        if values.ndim == 0:
+            values = np.full(n_obs, float(values), dtype=np.float64)
+        else:
+            values = values.ravel()
+            if values.shape == (1,):
+                values = np.full(n_obs, float(values[0]), dtype=np.float64)
+            elif values.shape != (n_obs,):
+                raise ValueError(
+                    f"start value for {name!r} must be a scalar or length {n_obs}, "
+                    f"got shape {values.shape}"
+                )
+        if not np.all(np.isfinite(values)):
+            raise ValueError(
+                f"start value for {name!r} contains non-finite entries"
+            )
+        resolved[name] = values
+    return resolved
+
+
 def _initial_parameter_value(
     family: FamilyDefinition,
     parameter: str,

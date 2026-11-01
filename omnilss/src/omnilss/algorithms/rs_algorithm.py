@@ -886,6 +886,7 @@ def rs_fit(
     routing_decision: Optional[Dict[str, Any]] = None,
     warm_start_policy: WarmStartPolicy | None = None,
     i_control: GLIMControl | None = None,
+    start_values: Optional[Dict[str, Any]] = None,
 ) -> GAMLSSModel:
     """Fit GAMLSS model using RS (Rigby-Stasinopoulos) algorithm.
 
@@ -996,6 +997,7 @@ def rs_fit(
         _parse_formula,
         _resolve_fixed_parameter_values,
         _resolve_parameter_formulas,
+        _resolve_start_values,
         _weighted_least_squares,
     )
 
@@ -1050,6 +1052,10 @@ def rs_fit(
 
     # Get fixed parameter values
     fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n, y)
+
+    # D2.131: R's mu.start/sigma.start/nu.start/tau.start (parameter scale).
+    # Scalars are recycled to length n, exactly as gamlss-5.R:1028 does.
+    start_values = _resolve_start_values(family, start_values, n)
 
     # Build design matrices for all parameters
     design_matrices = {}
@@ -1109,7 +1115,20 @@ def rs_fit(
             # of the same target (bookkeeping until the first rs_step
             # recomputes them from the working response).
             use_family_init = isinstance(warm_start, FamilyHeuristicInit)
-            if use_family_init:
+            if "mu" in start_values:
+                # R: mu <- mu.start; the first glim.fit receives
+                # eta = mu.linkfun(mu.start) per observation (gamlss-5.R:431).
+                # Same treatment as family$mu.initial -- the coefficients are
+                # only the WLS bookkeeping of that vector, not the state.
+                eta_target = np.asarray(
+                    family.link_functions["mu"](
+                        jnp.asarray(start_values["mu"], dtype=jnp.float64)
+                    ),
+                    dtype=np.float64,
+                )
+                beta_mu, _, _, _ = np.linalg.lstsq(mu_X, eta_target, rcond=None)
+                mu_linear = eta_target
+            elif use_family_init:
                 eta_target = _initial_mu_target(
                     family, y, w, fixed_parameter_values=fixed_parameter_values
                 )
@@ -1197,7 +1216,11 @@ def rs_fit(
         # changes numerically; PE/PE2 carry a genuinely per-observation
         # expression, and for richer formulas R also starts from the
         # (constant) vector before the first glim.fit compresses it.
-        if parameter == "sigma":
+        if parameter in start_values:
+            # R hands the user's per-observation vector to glim.fit as well
+            # (gamlss-5.R:1061/1095/1129) -- same scale as sigma.initial.
+            param_start = start_values[parameter]
+        elif parameter == "sigma":
             param_start = _initial_sigma_fitted(
                 family,
                 y,

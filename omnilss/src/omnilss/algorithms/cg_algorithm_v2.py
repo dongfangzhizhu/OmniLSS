@@ -14,7 +14,12 @@ from typing import Any, Dict
 import jax.numpy as jnp
 import numpy as np
 
-from .._fitting_init import _initial_mu_beta, _initial_parameter_value, _initial_sigma
+from .._fitting_init import (
+    _initial_mu_beta,
+    _initial_parameter_value,
+    _initial_sigma,
+    _resolve_start_values,
+)
 from .._fitting_utils import _is_intercept_only_formula, _resolve_parameter_formulas
 from ..cg_derivatives import EtaDerivativeBundle, eta_score_hessian
 from ..distributions import resolve_family
@@ -243,6 +248,7 @@ def cg_fit_v2(
     step_sizes: dict | None = None,
     verbose: bool = False,
     initial_model: GAMLSSModel | None = None,
+    start_values: Dict[str, Any] | None = None,
 ) -> GAMLSSModel:
     """Fit with the eta-level CG IRLS cross-derivative backend.
 
@@ -266,6 +272,8 @@ def cg_fit_v2(
     )
 
     fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n, y)
+    # D2.131: R's *.start values are parameter-scale (see _resolve_start_values).
+    start_values = _resolve_start_values(family, start_values, n)
     design_matrices: Dict[str, np.ndarray] = {}
     predictor_labels: Dict[str, list[str]] = {}
     smooth_infos: Dict[str, Any] = {}
@@ -305,9 +313,21 @@ def cg_fit_v2(
         coefs = {}
         etas = {}
         mu_X = design_matrices["mu"]
-        beta_mu = _initial_mu_beta(
-            family, mu_X, y, w, fixed_parameter_values=fixed_parameter_values
-        )
+        if "mu" in start_values:
+            # R: mu <- mu.start, eta <- mu.linkfun(mu) (gamlss-5.R:431).
+            eta_start = np.asarray(
+                family.link_functions["mu"](
+                    jnp.asarray(start_values["mu"], dtype=jnp.float64)
+                ),
+                dtype=np.float64,
+            )
+            beta_mu, *_ = np.linalg.lstsq(
+                mu_X, eta_start - offsets["mu"], rcond=None
+            )
+        else:
+            beta_mu = _initial_mu_beta(
+                family, mu_X, y, w, fixed_parameter_values=fixed_parameter_values
+            )
         eta_mu = mu_X @ beta_mu + offsets["mu"]
         mu = np.asarray(
             family.link_inverses["mu"](jnp.asarray(eta_mu)), dtype=np.float64
@@ -318,21 +338,31 @@ def cg_fit_v2(
             if p == "mu" or p in fixed_parameter_values:
                 continue
             X = design_matrices[p]
-            init = (
-                _initial_sigma(
-                    family, y, mu, w, fixed_parameter_values=fixed_parameter_values
+            if p in start_values:
+                eta_init = np.asarray(
+                    family.link_functions[p](
+                        jnp.asarray(start_values[p], dtype=jnp.float64)
+                    ),
+                    dtype=np.float64,
                 )
-                if p == "sigma"
-                else _initial_parameter_value(family, p, y, mu, w)
-            )
-            eta_init = np.full(
-                n,
-                float(
-                    np.asarray(
-                        family.link_functions[p](jnp.asarray([init], dtype=jnp.float64))
-                    )[0]
-                ),
-            )
+            else:
+                init = (
+                    _initial_sigma(
+                        family, y, mu, w, fixed_parameter_values=fixed_parameter_values
+                    )
+                    if p == "sigma"
+                    else _initial_parameter_value(family, p, y, mu, w)
+                )
+                eta_init = np.full(
+                    n,
+                    float(
+                        np.asarray(
+                            family.link_functions[p](
+                                jnp.asarray([init], dtype=jnp.float64)
+                            )
+                        )[0]
+                    ),
+                )
             beta, *_ = np.linalg.lstsq(X, eta_init - offsets[p], rcond=None)
             eta = X @ beta + offsets[p]
             pv = np.asarray(

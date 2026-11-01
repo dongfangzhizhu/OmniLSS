@@ -458,7 +458,8 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | D2.128 | `y.valid`(response domain) 全族对齐活 R + 修 BEOI 测试 | ✅ 完成 | 120 个活 R 谓词 → 82 条表项（43 个 `y>=0`、25 个 `y>0`、5 个 `0<y<1` …）+ golden 工件 + 生成器；BEOI 用例在 R 合法数据上与活 R 一致 |
 | D2.129 | 全族复扫回归（初值 / y.valid 类改动必须过闸） | ✅ 完成 | `tools/rs_family_parity_scan.py` 一次跑完：deriv 145 pass/1 skip、dpqr 121 pass/25 skip、rsdev 82 pass/36 warn/28 skip、**0 fail**（与 D2.127/128 前的 `tmp/scan_2026-10-31.json` 逐字节一致） |
 | D2.130 | 排查“缺失的影响正常使用的功能”（`gamlss()` 用户面方法齐不齐） | ✅ 审计完成 | 清单：`docs/development/gamlss-user-surface-gap-audit-2026-11-01.md`（拟合主路径齐备；缺 `*.start` / `*.fix` / `start.from` / `contrasts`） |
-| D2.131 | `mu/sigma/nu/tau.fix` + `*.start` 用户入口 | ⬜ 待办 | 三种 R 写法各一条 live-R 对照（截距固定 / sigma 固定 / 只给起点），deviance ≤1e-6 |
+| D2.131a | `mu/sigma/nu/tau.start` 用户入口（R 的参数尺度 + 标量回收） | ✅ 完成 | RS/CG(irls_cross)/MIXED 三条路径接线，RS_JAX/HYBRID/full_hessian 显式拒绝；live R 对照（NO 双起点 / NO sigma 起点 / GA 双起点）deviance 与系数 ≤1e-6；12 条用例全绿 |
+| D2.131b | `mu/sigma/nu/tau.fix` 用户入口 | ⬜ 待办 | `mu.fix=TRUE, mu.start=c` 与活 R 的 deviance ≤1e-6，且 `coefficients` 里没有该参数（R 的 `mu.coefficients` 为 NULL） |
 | D2.132 | `start.from` 热启动 | ⬜ 待办 | 二次拟合迭代数下降，deviance 与一次拟合差 ≤1e-8 |
 | D2.133 | `n.cyc` / `trace` 兼容别名 | ⬜ 待办 | `n.cyc=5` 等价 `max_iter=5`；`trace=TRUE` 走 `verbose` |
 | D2.134 | `contrasts`（依赖公式解析器） | ⬜ 待办 | `contrasts=list(factor="contr.sum")` 与 R 系数布局一致；无因子时报错 |
@@ -543,3 +544,28 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
 2. 71 个既有失败里挑“挡发布”的簇修：先 CG/MIXED 路由（10 条，同一根因），再 ZABB/ZIBB 的 `bd`（6 条），
    再 `SmoothFitInfo` 签名（6 条）——这三簇一修就能收回 22 条。
 3. Phase 8 的 8.3（用户文档与教程）与 8.5（method 名一致性 + lint/type）。
+
+
+---
+
+## 十七、D2.131 子任务（2026-11-01 续）
+
+### D2.131a —— `mu/sigma/nu/tau.start`（已交付）
+
+- **R 语义**（`gamlss-5.R:1028/1061/1095/1129`）：标量回收成 `rep(x, N)`，向量原样使用，
+  **尺度是参数尺度**（与 `family$mu.initial` 同一尺度），线性预测是 `mu.linkfun(mu.start)`
+  （`gamlss-5.R:431`）。这一点最容易搞错：不是系数种子，不能直接当 eta。
+- 实现：`_fitting_init._resolve_start_values`（校验未知参数 / 固定参数 / 长度 / 非有限），
+  `gamlss(mu_start=..., sigma_start=..., nu_start=..., tau_start=...)` 接到
+  `rs_fit` / `cg_fit_v2` / `mixed_fit`（后者只喂 RS 阶段，因为 CG 阶段继承该状态，与 R 的 mixed() 相同）。
+  `RS_JAX` / `HYBRID` / CG 的 `full_hessian` 后端没有等价的状态交接 → **显式拒绝**，不静默忽略。
+- **验收证据**：`omnilss/tests/fixtures/r_golden/family_start_values_2026-11-01.json`（活 R 4.6.0 /
+  gamlss 5.5.0），在 `n.cyc=1 + i.control=glim.control(cyc=1)` 的“单步内层”制度下取数——
+  只有这个制度才能让起点可见（默认内层预算下所有起点都收敛到同一最优点）。
+  实测我们与 R 逐位一致：`sigma.start=0.3` 时 deviance 24.006637（R 同值）、
+  NO 双起点 24.006637、GA 双起点 35.597522，mu/sigma 系数 ≤1e-6。
+- **发现（新登记 D2.135）**：NO / GA 的**默认** sigma 起点与 R 不同 ——
+  R 是 `sd(y)`（NO=2.4678）与常数 1（GA），我们走通用残差尺度，而通用 mu 又落 `target=y`
+  兜底 → `RMSE(y,y)=0` → eps 地板 1e-6。单步制度下 deviance 差到 1e2~1e11 量级，
+  但 50 周期收敛后一致（现有三闸因此是绿的）。属既有缺陷面（D2.51 记录过同型陷阱），
+  本轮不动绿族的默认起点，单独立项。

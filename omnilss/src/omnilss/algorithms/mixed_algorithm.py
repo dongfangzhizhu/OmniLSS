@@ -224,6 +224,7 @@ def mixed_fit(
     weights=None,
     parameter_formulas=None,
     max_iter: int | None = None,
+    start_values: dict | None = None,
 ) -> GAMLSSModel:
     """Fit the R-compatible two-stage ``mixed(n1, n2)`` algorithm.
 
@@ -269,6 +270,9 @@ def mixed_fit(
         tol=tol,
         rtol=rtol,
         verbose=verbose,
+        # D2.131: the CG stage continues from the RS state, so the user start
+        # values only enter the RS stage -- exactly like R's mixed().
+        start_values=start_values,
     )
     rs_history = tuple(
         float(value)

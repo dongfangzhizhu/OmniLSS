@@ -40,6 +40,7 @@ from ._fitting_init import (
     _initial_parameter_value as _initial_parameter_value_shared,
     _initial_sigma as _initial_sigma_shared,
     _initial_sigma_fitted as _initial_sigma_fitted_shared,
+    _resolve_start_values as _resolve_start_values_shared,
 )
 from ._fitting_residuals import (
     _build_rqres_callable as _build_rqres_callable_shared,
@@ -313,6 +314,15 @@ def _initial_parameter_value(
 ) -> float:
     """Construct staged starting values for non-mu parameters."""
     return _initial_parameter_value_shared(family, parameter, y, mu, w)
+
+
+def _resolve_start_values(family, start_values, n_obs):
+    """Normalise R's mu.start / sigma.start / nu.start / tau.start.
+
+    Re-exported from omnilss._fitting_init so the algorithm modules keep
+    importing their initial-state helpers from one place.
+    """
+    return _resolve_start_values_shared(family, start_values, n_obs)
 
 
 def _is_intercept_only_formula(formula: str) -> bool:
@@ -873,6 +883,13 @@ def gamlss(
     weights: Any | None = None,
     parameter_formulas: Mapping[str, str] | None = None,
     method: str = "RS",
+    # D2.131: R's mu.start / sigma.start / nu.start / tau.start, parameter
+    # scale, scalar (recycled) or length-n.  R's own semantics, not a
+    # coefficient-space seed: see _fitting_init._resolve_start_values.
+    mu_start: Any | None = None,
+    sigma_start: Any | None = None,
+    nu_start: Any | None = None,
+    tau_start: Any | None = None,
     control: GAMLSSControl | None = None,
     i_control: GLIMControl | None = None,
     verbose: bool = False,
@@ -1046,6 +1063,31 @@ def gamlss(
     # rejects the data identically instead of only the NumPy RS path.
     _response_column, _ = _parse_formula(formula)
     validate_response(getattr(family, "name", str(family)), data[_response_column])
+
+    # R: gamlss(mu.start=..., sigma.start=..., nu.start=..., tau.start=...).
+    # Only the routes whose state R also hands over (RS / CG / MIXED) accept
+    # them; the JAX-traced and joint-optimiser routes have no equivalent
+    # hand-off, and a silent ignore would be a lie.
+    start_values: dict[str, Any] = {}
+    for _name, _value in (
+        ("mu", mu_start),
+        ("sigma", sigma_start),
+        ("nu", nu_start),
+        ("tau", tau_start),
+    ):
+        if _value is not None:
+            start_values[_name] = _value
+    if start_values:
+        if method_name in {"RS_JAX", "JOINT", "HYBRID"} or (
+            method_name == "CG"
+            and str(optimizer_kwargs.get("cg_backend", "full_hessian")).upper()
+            not in {"IRLS", "IRLS_CROSS", "CG_IRLS_CROSS", "ETA", "ETA_CROSS"}
+        ):
+            raise ValueError(
+                "start values (mu/sigma/nu/tau.start) are not supported by "
+                f"method={method_name!r}; use method='RS', method='MIXED' or "
+                "method='CG' with cg_backend='irls_cross'"
+            )
 
     if method_name in {"CG", "MIXED"} and any(
         has_smooth_terms(value)
@@ -1371,6 +1413,7 @@ def gamlss(
             verbose=verbose,
             routing_decision=routing_decision,
             i_control=i_control,
+            start_values=start_values or None,
         )
 
     if method_name == "CG":
@@ -1398,6 +1441,7 @@ def gamlss(
                 max_iter=max_iter if max_iter is not None else (control.n_cyc if control is not None else 20),
                 tol=control.c_crit if control is not None else 1e-4,
                 verbose=verbose,
+                start_values=start_values or None,
             )
         if cg_backend_name not in {
             "FULL_HESSIAN",
@@ -1434,6 +1478,7 @@ def gamlss(
             n2=mixed_n2,
             tol=control.c_crit if control is not None else 1e-4,
             verbose=verbose,
+            start_values=start_values or None,
         )
 
     # HYBRID retains the historical automatic single-backend dispatcher.
