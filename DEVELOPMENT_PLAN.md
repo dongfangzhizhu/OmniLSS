@@ -647,3 +647,17 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
   deviance 在三种编码下逐位相同（-0.87162，与 R 一致）。13 条用例全绿。
 - **范围**：只接 RS；CG / MIXED / RS_JAX 显式拒绝（它们的 CG 阶段自己建矩阵，
   目前没有把类别编码带过去）。预测/新数据重建也还没带上分类编码 —— 记为 D2.136。
+
+
+### 十七之末：D2.131–D2.134 全族复扫回归
+
+改动（初值通道 / 固定参数派生族 / 设计矩阵分类展开）必须过闸。一次跑完 146 族：
+
+```
+python tools/rs_family_parity_scan.py --json tmp/d2136_scan.json
+deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28 skip；0 fail
+```
+
+与本次会话前的基线 `tmp/scan_2026-10-31.json` **逐族逐字段 0 差异**（`dl`/`detail` 也相同）。
+中途另一次并发跑（`tmp/d2134_scan.json`，在 contrasts 之前）唯一差异是 GT 的 deriv 探针超时
+（180 s 上限的已知慢族，两个扫描抢 CPU 时更明显），不是轨迹漂移。
