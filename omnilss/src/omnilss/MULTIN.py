@@ -5,7 +5,7 @@ R reference: `gamlss.dist/R/MULTIN.R::MULTIN`.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 
 from .distributions_b7 import MN3, MN4, MN5
 from .families import FamilyDefinition
@@ -17,23 +17,20 @@ class MULTINFamily(FamilyDefinition):
 
 
 def _clone_with_name(base: FamilyDefinition, name: str) -> FamilyDefinition:
-    return MULTINFamily(
-        name=name,
-        parameters=base.parameters,
-        g_dev_inc=base.g_dev_inc,
-        type=base.type,
-        links=base.links,
-        link_functions=base.link_functions,
-        link_inverses=base.link_inverses,
-        link_derivatives=base.link_derivatives,
-        score_functions=base.score_functions,
-        hessian_functions=base.hessian_functions,
-        fixed_parameters=base.fixed_parameters,
-        d=base.d,
-        p=base.p,
-        q=base.q,
-        r=base.r,
-    )
+    """Copy every field of base into a MULTINFamily shell with a new name.
+
+    Built from dataclasses.fields rather than a hand-written list: the earlier
+    hand-written copy silently dropped constructor_parameters and
+    fixed_parameter_defaults, so a MULTIN shell could disagree with the MN*
+    family it wraps the moment either field mattered (D2.142).
+    """
+    payload = {
+        field.name: getattr(base, field.name)
+        for field in fields(base)
+        if field.init
+    }
+    payload["name"] = name
+    return MULTINFamily(**payload)
 
 
 def MULTIN(n_categories: int = 3) -> FamilyDefinition:
