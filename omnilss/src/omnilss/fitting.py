@@ -2450,10 +2450,25 @@ def gamlss(
             "cg_condition_number": getattr(cg_result, "condition_number", None),
             "cg_param_slices": getattr(cg_result, "param_slices", None),
         }
+    # D2.139: the CG branch keeps mu in its own variable and leaves
+    # parameter_values without it (it collects only the non-mu parameters), so
+    # the residual kernel was called with no mu and died with KeyError.  Pass
+    # mu explicitly, preferring a frozen value when the parameter is fixed --
+    # the same rule the ML/RS branch follows above.
+    mu_for_residuals = fixed_parameter_values.get("mu", mu)
     residual_values = (
-        rqres_callable(**{"y": y, **parameter_values, **fixed_parameter_values})
+        rqres_callable(
+            **{
+                "y": y,
+                "mu": mu_for_residuals,
+                **parameter_values,
+                **fixed_parameter_values,
+            }
+        )
         if rqres_callable is not None
-        else _compute_residuals(family, y, mu, parameter_values.get("sigma"))
+        else _compute_residuals(
+            family, y, mu_for_residuals, parameter_values.get("sigma")
+        )
     )
 
     # Compute df_fit including smooth terms
