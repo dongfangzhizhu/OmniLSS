@@ -118,9 +118,9 @@ def test_single_level_factor_is_rejected(data):
         gamlss("y ~ g + x", family=NO(), data=flat, method="RS")
 
 
-@pytest.mark.parametrize("method", ["CG", "RS_JAX"])
+@pytest.mark.parametrize("method", ["CG", "MIXED", "RS_JAX"])
 def test_other_routes_accept_contrasts(golden, data, method):
-    """D2.136b: CG and the traced RS backend build the same coded matrix."""
+    """D2.136b: CG, MIXED and the traced RS backend build the same coded matrix."""
     model = gamlss("y ~ g + x", family=NO(), data=data, method=method, max_iter=30,
                    contrasts="contr.treatment")
     np.testing.assert_allclose(
@@ -131,21 +131,24 @@ def test_other_routes_accept_contrasts(golden, data, method):
     )
 
 
-def test_mixed_route_is_blocked_by_the_known_cg_state_defect(golden, data):
-    """MIXED fails on its CG hand-off, not on the coding.
+def test_mixed_route_no_longer_hits_the_cg_boundary_defect(golden, data):
+    """Regression guard for D2.137.
 
-    Same "initial_model linear predictor ... does not match the CG design
-    matrix" failure that the D2.129 full-suite run recorded for eight other
-    MIXED/CG tests (DEVELOPMENT_PLAN section 16).  Pinned here so that fixing
-    the CG state boundary also unblocks categorical MIXED fits.
+    MIXED used to raise "initial_model linear predictor ... does not match the
+    CG design matrix" on every fit: an RS model stopped after one outer cycle
+    stores the entry linear predictor next to the coefficients of its single
+    glim.fit, and the CG hand-off demanded the two agree to 1e-7.  With the
+    hand-off re-deriving eta from the coefficients, MIXED reaches R's deviance.
     """
-    with pytest.raises(ValueError, match="does not match the CG design matrix"):
-        gamlss("y ~ g + x", family=NO(), data=data, method="MIXED", max_iter=30,
-               contrasts="contr.treatment")
+    model = gamlss("y ~ g + x", family=NO(), data=data, method="MIXED", max_iter=30,
+                   contrasts="contr.treatment")
+    assert float(model.g_dev) == pytest.approx(
+        float(golden["treatment"]["deviance"]), rel=1e-6
+    )
 
 
 # ---------------------------------------------------------------------------
-# Prediction-time rebuild (D2.136)
+# Prediction-time rebuild (D2.136a)
 #
 # R reference: the same golden file, now carrying `pred_mu` for the two
 # prediction rows (g = a/c, x = 0/1).  R's own numbers are identical under both

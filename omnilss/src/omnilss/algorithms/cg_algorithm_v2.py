@@ -136,12 +136,6 @@ def _initial_state_from_model(
             raise ValueError(
                 f"initial_model state for {parameter!r} must have shape ({n},)"
             )
-        expected_eta = design @ beta + offset
-        if not np.allclose(eta, expected_eta, rtol=1e-7, atol=1e-9):
-            raise ValueError(
-                f"initial_model linear predictor for {parameter!r} does not match "
-                "the CG design matrix"
-            )
         expected_fitted = np.asarray(
             family.link_inverses[parameter](jnp.asarray(eta)), dtype=np.float64
         )
@@ -150,6 +144,40 @@ def _initial_state_from_model(
                 f"initial_model fitted values for {parameter!r} do not match "
                 "its linear predictor"
             )
+        expected_eta = design @ beta + offset
+        if not np.allclose(eta, expected_eta, rtol=1e-7, atol=1e-9):
+            # D2.137: an RS model stopped after one outer cycle stores the
+            # *entry* linear predictor (R's per-observation mu.initial state,
+            # D2.38) together with the coefficients its single glim.fit
+            # produced.  The two differ by one inner WLS step (measured 1.9e-5
+            # absolute / 7.6e-6 relative on a heteroscedastic normal sample),
+            # which is a bookkeeping gap in the RS state rather than a broken
+            # boundary, so eta is re-derived from the coefficients -- the state
+            # CG actually continues from.
+            #
+            # Two allowances, both explicit:
+            #  * the eta clip (fitting._LINK_ETA_BOUNDS, +/-15) makes stored eta
+            #    a clamped value that can never equal X @ beta -- those entries
+            #    are taken from the stored vector;
+            #  * the remaining entries must agree to 1e-4 of the state's scale
+            #    (not elementwise relative, which punishes entries near zero).
+            clipped = np.abs(np.abs(eta) - 15.0) <= 1e-6
+            free = ~clipped
+            rescaled_eta = expected_eta.copy()
+            rescaled_eta[clipped] = eta[clipped]
+            scale = max(1.0, float(np.max(np.abs(rescaled_eta))))
+            deviation = float(np.max(np.abs(eta[free] - rescaled_eta[free]))) if free.any() else 0.0
+            if deviation <= 1e-4 * scale:
+                eta = rescaled_eta
+                fitted = np.asarray(
+                    family.link_inverses[parameter](jnp.asarray(eta)),
+                    dtype=np.float64,
+                )
+            else:
+                raise ValueError(
+                    f"initial_model linear predictor for {parameter!r} does not match "
+                    "the CG design matrix"
+                )
 
         coefficients[parameter] = beta
         etas[parameter] = eta
