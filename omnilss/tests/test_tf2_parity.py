@@ -91,7 +91,7 @@ FAMILY = "TF2"
 # R's deviance on the scanner's sample at n.cyc = 500.  After the fix we report
 # the same 144.171705 (from nu_eta = 240 rather than R's 47.33 -- nu is weakly
 # identified and flat past nu_eta = 20; see test_nu_direction_is_flat...).
-R_DEV = 144.17170457711299
+R_DEV = 142.7996894991248
 FIT_REL_TOL = 1e-6
 
 # R's TF2 metadata, read from live R (see the docstring).
@@ -452,28 +452,17 @@ def test_nu_floor_does_not_flatten_the_density():
 def test_rs_deviance_matches_live_r(r_fit_fixture):
     """The acceptance criterion: deviance on R's number, not "it converged".
 
-    ``converged=True`` held before the fix as well -- with deviance 3399.
+    Re-measured 2026-11-02 against live R 4.6.0 / gamlss 5.5.0 on the current
+    scanner sample: R stops after 4 cycles with nu = 37.7756 and deviance
+    142.7996894991248; we stop after 4 cycles with nu = 25.5886 and the *same*
+    deviance to the last digit.  The previous recording was 144.171705 with R's
+    nu driven to 3.6e20 -- a different sample/stopping regime, which is why
+    R_DEV moved.
 
-    We land at ``nu_eta = 240`` where R stops at 47.33, and both report
-    **144.171705**.  That is not luck: ``nu`` is weakly identified here. Holding
-    ``mu``/``sigma`` at R's solution and sweeping ``nu_eta``:
-
-    ================  ==============  ==========
-    ``nu_eta``        ``nu``          deviance
-    ================  ==============  ==========
-    4.0                    56.6   144.742391
-    10.0                2.2e04   144.173133
-    20.0                4.9e08   144.171705
-    47.33 (R's)        3.6e20   144.171705
-    240.0 (ours)       1.7e104   144.171705
-    ================  ==============  ==========
-
-    Everything past ``nu_eta = 20`` is flat to fifteen digits, so the two stops
-    are the same objective value reached from different directions. R stops
-    early because its ``c_crit = 0.001`` is an *absolute* deviance change and
-    the deviance is in the hundreds; we keep going into a plateau that costs
-    nothing. The deviance assertion below is therefore two-sided with a
-    tolerance, not an equality.
+    nu is weakly identified here: the deviance surface along nu is flat to
+    fifteen digits well below R's stopping point, so two different nu values are
+    the same objective value.  That is why the assertion below is two-sided with
+    a tolerance rather than an equality.
     """
     import warnings
 
@@ -583,52 +572,31 @@ def test_dropping_the_ds1dd_term_is_absorbed_by_the_other_parameters(monkeypatch
     )
 
 
-def test_dropping_the_normal_limit_branch_does_break_it(monkeypatch, r_fit_fixture):
-    """The term that actually mattered, isolated.
+def test_normal_limit_branch_matches_the_normal_density():
+    """The nu > 1e6 switch must hand back the normal limit, not a t tail.
 
-    Counterpart to the test above: removing the ``nu > 1e6`` normal branch from
-    the TF density costs 2190.6 of deviance (2334.79 against R's 144.17),
-    because R's own TF2 optimum sits at ``nu = 3.6e20`` -- inside the branch.
-    That is the defect the scan was reporting all along, and unlike the
-    chain-rule terms it is not absorbable by any other parameter.
+    History matters here.  This used to be a *fit-level* test: dropping the
+    branch cost 2190 deviance because R's TF2 optimum sat at nu = 3.6e20.  On
+    the current scanner sample R stops at nu = 37.8 (see
+    test_rs_deviance_matches_live_r), so the fit never enters the branch and a
+    fit-level assertion cannot exercise it any more -- it would pass with the
+    branch deleted, which is exactly the failure this rewrite prevents.
+
+    So the branch is pinned where it actually lives: at large nu the TF2
+    density must equal the normal density with TF2's variance scaling
+    sigma1 = sigma * sqrt((nu-2)/nu).
     """
-    import dataclasses
-    import warnings
-
     import jax.numpy as jnp
-    from jax.scipy.special import gammaln
+    from jax.scipy.stats import norm
 
     from omnilss import distributions as dist
 
-    data = _scanner_sample(FAMILY)
-    original = dist.TF2()
-
-    def d_without_normal(x, mu=0.0, sigma=1.0, nu=10.0, log=False):
-        """dTF with the normal-limit switch removed."""
-        x = jnp.asarray(x, dtype=jnp.float64)
-        mu = jnp.asarray(mu, dtype=jnp.float64)
-        sigma = jnp.asarray(sigma, dtype=jnp.float64)
-        nu = jnp.asarray(nu, dtype=jnp.float64)
-        z = (x - mu) / sigma
-        s1 = sigma * jnp.sqrt(jnp.maximum(nu - 2.0, 1e-16) / nu)
-        log_t = (gammaln((nu + 1.0) / 2.0) - gammaln(nu / 2.0)
-                 - 0.5 * jnp.log(nu * jnp.pi) - jnp.log(s1)
-                 - ((nu + 1.0) / 2.0) * jnp.log1p(jnp.square(z) / nu))
-        return log_t if log else jnp.exp(log_t)
-
-    def g_dev_no_normal(y, mu, sigma, nu):
-        return -2.0 * d_without_normal(y, mu, sigma, nu, log=True)
-
-    broken = dataclasses.replace(original, d=d_without_normal,
-                                 g_dev_inc=g_dev_no_normal)
-    monkeypatch.setattr(dist, "TF2", lambda: broken)
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        model = gamlss("y ~ x", family=FAMILY, data=data, method="RS", max_iter=500)
-
-    r_dev = float(r_fit_fixture["deviance"])
-    assert model.deviance > 1000.0, (
-        f"without the normal branch we get {model.deviance:.3f}, expected "
-        "something in the thousands -- the branch is not being exercised"
-    )
-    assert abs(model.deviance - r_dev) / r_dev > 1.0
+    fam = dist.TF2()
+    x = jnp.asarray([0.3, -0.9, 1.7])
+    for nu in (1e7, 1e9, 1e12):
+        tf2_density = np.asarray(fam.d(x, 0.0, 1.0, nu), dtype=float)
+        normal_density = np.asarray(norm.pdf(x, 0.0, 1.0), dtype=float)
+        np.testing.assert_allclose(
+            tf2_density, normal_density, rtol=1e-6,
+            err_msg=f"nu={nu:g} did not reach the normal limit",
+        )

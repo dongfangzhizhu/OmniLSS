@@ -26,6 +26,16 @@ def test_tf2_uses_logshiftto2_nu_link() -> None:
 
 
 def test_tf2_dpqr_clamps_nu_to_gt2() -> None:
+    """nu below 2 is clamped to a representable floor and stays finite.
+
+    The old assertion compared against TF evaluated at nu = 2 + finfo.eps --
+    but that sum rounds to exactly 2.0, so the "floor" was a no-op and TF2's
+    sigma1 = sqrt((nu-2)/nu) collapsed to 0 (nan), while TF, which does not
+    rescale sigma, happily returned 0.34.  The two can never agree at the
+    boundary: TF2's density is TF's density in sigma1, and sigma1 -> 0 there,
+    which is a spike.  What must hold is that the clamp is representable and
+    the composition is finite and self-consistent.
+    """
     tf2 = TF2()
     tf = TF()
 
@@ -35,9 +45,16 @@ def test_tf2_dpqr_clamps_nu_to_gt2() -> None:
     tiny_nu = jnp.array([0.8])
 
     tf2_d = tf2.d(x, mu, sigma, tiny_nu)
-    floor_nu = jnp.array([2.0 + jnp.finfo(jnp.float64).eps])
-    tf_d = tf.d(x, mu, sigma, floor_nu)
-    assert jnp.allclose(tf2_d, tf_d)
+    assert jnp.all(jnp.isfinite(tf2_d))
+
+    floor_nu = jnp.array([2.0 + 1e-8])
+    sigma1 = sigma * jnp.sqrt((floor_nu - 2.0) / floor_nu)
+    composed = tf.d(x, mu, sigma1, floor_nu)
+    assert jnp.allclose(tf2_d, composed, rtol=1e-12)
+
+    # Same nu, no rescaling: the TF density is orders of magnitude larger,
+    # which is exactly why comparing the two was the wrong invariant.
+    assert jnp.all(tf.d(x, mu, sigma, floor_nu) > 1e3 * tf2_d)
 
 
 def test_tf2_pq_lower_tail_logp_roundtrip_near_boundary() -> None:

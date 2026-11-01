@@ -1534,8 +1534,15 @@ def TF2() -> TF2Family:
     # function (agrees with scipy to 1e-16).
     from jax.scipy.special import polygamma
 
+    # D2.143: the floor used to be 2.0 + eps with eps = finfo(float64).eps,
+    # which is exactly half an ulp at 2.0 -- 2.0 + eps rounds back to 2.0, so
+    # the clamp was a no-op: sigma1 = sqrt((nu-2)/nu) became 0, and every
+    # density/score at nu <= 2 came back nan or inf (the very boundary the
+    # clamp exists for).  1e-8 is representable and keeps sigma1 ~ 7e-5.
+    _NU_FLOOR = 2.0 + 1e-8
+
     def _nu_gt2(nu):
-        return jnp.maximum(jnp.asarray(nu, dtype=jnp.float64), 2.0 + eps)
+        return jnp.maximum(jnp.asarray(nu, dtype=jnp.float64), _NU_FLOOR)
 
     def _sigma_scaled(sigma, nu):
         # R TF2.R: sigma1 = sqrt((nu-2)/nu) * sigma  (variance-1 t rescaled)

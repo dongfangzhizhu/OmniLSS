@@ -828,3 +828,24 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
   `model_convergence_reporting` 1、`symbol_coverage` 0。
 
 下一轮建议：先清 D2.142 的 7 条口径问题（定口径即可关），再攻 tf2 簇（8 条同源）。
+
+
+### D2.143 —— TF2 簇（6 条转绿，3 条留作 D2.143b）
+
+- **真 bug（`distributions.TF2._nu_gt2`）**：下界写成 `2.0 + eps`（eps = finfo(float64).eps），
+  而 2.0 的 ulp 是 eps 的两倍 —— 加法按 ties-to-even 正好**round 回 2.0**，于是 `nu` 下界钳制是
+  **空操作**：`sigma1 = sqrt((nu-2)/nu)` 变 0，`d/p/q` 与 `nu` 的 score/hessian 在 `nu\le2` 全变
+  nan/inf（正是这个钳制存在的目的）。改用 `2.0 + 1e-8`（可表示，`sigma1\approx7e-5`）。
+- **测试口径修正（`test_tf2_dpqr_clamps_nu_to_gt2`）**：它拿 `tf2.d(nu=0.8)` 去比
+  `tf.d(nu=2+eps)` —— 后者同样 round 到 2.0，且 TF 不缩放 sigma，所以两边物理上永远不可能相等
+  （TF2 在 `nu\to2` 是脉冲）。改成断言：有限 + 等于 `TF(y, mu, sigma1, floor)` 的组合 + 比不缩放
+  的 TF 大 3 个量级以上。
+- **基线刷新（`test_tf2_parity`）**：`R_DEV` 记的是 144.171705（当时 R 的 nu 跑到 3.6e20）。
+  2026-11-02 用活 R 4.6.0 / gamlss 5.5.0 在**当前** scanner 样本上重测：R 第 4 周期停在
+  `nu=37.7756`、deviance `142.7996894991248`；我们第 4 周期 `nu=25.5886`、deviance **逐位相同**。
+  因此 `R_DEV` 更新为该值，docstring 换成这次实测的叙事。
+- **`test_dropping_the_normal_limit_branch_does_break_it` 的前提作废**：`nu` 不再跑到 1e6 以上，
+  删掉该分支对本样本没有影响（142.800），拟合级断言无法再验证它。改成密度级断言
+  `test_normal_limit_branch_matches_the_normal_density`：`nu=1e7/1e9/1e12` 时必须等于正态密度。
+- **D2.143b（未完成）**：`test_r_consistency_tf2` 的 3 条 p/q 往返（`nu` 在 2.000001 附近、
+  极端尾部）仍超容差 —— 需要给极尖 t 的 q 换取更稳的策略（当前 Newton 修正 + step clip 不够）。
