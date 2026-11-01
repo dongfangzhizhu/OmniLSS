@@ -459,7 +459,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | D2.129 | 全族复扫回归（初值 / y.valid 类改动必须过闸） | ✅ 完成 | `tools/rs_family_parity_scan.py` 一次跑完：deriv 145 pass/1 skip、dpqr 121 pass/25 skip、rsdev 82 pass/36 warn/28 skip、**0 fail**（与 D2.127/128 前的 `tmp/scan_2026-10-31.json` 逐字节一致） |
 | D2.130 | 排查“缺失的影响正常使用的功能”（`gamlss()` 用户面方法齐不齐） | ✅ 审计完成 | 清单：`docs/development/gamlss-user-surface-gap-audit-2026-11-01.md`（拟合主路径齐备；缺 `*.start` / `*.fix` / `start.from` / `contrasts`） |
 | D2.131a | `mu/sigma/nu/tau.start` 用户入口（R 的参数尺度 + 标量回收） | ✅ 完成 | RS/CG(irls_cross)/MIXED 三条路径接线，RS_JAX/HYBRID/full_hessian 显式拒绝；live R 对照（NO 双起点 / NO sigma 起点 / GA 双起点）deviance 与系数 ≤1e-6；12 条用例全绿 |
-| D2.131b | `mu/sigma/nu/tau.fix` 用户入口 | ⬜ 待办 | `mu.fix=TRUE, mu.start=c` 与活 R 的 deviance ≤1e-6，且 `coefficients` 里没有该参数（R 的 `mu.coefficients` 为 NULL） |
+| D2.131b | `mu/sigma/nu/tau.fix` 用户入口 | ✅ 完成 | `mu_fix+mu_start` deviance 63.451059（R 同值）、`sigma_fix+sigma_start` 19.334517（R 同值），`coefficients` 里没有被固定的参数；12 条用例全绿 |
 | D2.132 | `start.from` 热启动 | ⬜ 待办 | 二次拟合迭代数下降，deviance 与一次拟合差 ≤1e-8 |
 | D2.133 | `n.cyc` / `trace` 兼容别名 | ⬜ 待办 | `n.cyc=5` 等价 `max_iter=5`；`trace=TRUE` 走 `verbose` |
 | D2.134 | `contrasts`（依赖公式解析器） | ⬜ 待办 | `contrasts=list(factor="contr.sum")` 与 R 系数布局一致；无因子时报错 |
@@ -569,3 +569,22 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
   兜底 → `RMSE(y,y)=0` → eps 地板 1e-6。单步制度下 deviance 差到 1e2~1e11 量级，
   但 50 周期收敛后一致（现有三闸因此是绿的）。属既有缺陷面（D2.51 记录过同型陷阱），
   本轮不动绿族的默认起点，单独立项。
+
+
+### D2.131b —— `mu/sigma/nu/tau.fix`（已交付）
+
+- **R 语义**：没有独立的“固定参数”代码路径，`mu.fix=TRUE` 只是跳过 mu 子模型
+  （`gamlss-5.R:310`：`if (family$parameter$mu == TRUE & mu.fix == FALSE)`），于是 mu 永远停在
+  `mu.start`（没给就用 `family$mu.initial`），`mu.coefficients` 返回 NULL。
+- **实现**：`fitting._apply_fixed_overrides` 派生一个 `fixed_parameters` 里多出该参数的族对象
+  （`dataclasses.replace`），把冻结值通过 `data` 交给已有的
+  `_resolve_fixed_parameter_values` 通道——NET 的 nu/tau、PARETO1o 的 mu 早就是这么走的，
+  所以三条算法路径不需要新分支；`estimable_parameters` 自然排除它，系数表里也就没有它。
+- **验收**：`omnilss/tests/fixtures/r_golden/family_fix_values_2026-11-01.json`（`tmp/d2131b_parity.R`）。
+  实测 `mu_fix + mu_start=2`：deviance 63.451059（R 63.451059），sigma 系数 1.224856（R 同值），
+  mu 拟合值恒为 2；`sigma_fix + sigma_start=0.5`：deviance 19.334517（R 同值），
+  mu 系数与释放拟合逐位相同。12 条用例全绿。
+- **本轮范围限制**：fix 只接 `method='RS'`；CG / MIXED / RS_JAX 显式拒绝（CG 阶段要求每个
+  可估参数都有设计矩阵，固定 mu 会让它没有状态可继承），写死在 `gamlss()` 里 fail-closed。
+- R 侧已记录一个“固定 + 起点”会自爆的样本：`mu.fix + sigma.start=0.5` 时 R 自己把 sigma 推到
+  3.2e9（sigma.coefficient=21.89），没有拿来做验收对照。

@@ -316,6 +316,94 @@ def _initial_parameter_value(
     return _initial_parameter_value_shared(family, parameter, y, mu, w)
 
 
+def _apply_fixed_overrides(family, data, fixed, start_values, y, w):
+    """Turn R's mu.fix / sigma.fix / nu.fix / tau.fix into fitting state.
+
+    R has no separate "fixed" code path: mu.fix = TRUE simply skips the mu
+    submodel, so mu stays at mu.start when given and at family$mu.initial
+    otherwise, and mu.coefficients comes back NULL (gamlss-5.R:310).  OmniLSS
+    already estimates only family.estimable_parameters and hands
+    fixed_parameter_values to every algorithm path (that is how NET's nu/tau
+    and PARETO1o's mu work), so the honest implementation is to derive a
+    family whose fixed set includes the requested parameters and to pass the
+    frozen value through data -- the channel _resolve_fixed_parameter_values
+    already reads.
+
+    Returns (family, data); the inputs are not mutated.
+    """
+    from dataclasses import replace
+
+    n_obs = len(y)
+    existing = _resolve_fixed_parameter_values(family, data, n_obs, y)
+    frozen: dict[str, np.ndarray] = {}
+
+    def _as_vector(value):
+        values = np.asarray(value, dtype=np.float64)
+        if values.ndim == 0:
+            return np.full(n_obs, float(values), dtype=np.float64)
+        values = values.ravel()
+        if values.shape == (1,):
+            return np.full(n_obs, float(values[0]), dtype=np.float64)
+        if values.shape != (n_obs,):
+            raise ValueError(
+                f"fixed value must be a scalar or length {n_obs}, "
+                f"got shape {values.shape}"
+            )
+        return values
+
+    def _initial_mu_values():
+        eta = _initial_mu_target(family, y, w, fixed_parameter_values=existing)
+        return np.asarray(
+            family.link_inverses["mu"](jnp.asarray(eta, dtype=jnp.float64)),
+            dtype=np.float64,
+        )
+
+    for parameter in family.parameters:
+        if parameter not in fixed:
+            continue
+        if parameter in data:
+            raise ValueError(
+                f"data already carries a column named {parameter!r}; fixing it "
+                f"through that column and through {parameter}_fix at the same "
+                "time is ambiguous"
+            )
+        if parameter in start_values:
+            # R uses mu.start as the value the fixed parameter holds.
+            frozen[parameter] = _as_vector(start_values[parameter])
+        elif parameter == "mu":
+            frozen["mu"] = _initial_mu_values()
+        elif parameter == "sigma":
+            mu_values = frozen.get("mu")
+            if mu_values is None:
+                mu_values = _initial_mu_values()
+            frozen["sigma"] = np.asarray(
+                _initial_sigma_fitted(
+                    family, y, mu_values, w, fixed_parameter_values=existing
+                ),
+                dtype=np.float64,
+            )
+        else:
+            mu_values = frozen.get("mu")
+            if mu_values is None:
+                mu_values = _initial_mu_values()
+            frozen[parameter] = np.full(
+                n_obs,
+                float(_initial_parameter_value(family, parameter, y, mu_values, w)),
+                dtype=np.float64,
+            )
+
+    fixed_parameters = tuple(
+        dict.fromkeys(
+            list(family.fixed_parameters or ())
+            + [name for name in family.parameters if name in fixed]
+        )
+    )
+    derived = replace(family, fixed_parameters=fixed_parameters)
+    new_data = dict(data)
+    new_data.update(frozen)
+    return derived, new_data
+
+
 def _resolve_start_values(family, start_values, n_obs):
     """Normalise R's mu.start / sigma.start / nu.start / tau.start.
 
@@ -890,6 +978,14 @@ def gamlss(
     sigma_start: Any | None = None,
     nu_start: Any | None = None,
     tau_start: Any | None = None,
+    # D2.131b: R's mu.fix / sigma.fix / nu.fix / tau.fix.  True means the
+    # parameter is NOT estimated: it stays at mu.start (or the family's
+    # initial value) for every iteration, exactly as gamlss-5.R skips that
+    # submodel (if (family$parameter$mu == TRUE & mu.fix == FALSE)).
+    mu_fix: bool = False,
+    sigma_fix: bool = False,
+    nu_fix: bool = False,
+    tau_fix: bool = False,
     control: GAMLSSControl | None = None,
     i_control: GLIMControl | None = None,
     verbose: bool = False,
@@ -1077,6 +1173,41 @@ def gamlss(
     ):
         if _value is not None:
             start_values[_name] = _value
+    fixed_flags = {
+        "mu": mu_fix,
+        "sigma": sigma_fix,
+        "nu": nu_fix,
+        "tau": tau_fix,
+    }
+    for _fixed_name, _flag in fixed_flags.items():
+        # R: if (!is.logical(mu.fix)) stop("mu.fix should be logical TRUE or FALSE")
+        if not isinstance(_flag, (bool, np.bool_)):
+            raise ValueError(
+                f"{_fixed_name}_fix should be logical True or False, got {_flag!r}"
+            )
+    fixed_parameters = [name for name, flag in fixed_flags.items() if flag]
+    if fixed_parameters:
+        if method_name != "RS":
+            raise ValueError(
+                "mu_fix/sigma_fix/nu_fix/tau_fix are implemented for method='RS' "
+                f"only; got method={method_name!r}"
+            )
+        _y_fixed = np.asarray(data[_response_column], dtype=np.float64)
+        _w_fixed = (
+            np.ones(_y_fixed.size, dtype=np.float64)
+            if weights is None
+            else np.asarray(weights, dtype=np.float64)
+        )
+        family, data = _apply_fixed_overrides(
+            family, data, frozenset(fixed_parameters), start_values, _y_fixed, _w_fixed
+        )
+        # A fixed parameter is no longer estimated, so its start value *is* the
+        # fixed value (R uses mu.start exactly that way).
+        start_values = {
+            name: value
+            for name, value in start_values.items()
+            if name not in fixed_parameters
+        }
     if start_values:
         if method_name in {"RS_JAX", "JOINT", "HYBRID"} or (
             method_name == "CG"
