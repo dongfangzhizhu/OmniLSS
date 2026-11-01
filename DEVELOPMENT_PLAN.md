@@ -756,3 +756,18 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
   这条断言等于把那次修复**钉死为禁止**。
 - 改成：ST3/ST4 仍走 AD；ST5 断言用 `_st5_dldm` 且不带 `make_grad`——这样"override 按族生效
   而不是按模块"的原意保留，同时承认 D2.62 的事实。`test_st1_st2_parity.py` 26 passed。
+
+
+### D2.142 —— 需要“口径决定”的失败（未改，登记待定）
+
+这几条不是 bug，而是**两处断言互相矛盾**或**语义漂移**，改哪边都要先定口径：
+
+1. `test_multin_constructor`（2 条）vs `test_registry_phase1_compat_names`：
+   前者要 `MULTIN().name == "MN3"`（族名=实际多元族），后者要 `resolve("MULTIN").name == "MULTIN"`
+   （兼容别名保留自己的名字）。当前实现满足后者。`MULTIN` 是兼容壳，`MN3/4/5` 才是 R 的族；
+   要不要让构造函数返回 `MN3` 命名、注册表别名另记，需定。
+2. `test_grpc_server::test_grpc_fit_blocks_placeholder_family_before_backend`：
+   期望 `placeholder_requires_opt_in`，实现返回 `experimental_requires_opt_in`——
+   D1 清零占位后错误码跟着改名了，测试没跟。
+3. `test_method_routing_integration`（2 条）：断言消息里写着"placeholder 队列已清空：本测试改为
+   断言能力矩阵本身"，但断言体仍是老口径 → 用例自身过期。
