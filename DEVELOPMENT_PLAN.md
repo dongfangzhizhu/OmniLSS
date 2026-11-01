@@ -847,5 +847,22 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
 - **`test_dropping_the_normal_limit_branch_does_break_it` 的前提作废**：`nu` 不再跑到 1e6 以上，
   删掉该分支对本样本没有影响（142.800），拟合级断言无法再验证它。改成密度级断言
   `test_normal_limit_branch_matches_the_normal_density`：`nu=1e7/1e9/1e12` 时必须等于正态密度。
-- **D2.143b（未完成）**：`test_r_consistency_tf2` 的 3 条 p/q 往返（`nu` 在 2.000001 附近、
-  极端尾部）仍超容差 —— 需要给极尖 t 的 q 换取更稳的策略（当前 Newton 修正 + step clip 不够）。
+- **D2.143b（已交付，5 条转绿）**：见下节。
+
+
+### D2.143b —— TF2 的 q 单调守卫与三条 R 侧口径错（已交付）
+
+根因不是精度不够，而是**三条测试对着 R 不存在的接口**，加一个真 bug：
+
+1. **真 bug（`q_tf2` 的单调守卫）**：只要 `p` 是升序，就对整个向量做
+   `maximum.accumulate`。可是 `q(p_grid, mu_grid, sigma_grid, nu_grid)`（R 一致性 harness 就是这么调的）
+   每个元素参数不同，量化值本来就不单调 → 被守卫强行改成单调，概率空间误差最大 3.6e-2
+   （p=0.087, nu=2.25；不加守卫时与 scipy 差 1e-15）。现在守卫只在
+   **mu/sigma/nu 全部逐元素相同**时才生效。
+2. `test_tf2_p_lower_upper_complement_consistency`：给 `r_lower` 传了 `log.p=TRUE`，却和普通上尾相加
+   断言等于 1 —— 左边是**对数**概率（所以总和是 -8.09 这种数）。改成同类比同类：普通尾做互补、
+   对数概率单独比，并顺手用上了原本算了却没用的 `py_logp`。
+3. `test_tf2_q_logp_semantics_consistency` 与 `test_tf2_near_nu_boundary_upper_tail_logp_roundtrip`：
+   两者都在用 `q(..., log.p=TRUE)` 调 R。**R 的 qTF2 根本不支持 log.p**（活验证：
+   `qTF2(-3, 0, 1, 3, log.p=TRUE)` → "p must be between 0 and 1"；pTF2 支持），所以这两条永远不可能通过。
+   改成 `q(exp(log_p), log_p=TRUE) == q(exp(log_p))` 的等价口径，log 概率只走 pTF2。

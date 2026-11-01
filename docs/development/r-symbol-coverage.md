@@ -14,7 +14,7 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - **surface**: `missing` 391, `module_def` 226, `module_export` 96, `public_api` 191, `registry` 176
 - **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 163, `missing` 391
-- **parity**: `capability:unsupported` 258, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 163, `tested` 93, `unverified` 425
+- **parity**: `capability:unsupported` 256, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 165, `tested` 93, `unverified` 425
 - **admission**: `blocked` 526, `exported_api` 85, `internal` 73, `not_available` 391, `production_safe` 5
 
 ## Per-package coverage
@@ -987,7 +987,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | pST4 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | pST5 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | pTF | gamlss.dist | pTF | module_export | experimental | capability:validated | blocked | 0 |
-| pTF2 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
+| pTF2 | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 1 |
 | pWARING | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | pWEI | gamlss.dist | pWEI | module_export | experimental | capability:validated | blocked | 1 |
 | pWEI2 | gamlss.dist | pWEI2 | module_def | experimental | capability:unsupported | blocked | 1 |
@@ -1112,7 +1112,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | qST4 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | qST5 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | qTF | gamlss.dist | qTF | module_export | experimental | capability:validated | blocked | 1 |
-| qTF2 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
+| qTF2 | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 1 |
 | qWARING | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | qWEI | gamlss.dist | qWEI | module_export | experimental | capability:validated | blocked | 1 |
 | qWEI2 | gamlss.dist | qWEI2 | module_def | experimental | capability:unsupported | blocked | 1 |

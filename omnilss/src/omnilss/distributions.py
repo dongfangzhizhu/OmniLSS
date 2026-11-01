@@ -1637,14 +1637,27 @@ def TF2() -> TF2Family:
         q1 = q0 - step
         q1 = jnp.where(jnp.isfinite(q1), q1, q0)
 
-        # For monotone probability grids, enforce weak monotonicity as a staged
-        # compatibility guard for quantile behavior.
+        # Weak monotonicity across a sorted probability grid is only a real
+        # invariant when every element shares the same parameters.  D2.143b:
+        # the guard used to fire on any sorted p vector, so a call like
+        # q(p_grid, mu_grid, sigma_grid, nu_grid) -- each element with its own
+        # parameters, which is exactly how the R-consistency harness calls it --
+        # had its quantiles forced through maximum.accumulate and came back up
+        # to 3.6e-2 away in probability space (measured at p=0.087, nu=2.25,
+        # where the unguarded value is scipy-exact to 1e-15).
         p_flat = jnp.ravel(p_target)
         q_flat = jnp.ravel(q1)
         if q_flat.ndim == 1:
             p_diff = jnp.diff(p_flat)
             is_monotone_grid = p_flat.size <= 1 or bool(jnp.all(p_diff >= 0.0))
-            if is_monotone_grid:
+
+            def _constant(parameter) -> bool:
+                values = jnp.ravel(jnp.broadcast_to(
+                    jnp.asarray(parameter, dtype=jnp.float64), p_target.shape
+                ))
+                return values.size <= 1 or bool(jnp.all(values == values[0]))
+
+            if is_monotone_grid and _constant(mu) and _constant(sigma) and _constant(nu_safe):
                 q_flat = jnp.maximum.accumulate(q_flat)
                 q1 = jnp.reshape(q_flat, q1.shape)
         if log_p:

@@ -178,22 +178,51 @@ class TestTF2Consistency(unittest.TestCase):
         )
         np.testing.assert_allclose(py_lower + py_upper, np.ones_like(py_lower), rtol=1e-6, atol=1e-6)
 
+        # D2.143b: this used to request log.p=True for r_lower while asking for a
+        # plain upper tail for r_upper, then assert that their sum is 1 -- the
+        # left side of that sum was a *log* probability (hence the large
+        # negative totals).  Compare like with like: plain tails for the
+        # complement, log probabilities separately, and check that our log
+        # probability agrees with R's own.
         r_lower = self.bus.eval_family(
             family="TF2",
             func_type="p",
-            args={"q": q.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "log.p": True},
-        )
-        py_logp = np.asarray(
-            fam.p(jnp.array(q), jnp.array(mu), jnp.array(sigma), jnp.array(nu), log_p=True)
+            args={"q": q.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()},
         )
         r_upper = self.bus.eval_family(
             family="TF2",
             func_type="p",
-            args={"q": q.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "lower.tail": False},
+            args={
+                "q": q.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(),
+                "nu": nu.tolist(), "lower.tail": False,
+            },
         )
         np.testing.assert_allclose(r_lower + r_upper, np.ones_like(r_lower), rtol=1e-7, atol=1e-7)
+        np.testing.assert_allclose(py_lower, r_lower, rtol=4e-5, atol=4e-7)
+
+        r_logp = self.bus.eval_family(
+            family="TF2",
+            func_type="p",
+            args={
+                "q": q.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(),
+                "nu": nu.tolist(), "log.p": True,
+            },
+        )
+        py_logp = np.asarray(
+            fam.p(jnp.array(q), jnp.array(mu), jnp.array(sigma), jnp.array(nu), log_p=True)
+        )
+        np.testing.assert_allclose(py_logp, r_logp, rtol=4e-5, atol=4e-7)
 
     def test_tf2_q_logp_semantics_consistency(self) -> None:
+        """Our log_p quantiles must equal R's quantiles at the same p.
+
+        D2.143b: this used to hand R p = log(p) together with log.p = TRUE.
+        R's qTF2 does not implement log.p at all -- qTF2(-3, mu, sigma, nu,
+        log.p = TRUE) stops with "p must be between 0 and 1" (verified live,
+        gamlss.dist 6.1.1; pTF2 does support log.p) -- so the comparison could
+        never pass.  The contract that exists is the equivalence
+        q(exp(log_p), log_p = TRUE) == q(exp(log_p)).
+        """
         p = np.linspace(0.05, 0.95, 42)
         p_log = np.log(p)
         mu = np.linspace(-0.6, 0.6, 42)
@@ -202,25 +231,24 @@ class TestTF2Consistency(unittest.TestCase):
 
         fam = resolve("TF2")
 
-        r_q_log = self.bus.eval_family(
+        r_q = self.bus.eval_family(
             family="TF2",
             func_type="q",
-            args={"p": p_log.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "log.p": True},
+            args={"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist()},
         )
         py_q_log = np.asarray(
             fam.q(jnp.array(p_log), jnp.array(mu), jnp.array(sigma), jnp.array(nu), log_p=True)
         )
-        np.testing.assert_allclose(py_q_log, r_q_log, rtol=8e-5, atol=8e-5)
+        np.testing.assert_allclose(py_q_log, r_q, rtol=8e-5, atol=8e-5)
 
-        r_q_log_upper = self.bus.eval_family(
+        r_q_upper = self.bus.eval_family(
             family="TF2",
             func_type="q",
             args={
-                "p": p_log.tolist(),
+                "p": p.tolist(),
                 "mu": mu.tolist(),
                 "sigma": sigma.tolist(),
                 "nu": nu.tolist(),
-                "log.p": True,
                 "lower.tail": False,
             },
         )
@@ -234,7 +262,7 @@ class TestTF2Consistency(unittest.TestCase):
                 lower_tail=False,
             )
         )
-        np.testing.assert_allclose(py_q_log_upper, r_q_log_upper, rtol=9e-5, atol=9e-5)
+        np.testing.assert_allclose(py_q_log_upper, r_q_upper, rtol=9e-5, atol=9e-5)
 
     def test_tf2_q_p_roundtrip_against_r_profiled(self) -> None:
         profiles = [
@@ -312,16 +340,18 @@ class TestTF2Consistency(unittest.TestCase):
         )
         np.testing.assert_allclose(p_back_py, p_log, rtol=2.5e-4, atol=2.5e-4)
 
+        # R's qTF2 refuses log.p (see test_tf2_q_logp_semantics_consistency),
+        # so the reference quantile is taken at p = exp(p_log) and the log
+        # probability only enters through pTF2, which does support it.
         x_r = self.bus.eval_family(
             family="TF2",
             func_type="q",
             args={
-                "p": p_log.tolist(),
+                "p": pvals.tolist(),
                 "mu": mu.tolist(),
                 "sigma": sigma.tolist(),
                 "nu": nu.tolist(),
                 "lower.tail": False,
-                "log.p": True,
             },
         )
         p_back_r = self.bus.eval_family(
