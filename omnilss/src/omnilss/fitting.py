@@ -123,7 +123,7 @@ def _level_index(values, levels) -> np.ndarray:
         raise ValueError(f"value {exc.args[0]!r} is not one of the known levels") from exc
 
 
-def _factor_columns(values, scheme: str, prefix: str):
+def _factor_columns(values, scheme: str, prefix: str, levels=None):
     """Dummy columns for one factor, following R's coding conventions.
 
     For a 3-level factor (levels 1..3) R gives:
@@ -137,7 +137,12 @@ def _factor_columns(values, scheme: str, prefix: str):
     Verified against live R 4.6.0 in
     omnilss/tests/fixtures/r_golden/contrasts_2026-11-01.json.
     """
-    levels = np.unique(np.asarray(values).astype(str))
+    # levels may be supplied (prediction reuses the levels seen at fit time);
+    # deriving them from the values at hand would silently collapse the
+    # contrast to the levels present in one prediction batch.
+    if levels is None:
+        levels = np.unique(np.asarray(values).astype(str))
+    levels = np.asarray(levels).astype(str)
     n_levels = len(levels)
     if n_levels < 2:
         # R: "contrasts can be applied only to factors with 2 or more levels"
@@ -203,6 +208,7 @@ def _build_design_matrix(
     formula: str,
     data: Mapping[str, Any],
     contrasts: Any | None = None,
+    factor_spec: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[str, np.ndarray, list[str]]:
     """Design matrix for one parameter formula, with categorical expansion.
 
@@ -226,6 +232,14 @@ def _build_design_matrix(
                 raise ValueError(f"Variable '{base_name}' has wrong length")
             scheme = _resolve_contrast_scheme(contrasts, base_name)
             block, block_labels = _factor_columns(raw, scheme, base_name)
+            if factor_spec is not None:
+                factor_spec[base_name] = {
+                    "levels": [
+                        item.item() if hasattr(item, "item") else item
+                        for item in np.unique(np.asarray(raw).astype(str))
+                    ],
+                    "scheme": scheme,
+                }
             for column_index in range(block.shape[1]):
                 columns.append(block[:, column_index])
             labels.extend(block_labels)
@@ -241,6 +255,7 @@ def _build_design_matrix_with_smooths(
     data: Mapping[str, Any],
     weights: np.ndarray | None = None,
     contrasts: Any | None = None,
+    factor_spec: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[str, np.ndarray, list[str], Any]:
     """Build design matrix, detecting and handling smooth terms.
 
@@ -282,7 +297,9 @@ def _build_design_matrix_with_smooths(
         return response, smooth_info.X, [], smooth_info
     else:
         # Use simple design builder
-        response, design, labels = _build_design_matrix(formula, data, contrasts)
+        response, design, labels = _build_design_matrix(
+            formula, data, contrasts, factor_spec
+        )
         return response, design, labels, None
 
 

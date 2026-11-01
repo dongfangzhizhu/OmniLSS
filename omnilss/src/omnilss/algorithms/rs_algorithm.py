@@ -1058,6 +1058,10 @@ def rs_fit(
     # Scalars are recycled to length n, exactly as gamlss-5.R:1028 does.
     start_values = _resolve_start_values(family, start_values, n)
 
+    # D2.136: record how each categorical term was coded so prediction can
+    # rebuild exactly the same columns (see prediction._build_design_matrix...).
+    factor_spec: dict[str, dict[str, Any]] = {}
+
     # Build design matrices for all parameters
     design_matrices = {}
     smooth_infos = {}
@@ -1069,7 +1073,8 @@ def rs_fit(
 
         param_formula = resolved_formulas[parameter]
         _, param_X, param_labels, param_smooth_info = _build_design_matrix_with_smooths(
-            param_formula, data, weights=weights, contrasts=contrasts
+            param_formula, data, weights=weights, contrasts=contrasts,
+            factor_spec=factor_spec,
         )
 
         design_matrices[parameter] = param_X
@@ -1752,6 +1757,13 @@ def rs_fit(
             "method": "RS",
             # Store smooth-term metadata (knots/degree, etc.) for prediction-time basis reconstruction.
             "smooth_infos": smooth_infos,
+            # D2.136: factor coding state for prediction-time rebuild.
+            "factor_levels": {
+                name: list(spec["levels"]) for name, spec in factor_spec.items()
+            },
+            "factor_contrasts": {
+                name: spec["scheme"] for name, spec in factor_spec.items()
+            },
             "smooth_edf": smooth_edf,
             "rs_iterations": iteration,
             "rs_converged": converged,

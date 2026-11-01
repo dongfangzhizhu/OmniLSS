@@ -416,9 +416,15 @@ def _build_design_matrix_for_prediction(
             columns.append(basis_new)
         else:
             factor_match = re.fullmatch(r"factor\(([^)]+)\)", term_str)
-            if factor_match:
-                var_name = factor_match.group(1).strip()
-                factor_levels = design_schema.get("factor_levels", {}).get(var_name)
+            # D2.136: a plain categorical column is a factor term too -- the fit
+            # records its levels, so prediction must not fall through to the
+            # numeric evaluator (which would raise "could not convert string").
+            predicted_var = (
+                factor_match.group(1).strip() if factor_match else term_str
+            )
+            factor_levels = design_schema.get("factor_levels", {}).get(predicted_var)
+            if factor_levels or factor_match:
+                var_name = predicted_var
                 if not factor_levels:
                     raise _prediction_schema_error(
                         f"Missing factor levels for term {term_str!r} in parameter {param!r}",
@@ -453,8 +459,18 @@ def _build_design_matrix_for_prediction(
                         reason=f"unseen factor levels {unknown!r}",
                         code="unseen_factor_levels",
                     )
-                for level in factor_levels[1:]:
-                    columns.append((values == level).astype(np.float64))
+                # Same coding the fit used (treatment by default).
+                from .fitting import _factor_columns
+
+                scheme = (
+                    design_schema.get("factor_contrasts", {}).get(
+                        var_name, "contr.treatment"
+                    )
+                )
+                block, _ = _factor_columns(
+                    values, scheme, var_name, levels=factor_levels
+                )
+                columns.append(block)
                 continue
 
             try:

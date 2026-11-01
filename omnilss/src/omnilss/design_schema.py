@@ -113,16 +113,31 @@ def _training_data(model: Any) -> Mapping[str, Any]:
 
 
 def _factor_levels(
-    term_order: list[str], data: Mapping[str, Any]
+    term_order: list[str],
+    data: Mapping[str, Any],
+    recorded: Mapping[str, Any] | None = None,
 ) -> dict[str, list[Any]]:
+    """Record the level set of every categorical term.
+
+    D2.136: the fit itself knows how each factor was coded (the RS path stores
+    it in model.additional_slots["factor_levels"]), and that record wins --
+    recomputing levels from the training data would silently disagree for bare
+    categorical terms and for data the model was not given.
+    """
+    if recorded:
+        return {name: list(values) for name, values in recorded.items()}
     levels: dict[str, list[Any]] = {}
     for term in term_order:
-        if not term.startswith("factor(") or not term.endswith(")"):
-            continue
-        variable = term[len("factor(") : -1].strip()
+        if term.startswith("factor(") and term.endswith(")"):
+            variable = term[len("factor(") : -1].strip()
+        else:
+            variable = term
         if variable not in data:
             continue
-        unique = np.unique(np.asarray(data[variable]))
+        values = np.asarray(data[variable])
+        if values.dtype.kind in "iufc":
+            continue
+        unique = np.unique(values)
         levels[variable] = [
             item.item() if hasattr(item, "item") else item for item in unique
         ]
@@ -218,7 +233,17 @@ def build_design_matrix_schema(model: Any) -> dict[str, Any]:
             "term_labels": raw_labels,
             "column_names": column_names,
             "has_intercept": has_intercept,
-            "factor_levels": _factor_levels(term_order, data),
+            "factor_levels": _factor_levels(
+                term_order,
+                data,
+                (getattr(model, "additional_slots", {}) or {}).get("factor_levels"),
+            ),
+            "factor_contrasts": dict(
+                (getattr(model, "additional_slots", {}) or {}).get(
+                    "factor_contrasts", {}
+                )
+                or {}
+            ),
             "numeric_transform_ast": {
                 term: ast_repr
                 for term in term_order

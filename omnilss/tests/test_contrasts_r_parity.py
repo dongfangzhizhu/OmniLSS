@@ -17,6 +17,7 @@ import numpy as np
 import pytest
 
 from omnilss import NO, gamlss
+from omnilss.prediction import predict_params
 
 GOLDEN = (
     Path(__file__).parent / "fixtures" / "r_golden" / "contrasts_2026-11-01.json"
@@ -122,3 +123,58 @@ def test_contrasts_is_rs_only_for_now(data, method):
     with pytest.raises(ValueError, match="implemented for method='RS' only"):
         gamlss("y ~ g + x", family=NO(), data=data, method=method,
                contrasts="contr.sum")
+
+
+# ---------------------------------------------------------------------------
+# Prediction-time rebuild (D2.136)
+#
+# R reference: the same golden file, now carrying `pred_mu` for the two
+# prediction rows (g = a/c, x = 0/1).  R's own numbers are identical under both
+# codings — same column space — so a silent treatment-only rebuild would still
+# pass a deviance check but fail this one.
+# ---------------------------------------------------------------------------
+
+PREDICTION_NEWDATA = {"g": np.array(["a", "c"]), "x": np.array([0.0, 1.0])}
+
+
+@pytest.mark.parametrize(("scheme", "key"), [("contr.treatment", "treatment"), ("contr.sum", "sum")])
+def test_factor_prediction_matches_live_r(golden, data, scheme, key):
+    model = gamlss("y ~ g + x", family=NO(), data=data, method="RS", max_iter=30,
+                   contrasts=scheme)
+    params = predict_params(model, PREDICTION_NEWDATA)
+    np.testing.assert_allclose(
+        np.asarray(params["mu"], dtype=np.float64),
+        np.asarray(golden[key]["pred_mu"], dtype=np.float64),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+
+
+def test_prediction_uses_training_levels_not_batch_levels(golden, data):
+    """A single-row batch must not collapse the 3-level contrast to 2 levels."""
+    model = gamlss("y ~ g + x", family=NO(), data=data, method="RS", max_iter=30,
+                   contrasts="contr.sum")
+    single = predict_params(model, {"g": np.array(["c"]), "x": np.array([1.0])})
+    batch = predict_params(model, PREDICTION_NEWDATA)
+    assert float(single["mu"][0]) == pytest.approx(float(batch["mu"][1]), rel=1e-12)
+
+
+def test_unseen_level_is_rejected_at_prediction(golden, data):
+    from omnilss.prediction import PredictionSchemaError
+
+    model = gamlss("y ~ g + x", family=NO(), data=data, method="RS", max_iter=30)
+    with pytest.raises(PredictionSchemaError, match="unseen levels"):
+        predict_params(model, {"g": np.array(["z"]), "x": np.array([0.0])})
+
+
+def test_numeric_prediction_is_unchanged(golden, data):
+    """The factor work must not disturb the plain numeric path."""
+    numeric = {k: v for k, v in data.items() if k != "g"}
+    model = gamlss("y ~ x", family=NO(), data=numeric, method="RS", max_iter=30)
+    params = predict_params(model, {"x": np.array([0.0, 1.0])})
+    beta = np.ravel(model.coefficients["mu"])
+    np.testing.assert_allclose(
+        np.asarray(params["mu"], dtype=np.float64),
+        np.array([beta[0], beta[0] + beta[1]]),
+        rtol=1e-12,
+    )

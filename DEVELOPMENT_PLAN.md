@@ -545,8 +545,8 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
 1. **D2.135**（已登记）：NO/GA 等族的**默认** sigma 起点与 R 不一致（R 用 `sd(y)` / 常数 1，
    我们走通用残差尺度且 mu 落 `target=y` 兜底 → eps 地板）。50 周期收敛后一致（三闸绿），
    但单步制度下 deviance 差 1e2~1e11。动它会影响所有以 NO/GA 为基准的 golden，需单独立项 + 全量重登记。
-2. **D2.136**（已登记）：分类协变量的预测路径 —— `predict(newdata)` 目前不会重建编码列，
-   RS 以外的算法也不接收 `contrasts`。
+2. **D2.136b**（待办）：RS 以外的算法接收 `contrasts`（CG / MIXED / RS_JAX 各建各的矩阵）；
+   预测路径已在 D2.136a 交付。
 3. 既有失败三簇（约 22 条）：CG/MIXED 路由（`initial_model linear predictor ... does not match`）、
    ZABB/ZIBB 的 `bd` 必填、`SmoothFitInfo` 签名。
 4. Phase 8 的 8.3（用户文档与教程）与 8.5（method 名一致性 + lint/type）。
@@ -661,3 +661,15 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
 与本次会话前的基线 `tmp/scan_2026-10-31.json` **逐族逐字段 0 差异**（`dl`/`detail` 也相同）。
 中途另一次并发跑（`tmp/d2134_scan.json`，在 contrasts 之前）唯一差异是 GT 的 deriv 探针超时
 （180 s 上限的已知慢族，两个扫描抢 CPU 时更明显），不是轨迹漂移。
+
+
+### D2.136a —— 分类协变量的预测重建（已交付）
+
+- 拟合时把编码状态记下来（`rs_fit` → `additional_slots["factor_levels"] / ["factor_contrasts"]`），
+  `design_schema` 的 `factor_levels` 以这份记录为准（重新从训练数据推会在裸分类列上静默分歧），
+  并把 `factor_contrasts` 一并写进 schema。
+- 预测：`predict_params` 现在识别"裸分类列"（不再只认 `factor(x)` 写法），用**训练时的水平集**
+  按训练时的编码方案重建列；预测批次里只出现部分水平也不会把 3 水平对比塌成 2 水平
+  （这是第一版的真 bug：列数 3 vs schema 4）；未见水平 → `PredictionSchemaError`。
+- 验收：活 R 的 `predict(m, what="mu", newdata=...)` 两条预测 `[1.382798, 3.302883]`，
+  两种编码下我们都逐位一致；18 条用例全绿（含"数值路径不受影响"的回归断言）。
