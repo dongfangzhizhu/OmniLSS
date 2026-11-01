@@ -732,6 +732,30 @@ def ZIPIG():
 # NOTE: BB requires 'bd' (binomial denominator) parameter
 # These need special handling with bd as a fixed parameter
 
+def _vector_bd(value):
+    """Validate an R-style bd and pass it through unchanged.
+
+    The ZIBB kernels (zibb.dZIBB / pZIBB / qZIBB) already broadcast bd against
+    the other parameters, so a per-observation denominator is meaningful there
+    -- R's dZIBB takes bd as a vector and rep()s it to the response length.
+    Only validation belongs here: finite, integral, non-negative (bd = 0 is the
+    degenerate "always zero" binomial R also allows, and ZIBB(bd=0) is part of
+    the serialization contract).
+    """
+    arr = np.asarray(value, dtype=np.float64)
+    if arr.size == 0:
+        raise ValueError("bd must not be empty")
+    if not np.all(np.isfinite(arr)):
+        raise ValueError("bd must be finite")
+    if not np.all(arr == np.floor(arr)):
+        raise ValueError("bd must be a non-negative integer")
+    if np.any(arr < 0):
+        raise ValueError("bd must be a non-negative integer")
+    if arr.ndim == 0:
+        return int(arr)
+    return arr
+
+
 def _static_bd(value):
     """Collapse an R-style bd vector to the static Python int ZABB needs.
 
@@ -810,8 +834,8 @@ def ZIBB(bd=10):
     from .zibb import dZIBB, pZIBB, qZIBB, rZIBB
     
     def zibb_log_pdf(y, mu, sigma, nu):
-        """ZIBB log-PDF with fixed bd."""
-        return dZIBB(y,mu,sigma,nu,bd,log=True)
+        """ZIBB log-PDF, bd per observation when the family carries a vector."""
+        return dZIBB(y, mu, sigma, nu, _vector_bd(bd), log=True)
     
     from .links import logit_link, logit_inverse, logit_derivative, log_link, log_inverse, log_derivative
     
@@ -827,9 +851,9 @@ def ZIBB(bd=10):
         log_pdf_func=zibb_log_pdf,
         type_="Discrete",
         fixed_parameters=("bd",),
-        d=lambda x,mu=.5,sigma=.5,nu=.1,bd=bd,log=False: dZIBB(x,mu,sigma,nu,_static_bd(bd),log),
-        p=lambda q,mu=.5,sigma=.5,nu=.1,bd=bd,lower_tail=True,log_p=False: pZIBB(q,mu,sigma,nu,_static_bd(bd),lower_tail,log_p),
-        q=lambda p,mu=.5,sigma=.5,nu=.1,bd=bd,lower_tail=True,log_p=False: qZIBB(p,mu,sigma,nu,_static_bd(bd),lower_tail,log_p),
+        d=lambda x,mu=.5,sigma=.5,nu=.1,bd=bd,log=False: dZIBB(x,mu,sigma,nu,_vector_bd(bd),log),
+        p=lambda q,mu=.5,sigma=.5,nu=.1,bd=bd,lower_tail=True,log_p=False: pZIBB(q,mu,sigma,nu,_vector_bd(bd),lower_tail,log_p),
+        q=lambda p,mu=.5,sigma=.5,nu=.1,bd=bd,lower_tail=True,log_p=False: qZIBB(p,mu,sigma,nu,_vector_bd(bd),lower_tail,log_p),
         r=lambda key,n,mu=.5,sigma=.5,nu=.1: rZIBB(key,n,mu,sigma,nu,bd),
         links={"mu": "logit", "sigma": "log", "nu": "logit"},
         link_functions={

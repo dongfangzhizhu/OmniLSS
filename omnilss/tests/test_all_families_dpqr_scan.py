@@ -76,6 +76,11 @@ def _default_params(name: str) -> dict | None:
         # positionally, and bd = None silently selects the Bernoulli branch.
         # An explicit denominator exercises the general binomial instead.
         p = {"mu": 0.5, "bd": 10.0}
+    elif name in {"ZABB", "ZIBB"}:
+        # Same positional-bd contract as BI/DBI: the scan must hand the
+        # binomial denominator a valid positive integer, otherwise the family
+        # rejects the call and the failure reads as a family defect.
+        p = {"mu": 0.4, "sigma": 0.3, "nu": 0.2, "bd": 10.0}
     elif name == "DBI":
         # bd is DBI's fixed parameter and dDBI/pDBI/qDBI all require it
         # positionally -- there is no default to fall back on.

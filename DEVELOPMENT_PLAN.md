@@ -723,3 +723,16 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
   残差构造器在某个路径上没有拿到 `mu`（CG + NBI + eta clip 组合），属于残差接口缺陷，与 CG 状态无关。
 - `test_model_convergence_reporting::test_non_finite_deviance_is_never_reported_as_converged`：
   仍以 136.43 结束，D2.129 全量里就有，原因待查。
+
+
+### D2.138b —— ZIBB 的逐观测 `bd`（已交付）
+
+- 缺口：`ZIBB(bd=np.array([0,3,17]))` 在构造后任何 d/p/q 调用都撞
+  `bd must be constant across observations`（`_static_bd` 把 bd 压成一个 int）。
+- 结论：`zibb` 内核本来就能广播 bd（`qZIBB` 里就是 `np.broadcast_arrays`），挡路的是包装层。
+  新增 `_vector_bd`（有限 / 整数 / 非负，`bd=0` 合法——R 允许退化二项），ZIBB 的 d/p/q 与
+  `log_pdf` 都改用它；ZABB 保留 `_static_bd`（它用 bd 定内部网格尺寸，不支持逐观测，属物理限制）。
+- 顺带修正测试口径：`test_all_families_dpqr_scan` 之前没给 ZABB/ZIBB 传 bd（默认 0.5 → 非法），
+  两条 gate 失败其实是**harness 没按 R 的调用方式给参数**，与 `BI/DBI` 同型；补上 `bd=10.0`。
+- 验收：`test_zero_bb_serialization`（26）、`test_zero_bb_fit_roundtrip`、`test_all_families_dpqr_scan`、
+  `test_family_capabilities` 全绿。
