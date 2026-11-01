@@ -545,8 +545,8 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
 1. **D2.135**（已登记）：NO/GA 等族的**默认** sigma 起点与 R 不一致（R 用 `sd(y)` / 常数 1，
    我们走通用残差尺度且 mu 落 `target=y` 兜底 → eps 地板）。50 周期收敛后一致（三闸绿），
    但单步制度下 deviance 差 1e2~1e11。动它会影响所有以 NO/GA 为基准的 golden，需单独立项 + 全量重登记。
-2. **D2.136b**（待办）：RS 以外的算法接收 `contrasts`（CG / MIXED / RS_JAX 各建各的矩阵）；
-   预测路径已在 D2.136a 交付。
+2. **D2.136b**（✅ 已完成）：RS / CG / RS_JAX 都接收 `contrasts`；MIXED 仍被**既有**的 CG 状态缺陷
+   （`initial_model linear predictor ... does not match the CG design matrix`）挡住，与类别编码无关。
 3. 既有失败三簇（约 22 条）：CG/MIXED 路由（`initial_model linear predictor ... does not match`）、
    ZABB/ZIBB 的 `bd` 必填、`SmoothFitInfo` 签名。
 4. Phase 8 的 8.3（用户文档与教程）与 8.5（method 名一致性 + lint/type）。
@@ -673,3 +673,16 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
   （这是第一版的真 bug：列数 3 vs schema 4）；未见水平 → `PredictionSchemaError`。
 - 验收：活 R 的 `predict(m, what="mu", newdata=...)` 两条预测 `[1.382798, 3.302883]`，
   两种编码下我们都逐位一致；18 条用例全绿（含"数值路径不受影响"的回归断言）。
+
+
+### D2.136b —— RS 以外的路径接收 `contrasts`（已交付）
+
+- `cg_fit_v2` / `gamlss_rs_jax` / `mixed_fit` 都加了 `contrasts` 参数并透传到各自的
+  `_build_design_matrix(_with_smooths)`；三条路径同时把 `factor_levels` / `factor_contrasts`
+  写进 `additional_slots`，所以预测侧对它们也有编码状态（`predict` 不依赖拟合算法）。
+- 实测（同一份 3 水平因子数据）：RS / CG / RS_JAX 的 mu 系数与活 R 逐位相同
+  `[1.382798, 0.902063, 1.887318, 0.032767]`，deviance -0.87162 与 R 一致。
+- **MIXED 仍失败**，但原因与编码无关：`initial_model linear predictor for 'mu' does not match
+  the CG design matrix` —— 就是 D2.129 全量测试里 8 条 MIXED/CG 用例的同一个既有缺陷。
+  已用一条测试把"修好 CG 状态边界就会顺带解锁分类 MIXED"这件事钉在
+  `test_mixed_route_is_blocked_by_the_known_cg_state_defect`。

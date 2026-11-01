@@ -1342,11 +1342,6 @@ def gamlss(
         if _value is not None:
             start_values[_name] = _value
     _validate_contrasts(contrasts)
-    if contrasts is not None and method_name != "RS":
-        raise ValueError(
-            "contrasts is implemented for method='RS' only; got "
-            f"method={method_name!r}"
-        )
 
     if start_from is not None:
         # R: if (!is.gamlss(start.from)) stop("The object in start.from is not
@@ -1723,6 +1718,7 @@ def gamlss(
             i_control=i_control,
             verbose=verbose,
             routing_decision=routing_decision,
+            contrasts=contrasts,
         )
 
     # For RS method, use the dedicated rs_fit function which implements the correct algorithm
@@ -1771,6 +1767,7 @@ def gamlss(
                 tol=control.c_crit if control is not None else 1e-4,
                 verbose=verbose,
                 start_values=start_values or None,
+                contrasts=contrasts,
             )
         if cg_backend_name not in {
             "FULL_HESSIAN",
@@ -1808,6 +1805,7 @@ def gamlss(
             tol=control.c_crit if control is not None else 1e-4,
             verbose=verbose,
             start_values=start_values or None,
+            contrasts=contrasts,
         )
 
     # HYBRID retains the historical automatic single-backend dispatcher.

@@ -52,6 +52,7 @@ def gamlss_rs_jax(
     max_inner: int = 1,
     verbose: bool = False,
     routing_decision: dict[str, Any] | None = None,
+    contrasts: Any | None = None,
 ) -> GAMLSSModel:
     """Fit a GAMLSS model using the JAX-native RS algorithm.
 
@@ -165,10 +166,14 @@ def gamlss_rs_jax(
 
     # ── Build design matrices ─────────────────────────────────────────────────
     design_matrices_np: dict[str, np.ndarray] = {}
+    # D2.136b: categorical coding state for prediction-time rebuild.
+    factor_spec: dict[str, dict[str, Any]] = {}
     predictor_labels:   dict[str, list[str]]  = {}
 
     for param in family.estimable_parameters:
-        _, X_param, labels_param = _build_design_matrix(resolved_formulas[param], data)
+        _, X_param, labels_param = _build_design_matrix(
+            resolved_formulas[param], data, contrasts, factor_spec
+        )
         design_matrices_np[param] = X_param
         predictor_labels[param]   = labels_param
 
@@ -420,6 +425,12 @@ def gamlss_rs_jax(
         },
         control={"n.cyc": control.n_cyc, **asdict(control)},
         additional_slots={
+            "factor_levels": {
+                name: list(spec["levels"]) for name, spec in factor_spec.items()
+            },
+            "factor_contrasts": {
+                name: spec["scheme"] for name, spec in factor_spec.items()
+            },
             "method":          "RS_JAX",
             "G.deviance":      result.g_dev,
             "P.deviance":      result.g_dev,

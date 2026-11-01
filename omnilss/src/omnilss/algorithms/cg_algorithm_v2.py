@@ -249,6 +249,7 @@ def cg_fit_v2(
     verbose: bool = False,
     initial_model: GAMLSSModel | None = None,
     start_values: Dict[str, Any] | None = None,
+    contrasts: Any | None = None,
 ) -> GAMLSSModel:
     """Fit with the eta-level CG IRLS cross-derivative backend.
 
@@ -274,6 +275,8 @@ def cg_fit_v2(
     fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n, y)
     # D2.131: R's *.start values are parameter-scale (see _resolve_start_values).
     start_values = _resolve_start_values(family, start_values, n)
+    # D2.136b: categorical coding state, same contract as the RS path.
+    factor_spec: dict[str, dict[str, Any]] = {}
     design_matrices: Dict[str, np.ndarray] = {}
     predictor_labels: Dict[str, list[str]] = {}
     smooth_infos: Dict[str, Any] = {}
@@ -282,7 +285,8 @@ def cg_fit_v2(
         if parameter in fixed_parameter_values:
             continue
         _, X, labels, smooth = _build_design_matrix_with_smooths(
-            resolved_formulas[parameter], data, weights=weights
+            resolved_formulas[parameter], data, weights=weights,
+            contrasts=contrasts, factor_spec=factor_spec,
         )
         design_matrices[parameter] = np.asarray(X, dtype=np.float64)
         predictor_labels[parameter] = labels
@@ -524,6 +528,12 @@ def cg_fit_v2(
         },
         control={"n.cyc": max_iter},
         additional_slots={
+            "factor_levels": {
+                name: list(spec["levels"]) for name, spec in factor_spec.items()
+            },
+            "factor_contrasts": {
+                name: spec["scheme"] for name, spec in factor_spec.items()
+            },
             "method": "CG",
             "cg_backend": "CG_IRLS_CROSS",
             "cg_cross_derivatives": "eta_correction",

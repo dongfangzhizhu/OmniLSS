@@ -118,11 +118,30 @@ def test_single_level_factor_is_rejected(data):
         gamlss("y ~ g + x", family=NO(), data=flat, method="RS")
 
 
-@pytest.mark.parametrize("method", ["CG", "MIXED", "RS_JAX"])
-def test_contrasts_is_rs_only_for_now(data, method):
-    with pytest.raises(ValueError, match="implemented for method='RS' only"):
-        gamlss("y ~ g + x", family=NO(), data=data, method=method,
-               contrasts="contr.sum")
+@pytest.mark.parametrize("method", ["CG", "RS_JAX"])
+def test_other_routes_accept_contrasts(golden, data, method):
+    """D2.136b: CG and the traced RS backend build the same coded matrix."""
+    model = gamlss("y ~ g + x", family=NO(), data=data, method=method, max_iter=30,
+                   contrasts="contr.treatment")
+    np.testing.assert_allclose(
+        np.ravel(model.coefficients["mu"]),
+        np.asarray(golden["treatment"]["mu"], dtype=np.float64),
+        rtol=1e-8,
+        atol=1e-10,
+    )
+
+
+def test_mixed_route_is_blocked_by_the_known_cg_state_defect(golden, data):
+    """MIXED fails on its CG hand-off, not on the coding.
+
+    Same "initial_model linear predictor ... does not match the CG design
+    matrix" failure that the D2.129 full-suite run recorded for eight other
+    MIXED/CG tests (DEVELOPMENT_PLAN section 16).  Pinned here so that fixing
+    the CG state boundary also unblocks categorical MIXED fits.
+    """
+    with pytest.raises(ValueError, match="does not match the CG design matrix"):
+        gamlss("y ~ g + x", family=NO(), data=data, method="MIXED", max_iter=30,
+               contrasts="contr.treatment")
 
 
 # ---------------------------------------------------------------------------
