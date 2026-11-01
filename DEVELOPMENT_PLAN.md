@@ -547,8 +547,9 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
    但单步制度下 deviance 差 1e2~1e11。动它会影响所有以 NO/GA 为基准的 golden，需单独立项 + 全量重登记。
 2. **D2.136b**（✅ 已完成）：RS / CG / RS_JAX 都接收 `contrasts`；MIXED 仍被**既有**的 CG 状态缺陷
    （`initial_model linear predictor ... does not match the CG design matrix`）挡住，与类别编码无关。
-3. 既有失败三簇（约 22 条）：CG/MIXED 路由（`initial_model linear predictor ... does not match`）、
-   ZABB/ZIBB 的 `bd` 必填、`SmoothFitInfo` 签名。
+3. **D2.137**（✅）：CG/MIXED 状态边界簇已修（RS 单周期状态的 eta/系数记账差）；连带解锁分类
+   MIXED。**D2.138**（部分）：ZABB/ZIBB 的 `bd` 会用族构造值，但**逐观测 `bd` 数组**仍不支持（D2.138b）。
+   剩余簇：`SmoothFitInfo` 签名 6 条、逐观测 bd 2 条、覆盖 ratchet 基线 1 条、R 侧报错 5 条、能力矩阵 8 条。
 4. Phase 8 的 8.3（用户文档与教程）与 8.5（method 名一致性 + lint/type）。
 
 ### 下一步（按优先级）
@@ -686,3 +687,39 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
   the CG design matrix` —— 就是 D2.129 全量测试里 8 条 MIXED/CG 用例的同一个既有缺陷。
   已用一条测试把"修好 CG 状态边界就会顺带解锁分类 MIXED"这件事钉在
   `test_mixed_route_is_blocked_by_the_known_cg_state_defect`。
+
+
+### D2.137 —— CG/MIXED 状态边界（已交付）
+
+- **根因**：RS 只跑一个外层周期就停时，模型里存的 `linear_predictors["mu"]` 是**入口**状态
+  （D2.38 的逐观测 `mu.initial`），而 `coefficients` 是那一次 `glim.fit` 的结果——两者差一个内层
+  WLS 步（实测 abs 3.1e-5 / rel 9.0e-6）。`cg_fit_v2._initial_state_from_model` 却要求
+  `eta == X@beta` 到 1e-7，于是 MIXED 与 8 条 CG/MIXED 用例全部挂在
+  "initial_model linear predictor ... does not match the CG design matrix"。
+- **修法**：把"系数"当成交接状态（它就是 CG 继续迭代的量），在**一个内层步能解释的窗口内**
+  重新按 `X@beta` 推导 eta 与拟合值。窗口按状态量级归一（`1e-4 × max(1, |eta|max)`），
+  因为逐元素相对容差会惩罚接近 0 的项（实测同一份数据 abs 1.9e-5 却卡在小值上）；
+  同时豁免 **eta clip** 的项（`|eta|≈15` 是钳制结果，永远不可能等于 `X@beta`）。
+  超出窗口仍报错（真 schema 错不放过）。`mixed_fit` 的边界 deviance 断言按同源理由放宽到
+  rtol 1e-7 / atol 1e-6（实测差 1.5e-5，rel 7.8e-8 —— 整条 RS 轨迹里最大的记账差）。
+- **效果**：`test_mixed_inputs`（2）、`test_optimizer_integration::test_mixed_method` /
+  `test_optimizer_comparison`、`test_mixed_family_state`（2）、`test_model_convergence_reporting`
+  等原先 10 条左右的失败全部转绿；分类 MIXED 也随之可用（deviance 与 R 一致）。
+
+### D2.138 —— ZABB/ZIBB 的 `bd` 默认值（部分交付）
+
+- `_resolve_fixed_parameter_values` 现在会读 `family.constructor_parameters`：
+  `ZIBB(bd=7)` 之前仍被要求 "`requires fixed parameter 'bd' in data`"，把族自己携带的值丢掉了。
+  回退顺序改为：data 列 → `fixed_parameter_defaults`（NET 的 nu/tau）→ 构造参数（ZIBB 的 bd）→
+  族特例（BI 的 bd=1 / PARETO1o 的 mu）→ 报错。
+- 效果：`test_mixed_family_state[ZABB/ZIBB]` 转绿。
+- **未完成（D2.138b）**：逐观测 `bd` 数组仍被内核拒绝（`bd must be constant across observations`），
+  `test_zero_bb_serialization` 的 2 条仍在。这需要 ZIBB 的 d/p/q 内核支持数组 bd，属于内核级改动。
+
+
+### D2.139 —— 本轮新定位、未修的残余（登记）
+
+- `test_r_consistency_algorithms[CG-NBI-11/12]`：`_fitting_residuals.py:210` 的 `KeyError: 'mu'` ——
+  残差构造器在某个路径上没有拿到 `mu`（CG + NBI + eta clip 组合），属于残差接口缺陷，与 CG 状态无关。
+- `test_model_convergence_reporting::test_non_finite_deviance_is_never_reported_as_converged`：
+  仍以 136.43 结束，D2.129 全量里就有，原因待查。

@@ -400,6 +400,17 @@ def _resolve_fixed_parameter_values(
                 default = float(defaults[parameter])
                 resolved[parameter] = np.full(n_obs, default, dtype=np.float64)
                 continue
+            # D2.138: beta-binomial style families take their denominator at
+            # construction time (ZIBB(bd=7) -> constructor_parameters={"bd": 7}),
+            # exactly like R's dZIBB(bd=...).  Raising "requires bd in data"
+            # ignored a value the family was already carrying.
+            constructor = getattr(family, "constructor_parameters", None) or {}
+            if parameter in constructor:
+                resolved[parameter] = np.full(
+                    n_obs, float(constructor[parameter]), dtype=np.float64
+                )
+                continue
+
 
             # Special case: BI family's bd parameter defaults to 1 (Bernoulli)
             if family.name == "BI" and parameter == "bd":
