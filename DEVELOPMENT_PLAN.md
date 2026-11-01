@@ -736,3 +736,23 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
   两条 gate 失败其实是**harness 没按 R 的调用方式给参数**，与 `BI/DBI` 同型；补上 `bd=10.0`。
 - 验收：`test_zero_bb_serialization`（26）、`test_zero_bb_fit_roundtrip`、`test_all_families_dpqr_scan`、
   `test_family_capabilities` 全绿。
+
+
+### D2.140 —— `SmoothFitInfo` 契约对齐（已交付，6 条转绿）
+
+- `test_smooth_integration.py` 有 6 处构造只给 `basis_columns/penalty/lambda_/edf`，缺
+  `term_index/variable/smoother` 三个必填字段 → 整份文件在收集期报 `TypeError`。
+  类契约是对的（其余测试与 `smooth_fitting` 自身都用完整元数据，预测和 EDF 记账要用它），
+  所以补全**调用点**，不放宽 dataclass。
+- 顺带修 `test_auto_lambda_fallback` 的触发方式：它靠"零惩罚矩阵"逼 `select_lambda` 抛错，
+  但选择器对退化惩罚并不抛（会返回一个 lambda），这条用例早已无声失效。改成 monkeypatch
+  让选择器抛 `LinAlgError`，真正测到"抛错 → warn + lambda=1.0"的回退契约。
+- 结果：`test_smooth_integration.py` 7 passed（原 6 failed + 1 collection error）。
+
+### D2.141 —— ST5 的导数来源（已交付，1 条转绿）
+
+- `test_ad_family_override_is_additive_for_st` 断言 ST3/ST4/**ST5** 都用 AD 导数，
+  但 D2.62 已经把 ST5 转成手写转写（`_st5_dldm`，正是那次把 deviance=inf 修成 rsdev pass 的改动）。
+  这条断言等于把那次修复**钉死为禁止**。
+- 改成：ST3/ST4 仍走 AD；ST5 断言用 `_st5_dldm` 且不带 `make_grad`——这样"override 按族生效
+  而不是按模块"的原意保留，同时承认 D2.62 的事实。`test_st1_st2_parity.py` 26 passed。

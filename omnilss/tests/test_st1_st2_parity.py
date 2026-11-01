@@ -278,16 +278,23 @@ def test_derivatives_are_r_transcriptions_not_ad(name, families):
 
 
 def test_ad_family_override_is_additive_for_st():
-    """ST3/ST4/ST5 share the module but must still derive derivatives by AD.
+    """The transcription override is applied per family, not per module.
 
-    If the override were applied to every family in this module, the three
-    that work today would silently switch implementation.
+    It must reach exactly the families that were transcribed and leave the
+    rest on AD.  ST3/ST4 are the AD half; ST5 moved to the transcribed half in
+    D2.62 ("ST5 从 deviance=inf 到 rsdev pass"), so it belongs with ST1/ST2
+    here -- this test used to pin all three to AD and silently forbade that
+    fix.
     """
     from omnilss import resolve_family
 
-    for nm in ("ST3", "ST4", "ST5"):
+    for nm in ("ST3", "ST4"):
         fam = resolve_family(nm)
         assert "make_grad" in fam.score_functions["mu"].__qualname__, nm
+
+    st5 = resolve_family("ST5")
+    assert "_st5_dldm" in st5.score_functions["mu"].__qualname__
+    assert "make_grad" not in st5.score_functions["mu"].__qualname__
 
 
 # ---------------------------------------------------------------------------
