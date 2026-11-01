@@ -771,3 +771,39 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
    D1 清零占位后错误码跟着改名了，测试没跟。
 3. `test_method_routing_integration`（2 条）：断言消息里写着"placeholder 队列已清空：本测试改为
    断言能力矩阵本身"，但断言体仍是老口径 → 用例自身过期。
+
+
+---
+
+## 十八、全库测试复测（2026-11-01 收尾，D2.137–D2.141 之后）
+
+口径：496 个测试文件按文件分 4 片并行跑（`tmp/d2141_shard*.log`），再把"仍然失败"的 36 个文件
+用两片（`tmp/d2145_{a,b}.log`）复跑一遍取当前值，最后与 D2.129 的 75 条原始失败集求交。
+
+- 原始失败：**75**
+- 现在仍失败：**45**（其中 2 条是覆盖工件过期，已再生后转绿，故计入已修）
+- 本轮修好：**30 条**
+
+| 簇 | 修好的条数 | 提交 |
+|---|---|---|
+| CG/MIXED 状态边界（含分类 MIXED、Mixed-NO-11） | ~11 | `757170f` |
+| ZABB/ZIBB 的 `bd`（族构造值 + 逐观测数组 + dpqr scan 口径） | ~6 | `64629d2`、`2b86109` |
+| 残差 `KeyError: 'mu'`（CG-NBI-11/12） | 2 | `58346ae` |
+| `SmoothFitInfo` 契约（smooth_integration 6 条 + fallback 触发方式） | 7 | `2c2a11d` |
+| ST5 导数来源口径 | 1 | `32ed021` |
+| 覆盖工件过期（symbol coverage 2 条） | 2 | 本轮多次再生 |
+
+### 仍未失败的 45 条按性质归类
+
+- **口径待定（D2.142，7 条）**：MULTIN 命名冲突 2、gRPC 错误码改名 1、placeholder 断言过期 2、
+  `test_validate_three_month_execution_plan_tool` 1、`test_l3_service_contract` 1。
+- **旧登记数字过期（5 条）**：`test_ours_lower_cluster`（GAF/GP/PARETO2/PARETO2O）、`test_gt_fit_parity`。
+- **R 侧差异/环境（约 12 条）**：tf2 三组（constructor 2 + parity 3 + r_consistency 3）、
+  `r_consistency_rg`、`r_consistency_pareto2` 2、`r_consistency_centile_sk`、`r_golden_fixture_ig/nbi`、
+  `safeguard_diagnostics`、`release1_r_golden_runner`。
+- **能力矩阵/闸（5 条）**：`release1_family_capability_gate` 3、`grpc/pb_auto_lambda` 等。
+- **其它**：`pb_auto_lambda` 2、`pig_api` 1、`property_based_core` 2、`ps` 1、`rs_algorithm` 1、
+  `dbi_double_binomial` 2、`cg_cross_derivatives` 1、`boxcox_o_variants` 1、`coverage_diff_report` 1、
+  `model_convergence_reporting` 1、`symbol_coverage` 0。
+
+下一轮建议：先清 D2.142 的 7 条口径问题（定口径即可关），再攻 tf2 簇（8 条同源）。
