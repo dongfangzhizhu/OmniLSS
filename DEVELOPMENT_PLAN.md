@@ -462,7 +462,7 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | D2.131b | `mu/sigma/nu/tau.fix` 用户入口 | ✅ 完成 | `mu_fix+mu_start` deviance 63.451059（R 同值）、`sigma_fix+sigma_start` 19.334517（R 同值），`coefficients` 里没有被固定的参数；12 条用例全绿 |
 | D2.132 | `start.from` 热启动 | ✅ 完成 | 热启动 1 周期达到一次拟合的 deviance（≤1e-10）；与"显式传 fv 当起点"逐位相同（R 侧的恒等式）；对活 R `start.from` deviance 1e-7 |
 | D2.133 | `n.cyc` / `trace` 兼容别名 | ✅ 完成 | `n.cyc=4` 与 `max_iter=4` 逐位同解（同轨迹、同迭代数）；冲突/非法值/非逻辑 `trace` 全部报错；12 条用例全绿 |
-| D2.134 | `contrasts`（依赖公式解析器） | ⬜ 待办 | `contrasts=list(factor="contr.sum")` 与 R 系数布局一致；无因子时报错 |
+| D2.134 | 分类协变量 + `contrasts` | ✅ 完成（RS 路径） | 三种编码（treatment/sum/helmert）系数与活 R 差 ≤1e-15；deviance 与编码无关；CG/MIXED/RS_JAX 显式拒绝 |
 | 8.3 | Phase 8 用户文档与教程 | ⬜ 待办 | 见第十二节 |
 | 8.5 | `gamlss()` method 名一致性 + 全库 lint/type | ⬜ 待办 | 见第十二节 |
 
@@ -614,3 +614,23 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
   （26.37354825064081），我们这边也是**逐位**相同；再对上 R 的 `start.from` 数
   （我们 26.373548202995146 vs R 26.37354825064081，rel 1.8e-9）。
   收敛模型的热启动 1 个周期就回到原 deviance（≤1e-10）。7 条用例全绿。
+
+
+### D2.134 —— 分类协变量与 `contrasts`（RS 路径已交付）
+
+- **先说缺口**：这不是"加一个参数"——拟合路径此前**根本不支持分类协变量**：
+  `y ~ factor(g)` 报 "references variable 'factor' that is missing from data"，
+  `y ~ g`（字符列）报 "could not convert string to float"。也就是说 D2.130 审计里
+  "contrasts 优先级最低"的判断低估了它：没有编码层，分类预测变量完全不可用。
+- **实现**：
+  - `_build_design_matrix` 现在识别 `factor(g)` 与"非数值列"两种分类项，展开成 k-1 列；
+    编码由 `contrasts` 决定（`"contr.treatment"` 默认 / `"contr.sum"` / `"contr.helmert"`），
+    支持全局字符串或 `{"g": "contr.sum"}` 映射（键 `"default"` 兜底）。
+  - `_ALLOWED_FORMULA_FUNCTIONS` 收下 `factor`（否则变量收集器会去找名为 factor 的列）。
+  - 单水平因子按 R 的口径报错（"at least two are required"），不支持的名字报错并列出可选值。
+- **验收**：`omnilss/tests/fixtures/r_golden/contrasts_2026-11-01.json`（`tmp/d2134_parity.R`）。
+  三种编码的 mu 系数与活 R **差 ≤3e-15**（treatment `[1.382798, 0.902063, 1.887318, 0.032767]`、
+  sum `[2.312592, -0.929794, -0.027731, …]`、helmert `[2.312592, 0.451032, 0.478762, …]`），
+  deviance 在三种编码下逐位相同（-0.87162，与 R 一致）。13 条用例全绿。
+- **范围**：只接 RS；CG / MIXED / RS_JAX 显式拒绝（它们的 CG 阶段自己建矩阵，
+  目前没有把类别编码带过去）。预测/新数据重建也还没带上分类编码 —— 记为 D2.136。

@@ -887,6 +887,7 @@ def rs_fit(
     warm_start_policy: WarmStartPolicy | None = None,
     i_control: GLIMControl | None = None,
     start_values: Optional[Dict[str, Any]] = None,
+    contrasts: Any | None = None,
 ) -> GAMLSSModel:
     """Fit GAMLSS model using RS (Rigby-Stasinopoulos) algorithm.
 
@@ -1068,7 +1069,7 @@ def rs_fit(
 
         param_formula = resolved_formulas[parameter]
         _, param_X, param_labels, param_smooth_info = _build_design_matrix_with_smooths(
-            param_formula, data, weights=weights
+            param_formula, data, weights=weights, contrasts=contrasts
         )
 
         design_matrices[parameter] = param_X

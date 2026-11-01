@@ -100,10 +100,117 @@ def _eval_linear_term(term: str, data: Mapping[str, Any], n: int) -> np.ndarray:
     return _eval_linear_term_shared(term, data, n)
 
 
+import re as _re
+
+_FACTOR_TERM_RE = _re.compile(r"factor\((\w+)\)")
+
+SUPPORTED_CONTRASTS = ("contr.treatment", "contr.sum", "contr.helmert")
+
+
+def _is_categorical(column, force: bool = False) -> bool:
+    """A column is categorical when it is not numeric (or wrapped in factor())."""
+    if force:
+        return True
+    return np.asarray(column).dtype.kind not in "iufc"
+
+
+def _level_index(values, levels) -> np.ndarray:
+    order = {level: index for index, level in enumerate(levels)}
+    as_text = np.asarray(values).astype(str)
+    try:
+        return np.array([order[value] for value in as_text], dtype=np.int64)
+    except KeyError as exc:  # pragma: no cover - defensive
+        raise ValueError(f"value {exc.args[0]!r} is not one of the known levels") from exc
+
+
+def _factor_columns(values, scheme: str, prefix: str):
+    """Dummy columns for one factor, following R's coding conventions.
+
+    For a 3-level factor (levels 1..3) R gives:
+
+    - contr.treatment: (1,0) for level 2, (0,1) for level 3, (0,0) for the
+      baseline level 1 (the first level is dropped).
+    - contr.sum: level j < k -> unit vector e_j, last level -> all -1.
+    - contr.helmert: column j is -1 for levels 1..j, (j+1) for level j+1, 0
+      afterwards, which is R's contr.helmert(k) row by row.
+
+    Verified against live R 4.6.0 in
+    omnilss/tests/fixtures/r_golden/contrasts_2026-11-01.json.
+    """
+    levels = np.unique(np.asarray(values).astype(str))
+    n_levels = len(levels)
+    if n_levels < 2:
+        # R: "contrasts can be applied only to factors with 2 or more levels"
+        raise ValueError(
+            f"factor {prefix!r} has {n_levels} level(s); at least two are "
+            "required to build a contrast"
+        )
+    index = _level_index(values, levels)
+    columns = []
+    names = []
+    if scheme == "contr.treatment":
+        for j in range(1, n_levels):
+            columns.append((index == j).astype(np.float64))
+            names.append(f"{prefix}[{levels[j]}]")
+    elif scheme == "contr.sum":
+        for j in range(n_levels - 1):
+            column = (index == j).astype(np.float64)
+            column[index == n_levels - 1] = -1.0
+            columns.append(column)
+            names.append(f"{prefix}[{levels[j]}]")
+    elif scheme == "contr.helmert":
+        for j in range(n_levels - 1):
+            column = np.zeros(len(index), dtype=np.float64)
+            column[index <= j] = -1.0
+            column[index == j + 1] = float(j + 1)
+            columns.append(column)
+            names.append(f"{prefix}[{levels[j + 1]}]")
+    else:  # pragma: no cover - validated by _validate_contrasts
+        raise ValueError(f"unsupported contrast {scheme!r}")
+    return np.column_stack(columns), names
+
+
+def _resolve_contrast_scheme(contrasts, variable: str) -> str:
+    """Pick the coding for one factor: per-variable name, then the default key."""
+    if contrasts is None:
+        return "contr.treatment"
+    if isinstance(contrasts, str):
+        return contrasts
+    return str(contrasts.get(variable, contrasts.get("default", "contr.treatment")))
+
+
+def _validate_contrasts(contrasts) -> None:
+    if contrasts is None:
+        return
+    if isinstance(contrasts, str):
+        values = [contrasts]
+    elif isinstance(contrasts, Mapping):
+        values = list(contrasts.values())
+    else:
+        raise ValueError(
+            "contrasts must be a coding name or a mapping of variable -> coding, "
+            f"got {type(contrasts).__name__}"
+        )
+    unsupported = [value for value in values if str(value) not in SUPPORTED_CONTRASTS]
+    if unsupported:
+        raise ValueError(
+            f"unsupported contrast {unsupported[0]!r}; supported: "
+            f"{list(SUPPORTED_CONTRASTS)}"
+        )
+
+
 def _build_design_matrix(
     formula: str,
     data: Mapping[str, Any],
+    contrasts: Any | None = None,
 ) -> tuple[str, np.ndarray, list[str]]:
+    """Design matrix for one parameter formula, with categorical expansion.
+
+    D2.134: a factor() term, or a non-numeric column named directly in the
+    formula, expands into k-1 coded columns instead of raising on a string to
+    float conversion.  The coding is chosen per variable by the contrasts
+    argument (R's default is contr.treatment).
+    """
     parsed = _parse_formula_core(formula)
     response = parsed.response
     predictors = [term.variable for term in parsed.linear_terms]
@@ -111,6 +218,18 @@ def _build_design_matrix(
     columns = [np.ones(n, dtype=np.float64)] if parsed.has_intercept else []
     labels = []
     for predictor in predictors:
+        factor_match = _FACTOR_TERM_RE.fullmatch(predictor.strip())
+        base_name = factor_match.group(1).strip() if factor_match else predictor
+        raw = data.get(base_name) if base_name in data else None
+        if raw is not None and (factor_match or _is_categorical(raw)):
+            if len(np.asarray(raw)) != n:
+                raise ValueError(f"Variable '{base_name}' has wrong length")
+            scheme = _resolve_contrast_scheme(contrasts, base_name)
+            block, block_labels = _factor_columns(raw, scheme, base_name)
+            for column_index in range(block.shape[1]):
+                columns.append(block[:, column_index])
+            labels.extend(block_labels)
+            continue
         columns.append(_eval_linear_term(predictor, data, n))
         labels.append(predictor)
     design = np.column_stack(columns)
@@ -121,6 +240,7 @@ def _build_design_matrix_with_smooths(
     formula: str,
     data: Mapping[str, Any],
     weights: np.ndarray | None = None,
+    contrasts: Any | None = None,
 ) -> tuple[str, np.ndarray, list[str], Any]:
     """Build design matrix, detecting and handling smooth terms.
 
@@ -162,7 +282,7 @@ def _build_design_matrix_with_smooths(
         return response, smooth_info.X, [], smooth_info
     else:
         # Use simple design builder
-        response, design, labels = _build_design_matrix(formula, data)
+        response, design, labels = _build_design_matrix(formula, data, contrasts)
         return response, design, labels, None
 
 
@@ -990,6 +1110,9 @@ def gamlss(
     # fitted values seed the next fit (gamlss-5.R:965-991).  R clears any
     # explicitly passed *.start when start.from is given, and we do the same.
     start_from: Any | None = None,
+    # D2.134: R's contrasts argument -- coding for categorical predictors,
+    # e.g. contrasts={"g": "contr.sum"} or contrasts="contr.sum".
+    contrasts: Any | None = None,
     control: GAMLSSControl | None = None,
     i_control: GLIMControl | None = None,
     verbose: bool = False,
@@ -1201,6 +1324,13 @@ def gamlss(
     ):
         if _value is not None:
             start_values[_name] = _value
+    _validate_contrasts(contrasts)
+    if contrasts is not None and method_name != "RS":
+        raise ValueError(
+            "contrasts is implemented for method='RS' only; got "
+            f"method={method_name!r}"
+        )
+
     if start_from is not None:
         # R: if (!is.gamlss(start.from)) stop("The object in start.from is not
         # a gamlss object").  We accept the same thing we return, nothing else.
@@ -1595,6 +1725,7 @@ def gamlss(
             routing_decision=routing_decision,
             i_control=i_control,
             start_values=start_values or None,
+            contrasts=contrasts,
         )
 
     if method_name == "CG":

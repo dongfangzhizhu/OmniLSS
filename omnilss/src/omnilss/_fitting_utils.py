@@ -19,6 +19,10 @@ _STANDARD_NORMAL = NormalDist()
 
 _ALLOWED_FORMULA_FUNCTIONS = {
     "abs": np.abs,
+    # D2.134: factor(g) is handled by the design builder (categorical
+    # expansion); listing it here only stops the variable collector from
+    # demanding a data column literally named "factor".
+    "factor": lambda x: x,
     "cos": np.cos,
     "exp": np.exp,
     "I": lambda x: x,
