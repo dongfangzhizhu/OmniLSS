@@ -758,7 +758,28 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
   而不是按模块"的原意保留，同时承认 D2.62 的事实。`test_st1_st2_parity.py` 26 passed。
 
 
-### D2.142 —— 需要“口径决定”的失败（未改，登记待定）
+### D2.142 —— 需要“口径决定”的失败（已收口，7 条转绿）
+
+结论与依据：
+
+1. **MULTIN 命名**：保留 `.name == "MULTIN"`（注册表别名 + 序列化 + `resolve` 契约都钉这个名字），
+   构造函数到 MN3/4/5 的映射改成**行为断言**（参数一致 + 密度逐点相同）。
+   顺带修了真 bug：`_clone_with_name` 手工列字段，漏了 `constructor_parameters` /
+   `fixed_parameter_defaults`，现在按 `dataclasses.fields` 全量复制。
+2. **gRPC 错误码**：`placeholder_requires_opt_in` → `experimental_requires_opt_in`。
+   依据是能力矩阵本身：`LOGSHASH` 现在是 `EXPERIMENTAL`（D1 已清零占位）。
+3. **method routing 两条**：占位队列已空，原用例只证明自己的断言会炸。改为
+   "占位队列必须保持为空" + "strict 模式下 experimental 族被 auto/RS 两条路由拒绝"，
+   并让挑选器按响应域过滤（字母序第一个 experimental 是 BB，`y∈[0,1]`，不然会先在域检查处报错）。
+4. **L3 健康检查**：处理器是 `status="degraded" if unhealthy else "ok"`，旧断言找的字面量
+   `status="ok"` 根本不会出现；改为钉这个条件表达式 + `REGISTRY.list_ids()`。
+5. **`test_validate_three_month_execution_plan_tool`**：它要校验的
+   `tools/validate_three_month_execution_plan.py` 与对应 checklist 文档在仓库里**都不存在**
+   （git 历史里也没有），属于"测试对着幻影"。删除该测试，替换物是 `DEVELOPMENT_PLAN.md` 本身。
+
+原记录（保留作为决策依据）：
+
+
 
 这几条不是 bug，而是**两处断言互相矛盾**或**语义漂移**，改哪边都要先定口径：
 

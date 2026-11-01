@@ -54,10 +54,15 @@ def test_server_version_reports_x64_and_version():
 
 
 def test_server_health_reports_model_count():
-    """Health handler uses the registry model count."""
+    """Health handler uses the registry model count.
+
+    D2.142: the handler reports "degraded" when any artifact fails its audit and
+    "ok" otherwise, so the old exact string status="ok" never appears.  The
+    contract worth pinning is the conditional plus the registry count.
+    """
     text = SERVER.read_text(encoding="utf-8")
     assert "REGISTRY.list_ids()" in text
-    assert 'status="ok"' in text
+    assert 'status="degraded" if unhealthy else "ok"' in text
 
 
 def test_core_services_registered():

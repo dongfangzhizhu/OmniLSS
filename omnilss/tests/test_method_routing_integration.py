@@ -44,23 +44,51 @@ def _make_multi_x_data(n: int = 40) -> dict[str, np.ndarray]:
     return data
 
 
-def _any_placeholder_family():
-    """Resolve a family that is still registered as a placeholder.
+def _any_experimental_family(data):
+    """Resolve an experimental family whose support accepts this data.
 
-    The queue shrinks as D1 lands (NO2/PARETO/PARETO1/WEI2/RGE left it in
-    D1-E), so the family is looked up instead of hard-coded.  If the queue ever
-    empties, this fails loudly rather than silently testing nothing.
+    D2.142: the placeholder queue is empty (D1), so the older
+    _any_placeholder_family helper only proved that its own assertion fired.
+    Experimental is the state that still gates fitting, so the rejection tests
+    below use it and stay meaningful as the matrix evolves.  The support filter
+    matters: the alphabetically first experimental family is BB (y in [0, 1]),
+    which would fail the response-domain check before the capability gate is
+    even reached -- a different error than the one under test.
     """
     from omnilss.distribution_registry import list_families, resolve
     from omnilss.family_capabilities import implementation_status_for_family
+    from omnilss.response_domain import validate_response
 
     for name in sorted(list_families()):
         status = implementation_status_for_family(name)
-        if getattr(status, "value", status) == "placeholder":
-            return name, resolve(name)
+        if getattr(status, "value", status) != "experimental":
+            continue
+        try:
+            validate_response(name, data["y"])
+        except Exception:  # noqa: BLE001 - support check, not the subject
+            continue
+        return name, resolve(name)
     raise AssertionError(
-        "placeholder 队列已清空：本测试改为断言能力矩阵本身（D1 占位清零已完成）"
+        "no experimental family left that accepts the test data: rewrite "
+        "these tests against whatever state the matrix uses next"
     )
+
+
+def test_placeholder_queue_is_empty():
+    """The D1 delivery cleared the placeholder queue; keep it cleared."""
+    from omnilss.distribution_registry import list_families
+    from omnilss.family_capabilities import implementation_status_for_family
+
+    placeholders = [
+        name
+        for name in list_families()
+        if getattr(
+            implementation_status_for_family(name), "value",
+            implementation_status_for_family(name),
+        )
+        == "placeholder"
+    ]
+    assert placeholders == []
 
 
 def test_auto_routes_to_rs_on_cpu(monkeypatch):
@@ -238,20 +266,26 @@ def test_rs_jax_deprecated_warning():
     assert result.additional_slots["method"] in {"RS", "RS_JAX"}
 
 
-def test_auto_rejects_placeholder_family():
-    """Placeholder families are rejected by default, even with auto routing."""
-    _name, family = _any_placeholder_family()
+def test_auto_rejects_experimental_family_in_strict_mode():
+    """Strict capability mode rejects experimental families before routing."""
     data = _make_no_data()
-    with pytest.raises(FamilyCapabilityError, match="placeholder"):
-        gamlss("y ~ x", family=family, data=data, method="auto")
+    _name, family = _any_experimental_family(data)
+    with pytest.raises(FamilyCapabilityError, match="experimental"):
+        gamlss(
+            "y ~ x", family=family, data=data, method="auto",
+            strict_capabilities=True,
+        )
 
 
-def test_rs_rejects_placeholder_family(monkeypatch):
-    """Placeholder families are rejected by default for explicit RS too."""
-    _name, family = _any_placeholder_family()
+def test_rs_rejects_experimental_family_in_strict_mode():
+    """The same gate holds for an explicit RS request."""
     data = _make_no_data()
-    with pytest.raises(FamilyCapabilityError, match="placeholder"):
-        gamlss("y ~ x", family=family, data=data, method="RS")
+    _name, family = _any_experimental_family(data)
+    with pytest.raises(FamilyCapabilityError, match="experimental"):
+        gamlss(
+            "y ~ x", family=family, data=data, method="RS",
+            strict_capabilities=True,
+        )
 
 
 def test_strict_capabilities_allow_validated_no_rs_route(monkeypatch):

@@ -981,8 +981,12 @@ def test_grpc_fit_blocks_placeholder_family_before_backend(monkeypatch) -> None:
 
     assert response.success is False
     payload = json.loads(response.error)
-    assert payload["code"] == "placeholder_requires_opt_in"
-    assert payload["implementation_status"] == "placeholder"
+    # D2.142: the placeholder queue was cleared in D1 -- LOGSHASH is
+    # EXPERIMENTAL now (family_capabilities.implementation_status_for_family),
+    # so the boundary rejects it with the experimental code.  The assertion
+    # below already said this in its comment while still pinning the old code.
+    assert payload["code"] == "experimental_requires_opt_in"
+    assert payload["implementation_status"] == "experimental"
 
 
 def test_grpc_predict_supports_column_vectors(monkeypatch) -> None:
