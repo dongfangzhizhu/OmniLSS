@@ -457,7 +457,11 @@ Phase 8  商业闭环与交付            （L3 完备、文档、Open-Core 商�
 | D2.127 | IGAMMA 初值对齐活 R + 更新本地拟合 golden | 🔄 进行中 | intercept-only 与活 R 系数差 <1e-6；`test_igamma_local_fitting.py` 转绿；`test_r_consistency_igamma.py` 保持绿 |
 | D2.128 | `y.valid`(response domain) 全族对齐活 R + 修 BEOI 测试 | ✅ 完成 | 120 个活 R 谓词 → 82 条表项（43 个 `y>=0`、25 个 `y>0`、5 个 `0<y<1` …）+ golden 工件 + 生成器；BEOI 用例在 R 合法数据上与活 R 一致 |
 | D2.129 | 全族复扫回归（初值 / y.valid 类改动必须过闸） | ✅ 完成 | `tools/rs_family_parity_scan.py` 一次跑完：deriv 145 pass/1 skip、dpqr 121 pass/25 skip、rsdev 82 pass/36 warn/28 skip、**0 fail**（与 D2.127/128 前的 `tmp/scan_2026-10-31.json` 逐字节一致） |
-| D2.130 | 排查“缺失的影响正常使用的功能”（`gamlss()` 用户面方法齐不齐） | ⬜ 待办 | 对照 R 常用入口列缺口清单并补齐 |
+| D2.130 | 排查“缺失的影响正常使用的功能”（`gamlss()` 用户面方法齐不齐） | ✅ 审计完成 | 清单：`docs/development/gamlss-user-surface-gap-audit-2026-11-01.md`（拟合主路径齐备；缺 `*.start` / `*.fix` / `start.from` / `contrasts`） |
+| D2.131 | `mu/sigma/nu/tau.fix` + `*.start` 用户入口 | ⬜ 待办 | 三种 R 写法各一条 live-R 对照（截距固定 / sigma 固定 / 只给起点），deviance ≤1e-6 |
+| D2.132 | `start.from` 热启动 | ⬜ 待办 | 二次拟合迭代数下降，deviance 与一次拟合差 ≤1e-8 |
+| D2.133 | `n.cyc` / `trace` 兼容别名 | ⬜ 待办 | `n.cyc=5` 等价 `max_iter=5`；`trace=TRUE` 走 `verbose` |
+| D2.134 | `contrasts`（依赖公式解析器） | ⬜ 待办 | `contrasts=list(factor="contr.sum")` 与 R 系数布局一致；无因子时报错 |
 | 8.3 | Phase 8 用户文档与教程 | ⬜ 待办 | 见第十二节 |
 | 8.5 | `gamlss()` method 名一致性 + 全库 lint/type | ⬜ 待办 | 见第十二节 |
 
