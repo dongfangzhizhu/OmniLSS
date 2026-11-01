@@ -13,26 +13,32 @@
 
 ## 1. 当前状态（可交付判定）
 
-**结论：可以交付**（依据连续两次一次性跑完的全族复扫）。
+**结论：可以交付**（依据连续三次一次性跑完的全族复扫；最近一次 D2.129）。
 
 ```
-python tools/rs_family_parity_scan.py --json tmp/scan.json      # 146 族，约 45~60 分钟
-
-deriv : 144/146 pass, skip=2
-dpqr  : 120/146 pass, skip=26
-rsdev : 82/146 pass, skip=29, warn=35        <- 没有 fail 行
+python tools/rs_family_parity_scan.py --json tmp/scan.json      # 146 族，约 35~60 分钟
+deriv : 145/146 pass, skip=1
+dpqr  : 121/146 pass, skip=25
+rsdev : 82/146 pass, skip=28, warn=36         <- 没有 fail 行
 ```
 
-- 该结果在 D2.117 与 D2.122 各跑出一次，数字完全一致。
-- 功能性覆盖：rqres 覆盖 146/146、`has_dqr` 146/146、placeholder 族 0。
+- 该结果在 D2.117 / D2.122 / D2.129 三次跑出**逐字节一致**的输出。
+- 功能性覆盖：rqres 146/146、`has_dqr` 146/146、placeholder 族 0。
+- **全库测试真实状态（D2.129 首次分片全量跑）**：491 个测试文件 → 75 failed，
+  其中 71 个先于 D2.129 存在（簇清单见 `DEVELOPMENT_PLAN.md` 第十六节），
+  本轮引入的 4 个已全部修好。
 - 已知限制（建议写进 release note）：
-  - `deriv` 2 skip：GT（探针 >180 s 被杀，Bessel 路径慢）、LOGSHASHO（无支撑网格能给出有限密度——R 的
-    dLOGSHASHO 本身不是密度）。
-  - `dpqr` 26 skip：R 侧无对应函数（18 个 BINOM_/CONTR_/COUNT_ 系列、BCCGUNTR/BCTUNTR、MULTIN、ZILG 等）；
-    其中 22 个是真无参考，非缺陷。
-  - 35 个 `rsdev` warn：R 未收敛 / R 发散 / R 的 sigma 地板 / R 密度不逐元素 / R 早停——每一个都有可核对的原因，
-    没有一个是"我方密度不一致"。
-  - Sichel 三族拟合 172 s/周期（见待办 3.2）。
+  - `deriv` 1 skip：GT（探针 >180 s 被杀，Bessel 路径慢）；LOGSHASHO 已在 D2.107 转 pass。
+  - `dpqr` 25 skip：R 侧无对应函数（BINOM_/CONTR_/COUNT_ 系列、BCCGUNTR/BCTUNTR、MULTIN、ZILG 等）。
+  - 36 个 `rsdev` warn：R 未收敛 / R 发散 / R 的 sigma 地板 / R 密度不逐元素 / R 早停，均有可核对原因。
+  - Sichel 三族拟合 ~172 s/周期（见待办 3.2）。
+
+## 1.1 2026-11-01 之后新增的用户面能力（D2.131–D2.134）
+
+`gamlss()` 现在接受 R 的同名参数：`mu_start/sigma_start/nu_start/tau_start`、
+`mu_fix/sigma_fix/nu_fix/tau_fix`、`start_from`、`n_cyc`、`trace`、`contrasts`。
+每条都有活 R golden 对照（`omnilss/tests/fixtures/r_golden/*_2026-11-01.json`）与 parity 测试。
+限制：`*.fix` / `contrasts` 只接 `method='RS'`；分类协变量的预测重建与 RS 以外算法待做（D2.136）。
 
 ## 2. 已完成（本轮会话，D2.92–D2.126）
 
@@ -74,13 +80,14 @@ DELAPORT（223.87 到与 R 一致，缺 DEL 的初始值）。
 - test_delaport_fits_like_del.py / test_iga_fits_like_ig.py / test_beo_geomo_initial_values.py。
 ## 3. 待完成（按优先级）
 
-### 3.1 修 2 个既有测试失败（最高优先级，非本轮引入）
+### 3.1 收 71 个既有失败里的三簇（D2.129 首次全量排队的结果）
 
-- test_igamma_local_fitting.py::TestIGAMMALocalFitting::test_intercept_model_converges_locally：
-  实际 0.649055 vs 期望 0.648814，rel 3.7e-4 大于 1e-4 容差。先按"扫 n_cyc 再定性"的流程判断是收敛差还是期望错。
-- test_r_consistency_batch3_4_remaining.py::TestBatch34RemainingConsistency::test_beoi_intercept_only：
-  需 live R；先在 live R 上复现再判。
-- 验收：两个测试变绿，且不引入 rsdev fail。
+见 `DEVELOPMENT_PLAN.md` 第十六节。按"一修回收最多"排序：
+
+- CG/MIXED 路由（约 10 条）：`initial_model linear predictor for 'mu' does not match the CG design matrix`。
+- ZABB/ZIBB 的 `bd` 必填（6 条）：`family 'ZABB' requires fixed parameter 'bd' in data`。
+- `SmoothFitInfo` 签名漂移（6 条）：测试按 6 个位置参数构造，类只剩 3 个。
+- 另有覆盖 ratchet 基线陈旧 1 条、R 侧报错/INSTALL 失败 5 条、能力矩阵断言过期 8 条。
 
 ### 3.2 log_bessel_kv 的 JAX 原生实现（唯一挂账的功能项）
 

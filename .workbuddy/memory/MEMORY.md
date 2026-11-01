@@ -12,6 +12,15 @@
 
 - 交接文档：仓库根 `HANDOFF.md`（2026-10-31）——新会话入口，含当前状态、已完成/待完成、必踩的坑。
 
+## gamlss() 用户面参数（D2.131–D2.134）
+
+- **`*.start` 是参数尺度**（与 `family$mu.initial` 同尺度），eta = `linkfun(mu.start)`（`gamlss-5.R:431`）；标量回收成 `rep(x, N)`。当系数种子用会整条轨迹跑偏。
+- **`mu.fix=TRUE` 不是“给初值”**：R 只是跳过该子模型（`gamlss-5.R:310`），参数停在 `mu.start`/`mu.initial`，`mu.coefficients` 为 NULL。我们的实现=派生 `fixed_parameters` 多一项的族 + 值走 `data`（同 NET/PARETO1o 通道），所以系数表里自然没有它，不需要新分支。
+- **`start.from` 会清掉显式 `*.start`**，用上一模型逐观测 fv 回填（`gamlss-5.R:965-991`）；R 侧恒等式“start.from ≡ 显式传 fv 当 start”是最好用的验收锚点。
+- **R 的 `contrasts` 传裸字符串不生效**（系数与 treatment 相同，第一次取对照数就被骗过）：必须 `contrasts=list(g="contr.sum")`。我们这边两种写法都接受。
+- **单步制度**：默认内层预算会把所有起点拉到同一最优点 → 起点/固定参数类特性必须用 `n.cyc=1 + i.control=glim.control(cyc=1)` 才能观测到差异。
+- 分类协变量：`factor(g)` 与非数值列都要展开 k-1 列；`_ALLOWED_FORMULA_FUNCTIONS` 必须含 `factor`，否则变量收集器会找名为 factor 的列。
+
 ## 响应域 (family$y.valid) —— 只能由活 R dump 生成（D2.128/D2.129）
 
 - R 在 `gamlss-5.R` 拟合前 `if (!family$y.valid(y)) stop("response variable out of range")`；我们在 `fitting.py:1048`（**最前面，先于任何路由**）同样硬拒。`omnilss/src/omnilss/response_domain.py` 的表 **82 条**，逐条由 `tools/generate_response_domain_golden.py`（跑 `tools/r_y_valid_dump.R`）对活 R 生成并钉进 `omnilss/tests/fixtures/r_golden/response_domains_y_valid.json`（`--check` 判过期）。**手工加条目 = 回到 D2.128 之前的漏检面**。

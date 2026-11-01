@@ -538,6 +538,19 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
   - placeholder/能力矩阵断言过期：`test_method_routing_integration`（2）、`test_grpc_server`（1）、
     `test_release1_family_capability_gate`（3）、`test_multin_constructor`（2）。
 
+
+
+### 下一步（2026-11-01 会话结束时更新）
+
+1. **D2.135**（已登记）：NO/GA 等族的**默认** sigma 起点与 R 不一致（R 用 `sd(y)` / 常数 1，
+   我们走通用残差尺度且 mu 落 `target=y` 兜底 → eps 地板）。50 周期收敛后一致（三闸绿），
+   但单步制度下 deviance 差 1e2~1e11。动它会影响所有以 NO/GA 为基准的 golden，需单独立项 + 全量重登记。
+2. **D2.136**（已登记）：分类协变量的预测路径 —— `predict(newdata)` 目前不会重建编码列，
+   RS 以外的算法也不接收 `contrasts`。
+3. 既有失败三簇（约 22 条）：CG/MIXED 路由（`initial_model linear predictor ... does not match`）、
+   ZABB/ZIBB 的 `bd` 必填、`SmoothFitInfo` 签名。
+4. Phase 8 的 8.3（用户文档与教程）与 8.5（method 名一致性 + lint/type）。
+
 ### 下一步（按优先级）
 
 1. **D2.130** `gamlss()` 用户面方法缺口清单（对照 R 常用入口）。
