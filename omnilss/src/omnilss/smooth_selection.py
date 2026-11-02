@@ -217,6 +217,128 @@ def reml_score(
         if rss < eps:
             rss = eps
         
+        # D2.146: the old score was
+        #     log|XtWX + lambda*S| - log|XtWX| + n*log(RSS)
+        # which is minimised at lambda -> 0: the two log-determinants cancel
+        # there and RSS is smallest, so REML "selected" the unpenalised fit
+        # (edf = full basis, lambda = 0.0 on a smooth sine sample where GCV
+        # picks edf 7.5).  The restricted likelihood needs the *penalty*
+        # determinant and the n - rank(S) residual degrees of freedom:
+        #     log|XtWX + lambda*S| - log|lambda*S|_+ + (n - r)*log(RSS/(n - r))
+        # with log|lambda*S|_+ = r*log(lambda) + log|S|_+ over the positive
+        # eigenvalues of S (the null space carries no penalty, so it must not
+        # appear).  This is mgcv's reml score up to constants in (y, w).
+        eigenvalues = np.linalg.eigvalsh(0.5 * (S + S.T))
+        largest = float(np.max(np.abs(eigenvalues))) if eigenvalues.size else 0.0
+        if largest <= 0.0:
+            return np.inf
+        positive = eigenvalues[eigenvalues > largest * 1e-10]
+        rank_S = int(positive.size)
+        if rank_S == 0:
+            return np.inf
+        logdet_S_pos = float(np.sum(np.log(positive))) + rank_S * np.log(lambda_param)
+
+        sign_a, logdet_a = np.linalg.slogdet(XtWX + penalty)
+        if sign_a <= 0:
+            return np.inf
+
+        residual_df = n - rank_S
+        if residual_df <= 0:
+            return np.inf
+        reml = (
+            logdet_a
+            - logdet_S_pos
+            + residual_df * np.log(rss / residual_df)
+        )
+
+        if not np.isfinite(reml):
+            return np.inf
+
+        return float(reml)
+
+    except (np.linalg.LinAlgError, ValueError, FloatingPointError):
+        return np.inf
+
+
+def reml_score(
+    lambda_param: float,
+    X: np.ndarray,
+    y: np.ndarray,
+    w: np.ndarray,
+    S: np.ndarray,
+    eps: float = 1e-10
+) -> float:
+    """计算 REML (Restricted Maximum Likelihood) 分数
+    
+    REML 通过最大化边际似然来选择平滑参数，考虑了参数估计的不确定性。
+    
+    -2 * log(REML) = log|X'WX + λS| - log|X'WX| + n*log(RSS)
+    
+    Parameters
+    ----------
+    lambda_param : float
+        平滑参数
+    X : np.ndarray, shape (n, p)
+        设计矩阵
+    y : np.ndarray, shape (n,)
+        响应变量
+    w : np.ndarray, shape (n,)
+        观测权重
+    S : np.ndarray, shape (p, p)
+        惩罚矩阵
+    eps : float, default=1e-10
+        数值稳定性参数
+    
+    Returns
+    -------
+    reml : float
+        REML 分数（越小越好）
+        如果计算失败返回 np.inf
+    
+    Examples
+    --------
+    >>> import numpy as np
+    >>> n = 100
+    >>> X = np.column_stack([np.ones(n), np.linspace(0, 1, n)])
+    >>> y = np.sin(2 * np.pi * np.linspace(0, 1, n)) + np.random.randn(n) * 0.1
+    >>> w = np.ones(n)
+    >>> S = np.eye(2)
+    >>> reml = reml_score(lambda_param=0.1, X=X, y=y, w=w, S=S)
+    >>> print(f"REML score: {reml:.4f}")
+    
+    Notes
+    -----
+    REML 通常比 GCV 更稳定，特别是在小样本情况下。
+    它考虑了固定效应参数估计的不确定性。
+    """
+    n = len(y)
+    
+    # 输入验证
+    if lambda_param < 0:
+        return np.inf
+    
+    try:
+        # 加权设计矩阵
+        sqrt_w = np.sqrt(w)
+        Xw = X * sqrt_w[:, None]
+        yw = y * sqrt_w
+        
+        # 惩罚最小二乘
+        XtWX = Xw.T @ Xw
+        penalty = lambda_param * S
+        
+        # 求解系数
+        coef = np.linalg.solve(XtWX + penalty, Xw.T @ yw)
+        
+        # 拟合值和残差
+        fitted = X @ coef
+        residuals = y - fitted
+        rss = np.sum(w * residuals ** 2)
+        
+        # 确保 RSS > 0
+        if rss < eps:
+            rss = eps
+        
         # REML 分数的三个组成部分
         # 1. log|X'WX + λS|
         _, logdet1 = np.linalg.slogdet(XtWX + penalty)

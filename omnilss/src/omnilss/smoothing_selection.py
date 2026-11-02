@@ -206,17 +206,33 @@ def _fast_reml(
     # log|L|^2 = 2 * sum(log(diag(L)))
     log_det_L = float(np.sum(np.log(np.maximum(np.diag(L), 1e-300))))
 
+    # D2.146: rank of the penalty (its null space carries no penalty, and the
+    # null-space directions must not appear in the penalty determinant).
+    positive = d > max(float(np.max(d)), 0.0) * 1e-10 if d.size else np.zeros(0, bool)
+    rank_S = int(np.count_nonzero(positive))
+    log_det_S_pos_eig = float(np.sum(np.log(d[positive]))) if rank_S else 0.0
+
     def reml_fast(log_lam: float) -> float:
         lam = float(np.exp(log_lam))
         inv_denom = 1.0 / (1.0 + lam * d)
         rss_w = max(yty - float(np.sum(z**2 * inv_denom)), 1e-15)
-        edf = float(np.sum(inv_denom))
-        # log|X'WX + lam S| = log|L|^2 + log|I + lam * S_tilde|
-        #                    = 2*log_det_L + sum(log(1 + lam*d))
+        # log|X'WX + lam S| = 2*log|L| + sum(log(1 + lam*d))
         log_det_pen = 2.0 * log_det_L + float(np.sum(np.log(1.0 + lam * d)))
-        # REML = 0.5*(log_det_pen - log_det_XtWX + n*log(rss))
-        # log_det_XtWX = 2*log_det_L (constant, drop for optimisation)
-        return 0.5 * (log_det_pen + n * np.log(rss_w))
+        # log|lam S|_+ = 2*log|L| + rank*log(lam) + sum(log(d_pos)); the two
+        # 2*log|L| terms cancel in the difference.
+        log_det_lamS = log_det_S_pos_eig + rank_S * np.log(lam)
+        # Restricted likelihood (mgcv's reml score up to constants in y, w):
+        #   log|A| - log|lam S|_+ + (n - rank) * log(RSS / (n - rank))
+        # The old form used log|A| - log|X'WX| + n*log(RSS), which is minimised
+        # at lam -> 0 (the determinants cancel there and RSS is smallest), so
+        # REML "selected" the unpenalised fit: edf = full basis, lambda = 0 on a
+        # smooth sine sample where GCV picks edf 7.5.
+        residual_df = max(n - rank_S, 1)
+        return 0.5 * (
+            log_det_pen
+            - log_det_lamS
+            + residual_df * np.log(rss_w / residual_df)
+        )
 
     res = minimize_scalar(
         reml_fast,
@@ -644,13 +660,27 @@ def reml_criterion(
         # Log determinant of penalized matrix
         log_det_penalized = 2.0 * np.sum(np.log(np.diag(c)))
 
-        # Log determinant of X^T W X
-        c_xtx, _ = cho_factor(XtWX, lower=True)
-        log_det_xtx = 2.0 * np.sum(np.log(np.diag(c_xtx)))
-
-        # REML criterion (negative for minimization)
-        # Simplified version without constant terms
-        reml = 0.5 * (log_det_penalized - log_det_xtx + n * np.log(rss))
+        # D2.146: same correction as _fast_reml.  The restricted likelihood
+        # needs the *penalty* determinant (positive eigenvalues only -- the
+        # null space carries no penalty) and the n - rank residual degrees of
+        # freedom; the old log|A| - log|X'WX| + n*log(RSS) form is minimised at
+        # lambda -> 0.  It also needed chol(XtWX + eps*I), which aborted the
+        # whole criterion for rank-deficient designs.
+        eig_S = np.linalg.eigvalsh(0.5 * (S + S.T))
+        largest = float(np.max(np.abs(eig_S))) if eig_S.size else 0.0
+        if largest <= 0.0:
+            return np.inf
+        positive = eig_S[eig_S > largest * 1e-10]
+        rank_S = int(positive.size)
+        if rank_S == 0:
+            return np.inf
+        log_det_lamS = float(np.sum(np.log(positive))) + rank_S * np.log(lambda_)
+        residual_df = max(n - rank_S, 1)
+        reml = 0.5 * (
+            log_det_penalized
+            - log_det_lamS
+            + residual_df * np.log(rss / residual_df)
+        )
 
     except (np.linalg.LinAlgError, ValueError):
         return np.inf
