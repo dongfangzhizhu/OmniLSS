@@ -50,7 +50,14 @@ def test_eta_clip_records_type_and_affected_parameter() -> None:
 
     events = [e for e in _events(model) if e["type"] == "eta_clip"]
     assert events, f"expected eta_clip events, got {_types(model)}"
-    assert all(e.get("parameter") == "mu" for e in events)
+    # D2.145: the outlier drives BOTH predictors out of bounds -- sigma's log
+    # link blows up as well (a 1e10 point makes the ML sigma >> e^15), so the
+    # old "every event is mu" expectation described a model that only clipped
+    # one parameter.  What the diagnostic must guarantee is that each event
+    # names a parameter of the family and that mu is among the clipped ones.
+    parameters = {e.get("parameter") for e in events}
+    assert parameters <= {"mu", "sigma"}, parameters
+    assert "mu" in parameters, parameters
     assert all(e.get("n_clipped", 0) >= 1 for e in events)
     assert all(e.get("total", 0) == len(y) for e in events)
 

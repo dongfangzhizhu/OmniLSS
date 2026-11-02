@@ -884,3 +884,26 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
    但 `UNSAFE` 集合的过滤器只收 placeholder/compat_alias → 集合为空。
    修法：过滤器与断言集合都纳入 EXPERIMENTAL，普通 `gamlss()` 调用改为"允许"、
    strict 模式才拒绝——这才是当前实现的真实契约。
+
+
+### D2.146 —— REML 准则（已交付，2 条转绿）
+
+- **真 bug**：`smoothing_selection` 的两处 REML（`_fast_reml` / `reml_criterion`）都写成
+  `0.5*(log|XtWX+λS| - log|XtWX| + n·log RSS)`。λ→0 时两个行列式正好抵消、RSS 又最小，
+  准则**单调偏好 λ=0**：在 `sin(2πx)+N(0,0.1)` 上 REML 选出 λ=0.0、edf=23（整个基），
+  而 GCV 给 edf 7.5、AIC 给 8.8。
+- **修法**（mgcv 的 reml score，差 y/w 常数）：
+  `0.5*(log|A| - log|λS|₊ + (n-rank)·log(RSS/(n-rank)))`，`log|λS|₊` 只对 S 的正特征值求和
+  （零空间不带惩罚，不能进行列式）。顺带消掉 `reml_criterion` 里 `chol(XtWX)` 的一步——
+  秩亏设计会让整个准则返回 inf。
+- 修后 RMEL 选 λ=0.982、edf=11.01；`test_pb_auto_lambda` 两条转绿，smoothing 相关 47 条全绿。
+
+### D2.145 —— 测试调用面错误（已交付，5 条转绿）
+
+- `test_property_based_core`（2 条）：调 `fam.logpdf(...)`（FamilyDefinition 没有这个方法，
+  API 是 d/p/q/r + pdf() 包装）和 `fam.p(y=...)`（R 的 p 第一个形参是 q）——两条属性测试
+  从第一天起就只在报 `AttributeError`/`TypeError`，数学部分从未被验证过。
+  另外给 hypothesis 加 `deadline=None`：JAX 首次编译就超过 200 ms 默认预算，属性本身与耗时无关。
+- `test_safeguard_diagnostics::test_eta_clip_records_type_and_affected_parameter`（1 条）：
+  断言"所有 eta_clip 事件都是 mu"，但 1e10 的离群点同样把 sigma 的 log 链接打出界——
+  改成"参数名合法且 mu 在其中"。
