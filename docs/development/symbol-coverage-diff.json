@@ -20,64 +20,27 @@
   "categories": {
     "missing": {
       "new": [],
-      "resolved": [
-        "gamlss.dist::dPARETO1o",
-        "gamlss.dist::dSHASHo2",
-        "gamlss.dist::pJSUo",
-        "gamlss.dist::pPARETO1o",
-        "gamlss.dist::pSHASHo2",
-        "gamlss.dist::qJSUo",
-        "gamlss.dist::qPARETO1o",
-        "gamlss.dist::qSHASHo2",
-        "gamlss.dist::rJSUo",
-        "gamlss.dist::rPARETO1o",
-        "gamlss.dist::rSHASHo2"
-      ],
+      "resolved": [],
       "current_count": 391,
-      "baseline_count": 402
+      "baseline_count": 391
     },
     "placeholder": {
       "new": [],
-      "resolved": [
-        "gamlss.dist::GIG",
-        "gamlss.dist::LOGSHASH",
-        "gamlss.dist::dGIG",
-        "gamlss.dist::dLOGSHASH",
-        "gamlss.dist::pGIG",
-        "gamlss.dist::pLOGSHASH",
-        "gamlss.dist::qGIG",
-        "gamlss.dist::qLOGSHASH",
-        "gamlss.dist::rGIG",
-        "gamlss.dist::rLOGSHASH"
-      ],
+      "resolved": [],
       "current_count": 0,
-      "baseline_count": 10
+      "baseline_count": 0
     },
     "compat_alias": {
       "new": [],
-      "resolved": [
-        "gamlss.dist::DBI",
-        "gamlss.dist::DBURR12",
-        "gamlss.dist::dDBI",
-        "gamlss.dist::dDBURR12",
-        "gamlss.dist::pDBI",
-        "gamlss.dist::pDBURR12",
-        "gamlss.dist::qDBI",
-        "gamlss.dist::qDBURR12",
-        "gamlss.dist::rDBI",
-        "gamlss.dist::rDBURR12"
-      ],
+      "resolved": [],
       "current_count": 1,
-      "baseline_count": 11
+      "baseline_count": 1
     },
     "evidence_gap": {
       "new": [],
-      "resolved": [
-        "gamlss.dist::PARETO1o",
-        "gamlss::coefAll"
-      ],
+      "resolved": [],
       "current_count": 34,
-      "baseline_count": 36
+      "baseline_count": 34
     },
     "extra": {
       "new": [],
@@ -87,140 +50,7 @@
     }
   },
   "regressions": [],
-  "improvements": [
-    {
-      "category": "missing",
-      "symbol": "gamlss.dist::dPARETO1o"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss.dist::dSHASHo2"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss.dist::pJSUo"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss.dist::pPARETO1o"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss.dist::pSHASHo2"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss.dist::qJSUo"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss.dist::qPARETO1o"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss.dist::qSHASHo2"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss.dist::rJSUo"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss.dist::rPARETO1o"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss.dist::rSHASHo2"
-    },
-    {
-      "category": "placeholder",
-      "symbol": "gamlss.dist::GIG"
-    },
-    {
-      "category": "placeholder",
-      "symbol": "gamlss.dist::LOGSHASH"
-    },
-    {
-      "category": "placeholder",
-      "symbol": "gamlss.dist::dGIG"
-    },
-    {
-      "category": "placeholder",
-      "symbol": "gamlss.dist::dLOGSHASH"
-    },
-    {
-      "category": "placeholder",
-      "symbol": "gamlss.dist::pGIG"
-    },
-    {
-      "category": "placeholder",
-      "symbol": "gamlss.dist::pLOGSHASH"
-    },
-    {
-      "category": "placeholder",
-      "symbol": "gamlss.dist::qGIG"
-    },
-    {
-      "category": "placeholder",
-      "symbol": "gamlss.dist::qLOGSHASH"
-    },
-    {
-      "category": "placeholder",
-      "symbol": "gamlss.dist::rGIG"
-    },
-    {
-      "category": "placeholder",
-      "symbol": "gamlss.dist::rLOGSHASH"
-    },
-    {
-      "category": "compat_alias",
-      "symbol": "gamlss.dist::DBI"
-    },
-    {
-      "category": "compat_alias",
-      "symbol": "gamlss.dist::DBURR12"
-    },
-    {
-      "category": "compat_alias",
-      "symbol": "gamlss.dist::dDBI"
-    },
-    {
-      "category": "compat_alias",
-      "symbol": "gamlss.dist::dDBURR12"
-    },
-    {
-      "category": "compat_alias",
-      "symbol": "gamlss.dist::pDBI"
-    },
-    {
-      "category": "compat_alias",
-      "symbol": "gamlss.dist::pDBURR12"
-    },
-    {
-      "category": "compat_alias",
-      "symbol": "gamlss.dist::qDBI"
-    },
-    {
-      "category": "compat_alias",
-      "symbol": "gamlss.dist::qDBURR12"
-    },
-    {
-      "category": "compat_alias",
-      "symbol": "gamlss.dist::rDBI"
-    },
-    {
-      "category": "compat_alias",
-      "symbol": "gamlss.dist::rDBURR12"
-    },
-    {
-      "category": "evidence_gap",
-      "symbol": "gamlss.dist::PARETO1o"
-    },
-    {
-      "category": "evidence_gap",
-      "symbol": "gamlss::coefAll"
-    }
-  ],
+  "improvements": [],
   "ok": true,
   "ratchet_ok": true,
   "ceiling_ok": true

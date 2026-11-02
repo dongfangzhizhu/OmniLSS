@@ -730,7 +730,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | ZIBI | gamlss.dist | ZIBI | public_api | experimental | capability:validated | blocked | 12 |
 | ZIBNB | gamlss.dist | ZIBNB | public_api | experimental | r_consistency_test | blocked | 11 |
 | ZINBF | gamlss.dist | ZINBF | public_api | experimental | r_consistency_test | blocked | 5 |
-| ZINBI | gamlss.dist | ZINBI | public_api | experimental | r_consistency_test | blocked | 12 |
+| ZINBI | gamlss.dist | ZINBI | public_api | experimental | r_consistency_test | blocked | 14 |
 | ZIP | gamlss.dist | ZIP | public_api | experimental | r_consistency_test | blocked | 18 |
 | ZIP2 | gamlss.dist | ZIP2 | public_api | experimental | r_consistency_test | blocked | 10 |
 | ZIPF | gamlss.dist | ZIPF | public_api | experimental | r_consistency_test | blocked | 8 |
