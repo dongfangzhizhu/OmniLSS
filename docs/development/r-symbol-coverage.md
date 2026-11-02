@@ -480,7 +480,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | drop1All | gamlss | - | missing | missing | unverified | not_available | 0 |
 | drop1TGD | gamlss | drop1TGD | public_api | implemented | tested | exported_api | 1 |
 | dtop | gamlss | dtop | public_api | implemented | tested | exported_api | 1 |
-| edf | gamlss | - | missing | missing | unverified | not_available | 15 |
+| edf | gamlss | - | missing | missing | unverified | not_available | 16 |
 | edfAll | gamlss | edfAll | public_api | implemented | tested | exported_api | 1 |
 | find.hyper | gamlss | find_hyper | public_api | implemented | tested | exported_api | 1 |
 | findPower | gamlss | findPower | public_api | implemented | tested | exported_api | 1 |
@@ -669,7 +669,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | MN5 | gamlss.dist | MN5 | public_api | experimental | r_consistency_test | blocked | 9 |
 | MULTIN | gamlss.dist | MULTIN | public_api | compat_alias | capability:unsupported | blocked | 3 |
 | NBF | gamlss.dist | NBF | public_api | experimental | capability:unsupported | blocked | 3 |
-| NBI | gamlss.dist | NBI | public_api | experimental | r_consistency_test | blocked | 18 |
+| NBI | gamlss.dist | NBI | public_api | experimental | r_consistency_test | blocked | 19 |
 | NBII | gamlss.dist | NBII | public_api | experimental | r_consistency_test | blocked | 11 |
 | NET | gamlss.dist | NET | public_api | experimental | r_consistency_test | blocked | 12 |
 | NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 134 |
