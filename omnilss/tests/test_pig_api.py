@@ -47,7 +47,13 @@ def test_boundaries_and_limits():
     np.testing.assert_array_equal(dPIG(jnp.array([-1., .5, jnp.inf])), 0.)
     np.testing.assert_array_equal(pPIG(jnp.array([-jnp.inf, jnp.inf])), [0., 1.])
     np.testing.assert_array_equal(qPIG(jnp.array([0., 1.])), [0., np.inf])
-    assert np.isnan(dPIG(10001)) and np.isnan(pPIG(10001))
+    # D2.150: the pmf cap was ours, not R's.  Live R 4.6.0 answers
+    # dPIG(10001) = 0 / log = -4068.588 and dPIG(20000) = 0 / log = -8123.874;
+    # pPIG(10001) is 1 (R does not truncate the CDF either -- D2.29).
+    assert dPIG(10001) == 0.0
+    np.testing.assert_allclose(float(dPIG(10001, log=True)), -4068.588450225617, rtol=1e-12)
+    np.testing.assert_allclose(float(dPIG(20000, log=True)), -8123.87361822374, rtol=1e-12)
+    assert pPIG(10001) == 1.0
     assert np.isnan(qPIG(.999, max_value=0))
     assert np.isnan(dPIG(0, sigma=-1))
     assert np.isnan(qPIG(-.1))

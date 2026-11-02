@@ -11,6 +11,7 @@ Poisson/inverse-Gaussian mixture (Var(Y)=mu+sigma*mu**2).
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 
 def _args(x, mu, sigma):
@@ -32,18 +33,40 @@ def _step(i, ratio, logmass, mu, sigma):
     return ratio, mass
 
 
+# D2.150: the pmf recurrence used to be capped at a fixed 10001 steps and mask
+# anything beyond it to nan.  Live R answers dPIG(10001) = -4068.588 (log
+# scale; 0 on the density scale) and dPIG(20000) = -8123.874, so the cap was
+# our own limitation, not R's.  The bound is now derived from the data when the
+# argument is concrete (which also *shortens* the loop for ordinary counts:
+# it was always running 10000 iterations regardless of y).
+_PMF_STEP_CAP = 1_000_000
+
+
+def _pmf_steps(x) -> int:
+    try:
+        arr = np.asarray(x, dtype=np.float64)
+    except Exception:  # traced value under jit -- keep the previous bound
+        return 10001
+    if arr.size == 0 or not np.all(np.isfinite(arr)):
+        return 10001
+    return int(min(max(float(np.max(arr)) + 1.0, 2.0), _PMF_STEP_CAP))
+
+
 def logpmf(x, mu, sigma):
     x, mu, sigma, valid = _args(x, mu, sigma)
     ratio, base = _initial(mu, sigma)
+    n_steps = _pmf_steps(x)
 
     def step(i, state):
         ratio, mass, result = state
         ratio, mass = _step(i, ratio, mass, mu, sigma)
         return ratio, mass, jnp.where(x == i, mass, result)
 
-    _, _, result = jax.lax.fori_loop(1, 10001, step, (ratio, base, base))
+    _, _, result = jax.lax.fori_loop(1, n_steps, step, (ratio, base, base))
     result = jnp.where((x >= 0) & jnp.isfinite(x) & (x == jnp.floor(x)), result, -jnp.inf)
-    return jnp.where(valid & ~jnp.isnan(x) & ~((x > 10000) & jnp.isfinite(x)), result, jnp.nan)
+    return jnp.where(
+        valid & ~jnp.isnan(x) & ~((x >= n_steps) & jnp.isfinite(x)), result, jnp.nan
+    )
 
 
 def dPIG(x, mu=1., sigma=1., log=False):

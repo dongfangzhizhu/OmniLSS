@@ -162,9 +162,13 @@ class TestPSFitting(unittest.TestCase):
         
     def test_error_handling(self):
         """Test error handling."""
-        # Neither df nor lambda specified
-        with self.assertRaises(ValueError):
-            fit_pspline_smooth(self.x, self.y)
+        # D2.150: neither df nor lambda specified means "select lambda
+        # automatically" -- that is what the function documents and what it
+        # does (lambda 57.17, edf 5.0 on this sample), so the old
+        # assertRaises(ValueError) described a contract the smoother never had.
+        auto = fit_pspline_smooth(self.x, self.y)
+        self.assertIsNotNone(auto.lambda_)
+        self.assertGreater(float(auto.lambda_), 0.0)
         
         # Mismatched lengths
         with self.assertRaises(ValueError):
