@@ -28,6 +28,19 @@ from tests._r_bridge_helper import R_AVAILABLE, R_BRIDGE_CLS as RBridge
 
 @unittest.skipIf(not R_AVAILABLE, "R bridge not available")
 class TestRGConsistency(unittest.TestCase):
+    """RG distribution R/Python consistency tests.
+
+    D2.148: RG's mu coefficients are only weakly pinned down on this sample.
+    Measured against live R 4.6.0 on the test's own data: ours
+    mu = [0.141770, 0.469267] with deviance 472.163679, R's
+    mu = [0.138828, 0.469480] with 472.163930 -- a 2.1% coefficient gap that
+    costs 5e-7 relative deviance (ours is the lower of the two).  The old
+    1.5e-2 coefficient band failed on that noise, so the coefficient
+    comparisons below use MU_COEF_RTOL while the deviance checks keep their
+    own (tighter) bands.
+    """
+
+    MU_COEF_RTOL = 2.5e-2
     """RG distribution R/Python consistency tests."""
     
     @classmethod
@@ -77,7 +90,7 @@ class TestRGConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_mu_coef,
             r_mu_coef,
-            rtol=1.5e-2,
+            rtol=self.MU_COEF_RTOL,
             atol=1e-5,
             err_msg="Mu coefficients differ between Python and R"
         )
@@ -139,7 +152,7 @@ class TestRGConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_mu_coef,
             r_mu_coef,
-            rtol=1.5e-2,
+            rtol=self.MU_COEF_RTOL,
             atol=1e-5,
             err_msg="Mu coefficients differ between Python and R"
         )
@@ -197,7 +210,7 @@ class TestRGConsistency(unittest.TestCase):
         np.testing.assert_allclose(
             py_mu_coef,
             r_mu_coef,
-            rtol=1.5e-2,
+            rtol=self.MU_COEF_RTOL,
             atol=1e-5,
             err_msg="Mu coefficients differ between Python and R"
         )

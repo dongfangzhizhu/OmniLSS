@@ -907,3 +907,19 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
 - `test_safeguard_diagnostics::test_eta_clip_records_type_and_affected_parameter`（1 条）：
   断言"所有 eta_clip 事件都是 mu"，但 1e10 的离群点同样把 sigma 的 log 链接打出界——
   改成"参数名合法且 mu 在其中"。
+
+
+### D2.148 —— 平地脊线上的"系数容差"（3 条转绿）
+
+三条断言都栽在同一件事上：把**系数**钉到 2e-4/1.5e-2，可这些族的似然沿该方向几乎是平的。
+
+- `test_r_golden_fixture_ig`：我们 mu=[0.638803, 0.742049]、dev=147.36572；fixture 记录
+  mu=[0.637817, 0.741255]、dev=147.36574；**活 R 4.6.0 今天**给 mu=[0.637389, 0.740909]、
+  dev=147.36577——R 自己的 mu 就漂了 7e-4，三者的 deviance 差 4e-7。
+- `test_r_golden_fixture_nbi`：sigma 落在 eta clip 地板上（拟合会 warn），
+  我们 -1.275162 vs fixture -1.274465（5.5e-4），deviance 只差 1.6e-6。
+- `test_r_consistency_rg`：ours mu=[0.141770, 0.469267]、dev=472.163679；
+  R mu=[0.138828, 0.469480]、dev=472.163930 —— 2.1% 的系数差换来 5e-7 的相对 deviance
+  （我们的更低）。
+- 处理：系数容差放宽（IG/NBI 5e-3、RG 2.5e-2 并抽成 `MU_COEF_RTOL` 常量），
+  **deviance 容差保持原样**——那才是真正的契约。
