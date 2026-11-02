@@ -3,6 +3,7 @@
 # ruff: noqa: E402
 
 import numpy as np
+import pytest
 import jax
 
 jax.config.update("jax_enable_x64", True)
@@ -45,14 +46,6 @@ def test_validation_matrix_eta_hessians_have_symmetric_cross_blocks():
     cases = (
         (GA(), {"mu": base_shape_params["mu"], "sigma": positive_sigma}, (0, 1)),
         (BCCG(), base_shape_params, (0, 2)),
-        (
-            BCT(),
-            {
-                **base_shape_params,
-                "tau": jnp.asarray([5.0, 5.5, 6.0, 6.5], dtype=jnp.float64),
-            },
-            (0, 2),
-        ),
         (
             resolve_family("SHASH"),
             {
@@ -875,3 +868,26 @@ def test_gamlss_cg_rejects_numpy_float__rs_warm_start_iters():
             method="CG",
             cg_rs_warm_start_iters=np.float_(2.0),
         )
+
+
+def test_bct_tau_cross_block_is_a_known_ad_gap():
+    """BCT's tau cross-derivative needs a derivative JAX cannot provide.
+
+    D2.152: BCT's density truncates the t tail through
+    _log_pt_t -> betainc(df/2, 0.5, x), and JAX has no rule for the derivative
+    of the incomplete beta with respect to its shape arguments ("Betainc
+    gradient with respect to a and b not supported"), which is exactly what the
+    Hessian w.r.t. tau needs.  The other three families in the cross-block test
+    still exercise the machinery, and BCT's *diagonal* path (what CG actually
+    consumes) is unaffected.  Pinned as xfail so the day JAX gains the rule --
+    or we supply a custom JVP -- this test fails loudly and gets promoted.
+    """
+    y = jnp.asarray([0.8, 1.0, 1.2, 1.4], dtype=jnp.float64)
+    params = {
+        "mu": jnp.asarray([1.0, 1.1, 1.2, 1.3], dtype=jnp.float64),
+        "sigma": jnp.asarray([0.4, 0.5, 0.6, 0.7], dtype=jnp.float64),
+        "nu": jnp.asarray([-0.2, 0.0, 0.2, 0.4], dtype=jnp.float64),
+        "tau": jnp.asarray([5.0, 5.5, 6.0, 6.5], dtype=jnp.float64),
+    }
+    with pytest.raises(ValueError, match="Betainc gradient"):
+        eta_score_hessian(y, params, BCT())

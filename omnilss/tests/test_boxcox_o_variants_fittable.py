@@ -613,11 +613,21 @@ def test_our_tighter_criterion_reaches_a_lower_deviance():
         data={"y": FIT_Y},
         control=GAMLSSControl(n_cyc=3000, c_crit=1e-3, trace=False),
     )
-    assert tight.convergence_status() is True
+    # D2.151: c_crit = 1e-8 is an *absolute* deviance change on BCT's flat
+    # ridge, where the descent is ~1e-5 per 3000 cycles: measured 107.911501 at
+    # 3000 cycles, 107.901764 at 6000, 107.895598 at 12000 -- still going, so
+    # the budget is hit rather than the tolerance.  Asserting convergence at
+    # this setting was asserting that the ridge ends, which it does not.
+    assert tight.convergence_status() is False
+    assert tight.termination_reason == "max_iterations_reached"
     assert loose.convergence_status() is True
     assert tight.deviance < loose.deviance
-    # R's default-tolerance answer sits between the two.
-    assert tight.deviance < 108.10659521714604 <= loose.deviance
+    # D2.151: R's recorded default-tolerance answer is 108.10659521714604, and
+    # our *loose* run now reaches 108.089838 -- below it -- so the old
+    # "R sits between the two" sandwich no longer describes the numbers.  What
+    # still holds (and is what the test is for): tightening the criterion keeps
+    # descending, and both of our stops are at or below R's recorded value.
+    assert tight.deviance < loose.deviance <= 108.10659521714604
 
 
 @pytest.fixture(scope="module")
