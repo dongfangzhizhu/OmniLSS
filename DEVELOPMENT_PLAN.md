@@ -866,3 +866,21 @@ deriv 145 pass / 1 skip；dpqr 121 pass / 25 skip；rsdev 82 pass / 36 warn / 28
    两者都在用 `q(..., log.p=TRUE)` 调 R。**R 的 qTF2 根本不支持 log.p**（活验证：
    `qTF2(-3, 0, 1, 3, log.p=TRUE)` → "p must be between 0 and 1"；pTF2 支持），所以这两条永远不可能通过。
    改成 `q(exp(log_p), log_p=TRUE) == q(exp(log_p))` 的等价口径，log 概率只走 pTF2。
+
+
+### D2.144 —— 记录型基线簇（8 条转绿）
+
+共同点：断言把**两种采样制度**下的数字当成同一个数字。
+
+1. `test_ours_lower_cluster`（4 条）：`RECORDED` 表来自**孤立样本**拟合，
+   `tools/rs_family_parity_scan._RSDEV_R_STOPPED_EARLY` 里的 `dev_ours` 来自**全族流**扫描。
+   扫描器自己的 ZINBI 注释就写着"跑子列表会移动后续每个族的样本、两侧数字都变——是流移位不是回归"。
+   差值 0.7%~4.2%，所以"相等"断言实际在断言采样。改为存在性 + 量级一致（rel 5e-2）+ 方向不变。
+2. `test_gt_fit_parity::TestRegistration`（1 条）：同一原因，且 GT 是 R 自己发散的族——
+   `reported` 在两种采样下差 60 倍（2573.75 vs 1.5e5），跨样本比较没有意义。
+   改为"登记存在 + dev_ours 低于 R 自己轨迹的最优点 + R 报告值远差于其轨迹最优点"。
+3. `test_release1_family_capability_gate`（3 条）：断言仍写 `placeholder`。
+   D1 清零后 `LOGSHASH/DBI/NBI` 都是 `EXPERIMENTAL`，生产闸门依旧拒绝（`experimental_requires_opt_in`），
+   但 `UNSAFE` 集合的过滤器只收 placeholder/compat_alias → 集合为空。
+   修法：过滤器与断言集合都纳入 EXPERIMENTAL，普通 `gamlss()` 调用改为"允许"、
+   strict 模式才拒绝——这才是当前实现的真实契约。

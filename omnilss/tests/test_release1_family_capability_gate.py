@@ -27,7 +27,14 @@ UNSAFE = tuple(
         for name in ("LOGSHASH", "DBI", "NBI")
     )
     if capability.implementation_status
-    in {ImplementationStatus.PLACEHOLDER, ImplementationStatus.COMPAT_ALIAS}
+    in {
+        ImplementationStatus.PLACEHOLDER,
+        ImplementationStatus.COMPAT_ALIAS,
+        # D1 cleared the placeholder queue: EXPERIMENTAL is the state the
+        # production gate still refuses (see the docstring above), so it has to
+        # be part of "known unsafe" or this collector returns nothing.
+        ImplementationStatus.EXPERIMENTAL,
+    }
 )
 
 
@@ -46,6 +53,7 @@ def test_all_known_unsafe_states_are_rejected_with_structured_reason():
         assert get_family_capability(family).implementation_status in {
             ImplementationStatus.PLACEHOLDER,
             ImplementationStatus.COMPAT_ALIAS,
+            ImplementationStatus.EXPERIMENTAL,
         }, (
             f"{family} is in UNSAFE but its status is "
             f"{get_family_capability(family).implementation_status}"
@@ -56,8 +64,14 @@ def test_all_known_unsafe_states_are_rejected_with_structured_reason():
         report = caught.value.to_dict()
         assert report["family"] == family
         assert report["route"] == "public_fit"
-        assert report["implementation_status"] in {"placeholder", "compat_alias"}
-        assert report["code"] in {"placeholder_requires_opt_in", "compat_alias_requires_opt_in"}
+        assert report["implementation_status"] in {
+            "placeholder", "compat_alias", "experimental",
+        }
+        assert report["code"] in {
+            "placeholder_requires_opt_in",
+            "compat_alias_requires_opt_in",
+            "experimental_requires_opt_in",
+        }
 
 
 @pytest.mark.parametrize("route", ("public_fit", "service", "benchmark"))
@@ -102,11 +116,16 @@ def test_dbi_stays_fail_closed_after_leaving_the_compat_alias_list(route):
 
 def test_implemented_family_is_admitted_and_unsafe_exploratory_fit_is_blocked():
     assert require_production_family_route("NO", "RS", route="public_fit")["ok"] is True
-    # GIG was this sample until D2.48; LOGSHASH is a placeholder family now,
-    # so the rejection reason must name that state, not the generic "feature
-    # unavailable" wording.
-    with pytest.raises(FamilyCapabilityError, match="placeholder numeric behavior"):
-        gamlss("y ~ x", family="LOGSHASH", data={"y": [1.0, 2.0], "x": [0.0, 1.0]})
+    # GIG was this sample until D2.48, then LOGSHASH, and D1 has since cleared
+    # the placeholder queue entirely: LOGSHASH is EXPERIMENTAL now, so a plain
+    # gamlss() call is *allowed* and the fail-closed behaviour lives in strict
+    # capability mode.  The message must name the experimental state.
+    gamlss("y ~ x", family="LOGSHASH", data={"y": [1.0, 2.0], "x": [0.0, 1.0]})
+    with pytest.raises(FamilyCapabilityError, match="experimental"):
+        gamlss(
+            "y ~ x", family="LOGSHASH", data={"y": [1.0, 2.0], "x": [0.0, 1.0]},
+            strict_capabilities=True,
+        )
 
 
 def test_experimental_family_is_fail_closed_only_on_production_route():
@@ -134,7 +153,9 @@ def test_property_unsafe_statuses_and_all_production_routes_are_consistent_100_r
                 report = caught.value.to_dict()
                 assert report["route"] == route
                 assert report["ok"] is False
-                assert report["implementation_status"] in {"placeholder", "compat_alias"}
+                assert report["implementation_status"] in {
+                    "placeholder", "compat_alias", "experimental",
+                }
         for route in ("public_fit", "batch", "benchmark", "service"):
             report = require_production_family_route("NO", "RS", route=route)
             assert report["ok"] is True
@@ -144,7 +165,9 @@ def test_property_unsafe_statuses_and_all_production_routes_are_consistent_100_r
 def test_fixed_r_source_case_records_rejection_and_never_claims_r_success(tmp_path: Path):
     case = build_case(REPO_ROOT)
     assert case["fixed_r_sources"]
-    assert case["family_status"] == "placeholder"
+    # D1 cleared the placeholder queue; the fixed-R-source case family is
+    # experimental now, and the rejection reason follows the matrix.
+    assert case["family_status"] == "experimental"
     assert case["admission"]["ok"] is False
     assert case["comparison"] == {
         "status": "excluded",
