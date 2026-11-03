@@ -95,3 +95,17 @@ q 的相对差 max 5.4e-6——所以这不是族写错，而是 nu 边界处的
 中途不要叠加重的构建任务），或者只复跑上次失败的 36 个文件取"剩余数"。
 
 作为补偿，本轮所有改动都在各自的测试文件上验证过（见 D2.153–D2.157 各条验收行）。
+
+
+### D2.158 —— golden runner 的 `--library` 写法与工具链判定（1 条转为"环境 skip"）
+
+- **真 bug**：`install_vendored_r_library` 把库路径写成**两个 token**（`"--library", str(library)`）。
+  R 4.6 对此的反应是 `Warning: unknown option '--library'` + `invalid package <库路径>`，
+  也就是**库路径被当成包名**，安装于是落到系统库（现场实测它还把系统里的 gamlss.dist 删了又恢复）。
+  改成 `--library=<path>`，并捕获 stderr：失败时抛 `RuntimeError` 带上最后 6 行输出，
+  而不是一个光秃秃的 `CalledProcessError`。
+- **环境事实**：vendored `gamlss.dist` 带 C 源码，安装需要 `make`（Windows 上是 Rtools）；
+  本机 PATH 里没有 make，R 给的是 `Error in system(...): 'make' not found`。
+  新增 `build_toolchain_available()`（PATH 里的 make 或 RTOOLS*_HOME/usr/bin/make.exe），
+  测试据此 skip 并说明原因——这条不属于代码缺陷。
+- 结果：`test_release1_r_golden_runner` 4 passed + 1 skipped。

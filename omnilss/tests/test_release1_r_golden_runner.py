@@ -14,6 +14,7 @@ from tools.run_release1_r_golden import (
     case_directory,
     default_no_case,
     run_no_case,
+    build_toolchain_available,
     validate_manifest,
 )
 
@@ -73,6 +74,15 @@ def test_property_provenance_and_seed_are_complete_for_100_cases(tmp_path: Path)
         assert case_directory(case, tmp_path, "commit", seed % 2 == 1).name == case.test_id
 
 
+@pytest.mark.skipif(
+    not build_toolchain_available(),
+    reason=(
+        "R cannot build source packages here: the vendored gamlss.dist carries C "
+        "sources and R answers \"'make' not found\" without Rtools/Make. The "
+        "runner's own flag bug is covered by the unit tests above; this case "
+        "needs a buildable R library."
+    ),
+)
 def test_fixed_r_no_case_writes_readable_complete_artifacts(tmp_path: Path):
     try:
         result_path, markdown_path, manifest_path = run_no_case(default_no_case(), tmp_path)

@@ -103,10 +103,41 @@ def install_vendored_r_library(rscript: str, library: Path) -> None:
     if not r_executable.is_file():
         raise RuntimeError(f"R executable required for vendored source installation: {r_executable}")
     for source in sources:
-        subprocess.run(
-            [str(r_executable), "CMD", "INSTALL", "--no-multiarch", "--library", str(library), str(source)],
-            cwd=REPO_ROOT, text=True, capture_output=True, check=True,
+        # D2.158: the flag has to be --library=<path>.  Passing it as a separate
+        # token makes R 4.6 answer "unknown option '--library'" and then treat
+        # the library path as a *package name* ("invalid package
+        # tmp/.../r-library"), so the install quietly targeted the system
+        # library instead of the isolated one.
+        completed = subprocess.run(
+            [
+                str(r_executable), "CMD", "INSTALL", "--no-multiarch",
+                f"--library={library}", str(source),
+            ],
+            cwd=REPO_ROOT, text=True, capture_output=True,
         )
+        if completed.returncode != 0:
+            tail = (completed.stderr or completed.stdout or "").strip().splitlines()[-6:]
+            raise RuntimeError(
+                f"R CMD INSTALL failed for {source} (exit {completed.returncode}): "
+                + " | ".join(tail)
+            )
+
+
+def build_toolchain_available() -> bool:
+    """True when R can compile a source package here (make + a toolchain).
+
+    D2.158: gamlss.dist carries C sources, so installing it needs make (Rtools
+    on Windows).  Without one R reports the opaque "Error in system(...):
+    'make' not found"; callers check this first so the limitation reads as an
+    environment fact rather than a runner bug.
+    """
+    if shutil.which("make"):
+        return True
+    for variable in ("RTOOLS40_HOME", "RTOOLS43_HOME", "RTOOLS44_HOME"):
+        root = os.environ.get(variable)
+        if root and (Path(root) / "usr" / "bin" / "make.exe").is_file():
+            return True
+    return False
 
 
 def _r_version(rscript: str) -> str:
