@@ -70,9 +70,25 @@ def test_rs_iteration_budget_exhaustion_is_classified():
 
 
 def test_non_finite_deviance_is_never_reported_as_converged():
-    model = gamlss(
-        "y ~ x", family="RGE", data=_diverging_data(), method="RS", max_iter=20
+    """A non-finite deviance must never be classified as converged.
+
+    D2.154: this used to rely on RGE diverging on _diverging_data().  That fit
+    now finishes at a finite 136.4307 (the initial-value / clipping work since
+    then stopped the blow-up), so the test was asserting a property of one
+    particular trajectory rather than of the classifier.  The classification is
+    what matters, so the density is made to return an infinite deviance
+    directly -- any trajectory reaching it must be reported as non-finite.
+    """
+    import dataclasses
+
+    import jax.numpy as jnp
+
+    from omnilss.distributions import NO
+
+    broken = dataclasses.replace(
+        NO(), g_dev_inc=lambda **kwargs: jnp.full(jnp.shape(kwargs["y"]), jnp.inf)
     )
+    model = gamlss("y ~ x", family=broken, data=_normal_data(), method="RS", max_iter=20)
     assert not np.isfinite(model.g_dev), model.g_dev
     assert model.converged is False
     assert model.termination_reason == NONFINITE_REASON
