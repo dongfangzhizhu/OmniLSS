@@ -70,3 +70,32 @@ export PYTHONPATH="$PWD/omnilss/src"
 `pyproject.toml` by a contract test. Installed `dist-info` is diagnostic
 metadata only and never overrides the source runtime version, avoiding stale
 editable-install metadata and lexicographic version comparisons.
+
+
+## Source-Package Build Toolchain (R CMD INSTALL)
+
+The vendored `gamlss.dist` carries C sources, so installing it from source needs
+a C compiler and `make` — on Windows that means Rtools. Without one, R answers:
+
+```
+** libs
+Error in system(paste(MAKE, p1(paste("-f", shQuote(makefiles))), "compilers"), :
+  'make' not found
+```
+
+Consequences recorded in D2.158:
+
+- `install_vendored_r_library` must call `R CMD INSTALL --no-multiarch
+  --library=<path> <pkg>`. Passing `--library` and the path as two tokens makes
+  R 4.6 report `unknown option '--library'` and then treat the library path as
+  a *package name*, which silently installs into the system library instead of
+  the isolated one.
+- `omnilss/tools/run_release1_r_golden.py` exposes
+  `build_toolchain_available()` (PATH `make`, or `RTOOLS*_HOME/usr/bin/make.exe`).
+  `test_release1_r_golden_runner::test_fixed_r_no_case_writes_readable_complete_artifacts`
+  skips when it is False, so a machine without Rtools reports an environment
+  fact rather than a runner defect. Release validation still requires it: the
+  artifact contract is only exercised end-to-end where the package can be built.
+
+Installing the pure-R vendored packages (`gamlss.data`, `gamlss`) alone does not
+need the toolchain and was verified with the corrected `--library=<path>` form.

@@ -141,3 +141,14 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
   R 源码安装需要 Rtools）。
 - 注意口径：这只覆盖"曾经失败的文件"；496 个文件的全量数字仍未测（4 分片跑被回收两次，
   见上一节记录）。下一次要从会话开头起跑，别再叠加编译/长任务。
+
+
+### D2.161 —— 环境文档补上"源码包构建工具链"（已交付）
+
+`docs/development/environment-baseline-2026-07-23.md` 原先只写了 R 版本与 vendored 包版本，
+没写**装源码包需要 C 工具链 + make**。补上：
+- R 在缺 make 时的原文报错（`Error in system(...): 'make' not found`）；
+- `R CMD INSTALL` 必须写 `--library=<path>`（两个 token 的写法会让 R 把库路径当包名、
+  静默装进系统库——D2.158 实测）；
+- `build_toolchain_available()` 与那条 skip 的含义：缺 Rtools 是**环境事实**，不是 runner 缺陷，
+  但发布验证仍然需要它（工件契约只有在能编译的机器上才被端到端跑到）。
