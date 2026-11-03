@@ -109,3 +109,13 @@ q 的相对差 max 5.4e-6——所以这不是族写错，而是 nu 边界处的
   新增 `build_toolchain_available()`（PATH 里的 make 或 RTOOLS*_HOME/usr/bin/make.exe），
   测试据此 skip 并说明原因——这条不属于代码缺陷。
 - 结果：`test_release1_r_golden_runner` 4 passed + 1 skipped。
+
+
+### D2.159 —— `_has_converged` 的口径（1 条转绿）
+
+`test_has_converged_relative_or_absolute` 仍在传 `rtol=`，但这个关键字是**故意删掉**的：
+R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`），并在 376-377 行写明
+2003-06-11 移除了相对形式；我们的相对分支还在"播种迭代"上误判——起始 deviance 4.77e6 时变化量 1.0
+给出相对 2.1e-7，**一次循环都没跑就宣布收敛**（D2.50 实测）。
+
+改成断言绝对口径，并把这个回归场景单独钉住（`4.77e6 → 4.77e6-1` 不得判收敛）。

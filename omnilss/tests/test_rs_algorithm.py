@@ -366,10 +366,22 @@ class TestRSFit:
         assert np.mean(mu_hat) > 1e5
         assert not np.allclose(mu_hat, 20.0)
 
-    def test_has_converged_relative_or_absolute(self):
-        assert _has_converged(1000.0, 999.99995, tol=1e-4, rtol=1e-8)
-        assert _has_converged(1e9, 1e9 - 100.0, tol=1e-8, rtol=1e-6)
-        assert not _has_converged(1.0, 0.9, tol=1e-8, rtol=1e-8)
+    def test_has_converged_is_absolute_only(self):
+        """R's criterion is absolute; the relative branch was removed on purpose.
+
+        D2.159: this test still asked for a rtol keyword that no longer exists.
+        The function dropped the relative form because R removed it too
+        (gamlss-5.R:305 is abs(old-new) > c.crit; gamlss-5.R:376-377 documents
+        the 2003-06-11 removal) and because it misfired on the seeded first
+        iteration -- a deviance of 4.77e6 looked "converged" before a single
+        cycle ran (D2.50).  So the contract to pin is: absolute change only,
+        including the case that used to slip through.
+        """
+        assert _has_converged(1000.0, 999.99995, tol=1e-4)
+        assert not _has_converged(1.0, 0.9, tol=1e-8)
+        # The D2.50 regression: a large starting deviance must not be reported
+        # as converged just because the *relative* change looks small.
+        assert not _has_converged(4.77e6, 4.77e6 - 1.0, tol=1e-6)
 
 
 class TestIntegration:
