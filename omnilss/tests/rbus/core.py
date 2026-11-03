@@ -101,6 +101,23 @@ class RTestBus:
         finally:
             os.unlink(arg_file_path)
 
+    def eval_expr(
+        self, expr: str, args: Dict[str, Any] | None = None
+    ) -> np.ndarray:
+        """Evaluate an R expression with the given named arguments.
+
+        D2.156: consistency tests kept needing one-off R comparisons (base R
+        quantiles, qnorm, ...) while the bus only spoke family d/p/q, so those
+        tests grew a dependency on eval_expr that did not exist and failed with
+        AttributeError before touching any number.  The bridge binds the args in
+        a fresh environment, evaluates the expression there and returns the
+        numeric result.
+        """
+        result = self._run_script("eval_expr.R", expr=expr, args=args or {})
+        if "error" in result:
+            raise RuntimeError(f"R Error: {result['error']}")
+        return np.array(result["values"], dtype=np.float64)
+
     def eval_family(
         self, family: str, func_type: str, args: Dict[str, Any]
     ) -> np.ndarray:

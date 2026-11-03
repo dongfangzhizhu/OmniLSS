@@ -64,3 +64,16 @@ CG 实际消费的是**对角** Hessian，不受影响；交叉块验证里另�
 - `y ~ 1`：我们 44 周期收敛到 327.1332127（mu=0.86825, sigma=-0.71955），R 327.1369182
   （mu=0.84759, sigma=-0.70568）——deviance 差 1.1e-5 且我们更低，系数则沿 mu/sigma 脊线互让 2~3%。
   系数容差因此放宽到 5e-2，deviance 仍按 1e-2。
+
+
+### D2.156 —— RTestBus 缺 `eval_expr`（1 条 + 3 个 subTest 转绿）
+
+`test_r_consistency_centile_sk` 一直在调 `bus.eval_expr(...)`——这个接口**不存在**，
+四条用例在碰到任何数字之前就 `AttributeError`。它要的其实很通用：
+"给一段 R 表达式 + 命名参数，把数值结果拿回来"（这轮要的是 `quantile(x, probs, type=7)` 和 `qnorm(p)`）。
+
+补上：
+- `omnilss/tests/rbus/R_scripts/eval_expr.R`：把 `args` 绑进新环境，`eval(parse(...))`，返回 JSON 数值；
+- `RTestBus.eval_expr(expr, args)`：与 `eval_family` 同形状，出错抛 `RuntimeError`。
+
+现在 `centileSK` 与 `theoCentileSK` 都与 R 的 type=7 分位数 / `qnorm` 对齐到 1e-10。
