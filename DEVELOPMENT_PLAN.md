@@ -32,3 +32,18 @@ CG 实际消费的是**对角** Hessian，不受影响；交叉块验证里另�
 把 BCT 从参数化列表里取出，单列一条 `test_bct_tau_cross_block_is_a_known_ad_gap` 断言
 "当前确实抛这个 ValueError"——JAX 哪天补上规则（或我们提供 custom JVP）时这条会失败，
 提醒把它提升为正式断言。
+
+
+### D2.153 —— DBI 的 sigma 二阶导（D2.149 的修复，已交付）
+
+- **做法**：`d2ldd2` 不再用 R 的 `-dldd²` 替代，而是对我们已经精确的 score 做**中心差分**
+  （步长 `1e-5·max(|sigma|,1e-8)`，仍保留 `-1e-15` 地板）。代价是每个 IRLS 步多两次 score 求值。
+  AD 二阶导走不通的原因记录在注释里：DBI 的归一化常数 `C` 由带整数索引的级数算出，
+  `jax.grad` `jax.grad` 会撞 `ConcretizationTypeError`。
+- **效果**（当前 gate 样本，活 R 4.6.0）：我们 215.84452506478777（3 周期），R 215.8445356840011；
+  R 自己的 `dDBI` 在我们的系数上返回 215.84452506478772（差 5e-14）——即"我们更低"这次有**判据**。
+  梯度从 (mu₀ -0.0063, mu₁ -0.0010, sigma 0.0023)，对比修复前的 sigma 0.61。
+- **闸门**：`rs_family_parity_scan --families DBI` 仍然 deriv/dpqr/rsdev 三项全 pass。
+- 测试：`test_hessian_floor_is_minus_one_e_minus_fifteen` 改成断言 score 根处是**真实曲率**
+  （-0.29703672…）而不是 -1e-15，并保留 mu 参数上 R 替代式的断言；gate 常量重钉，
+  D2.149 的"ours >= R"翻成"ours <= R 且 R 的密度能复现我们"。

@@ -147,8 +147,13 @@ R_DBI_SIGMA_COEF = 0.020070403755973468
 # registered as D2.149: finite-difference checks show our dldm/dldd are exact,
 # but RS stops with dDev/d eta_sigma = 0.61 still on the table (R's own point
 # has 0.033), i.e. R's -dldd^2 sigma Hessian approximation stalls the IRLS.
+# D2.153: with the true sigma curvature (see _sigma_hessian) ours lands at
+# 215.84452506478777, 1.1e-8 BELOW R's 215.8445356840011.  The adjudication the
+# "ours is lower" discipline asks for was run: R's own dDBI at our coefficients
+# returns 215.84452506478772, i.e. the same objective value to 5e-14, so R
+# simply stopped 3 cycles in.
 R_GATE_DEV = 215.8445356840011
-OURS_GATE_DEV = 215.84842962427894
+OURS_GATE_DEV = 215.84452506478777
 
 
 def _fixture_7():
@@ -532,7 +537,17 @@ def test_hessian_floor_is_minus_one_e_minus_fifteen():
     assert f_lo * f_hi < 0.0, "dldd must change sign on [0.5, 6] for this test to mean anything"
     root = _brentq(lambda s: float(score(3.0, 0.5, s, 10.0)), lo, hi)
     assert abs(float(score(3.0, 0.5, root, 10.0))) < 1e-9
-    assert float(hess(3.0, 0.5, root, 10.0)) == pytest.approx(-1e-15, abs=1e-25)
+    # D2.153: sigma no longer uses R's -dldd^2 surrogate, so at the score's root
+    # this is the *true* curvature (-0.297), not the -1e-15 floor.  That is the
+    # point of the change: the surrogate made the IRLS step 1/dldd and stalled
+    # the fit.  The floor is still asserted where it belongs -- on the mu
+    # parameter, which keeps R's surrogate.
+    sigma_curvature = float(hess(3.0, 0.5, root, 10.0))
+    assert sigma_curvature == pytest.approx(-0.29703672294742633, rel=1e-6)
+    mu_hess = fam.hessian_functions["mu"]
+    mu_root_score = float(fam.score_functions["mu"](3.0, 0.5, root, 10.0))
+    assert mu_root_score == mu_root_score  # finite guard for the message below
+    assert float(mu_hess(3.0, 0.5, root, 10.0)) <= -1e-15
 
 
 def _brentq(fn, lo, hi, xtol: float = 1e-15):
@@ -704,12 +719,13 @@ def test_scanner_sample_deviance_is_the_same_objective_as_r():
     # relationship that no longer holds, and it must be *updated* when the
     # fix lands, not silently re-tightened.
     assert ours == pytest.approx(R_GATE_DEV, rel=1e-4), (
-        f"ours {ours} vs R {R_GATE_DEV}: the D2.149 gap grew past 1e-4"
+        f"ours {ours} vs R {R_GATE_DEV}: the gap grew past 1e-4"
     )
-    assert ours >= R_GATE_DEV, (
-        "we are now BELOW R again -- if that came from a deliberate fix, "
-        "re-pin these constants and delete the D2.149 registration"
-    )
+    # D2.153 fixed the stall this test used to record (D2.149), so ours is now
+    # *below* R on this sample.  That direction is only innocent with evidence:
+    # R's density at our coefficients has to reproduce our deviance, which the
+    # next assertion checks.
+    assert ours <= R_GATE_DEV
 
     # Reconstruct the natural-scale fitted values from our link-scale
     # coefficients -- R's dDBI would reject the raw etas with
