@@ -152,3 +152,10 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
   静默装进系统库——D2.158 实测）；
 - `build_toolchain_available()` 与那条 skip 的含义：缺 Rtools 是**环境事实**，不是 runner 缺陷，
   但发布验证仍然需要它（工件契约只有在能编译的机器上才被端到端跑到）。
+
+
+### D2.162 —— PE2 的 nu 网格穿过 0（1 条 + 2 个 subTest 转绿）
+
+`test_r_consistency_pe2` 的 nu 网格是 `linspace(-2, 2, 80)`，而 R 的 PE2 强制 `nu > 0`
+（"nu must be positive"），于是整个 dpqr 比较在 R 侧直接报错。两个 profile 的 nu 还完全一样
+（复制粘贴留下的）。改成 `0.2..2.0`（central）与 `0.05..4.0`（tail），顺带让两个 profile 真正不同。

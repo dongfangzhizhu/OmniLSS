@@ -28,7 +28,9 @@ class TestPE2Consistency(unittest.TestCase):
                 np.linspace(0.01, 10.0, 80),
                 np.linspace(0.5, 5.0, 80),
                 np.linspace(0.2, 2.0, 80),
-                np.linspace(-2.0, 2.0, 80),
+                # D2.162: R's PE2 enforces nu > 0 ("nu must be positive"), so a
+                # grid that runs through zero cannot be compared at all.
+                np.linspace(0.2, 2.0, 80),
                 np.linspace(0.02, 0.98, 80),
             ),
             (
@@ -36,7 +38,7 @@ class TestPE2Consistency(unittest.TestCase):
                 np.linspace(0.01, 10.0, 80),
                 np.linspace(0.5, 5.0, 80),
                 np.linspace(0.2, 2.0, 80),
-                np.linspace(-2.0, 2.0, 80),
+                np.linspace(0.05, 4.0, 80),
                 np.linspace(0.02, 0.98, 80),
             ),
         ):
