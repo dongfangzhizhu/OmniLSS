@@ -194,3 +194,26 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 事实上 ZABNB 是 `(mu, sigma, nu, tau)`：R 的 `dZABNB(x, mu, sigma, nu, tau = 0.1)` 里 `tau` 才是
 零质量参数（`dZABNB(0, ...)=tau`，实测 `tau=0.1` 给 0.1），我们的工厂也是这么命名的
 （BNB 已经占了 `nu`）。按四参数重写后 **d/p/q 全部与 R 对上**（rtol 1e-5）。
+
+
+---
+
+## 二十、全量复测（2026-11-02，8 分片，495 个测试文件）
+
+口径：495 个 `test_*.py` 按文件分 8 片并行（`tmp/d2187_shard*.log`），每片都跑到 `exit=N`。
+
+| 指标 | 数值 |
+|---|---|
+| 失败行（FAILED/SUBFAILED，去重前） | 24 |
+| 涉及的测试 | 12 个 |
+| 其中：并行 CPU 争用造成的假失败 | 2（`test_performance_benchmarks`，单跑 11 条全绿） |
+| 其中：工件过期造成的假失败 | 2（`test_symbol_coverage_tool`，源码一改 provenance 就变） |
+| 真正的缺陷/口径问题 | 20 → 已修 18（D2.162/D2.163/D2.165） |
+| **现在仍失败** | **2 个测试（4 个 subTest）：ST1/ST2 的 q 与 R 不一致**（D2.164） |
+
+对比 D2.129 的 75 条基线：**75 → 2**。
+
+已知的两类"假失败"要在读数字时剔除：
+1. 并行分片下的性能基准（`test_performance_benchmarks`）会因 CPU 争用超时，单跑稳定；
+2. `test_symbol_coverage_tool` 的 provenance 含 `python_surface_sha256` 与 `test_suite_sha256`，
+   任何源码/测试改动都会让它过期——改完必须 `generate_coverage_artifacts.py`。
