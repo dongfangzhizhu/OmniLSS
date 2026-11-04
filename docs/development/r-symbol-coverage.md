@@ -14,7 +14,7 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - **surface**: `missing` 391, `module_def` 226, `module_export` 96, `public_api` 191, `registry` 176
 - **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 163, `missing` 391
-- **parity**: `capability:unsupported` 251, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 170, `tested` 93, `unverified` 425
+- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 172, `tested` 93, `unverified` 425
 - **admission**: `blocked` 526, `exported_api` 85, `internal` 73, `not_available` 391, `production_safe` 5
 
 ## Per-package coverage
@@ -980,8 +980,8 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | pSN1 | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | pSN2 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | pSST | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| pST1 | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 1 |
-| pST2 | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 1 |
+| pST1 | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 2 |
+| pST2 | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 2 |
 | pST3 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | pST3C | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 1 |
 | pST4 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
@@ -1105,8 +1105,8 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | qSN1 | gamlss.dist | - | registry | experimental | capability:validated | blocked | 1 |
 | qSN2 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | qSST | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| qST1 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 1 |
-| qST2 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 1 |
+| qST1 | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 2 |
+| qST2 | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 2 |
 | qST3 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | qST3C | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | qST4 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |

@@ -178,10 +178,10 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 
 另有两条 `test_performance_benchmarks` 失败是**分片并行下的 CPU 争用**：单跑 11 条全绿，不修。
 
-### D2.164 —— 仍需处理（2 个测试，6 个 subTest，已登记）
+### D2.164 —— 最后一个红项（已交付，见 D2.166）
 
-- `test_r_consistency_st_compat` 的 **ST1/ST2**：密度已与 R 对上（改参照族后前两条断言过），
-  **q 仍偏差到 1e-5 之外**，需要核对 ST1/ST2 的分位数实现（R 的 qST1/qST2 各自不同）。
+- ~~`test_r_consistency_st_compat` 的 ST1/ST2：q 偏差到 1e-5 之外~~ → **不是缺陷**。
+  查明是 R 的 `uniroot` 默认容差噪声，判据已按 D2.32 既有登记口径修正（D2.166）。
 - ~~`test_r_consistency_zabnb`~~：**已查明是我们的测试只传了 3 个参数**（见 D2.165），族本身没问题。
 
 
@@ -196,6 +196,35 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 （BNB 已经占了 `nu`）。按四参数重写后 **d/p/q 全部与 R 对上**（rtol 1e-5）。
 
 
+### D2.166 —— ST1/ST2 的 q：不是缺陷，是判据用错了（最后 2 个测试转绿）
+
+`test_r_consistency_st_compat` 的 d、p 两条断言早与 R 对上，唯独 q 差 1e-5~3e-5
+（例 `-1.477803` vs `-1.477811`）。查 R 源码 `R/gamlss.dist/R/ST1.R:230` / `ST2.R:263`：
+`qST1`/`qST2` 是 `uniroot(h1, interval)` **用默认容差**求根
+（`.Machine$double.eps^0.25 = 1.22e-4`，x 尺度），而我们的 `_st_q` 用 `brentq(xtol=1e-10)`。
+
+**判据性测量**（把两个 q 都反代回 R 自己的 `pST1`/`pST2`，tail_skew 网格）：
+
+| | `max |p(q)−p|` | 均值 |
+|---|---|---|
+| 我们的 q，ST1 | **4.0e-10** | 5.3e-11 |
+| R 的 q，ST1 | 1.3e-06 | 5.2e-07 |
+| 我们的 q，ST2 | **4.1e-08** | 5.2e-09 |
+| R 的 q，ST2 | 7.3e-06 | 1.4e-06 |
+
+我们的 q 比 R 的 q **精确 2~3 个数量级**；那 1e-5 的差是 R 求解器的噪声，不是我们的缺陷。
+而且项目在 D2.32 就为 ST1/ST2 登记过这个口径（`test_q_uniroot_residual_families.py`
+的 `Q_FAMILIES` 里 `tol=1e-4`，并有 p∘q 往返断言），那条 `rtol=1e-5, atol=1e-7`
+比登记口径严了 1000 倍。
+
+**处理**（不是简单放宽容差，是换成更强判据）：
+1. q 与 R 的比较改用既有登记值 `atol=1e-4`（`rtol=0`）；
+2. **新增**反函数断言：把我们的 q 反代进 **R 的 p**，要求 `atol=1e-6` —— 这才是"q 正确"的直接证据；
+3. 顺手把方法名 `_run_against_st3c_reference` 改成 `_run_against_r_counterpart`（D2.163 已改参照族，旧名字在说谎）。
+
+验收：`test_r_consistency_st_compat.py` 4 passed（ST1/ST2/ST3/ST4，各 2 个 profile）。
+
+
 ---
 
 ## 二十、全量复测（2026-11-02，8 分片，495 个测试文件）
@@ -208,10 +237,10 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 | 涉及的测试 | 12 个 |
 | 其中：并行 CPU 争用造成的假失败 | 2（`test_performance_benchmarks`，单跑 11 条全绿） |
 | 其中：工件过期造成的假失败 | 2（`test_symbol_coverage_tool`，源码一改 provenance 就变） |
-| 真正的缺陷/口径问题 | 20 → 已修 18（D2.162/D2.163/D2.165） |
-| **现在仍失败** | **2 个测试（4 个 subTest）：ST1/ST2 的 q 与 R 不一致**（D2.164） |
+| 真正的缺陷/口径问题 | 20 → 已修 20（D2.162/D2.163/D2.165/D2.166） |
+| **现在仍失败** | **0**（最后 2 个由 D2.166 关掉） |
 
-对比 D2.129 的 75 条基线：**75 → 2**。
+对比 D2.129 的 75 条基线：**75 → 0**（2026-11-04 收口）。
 
 已知的两类"假失败"要在读数字时剔除：
 1. 并行分片下的性能基准（`test_performance_benchmarks`）会因 CPU 争用超时，单跑稳定；

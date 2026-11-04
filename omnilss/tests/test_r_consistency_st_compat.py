@@ -19,7 +19,7 @@ class TestSTCompatConsistency(unittest.TestCase):
         except RuntimeError as exc:
             raise unittest.SkipTest(f"RTestBus not available: {exc}")
 
-    def _run_against_st3c_reference(self, family_name: str, *, profile: str) -> None:
+    def _run_against_r_counterpart(self, family_name: str, *, profile: str) -> None:
         if profile == "central":
             x = np.linspace(-2.0, 2.0, 40)
             mu = np.linspace(-0.3, 0.3, 40)
@@ -58,27 +58,46 @@ class TestSTCompatConsistency(unittest.TestCase):
 
         np.testing.assert_allclose(py_d, r_d, rtol=1e-5, atol=1e-7)
         np.testing.assert_allclose(py_p, r_p, rtol=1e-5, atol=1e-7)
-        np.testing.assert_allclose(py_q, r_q, rtol=1e-5, atol=1e-7)
+
+        # D2.166: q is NOT held to 1e-5 against R.  R's qST1/qST2 are uniroot
+        # solves at the DEFAULT tolerance (.Machine$double.eps^0.25 = 1.2e-4 on
+        # the x scale), so their answer is itself only ~1e-5 accurate; our
+        # brentq uses xtol=1e-10.  Measured on this very grid, feeding both
+        # quantiles back through R's OWN pST1/pST2:
+        #   ST1: |p(q_ours)-p| max 4.0e-10, |p(q_R)-p| max 1.3e-06
+        #   ST2: |p(q_ours)-p| max 4.1e-08, |p(q_R)-p| max 7.3e-06
+        # i.e. ours is 2-3 orders of magnitude closer to the true inverse and
+        # the 1e-5 gap is R's solver noise, not our defect.  Use the tolerance
+        # already registered for these families in
+        # test_q_uniroot_residual_families.py (D2.32), then assert the real
+        # property: our q must invert R's p to high accuracy.
+        np.testing.assert_allclose(py_q, r_q, rtol=0.0, atol=1e-4)
+        r_p_at_ours_q = self.bus.eval_family(
+            reference, "p",
+            {"q": np.asarray(py_q).tolist(), "mu": mu.tolist(),
+             "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()},
+        )
+        np.testing.assert_allclose(r_p_at_ours_q, p, rtol=0.0, atol=1e-6)
 
     def test_st1(self) -> None:
         for profile in ("central", "tail_skew"):
             with self.subTest(profile=profile):
-                self._run_against_st3c_reference("ST1", profile=profile)
+                self._run_against_r_counterpart("ST1", profile=profile)
 
     def test_st2(self) -> None:
         for profile in ("central", "tail_skew"):
             with self.subTest(profile=profile):
-                self._run_against_st3c_reference("ST2", profile=profile)
+                self._run_against_r_counterpart("ST2", profile=profile)
 
     def test_st3(self) -> None:
         for profile in ("central", "tail_skew"):
             with self.subTest(profile=profile):
-                self._run_against_st3c_reference("ST3", profile=profile)
+                self._run_against_r_counterpart("ST3", profile=profile)
 
     def test_st4(self) -> None:
         for profile in ("central", "tail_skew"):
             with self.subTest(profile=profile):
-                self._run_against_st3c_reference("ST4", profile=profile)
+                self._run_against_r_counterpart("ST4", profile=profile)
 
 
 if __name__ == "__main__":
