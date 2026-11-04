@@ -242,7 +242,39 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 
 对比 D2.129 的 75 条基线：**75 → 0**（2026-11-04 收口）。
 
+**最终验证**（2026-11-04，`tmp/d2206_regression.log`）：串行跑 14 个文件——上次全量 24 个
+失败行涉及的 9 个文件，加上 ST 全集（`st1234` / `st1_st2_parity` /
+`q_uniroot_residual_families`）与覆盖工件测试——**11m30s、`exit=0`、全绿**。
+特意串行而非分片，就是为了不让性能基准再因 CPU 争用产生假失败。
+
 已知的两类"假失败"要在读数字时剔除：
 1. 并行分片下的性能基准（`test_performance_benchmarks`）会因 CPU 争用超时，单跑稳定；
 2. `test_symbol_coverage_tool` 的 provenance 含 `python_surface_sha256` 与 `test_suite_sha256`，
    任何源码/测试改动都会让它过期——改完必须 `generate_coverage_artifacts.py`。
+
+
+---
+
+## 二十一、复测与读表口径（维护手册，2026-11-04 固化）
+
+**当前状态：D2.129 的 75 条基线已归零。** 下面这套口径是拿到这个数字的方法，
+下一次动大批测试前直接照做，别再重踩。
+
+1. **全量复测分 8 片**（495 个 `test_*.py`，每片约 62 个）：4 分片跑两次都被后台回收
+   （日志停在 81~99%），8 分片一次跑完。分片越细越不容易被回收。
+   日志写 `tmp/d2187_shard*.log`，每片末尾追加 `exit=N` 才算跑完。
+2. **读数字时先剔除两类假失败**：
+   - 并行分片下的 `test_performance_benchmarks`（CPU 争用超时）——单跑复核；
+   - `test_symbol_coverage_tool`（工件 provenance 过期）——先跑
+     `tools/generate_coverage_artifacts.py` 再复核。
+   这两类不算缺陷，也不计入"剩余数"。
+3. **改任何源码或测试后**都要重新生成覆盖工件，否则上面第 2 类假失败必现。
+4. **探针网格必须落在 R 的合法域内**（PE2 `nu>0`、GB1 `0<sigma<1`、GPO `sigma>0`、
+   ST `nu>0`），且**参数个数/顺序照 R 的签名核对**（ZABNB 是四参数）。
+   按我们的族名调 R 会失败——`RTestBus` 已内置别名表（DPO1→DPO 等）。
+5. **"我们与 R 差一点点"时先别改容差**：把两边的答案都反代回同一个目标函数
+   （q 反代进 p、系数反代回密度），谁的残差小谁才是对的。R 的 `uniroot` /
+   `integrate` / `optim` 默认容差常才是偏差来源；项目往往已在
+   `test_q_uniroot_residual_families.py` 这类文件里登记过 slack，先查登记值。
+6. **每条修正都要留判据**：活 R 复测的数字、R 源码行号、或"接口不存在"的直接证据，
+   写进注释和本节对应的 D2.x 条目；只改数字不做测量，下次还会重踩。
