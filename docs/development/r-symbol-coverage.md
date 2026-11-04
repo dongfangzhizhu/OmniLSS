@@ -14,7 +14,7 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - **surface**: `missing` 391, `module_def` 226, `module_export` 96, `public_api` 191, `registry` 176
 - **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 163, `missing` 391
-- **parity**: `capability:unsupported` 252, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 169, `tested` 93, `unverified` 425
+- **parity**: `capability:unsupported` 251, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 170, `tested` 93, `unverified` 425
 - **admission**: `blocked` 526, `exported_api` 85, `internal` 73, `not_available` 391, `production_safe` 5
 
 ## Per-package coverage
@@ -626,7 +626,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | BEZI | gamlss.dist | BEZI | public_api | experimental | r_consistency_test | blocked | 10 |
 | BEo | gamlss.dist | BEo | public_api | implemented | r_consistency_test | exported_api | 4 |
 | BI | gamlss.dist | BI | public_api | experimental | r_consistency_test | blocked | 25 |
-| BNB | gamlss.dist | BNB | public_api | experimental | r_consistency_test | blocked | 13 |
+| BNB | gamlss.dist | BNB | public_api | experimental | r_consistency_test | blocked | 14 |
 | DBI | gamlss.dist | DBI | public_api | experimental | r_consistency_test | blocked | 13 |
 | DBURR12 | gamlss.dist | DBURR12 | public_api | experimental | r_consistency_test | blocked | 5 |
 | DEL | gamlss.dist | DEL | public_api | experimental | r_consistency_test | blocked | 11 |
@@ -860,7 +860,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | dYULE | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | dZABB | gamlss.dist | dZABB | module_def | experimental | capability:unsupported | blocked | 2 |
 | dZABI | gamlss.dist | - | registry | experimental | capability:validated | blocked | 3 |
-| dZABNB | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
+| dZABNB | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 1 |
 | dZAGA | gamlss.dist | dZAGA | module_def | experimental | golden:validated | blocked | 1 |
 | dZAIG | gamlss.dist | dZAIG | module_def | experimental | capability:unsupported | blocked | 1 |
 | dZALG | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |

@@ -182,5 +182,15 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 
 - `test_r_consistency_st_compat` 的 **ST1/ST2**：密度已与 R 对上（改参照族后前两条断言过），
   **q 仍偏差到 1e-5 之外**，需要核对 ST1/ST2 的分位数实现（R 的 qST1/qST2 各自不同）。
-- `test_r_consistency_zabnb`：`dZABNB(0, mu=0.5, sigma=0.2, nu=0.1)` R 给 0.1（= nu， hurdle 质量），
-  我们给 0.0152 —— 零点的 hurdle 概率没有落在 nu 上，需要核对 ZABNB 的零膨胀参数化。
+- ~~`test_r_consistency_zabnb`~~：**已查明是我们的测试只传了 3 个参数**（见 D2.165），族本身没问题。
+
+
+### D2.165 —— ZABNB 是四参数族（1 条 + 2 个 subTest 转绿）
+
+`test_r_consistency_zabnb` 的循环写成 `for profile_name, x, mu, sigma, nu, nu, p in (...)`——
+**`nu` 出现两次**（后一个覆盖前一个），于是只往族里传了三个参数，我们那边直接
+`TypeError: _bnb_log_pdf() missing 1 required positional argument: 'nu'`，从来没比较过任何数字。
+
+事实上 ZABNB 是 `(mu, sigma, nu, tau)`：R 的 `dZABNB(x, mu, sigma, nu, tau = 0.1)` 里 `tau` 才是
+零质量参数（`dZABNB(0, ...)=tau`，实测 `tau=0.1` 给 0.1），我们的工厂也是这么命名的
+（BNB 已经占了 `nu`）。按四参数重写后 **d/p/q 全部与 R 对上**（rtol 1e-5）。
