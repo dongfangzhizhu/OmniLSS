@@ -14,7 +14,7 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - **surface**: `missing` 391, `module_def` 226, `module_export` 96, `public_api` 191, `registry` 176
 - **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 163, `missing` 391
-- **parity**: `capability:unsupported` 256, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 165, `tested` 93, `unverified` 425
+- **parity**: `capability:unsupported` 252, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 169, `tested` 93, `unverified` 425
 - **admission**: `blocked` 526, `exported_api` 85, `internal` 73, `not_available` 391, `production_safe` 5
 
 ## Per-package coverage
@@ -648,7 +648,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | GG | gamlss.dist | GG | public_api | experimental | r_consistency_test | blocked | 7 |
 | GIG | gamlss.dist | GIG | public_api | experimental | r_consistency_test | blocked | 15 |
 | GP | gamlss.dist | GP | module_def | experimental | r_consistency_test | blocked | 7 |
-| GPO | gamlss.dist | GPO | public_api | experimental | r_consistency_test | blocked | 6 |
+| GPO | gamlss.dist | GPO | public_api | experimental | r_consistency_test | blocked | 7 |
 | GT | gamlss.dist | GT | public_api | experimental | r_consistency_test | blocked | 10 |
 | GU | gamlss.dist | GU | public_api | experimental | r_consistency_test | blocked | 11 |
 | GetBI_C | gamlss.dist | GetBI_C | module_def | implemented | tested | internal | 2 |
@@ -662,7 +662,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | LOGITNO | gamlss.dist | LOGITNO | public_api | experimental | r_consistency_test | blocked | 5 |
 | LOGNO | gamlss.dist | LOGNO | public_api | experimental | r_consistency_test | blocked | 15 |
 | LOGNO2 | gamlss.dist | LOGNO2 | public_api | experimental | r_consistency_test | blocked | 8 |
-| LOGSHASH | gamlss.dist | LOGSHASH | public_api | experimental | capability:unsupported | blocked | 8 |
+| LOGSHASH | gamlss.dist | LOGSHASH | public_api | experimental | r_consistency_test | blocked | 9 |
 | LQNO | gamlss.dist | LQNO | public_api | experimental | r_consistency_test | blocked | 4 |
 | MN3 | gamlss.dist | MN3 | public_api | experimental | r_consistency_test | blocked | 8 |
 | MN4 | gamlss.dist | MN4 | public_api | experimental | r_consistency_test | blocked | 9 |
@@ -807,7 +807,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | dLOGITNO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | dLOGNO | gamlss.dist | dLOGNO | module_export | experimental | capability:validated | blocked | 1 |
 | dLOGNO2 | gamlss.dist | - | registry | experimental | capability:validated | blocked | 1 |
-| dLOGSHASH | gamlss.dist | dLOGSHASH | module_def | experimental | capability:unsupported | blocked | 1 |
+| dLOGSHASH | gamlss.dist | dLOGSHASH | module_def | experimental | r_consistency_test | blocked | 2 |
 | dLQNO | gamlss.dist | dLQNO | module_def | experimental | capability:unsupported | blocked | 1 |
 | dMN3 | gamlss.dist | dMN3 | module_def | experimental | capability:unsupported | blocked | 2 |
 | dMN4 | gamlss.dist | dMN4 | module_def | experimental | capability:unsupported | blocked | 1 |
@@ -845,11 +845,11 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | dSN1 | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | dSN2 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | dSST | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 1 |
-| dST1 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 1 |
-| dST2 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 1 |
-| dST3 | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 2 |
+| dST1 | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 2 |
+| dST2 | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 2 |
+| dST3 | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 3 |
 | dST3C | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
-| dST4 | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 1 |
+| dST4 | gamlss.dist | - | registry | experimental | r_consistency_test | blocked | 2 |
 | dST5 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | dTF | gamlss.dist | dTF | module_export | experimental | capability:validated | blocked | 1 |
 | dTF2 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 1 |

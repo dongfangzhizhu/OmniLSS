@@ -159,3 +159,28 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 `test_r_consistency_pe2` 的 nu 网格是 `linspace(-2, 2, 80)`，而 R 的 PE2 强制 `nu > 0`
 （"nu must be positive"），于是整个 dpqr 比较在 R 侧直接报错。两个 profile 的 nu 还完全一样
 （复制粘贴留下的）。改成 `0.2..2.0`（central）与 `0.05..4.0`（tail），顺带让两个 profile 真正不同。
+
+
+### D2.163 —— 全量复测暴露的"参数网格越界 + R 名/接口"簇（7 个文件转绿，16 个 subTest）
+
+本轮终于跑完 8 分片全量（495 文件，`tmp/d2187_shard*.log`），失败集中在同一个模式：
+**探针网格落在 R 的合法域之外**，以及**按我们的名字去调 R**。
+
+| 文件 | R 的约束 | 处理 |
+|---|---|---|
+| `test_r_consistency_pe2` | `nu > 0` | nu 网格 −2..2 → 0.2..2.0 / 0.05..4.0（D2.162） |
+| `test_r_consistency_gb1` | `0 < sigma < 1` | sigma 0.2..2.0 → 0.2..0.9 / 0.1..0.5 |
+| `test_r_consistency_st_compat` | `nu > 0`；且 ST1/2/4 **不是** ST3C | nu 网格改正；参照族由硬编码 `ST3C` 改为"族自身"（ST4 因此转绿） |
+| `test_r_consistency_generalisedpoisson` | `sigma > 0` | sigma −0.5..0.5 → 0.3..3.0 / 0.1..0.6 |
+| `test_r_consistency_dpo1` | R 只导出 `DPO` | `RTestBus` 增加 R 名别名表（DPO1→DPO、GENERALISEDPOISSON→GPO、IGA→IG、DELAPORT→DEL） |
+| `test_r_consistency_logshasho` | R 无 `dLOGSHASH(O)` | 改成"断言这个缺失"，R 哪天补上就会红并提醒补真比较 |
+| `eval_family.R` | —— | 把函数解析挪进 `tryCatch`：解析失败现在返回 `{"error": "no function 'dDPO1' in gamlss.dist"}`，而不是脚本直接 `exit 1` 让 Python 只看到光秃秃的 `CalledProcessError` |
+
+另有两条 `test_performance_benchmarks` 失败是**分片并行下的 CPU 争用**：单跑 11 条全绿，不修。
+
+### D2.164 —— 仍需处理（2 个测试，6 个 subTest，已登记）
+
+- `test_r_consistency_st_compat` 的 **ST1/ST2**：密度已与 R 对上（改参照族后前两条断言过），
+  **q 仍偏差到 1e-5 之外**，需要核对 ST1/ST2 的分位数实现（R 的 qST1/qST2 各自不同）。
+- `test_r_consistency_zabnb`：`dZABNB(0, mu=0.5, sigma=0.2, nu=0.1)` R 给 0.1（= nu， hurdle 质量），
+  我们给 0.0152 —— 零点的 hurdle 概率没有落在 nu 上，需要核对 ZABNB 的零膨胀参数化。

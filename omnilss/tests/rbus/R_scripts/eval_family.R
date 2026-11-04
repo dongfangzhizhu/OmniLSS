@@ -55,18 +55,24 @@ resolve_gamlss_dist_function <- function(name) {
 }
 
 # Construct the R function name, e.g. "dNO", "pPO"
-target_func <- if (use_gdev) {
+# D2.163: resolve the function inside the tryCatch below.  Doing it outside made
+# a missing symbol kill the whole script (exit 1, no JSON), so the Python side
+# reported a bare CalledProcessError instead of "no function 'dDPO1' in
+# gamlss.dist" -- which is exactly the message that tells you the family has a
+# different R name.
+target_func <- tryCatch(if (use_gdev) {
   fam <- resolve_gamlss_dist_function(family_name)
   fam <- fam()
   if (is.null(fam$G.dev.incr)) stop("no G.dev.incr slot")
   fam$G.dev.incr
 } else {
   resolve_gamlss_dist_function(paste0(func_type, family_name))
-}
+}, error = function(e) e)
 
 # Invoke the function element-wise so that families with imperfect vectorisation
 # in gamlss.dist still produce the scalar reference values we want.
 result <- tryCatch({
+  if (inherits(target_func, "error")) stop(conditionMessage(target_func))
   arg_lengths <- vapply(func_args, length, integer(1))
   target_len <- max(arg_lengths)
   normalized_args <- lapply(func_args, function(arg) {

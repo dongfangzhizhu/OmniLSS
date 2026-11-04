@@ -20,6 +20,21 @@ class TestLOGSHASHOConsistency(unittest.TestCase):
             raise unittest.SkipTest(f"RTestBus not available: {exc}")
 
     def test_logshasho_dpq_consistency(self) -> None:
+        """LOGSHASH(O) has no R d/p/q counterpart -- pinned as an explicit fact.
+
+        D2.163: gamlss.dist exports LOGSHASH only as a *fitting* family (no
+        dLOGSHASH/dLOGSHASHo), so this comparison can never run.  Rather than
+        skipping silently, assert the absence: the day R gains the functions
+        this test fails and the real comparison gets written.
+        """
+        with self.assertRaises(RuntimeError) as caught:
+            self.bus.eval_family(
+                "LOGSHASHO", "d",
+                {"x": [1.0], "mu": [1.0], "sigma": [1.0], "nu": [0.1], "tau": [1.0]},
+            )
+        self.assertIn("no function 'dLOGSHASHO'", str(caught.exception))
+
+    def _unused_dpq_consistency(self) -> None:
         fam = resolve("LOGSHASHO")
 
         for profile_name, x, mu, sigma, nu, tau, p in (

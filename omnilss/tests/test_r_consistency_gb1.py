@@ -27,7 +27,10 @@ class TestGB1Consistency(unittest.TestCase):
                 "central",
                 np.linspace(0.01, 0.99, 80),
                 np.linspace(0.1, 0.9, 80),
-                np.linspace(0.2, 2.0, 80),
+                # D2.163: R's GB1 requires 0 < sigma < 1 ("sigma must be
+                # between 0 and 1"); the grid used to run to 2.0, so every probe
+                # errored on the R side before any number was compared.
+                np.linspace(0.2, 0.9, 80),
                 np.linspace(0.1, 0.9, 80),
                 np.linspace(0.1, 5.0, 80),
                 np.linspace(0.02, 0.98, 80),
@@ -36,7 +39,7 @@ class TestGB1Consistency(unittest.TestCase):
                 "tail",
                 np.linspace(0.01, 0.99, 80),
                 np.linspace(0.1, 0.9, 80),
-                np.linspace(0.2, 2.0, 80),
+                np.linspace(0.1, 0.5, 80),
                 np.linspace(0.1, 0.9, 80),
                 np.linspace(0.1, 5.0, 80),
                 np.linspace(0.02, 0.98, 80),

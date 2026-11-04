@@ -17,6 +17,19 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
+#: Registry names whose gamlss.dist counterpart is spelled differently.
+#: D2.163: tests kept calling eval_family("DPO1", ...) and getting a bare
+#: CalledProcessError, because gamlss.dist exports no dDPO1 -- our DPO1 shares
+#: DPO's kernels.  The table mirrors tools/rs_family_parity_scan (which cannot
+#: be imported here: tools/ is not on sys.path for the test run).
+_R_FAMILY_ALIASES = {
+    "DPO1": "DPO",
+    "GENERALISEDPOISSON": "GPO",
+    "IGA": "IG",
+    "DELAPORT": "DEL",
+}
+
+
 class RTestBus:
     """Invokes R scripts externally to validate JAX computational consistency."""
 
@@ -129,7 +142,10 @@ class RTestBus:
             args: dictionary of arguments (e.g. {"x": [...], "mu": [...], "sigma": [...]})
         """
         result = self._run_script(
-            "eval_family.R", family=family, type=func_type, args=args
+            "eval_family.R",
+            family=_R_FAMILY_ALIASES.get(family, family),
+            type=func_type,
+            args=args,
         )
         if "error" in result:
             raise RuntimeError(f"R Error: {result['error']}")

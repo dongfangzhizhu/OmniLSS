@@ -24,23 +24,32 @@ class TestSTCompatConsistency(unittest.TestCase):
             x = np.linspace(-2.0, 2.0, 40)
             mu = np.linspace(-0.3, 0.3, 40)
             sigma = np.linspace(0.5, 1.5, 40)
-            nu = np.linspace(-0.4, 0.4, 40)
+            # D2.163: R's ST1..ST4 require nu > 0 ("nu must be positive"); a
+            # grid through zero made every probe fail on the R side.
+            nu = np.linspace(0.2, 2.0, 40)
             tau = np.linspace(2.2, 6.0, 40)
             p = np.linspace(0.05, 0.95, 40)
         elif profile == "tail_skew":
             x = np.linspace(-5.0, 4.5, 40)
             mu = np.linspace(-1.0, 1.0, 40)
             sigma = np.linspace(0.2, 2.0, 40)
-            nu = np.linspace(-1.0, 1.0, 40)
+            nu = np.linspace(0.2, 3.0, 40)
             tau = np.linspace(2.05, 15.0, 40)
             p = np.linspace(0.01, 0.99, 40)
         else:
             raise ValueError(f"Unknown profile: {profile}")
 
-        # Compatibility phase: ST1..4 currently route through ST3C kernel.
-        r_d = self.bus.eval_family("ST3C", "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
-        r_p = self.bus.eval_family("ST3C", "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
-        r_q = self.bus.eval_family("ST3C", "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
+        # D2.163: compare each family against ITS R counterpart.  The reference
+        # used to be hardcoded to ST3C on the assumption that ST1..ST4 "route
+        # through ST3C" -- they do not; ST1/ST2/ST4 are different
+        # parameterisations, which is why their densities differed from R's
+        # ST3C by up to 89% while ST3 (the one that really is ST3C) matched.
+        # gamlss.dist exports dST1/dST2/dST3/dST4, so the reference is the
+        # family itself.
+        reference = "ST3C" if family_name == "ST3" else family_name
+        r_d = self.bus.eval_family(reference, "d", {"x": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
+        r_p = self.bus.eval_family(reference, "p", {"q": x.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
+        r_q = self.bus.eval_family(reference, "q", {"p": p.tolist(), "mu": mu.tolist(), "sigma": sigma.tolist(), "nu": nu.tolist(), "tau": tau.tolist()})
 
         fam = resolve(family_name)
         py_d = np.asarray(fam.d(jnp.array(x), jnp.array(mu), jnp.array(sigma), jnp.array(nu), jnp.array(tau)))

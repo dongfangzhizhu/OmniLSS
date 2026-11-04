@@ -27,14 +27,16 @@ class TestGENERALISEDPOISSONConsistency(unittest.TestCase):
                 "central",
                 np.arange(0, 50),
                 np.linspace(0.5, 10.0, 50),
-                np.linspace(-0.5, 0.5, 50),
+                # D2.163: R's GPO requires sigma > 0 ("sigma must be greater
+                # than 0"); the grid straddled zero, so every probe errored.
+                np.linspace(0.3, 3.0, 50),
                 np.linspace(0.02, 0.98, 50),
             ),
             (
                 "tail",
                 np.arange(0, 50),
                 np.linspace(0.5, 10.0, 50),
-                np.linspace(-0.5, 0.5, 50),
+                np.linspace(0.1, 0.6, 50),
                 np.linspace(0.02, 0.98, 50),
             ),
         ):
