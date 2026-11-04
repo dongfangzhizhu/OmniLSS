@@ -1,4 +1,8 @@
-[object Object]
+# OmniLSS 全项目开发计划（总纲）
+
+> 单一执行计划与阶段状态台账。会话开始时应先在本文件定位当前阶段/任务，再读
+> `.workbuddy/memory/` 的日志与纪律条目。全面审核结论与后续完整计划见第二十二节
+> 及 `docs/development/full-project-audit-2026-11-05.md`。
 
 ### D2.150 —— PIG 的 pmf 上限与 ps 的默认值口径（2 条转绿）
 
@@ -278,3 +282,160 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
    `test_q_uniroot_residual_families.py` 这类文件里登记过 slack，先查登记值。
 6. **每条修正都要留判据**：活 R 复测的数字、R 源码行号、或"接口不存在"的直接证据，
    写进注释和本节对应的 D2.x 条目；只改数字不做测量，下次还会重踩。
+
+
+---
+
+## 二十二、全面审核结论与后续完整开发计划（2026-11-05）
+
+> 本节是 D2.167 之后的执行总纲，取代 `overall-development-plan-2026-09-24.md`（Phase 0–7）
+> 与 `full-gamlss-migration-audit-and-roadmap-2026-09-11.md`（P0–P5）中已过时的完成率。
+> **详细审核报告与证据台账**：`docs/development/full-project-audit-2026-11-05.md`。
+> **回答「R 版 gamlss 功能是否全部实现」：否。** 146 个分布族数值内核 + RS/CG 拟合对活 R
+> 达到「三闸 0 fail」的实验级 parity，但生产可用范围仅 `NO` 一族；平滑项、family/link 框架、
+> 8 个周边 R 包、在线/多元能力大面积缺席。
+
+### 22.1 现状基线（审核复算，非引用旧文档）
+
+| 维度 | 数值 | 来源 |
+|---|---|---|
+| R 导出符号 / 范围内 | 1080 / 1036 | `r-symbol-coverage.json`（`--check` 最新） |
+| Python surface matched / missing | 689 / **391** | 同上 |
+| parity `unverified` / admission `blocked` | 425 / 526 | 同上 |
+| `golden:validated` / `production_safe` 符号 | 34 / 5 | 同上 |
+| 注册族 `implemented`/`experimental`/`compat_alias`/`placeholder` | 1 / 125 / 20 / 0 | 运行时 `capability_matrix()` |
+| 测试文件 / 失败数 | 497 / 0（2026-11-04 收口） | 第二十/二十一节 |
+| 三闸全族扫描 | deriv 145/146、dpqr 121/146、rsdev 82/146，**0 fail** | `HANDOFF.md` D2.129 |
+| 覆盖 ratchet | `result: OK`，无 regressions | `coverage_diff_report.py` |
+
+**当前专项状态**：Release 1（Phase 0–4）目标已达成；D2.129 的 75 条基线归零。
+但「全量 R GAMLSS 迁移」仍是**未完成**——按证据层级而非注册数量管理。
+
+### 22.2 完成定义（四层证据，任何族/功能升级都必须逐级满足）
+
+1. **Surface**：可导入、可解析，参数名/link/support/元数据正确；
+2. **Kernel**：真实公式实现，无 placeholder、无同名克隆、无静默近似、参数化正确；
+3. **Parity**：固定 R 版本/参数点/seed/dtype 下，d/p/q/r 或 API 对照活 R 通过；
+4. **Admission**：目标 method、fit、newdata、序列化、服务路由中通过 fail-closed 门禁。
+
+`implemented` = 达 production-safe；`experimental` 不得自动进生产路由；`compat_alias`
+不计独立 R family；`placeholder` 必须显式拒绝。每族/每功能需记录
+`R 文件 → R 符号 → Python 符号 → 四层状态 → 证据 commit`。
+
+### 22.3 优先级原则（本轮最重要的判断）
+
+**先「升证据」，再「扩表面」。** 425 个 `unverified`、526 个 `blocked`、125 个 `experimental`
+是 1.0 之前的真实工作量；继续新增 surface 而不补证据，只会放大「公开表面与 validated 证据的距离」。
+
+---
+
+### P0：证据止血与工程门禁（硬阻塞，先于一切扩面）
+
+| 任务 | 内容 | 验收 |
+|---|---|---|
+| P0-1 | 修 `.devcontainer/*.json` 引用的缺失 `.codex/setup.sh`（P0-08 仍开放） | CPU/GPU devcontainer 从零构建成功 |
+| P0-2 | 校准旧文档的过时措辞：`migration-progress.md` 的 63%/等价、`gamlss-core-migration-audit-2026-05-22.json` 等 | 文档只按 validated 证据声明；标注 `gamlss2` out-of-scope |
+| P0-3 | `MIXED` 名称/语义对齐（P0-03）：实现 `RS(n1)→CG(n2)` 兼容模式，或改名并隔离实验路由 | 与 R `mixed` 数值/语义对照通过；不破坏既有 MIXED 回归 |
+| P0-4 | CI 增 lint/type 步骤；全库 8 分片后台复测固定为发布门禁 | `git diff --check`、分层 collection 零错误、性能基准单跑复核 |
+| P0-5 | 逐族独立播种 + 一次性全族流重登记（D2.47 后 `ZIPIG`/`ZINBI` 登记数字已失效） | 登记表数字与全族流一致；子集运行不再产生假警报 |
+| P0-6 | 覆盖工件生成器持续与源码同步；`gamlss2` out-of-scope 在每份报告显式标注 | `generate_coverage_artifacts.py --date` + `coverage_diff_report.py → OK` |
+
+### P1：高频族证据晋级（把 125 个 experimental 变 validated）
+
+- 从 `_R_CONSISTENCY_EVIDENCE`（39 族）与三闸全绿族中，冻结一组高频族
+  （NO/GA/PO/BI/WEI/TF/NBI/ZIP/BCCG/BCPE/BCT/BE/IG/LOGNO/...）。
+- 每族补齐：R source map → d/p/q/r 固定点/边界/单调性/归一化/upper-tail/log-p →
+  RS fit golden（系数/fitted/deviance/迭代/收敛原因）→ newdata 预测 → 序列化往返 → 服务 admission。
+- **验收**：`implementation_status` 升 `implemented`、`production_safe=validated`、
+  `parity` 从 `capability:validated` 升 `golden:validated`、`admission` 从 `blocked` 升 `production_safe`。
+- 目标：M1 前把 `golden:validated` 从 34、production_safe 从 5 提升一个数量级；
+  无 R 结果的族只能标 `smoke-only`。
+
+### P2：收敛 / 拟合轨迹缺陷收口
+
+- 逐族处理 `rsdev` 的 36 个 warn、`dpqr` 的 25 个 skip（标记「R 侧无参照」并清单化，不硬凑）、
+  `deriv` 的 1 个 skip（GT，探针 >180s）。
+- 挂账缺陷：BCTO deriv、BCT tau 交叉块（custom JVP 或等 JAX 补规则）、SHASH 密度积分、
+  NET clamp、PARETO1o 幽灵 score、JSU 拟合轨迹、LNO intercept-only、EXGAUS q uniroot 残差。
+- 纪律：失败必须分类（R 密度缺陷/发散/地板/早停/我们更优），不得用 skip 隐藏；
+  「我们更低」要有 R 密度复现判据。
+
+### P3：核心 API 与平滑项（用户价值最高的结构性缺口）
+
+- `*.fix` / `contrasts` 从「仅 RS」扩展到 CG/MIXED/joint；分类协变量预测重建（D2.136）；
+  `predict.gamlss` 的 `type="terms"` / `se.fit`；顶层 `predictAll` 导出。
+- **family/link 构造体系**：`as.family`/`gamlss.family`/`checklink`/`show.link`/
+  `make.link.gamlss`/`gen.Family`/`Family.*`（gamlss-python 已具备，OmniLSS 全缺）。
+- **平滑项**：按「一修回收最多」排序补 `pbm/pbz/pbo/pbp/pbc/pvc/cy/fp/bfp/re/ri/pp/polyS/pcat/scs`
+  与真 LOESS/nlme 后端；每个 smoother 过 parsing/basis/penalty/lambda/EDF/fit/newdata/R golden/admission 八项。
+- 先冻结 family/link/formula/prediction 契约，再逐个准入，避免「已有 pb/ps/cs」被误推为全部完成。
+
+### P4：周边 R 包（按用户价值排序，可并行）
+
+1. `gamlss.cens` + `gamlss.tr`（删失/截断，建模刚需）；
+2. `gamlss.mx` + `gamlss.add`（有限混合/加性项：GA/BA/NN/FK/TR）；
+3. `gamlss.spatial` + `gamlss.foreach` + `gamlss.prepdata`；
+4. `gamlss.ggplots` 数据层与 `gamlss.data`（外观不要求像素一致，优先级最低）。
+- `gamlss2` 维持 out-of-scope：单独规格/版本/证据，不阻塞 1.0。
+
+### P5：ondil 在线层（独立轨道，独立发布，不混入 R 完成率）
+
+- 先定义 OmniLSS↔ondil 共享 distribution contract（参数/support/link/score/信息矩阵）。
+- 再实现在线估计器契约（`partial_fit`/`update`/forget factor）、流式 golden、chunk 顺序不变性、
+  warm-start、漂移/缺失值/并发、性能与内存基线。
+- **多元分布**（MVN/MVT 的 Cholesky/LowRank/ModifiedCholesky）作为独立能力面补齐。
+- L1 R golden 只证明 kernel，不证明在线 estimator 正确性——独立验收。
+
+### P6：JAX 内核与 GPU 性能（一致性 gate 之后才做）
+
+- `bessel.py` 的 `log_bessel_kv` 去 `pure_callback`：JAX 原生实现 + custom JVP。
+  双验收：对数网格（nu −5..20、x 1e-8..1e3）逐点 1e-12 相对误差 + Sichel 拟合周期耗时下降。
+- `debianjaxgpu`（WSL GPU）验证：GPU/CPU parity、RS_JAX 六族扩面、cross-over 阈值基准、
+  cold/warm 区分。性能只能在一致性 gate 通过之后运行。
+- 减少 SICHEL 族 `lax.scan` 固定 100000 步的动态上界（`while_loop` 范式）。
+
+---
+
+### 22.4 里程碑与发布门槛
+
+| 里程碑 | 门槛 | 建议版本 |
+|---|---|---|
+| M0 | P0 全清；覆盖工件可重生成；分层 collection 零错误；devcontainer 可用 | 0.4.x |
+| M1 | 高频族全部 Surface+Kernel+DPQR parity，`golden:validated` 数量级提升；无 placeholder 进入目标范围 | 0.5.0 |
+| M2 | P2 收敛缺陷分类完毕；RS/CG/MIXED 分层 parity；fit/newdata 证据齐全；失败可解释 | 0.6.0 |
+| M3 | P3 核心 API + family/link 框架 + 准入平滑项闭环；`*.fix`/`contrasts` 全路由 | 0.9.0 |
+| M4 | P4 周边包（至少 cens/tr/mx/add）+ 服务 + 文档/教程 + 发布 artifact 同步 | 1.0.0 |
+| 独立 | P5 在线层、P6 性能/GPU，各自独立门禁与发布 | 并行 |
+
+每个里程碑必须有：固定 manifest（R/Python/JAX/NumPy/SciPy/x64 版本、源码 hash、seed、容差、命令）、
+`--require-r`、无隐性 skip、coverage diff、目标/相关 suite 与 collection 日志、可复现提交。
+
+### 22.5 立即执行的前十五项（backlog，按依赖排序）
+
+- [ ] P0-1 修 `.codex/setup.sh` / devcontainer postCreate
+- [ ] P0-2 校准全部旧文档的 63%/等价措辞，标注 146/125/20/1 与 0 placeholder
+- [ ] P0-3 `MIXED = RS(n1)→CG(n2)` 兼容模式或改名隔离
+- [ ] P0-4 CI 加 lint/type + 8 分片发布门禁
+- [ ] P0-5 逐族独立播种 + 全族流一次性重登记 `ZIPIG`/`ZINBI` 等数字
+- [ ] P0-6 每份覆盖报告显式标注 `gamlss2` out-of-scope
+- [ ] P1-1 冻结高频族清单（从 39 个 r_consistency validated 族起步）
+- [ ] P1-2 为高频族建立统一 RS fit golden（含收敛诊断 schema）与 newdata/序列化证据
+- [ ] P2-1 逐族归类 36 个 rsdev warn / 25 个 dpqr skip / 1 个 deriv skip
+- [ ] P2-2 修 BCTO deriv、SHASH 积分、NET clamp、JSU 轨迹、LNO intercept-only
+- [ ] P3-1 冻结 family/link/formula/prediction 契约
+- [ ] P3-2 实现 `checklink`/`make.link.gamlss`/`as.family`/`gen.Family` 框架
+- [ ] P3-3 `*.fix`/`contrasts` 扩到 CG/MIXED/joint + 分类预测重建
+- [ ] P5-1 定义 OmniLSS↔ondil distribution contract 与独立流式 golden
+- [ ] P6-1 `log_bessel_kv` JAX 原生实现（含精度与耗时双验收）
+
+### 22.6 风险与决策
+
+- **证据风险**：inventory 冒充 coverage、R 不可用时的 skip、静态 null golden —— P0 为硬门禁。
+- **数值风险**：x64、JAX 版本、特殊函数、R 与 Python 优化器差异；所有失败必须分类并留判据。
+- **范围风险**：146 registry ≠ 146 R family；compat_alias 不计独立迁移；gamlss2 不阻塞 1.0。
+- **参考项目风险**：gamlss-python 只作转录 oracle，ondil 只作在线设计 oracle，不改变 R 优先级。
+- **性能风险**：benchmark 不得先于 parity；区分 cold/warm、CPU/GPU、R 可用性。
+- **发布决策**：生产路由持续 fail-closed；placeholder/alias/experimental 默认不 admission。
+
+> 时间是容量估计而非承诺；R artifact、失败分类或 admission 不齐，功能一律保持 `experimental`。
+> 根文档历史「Phase 0–4 完成」只表示 Release 1 阶段目标，不代表全量 R GAMLSS 迁移完成。
