@@ -503,4 +503,169 @@ def gamlss_cs(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any):
     )
 
 
-__all__ = ["SmootherFit", "gamlss_cs", "gamlss_pb", "gamlss_ps"]
+def gamlss_cy(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any):
+    """R gamlss.cy: one cyclic P-spline backfitting step.
+
+    The penalised system solved by cy()'s regpen is the same one gamlss.pb
+    solves (X'WX + lambda D'D), so the SVD core is shared.  The differences are
+    R's cyclic-specific bookkeeping: df is solved in linear lambda space over
+    [0, 1e5], GCV's denominator is (n - k*edf) rather than its square, and
+    nl.df is edf - 1.
+
+    Documented deviation: R predicts by appending rows to the stored design
+    matrix; the Python version uses a natural cubic spline through the fitted
+    values (the same choice made for gamlss.pb/gamlss.cs here).
+    """
+
+    from .smoother_specs import CYSpline
+
+    if not isinstance(x, CYSpline):
+        raise TypeError("gamlss_cy needs the object returned by cy()")
+
+    X = np.asarray(x.X, dtype=float)
+    D = np.asarray(x.D, dtype=float)
+    values = np.asarray(x.values, dtype=float)
+    y = np.asarray(y, dtype=float)
+    w = np.asarray(w, dtype=float)
+    if y.shape[0] != X.shape[0]:
+        raise ValueError("y and the design matrix have different lengths")
+
+    control = dict(x.control)
+    order = int(control.get("order", 2))
+    method = str(control.get("method", "ML"))
+    k = float(control.get("k", 2))
+    df = x.df
+    lam = None if x.lambda_ is None else float(x.lambda_)
+
+    n, p = X.shape
+    N = float(np.sum(w != 0))
+    sqrt_w = np.sqrt(w)
+    q, r = np.linalg.qr(sqrt_w[:, None] * X, mode="reduced")
+    Qy = q.T @ (sqrt_w * y)
+
+    def fit_at(lam_value: float):
+        beta, edf = _regpen(r, Qy, D, lam_value, p)
+        return beta, edf, X @ beta
+
+    sig2 = tau2 = None
+
+    if lam is not None:
+        lam = min(max(lam, _LAMBDA_MIN), _LAMBDA_MAX)
+        beta, edf, fv = fit_at(lam)
+    elif df is not None:
+        rinv = np.linalg.inv(r)
+        symmetric = rinv.T @ (D.T @ D) @ rinv
+        eig = np.linalg.eigvalsh(0.5 * (symmetric + symmetric.T))
+
+        def edf_gap(lam_value: float) -> float:
+            return float(np.sum(1.0 / (1.0 + lam_value * eig)) - df)
+
+        if np.sign(edf_gap(0.0)) == np.sign(edf_gap(1.0e5)):
+            lam = 1.0e5
+        else:
+            lam = float(brentq(edf_gap, 0.0, 1.0e5))
+        beta, edf, fv = fit_at(lam)
+    else:
+        lam = 10.0
+        if method in ("ML", "ML-1"):
+            for _ in range(50):
+                beta, edf, fv = fit_at(lam)
+                gamma = D @ beta
+                sig2 = 1.0 if method == "ML-1" else float(
+                    np.sum(w * (y - fv) ** 2) / (N - edf)
+                )
+                tau2 = float(np.sum(gamma**2) / (edf - order))
+                if tau2 < 1e-7:
+                    tau2 = 1e-7
+                previous = lam
+                lam = min(max(sig2 / tau2, _LAMBDA_MIN), _LAMBDA_MAX)
+                if abs(lam - previous) < 1e-7 or lam > 1e7:
+                    break
+        elif method == "EM":
+            for _ in range(500):
+                beta, edf, fv = fit_at(lam)
+                gamma = D @ beta
+                vcov = np.linalg.pinv(X.T @ (w[:, None] * X) + lam * (D.T @ D))
+                vgamma = float(np.trace(D @ vcov @ D.T))
+                tau2 = (float(np.sum(gamma**2)) + vgamma) / len(gamma)
+                if tau2 < 1e-7:
+                    tau2 = 1e-7
+                previous = lam
+                lam = min(max(1.0 / tau2, _LAMBDA_MIN), _LAMBDA_MAX)
+                if abs(lam - previous) < 1e-7 or lam > 1e7:
+                    break
+            sig2 = None
+        elif method == "GAIC":
+
+            def objective(log_lambda: float) -> float:
+                _, e, f = fit_at(float(np.exp(log_lambda)))
+                return float(np.sum(w * (y - f) ** 2) + k * e)
+
+            result = minimize_scalar(
+                objective,
+                bounds=(np.log(_LAMBDA_MIN), np.log(_LAMBDA_MAX)),
+                method="bounded",
+                options={"xatol": 1e-10},
+            )
+            lam = float(np.exp(result.x))
+            beta, edf, fv = fit_at(lam)
+        elif method == "GCV":
+            rinv = np.linalg.inv(r)
+            symmetric = rinv.T @ (D.T @ D) @ rinv
+            eigenvalues, eigenvectors = np.linalg.eigh(0.5 * (symmetric + symmetric.T))
+            yy = eigenvectors.T @ Qy
+            y_y = float(np.sum((sqrt_w * y) ** 2))
+
+            def gcv(log_lambda: float) -> float:
+                denom = 1.0 + np.exp(log_lambda) * eigenvalues
+                e = float(np.sum(1.0 / denom))
+                y_hy2 = (
+                    y_y
+                    - 2.0 * float(np.sum(yy**2 / denom))
+                    + float(np.sum(yy**2 / denom**2))
+                )
+                return float(n * y_hy2 / (n - k * e))
+
+            result = minimize_scalar(
+                gcv,
+                bounds=(np.log(_LAMBDA_MIN), np.log(_LAMBDA_MAX)),
+                method="bounded",
+                options={"xatol": 1e-10},
+            )
+            lam = float(np.exp(result.x))
+            beta, edf, fv = fit_at(lam)
+        else:
+            raise ValueError(f"unknown lambda selection method {method!r}")
+
+    spline = CubicSpline(values, fv, bc_type="natural")
+    if xeval is not None:
+        return np.asarray(spline(np.asarray(xeval, dtype=float)), dtype=float)
+
+    waug = np.concatenate([w, np.ones(D.shape[0])])
+    xaug = np.vstack([X, np.sqrt(lam) * D])
+    weighted = xaug * np.sqrt(waug)[:, None]
+    leverage = np.sum(
+        (weighted @ np.linalg.pinv(weighted.T @ weighted)) * weighted, axis=1
+    )[:n]
+    # cy() stores a zero covariate (xvar <- rep(0, length(x))), so R's
+    # .hat.WX(w, x) subtracts the leverage of an intercept-only linear fit.
+    var = (leverage - _hat_WX(w, np.zeros_like(values))) / w
+
+    return SmootherFit(
+        fitted_values=fv,
+        residuals=y - fv,
+        var=var,
+        nl_df=edf - 1.0,
+        lambda_=lam,
+        coef=np.asarray(beta, dtype=float),
+        edf=edf,
+        sigb2=tau2,
+        sige2=sig2,
+        method=method,
+        name="cy",
+        knots=None,
+        spline=spline,
+    )
+
+
+__all__ = ["SmootherFit", "gamlss_cs", "gamlss_cy", "gamlss_pb", "gamlss_ps"]

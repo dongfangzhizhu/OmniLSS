@@ -156,13 +156,17 @@ from .data_prep import (
 )
 from .family_means import meanBEOI, meanBEZI
 from .pcr import SVDResult, getSVD, which_Data_Corr
-from .smoother_fits import SmootherFit, gamlss_cs, gamlss_pb, gamlss_ps
+from .smoother_fits import SmootherFit, gamlss_cs, gamlss_cy, gamlss_pb, gamlss_ps
 from .smoother_specs import (
     CSSpline,
+    CYSpline,
     PBSpline,
     PSSpline,
     bbase,
+    cbase,
+    cdiff,
     cs,
+    cy,
     difference_matrix,
     pb,
     ps,
@@ -1051,7 +1055,13 @@ __all__ = [
     "gamlss_pb",
     "gamlss_ps",
     "gamlss_cs",
+    "gamlss_cy",
     "SmootherFit",
+    # ── gamlss cyclic P-spline spec ──
+    "cy",
+    "CYSpline",
+    "cbase",
+    "cdiff",
     # ── gamlss.foreach PCR helpers ──
     "getSVD",
     "SVDResult",

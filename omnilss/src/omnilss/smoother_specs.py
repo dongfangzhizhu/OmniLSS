@@ -18,7 +18,7 @@ from typing import Any
 
 import numpy as np
 
-from .smoother_controls import pb_control
+from .smoother_controls import cy_control, pb_control
 
 
 def _seq(from_: float, to: float, by: float) -> np.ndarray:
@@ -339,12 +339,109 @@ def cs(
     )
 
 
+@dataclass(frozen=True)
+class CYSpline(PBSpline):
+    """The object R's cy() returns: cyclic B-spline basis and cyclic penalty."""
+
+
+def cbase(x: np.ndarray, xl: float, xr: float, ndx: int, deg: int) -> np.ndarray:
+    """R's cbase(): wrap the last deg B-spline columns into the first deg."""
+
+    b0, _ = bbase(x, xl, xr, ndx, deg)
+    n = b0.shape[1] - deg
+    wrapped = b0[:, :n].copy()
+    wrapped[:, :deg] += b0[:, n : n + deg]
+    return wrapped
+
+
+def cdiff(n: int) -> np.ndarray:
+    """R's cdiff(): cyclic second-difference penalty matrix (n x n)."""
+
+    d2 = np.zeros((n, n + 2))
+    p = np.array([-1.0, 2.0 * np.cos(2.0 * np.pi / n), -1.0])
+    for k in range(n):
+        d2[k, k : k + 3] = p
+    d = d2[:, 1 : n + 1].copy()
+    d[:, 0] += d2[:, n + 1]
+    d[:, n - 1] += d2[:, 0]
+    return d
+
+
+def cy(
+    x: Any,
+    df: float | None = None,
+    lambda_: float | None = None,
+    control: dict[str, Any] | None = None,
+    name: str | None = None,
+    **kwargs: Any,
+) -> CYSpline:
+    """R cy(): cyclic P-spline basis and penalty for a covariate.
+
+    Unlike pb(), cy() uses the raw min/max (no 1% expansion), builds a wrapped
+    (cyclic) B-spline basis and a cyclic difference penalty, and stores df + 1
+    (R's convention for cyclic smoothers).
+    """
+
+    values = np.asarray(x, dtype=float)
+    if values.ndim != 1:
+        raise ValueError("x must be a vector")
+    settings = dict(control) if control is not None else cy_control(**kwargs)
+    for key, value in kwargs.items():
+        settings[key] = value
+
+    length = values.shape[0]
+    inter = settings.get("inter", 20)
+    if length < 100:
+        inter = 10
+    settings["inter"] = inter
+
+    xl = float(np.min(values))
+    xr = float(np.max(values))
+    design = cbase(values, xl, xr, inter, int(settings.get("degree", 3)))
+    penalty = cdiff(design.shape[1])
+
+    stored_df: float | None = None
+    if df is not None:
+        if df > design.shape[1] - 2:
+            import warnings
+
+            warnings.warn(
+                "The df's exceed the number of columns of the design matrix\n   they are set to 3",
+                UserWarning,
+                stacklevel=2,
+            )
+            df = 3
+        if df < 1:
+            import warnings
+
+            warnings.warn("the df are set to 1", UserWarning, stacklevel=2)
+            stored_df = 1.0
+        else:
+            stored_df = float(df) + 1.0
+
+    return CYSpline(
+        name=name or "cy",
+        control=settings,
+        X=design,
+        D=penalty,
+        knots=np.asarray([]),
+        df=stored_df,
+        max_df=float(design.shape[1]),
+        lambda_=lambda_,
+        values=values,
+    )
+
+
 __all__ = [
     "CSSpline",
+    "CYSpline",
     "PBSpline",
     "PSSpline",
     "bbase",
+    "cbase",
+    "cdiff",
     "cs",
+    "cy",
     "difference_matrix",
     "pb",
     "ps",
