@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 344,
+    "missing": 337,
     "placeholder": 0,
     "compat_alias": 1,
-    "evidence_gap": 33,
-    "extra": 305
+    "evidence_gap": 34,
+    "extra": 311
   },
   "symbols": {
     "missing": [
@@ -33,13 +33,6 @@
       "gamlss.add::nn",
       "gamlss.add::nn.control",
       "gamlss.add::tr",
-      "gamlss.dist::Family",
-      "gamlss.dist::Family.d",
-      "gamlss.dist::Family.p",
-      "gamlss.dist::Family.q",
-      "gamlss.dist::Family.r",
-      "gamlss.dist::GAMLSS",
-      "gamlss.dist::gen.Family",
       "gamlss.dist::meanBEOI",
       "gamlss.dist::meanBEZI",
       "gamlss.dist::plotBEOI",
@@ -368,6 +361,7 @@
       "gamlss.dist::MULTIN"
     ],
     "evidence_gap": [
+      "gamlss.dist::Family.r",
       "gamlss.dist::binom_1_31",
       "gamlss.dist::binom_2_33",
       "gamlss.dist::binom_3_33",
@@ -462,6 +456,7 @@
       "GAICWeightsResult",
       "GAMLSSCVResult",
       "GAMLSSControl",
+      "GAMLSSDistribution",
       "GAMLSSMLPredResult",
       "GAMLSSModel",
       "GAMLSSVGDResult",
@@ -469,6 +464,7 @@
       "GammaFamily",
       "GenLikelihoodResult",
       "GeneralisedPoisson",
+      "GeneratedFamily",
       "GeometricFamily",
       "HazardResult",
       "HistDistResult",
@@ -597,6 +593,10 @@
       "extract_tgd",
       "extract_tgd_data",
       "family_capability_names",
+      "family_d",
+      "family_p",
+      "family_q",
+      "family_r",
       "family_summary",
       "family_supports",
       "fit_dist",
