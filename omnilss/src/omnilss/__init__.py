@@ -119,6 +119,21 @@ from .distributions3 import (
     kurtosis,
 )
 from .families import FamilyDefinition
+from .family_generator import (
+    Family,
+    Family_d,
+    Family_p,
+    Family_q,
+    Family_r,
+    GAMLSS,
+    GAMLSSDistribution,
+    GeneratedFamily,
+    family_d,
+    family_p,
+    family_q,
+    family_r,
+    gen_Family,
+)
 from .MULTIN import MULTIN
 from .gen_family_builder import build_gen_family_skeleton
 from .family_capabilities import (
@@ -872,6 +887,20 @@ __all__ = [
     "centile_skew",
     "centileSkew",
     "gamlss_scope",
+    # ── gen.Family / Family(.d/.p/.q/.r) / GAMLSS (genFamily.R, distributions3.R) ──
+    "Family",
+    "Family_d",
+    "Family_p",
+    "Family_q",
+    "Family_r",
+    "GeneratedFamily",
+    "family_d",
+    "family_p",
+    "family_q",
+    "family_r",
+    "gen_Family",
+    "GAMLSS",
+    "GAMLSSDistribution",
     # ── gamlss.cens censored-family helpers ──
     "CensoredFamily",
     "cens",
