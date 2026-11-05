@@ -245,7 +245,15 @@ from .o_variant_distributions import (
 )
 from .gamlss_cens import CensoredFamily, cens, cens_d, cens_p, cens_q, gen_cens
 from .gamlss_scope import gamlss_scope
-from .gamlss_tr import trun_d, trun_p, trun_q, trun_r
+from .gamlss_tr import (
+    TruncatedFamily,
+    gen_trun,
+    trun,
+    trun_d,
+    trun_p,
+    trun_q,
+    trun_r,
+)
 from .logLik import logLik
 from .loglogSurv import logSurv0
 from .loglogplot import loglogplot, LogLogPlotResult
@@ -934,6 +942,9 @@ __all__ = [
     "cens_q",
     "gen_cens",
     # ── gamlss.tr truncation helpers ──
+    "TruncatedFamily",
+    "trun",
+    "gen_trun",
     "trun_d",
     "trun_p",
     "trun_q",

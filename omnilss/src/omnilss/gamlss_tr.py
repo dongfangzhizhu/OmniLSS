@@ -9,6 +9,7 @@ mode is not ported yet and raises NotImplementedError.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Callable
 
 import jax.numpy as jnp
@@ -186,4 +187,145 @@ def trun_r(par: Any, family: Any = "NO", type: str = "left", varying: bool = Fal
     return fun
 
 
-__all__ = ["trun_d", "trun_p", "trun_q", "trun_r"]
+@dataclass(frozen=True)
+class TruncatedFamily(FamilyDefinition):
+    """A truncated family: a FamilyDefinition carrying the truncation spec."""
+
+    truncation_type: str = "left"
+    truncation_parameters: tuple[float, ...] = ()
+    base_name: str = "NO"
+    base_family: Any = None
+    extra_name: str = "tr"
+
+    def support(self) -> tuple[float | None, float | None]:
+        """(lower, upper) bounds of the truncated support; None means open."""
+
+        if self.truncation_type == "left":
+            return (float(self.truncation_parameters[0]), None)
+        if self.truncation_type == "right":
+            return (None, float(self.truncation_parameters[0]))
+        return (
+            float(self.truncation_parameters[0]),
+            float(self.truncation_parameters[1]),
+        )
+
+    def y_valid(self, y: Any) -> Any:
+        """Response support implied by the truncation masks in trun.d/trun.p.
+
+        Continuous truncation keeps the boundaries (outside means strictly
+        beyond them); discrete truncation excludes the boundary value, because
+        the mass at the cut belongs to the removed tail.
+        """
+
+        values = jnp.asarray(y, dtype=jnp.float64)
+        lower, upper = self.support()
+        discrete = str(self.type).strip().lower().startswith("discrete")
+        result = jnp.asarray(True)
+        if lower is not None:
+            result = result & (values >= lower + 1.0 if discrete else values >= lower)
+        if upper is not None:
+            result = result & (values < upper if discrete else values <= upper)
+        return result
+
+
+def trun(
+    par: Any = 0,
+    family: Any = "NO",
+    type: str = "left",
+    extra_name: str = "tr",
+    local: bool = True,
+    delta: Any = None,
+    varying: bool = False,
+    **kwargs: Any,
+) -> TruncatedFamily:
+    """R trun(): build the truncated family object.
+
+    local is accepted for call-site compatibility (R uses it to choose the frame
+    that receives the generated d/p); Python returns them on the family object.
+    """
+
+    base = _resolve(family)
+    par_values = _check_par(par, type)
+    d = trun_d(par_values, base, type, varying=varying)
+    p = trun_p(par_values, base, type, varying=varying)
+    # R's trun() regenerates only d and p; q and r stay the base family's.
+    # Use trun_q / trun_r directly when the truncation must be reflected in
+    # quantiles or draws.
+    q = base.q
+    r = base.r
+
+    def g_dev_inc(y: Any, **params: Any) -> Any:
+        return -2.0 * d(y, log=True, **params)
+
+    return TruncatedFamily(
+        name=f"{base.name}{extra_name}",
+        parameters=tuple(base.parameters),
+        g_dev_inc=g_dev_inc,
+        type=base.type,
+        links=base.links,
+        link_functions=base.link_functions,
+        link_inverses=base.link_inverses,
+        link_derivatives=base.link_derivatives,
+        score_functions=base.score_functions,
+        hessian_functions=base.hessian_functions,
+        fixed_parameters=base.fixed_parameters,
+        d=d,
+        p=p,
+        q=q,
+        r=r,
+        constructor_parameters=base.constructor_parameters,
+        fixed_parameter_defaults=base.fixed_parameter_defaults,
+        truncation_type=type,
+        truncation_parameters=tuple(float(value) for value in par_values),
+        base_name=base.name,
+        base_family=base,
+        extra_name=str(extra_name),
+    )
+
+
+def gen_trun(
+    par: Any = 0,
+    family: Any = "NO",
+    type: str = "left",
+    extra_name: str = "tr",
+    **kwargs: Any,
+) -> dict[str, Any]:
+    """R gen.trun: return the generated d/p/q/r plus the family object.
+
+    R assigns dNOtr / pNOtr / qNOtr / rNOtr / NOtr into the caller frame;
+    Python returns a mapping carrying both those names and the generic keys.
+    """
+
+    generated = trun(par=par, family=family, type=type, extra_name=extra_name, local=False)
+    base = generated.base_name
+    suffix = generated.extra_name
+    d_name, p_name, q_name, r_name = (
+        f"d{base}{suffix}",
+        f"p{base}{suffix}",
+        f"q{base}{suffix}",
+        f"r{base}{suffix}",
+    )
+    fam_name = generated.name
+    return {
+        "d": generated.d,
+        "p": generated.p,
+        "q": generated.q,
+        "r": generated.r,
+        "family": generated,
+        d_name: generated.d,
+        p_name: generated.p,
+        q_name: generated.q,
+        r_name: generated.r,
+        fam_name: generated,
+    }
+
+
+__all__ = [
+    "TruncatedFamily",
+    "gen_trun",
+    "trun",
+    "trun_d",
+    "trun_p",
+    "trun_q",
+    "trun_r",
+]
