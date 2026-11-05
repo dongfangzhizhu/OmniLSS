@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 285,
+    "missing": 284,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 322
+    "extra": 325
   },
   "symbols": {
     "missing": [
@@ -286,7 +286,6 @@
       "gamlss::loglogSurv1",
       "gamlss::loglogSurv2",
       "gamlss::loglogSurv3",
-      "gamlss::pb",
       "gamlss::pbc",
       "gamlss::pbm",
       "gamlss::pbo",
@@ -456,6 +455,7 @@
       "MultiParameterTGDScopeRow",
       "NegativeBinomialFamily",
       "NormalFamily",
+      "PBSpline",
       "PDFPlotEntry",
       "PDFPlotResult",
       "ParPlotResult",
@@ -520,6 +520,7 @@
       "addtermAllP",
       "addterm_all",
       "artifact_schema_policy",
+      "bbase",
       "build_gen_family_skeleton",
       "build_prediction_design_matrix",
       "calibration_check",
@@ -548,6 +549,7 @@
       "cv",
       "deviance",
       "deviance_increment",
+      "difference_matrix",
       "drop1TGDP",
       "drop1_tgd",
       "drop1_tgd_all",
