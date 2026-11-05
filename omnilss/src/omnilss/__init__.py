@@ -151,6 +151,17 @@ from .data_prep import (
     y_factor,
 )
 from .family_means import meanBEOI, meanBEZI
+from .smoother_controls import (
+    cs_control,
+    cy_control,
+    pbc_control,
+    pbm_control,
+    pbo_control,
+    pbp_control,
+    pb_control,
+    pbz_control,
+    pvc_control,
+)
 from .family_groups import (
     BINOMIAL,
     BI_LIST,
@@ -997,6 +1008,16 @@ __all__ = [
     "data_factor",
     "high_val",
     "low_val",
+    # ── gamlss smoother control objects ──
+    "pb_control",
+    "cs_control",
+    "cy_control",
+    "pbc_control",
+    "pbm_control",
+    "pbo_control",
+    "pbp_control",
+    "pbz_control",
+    "pvc_control",
     # ── gamlss.cens censored-family helpers ──
     "CensoredFamily",
     "cens",
