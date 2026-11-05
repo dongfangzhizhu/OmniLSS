@@ -169,6 +169,17 @@ from .links import (
     probit_inverse,
     probit_link,
 )
+from .gamlss_family import (
+    LinkGamlss,
+    as_family,
+    as_gamlss_family,
+    checklink,
+    family_summary,
+    gamlss_family,
+    gamlss_family_default,
+    make_link_gamlss,
+    show_link,
+)
 from .logLik import logLik
 from .loglogSurv import logSurv0
 from .loglogplot import loglogplot, LogLogPlotResult
@@ -802,6 +813,16 @@ __all__ = [
     "LINK_REGISTRY",
     "get_link",
     "get_link_fn",
+    # ── gamlss family / link framework (R gamlss.dist) ──
+    "LinkGamlss",
+    "make_link_gamlss",
+    "checklink",
+    "show_link",
+    "as_family",
+    "as_gamlss_family",
+    "gamlss_family",
+    "gamlss_family_default",
+    "family_summary",
     "save_model",
     "load_model",
     "save_model_json",

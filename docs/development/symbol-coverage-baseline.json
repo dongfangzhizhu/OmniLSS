@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 391,
+    "missing": 384,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 34,
-    "extra": 300
+    "extra": 302
   },
   "symbols": {
     "missing": [
@@ -44,10 +44,7 @@
       "gamlss.dist::Family.q",
       "gamlss.dist::Family.r",
       "gamlss.dist::GAMLSS",
-      "gamlss.dist::as.family",
-      "gamlss.dist::as.gamlss.family",
       "gamlss.dist::centileSkew",
-      "gamlss.dist::checklink",
       "gamlss.dist::dBCCGo",
       "gamlss.dist::dBCPEo",
       "gamlss.dist::dBCTo",
@@ -56,10 +53,7 @@
       "gamlss.dist::dJSUo",
       "gamlss.dist::dPARETO2o",
       "gamlss.dist::dSHASHo",
-      "gamlss.dist::gamlss.family",
-      "gamlss.dist::gamlss.family.default",
       "gamlss.dist::gen.Family",
-      "gamlss.dist::make.link.gamlss",
       "gamlss.dist::meanBEOI",
       "gamlss.dist::meanBEZI",
       "gamlss.dist::pBCCGo",
@@ -87,7 +81,6 @@
       "gamlss.dist::rGEOMo",
       "gamlss.dist::rPARETO2o",
       "gamlss.dist::rSHASHo",
-      "gamlss.dist::show.link",
       "gamlss.foreach::BayesianBoot",
       "gamlss.foreach::NonParametricBoot",
       "gamlss.foreach::centiles.boot",
@@ -527,6 +520,7 @@
       "LMSResult",
       "LOGSHASHo",
       "LRTestResult",
+      "LinkGamlss",
       "LoResult",
       "LogLikResult",
       "LogLogPlotResult",
@@ -641,6 +635,7 @@
       "extract_tgd",
       "extract_tgd_data",
       "family_capability_names",
+      "family_summary",
       "family_supports",
       "fit_dist",
       "fit_dist_data",
