@@ -10,12 +10,12 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 - R exported symbols: 1080 (in scope: 1036)
 - Python surface matched: 715 / missing: 365
 - Family-linked symbols: 531 (dpqr kernels: 424)
-- Python-only public exports: 304
+- Python-only public exports: 305
 
-- **surface**: `missing` 365, `module_def` 226, `module_export` 96, `public_api` 217, `registry` 176
+- **surface**: `missing` 365, `module_def` 226, `module_export` 93, `public_api` 220, `registry` 176
 - **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 189, `missing` 365
-- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 174, `tested` 117, `unverified` 399
-- **admission**: `blocked` 526, `exported_api` 111, `internal` 73, `not_available` 365, `production_safe` 5
+- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 174, `tested` 118, `unverified` 398
+- **admission**: `blocked` 526, `exported_api` 114, `internal` 70, `not_available` 365, `production_safe` 5
 
 ## Per-package coverage
 
@@ -422,10 +422,10 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | .realplus | gamlss | - | missing | missing | unverified | not_available | 0 |
 | CV | gamlss | CV | public_api | implemented | tested | exported_api | 2 |
 | ECDF | gamlss | ECDF | public_api | implemented | tested | exported_api | 1 |
-| GAIC | gamlss | GAIC | module_export | implemented | tested | internal | 3 |
+| GAIC | gamlss | GAIC | public_api | implemented | tested | exported_api | 4 |
 | GAIC_scaled | gamlss | GAIC_scaled | module_export | implemented | unverified | internal | 0 |
 | GAIC_table | gamlss | GAIC_table | module_export | implemented | unverified | internal | 0 |
-| IC | gamlss | IC | module_export | implemented | unverified | internal | 0 |
+| IC | gamlss | IC | public_api | implemented | tested | exported_api | 1 |
 | LR.test | gamlss | LR_test | module_export | implemented | unverified | internal | 0 |
 | Q.stats | gamlss | Q_stats | module_export | implemented | tested | internal | 1 |
 | Rsq | gamlss | Rsq | module_export | implemented | unverified | internal | 0 |
@@ -577,7 +577,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | nn | gamlss.add | - | missing | missing | unverified | not_available | 1 |
 | nn.control | gamlss.add | - | missing | missing | unverified | not_available | 0 |
 | tr | gamlss.add | - | missing | missing | unverified | not_available | 3 |
-| cens | gamlss.cens | cens | public_api | implemented | tested | exported_api | 4 |
+| cens | gamlss.cens | cens | public_api | implemented | tested | exported_api | 5 |
 | cens.d | gamlss.cens | cens_d | public_api | implemented | tested | exported_api | 1 |
 | cens.p | gamlss.cens | cens_p | public_api | implemented | tested | exported_api | 1 |
 | cens.q | gamlss.cens | cens_q | public_api | implemented | tested | exported_api | 1 |
@@ -646,7 +646,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | NBI | gamlss.dist | NBI | public_api | experimental | r_consistency_test | blocked | 19 |
 | NBII | gamlss.dist | NBII | public_api | experimental | r_consistency_test | blocked | 11 |
 | NET | gamlss.dist | NET | public_api | experimental | r_consistency_test | blocked | 12 |
-| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 140 |
+| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 141 |
 | NO2 | gamlss.dist | NO2 | public_api | experimental | r_consistency_test | blocked | 7 |
 | NOF | gamlss.dist | NOF | public_api | experimental | r_consistency_test | blocked | 5 |
 | PARETO | gamlss.dist | PARETO | public_api | experimental | r_consistency_test | blocked | 7 |
@@ -1283,7 +1283,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | median_cw | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | median_pc | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | median_sp | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| model_GAIC | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| model_GAIC | gamlss.ggplots | - | missing | missing | unverified | not_available | 1 |
 | model_GAIC_lollipop | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | model_TD | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | model_TD_lollipop | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
@@ -1448,7 +1448,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | trun.r | gamlss.tr | trun_r | public_api | implemented | tested | exported_api | 1 |
 | BS | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | CG | gamlss2 | - | missing | missing | unverified | not_available | 33 |
-| GAIC | gamlss2 | GAIC | module_export | implemented | tested | internal | 3 |
+| GAIC | gamlss2 | GAIC | public_api | implemented | tested | exported_api | 4 |
 | GDF | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | KS | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | Kumaraswamy | gamlss2 | - | missing | missing | unverified | not_available | 0 |
@@ -1493,8 +1493,9 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 
 ## Python-only public exports
 
-304 names exported from `omnilss.__all__` have no R counterpart; they are Python-side additions (dataclasses, backends, utilities), not coverage gaps. The JSON artifact lists them all.
+305 names exported from `omnilss.__all__` have no R counterpart; they are Python-side additions (dataclasses, backends, utilities), not coverage gaps. The JSON artifact lists them all.
 
+- `AIC`
 - `BetaFamily`
 - `BinomialFamily`
 - `BoxCoxColeGreenFamily`
@@ -1534,5 +1535,4 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 - `ECDFResult`
 - `ExponentialFamily`
 - `ExtractAICResult`
-- `ExtractTGDResult`
-- ... 264 more in the JSON artifact
+- ... 265 more in the JSON artifact

@@ -116,7 +116,35 @@ class GAMLSSModel:
             Global deviance
         """
         return self.g_dev
-    
+
+    def logLik(self):
+        """R logLik.gamlss: log-likelihood (censored-aware via g_dev)."""
+
+        from .logLik import log_likelihood
+
+        return log_likelihood(self)
+
+    def AIC(self, k: float = 2.0) -> float:
+        """R AIC.gamlss: GAIC with penalty k (AIC at k=2)."""
+
+        from .operations import gaic
+
+        return float(gaic(self, k=k))
+
+    def GAIC(self, k: float = 2.0) -> float:
+        """R GAIC.gamlss."""
+
+        from .operations import gaic
+
+        return float(gaic(self, k=k))
+
+    def IC(self, k: float = 2.0) -> float:
+        """R IC.gamlss."""
+
+        from .operations import ic
+
+        return float(ic(self, k=k))
+
     def get_smooth_info(self, parameter: str = "mu") -> list[dict[str, Any]]:
         """Get information about smooth terms for a parameter.
         

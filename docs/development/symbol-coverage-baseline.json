@@ -13,8 +13,8 @@
     "missing": 365,
     "placeholder": 0,
     "compat_alias": 1,
-    "evidence_gap": 34,
-    "extra": 304
+    "evidence_gap": 33,
+    "extra": 305
   },
   "symbols": {
     "missing": [
@@ -409,7 +409,6 @@
       "gamlss2::Rsq",
       "gamlss::GAIC_scaled",
       "gamlss::GAIC_table",
-      "gamlss::IC",
       "gamlss::LR.test",
       "gamlss::Rsq",
       "gamlss::VC.test",
@@ -425,6 +424,7 @@
       "gamlss::term.plot"
     ],
     "extra": [
+      "AIC",
       "BetaFamily",
       "BinomialFamily",
       "BoxCoxColeGreenFamily",

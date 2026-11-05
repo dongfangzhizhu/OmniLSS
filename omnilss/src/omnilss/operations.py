@@ -296,6 +296,15 @@ def ic(object: GAMLSSModel, k: float = 2.0) -> float:
     return _gaic_single(object, k=k, c=False)
 
 
+def aic(object: GAMLSSModel, *others: GAMLSSModel, k: float = 2.0):
+    """R reference: gamlss/R/extra.R::AIC.gamlss (GAIC with k=2 by default)."""
+
+    return gaic(object, *others, k=k)
+
+
+AIC = aic
+
+
 def lpred(
     obj: GAMLSSModel,
     what: str = "mu",
