@@ -8,14 +8,14 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - R packages parsed: 12 (out of scope: gamlss2)
 - R exported symbols: 1080 (in scope: 1036)
-- Python surface matched: 769 / missing: 311
+- Python surface matched: 779 / missing: 301
 - Family-linked symbols: 531 (dpqr kernels: 424)
 - Python-only public exports: 322
 
-- **surface**: `missing` 311, `module_def` 223, `module_export` 103, `public_api` 267, `registry` 176
-- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 243, `missing` 311
-- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 179, `tested` 156, `unverified` 355
-- **admission**: `blocked` 526, `exported_api` 161, `internal` 77, `not_available` 311, `production_safe` 5
+- **surface**: `missing` 301, `module_def` 223, `module_export` 103, `public_api` 277, `registry` 176
+- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 253, `missing` 301
+- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 179, `tested` 166, `unverified` 345
+- **admission**: `blocked` 526, `exported_api` 171, `internal` 77, `not_available` 301, `production_safe` 5
 
 ## Per-package coverage
 
@@ -31,7 +31,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gamlss.foreach | 1.1-10 | `819542107cb0994b` | yes | 13 | 13 | 0 |
 | gamlss.ggplots | 2.1-34 | `cbe1ae29a3d583c1` | yes | 109 | 106 | 1 |
 | gamlss.mx | 6.0-4 | `b832557a4937461b` | yes | 12 | 12 | 0 |
-| gamlss.prepdata | 0.1.19 | `406a76c8aa06aa80` | yes | 59 | 58 | 13 |
+| gamlss.prepdata | 0.1.19 | `406a76c8aa06aa80` | yes | 59 | 58 | 23 |
 | gamlss.spatial | 3.0-3 | `af0e2b383e3eba93` | yes | 9 | 9 | 0 |
 | gamlss.tr | 5.1-10 | `bf338282c2d7ed1b` | yes | 8 | 8 | 6 |
 | gamlss2 | 0.1-0 | `37944572f9da413c` | no | 44 | 42 | 2 |
@@ -256,15 +256,10 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | ACE.iter | gamlss.prepdata | function | R/gamlss.prepdata/R/ACE5.R:22 |
 | cor_boot | gamlss.prepdata | function | R/gamlss.prepdata/R/cor_perm_test.R:162 |
 | cor_perm_test | gamlss.prepdata | function | R/gamlss.prepdata/R/cor_perm_test.R:72 |
-| data_Kfold_index | gamlss.prepdata | function | R/gamlss.prepdata/R/data_part.R:170 |
-| data_Kfold_weights | gamlss.prepdata | function | R/gamlss.prepdata/R/data_part.R:152 |
 | data_association | gamlss.prepdata | function | R/gamlss.prepdata/R/data_association.R:326 |
-| data_boot_index | gamlss.prepdata | function | R/gamlss.prepdata/R/data_part.R:192 |
-| data_boot_weights | gamlss.prepdata | function | R/gamlss.prepdata/R/data_part.R:213 |
 | data_bucket | gamlss.prepdata | function | R/gamlss.prepdata/R/data_bucket.R:6 |
 | data_cha2fac | gamlss.prepdata | function | R/gamlss.prepdata/R/data_str.R:133 |
 | data_cor | gamlss.prepdata | function | R/gamlss.prepdata/R/data_cor.R:26 |
-| data_cut | gamlss.prepdata | function | R/gamlss.prepdata/R/data_part.R:246 |
 | data_factor | gamlss.prepdata | object | - |
 | data_few2fac | gamlss.prepdata | function | R/gamlss.prepdata/R/data_str.R:187 |
 | data_form2X | gamlss.prepdata | function | R/gamlss.prepdata/R/data_scale.R:332 |
@@ -273,15 +268,10 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | data_leverage | gamlss.prepdata | function | R/gamlss.prepdata/R/data_leverage.R:7 |
 | data_mcor | gamlss.prepdata | function | R/gamlss.prepdata/R/ACE5.R:442 |
 | data_outliers | gamlss.prepdata | function | R/gamlss.prepdata/R/data_outliers.R:67 |
-| data_part | gamlss.prepdata | function | R/gamlss.prepdata/R/data_part.R:15 |
-| data_part_list | gamlss.prepdata | function | R/gamlss.prepdata/R/data_part.R:65 |
 | data_pcor | gamlss.prepdata | function | R/gamlss.prepdata/R/data_pcor.R:19 |
 | data_plot | gamlss.prepdata | function | R/gamlss.prepdata/R/data_plot.R:2 |
-| data_rename | gamlss.prepdata | function | R/gamlss.prepdata/R/data_dim.R:188 |
 | data_response | gamlss.prepdata | function | R/gamlss.prepdata/R/data_plot.R:130 |
 | data_scale | gamlss.prepdata | function | R/gamlss.prepdata/R/data_scale.R:44 |
-| data_select | gamlss.prepdata | function | R/gamlss.prepdata/R/data_rm.R:140 |
-| data_shorter_names | gamlss.prepdata | function | R/gamlss.prepdata/R/data_dim.R:144 |
 | data_str | gamlss.prepdata | function | R/gamlss.prepdata/R/data_str.R:65 |
 | data_vars2data | gamlss.prepdata | function | R/gamlss.prepdata/R/data_scale.R:150 |
 | data_void | gamlss.prepdata | function | R/gamlss.prepdata/R/empty_space.R:145 |
@@ -409,7 +399,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | - | missing | missing | unverified | not_available | 5 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 5 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 181 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 182 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | - | missing | missing | unverified | not_available | 0 |
 | gamlss.cy | gamlss | - | missing | missing | unverified | not_available | 0 |
@@ -489,7 +479,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | pvc.control | gamlss | - | missing | missing | unverified | not_available | 0 |
 | quantSheets | gamlss | quantSheets | public_api | implemented | tested | exported_api | 1 |
 | quantSheets.control | gamlss | quantSheets_control | public_api | implemented | tested | exported_api | 1 |
-| random | gamlss | random | public_api | implemented | r_consistency_test | exported_api | 29 |
+| random | gamlss | random | public_api | implemented | r_consistency_test | exported_api | 30 |
 | re | gamlss | - | missing | missing | unverified | not_available | 35 |
 | refit | gamlss | refit | public_api | implemented | tested | exported_api | 2 |
 | ri | gamlss | - | missing | missing | unverified | not_available | 3 |
@@ -1320,15 +1310,15 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | ACE.iter | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
 | cor_boot | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
 | cor_perm_test | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
-| data_Kfold_index | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
-| data_Kfold_weights | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
+| data_Kfold_index | gamlss.prepdata | data_Kfold_index | public_api | implemented | tested | exported_api | 1 |
+| data_Kfold_weights | gamlss.prepdata | data_Kfold_weights | public_api | implemented | tested | exported_api | 1 |
 | data_association | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
-| data_boot_index | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
-| data_boot_weights | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
+| data_boot_index | gamlss.prepdata | data_boot_index | public_api | implemented | tested | exported_api | 1 |
+| data_boot_weights | gamlss.prepdata | data_boot_weights | public_api | implemented | tested | exported_api | 1 |
 | data_bucket | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
 | data_cha2fac | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
 | data_cor | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
-| data_cut | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
+| data_cut | gamlss.prepdata | data_cut | public_api | implemented | tested | exported_api | 1 |
 | data_dim | gamlss.prepdata | data_dim | public_api | implemented | tested | exported_api | 1 |
 | data_distinct | gamlss.prepdata | data_distinct | public_api | implemented | tested | exported_api | 1 |
 | data_exclude_class | gamlss.prepdata | data_exclude_class | public_api | implemented | tested | exported_api | 1 |
@@ -1347,18 +1337,18 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | data_omit | gamlss.prepdata | data_omit | public_api | implemented | tested | exported_api | 1 |
 | data_only_continuous | gamlss.prepdata | data_only_continuous | public_api | implemented | tested | exported_api | 1 |
 | data_outliers | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
-| data_part | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
-| data_part_list | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
+| data_part | gamlss.prepdata | data_part | public_api | implemented | tested | exported_api | 1 |
+| data_part_list | gamlss.prepdata | data_part_list | public_api | implemented | tested | exported_api | 1 |
 | data_pcor | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
 | data_plot | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
-| data_rename | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
+| data_rename | gamlss.prepdata | data_rename | public_api | implemented | tested | exported_api | 1 |
 | data_response | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
 | data_rm | gamlss.prepdata | data_rm | public_api | implemented | tested | exported_api | 1 |
 | data_rm1val | gamlss.prepdata | data_rm1val | public_api | implemented | tested | exported_api | 1 |
 | data_rmNAvars | gamlss.prepdata | data_rmNAvars | public_api | implemented | tested | exported_api | 1 |
 | data_scale | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
-| data_select | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
-| data_shorter_names | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
+| data_select | gamlss.prepdata | data_select | public_api | implemented | tested | exported_api | 1 |
+| data_shorter_names | gamlss.prepdata | data_shorter_names | public_api | implemented | tested | exported_api | 1 |
 | data_str | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
 | data_vars2data | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
 | data_void | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
