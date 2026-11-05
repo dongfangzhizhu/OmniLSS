@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 370,
+    "missing": 365,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 34,
-    "extra": 303
+    "extra": 304
   },
   "symbols": {
     "missing": [
@@ -33,11 +33,6 @@
       "gamlss.add::nn",
       "gamlss.add::nn.control",
       "gamlss.add::tr",
-      "gamlss.cens::cens",
-      "gamlss.cens::cens.d",
-      "gamlss.cens::cens.p",
-      "gamlss.cens::cens.q",
-      "gamlss.cens::gen.cens",
       "gamlss.dist::Family",
       "gamlss.dist::Family.d",
       "gamlss.dist::Family.p",
@@ -439,6 +434,7 @@
       "CVComparisonResult",
       "CVComparisonRow",
       "CapabilityStatus",
+      "CensoredFamily",
       "CentileCurveEntry",
       "CentileFanBand",
       "CentileKurtResult",

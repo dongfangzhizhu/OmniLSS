@@ -191,6 +191,7 @@ from .o_variant_density import (
     dPARETO2o,
     dSHASHo,
 )
+from .gamlss_cens import CensoredFamily, cens, cens_d, cens_p, cens_q, gen_cens
 from .gamlss_scope import gamlss_scope
 from .gamlss_tr import trun_d, trun_p, trun_q, trun_r
 from .logLik import logLik
@@ -839,6 +840,13 @@ __all__ = [
     "centile_skew",
     "centileSkew",
     "gamlss_scope",
+    # ── gamlss.cens censored-family helpers ──
+    "CensoredFamily",
+    "cens",
+    "cens_d",
+    "cens_p",
+    "cens_q",
+    "gen_cens",
     # ── gamlss.tr truncation helpers ──
     "trun_d",
     "trun_p",
