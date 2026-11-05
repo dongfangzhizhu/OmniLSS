@@ -8,13 +8,14 @@ follow gamlss: 0 = right censored, 1 = event/death, 2 = left censored,
 3 = interval censored.
 
 cens_d / cens_p return closures over (family, type); cens_q returns the base
-family quantile function (R's dummy generator); cens() builds a censored family
-object carrying the censored density, PIT and log-likelihood; gen_cens() returns
-the generated d/p/q/family in a mapping (R assigns them in the caller frame).
+family quantile function; cens() builds a CensoredFamily (a FamilyDefinition
+with a censored density/deviance) suitable for the fitting engine; gen_cens()
+returns the generated d/p/q/family in a mapping.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import re
+from dataclasses import dataclass
 from typing import Any, Callable
 
 import jax.numpy as jnp
@@ -24,6 +25,7 @@ from .distribution_registry import resolve
 from .families import FamilyDefinition
 
 _TYPES = ("right", "left", "interval")
+_SURV_RE = re.compile(r"^\s*Surv\s*\((.*)\)\s*$", re.IGNORECASE)
 
 
 def _resolve(family: Any) -> FamilyDefinition:
@@ -65,6 +67,40 @@ def _surv(y: Any) -> tuple[Any, Any, Any]:
     return jnp.asarray(t1), jnp.asarray(t2), jnp.asarray(status)
 
 
+def is_surv_formula(formula: str) -> bool:
+    """Whether the formula response is a Surv(...) expression."""
+
+    if "~" not in formula:
+        return False
+    return _SURV_RE.match(formula.split("~", 1)[0].strip()) is not None
+
+
+def extract_surv_response(formula: str, data: Any) -> dict[str, Any]:
+    """Parse Surv(time, status) / Surv(t1, t2, status) into structured arrays."""
+
+    if "~" not in formula:
+        raise ValueError("formula must contain '~'")
+    response = formula.split("~", 1)[0].strip()
+    match = _SURV_RE.match(response)
+    if match is None:
+        raise ValueError(f"response is not a Surv(...) expression: {response!r}")
+    raw_args = [part.strip() for part in match.group(1).split(",")]
+    names = [part for part in raw_args if "=" not in part]
+    if len(names) == 2:
+        time_name, status_name = names
+        t1 = np.asarray(data[time_name], dtype=float)
+        status = np.asarray(data[status_name], dtype=float)
+        t2 = t1
+    elif len(names) == 3:
+        t1_name, t2_name, status_name = names
+        t1 = np.asarray(data[t1_name], dtype=float)
+        t2 = np.asarray(data[t2_name], dtype=float)
+        status = np.asarray(data[status_name], dtype=float)
+    else:
+        raise ValueError("Surv() needs (time, status) or (time1, time2, status)")
+    return {"time": t1, "time2": t2, "status": status}
+
+
 def cens_d(family: Any = "NO", type: str = "right", **kwargs: Any) -> Callable[..., Any]:
     """R cens.d: censored log-density closure fun(y, log=False, **params)."""
 
@@ -92,11 +128,7 @@ def cens_d(family: Any = "NO", type: str = "right", **kwargs: Any) -> Callable[.
 
 
 def cens_p(family: Any = "NO", type: str = "right", **kwargs: Any) -> Callable[..., Any]:
-    """R cens.p: randomised PIT closure fun(y, log=False, **params).
-
-    The randomised branch uses numpy's RNG (R uses runif), so exact stream parity
-    is impossible; event observations are deterministic and match R exactly.
-    """
+    """R cens.p: randomised PIT closure fun(y, log=False, **params)."""
 
     _check_type(type)
     fam = _resolve(family)
@@ -136,28 +168,51 @@ def cens_q(family: Any = "NO", **kwargs: Any) -> Callable[..., Any]:
     return _resolve(family).q
 
 
-@dataclass
-class CensoredFamily:
-    """A censored family: base family + censoring type, with censored d/p/loglik."""
+@dataclass(frozen=True)
+class CensoredFamily(FamilyDefinition):
+    """A censored family: a FamilyDefinition carrying the censoring type."""
 
-    name: str
-    base_family: FamilyDefinition
-    type: str
-    d: Callable[..., Any]
-    p: Callable[..., Any]
-    q: Callable[..., Any]
-    parameters: tuple[str, ...] = field(default_factory=tuple)
+    censoring_type: str = "right"
+    base_name: str = "NO"
+    base_family: Any = None
 
     def loglik(self, y: Any, **params: Any) -> Any:
+        """Censored log-likelihood contributions (elementwise)."""
+
         return self.d(y, log=True, **params)
 
-    def g_dev_inc(self, y: Any, *params: Any) -> Any:
-        """Censored global deviance increment (-2 * total log-likelihood)."""
 
-        names = self.parameters
-        kwargs = dict(zip(names, params))
-        loglik = self.d(y, log=True, **kwargs)
-        return -2.0 * jnp.sum(loglik)
+def _build_family(base: FamilyDefinition, type_: str, name: str) -> CensoredFamily:
+    _check_type(type_)
+    d = cens_d(base, type_)
+    p = cens_p(base, type_)
+
+    def g_dev_inc(y: Any, **kwargs: Any) -> Any:
+        params = {key: kwargs[key] for key in base.parameters}
+        return -2.0 * d(y, log=True, **params)
+
+    generated = f"{base.name}{type_[0]}{str(name)[0]}"
+    return CensoredFamily(
+        name=generated,
+        parameters=tuple(base.parameters),
+        g_dev_inc=g_dev_inc,
+        type=base.type,
+        links=base.links,
+        link_functions=base.link_functions,
+        link_inverses=base.link_inverses,
+        link_derivatives=base.link_derivatives,
+        score_functions=base.score_functions,
+        hessian_functions=base.hessian_functions,
+        fixed_parameters=base.fixed_parameters,
+        d=d,
+        p=p,
+        q=base.q,
+        constructor_parameters=base.constructor_parameters,
+        fixed_parameter_defaults=base.fixed_parameter_defaults,
+        censoring_type=type_,
+        base_name=base.name,
+        base_family=base,
+    )
 
 
 def cens(
@@ -170,18 +225,7 @@ def cens(
 ) -> CensoredFamily:
     """R cens(): build a censored family object from a base family."""
 
-    _check_type(type)
-    fam = _resolve(family)
-    generated = f"{fam.name}{type[0]}{str(name)[0]}"
-    return CensoredFamily(
-        name=generated,
-        base_family=fam,
-        type=type,
-        d=cens_d(fam, type),
-        p=cens_p(fam, type),
-        q=fam.q,
-        parameters=tuple(fam.parameters),
-    )
+    return _build_family(_resolve(family), type, name)
 
 
 def gen_cens(
@@ -190,38 +234,30 @@ def gen_cens(
     name: str = "cens",
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """R gen.cens: return the generated d/p/q/family (R assigns them in-frame).
+    """R gen.cens: return the generated d/p/q/family (R assigns them in-frame)."""
 
-    The mapping carries both generic keys ("d", "p", "q", "family") and the
-    R-style generated names (e.g. "dNOrc", "NOrc") so a ported call site can use
-    either.
-    """
-
-    _check_type(type)
-    fam = _resolve(family)
-    generated = f"{fam.name}{type[0]}{str(name)[0]}"
-    d = cens_d(fam, type)
-    p = cens_p(fam, type)
-    q = fam.q
-    cf = CensoredFamily(
-        name=generated,
-        base_family=fam,
-        type=type,
-        d=d,
-        p=p,
-        q=q,
-        parameters=tuple(fam.parameters),
-    )
+    base = _resolve(family)
+    cf = _build_family(base, type, name)
+    generated = cf.name
     return {
-        "d": d,
-        "p": p,
-        "q": q,
+        "d": cf.d,
+        "p": cf.p,
+        "q": cf.q,
         "family": cf,
-        f"d{generated}": d,
-        f"p{generated}": p,
-        f"q{generated}": q,
+        f"d{generated}": cf.d,
+        f"p{generated}": cf.p,
+        f"q{generated}": cf.q,
         generated: cf,
     }
 
 
-__all__ = ["CensoredFamily", "cens", "cens_d", "cens_p", "cens_q", "gen_cens"]
+__all__ = [
+    "CensoredFamily",
+    "cens",
+    "cens_d",
+    "cens_p",
+    "cens_q",
+    "extract_surv_response",
+    "gen_cens",
+    "is_surv_formula",
+]

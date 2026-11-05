@@ -106,7 +106,10 @@ def test_cens_builds_family_object() -> None:
     assert cf.parameters == ("mu", "sigma")
     y = {"time": [1.0, 2.0, 3.0], "status": [1, 0, 1]}
     loglik = np.asarray(cf.loglik(y, mu=0.0, sigma=1.0), dtype=float)
-    assert cf.g_dev_inc(y, 0.0, 1.0) == pytest.approx(float(-2.0 * np.sum(loglik)))
+    # g_dev_inc is elementwise (the fitting engine sums it with weights).
+    assert float(np.sum(cf.g_dev_inc(y=y, mu=0.0, sigma=1.0))) == pytest.approx(
+        float(-2.0 * np.sum(loglik))
+    )
 
 
 def test_gen_cens_returns_generated_names() -> None:

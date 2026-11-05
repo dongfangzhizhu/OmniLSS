@@ -1291,6 +1291,42 @@ def gamlss(
 
     if data is None:
         raise ValueError("data is required")
+
+    # Censored (Surv) responses bypass the standard response-column contract
+    # and route to the dedicated censored RS path.
+    from .gamlss_cens import CensoredFamily, is_surv_formula
+
+    if is_surv_formula(formula):
+        _method = str(optimizer_kwargs.pop("algorithm", method)).upper()
+        if _method != "RS":
+            raise ValueError(
+                "Surv(...) responses currently support method='RS' only; "
+                f"got method={_method!r}"
+            )
+        _family = resolve_family(family)
+        if not isinstance(_family, CensoredFamily):
+            raise ValueError(
+                "a Surv(...) response requires a censored family, e.g. "
+                "family=cens('NO', 'right')"
+            )
+        from .algorithms.censored_rs import censored_fit
+
+        _cycles = (
+            max_iter if max_iter is not None else (control.n_cyc if control is not None else 20)
+        )
+        _crit = control.c_crit if control is not None else 1e-4
+        return censored_fit(
+            formula=formula,
+            family=_family,
+            data=data,
+            sigma_formula=sigma_formula,
+            parameter_formulas=parameter_formulas,
+            weights=weights,
+            max_iter=_cycles,
+            tol=_crit,
+            verbose=verbose,
+        )
+
     weights = _validate_fitting_inputs(
         formula,
         data,
