@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 276,
+    "missing": 273,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 328
+    "extra": 329
   },
   "symbols": {
     "missing": [
@@ -257,11 +257,9 @@
       "gamlss::drop1All",
       "gamlss::fittedPlot",
       "gamlss::fp",
-      "gamlss::gamlss.cs",
       "gamlss::gamlss.cy",
       "gamlss::gamlss.fp",
       "gamlss::gamlss.lo",
-      "gamlss::gamlss.pb",
       "gamlss::gamlss.pbc",
       "gamlss::gamlss.pbm",
       "gamlss::gamlss.pbo",
@@ -269,7 +267,6 @@
       "gamlss::gamlss.pbz",
       "gamlss::gamlss.pcat",
       "gamlss::gamlss.pp",
-      "gamlss::gamlss.ps",
       "gamlss::gamlss.pvc",
       "gamlss::gamlss.random",
       "gamlss::gamlss.re",
@@ -480,6 +477,7 @@
       "SVDResult",
       "ScopeSelectionResult",
       "ScopeSelectionRow",
+      "SmootherFit",
       "SmootherInfo",
       "StepGAICAllResult",
       "StepGAICAllStep",
