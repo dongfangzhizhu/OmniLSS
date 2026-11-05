@@ -151,6 +151,7 @@ from .data_prep import (
     y_factor,
 )
 from .family_means import meanBEOI, meanBEZI
+from .pcr import SVDResult, getSVD, which_Data_Corr
 from .smoother_specs import (
     CSSpline,
     PBSpline,
@@ -1037,6 +1038,10 @@ __all__ = [
     "PSSpline",
     "cs",
     "CSSpline",
+    # ── gamlss.foreach PCR helpers ──
+    "getSVD",
+    "SVDResult",
+    "which_Data_Corr",
     # ── gamlss.cens censored-family helpers ──
     "CensoredFamily",
     "cens",
