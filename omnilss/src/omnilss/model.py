@@ -172,10 +172,42 @@ class GAMLSSModel:
         ...     print(f"{info['variable']}: lambda={info['lambda_']:.4f}, "
         ...           f"edf={info['edf']:.2f}, method={info['selection_method']}")
         """
-        if parameter not in self.lambda_selection_info:
-            return []
-        
-        return self.lambda_selection_info[parameter]
+        if parameter in self.lambda_selection_info:
+            return list(self.lambda_selection_info[parameter])
+
+        # The fitting paths record the fitted smoothers in additional_slots;
+        # derive the same view from them so the accessor works for models that
+        # were fitted without an explicit lambda_selection_info mapping.
+        slots = self.additional_slots or {}
+        fitted = slots.get("smooth_fits") or {}
+        entries = fitted.get(parameter)
+        if entries is None:
+            # The RS path records SmoothDesignInfo objects under smooth_infos.
+            design = (slots.get("smooth_infos") or {}).get(parameter)
+            entries = getattr(design, "smooth_fits", None) or []
+        entries = entries or []
+        # The edf recorded on the smoother is the seed value from design build;
+        # the RS cycles update lambda in place, so recompute from the final
+        # penalty/weights to report the edf of the fitted model.
+        from .edf import smooth_term_edf
+
+        final_edf = smooth_term_edf(self, parameter)
+        return [
+            {
+                "variable": getattr(entry, "variable", None),
+                "smoother": getattr(entry, "smoother", None),
+                "lambda_": getattr(entry, "lambda_", None),
+                "edf": final_edf.get(
+                    str(getattr(entry, "variable", position)),
+                    getattr(entry, "edf", None),
+                ),
+                "selection_method": getattr(entry, "selection_method", None),
+                "criterion_value": getattr(entry, "criterion_value", None),
+                "lambda_origin": getattr(entry, "lambda_origin", None),
+                "basis_columns": getattr(entry, "basis_columns", None),
+            }
+            for position, entry in enumerate(entries)
+        ]
     
 
     def get_method_routing(self, *, validate: bool = True) -> dict[str, Any] | None:

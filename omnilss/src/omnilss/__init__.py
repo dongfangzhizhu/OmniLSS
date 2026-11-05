@@ -119,6 +119,19 @@ from .distributions3 import (
     kurtosis,
 )
 from .families import FamilyDefinition
+from .edf import edf, smooth_term_edf
+from .family_groups import (
+    BINOMIAL,
+    BI_LIST,
+    COUNTS,
+    MULTIN_LIST,
+    REAL_0_TO_1,
+    REAL_ALL,
+    REAL_LINE,
+    REAL_PLUS,
+    SM_LIST,
+    _hat_WX,
+)
 from .family_generator import (
     Family,
     Family_d,
@@ -901,6 +914,18 @@ __all__ = [
     "gen_Family",
     "GAMLSS",
     "GAMLSSDistribution",
+    # ── gamlss edf() + internal support groups (edf.R, chooseDistParallel.R) ──
+    "edf",
+    "smooth_term_edf",
+    "REAL_LINE",
+    "REAL_PLUS",
+    "REAL_0_TO_1",
+    "REAL_ALL",
+    "COUNTS",
+    "BINOMIAL",
+    "BI_LIST",
+    "MULTIN_LIST",
+    "SM_LIST",
     # ── gamlss.cens censored-family helpers ──
     "CensoredFamily",
     "cens",
