@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 284,
+    "missing": 282,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 325
+    "extra": 327
   },
   "symbols": {
     "missing": [
@@ -259,7 +259,6 @@
       "gamlss::bfp",
       "gamlss::bp",
       "gamlss::calibration",
-      "gamlss::cs",
       "gamlss::cy",
       "gamlss::drop1All",
       "gamlss::fittedPlot",
@@ -293,7 +292,6 @@
       "gamlss::pbz",
       "gamlss::pcat",
       "gamlss::pp",
-      "gamlss::ps",
       "gamlss::pvc",
       "gamlss::re",
       "gamlss::ri",
@@ -364,6 +362,7 @@
       "BoxCoxTFamily",
       "CAPABILITY_MATRIX_VERSION",
       "COUNTS",
+      "CSSpline",
       "CVComparisonResult",
       "CVComparisonRow",
       "CapabilityStatus",
@@ -458,6 +457,7 @@
       "PBSpline",
       "PDFPlotEntry",
       "PDFPlotResult",
+      "PSSpline",
       "ParPlotResult",
       "ParPlotSeries",
       "PartialEffectResult",
