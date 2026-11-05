@@ -8,14 +8,14 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - R packages parsed: 12 (out of scope: gamlss2)
 - R exported symbols: 1080 (in scope: 1036)
-- Python surface matched: 798 / missing: 282
+- Python surface matched: 800 / missing: 280
 - Family-linked symbols: 531 (dpqr kernels: 424)
-- Python-only public exports: 327
+- Python-only public exports: 328
 
-- **surface**: `missing` 282, `module_def` 223, `module_export` 103, `public_api` 296, `registry` 176
-- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 272, `missing` 282
-- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 182, `tested` 182, `unverified` 326
-- **admission**: `blocked` 526, `exported_api` 190, `internal` 77, `not_available` 282, `production_safe` 5
+- **surface**: `missing` 280, `module_def` 223, `module_export` 103, `public_api` 298, `registry` 176
+- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 274, `missing` 280
+- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 182, `tested` 184, `unverified` 324
+- **admission**: `blocked` 526, `exported_api` 192, `internal` 77, `not_available` 280, `production_safe` 5
 
 ## Per-package coverage
 
@@ -28,7 +28,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gamlss.cens | 5.0-8 | `d808f83ace3c6af1` | yes | 5 | 5 | 5 |
 | gamlss.data | 6.0-9 | `d9f9597e6df3f7b9` | yes | 0 | 0 | 0 |
 | gamlss.dist | 6.1-8 | `59a3b7074378aaeb` | yes | 654 | 630 | 650 |
-| gamlss.foreach | 1.1-10 | `819542107cb0994b` | yes | 13 | 13 | 0 |
+| gamlss.foreach | 1.1-10 | `819542107cb0994b` | yes | 13 | 13 | 2 |
 | gamlss.ggplots | 2.1-34 | `cbe1ae29a3d583c1` | yes | 109 | 106 | 1 |
 | gamlss.mx | 6.0-4 | `b832557a4937461b` | yes | 12 | 12 | 0 |
 | gamlss.prepdata | 0.1.19 | `406a76c8aa06aa80` | yes | 59 | 58 | 28 |
@@ -113,10 +113,8 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fitRolling | gamlss.foreach | function | R/gamlss.foreach/R/FitRollingGamlss.R:7 |
 | gamlss.pc | gamlss.foreach | function | R/gamlss.foreach/R/PCR-GAMLSS.R:118 |
 | gamlss.pcr | gamlss.foreach | function | R/gamlss.foreach/R/fitPCR-GAMLSS.R:86 |
-| getSVD | gamlss.foreach | function | R/gamlss.foreach/R/PCR-GAMLSS.R:315 |
 | pc | gamlss.foreach | function | R/gamlss.foreach/R/PCR-GAMLSS.R:14 |
 | pcr | gamlss.foreach | function | R/gamlss.foreach/R/fitPCR-GAMLSS.R:14 |
-| which.Data.Corr | gamlss.foreach | function | R/gamlss.foreach/R/PCR-GAMLSS.R:234 |
 | which.yX.Corr | gamlss.foreach | function | R/gamlss.foreach/R/PCR-GAMLSS.R:270 |
 | ECDF_2D | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:286 |
 | add_resid_qqplot | gamlss.ggplots | function | R/gamlss.ggplots/R/add_resid_qqplot.R:5 |
@@ -380,7 +378,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | - | missing | missing | unverified | not_available | 5 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 5 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 187 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 188 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | - | missing | missing | unverified | not_available | 1 |
 | gamlss.cy | gamlss | - | missing | missing | unverified | not_available | 0 |
@@ -1161,10 +1159,10 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fitRolling | gamlss.foreach | - | missing | missing | unverified | not_available | 0 |
 | gamlss.pc | gamlss.foreach | - | missing | missing | unverified | not_available | 0 |
 | gamlss.pcr | gamlss.foreach | - | missing | missing | unverified | not_available | 0 |
-| getSVD | gamlss.foreach | - | missing | missing | unverified | not_available | 0 |
+| getSVD | gamlss.foreach | getSVD | public_api | implemented | tested | exported_api | 1 |
 | pc | gamlss.foreach | - | missing | missing | unverified | not_available | 0 |
 | pcr | gamlss.foreach | - | missing | missing | unverified | not_available | 0 |
-| which.Data.Corr | gamlss.foreach | - | missing | missing | unverified | not_available | 0 |
+| which.Data.Corr | gamlss.foreach | which_Data_Corr | public_api | implemented | tested | exported_api | 1 |
 | which.yX.Corr | gamlss.foreach | - | missing | missing | unverified | not_available | 0 |
 | ECDF_2D | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | add_resid_qqplot | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
@@ -1410,7 +1408,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 
 ## Python-only public exports
 
-327 names exported from `omnilss.__all__` have no R counterpart; they are Python-side additions (dataclasses, backends, utilities), not coverage gaps. The JSON artifact lists them all.
+328 names exported from `omnilss.__all__` have no R counterpart; they are Python-side additions (dataclasses, backends, utilities), not coverage gaps. The JSON artifact lists them all.
 
 - `AIC`
 - `BINOMIAL`
@@ -1452,4 +1450,4 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 - `ComprehensiveDiagnostics`
 - `DELAPORT`
 - `DPO1`
-- ... 287 more in the JSON artifact
+- ... 288 more in the JSON artifact

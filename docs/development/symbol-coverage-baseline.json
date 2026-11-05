@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 282,
+    "missing": 280,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 327
+    "extra": 328
   },
   "symbols": {
     "missing": [
@@ -45,10 +45,8 @@
       "gamlss.foreach::fitRolling",
       "gamlss.foreach::gamlss.pc",
       "gamlss.foreach::gamlss.pcr",
-      "gamlss.foreach::getSVD",
       "gamlss.foreach::pc",
       "gamlss.foreach::pcr",
-      "gamlss.foreach::which.Data.Corr",
       "gamlss.foreach::which.yX.Corr",
       "gamlss.ggplots::ECDF_2D",
       "gamlss.ggplots::add_resid_qqplot",
@@ -483,6 +481,7 @@
       "RSquaredResult",
       "ResidualACFResult",
       "SM_LIST",
+      "SVDResult",
       "ScopeSelectionResult",
       "ScopeSelectionRow",
       "SmootherInfo",
