@@ -100,6 +100,13 @@ def _parameter_block_covariance(object: GAMLSSModel, what: str) -> np.ndarray | 
     from .operations import coef
     from .vcov_gamlss import vcov
 
+    # Censored fits store their parameter-block covariance directly (the
+    # generic vcov path assumes a numeric response and cannot consume a
+    # Surv-structured likelihood).
+    stored = (getattr(object, "additional_slots", {}) or {}).get("parameter_covariance")
+    if isinstance(stored, Mapping) and what in stored:
+        return np.asarray(stored[what], dtype=np.float64)
+
     cov = vcov(object, type="vcov")
     offset = 0
     for parameter in object.par:

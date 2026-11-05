@@ -346,8 +346,11 @@ class GAMLSSModel:
     
     def predict(
         self,
-        newdata: dict[str, Any],
-        type: str = "response"
+        newdata: dict[str, Any] | None = None,
+        type: str = "response",
+        what: str = "mu",
+        se_fit: bool = False,
+        terms: tuple[str, ...] | None = None,
     ) -> Any:
         """Predict response variable.
         
@@ -369,5 +372,23 @@ class GAMLSSModel:
         >>> newdata = {"x": np.array([1, 2, 3])}
         >>> y_pred = model.predict(newdata, type="response")
         """
-        from .prediction import predict_response
-        return predict_response(self, newdata, type)
+        if type not in {"response", "link", "terms"}:
+            raise ValueError(f"Unknown type: {type}")
+        # Keep the historical mu-response/link surface for the common call, and
+        # route what=/se_fit=/terms=/no-newdata to the richer R-aligned predict
+        # (which also serves censored models via stored parameter covariance).
+        if (
+            what == "mu"
+            and not se_fit
+            and terms is None
+            and newdata is not None
+            and type in {"response", "link"}
+        ):
+            from .prediction import predict_response
+
+            return predict_response(self, newdata, type)
+        from .predict_gamlss_23_12_21 import predict as _rich_predict
+
+        return _rich_predict(
+            self, what=what, type=type, terms=terms, se_fit=se_fit, newdata=newdata
+        )

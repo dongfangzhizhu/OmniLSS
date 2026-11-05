@@ -104,6 +104,7 @@ def censored_fit(
 
     coefficients: dict[str, np.ndarray] = {}
     linear_predictors: dict[str, np.ndarray] = {}
+    last_weights: dict[str, np.ndarray] = {}
     deviance: float | None = None
     converged = False
     termination_reason = "max_iterations_reached"
@@ -133,6 +134,7 @@ def censored_fit(
                 offset=np.zeros(n, dtype=np.float64),
                 eta=eta,
             )
+            last_weights[parameter] = np.asarray(working_weights, dtype=np.float64)
             beta = solve_weighted_least_squares_cholesky(
                 X=design[parameter],
                 z=working_response,
@@ -157,6 +159,30 @@ def censored_fit(
 
     df_fit = float(sum(design[p].shape[1] for p in family.estimable_parameters))
     g_dev = float(deviance if deviance is not None else np.nan)
+
+    # Parameter-block covariance from the final IRLS working weights
+    # (cov = (X' W X)^-1).  Stored so se_fit / predict_all avoid the generic
+    # vcov path, which assumes a numeric response.
+    parameter_covariance: dict[str, np.ndarray] = {}
+    for parameter in family.estimable_parameters:
+        weights_vector = last_weights.get(parameter)
+        if weights_vector is None:
+            continue
+        information = design[parameter].T @ (design[parameter] * (weights_vector * w)[:, None])
+        try:
+            parameter_covariance[parameter] = np.linalg.inv(information)
+        except np.linalg.LinAlgError:
+            parameter_covariance[parameter] = np.linalg.pinv(information)
+
+    terms_metadata = {
+        parameter: {
+            "term_labels": labels[parameter],
+            "response": synthetic,
+            "intercept": True,
+            "formula": resolved[parameter],
+        }
+        for parameter in family.estimable_parameters
+    }
     fitted_values = {
         parameter: jnp.asarray(fitted[parameter], dtype=jnp.float64)
         for parameter in family.parameters
@@ -178,6 +204,7 @@ def censored_fit(
             for parameter, value in linear_predictors.items()
         },
         formulas=resolved,
+        terms=terms_metadata,
         design_matrices={
             parameter: jnp.asarray(matrix, dtype=jnp.float64)
             for parameter, matrix in design.items()
@@ -205,6 +232,7 @@ def censored_fit(
             "converged": converged,
             "cycles": iteration,
             "term_labels": labels,
+            "parameter_covariance": parameter_covariance,
         },
     )
 

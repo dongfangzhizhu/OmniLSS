@@ -826,8 +826,17 @@ def add_prediction_methods(model_class):
     ):
         return centiles(self, xvar, xvalues, cent, n_points, **fixed_vars)
 
-    def _predict(self, newdata, type="response"):
-        return predict_response(self, newdata, type)
+    def _predict(self, newdata=None, type="response", what="mu", se_fit=False, terms=None):
+        # Preserve the historical mu-response surface for the common call
+        # signature, and extend it with what/se_fit/terms (and no-newdata
+        # fitted-value prediction) via the richer R-aligned predict.
+        if what == "mu" and not se_fit and terms is None and newdata is not None:
+            return predict_response(self, newdata, type)
+        from .predict_gamlss_23_12_21 import predict as _rich_predict
+
+        return _rich_predict(
+            self, what=what, type=type, terms=terms, se_fit=se_fit, newdata=newdata
+        )
 
     # 添加方法
     model_class.predict_params = _predict_params
