@@ -8,14 +8,14 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - R packages parsed: 12 (out of scope: gamlss2)
 - R exported symbols: 1080 (in scope: 1036)
-- Python surface matched: 786 / missing: 294
+- Python surface matched: 795 / missing: 285
 - Family-linked symbols: 531 (dpqr kernels: 424)
 - Python-only public exports: 322
 
-- **surface**: `missing` 294, `module_def` 223, `module_export` 103, `public_api` 284, `registry` 176
-- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 260, `missing` 294
-- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 179, `tested` 173, `unverified` 338
-- **admission**: `blocked` 526, `exported_api` 178, `internal` 77, `not_available` 294, `production_safe` 5
+- **surface**: `missing` 285, `module_def` 223, `module_export` 103, `public_api` 293, `registry` 176
+- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 269, `missing` 285
+- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 179, `tested` 182, `unverified` 329
+- **admission**: `blocked` 526, `exported_api` 187, `internal` 77, `not_available` 285, `production_safe` 5
 
 ## Per-package coverage
 
@@ -23,7 +23,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 
 | R package | version | NAMESPACE sha256 | in scope | exports | defined functions | surface matched |
 |---|---|---|---|---|---|---|
-| gamlss | 5.5-3 | `315c79f596a03c1d` | yes | 152 | 143 | 94 |
+| gamlss | 5.5-3 | `315c79f596a03c1d` | yes | 152 | 143 | 103 |
 | gamlss.add | 5.1-14 | `3c076e78b10c1984` | yes | 15 | 15 | 0 |
 | gamlss.cens | 5.0-8 | `d808f83ace3c6af1` | yes | 5 | 5 | 5 |
 | gamlss.data | 6.0-9 | `d9f9597e6df3f7b9` | yes | 0 | 0 | 0 |
@@ -46,9 +46,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | bp | gamlss | function | R/gamlss/R/bp.R:13 |
 | calibration | gamlss | function | R/gamlss/R/lms.R:348 |
 | cs | gamlss | function | R/gamlss/R/cubicSplines-10-08-12.R:44 |
-| cs.control | gamlss | function | R/gamlss/R/cubicSplines-10-08-12.R:80 |
 | cy | gamlss | function | R/gamlss/R/cy.R:6 |
-| cy.control | gamlss | function | R/gamlss/R/cy.R:138 |
 | drop1All | gamlss | function | R/gamlss/R/stepGAICAll-B-Parallel.R:10 |
 | fittedPlot | gamlss | function | R/gamlss/R/fitted-plot.R:1 |
 | fp | gamlss | function | R/gamlss/R/fracpoly.R:47 |
@@ -75,22 +73,15 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | loglogSurv2 | gamlss | function | R/gamlss/R/FitTail.R:78 |
 | loglogSurv3 | gamlss | function | R/gamlss/R/FitTail.R:120 |
 | pb | gamlss | function | R/gamlss/R/pb.R:23 |
-| pb.control | gamlss | function | R/gamlss/R/pb.R:134 |
 | pbc | gamlss | function | R/gamlss/R/pbc.R:6 |
-| pbc.control | gamlss | function | R/gamlss/R/pbc.R:160 |
 | pbm | gamlss | function | R/gamlss/R/pbm.R:7 |
-| pbm.control | gamlss | function | R/gamlss/R/pbm.R:107 |
 | pbo | gamlss | function | R/gamlss/R/pbo_original.R:5 |
-| pbo.control | gamlss | function | R/gamlss/R/pbo_original.R:99 |
 | pbp | gamlss | function | R/gamlss/R/pbp.R:6 |
-| pbp.control | gamlss | function | R/gamlss/R/pbp.R:101 |
 | pbz | gamlss | function | R/gamlss/R/pb_goingtozero.R:10 |
-| pbz.control | gamlss | function | R/gamlss/R/pb_goingtozero.R:107 |
 | pcat | gamlss | function | R/gamlss/R/p-categorical.R:25 |
 | pp | gamlss | function | R/gamlss/R/powerpoly.R:6 |
 | ps | gamlss | function | R/gamlss/R/PS.R:2 |
 | pvc | gamlss | function | R/gamlss/R/pvc.R:26 |
-| pvc.control | gamlss | function | R/gamlss/R/pvc.R:163 |
 | re | gamlss | function | R/gamlss/R/re_gamlss_lme_test.R:27 |
 | ri | gamlss | function | R/gamlss/R/ri.R:26 |
 | rqres.plot | gamlss | function | R/gamlss/R/rqresplot_new.R:41 |
@@ -351,7 +342,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | .realplus | gamlss | _realplus | module_export | implemented | unverified | internal | 0 |
 | CV | gamlss | CV | public_api | implemented | tested | exported_api | 2 |
 | ECDF | gamlss | ECDF | public_api | implemented | tested | exported_api | 1 |
-| GAIC | gamlss | GAIC | public_api | implemented | tested | exported_api | 4 |
+| GAIC | gamlss | GAIC | public_api | implemented | tested | exported_api | 5 |
 | GAIC_scaled | gamlss | GAIC_scaled | module_export | implemented | unverified | internal | 0 |
 | GAIC_table | gamlss | GAIC_table | module_export | implemented | unverified | internal | 0 |
 | IC | gamlss | IC | public_api | implemented | tested | exported_api | 1 |
@@ -375,10 +366,10 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | chooseDist | gamlss | chooseDist | public_api | implemented | tested | exported_api | 1 |
 | chooseDistPred | gamlss | chooseDistPred | public_api | implemented | tested | exported_api | 1 |
 | coefAll | gamlss | coefAll | module_export | implemented | tested | internal | 2 |
-| cs | gamlss | - | missing | missing | unverified | not_available | 22 |
-| cs.control | gamlss | - | missing | missing | unverified | not_available | 0 |
-| cy | gamlss | - | missing | missing | unverified | not_available | 3 |
-| cy.control | gamlss | - | missing | missing | unverified | not_available | 0 |
+| cs | gamlss | - | missing | missing | unverified | not_available | 23 |
+| cs.control | gamlss | cs_control | public_api | implemented | tested | exported_api | 1 |
+| cy | gamlss | - | missing | missing | unverified | not_available | 4 |
+| cy.control | gamlss | cy_control | public_api | implemented | tested | exported_api | 1 |
 | devianceIncr | gamlss | devianceIncr | public_api | implemented | tested | exported_api | 1 |
 | drop1All | gamlss | - | missing | missing | unverified | not_available | 0 |
 | drop1TGD | gamlss | drop1TGD | public_api | implemented | tested | exported_api | 1 |
@@ -392,7 +383,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | - | missing | missing | unverified | not_available | 5 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 5 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 184 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 185 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | - | missing | missing | unverified | not_available | 0 |
 | gamlss.cy | gamlss | - | missing | missing | unverified | not_available | 0 |
@@ -446,18 +437,18 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | lpred | gamlss | lpred | public_api | implemented | tested | exported_api | 1 |
 | numeric.deriv | gamlss | numeric_deriv | public_api | implemented | r_consistency_test | exported_api | 6 |
 | par.plot | gamlss | par_plot | public_api | implemented | tested | exported_api | 1 |
-| pb | gamlss | - | missing | missing | unverified | not_available | 36 |
-| pb.control | gamlss | - | missing | missing | unverified | not_available | 0 |
-| pbc | gamlss | - | missing | missing | unverified | not_available | 3 |
-| pbc.control | gamlss | - | missing | missing | unverified | not_available | 0 |
-| pbm | gamlss | - | missing | missing | unverified | not_available | 3 |
-| pbm.control | gamlss | - | missing | missing | unverified | not_available | 0 |
-| pbo | gamlss | - | missing | missing | unverified | not_available | 3 |
-| pbo.control | gamlss | - | missing | missing | unverified | not_available | 0 |
-| pbp | gamlss | - | missing | missing | unverified | not_available | 1 |
-| pbp.control | gamlss | - | missing | missing | unverified | not_available | 0 |
-| pbz | gamlss | - | missing | missing | unverified | not_available | 3 |
-| pbz.control | gamlss | - | missing | missing | unverified | not_available | 0 |
+| pb | gamlss | - | missing | missing | unverified | not_available | 37 |
+| pb.control | gamlss | pb_control | public_api | implemented | tested | exported_api | 1 |
+| pbc | gamlss | - | missing | missing | unverified | not_available | 4 |
+| pbc.control | gamlss | pbc_control | public_api | implemented | tested | exported_api | 1 |
+| pbm | gamlss | - | missing | missing | unverified | not_available | 4 |
+| pbm.control | gamlss | pbm_control | public_api | implemented | tested | exported_api | 1 |
+| pbo | gamlss | - | missing | missing | unverified | not_available | 4 |
+| pbo.control | gamlss | pbo_control | public_api | implemented | tested | exported_api | 1 |
+| pbp | gamlss | - | missing | missing | unverified | not_available | 2 |
+| pbp.control | gamlss | pbp_control | public_api | implemented | tested | exported_api | 1 |
+| pbz | gamlss | - | missing | missing | unverified | not_available | 4 |
+| pbz.control | gamlss | pbz_control | public_api | implemented | tested | exported_api | 1 |
 | pcat | gamlss | - | missing | missing | unverified | not_available | 3 |
 | pdf.plot | gamlss | pdf_plot | module_export | implemented | unverified | internal | 0 |
 | plot2way | gamlss | plot2way | module_export | implemented | unverified | internal | 0 |
@@ -468,8 +459,8 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | prof.dev | gamlss | prof_dev | public_api | implemented | tested | exported_api | 1 |
 | prof.term | gamlss | prof_term | public_api | implemented | tested | exported_api | 1 |
 | ps | gamlss | - | missing | missing | unverified | not_available | 25 |
-| pvc | gamlss | - | missing | missing | unverified | not_available | 3 |
-| pvc.control | gamlss | - | missing | missing | unverified | not_available | 0 |
+| pvc | gamlss | - | missing | missing | unverified | not_available | 4 |
+| pvc.control | gamlss | pvc_control | public_api | implemented | tested | exported_api | 1 |
 | quantSheets | gamlss | quantSheets | public_api | implemented | tested | exported_api | 1 |
 | quantSheets.control | gamlss | quantSheets_control | public_api | implemented | tested | exported_api | 1 |
 | random | gamlss | random | public_api | implemented | r_consistency_test | exported_api | 30 |
@@ -1377,7 +1368,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | trun.r | gamlss.tr | trun_r | public_api | implemented | tested | exported_api | 1 |
 | BS | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | CG | gamlss2 | - | missing | missing | unverified | not_available | 33 |
-| GAIC | gamlss2 | GAIC | public_api | implemented | tested | exported_api | 4 |
+| GAIC | gamlss2 | GAIC | public_api | implemented | tested | exported_api | 5 |
 | GDF | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | KS | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | Kumaraswamy | gamlss2 | - | missing | missing | unverified | not_available | 0 |
