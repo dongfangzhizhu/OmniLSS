@@ -10,7 +10,7 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 374,
+    "missing": 370,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 34,
@@ -277,10 +277,6 @@
       "gamlss.tr::fitTailAll",
       "gamlss.tr::gen.trun",
       "gamlss.tr::trun",
-      "gamlss.tr::trun.d",
-      "gamlss.tr::trun.p",
-      "gamlss.tr::trun.q",
-      "gamlss.tr::trun.r",
       "gamlss2::BS",
       "gamlss2::CG",
       "gamlss2::GDF",

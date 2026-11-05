@@ -192,6 +192,7 @@ from .o_variant_density import (
     dSHASHo,
 )
 from .gamlss_scope import gamlss_scope
+from .gamlss_tr import trun_d, trun_p, trun_q, trun_r
 from .logLik import logLik
 from .loglogSurv import logSurv0
 from .loglogplot import loglogplot, LogLogPlotResult
@@ -838,6 +839,11 @@ __all__ = [
     "centile_skew",
     "centileSkew",
     "gamlss_scope",
+    # ── gamlss.tr truncation helpers ──
+    "trun_d",
+    "trun_p",
+    "trun_q",
+    "trun_r",
     # ── R 'o' (original) parameterisation densities ──
     "dBCCGo",
     "dBCPEo",
