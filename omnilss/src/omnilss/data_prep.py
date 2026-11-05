@@ -471,10 +471,93 @@ def data_boot_weights(data: Any, B: int = 10, setseed: int = 123) -> np.ndarray:
     return weights
 
 
+def y_distinct(var: Any) -> int:
+    """R y_distinct: number of distinct values of a vector."""
+
+    if isinstance(var, pd.Categorical):
+        return int(len(var.categories))
+    if isinstance(var, pd.Series) and isinstance(var.dtype, pd.CategoricalDtype):
+        return int(len(var.cat.categories))
+    series = var if isinstance(var, pd.Series) else pd.Series(var)
+    return int(series.dropna().nunique())
+
+
+def y_factor(x: Any, how: str = "lower") -> pd.Series:
+    """R y_factor: relevel a factor to its least or most frequent level."""
+
+    if how not in ("lower", "higher"):
+        raise ValueError(f"'arg' should be one of ['lower', 'higher'], got {how!r}")
+    series = x if isinstance(x, pd.Series) else pd.Series(x)
+    if not isinstance(series.dtype, pd.CategoricalDtype):
+        raise ValueError("x is not a factor")
+    if series.cat.ordered:
+        raise ValueError("the factor is ordered")
+    counts = series.value_counts()
+    reference = counts.idxmin() if how == "lower" else counts.idxmax()
+    remaining = [level for level in series.cat.categories if level != reference]
+    series = series.cat.reorder_categories([reference] + remaining)
+    return series
+
+
+def data_factor(data: Any, how: str = "lower") -> pd.DataFrame:
+    """R data_factor: relevel every unordered factor column by frequency."""
+
+    frame = _as_frame(data).copy()
+    for name in frame.columns:
+        column = frame[name]
+        if isinstance(column.dtype, pd.CategoricalDtype) and not column.cat.ordered:
+            frame[name] = y_factor(column, how=how)
+    return frame
+
+
+def _upper_pairs(table: Any, mask: np.ndarray, names: Sequence[str]):
+    """Rows (name1, name2, value) for the upper triangle entries where mask is True."""
+
+    matrix = np.asarray(table, dtype=float)
+    rows, columns = np.nonzero(np.triu(np.ones_like(mask, dtype=bool), k=1) & mask)
+    return [(names[i], names[j], float(matrix[i, j])) for i, j in zip(rows, columns)]
+
+
+def _check_val(val: float) -> None:
+    if abs(val) >= 1 or abs(val) <= 0:
+        raise ValueError("val should be greater than  0 and lass than 1")
+
+
+def high_val(table: Any, val: float = 0.90, print: bool = True) -> pd.DataFrame:
+    """R high_val: upper-triangle pairs whose absolute correlation exceeds val."""
+
+    _check_val(val)
+    matrix = np.asarray(table, dtype=float)
+    names = list(getattr(table, "columns", [str(i) for i in range(matrix.shape[0])]))
+    pairs = _upper_pairs(matrix, np.abs(matrix) > val, names)
+    frame = pd.DataFrame(pairs, columns=["name1", "name2", "value"])
+    if print:
+        print(frame.to_string(index=False))
+    return frame
+
+
+def low_val(table: Any, val: float = 0.05, print: bool = True) -> pd.DataFrame:
+    """R low_val: upper-triangle pairs whose absolute correlation is below val."""
+
+    _check_val(val)
+    matrix = np.asarray(table, dtype=float)
+    names = list(getattr(table, "columns", [str(i) for i in range(matrix.shape[0])]))
+    pairs = _upper_pairs(matrix, np.abs(matrix) < val, names)
+    frame = pd.DataFrame(pairs, columns=["name1", "name2", "value"])
+    if print:
+        print(frame.to_string(index=False))
+    return frame
+
+
 __all__ = [
     "data_boot_index",
     "data_boot_weights",
     "data_cut",
+    "data_factor",
+    "high_val",
+    "low_val",
+    "y_distinct",
+    "y_factor",
     "data_Kfold_index",
     "data_Kfold_weights",
     "data_part",

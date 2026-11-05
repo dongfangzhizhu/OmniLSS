@@ -144,6 +144,11 @@ from .data_prep import (
     data_Kfold_weights,
     data_boot_index,
     data_boot_weights,
+    data_factor,
+    high_val,
+    low_val,
+    y_distinct,
+    y_factor,
 )
 from .family_means import meanBEOI, meanBEZI
 from .family_groups import (
@@ -987,6 +992,11 @@ __all__ = [
     # ── gamlss.dist inflated-beta means ──
     "meanBEZI",
     "meanBEOI",
+    "y_distinct",
+    "y_factor",
+    "data_factor",
+    "high_val",
+    "low_val",
     # ── gamlss.cens censored-family helpers ──
     "CensoredFamily",
     "cens",
