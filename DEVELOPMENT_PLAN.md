@@ -439,3 +439,15 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 
 > 时间是容量估计而非承诺；R artifact、失败分类或 admission 不齐，功能一律保持 `experimental`。
 > 根文档历史「Phase 0–4 完成」只表示 Release 1 阶段目标，不代表全量 R GAMLSS 迁移完成。
+
+### 22.7 进展（2026-11-05 会话，D2.169–D2.170）
+
+- ✅ **P3-2（局部）**：`gamlss.family` / link 框架迁移完成——`make.link.gamlss`、`checklink`、
+  `show.link`、`as.family`、`as.gamlss.family`、`gamlss.family`、`gamlss.family.default`
+  7 个导出符号（含 `LinkGamlss`、`show.link` 的 118 族允许 link 表）。
+- ✅ **核心/dist 工具**：`centileSkew`、`gamlss.scope` 迁移完成（活 R 数值一致）。
+- 📉 覆盖：`missing` **391 → 382**（9 个符号离开 missing），matched 689 → 698；ratchet 基线已更新且 `result: OK`。
+- 测试：D2.169 41 例 + D2.170 7 例，focused regression 92 例 EXIT=0。
+- ⏭ 下一步（按 P 排序）：P0（`.codex/setup.sh`、旧文档校准、MIXED 语义）；P3 平滑项（pbm/pbz/pbo/pbp/pbc/pvc/cy/fp/bfp）
+  与 `Gen.Family`；P4 周边包（cens/tr/mx/add）；P5 在线/多元。`o` 变体 dpqr（32 符号）需逐族补 CDF/逆，
+  当前 `p/q/r` 多数缺失，不能靠别名冒充。
