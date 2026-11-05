@@ -10,7 +10,7 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 280,
+    "missing": 276,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
@@ -174,11 +174,8 @@
       "gamlss.prepdata::cor_perm_test",
       "gamlss.prepdata::data_association",
       "gamlss.prepdata::data_bucket",
-      "gamlss.prepdata::data_cha2fac",
       "gamlss.prepdata::data_cor",
-      "gamlss.prepdata::data_few2fac",
       "gamlss.prepdata::data_form2X",
-      "gamlss.prepdata::data_formulae",
       "gamlss.prepdata::data_inter",
       "gamlss.prepdata::data_leverage",
       "gamlss.prepdata::data_mcor",
@@ -187,7 +184,6 @@
       "gamlss.prepdata::data_plot",
       "gamlss.prepdata::data_response",
       "gamlss.prepdata::data_scale",
-      "gamlss.prepdata::data_str",
       "gamlss.prepdata::data_vars2data",
       "gamlss.prepdata::data_void",
       "gamlss.prepdata::data_xyplot",
