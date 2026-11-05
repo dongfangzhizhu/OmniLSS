@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 269,
+    "missing": 266,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 332
+    "extra": 334
   },
   "symbols": {
     "missing": [
@@ -249,12 +249,9 @@
       "gamlss2::step_gamlss2",
       "gamlss2::stepwise",
       "gamlss::TGD",
-      "gamlss::bfp",
       "gamlss::bp",
       "gamlss::calibration",
       "gamlss::fittedPlot",
-      "gamlss::fp",
-      "gamlss::gamlss.fp",
       "gamlss::gamlss.lo",
       "gamlss::gamlss.pbc",
       "gamlss::gamlss.pbm",
@@ -386,6 +383,8 @@
       "ExtractAICResult",
       "ExtractTGDResult",
       "FAMILY_CAPABILITY_FEATURES",
+      "FPFit",
+      "FPSpec",
       "FamilyCapability",
       "FamilyCapabilityError",
       "FamilyDefinition",
