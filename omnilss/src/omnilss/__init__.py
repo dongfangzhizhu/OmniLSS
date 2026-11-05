@@ -157,6 +157,7 @@ from .data_prep import (
 from .family_means import meanBEOI, meanBEZI
 from .pcr import SVDResult, getSVD, which_Data_Corr
 from .smoother_fits import SmootherFit, gamlss_cs, gamlss_cy, gamlss_pb, gamlss_ps
+from .fractional_poly import FPFit, FPSpec, bfp, fp, gamlss_fp
 from .smoother_specs import (
     CSSpline,
     CYSpline,
@@ -1066,6 +1067,12 @@ __all__ = [
     "CYSpline",
     "cbase",
     "cdiff",
+    # ── gamlss fractional-polynomial smoother ──
+    "fp",
+    "bfp",
+    "gamlss_fp",
+    "FPSpec",
+    "FPFit",
     # ── gamlss.foreach PCR helpers ──
     "getSVD",
     "SVDResult",
