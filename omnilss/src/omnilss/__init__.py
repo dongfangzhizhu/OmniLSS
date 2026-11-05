@@ -180,6 +180,8 @@ from .gamlss_family import (
     make_link_gamlss,
     show_link,
 )
+from .centile_skew import centile_skew, centileSkew
+from .gamlss_scope import gamlss_scope
 from .logLik import logLik
 from .loglogSurv import logSurv0
 from .loglogplot import loglogplot, LogLogPlotResult
@@ -823,6 +825,9 @@ __all__ = [
     "gamlss_family",
     "gamlss_family_default",
     "family_summary",
+    "centile_skew",
+    "centileSkew",
+    "gamlss_scope",
     "save_model",
     "load_model",
     "save_model_json",

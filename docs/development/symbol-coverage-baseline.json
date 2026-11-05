@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 384,
+    "missing": 382,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 34,
-    "extra": 302
+    "extra": 303
   },
   "symbols": {
     "missing": [
@@ -44,7 +44,6 @@
       "gamlss.dist::Family.q",
       "gamlss.dist::Family.r",
       "gamlss.dist::GAMLSS",
-      "gamlss.dist::centileSkew",
       "gamlss.dist::dBCCGo",
       "gamlss.dist::dBCPEo",
       "gamlss.dist::dBCTo",
@@ -372,7 +371,6 @@
       "gamlss::gamlss.random",
       "gamlss::gamlss.re",
       "gamlss::gamlss.ri",
-      "gamlss::gamlss.scope",
       "gamlss::gamlssNews",
       "gamlss::get.rqres",
       "gamlss::loglogSurv1",
@@ -601,6 +599,7 @@
       "capability_matrix",
       "cdf",
       "centile_pred_data",
+      "centile_skew",
       "centiles_comparison_coverage_data",
       "centiles_comparison_data",
       "centiles_coverage_data",
