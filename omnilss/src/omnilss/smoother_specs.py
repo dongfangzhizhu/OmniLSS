@@ -179,4 +179,173 @@ def pb(
     )
 
 
-__all__ = ["PBSpline", "bbase", "difference_matrix", "pb"]
+@dataclass(frozen=True)
+class PSSpline:
+    """The object R's ps() returns: B-spline design, penalty, knots, df, lambda."""
+
+    name: str
+    design: np.ndarray
+    penalty: np.ndarray
+    knots: np.ndarray
+    df: float
+    lambda_: float | None
+    order: int
+    values: np.ndarray = field(repr=False, default=None)
+
+    @property
+    def X(self) -> np.ndarray:
+        return self.design
+
+
+def ps(
+    x: Any,
+    df: float | None = 3,
+    lambda_: float | None = None,
+    ps_intervals: int = 20,
+    degree: int = 3,
+    order: int = 3,
+    name: str | None = None,
+) -> PSSpline:
+    """R ps(): Eilers-Marx P-spline basis via splineDesign plus a difference penalty.
+
+    Mirrors R's bookkeeping: knots span the 1%-expanded range, the penalty
+    order is clipped when it exceeds the number of columns, df below 1 is set to
+    1 and otherwise stored as df + 2, and a negative lambda is replaced by 0.
+    """
+
+    if lambda_ is None and df is None:
+        raise ValueError("df or lambda should be set \n")
+
+    values = np.asarray(x, dtype=float)
+    if values.ndim != 1:
+        raise ValueError("x is a matrix declare it as a vector")
+
+    finite = values[~np.isnan(values)]
+    xl = float(np.min(finite))
+    xr = float(np.max(finite))
+    xmax = xr + 0.01 * (xr - xl)
+    xmin = xl - 0.01 * (xr - xl)
+    dx = (xmax - xmin) / ps_intervals
+
+    sorder = degree + 1
+    if (ps_intervals - 1) < 1:
+        import warnings
+
+        warnings.warn("ps.intervals was too small; have used 2", UserWarning, stacklevel=2)
+    knots = _seq(xmin - degree * dx, xmax + degree * dx, dx)
+
+    from scipy.interpolate import BSpline
+
+    sparse_design = BSpline.design_matrix(finite, knots, degree)
+    design = np.asarray(sparse_design.todense(), dtype=float)
+    columns = design.shape[1]
+
+    if (order - columns + 1) > 0:
+        import warnings
+
+        warnings.warn(
+            f"order was too large; have used  {columns - 1}", UserWarning, stacklevel=2
+        )
+        order = columns - 1
+
+    stored_df = float(df) + 2.0 if df is not None else None
+    if df is not None and df < 1:
+        import warnings
+
+        warnings.warn("the df are set to 1", UserWarning, stacklevel=2)
+        stored_df = 1.0
+
+    if lambda_ is not None and lambda_ < 0:
+        import warnings
+
+        warnings.warn("lambda was negative; have used  0", UserWarning, stacklevel=2)
+        lambda_ = 0.0
+
+    penalty = difference_matrix(columns, order) if order != 0 else np.eye(columns)
+
+    return PSSpline(
+        name=name or "ps",
+        design=design,
+        penalty=penalty,
+        knots=knots,
+        df=stored_df,
+        lambda_=lambda_,
+        order=order,
+        values=finite,
+    )
+
+
+@dataclass(frozen=True)
+class CSSpline:
+    """The object R's cs() returns: the covariate tagged for gamlss.cs()."""
+
+    name: str
+    values: np.ndarray
+    control: dict[str, Any]
+    df: float | None
+    spar: float | None
+    na_positions: tuple[int, ...]
+    smooth_class: str = "smooth"
+
+
+def cs(
+    x: Any,
+    df: float | None = 3,
+    spar: float | None = None,
+    c_spar: Any = None,
+    control: dict[str, Any] | None = None,
+    name: str | None = None,
+    **kwargs: Any,
+) -> CSSpline:
+    """R cs(): tag a covariate for the cubic smoothing spline smoother.
+
+    R does not build a basis here; gamlss.cs() calls smooth.spline() during
+    fitting.  The constructor only validates the input, applies the df guard and
+    records the control list (including c.spar's low/high window).
+    """
+
+    from .smoother_controls import cs_control
+
+    values = np.asarray(x, dtype=float)
+    if values.ndim != 1:
+        raise ValueError("The default smoother is bivariate; you gave a matrix as an argument")
+
+    settings = dict(control) if control is not None else cs_control(**kwargs)
+    for key, value in kwargs.items():
+        settings[key] = value
+
+    if c_spar is None:
+        settings["control.spar"] = {"low": -1.5, "high": 2}
+    elif isinstance(c_spar, dict) and len(c_spar) == 2:
+        settings["control.spar"] = {"low": c_spar["low"], "high": c_spar["high"]}
+    elif isinstance(c_spar, (list, tuple)) and len(c_spar) == 2:
+        settings["control.spar"] = {"low": c_spar[0], "high": c_spar[1]}
+    else:
+        raise ValueError("c.spar is not defined properly")
+
+    if df is not None and df < 0:
+        import warnings
+
+        warnings.warn("the df are set to 3", UserWarning, stacklevel=2)
+        df = 3.0
+
+    return CSSpline(
+        name=name or "cs",
+        values=values,
+        control=settings,
+        df=df,
+        spar=spar,
+        na_positions=tuple(int(index) for index in np.flatnonzero(np.isnan(values))),
+    )
+
+
+__all__ = [
+    "CSSpline",
+    "PBSpline",
+    "PSSpline",
+    "bbase",
+    "cs",
+    "difference_matrix",
+    "pb",
+    "ps",
+]

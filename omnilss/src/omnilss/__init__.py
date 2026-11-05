@@ -151,7 +151,16 @@ from .data_prep import (
     y_factor,
 )
 from .family_means import meanBEOI, meanBEZI
-from .smoother_specs import PBSpline, bbase, difference_matrix, pb
+from .smoother_specs import (
+    CSSpline,
+    PBSpline,
+    PSSpline,
+    bbase,
+    cs,
+    difference_matrix,
+    pb,
+    ps,
+)
 from .smoother_controls import (
     cs_control,
     cy_control,
@@ -1024,6 +1033,10 @@ __all__ = [
     "PBSpline",
     "bbase",
     "difference_matrix",
+    "ps",
+    "PSSpline",
+    "cs",
+    "CSSpline",
     # ── gamlss.cens censored-family helpers ──
     "CensoredFamily",
     "cens",
