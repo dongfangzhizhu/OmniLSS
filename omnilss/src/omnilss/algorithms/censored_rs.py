@@ -105,6 +105,7 @@ def censored_fit(
     coefficients: dict[str, np.ndarray] = {}
     linear_predictors: dict[str, np.ndarray] = {}
     last_weights: dict[str, np.ndarray] = {}
+    last_working_response: dict[str, np.ndarray] = {}
     deviance: float | None = None
     converged = False
     termination_reason = "max_iterations_reached"
@@ -135,6 +136,7 @@ def censored_fit(
                 eta=eta,
             )
             last_weights[parameter] = np.asarray(working_weights, dtype=np.float64)
+            last_working_response[parameter] = np.asarray(working_response, dtype=np.float64)
             beta = solve_weighted_least_squares_cholesky(
                 X=design[parameter],
                 z=working_response,
@@ -183,6 +185,20 @@ def censored_fit(
         }
         for parameter in family.estimable_parameters
     }
+
+    # Randomized quantile residuals via the censored PIT: rqres = Phi^-1(PIT).
+    from .._fitting_residuals import _normal_quantile
+
+    eps = float(np.finfo(np.float64).eps)
+    pit = np.asarray(family.p(y_struct, **fitted), dtype=np.float64)
+    pit = np.clip(pit, eps, 1.0 - eps)
+    residual_values = _normal_quantile(pit)
+
+    def censored_rqres(**kwargs: Any) -> Any:
+        params = {name: kwargs[name] for name in family.parameters}
+        values = np.asarray(family.p(kwargs["y"], **params), dtype=np.float64)
+        values = np.clip(values, eps, 1.0 - eps)
+        return jnp.asarray(_normal_quantile(values), dtype=jnp.float64)
     fitted_values = {
         parameter: jnp.asarray(fitted[parameter], dtype=jnp.float64)
         for parameter in family.parameters
@@ -210,6 +226,20 @@ def censored_fit(
             for parameter, matrix in design.items()
         },
         weights=jnp.asarray(w, dtype=jnp.float64),
+        working_vectors={
+            parameter: jnp.asarray(last_working_response[parameter], dtype=jnp.float64)
+            for parameter in family.estimable_parameters
+        },
+        iterative_weights={
+            parameter: jnp.asarray(last_weights[parameter], dtype=jnp.float64)
+            for parameter in family.estimable_parameters
+        },
+        offsets={
+            parameter: jnp.zeros(n, dtype=jnp.float64)
+            for parameter in family.estimable_parameters
+        },
+        residuals=jnp.asarray(residual_values, dtype=jnp.float64),
+        rqres=censored_rqres,
         iter=iteration,
         converged=converged,
         termination_reason=termination_reason,

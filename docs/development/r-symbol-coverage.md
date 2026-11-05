@@ -577,7 +577,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | nn | gamlss.add | - | missing | missing | unverified | not_available | 1 |
 | nn.control | gamlss.add | - | missing | missing | unverified | not_available | 0 |
 | tr | gamlss.add | - | missing | missing | unverified | not_available | 3 |
-| cens | gamlss.cens | cens | public_api | implemented | tested | exported_api | 3 |
+| cens | gamlss.cens | cens | public_api | implemented | tested | exported_api | 4 |
 | cens.d | gamlss.cens | cens_d | public_api | implemented | tested | exported_api | 1 |
 | cens.p | gamlss.cens | cens_p | public_api | implemented | tested | exported_api | 1 |
 | cens.q | gamlss.cens | cens_q | public_api | implemented | tested | exported_api | 1 |
@@ -646,7 +646,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | NBI | gamlss.dist | NBI | public_api | experimental | r_consistency_test | blocked | 19 |
 | NBII | gamlss.dist | NBII | public_api | experimental | r_consistency_test | blocked | 11 |
 | NET | gamlss.dist | NET | public_api | experimental | r_consistency_test | blocked | 12 |
-| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 139 |
+| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 140 |
 | NO2 | gamlss.dist | NO2 | public_api | experimental | r_consistency_test | blocked | 7 |
 | NOF | gamlss.dist | NOF | public_api | experimental | r_consistency_test | blocked | 5 |
 | PARETO | gamlss.dist | PARETO | public_api | experimental | r_consistency_test | blocked | 7 |
