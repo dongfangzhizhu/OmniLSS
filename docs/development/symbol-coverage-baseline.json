@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 326,
+    "missing": 324,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 321
+    "extra": 322
   },
   "symbols": {
     "missing": [
@@ -242,8 +242,6 @@
       "gamlss.spatial::polys2polys",
       "gamlss.tr::fitTail",
       "gamlss.tr::fitTailAll",
-      "gamlss.tr::gen.trun",
-      "gamlss.tr::trun",
       "gamlss2::BS",
       "gamlss2::CG",
       "gamlss2::GDF",
@@ -544,6 +542,7 @@
       "TermPlotEntry",
       "TermPlotResult",
       "TheoCentileSKResult",
+      "TruncatedFamily",
       "VGDComparisonResult",
       "VGDComparisonRow",
       "VisLoResult",
