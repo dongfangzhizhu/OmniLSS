@@ -10,7 +10,7 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 301,
+    "missing": 299,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
@@ -33,8 +33,6 @@
       "gamlss.add::nn",
       "gamlss.add::nn.control",
       "gamlss.add::tr",
-      "gamlss.dist::meanBEOI",
-      "gamlss.dist::meanBEZI",
       "gamlss.dist::plotBEOI",
       "gamlss.dist::plotBEZI",
       "gamlss.dist::plotZAGA",

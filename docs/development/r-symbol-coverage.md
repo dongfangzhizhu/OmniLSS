@@ -8,14 +8,14 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - R packages parsed: 12 (out of scope: gamlss2)
 - R exported symbols: 1080 (in scope: 1036)
-- Python surface matched: 779 / missing: 301
+- Python surface matched: 781 / missing: 299
 - Family-linked symbols: 531 (dpqr kernels: 424)
 - Python-only public exports: 322
 
-- **surface**: `missing` 301, `module_def` 223, `module_export` 103, `public_api` 277, `registry` 176
-- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 253, `missing` 301
-- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 179, `tested` 166, `unverified` 345
-- **admission**: `blocked` 526, `exported_api` 171, `internal` 77, `not_available` 301, `production_safe` 5
+- **surface**: `missing` 299, `module_def` 223, `module_export` 103, `public_api` 279, `registry` 176
+- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 255, `missing` 299
+- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 179, `tested` 168, `unverified` 343
+- **admission**: `blocked` 526, `exported_api` 173, `internal` 77, `not_available` 299, `production_safe` 5
 
 ## Per-package coverage
 
@@ -27,7 +27,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gamlss.add | 5.1-14 | `3c076e78b10c1984` | yes | 15 | 15 | 0 |
 | gamlss.cens | 5.0-8 | `d808f83ace3c6af1` | yes | 5 | 5 | 5 |
 | gamlss.data | 6.0-9 | `d9f9597e6df3f7b9` | yes | 0 | 0 | 0 |
-| gamlss.dist | 6.1-8 | `59a3b7074378aaeb` | yes | 654 | 630 | 648 |
+| gamlss.dist | 6.1-8 | `59a3b7074378aaeb` | yes | 654 | 630 | 650 |
 | gamlss.foreach | 1.1-10 | `819542107cb0994b` | yes | 13 | 13 | 0 |
 | gamlss.ggplots | 2.1-34 | `cbe1ae29a3d583c1` | yes | 109 | 106 | 1 |
 | gamlss.mx | 6.0-4 | `b832557a4937461b` | yes | 12 | 12 | 0 |
@@ -113,8 +113,6 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | nn | gamlss.add | function | R/gamlss.add/R/nnet_gamlss.R:9 |
 | nn.control | gamlss.add | function | R/gamlss.add/R/nnet_gamlss.R:79 |
 | tr | gamlss.add | function | R/gamlss.add/R/tree_gamlss.R:9 |
-| meanBEOI | gamlss.dist | function | R/gamlss.dist/R/BEOI.r:250 |
-| meanBEZI | gamlss.dist | function | R/gamlss.dist/R/BEZI.r:243 |
 | plotBEOI | gamlss.dist | function | R/gamlss.dist/R/BEOI.r:234 |
 | plotBEZI | gamlss.dist | function | R/gamlss.dist/R/BEZI.r:228 |
 | plotZAGA | gamlss.dist | function | R/gamlss.dist/R/ZAGA.R:115 |
@@ -399,7 +397,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | - | missing | missing | unverified | not_available | 5 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 5 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 182 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 183 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | - | missing | missing | unverified | not_available | 0 |
 | gamlss.cy | gamlss | - | missing | missing | unverified | not_available | 0 |
@@ -532,8 +530,8 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | BEINF | gamlss.dist | BEINF | public_api | experimental | r_consistency_test | blocked | 13 |
 | BEINF0 | gamlss.dist | BEINF0 | public_api | experimental | r_consistency_test | blocked | 11 |
 | BEINF1 | gamlss.dist | BEINF1 | public_api | experimental | r_consistency_test | blocked | 9 |
-| BEOI | gamlss.dist | BEOI | public_api | experimental | r_consistency_test | blocked | 10 |
-| BEZI | gamlss.dist | BEZI | public_api | experimental | r_consistency_test | blocked | 10 |
+| BEOI | gamlss.dist | BEOI | public_api | experimental | r_consistency_test | blocked | 11 |
+| BEZI | gamlss.dist | BEZI | public_api | experimental | r_consistency_test | blocked | 11 |
 | BEo | gamlss.dist | BEo | public_api | implemented | r_consistency_test | exported_api | 6 |
 | BI | gamlss.dist | BI | public_api | experimental | r_consistency_test | blocked | 26 |
 | BNB | gamlss.dist | BNB | public_api | experimental | r_consistency_test | blocked | 14 |
@@ -803,8 +801,8 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | meanBEINF | gamlss.dist | meanBEINF | module_def | implemented | tested | internal | 1 |
 | meanBEINF0 | gamlss.dist | meanBEINF0 | module_def | implemented | tested | internal | 1 |
 | meanBEINF1 | gamlss.dist | meanBEINF1 | module_def | implemented | tested | internal | 1 |
-| meanBEOI | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
-| meanBEZI | gamlss.dist | - | missing | missing | unverified | not_available | 0 |
+| meanBEOI | gamlss.dist | meanBEOI | public_api | implemented | tested | exported_api | 1 |
+| meanBEZI | gamlss.dist | meanBEZI | public_api | implemented | tested | exported_api | 1 |
 | meanZAGA | gamlss.dist | meanZAGA | module_def | implemented | tested | internal | 1 |
 | meanZAIG | gamlss.dist | meanZAIG | module_def | implemented | tested | internal | 1 |
 | momentSK | gamlss.dist | momentSK | public_api | implemented | tested | exported_api | 3 |
