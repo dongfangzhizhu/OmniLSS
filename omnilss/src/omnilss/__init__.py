@@ -181,6 +181,16 @@ from .gamlss_family import (
     show_link,
 )
 from .centile_skew import centile_skew, centileSkew
+from .o_variant_density import (
+    dBCCGo,
+    dBCPEo,
+    dBCTo,
+    dBEo,
+    dGEOMo,
+    dJSUo,
+    dPARETO2o,
+    dSHASHo,
+)
 from .gamlss_scope import gamlss_scope
 from .logLik import logLik
 from .loglogSurv import logSurv0
@@ -828,6 +838,15 @@ __all__ = [
     "centile_skew",
     "centileSkew",
     "gamlss_scope",
+    # ── R 'o' (original) parameterisation densities ──
+    "dBCCGo",
+    "dBCPEo",
+    "dBCTo",
+    "dBEo",
+    "dGEOMo",
+    "dJSUo",
+    "dPARETO2o",
+    "dSHASHo",
     "save_model",
     "load_model",
     "save_model_json",

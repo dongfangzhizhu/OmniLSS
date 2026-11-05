@@ -10,7 +10,7 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 382,
+    "missing": 374,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 34,
@@ -44,14 +44,6 @@
       "gamlss.dist::Family.q",
       "gamlss.dist::Family.r",
       "gamlss.dist::GAMLSS",
-      "gamlss.dist::dBCCGo",
-      "gamlss.dist::dBCPEo",
-      "gamlss.dist::dBCTo",
-      "gamlss.dist::dBEo",
-      "gamlss.dist::dGEOMo",
-      "gamlss.dist::dJSUo",
-      "gamlss.dist::dPARETO2o",
-      "gamlss.dist::dSHASHo",
       "gamlss.dist::gen.Family",
       "gamlss.dist::meanBEOI",
       "gamlss.dist::meanBEZI",

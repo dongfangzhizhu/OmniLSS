@@ -4,7 +4,7 @@
   "baseline_error": "",
   "r_exports_total": 1080,
   "current_counts": {
-    "missing": 382,
+    "missing": 374,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 34,
@@ -21,8 +21,8 @@
     "missing": {
       "new": [],
       "resolved": [],
-      "current_count": 382,
-      "baseline_count": 382
+      "current_count": 374,
+      "baseline_count": 374
     },
     "placeholder": {
       "new": [],

@@ -1,5 +1,12 @@
 # OmniLSS — R `gamlss` / `gamlss.dist` 迁移进度
 
+> ⚠️ **本文件已过时（2026-05-23，基于 omnilss 0.3.0）。请勿用它作为当前完成率。**
+> 当前权威覆盖以可重生成的工件为准：`docs/development/r-symbol-coverage.json` /
+> `symbol-coverage-diff.json`（`tools/generate_symbol_coverage.py`、
+> `tools/coverage_diff_report.py`）。截至 2026-11-05：146 族、0 placeholder、
+> `implemented` 1 族；范围内 surface matched 698 / missing 382。
+> `gamlss2` 为**明确 out-of-scope**（`scope.out_of_scope_packages`），不计缺失。
+>
 > 生成时间：2026-05-23  
 > 基准版本：R `gamlss` 5.5-3，`gamlss.dist` 6.1-1（`R/gamlss/` 和 `R/gamlss.dist/` 目录）  
 > Python 包：`omnilss` 0.3.0（`omnilss/src/omnilss/`）
