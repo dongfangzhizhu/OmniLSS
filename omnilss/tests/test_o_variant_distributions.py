@@ -19,7 +19,7 @@ import jax.numpy as jnp  # noqa: E402
 import numpy as np  # noqa: E402
 import pytest  # noqa: E402
 
-from omnilss.o_variant_density import (  # noqa: E402
+from omnilss.o_variant_distributions import (  # noqa: E402
     dBCCGo,
     dBCPEo,
     dBCTo,
