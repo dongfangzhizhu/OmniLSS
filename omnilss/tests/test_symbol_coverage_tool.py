@@ -127,9 +127,11 @@ def test_dpqr_family_row_carries_registry_and_golden_evidence(coverage):
 
 
 def test_symbols_without_python_surface_are_not_admitted(coverage):
-    internal = _row(coverage, "gamlss", ".binom")
-    assert internal["python_symbol"] is None
-    assert internal["layers"] == {
+    # R's dotted internals (.binom, .gamlss.bi.list, .hat.WX, ...) were ported
+    # in D2.180, so use a genuinely unported export as the example now.
+    unported = _row(coverage, "gamlss", "gamlssNews")
+    assert unported["python_symbol"] is None
+    assert unported["layers"] == {
         "surface": "missing",
         "kernel": "missing",
         "parity": "unverified",
