@@ -273,7 +273,215 @@ def data_rmNAvars(data: Any) -> pd.DataFrame:
     return frame[keep]
 
 
+def data_rename(data: Any, oldnames: str | Sequence[str], newnames: str | Sequence[str]) -> pd.DataFrame:
+    """R data_rename: rename columns, keeping the position."""
+
+    frame = _as_frame(data).copy()
+    olds = [oldnames] if isinstance(oldnames, str) else list(oldnames)
+    news = [newnames] if isinstance(newnames, str) else list(newnames)
+    if not all(isinstance(name, str) for name in olds):
+        raise ValueError("oldnames should be a character")
+    if not all(isinstance(name, str) for name in news):
+        raise ValueError("oldnames should be a character")
+    if len(olds) != len(news):
+        raise ValueError("oldnames and newnames should have the same length")
+    mapping = {old: new for old, new in zip(olds, news) if old in frame.columns}
+    return frame.rename(columns=mapping)
+
+
+def data_select(data: Any, vars: str | int | Sequence[str | int]) -> pd.DataFrame:
+    """R data_select: keep only the named (or index-selected) variables."""
+
+    frame = _as_frame(data)
+    selected = [vars] if isinstance(vars, (str, int)) else list(vars)
+    names: list[str] = []
+    for item in selected:
+        names.append(item if isinstance(item, str) else frame.columns[int(item) - 1])
+    return frame[[name for name in names if name in frame.columns]]
+
+
+def data_shorter_names(data: Any, max: int = 5, newnames: Sequence[str] | None = None, print: bool = True) -> pd.DataFrame:
+    """R data_shorter_names: truncate long column names to max characters."""
+
+    frame = _as_frame(data).copy()
+    names = [str(name) for name in frame.columns]
+    if newnames is not None:
+        if len(newnames) != len(names):
+            raise ValueError("the newdata should have the same length than the old one")
+        frame.columns = list(newnames)
+        names = [str(name) for name in newnames]
+    shortened = [name if len(name) < max else name[:max] for name in names]
+    frame.columns = shortened
+    if print:
+        print(shortened)
+    return frame
+
+
+def data_cut(data: Any, percentage: float | None = None, seed: int = 123, print: bool = True) -> pd.DataFrame:
+    """R data_cut: take a random subsample of the rows.
+
+    R's default percentage depends on the sample size (100% below 50k rows,
+    50% below 100k, 20% below 1M, 10% above).  The random stream differs from
+    R's sample(); pass seed for reproducibility.
+    """
+
+    frame = _as_frame(data)
+    nobs = frame.shape[0]
+    if percentage is None:
+        if nobs < 50000:
+            percentage = 1.0
+        elif nobs < 100000:
+            percentage = 0.5
+        elif nobs < 1000000:
+            percentage = 0.2
+        else:
+            percentage = 0.1
+    if percentage == 1:
+        out = frame
+    else:
+        rng = np.random.default_rng(seed)
+        size = int(percentage * nobs)
+        index = rng.choice(nobs, size=size, replace=False)
+        out = frame.iloc[np.sort(index)]
+    if print:
+        print(f"{percentage * 100}% of data are saved,")
+        print(f"that is, {int(np.floor(percentage * nobs))} observations.")
+    return out.reset_index(drop=True)
+
+
+def data_part(
+    data: Any,
+    partition: int = 2,
+    probs: Sequence[float] | None = None,
+    setseed: int = 123,
+    print: bool = True,
+) -> pd.DataFrame:
+    """R data_part: append a random train/test/valid partition column."""
+
+    frame = _as_frame(data).copy()
+    if partition <= 1:
+        raise ValueError("data partition should be greater that one")
+    if partition >= 21:
+        raise ValueError("data partition should be less or equal that 20")
+
+    if partition == 2:
+        weights = list(probs) if probs is not None else [0.6, 0.4]
+        labels = ["train", "test"]
+        if abs(sum(weights) - 1.0) > 1e-10:
+            raise ValueError("probs should add up to 1")
+        if len(weights) != 2:
+            raise ValueError("the length of probs should be 2")
+        if print:
+            print("data partition into two sets")
+    elif partition == 3:
+        weights = list(probs) if probs is not None else [0.6, 0.2, 0.2]
+        labels = ["train", "valid", "test"]
+        if abs(sum(weights) - 1.0) > 1e-10:
+            raise ValueError("probs should add up to 1")
+        if len(weights) != 3:
+            raise ValueError("the length of probs should be  3")
+        if print:
+            print("data partition into three sets")
+    else:
+        weights = [1.0 / partition] * partition
+        labels = [str(index + 1) for index in range(partition)]
+        if print:
+            print(f"{partition}-fold data partition")
+
+    rng = np.random.default_rng(setseed)
+    draws = rng.choice(len(labels), size=frame.shape[0], p=np.asarray(weights, dtype=float))
+    frame["partition"] = pd.Categorical(
+        [labels[index] for index in draws], categories=labels
+    )
+    return frame
+
+
+def data_part_list(
+    data: Any,
+    partition: int = 2,
+    probs: Sequence[float] | None = None,
+    setseed: int = 123,
+    print: bool = True,
+) -> dict[str, pd.DataFrame]:
+    """R data_part_list: split the data into the partition subsets."""
+
+    marked = data_part(data, partition=partition, probs=probs, setseed=setseed, print=print)
+    labels = list(marked["partition"].cat.categories)
+    subsets = {
+        label: marked.loc[marked["partition"] == label]
+        .drop(columns=["partition"])
+        .reset_index(drop=True)
+        for label in labels
+    }
+    if partition >= 4:
+        return {str(index + 1): subsets[label] for index, label in enumerate(labels)}
+    return subsets
+
+
+def _fold_assignment(nobs: int, k: int, seed: int) -> np.ndarray:
+    """R's sample(rep_len(1:K, length.out = n), replace = FALSE)."""
+
+    rng = np.random.default_rng(seed)
+    folds = np.resize(np.arange(1, k + 1), nobs)
+    return folds[rng.permutation(nobs)]
+
+
+def data_Kfold_weights(data: Any, K: int = 10, setseed: int = 123) -> np.ndarray:
+    """R data_Kfold_weights: n x K matrix, 1 where the row is outside the fold.
+
+    Column k holds 1 for the rows used to fit when fold k is held out, matching
+    t(sapply(folds, "!=", 1:K)) * 1 in R.
+    """
+
+    frame = _as_frame(data)
+    folds = _fold_assignment(frame.shape[0], K, setseed)
+    return (folds[:, None] != np.arange(1, K + 1)[None, :]).astype(float)
+
+
+def data_Kfold_index(data: Any, K: int = 10, setseed: int = 123) -> np.ndarray:
+    """R data_Kfold_index: n x K matrix with the out-of-fold row numbers."""
+
+    frame = _as_frame(data)
+    weights = data_Kfold_weights(frame, K=K, setseed=setseed)
+    return weights * np.arange(1, frame.shape[0] + 1)[:, None]
+
+
+def data_boot_index(data: Any, B: int = 10, setseed: int = 123) -> dict[str, list[np.ndarray]]:
+    """R data_boot_index: bootstrap in-bag (IB) and out-of-bag (OOB) indices."""
+
+    frame = _as_frame(data)
+    nobs = frame.shape[0]
+    rng = np.random.default_rng(setseed)
+    draws = rng.integers(1, nobs + 1, size=(B, nobs))
+    ib = [np.sort(row) for row in draws]
+    oob = [np.setdiff1d(np.arange(1, nobs + 1), row) for row in ib]
+    return {"IB": ib, "OOB": oob}
+
+
+def data_boot_weights(data: Any, B: int = 10, setseed: int = 123) -> np.ndarray:
+    """R data_boot_weights: n x B bootstrap frequency matrix."""
+
+    frame = _as_frame(data)
+    nobs = frame.shape[0]
+    indices = data_boot_index(frame, B=B, setseed=setseed)["IB"]
+    weights = np.zeros((nobs, B), dtype=float)
+    for column, row in enumerate(indices):
+        counts = np.bincount(row.astype(int), minlength=nobs + 1)
+        weights[:, column] = counts[1 : nobs + 1]
+    return weights
+
+
 __all__ = [
+    "data_boot_index",
+    "data_boot_weights",
+    "data_cut",
+    "data_Kfold_index",
+    "data_Kfold_weights",
+    "data_part",
+    "data_part_list",
+    "data_rename",
+    "data_select",
+    "data_shorter_names",
     "data_dim",
     "data_distinct",
     "data_exclude_class",
