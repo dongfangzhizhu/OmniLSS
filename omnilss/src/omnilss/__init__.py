@@ -145,6 +145,7 @@ from .data_prep import (
     data_boot_index,
     data_boot_weights,
 )
+from .family_means import meanBEOI, meanBEZI
 from .family_groups import (
     BINOMIAL,
     BI_LIST,
@@ -983,6 +984,9 @@ __all__ = [
     "data_Kfold_weights",
     "data_boot_index",
     "data_boot_weights",
+    # ── gamlss.dist inflated-beta means ──
+    "meanBEZI",
+    "meanBEOI",
     # ── gamlss.cens censored-family helpers ──
     "CensoredFamily",
     "cens",
