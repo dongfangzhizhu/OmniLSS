@@ -10,7 +10,7 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 271,
+    "missing": 269,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
@@ -249,11 +249,9 @@
       "gamlss2::step_gamlss2",
       "gamlss2::stepwise",
       "gamlss::TGD",
-      "gamlss::add1All",
       "gamlss::bfp",
       "gamlss::bp",
       "gamlss::calibration",
-      "gamlss::drop1All",
       "gamlss::fittedPlot",
       "gamlss::fp",
       "gamlss::gamlss.fp",

@@ -4,7 +4,7 @@
   "baseline_error": "",
   "r_exports_total": 1080,
   "current_counts": {
-    "missing": 271,
+    "missing": 269,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
@@ -21,11 +21,11 @@
     "missing": {
       "new": [],
       "resolved": [
-        "gamlss::cy",
-        "gamlss::gamlss.cy"
+        "gamlss::add1All",
+        "gamlss::drop1All"
       ],
-      "current_count": 271,
-      "baseline_count": 273
+      "current_count": 269,
+      "baseline_count": 271
     },
     "placeholder": {
       "new": [],
@@ -46,25 +46,21 @@
       "baseline_count": 44
     },
     "extra": {
-      "new": [
-        "CYSpline",
-        "cbase",
-        "cdiff"
-      ],
+      "new": [],
       "resolved": [],
       "current_count": 332,
-      "baseline_count": 329
+      "baseline_count": 332
     }
   },
   "regressions": [],
   "improvements": [
     {
       "category": "missing",
-      "symbol": "gamlss::cy"
+      "symbol": "gamlss::add1All"
     },
     {
       "category": "missing",
-      "symbol": "gamlss::gamlss.cy"
+      "symbol": "gamlss::drop1All"
     }
   ],
   "ok": true,
