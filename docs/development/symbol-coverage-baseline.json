@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 273,
+    "missing": 271,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 329
+    "extra": 332
   },
   "symbols": {
     "missing": [
@@ -253,11 +253,9 @@
       "gamlss::bfp",
       "gamlss::bp",
       "gamlss::calibration",
-      "gamlss::cy",
       "gamlss::drop1All",
       "gamlss::fittedPlot",
       "gamlss::fp",
-      "gamlss::gamlss.cy",
       "gamlss::gamlss.fp",
       "gamlss::gamlss.lo",
       "gamlss::gamlss.pbc",
@@ -356,6 +354,7 @@
       "CSSpline",
       "CVComparisonResult",
       "CVComparisonRow",
+      "CYSpline",
       "CapabilityStatus",
       "CensoredFamily",
       "CentileCurveEntry",
@@ -518,7 +517,9 @@
       "build_prediction_design_matrix",
       "calibration_check",
       "capability_matrix",
+      "cbase",
       "cdf",
+      "cdiff",
       "centile_pred_data",
       "centile_skew",
       "centiles_comparison_coverage_data",

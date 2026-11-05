@@ -4,11 +4,11 @@
   "baseline_error": "",
   "r_exports_total": 1080,
   "current_counts": {
-    "missing": 273,
+    "missing": 271,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 329
+    "extra": 332
   },
   "category_meaning": {
     "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
@@ -21,10 +21,11 @@
     "missing": {
       "new": [],
       "resolved": [
-        "gamlss::gamlss.cs"
+        "gamlss::cy",
+        "gamlss::gamlss.cy"
       ],
-      "current_count": 273,
-      "baseline_count": 274
+      "current_count": 271,
+      "baseline_count": 273
     },
     "placeholder": {
       "new": [],
@@ -45,9 +46,13 @@
       "baseline_count": 44
     },
     "extra": {
-      "new": [],
+      "new": [
+        "CYSpline",
+        "cbase",
+        "cdiff"
+      ],
       "resolved": [],
-      "current_count": 329,
+      "current_count": 332,
       "baseline_count": 329
     }
   },
@@ -55,7 +60,11 @@
   "improvements": [
     {
       "category": "missing",
-      "symbol": "gamlss::gamlss.cs"
+      "symbol": "gamlss::cy"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss::gamlss.cy"
     }
   ],
   "ok": true,
