@@ -549,11 +549,135 @@ def low_val(table: Any, val: float = 0.05, print: bool = True) -> pd.DataFrame:
     return frame
 
 
+def data_cha2fac(data: Any, show_str: bool = False, print: bool = True) -> pd.DataFrame:
+    """R data_cha2fac: turn every character column into a factor."""
+
+    frame = _as_frame(data).copy()
+    character_columns = [
+        name for name in frame.columns if pd.api.types.is_object_dtype(frame[name])
+    ]
+    if not character_columns:
+        if print:
+            print("not character vector was found")
+        return frame
+    for name in character_columns:
+        frame[name] = pd.Categorical(frame[name])
+    if print:
+        noun = "vector" if len(character_columns) == 1 else "vectors"
+        print(f"{len(character_columns)} character {noun} transformed to factor")
+    return frame
+
+
+def data_few2fac(data: Any, max_levels: int = 5, show_str: bool = False, print: bool = True) -> pd.DataFrame:
+    """R data_few2fac: turn columns with at most max_levels values into factors."""
+
+    frame = _as_frame(data).copy()
+    converted = 0
+    for name in frame.columns:
+        column = frame[name]
+        if isinstance(column.dtype, pd.CategoricalDtype):
+            count = int(len(column.cat.categories))
+        else:
+            count = int(column.dropna().nunique())
+        if count <= max_levels:
+            frame[name] = pd.Categorical(column)
+            converted += 1
+    if print:
+        noun = "vector" if converted == 1 else "vectors"
+        print(f"{converted} {noun} with fewer number of values than {max_levels} was transformed to factor")
+    return frame
+
+
+def data_str(data: Any, min_values: int = 100, min_levels: int = 10, print: bool = True) -> dict[str, Any]:
+    """R data_str: per-column class/distinct summary plus casting suggestions."""
+
+    frame = _as_frame(data)
+    rows: list[dict[str, Any]] = []
+    for name in frame.columns:
+        column = frame[name]
+        if isinstance(column.dtype, pd.CategoricalDtype):
+            kind = "factor"
+            count = int(len(column.cat.categories))
+        elif pd.api.types.is_integer_dtype(column):
+            kind = "integer"
+            count = int(column.dropna().nunique())
+        elif pd.api.types.is_float_dtype(column):
+            kind = "numeric"
+            count = int(column.dropna().nunique())
+        elif pd.api.types.is_object_dtype(column):
+            kind = "character"
+            count = int(column.dropna().nunique())
+        else:
+            kind = str(column.dtype)
+            count = int(column.dropna().nunique())
+        rows.append(
+            {"class": kind, "dist.values": count, "name.no.ch": len(str(name)), "name": str(name)}
+        )
+
+    summary = pd.DataFrame(rows)
+    integer_to_factor = [row["name"] for row in rows if row["class"] == "integer" and row["dist.values"] < min_levels]
+    character_to_factor = [row["name"] for row in rows if row["class"] == "character" and row["dist.values"] < min_levels]
+    numeric_to_factor = [row["name"] for row in rows if row["class"] == "numeric" and row["dist.values"] < min_levels]
+    integer_to_numeric = [row["name"] for row in rows if row["class"] == "integer" and row["dist.values"] > min_values]
+
+    if print:
+        print(_BANNER)
+        print("the structure of the data")
+        print(frame.dtypes.to_string())
+        print(_BANNER)
+        print("table of the class of variabes")
+        print(summary["class"].value_counts().to_string())
+        print(_BANNER)
+        print("distinct values in variables")
+        print(summary.to_string(index=False))
+        if integer_to_factor:
+            print("consider to make those integer vectors into factors:", integer_to_factor)
+        if character_to_factor:
+            print("consider to make those characters vectors into factors:", character_to_factor)
+        if numeric_to_factor:
+            print("consider to make those numeric vectors into factors:", numeric_to_factor)
+        if integer_to_numeric:
+            print("and those integer vectors into mumeric:", integer_to_numeric)
+        print(_BANNER)
+
+    return {
+        "summary": summary,
+        "integer_to_factor": integer_to_factor,
+        "character_to_factor": character_to_factor,
+        "numeric_to_factor": numeric_to_factor,
+        "integer_to_numeric": integer_to_numeric,
+    }
+
+
+def data_formulae(data: Any, response: str | int) -> dict[str, str]:
+    """R data_formulae: the four candidate formula strings for a response."""
+
+    frame = _as_frame(data)
+    if isinstance(response, int):
+        response_name = str(frame.columns[response - 1] if response >= 1 else frame.columns[response])
+    else:
+        response_name = str(response)
+    if response_name not in frame.columns:
+        raise ValueError("the response should be set")
+    # R returns formula objects; their deparsed form separates terms with " + ".
+    predictors = " + ".join(str(name) for name in frame.columns if str(name) != response_name)
+    return {
+        "main": f"{response_name} ~ {predictors}",
+        "inter": f"{response_name} ~ ({predictors})^2",
+        "no_res_main": f"~ {predictors}",
+        "no_res_inter": f"~ ({predictors})^2",
+    }
+
+
 __all__ = [
     "data_boot_index",
     "data_boot_weights",
     "data_cut",
     "data_factor",
+    "data_cha2fac",
+    "data_few2fac",
+    "data_str",
+    "data_formulae",
     "high_val",
     "low_val",
     "y_distinct",
