@@ -156,7 +156,7 @@ from .data_prep import (
 )
 from .family_means import meanBEOI, meanBEZI
 from .pcr import SVDResult, getSVD, which_Data_Corr
-from .smoother_fits import SmootherFit, gamlss_pb, gamlss_ps
+from .smoother_fits import SmootherFit, gamlss_cs, gamlss_pb, gamlss_ps
 from .smoother_specs import (
     CSSpline,
     PBSpline,
@@ -1050,6 +1050,7 @@ __all__ = [
     # ── gamlss smoother backfitting steps ──
     "gamlss_pb",
     "gamlss_ps",
+    "gamlss_cs",
     "SmootherFit",
     # ── gamlss.foreach PCR helpers ──
     "getSVD",

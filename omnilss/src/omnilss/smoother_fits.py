@@ -373,4 +373,134 @@ def gamlss_ps(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any):
     )
 
 
-__all__ = ["SmootherFit", "gamlss_pb", "gamlss_ps"]
+def _signif(values: np.ndarray, digits: int) -> np.ndarray:
+    """R's signif(x, digits): round to the given number of significant digits."""
+
+    values = np.asarray(values, dtype=float)
+    result = values.copy()
+    nonzero = values != 0.0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        exponent = np.floor(np.log10(np.abs(values[nonzero])))
+    factor = np.power(10.0, digits - 1 - exponent)
+    result[nonzero] = np.round(values[nonzero] * factor) / factor
+    return result
+
+
+def _roughness_matrix(x: np.ndarray) -> np.ndarray:
+    """Green & Silverman's K = Q R^-1 Q' for a natural cubic smoothing spline."""
+
+    n = x.shape[0]
+    h = np.diff(x)
+    q = np.zeros((n, n - 2))
+    for j in range(n - 2):
+        i = j + 1
+        q[i, j] = -1.0 / h[i - 1] - 1.0 / h[i]
+        q[i - 1, j] = 1.0 / h[i - 1]
+        q[i + 1, j] = 1.0 / h[i]
+    r = np.zeros((n - 2, n - 2))
+    for i in range(n - 2):
+        r[i, i] = (h[i] + h[i + 1]) / 3.0
+        if i + 1 < n - 2:
+            r[i, i + 1] = h[i + 1] / 6.0
+            r[i + 1, i] = h[i + 1] / 6.0
+    return q @ np.linalg.solve(r, q.T)
+
+
+def gamlss_cs(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any):
+    """R gamlss.cs: one cubic smoothing spline backfitting step.
+
+    R delegates to smooth.spline(); the same estimator is built here in closed
+    form (Green & Silverman: f = (W + lambda K)^-1 W y with K = Q R^-1 Q'), and
+    lambda is solved so the effective df matches R's target (df + 2, R's
+    bookkeeping inside gamlss.cs).
+
+    Documented limits: the spar and automatic-GCV branches are not ported (they
+    depend on smooth.spline's internal spar scaling) and raise
+    NotImplementedError; the df branch agrees with R to about 1e-4 in the fitted
+    values, the size of R's own df-search tolerance.
+    """
+
+    from .smoother_specs import CSSpline
+
+    if not isinstance(x, CSSpline):
+        raise TypeError("gamlss_cs needs the object returned by cs()")
+
+    values = _signif(np.asarray(x.values, dtype=float), 5)
+    y = np.asarray(y, dtype=float)
+    w = np.asarray(w, dtype=float)
+    if values.shape[0] != y.shape[0]:
+        raise ValueError("y and the covariate have different lengths")
+    if x.df is None:
+        raise NotImplementedError(
+            "the spar / automatic-GCV branches of gamlss.cs are not ported; "
+            "pass df to cs() so the effective df can be targeted"
+        )
+
+    # R aggregates tied x values with their total weight before smoothing.
+    unique_x, inverse = np.unique(values, return_inverse=True)
+    w_agg = np.bincount(inverse, weights=w)
+    y_agg = np.bincount(inverse, weights=w * y) / w_agg
+
+    target = float(x.df) + 2.0
+    k = _roughness_matrix(unique_x)
+    wd = np.diag(w_agg)
+
+    # Effective df = trace((W + lambda K)^-1 W); solve for the lambda that
+    # reaches the target df in log space, mirroring R's smooth.spline search.
+    def edf_at(lam: float) -> float:
+        augmented = wd + lam * k
+        try:
+            a_inv_w = np.linalg.solve(augmented, wd)
+        except np.linalg.LinAlgError:  # pragma: no cover - defensive
+            a_inv_w = np.linalg.pinv(augmented) @ wd
+        return float(np.trace(a_inv_w))
+
+    def edf_gap(log_lambda: float) -> float:
+        return edf_at(float(np.exp(log_lambda))) - target
+
+    # The roughness matrix is scaled like 1/h^3, so the usable window is wider
+    # than for the P-spline; 1e-10 .. 1e10 brackets every practical df target.
+    lo, hi = -23.0, 23.0
+    if np.sign(edf_gap(lo)) == np.sign(edf_gap(hi)):
+        log_lambda = hi
+    else:
+        log_lambda = brentq(edf_gap, lo, hi)
+    lam = float(np.exp(log_lambda))
+    a_inv_w = np.linalg.solve(wd + lam * k, wd)
+    fitted_unique = a_inv_w @ y_agg
+    leverage_unique = np.diag(a_inv_w)
+
+    fitted = fitted_unique[inverse]
+    edf = float(np.sum(leverage_unique))
+
+    if xeval is not None:
+        return np.asarray(
+            CubicSpline(unique_x, fitted_unique, bc_type="natural")(
+                np.asarray(xeval, dtype=float)
+            ),
+            dtype=float,
+        )
+
+    sum_w = float(np.sum(w))
+    wt = w * float(np.sum(w > 0)) / sum_w
+    long_leverage = leverage_unique[inverse] * wt / w_agg[inverse]
+    var = (long_leverage - _hat_WX(wt, values)) / w
+
+    return SmootherFit(
+        fitted_values=fitted,
+        residuals=y - fitted,
+        var=var,
+        nl_df=edf - 2.0,
+        lambda_=lam,
+        coef=np.asarray(fitted_unique, dtype=float),
+        edf=edf,
+        sigb2=None,
+        sige2=None,
+        method="df",
+        name="cs",
+        knots=None,
+        spline=CubicSpline(unique_x, fitted_unique, bc_type="natural"),
+    )
+
+
+__all__ = ["SmootherFit", "gamlss_cs", "gamlss_pb", "gamlss_ps"]

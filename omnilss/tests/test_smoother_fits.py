@@ -1,8 +1,10 @@
-"""R gamlss.pb / gamlss.ps backfitting steps.
+"""R gamlss.pb / gamlss.ps / gamlss.cs backfitting steps.
 
-Both are compared with live R on the same data.  gamlss.pb is checked for a
-fixed lambda, a df target, and the ML / GAIC / GCV lambda searches; gamlss.ps
-is checked for the df-driven golden-section search and for a fixed lambda.
+All three are compared with live R on the same data.  gamlss.pb is checked for
+a fixed lambda, a df target, and the ML / GAIC / GCV lambda searches;
+gamlss.ps is checked for the df-driven golden-section search and a fixed
+lambda; gamlss.cs is checked for its df-targeted natural cubic spline (which
+matches R to about 1e-4, the size of R's own df-search tolerance).
 """
 from __future__ import annotations
 
@@ -16,8 +18,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from omnilss.smoother_fits import SmootherFit, gamlss_pb, gamlss_ps
-from omnilss.smoother_specs import pb, ps
+from omnilss.smoother_fits import SmootherFit, gamlss_cs, gamlss_pb, gamlss_ps
+from omnilss.smoother_specs import cs, pb, ps
 
 _REPO = Path(__file__).resolve().parents[2]
 
@@ -57,6 +59,21 @@ run <- function(df = 3, lam = NULL) {
 }
 out <- list(df3 = run(df = 3), fixed = run(df = 3, lam = 50))
 cat("JSONSTART"); cat(toJSON(out, auto_unbox = FALSE, digits = 17))
+"""
+
+_CS_SCRIPT = """suppressPackageStartupMessages(library(gamlss))
+source('R/gamlss/R/cubicSplines-10-08-12.R')
+library(jsonlite)
+a <- commandArgs(trailingOnly = TRUE)
+d <- fromJSON(a[1])
+x <- d$x; y <- d$y; w <- rep(1, length(x)); xe <- d$xeval
+s <- cs(x, df = 3)
+f <- gamlss.cs(s, y, w, df = 3)
+p <- gamlss.cs(s, y, w, df = 3, xeval = xe)
+cat("JSONSTART"); cat(toJSON(list(
+  fv = as.numeric(f$fitted.values), var = as.numeric(f$var),
+  nldf = f$nl.df, lambda = f$lambda, pred = as.numeric(p)
+), auto_unbox = FALSE, digits = 17))
 """
 
 
@@ -229,3 +246,74 @@ def test_ps_matches_live_r() -> None:
     np.testing.assert_allclose(
         fixed.fitted_values, np.asarray(ref["fixed"]["fv"], float), rtol=1e-11, atol=1e-12
     )
+
+
+def test_cs_df_target_gives_df_plus_two() -> None:
+    x, y, w = _data(seed=5)
+    fit = gamlss_cs(cs(x, df=3), y, w)
+    assert fit.name == "cs"
+    assert fit.fitted_values.shape == (60,)
+    # R's gamlss.cs adds 2 to the df carried by cs(), so df=3 targets edf=5.
+    assert fit.edf == pytest.approx(5.0, abs=1e-6)
+    assert fit.nl_df == pytest.approx(3.0, abs=1e-6)
+    assert fit.lambda_ > 0.0
+    np.testing.assert_allclose(fit.residuals, y - fit.fitted_values, rtol=1e-12)
+
+
+def test_cs_prediction_matches_the_fit_spline() -> None:
+    x, y, w = _data(seed=5)
+    spec = cs(x, df=3)
+    grid = np.linspace(0.1, 0.9, 5)
+    np.testing.assert_allclose(
+        gamlss_cs(spec, y, w, xeval=grid),
+        gamlss_cs(spec, y, w).predict(grid),
+        rtol=1e-12,
+    )
+
+
+def test_cs_requires_a_df_target() -> None:
+    x, y, w = _data()
+    with pytest.raises(NotImplementedError, match="not ported"):
+        gamlss_cs(cs(x, df=None), y, w)
+
+
+def test_cs_rejects_other_specs_and_bad_lengths() -> None:
+    x, y, w = _data()
+    with pytest.raises(TypeError, match="returned by cs"):
+        gamlss_cs(pb(x), y, w)
+    with pytest.raises(ValueError, match="different lengths"):
+        gamlss_cs(cs(x, df=3), np.zeros(5), np.ones(5))
+
+
+def test_cs_handles_tied_covariate_values() -> None:
+    x = np.repeat(np.linspace(0.0, 1.0, 20), 3)
+    rs = np.random.RandomState(3)
+    y = np.sin(2 * np.pi * x) + rs.normal(0, 0.1, len(x))
+    fit = gamlss_cs(cs(x, df=3), y, np.ones(len(x)))
+    assert fit.fitted_values.shape == x.shape
+    assert np.all(np.isfinite(fit.fitted_values))
+    assert fit.edf == pytest.approx(5.0, abs=1e-5)
+
+
+@pytest.mark.slow
+def test_cs_matches_live_r() -> None:
+    if shutil.which("Rscript") is None:
+        pytest.skip("Rscript not available")
+    if not (_REPO / "R" / "gamlss" / "R" / "cubicSplines-10-08-12.R").exists():
+        pytest.skip("vendored cubicSplines source not present")
+    x, y, w = _data(seed=5)
+    grid = np.linspace(0.1, 0.9, 5)
+    ref = _run(_CS_SCRIPT, {"x": x.tolist(), "y": y.tolist(), "xeval": grid.tolist()})
+
+    fit = gamlss_cs(cs(x, df=3), y, w)
+    # R's smooth.spline stops its df search at ~1e-4, which is the residual
+    # difference between the two fits; ours solves the df equation exactly.
+    np.testing.assert_allclose(fit.fitted_values, np.asarray(ref["fv"], float), atol=2e-4)
+    np.testing.assert_allclose(fit.var, np.asarray(ref["var"], float), atol=2e-4)
+    np.testing.assert_allclose(
+        gamlss_cs(cs(x, df=3), y, w, xeval=grid), np.asarray(ref["pred"], float), atol=2e-4
+    )
+    assert fit.lambda_ == pytest.approx(
+        float(np.asarray(ref["lambda"]).ravel()[0]), rel=1e-2
+    )
+    assert fit.nl_df == pytest.approx(float(np.asarray(ref["nldf"]).ravel()[0]), abs=1e-3)
