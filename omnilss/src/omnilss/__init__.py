@@ -120,6 +120,21 @@ from .distributions3 import (
 )
 from .families import FamilyDefinition
 from .edf import edf, smooth_term_edf
+from .data_prep import (
+    data_dim,
+    data_distinct,
+    data_exclude_class,
+    data_fac2num,
+    data_int2num,
+    data_names,
+    data_na_obs,
+    data_na_vars,
+    data_omit,
+    data_only_continuous,
+    data_rm,
+    data_rm1val,
+    data_rmNAvars,
+)
 from .family_groups import (
     BINOMIAL,
     BI_LIST,
@@ -934,6 +949,20 @@ __all__ = [
     "BI_LIST",
     "MULTIN_LIST",
     "SM_LIST",
+    # ── gamlss.prepdata data shaping ──
+    "data_dim",
+    "data_names",
+    "data_na_vars",
+    "data_na_obs",
+    "data_omit",
+    "data_distinct",
+    "data_rm1val",
+    "data_rm",
+    "data_exclude_class",
+    "data_only_continuous",
+    "data_fac2num",
+    "data_int2num",
+    "data_rmNAvars",
     # ── gamlss.cens censored-family helpers ──
     "CensoredFamily",
     "cens",
