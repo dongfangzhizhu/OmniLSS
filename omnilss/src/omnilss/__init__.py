@@ -177,6 +177,23 @@ from .mixtures import MX_control, NP_control, dMX, dmx, mx_control, np_control, 
 from .spatial import NeighbourNB, nb2nb, nb2prec
 from .gamlssVGD_23_12_21 import TGD, TGDComparisonResult, TGDComparisonRow
 from .pcategorical import PCatFit, PCatSpec, gamlss_pcat, pcat, pairwise_differences
+from .pcr_series import (
+    PCFit,
+    PCRFit,
+    PCRSmootherFit,
+    PCRSpec,
+    PCSpec,
+    fitPCR,
+    fit_pcr,
+    gamlss_pc,
+    gamlss_pcr,
+    get_sig_terms,
+    pc,
+    pcr,
+    weighted_mean,
+    weighted_sd,
+    which_yX_Corr,
+)
 from .powerpoly import PPFit, PPSpec, gamlss_pp, pp, scs
 from .ridge_random import (
     RIFit,
@@ -1144,6 +1161,22 @@ __all__ = [
     "PCatFit",
     "gamlss_pcat",
     "pairwise_differences",
+    # ── gamlss.foreach principal-component regression ──
+    "pc",
+    "PCSpec",
+    "PCFit",
+    "gamlss_pc",
+    "pcr",
+    "PCRSpec",
+    "PCRFit",
+    "PCRSmootherFit",
+    "gamlss_pcr",
+    "fit_pcr",
+    "fitPCR",
+    "which_yX_Corr",
+    "get_sig_terms",
+    "weighted_mean",
+    "weighted_sd",
     # ── gamlss.mx mixture densities and control lists ──
     "dmx",
     "pmx",
