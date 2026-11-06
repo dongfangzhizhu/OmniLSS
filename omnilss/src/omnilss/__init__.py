@@ -535,6 +535,7 @@ IC = ic
 from .predict_gamlss_23_12_21 import predict as predict_gamlss_exact
 from .print import print as print_gamlss_exact
 from .stepGAIC_03_10_13 import extractAIC, stepGAIC
+from .stepwise_vr import StepwisePathResult, StepwisePathRow, stepGAIC_VR, step_gaic_vr
 from .stepwise_all import add1All, drop1All
 from .stepGAICAll_A_parallel import stepGAICAll_A
 from .stepGAICAll_B_Parallel import addtermAllP, droptermAllP, stepGAICAll_B
@@ -954,6 +955,11 @@ __all__ = [
     # ── gamlss drop1All / add1All single-term tables ──
     "drop1All",
     "add1All",
+    # ── gamlss stepGAIC.VR path selection ──
+    "stepGAIC_VR",
+    "step_gaic_vr",
+    "StepwisePathResult",
+    "StepwisePathRow",
     "step_gaic",
     "step_gaic_all",
     "step_tgd",
