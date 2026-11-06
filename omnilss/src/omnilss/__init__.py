@@ -158,6 +158,21 @@ from .family_means import meanBEOI, meanBEZI
 from .pcr import SVDResult, getSVD, which_Data_Corr
 from .smoother_fits import SmootherFit, gamlss_cs, gamlss_cy, gamlss_pb, gamlss_ps
 from .fractional_poly import FPFit, FPSpec, bfp, fp, gamlss_fp
+from .pspline_variants import (
+    PSplineVariant,
+    gamlss_pbc,
+    gamlss_pbm,
+    gamlss_pbo,
+    gamlss_pbp,
+    gamlss_pbz,
+    gamlss_pvc,
+    pbc,
+    pbm,
+    pbo,
+    pbp,
+    pbz,
+    pvc,
+)
 from .smoother_specs import (
     CSSpline,
     CYSpline,
@@ -1073,6 +1088,20 @@ __all__ = [
     "gamlss_fp",
     "FPSpec",
     "FPFit",
+    # ── gamlss P-spline variant specs and fitters ──
+    "pbm",
+    "pbo",
+    "pbp",
+    "pbz",
+    "pbc",
+    "pvc",
+    "PSplineVariant",
+    "gamlss_pbm",
+    "gamlss_pbo",
+    "gamlss_pbp",
+    "gamlss_pbz",
+    "gamlss_pbc",
+    "gamlss_pvc",
     # ── gamlss.foreach PCR helpers ──
     "getSVD",
     "SVDResult",
