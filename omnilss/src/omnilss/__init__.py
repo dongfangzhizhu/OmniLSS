@@ -173,6 +173,7 @@ from .pspline_variants import (
     pbz,
     pvc,
 )
+from .powerpoly import PPFit, PPSpec, gamlss_pp, pp, scs
 from .ridge_random import (
     RIFit,
     RISpec,
@@ -1121,6 +1122,12 @@ __all__ = [
     "RandomSpec",
     "RandomFit",
     "gamlss_random",
+    # ── gamlss power-polynomial smoother ──
+    "pp",
+    "PPSpec",
+    "PPFit",
+    "gamlss_pp",
+    "scs",
     # ── gamlss.foreach PCR helpers ──
     "getSVD",
     "SVDResult",
