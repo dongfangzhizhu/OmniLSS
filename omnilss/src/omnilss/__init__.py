@@ -173,6 +173,16 @@ from .pspline_variants import (
     pbz,
     pvc,
 )
+from .ridge_random import (
+    RIFit,
+    RISpec,
+    RandomFit,
+    RandomSpec,
+    gamlss_random,
+    gamlss_ri,
+    random_spec,
+    ri,
+)
 from .smoother_specs import (
     CSSpline,
     CYSpline,
@@ -1102,6 +1112,15 @@ __all__ = [
     "gamlss_pbz",
     "gamlss_pbc",
     "gamlss_pvc",
+    # ── gamlss ridge-type smoothers ──
+    "ri",
+    "RISpec",
+    "RIFit",
+    "gamlss_ri",
+    "random_spec",
+    "RandomSpec",
+    "RandomFit",
+    "gamlss_random",
     # ── gamlss.foreach PCR helpers ──
     "getSVD",
     "SVDResult",
