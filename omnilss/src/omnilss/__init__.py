@@ -173,6 +173,7 @@ from .pspline_variants import (
     pbz,
     pvc,
 )
+from .mixtures import MX_control, NP_control, dMX, dmx, mx_control, np_control, pMX, pmx
 from .pcategorical import PCatFit, PCatSpec, gamlss_pcat, pcat, pairwise_differences
 from .powerpoly import PPFit, PPSpec, gamlss_pp, pp, scs
 from .ridge_random import (
@@ -1141,6 +1142,15 @@ __all__ = [
     "PCatFit",
     "gamlss_pcat",
     "pairwise_differences",
+    # ── gamlss.mx mixture densities and control lists ──
+    "dmx",
+    "pmx",
+    "dMX",
+    "pMX",
+    "mx_control",
+    "np_control",
+    "MX_control",
+    "NP_control",
     # ── gamlss.foreach PCR helpers ──
     "getSVD",
     "SVDResult",
