@@ -451,3 +451,21 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 - ⏭ 下一步（按 P 排序）：P0（`.codex/setup.sh`、旧文档校准、MIXED 语义）；P3 平滑项（pbm/pbz/pbo/pbp/pbc/pvc/cy/fp/bfp）
   与 `Gen.Family`；P4 周边包（cens/tr/mx/add）；P5 在线/多元。`o` 变体 dpqr（32 符号）需逐族补 CDF/逆，
   当前 `p/q/r` 多数缺失，不能靠别名冒充。
+
+### 22.8 进展（2026-11-05/06 会话，D2.171–D2.201）
+
+- ✅ **平滑项（P3 主体完成）**：规格构造 `pb/ps/cs/cy`、拟合核 `gamlss.pb/ps/cs/cy`、
+  六个变体 `pbm/pbo/pbp/pbz/pbc/pvc`（规格 + 拟合）、`fp/bfp/gamlss.fp`、`pp/gamlss.pp`、
+  `pcat/gamlss.pcat`、9 个 `*.control`、`scs`。全部有活 R 数值对照（多数 ≤1e-11，个别路径已记录
+  「R 自身容差/不连续」级差异）。
+- ✅ **选择/诊断**：`drop1All/add1All`、`stepGAIC.VR`、`ri/gamlss.ri`、`random/gamlss.random`。
+- ✅ **周边包**：`gamlss.prepdata` 数据整形族（28+4 符号）、`gamlss.tr` 截断族、`gamlss.cens` 截断核、
+  `gamlss.foreach` 的 `getSVD/which.Data.Corr`、`gamlss.mx` 的 `dMX/pMX/MX.control/NP.control`。
+- 📉 覆盖：`missing` **382 → 241**（141 个符号离开 missing），matched 698 → 839；ratchet `result: OK`。
+- ⚠️ 已知限制（都已写进对应模块 docstring + 测试，不冒充完成）：`pvc(by=...)` 未移植；
+  `gamlss.cs` 的 spar/自动 GCV 分支未移植；`random()` 的 xeval 分支未移植；
+  `pcat` 在 `Lp≠2` 且给 df 时因 edf(lambda) 不连续与 R 差 ~1.4e-2（两侧行为都已钉住）。
+- ⏭ 剩余 241：`gamlss.ggplots` 108（纯绘图）、`gamlss.prepdata` 27（`ACE`/scale/outliers）、
+  `gamlss` 核心 15（`gamlss.lo/re`、`stepGAIC.CH`、`stepTGDAll.A`、`TGD`、诊断绘图）、
+  `gamlss.add` 15、`gamlss.foreach` 11（`pcr/pc/fitPCR`）、`gamlss.spatial` 9、`gamlss.mx` 8（拟合引擎）、
+  `gamlss.dist/tr` 6（绘图/尾部）。

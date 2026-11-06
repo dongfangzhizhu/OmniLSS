@@ -4,11 +4,11 @@
   "baseline_error": "",
   "r_exports_total": 1080,
   "current_counts": {
-    "missing": 245,
+    "missing": 241,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 348
+    "extra": 352
   },
   "category_meaning": {
     "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
@@ -21,10 +21,13 @@
     "missing": {
       "new": [],
       "resolved": [
-        "gamlss::stepGAIC.VR"
+        "gamlss.mx::MX.control",
+        "gamlss.mx::NP.control",
+        "gamlss.mx::dMX",
+        "gamlss.mx::pMX"
       ],
-      "current_count": 245,
-      "baseline_count": 246
+      "current_count": 241,
+      "baseline_count": 245
     },
     "placeholder": {
       "new": [],
@@ -46,20 +49,33 @@
     },
     "extra": {
       "new": [
-        "StepwisePathResult",
-        "StepwisePathRow",
-        "step_gaic_vr"
+        "dmx",
+        "mx_control",
+        "np_control",
+        "pmx"
       ],
       "resolved": [],
-      "current_count": 348,
-      "baseline_count": 345
+      "current_count": 352,
+      "baseline_count": 348
     }
   },
   "regressions": [],
   "improvements": [
     {
       "category": "missing",
-      "symbol": "gamlss::stepGAIC.VR"
+      "symbol": "gamlss.mx::MX.control"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.mx::NP.control"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.mx::dMX"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.mx::pMX"
     }
   ],
   "ok": true,

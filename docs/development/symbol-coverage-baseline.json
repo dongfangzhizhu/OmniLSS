@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 245,
+    "missing": 241,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 348
+    "extra": 352
   },
   "symbols": {
     "missing": [
@@ -156,9 +156,6 @@
       "gamlss.ggplots::y_hist",
       "gamlss.ggplots::y_pacf",
       "gamlss.ggplots::y_symmetry",
-      "gamlss.mx::MX.control",
-      "gamlss.mx::NP.control",
-      "gamlss.mx::dMX",
       "gamlss.mx::gamlssMX",
       "gamlss.mx::gamlssMXfits",
       "gamlss.mx::gamlssNP",
@@ -166,7 +163,6 @@
       "gamlss.mx::get_cdfNP",
       "gamlss.mx::get_pdfMX",
       "gamlss.mx::get_pdfNP",
-      "gamlss.mx::pMX",
       "gamlss.mx::plotMP",
       "gamlss.prepdata::ACE",
       "gamlss.prepdata::ACE.iter",
@@ -531,6 +527,7 @@
       "deviance",
       "deviance_increment",
       "difference_matrix",
+      "dmx",
       "drop1TGDP",
       "drop1_tgd",
       "drop1_tgd_all",
@@ -613,11 +610,14 @@
       "model_matrix",
       "momentSkew",
       "moment_availability",
+      "mx_control",
+      "np_control",
       "pairwise_differences",
       "pdf",
       "pdf_plot_data",
       "plot2way_data",
       "plot_diagnostics",
+      "pmx",
       "predict",
       "predict_all",
       "predict_gamlss_exact",
