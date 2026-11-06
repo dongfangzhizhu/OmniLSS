@@ -174,6 +174,7 @@ from .pspline_variants import (
     pvc,
 )
 from .mixtures import MX_control, NP_control, dMX, dmx, mx_control, np_control, pMX, pmx
+from .spatial import NeighbourNB, nb2nb, nb2prec
 from .pcategorical import PCatFit, PCatSpec, gamlss_pcat, pcat, pairwise_differences
 from .powerpoly import PPFit, PPSpec, gamlss_pp, pp, scs
 from .ridge_random import (
@@ -1151,6 +1152,10 @@ __all__ = [
     "np_control",
     "MX_control",
     "NP_control",
+    # ── gamlss.spatial neighbourhood helpers ──
+    "nb2nb",
+    "nb2prec",
+    "NeighbourNB",
     # ── gamlss.foreach PCR helpers ──
     "getSVD",
     "SVDResult",
