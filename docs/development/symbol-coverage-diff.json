@@ -4,11 +4,11 @@
   "baseline_error": "",
   "r_exports_total": 1080,
   "current_counts": {
-    "missing": 251,
+    "missing": 248,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 340
+    "extra": 342
   },
   "category_meaning": {
     "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
@@ -21,12 +21,12 @@
     "missing": {
       "new": [],
       "resolved": [
-        "gamlss::gamlss.random",
-        "gamlss::gamlss.ri",
-        "gamlss::ri"
+        "gamlss::gamlss.pp",
+        "gamlss::pp",
+        "gamlss::scs"
       ],
-      "current_count": 251,
-      "baseline_count": 254
+      "current_count": 248,
+      "baseline_count": 251
     },
     "placeholder": {
       "new": [],
@@ -48,30 +48,27 @@
     },
     "extra": {
       "new": [
-        "RIFit",
-        "RISpec",
-        "RandomFit",
-        "RandomSpec",
-        "random_spec"
+        "PPFit",
+        "PPSpec"
       ],
       "resolved": [],
-      "current_count": 340,
-      "baseline_count": 335
+      "current_count": 342,
+      "baseline_count": 340
     }
   },
   "regressions": [],
   "improvements": [
     {
       "category": "missing",
-      "symbol": "gamlss::gamlss.random"
+      "symbol": "gamlss::gamlss.pp"
     },
     {
       "category": "missing",
-      "symbol": "gamlss::gamlss.ri"
+      "symbol": "gamlss::pp"
     },
     {
       "category": "missing",
-      "symbol": "gamlss::ri"
+      "symbol": "gamlss::scs"
     }
   ],
   "ok": true,

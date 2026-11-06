@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 251,
+    "missing": 248,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 340
+    "extra": 342
   },
   "symbols": {
     "missing": [
@@ -254,7 +254,6 @@
       "gamlss::fittedPlot",
       "gamlss::gamlss.lo",
       "gamlss::gamlss.pcat",
-      "gamlss::gamlss.pp",
       "gamlss::gamlss.re",
       "gamlss::gamlssNews",
       "gamlss::get.rqres",
@@ -262,10 +261,8 @@
       "gamlss::loglogSurv2",
       "gamlss::loglogSurv3",
       "gamlss::pcat",
-      "gamlss::pp",
       "gamlss::re",
       "gamlss::rqres.plot",
-      "gamlss::scs",
       "gamlss::stepGAIC.CH",
       "gamlss::stepGAIC.VR",
       "gamlss::stepTGDAll.A"
@@ -429,6 +426,8 @@
       "PBSpline",
       "PDFPlotEntry",
       "PDFPlotResult",
+      "PPFit",
+      "PPSpec",
       "PSSpline",
       "PSplineVariant",
       "ParPlotResult",
