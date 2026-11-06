@@ -173,6 +173,7 @@ from .pspline_variants import (
     pbz,
     pvc,
 )
+from .pcategorical import PCatFit, PCatSpec, gamlss_pcat, pcat, pairwise_differences
 from .powerpoly import PPFit, PPSpec, gamlss_pp, pp, scs
 from .ridge_random import (
     RIFit,
@@ -1128,6 +1129,12 @@ __all__ = [
     "PPFit",
     "gamlss_pp",
     "scs",
+    # ── gamlss penalised categorical smoother ──
+    "pcat",
+    "PCatSpec",
+    "PCatFit",
+    "gamlss_pcat",
+    "pairwise_differences",
     # ── gamlss.foreach PCR helpers ──
     "getSVD",
     "SVDResult",
