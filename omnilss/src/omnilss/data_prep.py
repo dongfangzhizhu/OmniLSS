@@ -16,6 +16,8 @@ Documented deviations:
 """
 from __future__ import annotations
 
+import builtins
+import warnings
 from typing import Any, Iterable, Mapping, Sequence
 
 import numpy as np
@@ -32,10 +34,20 @@ def _as_frame(data: Any) -> pd.DataFrame:
     raise TypeError("the data must be a data.frame (pandas DataFrame or mapping of columns)")
 
 
+def _emit(*args: Any, **kwargs: Any) -> None:
+    """print() under a different name.
+
+    These ports keep R's print= argument, which shadows the builtin inside the
+    function body, so every summary goes through _emit().
+    """
+
+    builtins.print(*args, **kwargs)
+
+
 def _print_banner(print: bool) -> None:
     if print:
-        print(_BANNER)
-        print(_BANNER)
+        _emit(_BANNER)
+        _emit(_BANNER)
 
 
 def _na_count(column: pd.Series) -> int:
@@ -59,10 +71,10 @@ def data_dim(data: Any, print: bool = True) -> dict[str, Any]:
     }
     if print:
         _print_banner(True)
-        print(f"the R class of the data is: {summary['class']}")
-        print(f"the dimensions of the data are: {rows} by {columns}")
-        print(f"number of observations with missing values: {missing_rows}")
-        print(f"% of NA's in the data: {summary['pct_missing_rows']}%")
+        _emit(f"the R class of the data is: {summary['class']}")
+        _emit(f"the dimensions of the data are: {rows} by {columns}")
+        _emit(f"number of observations with missing values: {missing_rows}")
+        _emit(f"% of NA's in the data: {summary['pct_missing_rows']}%")
         _print_banner(True)
     return summary
 
@@ -74,12 +86,12 @@ def data_names(data: Any, print: bool = True) -> list[str]:
     names = [str(name) for name in frame.columns]
     if print:
         _print_banner(True)
-        print("the names of variables")
-        print(names)
+        _emit("the names of variables")
+        _emit(names)
         long_names = [name for name in names if len(name) > 10]
         if long_names:
-            print("*" * 33)
-            print("the following names are more than 10 characters long:", long_names)
+            _emit("*" * 33)
+            _emit("the following names are more than 10 characters long:", long_names)
     return names
 
 
@@ -91,12 +103,12 @@ def data_omit(data: Any, print: bool = True) -> pd.DataFrame:
     complete = frame.dropna()
     if print:
         _print_banner(True)
-        print(f"the dimensions of the data before omition are: {before[0]} x {before[1]}")
-        print(
+        _emit(f"the dimensions of the data before omition are: {before[0]} x {before[1]}")
+        _emit(
             "the dimensions of the data saved after omition are: "
             f"{complete.shape[0]} x {complete.shape[1]}"
         )
-        print(f"the number of observations omited: {before[0] - complete.shape[0]}")
+        _emit(f"the number of observations omited: {before[0] - complete.shape[0]}")
         _print_banner(True)
     return complete.reset_index(drop=True)
 
@@ -108,7 +120,7 @@ def data_na_vars(data: Any, print: bool = True) -> dict[str, int]:
     counts = {str(name): _na_count(frame[name]) for name in frame.columns}
     if print:
         for name, value in counts.items():
-            print(f"{name}: {value}")
+            _emit(f"{name}: {value}")
     return counts
 
 
@@ -122,7 +134,7 @@ def data_na_obs(data: Any, print: bool = True) -> dict[str, list[int]]:
     }
     if print:
         for name, value in positions.items():
-            print(f"{name}: {value}")
+            _emit(f"{name}: {value}")
     return positions
 
 
@@ -146,7 +158,7 @@ def data_distinct(data: Any, get_distinct: bool = False, print: bool = True):
             stacklevel=2,
         )
     if print:
-        print(counts)
+        _emit(counts)
     return counts if get_distinct else frame
 
 
@@ -164,7 +176,7 @@ def data_rm1val(data: Any, print: bool = True) -> pd.DataFrame:
         elif column.dropna().nunique() == 1:
             drop.append(name)
     if drop and print:
-        print("Removed the variable(s)", drop)
+        _emit("Removed the variable(s)", drop)
     return frame.drop(columns=drop)
 
 
@@ -247,7 +259,7 @@ def data_int2num(data: Any, min_values: int = 50, show_str: bool = False, print:
     ]
     if not integer_columns:
         if print:
-            print("no integer vector is found")
+            _emit("no integer vector is found")
         return frame
     converted = 0
     for name in integer_columns:
@@ -255,10 +267,10 @@ def data_int2num(data: Any, min_values: int = 50, show_str: bool = False, print:
             frame[name] = frame[name].astype(float)
             converted += 1
     if show_str and print:
-        print(frame.dtypes)
+        _emit(frame.dtypes)
     if print:
         noun = "vector" if converted == 1 else "vectors"
-        print(
+        _emit(
             f"{converted} integer {noun} with more number of values than {min_values} "
             "was transformed to numeric"
         )
@@ -313,7 +325,7 @@ def data_shorter_names(data: Any, max: int = 5, newnames: Sequence[str] | None =
     shortened = [name if len(name) < max else name[:max] for name in names]
     frame.columns = shortened
     if print:
-        print(shortened)
+        _emit(shortened)
     return frame
 
 
@@ -344,8 +356,8 @@ def data_cut(data: Any, percentage: float | None = None, seed: int = 123, print:
         index = rng.choice(nobs, size=size, replace=False)
         out = frame.iloc[np.sort(index)]
     if print:
-        print(f"{percentage * 100}% of data are saved,")
-        print(f"that is, {int(np.floor(percentage * nobs))} observations.")
+        _emit(f"{percentage * 100}% of data are saved,")
+        _emit(f"that is, {int(np.floor(percentage * nobs))} observations.")
     return out.reset_index(drop=True)
 
 
@@ -372,7 +384,7 @@ def data_part(
         if len(weights) != 2:
             raise ValueError("the length of probs should be 2")
         if print:
-            print("data partition into two sets")
+            _emit("data partition into two sets")
     elif partition == 3:
         weights = list(probs) if probs is not None else [0.6, 0.2, 0.2]
         labels = ["train", "valid", "test"]
@@ -381,12 +393,12 @@ def data_part(
         if len(weights) != 3:
             raise ValueError("the length of probs should be  3")
         if print:
-            print("data partition into three sets")
+            _emit("data partition into three sets")
     else:
         weights = [1.0 / partition] * partition
         labels = [str(index + 1) for index in range(partition)]
         if print:
-            print(f"{partition}-fold data partition")
+            _emit(f"{partition}-fold data partition")
 
     rng = np.random.default_rng(setseed)
     draws = rng.choice(len(labels), size=frame.shape[0], p=np.asarray(weights, dtype=float))
@@ -532,7 +544,7 @@ def high_val(table: Any, val: float = 0.90, print: bool = True) -> pd.DataFrame:
     pairs = _upper_pairs(matrix, np.abs(matrix) > val, names)
     frame = pd.DataFrame(pairs, columns=["name1", "name2", "value"])
     if print:
-        print(frame.to_string(index=False))
+        _emit(frame.to_string(index=False))
     return frame
 
 
@@ -545,7 +557,7 @@ def low_val(table: Any, val: float = 0.05, print: bool = True) -> pd.DataFrame:
     pairs = _upper_pairs(matrix, np.abs(matrix) < val, names)
     frame = pd.DataFrame(pairs, columns=["name1", "name2", "value"])
     if print:
-        print(frame.to_string(index=False))
+        _emit(frame.to_string(index=False))
     return frame
 
 
@@ -558,13 +570,13 @@ def data_cha2fac(data: Any, show_str: bool = False, print: bool = True) -> pd.Da
     ]
     if not character_columns:
         if print:
-            print("not character vector was found")
+            _emit("not character vector was found")
         return frame
     for name in character_columns:
         frame[name] = pd.Categorical(frame[name])
     if print:
         noun = "vector" if len(character_columns) == 1 else "vectors"
-        print(f"{len(character_columns)} character {noun} transformed to factor")
+        _emit(f"{len(character_columns)} character {noun} transformed to factor")
     return frame
 
 
@@ -584,7 +596,7 @@ def data_few2fac(data: Any, max_levels: int = 5, show_str: bool = False, print: 
             converted += 1
     if print:
         noun = "vector" if converted == 1 else "vectors"
-        print(f"{converted} {noun} with fewer number of values than {max_levels} was transformed to factor")
+        _emit(f"{converted} {noun} with fewer number of values than {max_levels} was transformed to factor")
     return frame
 
 
@@ -621,24 +633,24 @@ def data_str(data: Any, min_values: int = 100, min_levels: int = 10, print: bool
     integer_to_numeric = [row["name"] for row in rows if row["class"] == "integer" and row["dist.values"] > min_values]
 
     if print:
-        print(_BANNER)
-        print("the structure of the data")
-        print(frame.dtypes.to_string())
-        print(_BANNER)
-        print("table of the class of variabes")
-        print(summary["class"].value_counts().to_string())
-        print(_BANNER)
-        print("distinct values in variables")
-        print(summary.to_string(index=False))
+        _emit(_BANNER)
+        _emit("the structure of the data")
+        _emit(frame.dtypes.to_string())
+        _emit(_BANNER)
+        _emit("table of the class of variabes")
+        _emit(summary["class"].value_counts().to_string())
+        _emit(_BANNER)
+        _emit("distinct values in variables")
+        _emit(summary.to_string(index=False))
         if integer_to_factor:
-            print("consider to make those integer vectors into factors:", integer_to_factor)
+            _emit("consider to make those integer vectors into factors:", integer_to_factor)
         if character_to_factor:
-            print("consider to make those characters vectors into factors:", character_to_factor)
+            _emit("consider to make those characters vectors into factors:", character_to_factor)
         if numeric_to_factor:
-            print("consider to make those numeric vectors into factors:", numeric_to_factor)
+            _emit("consider to make those numeric vectors into factors:", numeric_to_factor)
         if integer_to_numeric:
-            print("and those integer vectors into mumeric:", integer_to_numeric)
-        print(_BANNER)
+            _emit("and those integer vectors into mumeric:", integer_to_numeric)
+        _emit(_BANNER)
 
     return {
         "summary": summary,
@@ -669,6 +681,252 @@ def data_formulae(data: Any, response: str | int) -> dict[str, str]:
     }
 
 
+def _round_half_up(values: Any, digits: int) -> np.ndarray:
+    """R round(): half away from zero, unlike numpy's banker's rounding."""
+
+    matrix = np.asarray(values, dtype=float)
+    factor = 10.0**digits
+    return np.sign(matrix) * np.floor(np.abs(matrix) * factor + 0.5) / factor
+
+
+def _cut_codes(values: np.ndarray, intervals: int) -> np.ndarray:
+    """R cut(x, k): k equal-width bins over [min - dx/1000, max + dx/1000]."""
+
+    low = float(values.min())
+    high = float(values.max())
+    width = (high - low) / intervals
+    if width == 0.0:
+        raise ValueError("invalid number of intervals")
+    breaks = np.linspace(low - width / 1000.0, high + width / 1000.0, intervals + 1)
+    codes = np.digitize(values, breaks, right=True) - 1
+    return np.clip(codes, 0, intervals - 1)
+
+
+def void(x: Any, y: Any, plot: bool = False, print: bool = False, table_length: int | None = None):
+    """R void(): share of empty cells in the cross-tabulation of two binned variables.
+
+    R chooses table.length = floor(exp(-0.5165698 + 0.4983922 log(n))) when it is
+    not supplied and fills the table with cut(x, k) x cut(y, k).
+    """
+
+    xs = np.asarray(x, dtype=float)
+    ys = np.asarray(y, dtype=float)
+    if xs.shape[0] != ys.shape[0]:
+        raise ValueError("the x and y should have the same length")
+    count = xs.shape[0]
+    if table_length is None:
+        table_length = int(np.floor(np.exp(-0.5165698 + 0.4983922 * np.log(count))))
+    if int(table_length) < 2:
+        raise ValueError("invalid number of intervals")
+    table_length = int(table_length)
+
+    rows = _cut_codes(xs, table_length)
+    columns = _cut_codes(ys, table_length)
+    counts = np.zeros((table_length, table_length))
+    np.add.at(counts, (rows, columns), 1.0)
+    fraction = float(np.sum(counts == 0)) / table_length**2
+    if print:
+        _emit(f"% void {fraction}")
+        _emit(f"table length = {table_length}")
+        _emit(f"prob0 = {np.exp(-float(counts.mean()))}")
+        _emit(f"mean = {float(counts.mean())}")
+    return fraction
+
+
+def _check_frame(data: Any) -> pd.DataFrame:
+    """The shared data-frame validation of data_cor / data_pcor / data_void."""
+
+    if isinstance(data, dict):
+        raise ValueError("the data is list  the function needs a data.frame")
+    frame = data if isinstance(data, pd.DataFrame) else pd.DataFrame(data, copy=False)
+    if frame.shape[0] <= 1:
+        raise ValueError("nothing to do for this data frame")
+    return frame
+
+
+def _numeric_columns(frame: pd.DataFrame, drop_small_integer: bool = False) -> pd.DataFrame:
+    keep = []
+    for name in frame.columns:
+        column = frame[name]
+        if isinstance(column.dtype, pd.CategoricalDtype):
+            continue
+        if pd.api.types.is_object_dtype(column) or pd.api.types.is_bool_dtype(column):
+            continue
+        if drop_small_integer and pd.api.types.is_integer_dtype(column):
+            if int(column.dropna().nunique()) < 10:
+                continue
+        if not pd.api.types.is_numeric_dtype(column):
+            continue
+        keep.append(name)
+    return frame[keep]
+
+
+def _prepare_for_correlation(
+    data: Any,
+    seed: int,
+    percentage: float | None,
+    print_info: bool,
+    drop_small_integer: bool,
+    too_small_message: str,
+) -> tuple[pd.DataFrame, int]:
+    """R's shared preamble: cut, na.omit, factor removal and the size checks."""
+
+    frame = _check_frame(data)
+    original_rows, original_columns = frame.shape
+    frame = data_cut(frame, percentage=percentage, seed=seed, print=print_info)
+    if frame.isna().any().any():
+        before = len(frame)
+        frame = frame.dropna()
+        warnings.warn(
+            f"{before - len(frame)} observations were omitted from the data",
+            UserWarning,
+            stacklevel=2,
+        )
+    if original_rows < 20:
+        raise ValueError(f"the size of the data set is too small\n{too_small_message}")
+
+    numeric = _numeric_columns(frame, drop_small_integer=drop_small_integer)
+    if numeric.shape[1] == 0:
+        raise ValueError("no variable is left after taking out the factors")
+    if numeric.shape[1] == 1:
+        raise ValueError("only one variable is left after taking out the factors")
+    dropped = original_columns - numeric.shape[1]
+    if dropped > 0:
+        warnings.warn(
+            f"{dropped} factors have been omited from the data", UserWarning, stacklevel=2
+        )
+    return numeric, dropped
+
+
+def data_cor(
+    data: Any,
+    digits: int = 3,
+    plot: bool = False,
+    diag_off: bool = True,
+    lower_tri_off: bool = False,
+    type: str = "pearson",
+    seed: int = 123,
+    percentage: float | None = None,
+    print_info: bool = True,
+) -> pd.DataFrame:
+    """R data_cor(): the rounded correlation matrix of the numeric columns.
+
+    With plot = FALSE R returns the matrix *before* applying diag.off and
+    lower.tri.off, so those two flags only affect the (unported) plot.
+    """
+
+    if type not in ("pearson", "kendall", "spearman"):
+        raise ValueError("'arg' should be one of ['pearson', 'kendall', 'spearman']")
+    numeric, _dropped = _prepare_for_correlation(
+        data,
+        seed=seed,
+        percentage=percentage,
+        print_info=print_info,
+        drop_small_integer=False,
+        too_small_message="to detect non-linear correlations",
+    )
+    matrix = numeric.corr(method=type).to_numpy()
+    rounded = _round_half_up(matrix, digits)
+    frame = pd.DataFrame(rounded, index=numeric.columns, columns=numeric.columns)
+    if not plot:
+        return frame
+    if diag_off:
+        np.fill_diagonal(frame.to_numpy(), np.nan)
+        frame = pd.DataFrame(
+            _round_half_up(numeric.corr(method=type).to_numpy(), digits),
+            index=numeric.columns,
+            columns=numeric.columns,
+        )
+        values = frame.to_numpy()
+        np.fill_diagonal(values, np.nan)
+        if lower_tri_off:
+            values[np.tril_indices(values.shape[0], -1)] = np.nan
+        return pd.DataFrame(values, index=numeric.columns, columns=numeric.columns)
+    values = frame.to_numpy()
+    if lower_tri_off:
+        values[np.tril_indices(values.shape[0], -1)] = np.nan
+    return pd.DataFrame(values, index=numeric.columns, columns=numeric.columns)
+
+
+def data_pcor(
+    data: Any,
+    digits: int = 3,
+    plot: bool = False,
+    diag_off: bool = True,
+    lower_tri_off: bool = False,
+    seed: int = 123,
+    percentage: float | None = None,
+    print_info: bool = True,
+) -> pd.DataFrame:
+    """R data_pcor(): partial correlations from the inverse covariance matrix.
+
+    Unlike data_cor(), the diag.off / lower.tri.off flags are applied before the
+    plot == FALSE return, so they do change the value this function returns.
+    """
+
+    numeric, _dropped = _prepare_for_correlation(
+        data,
+        seed=seed,
+        percentage=percentage,
+        print_info=print_info,
+        drop_small_integer=False,
+        too_small_message="to detect non-linear correlations",
+    )
+    if numeric.shape[1] < 2:
+        raise ValueError("only one variable is left after taking out the factors")
+    covariance = np.asarray(numeric.cov().to_numpy(), dtype=float)
+    try:
+        precision = np.linalg.inv(covariance)
+    except np.linalg.LinAlgError as error:  # singular covariance
+        raise ValueError("the covariance matrix is singular") from error
+    scaling = 1.0 / np.sqrt(np.diag(precision))
+    scaled = precision * np.outer(scaling, scaling)
+    partial = 2.0 * np.eye(numeric.shape[1]) - scaled
+    values = _round_half_up(partial, digits)
+    if diag_off:
+        np.fill_diagonal(values, np.nan)
+    if lower_tri_off:
+        values[np.tril_indices(values.shape[0], -1)] = np.nan
+    return pd.DataFrame(values, index=numeric.columns, columns=numeric.columns)
+
+
+def data_void(
+    data: Any,
+    digits: int = 3,
+    plot: bool = False,
+    diag_off: bool = True,
+    lower_tri_off: bool = False,
+    seed: int = 123,
+    percentage: float | None = None,
+    print_info: bool = True,
+) -> pd.DataFrame:
+    """R data_void(): pairwise empty-space matrix of the numeric columns."""
+
+    numeric, _dropped = _prepare_for_correlation(
+        data,
+        seed=seed,
+        percentage=percentage,
+        print_info=print_info,
+        drop_small_integer=True,
+        too_small_message="to detect empty spaces",
+    )
+    names = list(numeric.columns)
+    size = len(names)
+    matrix = np.zeros((size, size))
+    for i in range(size):
+        for j in range(i + 1, size):
+            value = void(numeric.iloc[:, i], numeric.iloc[:, j])
+            matrix[i, j] = value
+            matrix[j, i] = value
+    np.fill_diagonal(matrix, 1.0)
+    values = _round_half_up(matrix, digits)
+    if diag_off:
+        np.fill_diagonal(values, np.nan)
+    if lower_tri_off:
+        values[np.tril_indices(size, -1)] = np.nan
+    return pd.DataFrame(values, index=names, columns=names)
+
+
 __all__ = [
     "data_boot_index",
     "data_boot_weights",
@@ -697,6 +955,9 @@ __all__ = [
     "data_names",
     "data_na_obs",
     "data_na_vars",
+    "data_cor",
+    "data_pcor",
+    "data_void",
     "data_omit",
     "data_only_continuous",
     "data_rm",
