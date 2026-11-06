@@ -341,6 +341,69 @@ def vgd(*objects: Any) -> float | VGDComparisonResult:
     return VGDComparisonResult(rows=rows)
 
 
+@dataclass(frozen=True)
+class TGDComparisonRow:
+    """One row in a staged `TGD` comparison result."""
+
+    family: str
+    pred_gd: float
+
+
+@dataclass(frozen=True)
+class TGDComparisonResult:
+    """Structured `TGD` comparison table (R returns a data.frame)."""
+
+    rows: tuple[TGDComparisonRow, ...]
+
+    def to_frame(self):
+        import pandas as pd
+
+        return pd.DataFrame(
+            [{"Pred.GD": row.pred_gd} for row in self.rows],
+            index=[row.family for row in self.rows],
+        )
+
+
+def TGD(*objects: Any) -> float | TGDComparisonResult:
+    """R reference: `gamlss/R/gamlssVGD_23_12_21.R::TGD`.
+
+    R stores the test global deviance in the `gamlssTGD` object returned by
+    getTGD(); the Python analogue is TGDResult (or a model that carries a TGD
+    slot).  With several objects R returns a sorted data.frame whose row names
+    are the deparsed arguments; Python cannot recover those expressions, so the
+    rows are labelled with the family name and sorted the same way.
+    """
+
+    if not objects:
+        raise ValueError("at least one object is required")
+
+    def _value(object: Any) -> float:
+        if isinstance(object, TGDResult):
+            return float(object.test_global_deviance)
+        slots = getattr(object, "additional_slots", None)
+        if isinstance(slots, Mapping) and "TGD" in slots:
+            return float(slots["TGD"])
+        raise ValueError("this is not a TGD object")
+
+    if len(objects) == 1:
+        return _value(objects[0])
+
+    # R only tests `any(isTGD)` and would then quietly drop the NULL entries;
+    # a mixed call is rejected here instead of producing a ragged table.
+    if not all(isinstance(item, TGDResult) for item in objects):
+        raise ValueError("some of the objects are not TGD")
+    rows = tuple(
+        sorted(
+            (
+                TGDComparisonRow(family=str(item.family), pred_gd=float(item.test_global_deviance))
+                for item in objects
+            ),
+            key=lambda row: (row.pred_gd, row.family),
+        )
+    )
+    return TGDComparisonResult(rows=rows)
+
+
 def gamlss_cv_data(
     formula: str,
     data: Mapping[str, Any] | None = None,

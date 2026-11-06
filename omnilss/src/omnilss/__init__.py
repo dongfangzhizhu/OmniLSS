@@ -175,6 +175,7 @@ from .pspline_variants import (
 )
 from .mixtures import MX_control, NP_control, dMX, dmx, mx_control, np_control, pMX, pmx
 from .spatial import NeighbourNB, nb2nb, nb2prec
+from .gamlssVGD_23_12_21 import TGD, TGDComparisonResult, TGDComparisonRow
 from .pcategorical import PCatFit, PCatSpec, gamlss_pcat, pcat, pairwise_differences
 from .powerpoly import PPFit, PPSpec, gamlss_pp, pp, scs
 from .ridge_random import (
@@ -1156,6 +1157,10 @@ __all__ = [
     "nb2nb",
     "nb2prec",
     "NeighbourNB",
+    # ── gamlss TGD accessor ──
+    "TGD",
+    "TGDComparisonResult",
+    "TGDComparisonRow",
     # ── gamlss.foreach PCR helpers ──
     "getSVD",
     "SVDResult",
