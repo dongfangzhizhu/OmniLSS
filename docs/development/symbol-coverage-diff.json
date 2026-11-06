@@ -4,11 +4,11 @@
   "baseline_error": "",
   "r_exports_total": 1080,
   "current_counts": {
-    "missing": 254,
+    "missing": 251,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 335
+    "extra": 340
   },
   "category_meaning": {
     "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
@@ -21,21 +21,12 @@
     "missing": {
       "new": [],
       "resolved": [
-        "gamlss::gamlss.pbc",
-        "gamlss::gamlss.pbm",
-        "gamlss::gamlss.pbo",
-        "gamlss::gamlss.pbp",
-        "gamlss::gamlss.pbz",
-        "gamlss::gamlss.pvc",
-        "gamlss::pbc",
-        "gamlss::pbm",
-        "gamlss::pbo",
-        "gamlss::pbp",
-        "gamlss::pbz",
-        "gamlss::pvc"
+        "gamlss::gamlss.random",
+        "gamlss::gamlss.ri",
+        "gamlss::ri"
       ],
-      "current_count": 254,
-      "baseline_count": 266
+      "current_count": 251,
+      "baseline_count": 254
     },
     "placeholder": {
       "new": [],
@@ -57,62 +48,30 @@
     },
     "extra": {
       "new": [
-        "PSplineVariant"
+        "RIFit",
+        "RISpec",
+        "RandomFit",
+        "RandomSpec",
+        "random_spec"
       ],
       "resolved": [],
-      "current_count": 335,
-      "baseline_count": 334
+      "current_count": 340,
+      "baseline_count": 335
     }
   },
   "regressions": [],
   "improvements": [
     {
       "category": "missing",
-      "symbol": "gamlss::gamlss.pbc"
+      "symbol": "gamlss::gamlss.random"
     },
     {
       "category": "missing",
-      "symbol": "gamlss::gamlss.pbm"
+      "symbol": "gamlss::gamlss.ri"
     },
     {
       "category": "missing",
-      "symbol": "gamlss::gamlss.pbo"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss::gamlss.pbp"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss::gamlss.pbz"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss::gamlss.pvc"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss::pbc"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss::pbm"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss::pbo"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss::pbp"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss::pbz"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss::pvc"
+      "symbol": "gamlss::ri"
     }
   ],
   "ok": true,
