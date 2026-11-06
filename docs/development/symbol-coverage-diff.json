@@ -20,16 +20,9 @@
   "categories": {
     "missing": {
       "new": [],
-      "resolved": [
-        "gamlss.foreach::fitPCR",
-        "gamlss.foreach::gamlss.pc",
-        "gamlss.foreach::gamlss.pcr",
-        "gamlss.foreach::pc",
-        "gamlss.foreach::pcr",
-        "gamlss.foreach::which.yX.Corr"
-      ],
+      "resolved": [],
       "current_count": 232,
-      "baseline_count": 238
+      "baseline_count": 232
     },
     "placeholder": {
       "new": [],
@@ -50,49 +43,14 @@
       "baseline_count": 44
     },
     "extra": {
-      "new": [
-        "PCFit",
-        "PCRFit",
-        "PCRSmootherFit",
-        "PCRSpec",
-        "PCSpec",
-        "fit_pcr",
-        "get_sig_terms",
-        "weighted_mean",
-        "weighted_sd"
-      ],
+      "new": [],
       "resolved": [],
       "current_count": 364,
-      "baseline_count": 355
+      "baseline_count": 364
     }
   },
   "regressions": [],
-  "improvements": [
-    {
-      "category": "missing",
-      "symbol": "gamlss.foreach::fitPCR"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss.foreach::gamlss.pc"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss.foreach::gamlss.pcr"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss.foreach::pc"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss.foreach::pcr"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss.foreach::which.yX.Corr"
-    }
-  ],
+  "improvements": [],
   "ok": true,
   "ratchet_ok": true,
   "ceiling_ok": true
