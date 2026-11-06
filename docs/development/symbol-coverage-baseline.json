@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 238,
+    "missing": 232,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 355
+    "extra": 364
   },
   "symbols": {
     "missing": [
@@ -40,14 +40,8 @@
       "gamlss.foreach::BayesianBoot",
       "gamlss.foreach::NonParametricBoot",
       "gamlss.foreach::centiles.boot",
-      "gamlss.foreach::fitPCR",
       "gamlss.foreach::fitQR",
       "gamlss.foreach::fitRolling",
-      "gamlss.foreach::gamlss.pc",
-      "gamlss.foreach::gamlss.pcr",
-      "gamlss.foreach::pc",
-      "gamlss.foreach::pcr",
-      "gamlss.foreach::which.yX.Corr",
       "gamlss.ggplots::ECDF_2D",
       "gamlss.ggplots::add_resid_qqplot",
       "gamlss.ggplots::bivar.fun.contour",
@@ -415,6 +409,11 @@
       "NeighbourNB",
       "NormalFamily",
       "PBSpline",
+      "PCFit",
+      "PCRFit",
+      "PCRSmootherFit",
+      "PCRSpec",
+      "PCSpec",
       "PCatFit",
       "PCatSpec",
       "PDFPlotEntry",
@@ -551,6 +550,7 @@
       "fit_dist_data",
       "fit_dist_pred",
       "fit_dist_pred_data",
+      "fit_pcr",
       "fitted",
       "fitted_plot",
       "fitted_plot_data",
@@ -574,6 +574,7 @@
       "get_pef_data",
       "get_quantile_data",
       "get_rqres_samples",
+      "get_sig_terms",
       "get_tgd",
       "get_tgd_data",
       "glim_control_exact",
@@ -662,6 +663,8 @@
       "vcov",
       "vgd",
       "vuong_clarke_test",
+      "weighted_mean",
+      "weighted_sd",
       "worm_plot_data"
     ]
   }

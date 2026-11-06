@@ -4,11 +4,11 @@
   "baseline_error": "",
   "r_exports_total": 1080,
   "current_counts": {
-    "missing": 238,
+    "missing": 232,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 355
+    "extra": 364
   },
   "category_meaning": {
     "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
@@ -21,10 +21,15 @@
     "missing": {
       "new": [],
       "resolved": [
-        "gamlss::TGD"
+        "gamlss.foreach::fitPCR",
+        "gamlss.foreach::gamlss.pc",
+        "gamlss.foreach::gamlss.pcr",
+        "gamlss.foreach::pc",
+        "gamlss.foreach::pcr",
+        "gamlss.foreach::which.yX.Corr"
       ],
-      "current_count": 238,
-      "baseline_count": 239
+      "current_count": 232,
+      "baseline_count": 238
     },
     "placeholder": {
       "new": [],
@@ -46,19 +51,46 @@
     },
     "extra": {
       "new": [
-        "TGDComparisonResult",
-        "TGDComparisonRow"
+        "PCFit",
+        "PCRFit",
+        "PCRSmootherFit",
+        "PCRSpec",
+        "PCSpec",
+        "fit_pcr",
+        "get_sig_terms",
+        "weighted_mean",
+        "weighted_sd"
       ],
       "resolved": [],
-      "current_count": 355,
-      "baseline_count": 353
+      "current_count": 364,
+      "baseline_count": 355
     }
   },
   "regressions": [],
   "improvements": [
     {
       "category": "missing",
-      "symbol": "gamlss::TGD"
+      "symbol": "gamlss.foreach::fitPCR"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.foreach::gamlss.pc"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.foreach::gamlss.pcr"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.foreach::pc"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.foreach::pcr"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.foreach::which.yX.Corr"
     }
   ],
   "ok": true,
