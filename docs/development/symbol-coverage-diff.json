@@ -4,11 +4,11 @@
   "baseline_error": "",
   "r_exports_total": 1080,
   "current_counts": {
-    "missing": 266,
+    "missing": 254,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 334
+    "extra": 335
   },
   "category_meaning": {
     "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
@@ -21,12 +21,21 @@
     "missing": {
       "new": [],
       "resolved": [
-        "gamlss::bfp",
-        "gamlss::fp",
-        "gamlss::gamlss.fp"
+        "gamlss::gamlss.pbc",
+        "gamlss::gamlss.pbm",
+        "gamlss::gamlss.pbo",
+        "gamlss::gamlss.pbp",
+        "gamlss::gamlss.pbz",
+        "gamlss::gamlss.pvc",
+        "gamlss::pbc",
+        "gamlss::pbm",
+        "gamlss::pbo",
+        "gamlss::pbp",
+        "gamlss::pbz",
+        "gamlss::pvc"
       ],
-      "current_count": 266,
-      "baseline_count": 269
+      "current_count": 254,
+      "baseline_count": 266
     },
     "placeholder": {
       "new": [],
@@ -48,27 +57,62 @@
     },
     "extra": {
       "new": [
-        "FPFit",
-        "FPSpec"
+        "PSplineVariant"
       ],
       "resolved": [],
-      "current_count": 334,
-      "baseline_count": 332
+      "current_count": 335,
+      "baseline_count": 334
     }
   },
   "regressions": [],
   "improvements": [
     {
       "category": "missing",
-      "symbol": "gamlss::bfp"
+      "symbol": "gamlss::gamlss.pbc"
     },
     {
       "category": "missing",
-      "symbol": "gamlss::fp"
+      "symbol": "gamlss::gamlss.pbm"
     },
     {
       "category": "missing",
-      "symbol": "gamlss::gamlss.fp"
+      "symbol": "gamlss::gamlss.pbo"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss::gamlss.pbp"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss::gamlss.pbz"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss::gamlss.pvc"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss::pbc"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss::pbm"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss::pbo"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss::pbp"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss::pbz"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss::pvc"
     }
   ],
   "ok": true,
