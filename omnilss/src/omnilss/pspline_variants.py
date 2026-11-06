@@ -36,7 +36,7 @@ from .smoother_controls import (
     pvc_control,
 )
 from .smoother_fits import SmootherFit, _regpen, gamlss_pb
-from .smoother_specs import CYSpline, PBSpline, bbase, cbase, cdiff, difference_matrix
+from .smoother_specs import PBSpline, bbase, cbase, difference_matrix
 
 _LAMBDA_MIN = 1.0e-7
 _LAMBDA_MAX = 1.0e7
