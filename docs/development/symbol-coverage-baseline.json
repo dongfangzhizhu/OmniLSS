@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 248,
+    "missing": 246,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 342
+    "extra": 345
   },
   "symbols": {
     "missing": [
@@ -253,14 +253,12 @@
       "gamlss::calibration",
       "gamlss::fittedPlot",
       "gamlss::gamlss.lo",
-      "gamlss::gamlss.pcat",
       "gamlss::gamlss.re",
       "gamlss::gamlssNews",
       "gamlss::get.rqres",
       "gamlss::loglogSurv1",
       "gamlss::loglogSurv2",
       "gamlss::loglogSurv3",
-      "gamlss::pcat",
       "gamlss::re",
       "gamlss::rqres.plot",
       "gamlss::stepGAIC.CH",
@@ -424,6 +422,8 @@
       "NegativeBinomialFamily",
       "NormalFamily",
       "PBSpline",
+      "PCatFit",
+      "PCatSpec",
       "PDFPlotEntry",
       "PDFPlotResult",
       "PPFit",
@@ -612,6 +612,7 @@
       "model_matrix",
       "momentSkew",
       "moment_availability",
+      "pairwise_differences",
       "pdf",
       "pdf_plot_data",
       "plot2way_data",
