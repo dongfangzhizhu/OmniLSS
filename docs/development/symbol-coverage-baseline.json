@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 239,
+    "missing": 238,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 353
+    "extra": 355
   },
   "symbols": {
     "missing": [
@@ -242,7 +242,6 @@
       "gamlss2::specials",
       "gamlss2::step_gamlss2",
       "gamlss2::stepwise",
-      "gamlss::TGD",
       "gamlss::bp",
       "gamlss::calibration",
       "gamlss::fittedPlot",
@@ -470,6 +469,8 @@
       "StepwisePathRow",
       "StudentTFamily",
       "SummaryResult",
+      "TGDComparisonResult",
+      "TGDComparisonRow",
       "TGDResult",
       "TGDScopeResult",
       "TGDScopeRow",
