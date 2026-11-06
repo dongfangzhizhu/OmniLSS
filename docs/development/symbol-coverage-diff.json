@@ -4,11 +4,11 @@
   "baseline_error": "",
   "r_exports_total": 1080,
   "current_counts": {
-    "missing": 246,
+    "missing": 245,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 345
+    "extra": 348
   },
   "category_meaning": {
     "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
@@ -21,11 +21,10 @@
     "missing": {
       "new": [],
       "resolved": [
-        "gamlss::gamlss.pcat",
-        "gamlss::pcat"
+        "gamlss::stepGAIC.VR"
       ],
-      "current_count": 246,
-      "baseline_count": 248
+      "current_count": 245,
+      "baseline_count": 246
     },
     "placeholder": {
       "new": [],
@@ -47,24 +46,20 @@
     },
     "extra": {
       "new": [
-        "PCatFit",
-        "PCatSpec",
-        "pairwise_differences"
+        "StepwisePathResult",
+        "StepwisePathRow",
+        "step_gaic_vr"
       ],
       "resolved": [],
-      "current_count": 345,
-      "baseline_count": 342
+      "current_count": 348,
+      "baseline_count": 345
     }
   },
   "regressions": [],
   "improvements": [
     {
       "category": "missing",
-      "symbol": "gamlss::gamlss.pcat"
-    },
-    {
-      "category": "missing",
-      "symbol": "gamlss::pcat"
+      "symbol": "gamlss::stepGAIC.VR"
     }
   ],
   "ok": true,

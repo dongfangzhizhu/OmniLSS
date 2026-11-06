@@ -8,14 +8,14 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - R packages parsed: 12 (out of scope: gamlss2)
 - R exported symbols: 1080 (in scope: 1036)
-- Python surface matched: 834 / missing: 246
+- Python surface matched: 835 / missing: 245
 - Family-linked symbols: 531 (dpqr kernels: 424)
-- Python-only public exports: 345
+- Python-only public exports: 348
 
-- **surface**: `missing` 246, `module_def` 223, `module_export` 103, `public_api` 332, `registry` 176
-- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 308, `missing` 246
-- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 183, `tested` 217, `unverified` 290
-- **admission**: `blocked` 526, `exported_api` 226, `internal` 77, `not_available` 246, `production_safe` 5
+- **surface**: `missing` 245, `module_def` 223, `module_export` 103, `public_api` 333, `registry` 176
+- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 309, `missing` 245
+- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 183, `tested` 218, `unverified` 289
+- **admission**: `blocked` 526, `exported_api` 227, `internal` 77, `not_available` 245, `production_safe` 5
 
 ## Per-package coverage
 
@@ -23,7 +23,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 
 | R package | version | NAMESPACE sha256 | in scope | exports | defined functions | surface matched |
 |---|---|---|---|---|---|---|
-| gamlss | 5.5-3 | `315c79f596a03c1d` | yes | 152 | 143 | 136 |
+| gamlss | 5.5-3 | `315c79f596a03c1d` | yes | 152 | 143 | 137 |
 | gamlss.add | 5.1-14 | `3c076e78b10c1984` | yes | 15 | 15 | 0 |
 | gamlss.cens | 5.0-8 | `d808f83ace3c6af1` | yes | 5 | 5 | 5 |
 | gamlss.data | 6.0-9 | `d9f9597e6df3f7b9` | yes | 0 | 0 | 0 |
@@ -54,7 +54,6 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | re | gamlss | function | R/gamlss/R/re_gamlss_lme_test.R:27 |
 | rqres.plot | gamlss | function | R/gamlss/R/rqresplot_new.R:41 |
 | stepGAIC.CH | gamlss | function | R/gamlss/R/stepGAIC-03-10-13..R:260 |
-| stepGAIC.VR | gamlss | function | R/gamlss/R/stepGAIC-03-10-13..R:24 |
 | stepTGDAll.A | gamlss | function | R/gamlss/R/stepTGDAll-A-parallel.R:3 |
 | ba | gamlss.add | function | R/gamlss.add/R/ba.R:6 |
 | centilesTwo | gamlss.add | function | R/gamlss.add/R/CentilesTwo.R:1 |
@@ -344,7 +343,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | fp | public_api | implemented | tested | exported_api | 6 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 12 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 197 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 198 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | gamlss_cs | public_api | implemented | tested | exported_api | 3 |
 | gamlss.cy | gamlss | gamlss_cy | public_api | implemented | tested | exported_api | 1 |
@@ -431,9 +430,9 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | rqres.plot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | rvcov | gamlss | rvcov | public_api | implemented | tested | exported_api | 1 |
 | scs | gamlss | scs | public_api | implemented | tested | exported_api | 2 |
-| stepGAIC | gamlss | stepGAIC | public_api | implemented | tested | exported_api | 2 |
+| stepGAIC | gamlss | stepGAIC | public_api | implemented | tested | exported_api | 3 |
 | stepGAIC.CH | gamlss | - | missing | missing | unverified | not_available | 0 |
-| stepGAIC.VR | gamlss | - | missing | missing | unverified | not_available | 0 |
+| stepGAIC.VR | gamlss | stepGAIC_VR | public_api | implemented | tested | exported_api | 1 |
 | stepGAICAll.A | gamlss | stepGAICAll_A | public_api | implemented | tested | exported_api | 1 |
 | stepGAICAll.B | gamlss | stepGAICAll_B | public_api | implemented | tested | exported_api | 1 |
 | stepTGD | gamlss | stepTGD | public_api | implemented | tested | exported_api | 1 |
@@ -527,7 +526,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | NBI | gamlss.dist | NBI | public_api | experimental | r_consistency_test | blocked | 19 |
 | NBII | gamlss.dist | NBII | public_api | experimental | r_consistency_test | blocked | 11 |
 | NET | gamlss.dist | NET | public_api | experimental | r_consistency_test | blocked | 12 |
-| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 145 |
+| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 146 |
 | NO2 | gamlss.dist | NO2 | public_api | experimental | r_consistency_test | blocked | 7 |
 | NOF | gamlss.dist | NOF | public_api | experimental | r_consistency_test | blocked | 5 |
 | PARETO | gamlss.dist | PARETO | public_api | experimental | r_consistency_test | blocked | 7 |
@@ -1370,11 +1369,11 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | special_predict | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | specials | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | step_gamlss2 | gamlss2 | - | missing | missing | unverified | not_available | 0 |
-| stepwise | gamlss2 | - | missing | missing | unverified | not_available | 1 |
+| stepwise | gamlss2 | - | missing | missing | unverified | not_available | 2 |
 
 ## Python-only public exports
 
-345 names exported from `omnilss.__all__` have no R counterpart; they are Python-side additions (dataclasses, backends, utilities), not coverage gaps. The JSON artifact lists them all.
+348 names exported from `omnilss.__all__` have no R counterpart; they are Python-side additions (dataclasses, backends, utilities), not coverage gaps. The JSON artifact lists them all.
 
 - `AIC`
 - `BINOMIAL`
@@ -1416,4 +1415,4 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 - `ChooseDistResult`
 - `ComprehensiveDiagnostics`
 - `DELAPORT`
-- ... 305 more in the JSON artifact
+- ... 308 more in the JSON artifact

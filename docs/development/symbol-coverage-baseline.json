@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 246,
+    "missing": 245,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 345
+    "extra": 348
   },
   "symbols": {
     "missing": [
@@ -262,7 +262,6 @@
       "gamlss::re",
       "gamlss::rqres.plot",
       "gamlss::stepGAIC.CH",
-      "gamlss::stepGAIC.VR",
       "gamlss::stepTGDAll.A"
     ],
     "placeholder": [],
@@ -472,6 +471,8 @@
       "StepTGDAllStep",
       "StepTGDResult",
       "StepTGDStep",
+      "StepwisePathResult",
+      "StepwisePathRow",
       "StudentTFamily",
       "SummaryResult",
       "TGDResult",
@@ -645,6 +646,7 @@
       "smooth_term_edf",
       "step_gaic",
       "step_gaic_all",
+      "step_gaic_vr",
       "step_tgd",
       "step_tgd_all",
       "stepwise_distribution_selection",
