@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 217,
+    "missing": 213,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 368
+    "extra": 369
   },
   "symbols": {
     "missing": [
@@ -151,10 +151,6 @@
       "gamlss.mx::gamlssMX",
       "gamlss.mx::gamlssMXfits",
       "gamlss.mx::gamlssNP",
-      "gamlss.mx::get_cdfMX",
-      "gamlss.mx::get_cdfNP",
-      "gamlss.mx::get_pdfMX",
-      "gamlss.mx::get_pdfNP",
       "gamlss.mx::plotMP",
       "gamlss.prepdata::ACE",
       "gamlss.prepdata::ACE.iter",
@@ -384,6 +380,7 @@
       "METHOD_CAPABILITY_FEATURES",
       "METHOD_ROUTE_FEATURES",
       "MULTIN_LIST",
+      "MixtureFit",
       "ModelComparisonResult",
       "ModelComparisonRow",
       "MomentSKResult",
