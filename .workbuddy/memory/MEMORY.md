@@ -6,6 +6,11 @@
 
 - 491 个测试文件全量 >1.5h → **按文件分 4 片并行后台跑**（前台 2min 超时=SIGTERM 假失败）；单进程 `-q` 只出点。
 - **tests/ 或源码变更 → 同 commit 再生覆盖工件**：`generate_coverage_artifacts.py --date` + `coverage_diff_report.py` → `result: OK`。**改完测试要最后再生成一次**（先改测试再生成仍会报过期）。
+- **工件里嵌了 `python_source_commit`（`git log -1 -- <module>`）→ 必须「feat 提交 → 再生成 → chore 提交」两次提交**：
+  只生成一次就和源码一起 commit，工件记的是**旧 HEAD**，提交后 `test_symbol_coverage_tool.py`
+  两个用例必判 stale（D2.212 全量 shard1 踩到）。chore 提交**不能动任何源文件**，这样
+  `python_source_commit` 保持 feat 的 hash，再 `--check` 就是 up to date。历史日志里 D2.210 的
+  `feat` + `chore` 两次提交就是这个原因。
 - **Write 对「已存在但未 Read 过」的文件会静默不写**（D2.207 连踩两次：FitTail.py 与 test_fit_tail.py 的整篇重写都"成功返回"但内容没变）。改已存在文件前先 `Read` 一次，或直接用 `Edit`；新建文件不受影响。判断方法：写完立刻 `wc -l`/`grep` 复核。
 - **`coverage_diff_report.py --update-baseline` 提前 return，不写 `symbol-coverage-diff.json`**：更新基线后必须再跑一次**无参** `coverage_diff_report.py`，否则 `test_checked_in_baseline_and_report_are_fresh` 会判 stale（D2.204 全量套件踩到；单跑 `-m 'not slow'` 会漏掉，因为该用例是 slow）。
 - **归属判定**：`git worktree add --detach` 到改动前 HEAD 跑同一批 id；但 **worktree 里没有 gitignored 的 `R/`** → `build_coverage` 出全 0 矩阵，**覆盖/能力矩阵类测试在 worktree 的结论不可信**，只信“主树失败、worktree 通过”那几条。
