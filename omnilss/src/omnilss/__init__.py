@@ -182,7 +182,21 @@ from .pspline_variants import (
     pvc,
 )
 from .add_controls import ga_control, gam_control, nn_control
-from .mixtures import MX_control, NP_control, dMX, dmx, mx_control, np_control, pMX, pmx
+from .mixtures import (
+    MX_control,
+    MixtureFit,
+    NP_control,
+    dMX,
+    dmx,
+    get_cdfMX,
+    get_cdfNP,
+    get_pdfMX,
+    get_pdfNP,
+    mx_control,
+    np_control,
+    pMX,
+    pmx,
+)
 from .spatial import NeighbourNB, nb2nb, nb2prec
 from .gamlssVGD_23_12_21 import TGD, TGDComparisonResult, TGDComparisonRow
 from .pcategorical import PCatFit, PCatSpec, gamlss_pcat, pcat, pairwise_differences
@@ -1211,7 +1225,7 @@ __all__ = [
     "get_sig_terms",
     "weighted_mean",
     "weighted_sd",
-    # ── gamlss.mx mixture densities and control lists ──
+    # ── gamlss.mx mixture densities, accessors and control lists ──
     "dmx",
     "pmx",
     "dMX",
@@ -1220,6 +1234,11 @@ __all__ = [
     "np_control",
     "MX_control",
     "NP_control",
+    "MixtureFit",
+    "get_pdfMX",
+    "get_cdfMX",
+    "get_pdfNP",
+    "get_cdfNP",
     # ── gamlss.spatial neighbourhood helpers ──
     "nb2nb",
     "nb2prec",

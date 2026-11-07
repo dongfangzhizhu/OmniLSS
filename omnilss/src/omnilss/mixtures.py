@@ -21,6 +21,8 @@ assigns to c.crit), and NP.control's EMcc guard does the same.
 from __future__ import annotations
 
 import warnings
+from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any, Sequence
 
 import numpy as np
@@ -216,11 +218,193 @@ MX_control = mx_control
 NP_control = np_control
 
 
+# ---------------------------------------------------------------------------
+# get_pdfMX / get_cdfMX / get_pdfNP / get_cdfNP
+# ---------------------------------------------------------------------------
+#
+# R source: R/gamlss.mx/R/gamlssMX-10-11-07.R:710,768 and
+#           R/gamlss.mx/R/gamlssNP.R:806,860.
+#
+# These four accessors take a *fitted* mixture object and an observation number
+# and return a function of y: the fitted pdf/cdf of that observation.  They do
+# no fitting themselves -- they collect the fitted parameter values of each
+# component at that observation, plus the mixing probabilities, and close over
+# a call to dMX()/pMX().  Because gamlssMX()/gamlssNP() are not ported yet, the
+# fitted object is represented here by MixtureFit, which carries exactly the
+# fields R's accessors read (K, family/orig.family, models$parameters,
+# fit vectors, prob, model.pi, bd).
+#
+# Two R behaviours are reproduced deliberately:
+#
+# * ``if (any(npar==npar[1])) nopar <- npar[1] else stop(...)`` is dead code --
+#   the first element always equals itself -- so components with different
+#   parameter counts are *not* rejected; nopar is simply npar[1].
+# * fitted.gamlssNP forces K=1 for every parameter except mu, so non-mu
+#   parameters are shared by all NP components.  MX components keep their own.
+#
+# The binomial (bd) branch is not ported: dMX()/pMX() here do not accept bd,
+# and R's .gamlss.bi.list families need it.  Encountering one raises
+# NotImplementedError rather than silently returning a wrong density.
+
+#: R's ``.gamlss.bi.list`` (live R 4.6.0, gamlss namespace).
+_BINOMIAL_FAMILIES = frozenset(
+    {
+        "BI", "Binomial", "BB", "Beta Binomial",
+        "ZIBI", "ZIBB", "ZABI", "ZABB", "DBI",
+        "BItr", "BBtr", "ZIBItr", "ZIBBtr", "ZABItr", "ZABBtr", "DBItr",
+    }
+)
+
+
+@dataclass(frozen=True)
+class MixtureFit:
+    """R gamlssMX / gamlssNP fitted object, reduced to what the accessors read.
+
+    ``fitted_values`` maps a parameter name ("mu", "sigma", "nu", "tau") to
+    either a flat length-(K*N) vector in R's ``mu.fv`` layout, a (K, N) array,
+    or a length-N vector shared by every component.  ``parameters`` is a
+    per-component sequence of parameter names for MX, or a single sequence for
+    NP (R's ``object$parameters``).
+    """
+
+    K: int
+    N: int
+    family: Sequence[str]
+    prob: Any
+    fitted_values: Mapping[str, Any]
+    parameters: Any
+    kind: str = "gamlssMX"
+    orig_family: str | None = None
+    model_pi: bool = False
+    bd: Any = None
+
+
+def _coerce_fit(object: Any) -> MixtureFit:
+    if isinstance(object, MixtureFit):
+        return object
+    if isinstance(object, Mapping):
+        return MixtureFit(**dict(object))
+    raise TypeError(
+        "object must be a MixtureFit (or a mapping with the same fields)"
+    )
+
+
+def _fitted_at(fit: MixtureFit, name: str, component: int, observation: int,
+               is_np: bool) -> float:
+    values = np.asarray(fit.fitted_values[name], dtype=np.float64)
+    if values.ndim == 1:
+        if values.size == fit.K * fit.N:
+            values = values.reshape(fit.K, fit.N)
+        elif values.size == fit.N:
+            values = np.broadcast_to(values, (fit.K, fit.N))
+        else:
+            raise ValueError(
+                f"{name} fitted values must have K*N or N entries, got {values.size}"
+            )
+    # R fitted.gamlssNP: `if (what!="mu") K=1` -- non-mu parameters are shared.
+    source = 0 if (is_np and name != "mu") else component
+    return float(values[source, observation - 1])
+
+
+def _collect_mixture(object: Any, observation: Any, expected_kind: str):
+    fit = _coerce_fit(object)
+    if fit.kind != expected_kind:
+        raise ValueError(f"the object should be an {expected_kind} object")
+    obs = int(observation)
+    if obs < 1 or obs > fit.N:
+        raise IndexError(f"observation must be between 1 and {fit.N}, got {obs}")
+    is_np = expected_kind == "gamlssNP"
+    K = int(fit.K)
+
+    if is_np:
+        declared = [tuple(fit.parameters)] * K
+    else:
+        declared = [tuple(names) for names in fit.parameters]
+
+    lists: dict[str, list[float]] = {}
+    for name in _PARAMETER_ORDER:
+        values = [
+            _fitted_at(fit, name, i, obs, is_np)
+            for i in range(K)
+            if name in declared[i]
+        ]
+        if values:
+            lists[name] = values
+
+    probabilities = np.asarray(fit.prob, dtype=np.float64)
+    if not is_np and fit.model_pi:
+        if probabilities.ndim != 2:
+            raise ValueError("prob must be an (N, K) array when model_pi=True")
+        pi = [float(probabilities[obs - 1, i]) for i in range(K)]
+    else:
+        flat = probabilities.ravel()
+        pi = [float(flat[i]) for i in range(K)]
+
+    # R: `if (any(npar==npar[1])) nopar <- npar[1] else stop(...)` -- always
+    # true, so differing component parameter counts are silently accepted.
+    nopar = len(declared[0])
+    family = (
+        [fit.orig_family] * K if is_np else [str(name) for name in fit.family]
+    )
+    return lists, pi, nopar, family, fit.bd
+
+
+def _plotfun(use_cdf: bool, lists, pi, nopar, family, bd):
+    first = str(family[0]) if family else ""
+    if bd is not None or first in _BINOMIAL_FAMILIES:
+        raise NotImplementedError(
+            "binomial (bd) mixtures are not ported: dMX/pMX need a bd argument"
+        )
+    kernel = pmx if use_cdf else dmx
+
+    def plotfun(y: Any) -> np.ndarray:
+        kwargs: dict[str, Any] = {"pi": pi, "family": family}
+        for name in _PARAMETER_ORDER[:nopar]:
+            if name in lists:
+                kwargs[name] = lists[name]
+        return kernel(y, **kwargs)
+
+    return plotfun
+
+
+def get_pdfMX(object: Any = None, observation: int = 1):
+    """R get_pdfMX: return the fitted pdf of one observation of a gamlssMX fit."""
+
+    lists, pi, nopar, family, bd = _collect_mixture(object, observation, "gamlssMX")
+    return _plotfun(False, lists, pi, nopar, family, bd)
+
+
+def get_cdfMX(object: Any = None, observation: int = 1):
+    """R get_cdfMX: return the fitted cdf of one observation of a gamlssMX fit."""
+
+    lists, pi, nopar, family, bd = _collect_mixture(object, observation, "gamlssMX")
+    return _plotfun(True, lists, pi, nopar, family, bd)
+
+
+def get_pdfNP(object: Any = None, observation: int = 1):
+    """R get_pdfNP: return the fitted pdf of one observation of a gamlssNP fit."""
+
+    lists, pi, nopar, family, bd = _collect_mixture(object, observation, "gamlssNP")
+    return _plotfun(False, lists, pi, nopar, family, bd)
+
+
+def get_cdfNP(object: Any = None, observation: int = 1):
+    """R get_cdfNP: return the fitted cdf of one observation of a gamlssNP fit."""
+
+    lists, pi, nopar, family, bd = _collect_mixture(object, observation, "gamlssNP")
+    return _plotfun(True, lists, pi, nopar, family, bd)
+
+
 __all__ = [
     "MX_control",
     "NP_control",
+    "MixtureFit",
     "dMX",
     "dmx",
+    "get_cdfMX",
+    "get_cdfNP",
+    "get_pdfMX",
+    "get_pdfNP",
     "mx_control",
     "np_control",
     "pMX",
