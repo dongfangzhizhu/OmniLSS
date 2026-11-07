@@ -317,7 +317,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | fp | public_api | implemented | tested | exported_api | 6 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 13 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 206 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 207 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | gamlss_cs | public_api | implemented | tested | exported_api | 3 |
 | gamlss.cy | gamlss | gamlss_cy | public_api | implemented | tested | exported_api | 1 |
@@ -338,7 +338,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gamlss.ri | gamlss | gamlss_ri | public_api | implemented | tested | exported_api | 1 |
 | gamlss.scope | gamlss | gamlss_scope | public_api | implemented | tested | exported_api | 1 |
 | gamlssCV | gamlss | gamlssCV | public_api | implemented | tested | exported_api | 1 |
-| gamlssML | gamlss | gamlssML | module_export | implemented | tested | internal | 5 |
+| gamlssML | gamlss | gamlssML | module_export | implemented | tested | internal | 6 |
 | gamlssMLpred | gamlss | gamlssMLpred | public_api | implemented | tested | exported_api | 1 |
 | gamlssNews | gamlss | - | missing | missing | unverified | not_available | 1 |
 | gamlssVGD | gamlss | gamlssVGD | public_api | implemented | tested | exported_api | 2 |
@@ -369,7 +369,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | loglogplot | gamlss | loglogplot | public_api | implemented | tested | exported_api | 1 |
 | lp | gamlss | lp | public_api | implemented | r_consistency_test | exported_api | 8 |
 | lpred | gamlss | lpred | public_api | implemented | tested | exported_api | 1 |
-| numeric.deriv | gamlss | numeric_deriv | public_api | implemented | r_consistency_test | exported_api | 6 |
+| numeric.deriv | gamlss | numeric_deriv | public_api | implemented | r_consistency_test | exported_api | 7 |
 | par.plot | gamlss | par_plot | public_api | implemented | tested | exported_api | 1 |
 | pb | gamlss | pb | public_api | implemented | r_consistency_test | exported_api | 42 |
 | pb.control | gamlss | pb_control | public_api | implemented | tested | exported_api | 2 |
@@ -541,7 +541,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | WARING | gamlss.dist | WARING | public_api | experimental | r_consistency_test | blocked | 7 |
 | WEI | gamlss.dist | WEI | public_api | experimental | r_consistency_test | blocked | 13 |
 | WEI2 | gamlss.dist | WEI2 | public_api | experimental | r_consistency_test | blocked | 11 |
-| WEI3 | gamlss.dist | WEI3 | public_api | experimental | r_consistency_test | blocked | 6 |
+| WEI3 | gamlss.dist | WEI3 | public_api | experimental | r_consistency_test | blocked | 7 |
 | YULE | gamlss.dist | YULE | public_api | experimental | r_consistency_test | blocked | 7 |
 | ZABB | gamlss.dist | ZABB | public_api | experimental | r_consistency_test | blocked | 11 |
 | ZABI | gamlss.dist | ZABI | public_api | experimental | capability:validated | blocked | 11 |
@@ -1295,7 +1295,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fitTail | gamlss.tr | - | missing | missing | unverified | not_available | 0 |
 | fitTailAll | gamlss.tr | - | missing | missing | unverified | not_available | 0 |
 | gen.trun | gamlss.tr | gen_trun | public_api | implemented | tested | exported_api | 2 |
-| trun | gamlss.tr | trun | public_api | implemented | tested | exported_api | 2 |
+| trun | gamlss.tr | trun | public_api | implemented | tested | exported_api | 3 |
 | trun.d | gamlss.tr | trun_d | public_api | implemented | tested | exported_api | 3 |
 | trun.p | gamlss.tr | trun_p | public_api | implemented | tested | exported_api | 3 |
 | trun.q | gamlss.tr | trun_q | public_api | implemented | tested | exported_api | 2 |
