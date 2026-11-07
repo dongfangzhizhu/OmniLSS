@@ -20,6 +20,12 @@ from .families import FamilyDefinition
 
 _TYPES = ("left", "right", "both")
 
+#: Step of the forward difference used to differentiate the truncated log-density.
+#: gamlss's numeric.deriv default is sqrt(eps) * min(1, |value|); the generated
+#: dld* functions in gamlss.dist use delta = 0.001, which is the convention kept
+#: here (the truncated density is smooth, so the step only has to be small).
+_SCORE_DELTA = 1.0e-3
+
 
 def _resolve(family: Any) -> FamilyDefinition:
     return family if isinstance(family, FamilyDefinition) else resolve(family)
@@ -257,6 +263,36 @@ def trun(
     def g_dev_inc(y: Any, **params: Any) -> Any:
         return -2.0 * d(y, log=True, **params)
 
+    # R's gen.trun() family has dldm / d2ldm2 = NULL: gamlss fits those families in
+    # gamlssML() by direct numerical maximisation (nlminb), not by IRLS on analytic
+    # scores.  The IRLS engine here needs a score, so use gamlss's own numeric.deriv
+    # convention -- a forward difference of the *truncated* log-density with delta
+    # 0.001 -- and the -dld^2 observed-information form for the second derivative
+    # (the convention R uses for numerically differentiated families).
+    def _numeric_derivatives(density: Callable[..., Any], names: tuple[str, ...]):
+        def make_score(name: str):
+            def score(*, y: Any, **params: Any) -> Any:
+                base_value = density(y, log=True, **params)
+                bumped = dict(params)
+                bumped[name] = params[name] + _SCORE_DELTA
+                return (density(y, log=True, **bumped) - base_value) / _SCORE_DELTA
+
+            return score
+
+        def make_hessian(name: str):
+            def hessian(*, y: Any, **params: Any) -> Any:
+                first = make_score(name)(y=y, **params)
+                return -(first**2)
+
+            return hessian
+
+        return (
+            {name: make_score(name) for name in names},
+            {name: make_hessian(name) for name in names},
+        )
+
+    numeric_scores, numeric_hessians = _numeric_derivatives(d, tuple(base.parameters))
+
     return TruncatedFamily(
         name=f"{base.name}{extra_name}",
         parameters=tuple(base.parameters),
@@ -266,8 +302,8 @@ def trun(
         link_functions=base.link_functions,
         link_inverses=base.link_inverses,
         link_derivatives=base.link_derivatives,
-        score_functions=base.score_functions,
-        hessian_functions=base.hessian_functions,
+        score_functions=numeric_scores,
+        hessian_functions=numeric_hessians,
         fixed_parameters=base.fixed_parameters,
         d=d,
         p=p,
