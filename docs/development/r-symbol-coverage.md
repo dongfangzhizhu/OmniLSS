@@ -8,14 +8,14 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - R packages parsed: 12 (out of scope: gamlss2)
 - R exported symbols: 1080 (in scope: 1036)
-- Python surface matched: 859 / missing: 221
+- Python surface matched: 861 / missing: 219
 - Family-linked symbols: 531 (dpqr kernels: 424)
-- Python-only public exports: 365
+- Python-only public exports: 366
 
-- **surface**: `missing` 221, `module_def` 223, `module_export` 103, `public_api` 357, `registry` 176
-- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 333, `missing` 221
-- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 183, `tested` 242, `unverified` 265
-- **admission**: `blocked` 526, `exported_api` 251, `internal` 77, `not_available` 221, `production_safe` 5
+- **surface**: `missing` 219, `module_def` 223, `module_export` 103, `public_api` 359, `registry` 176
+- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 335, `missing` 219
+- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 183, `tested` 244, `unverified` 263
+- **admission**: `blocked` 526, `exported_api` 253, `internal` 77, `not_available` 219, `production_safe` 5
 
 ## Per-package coverage
 
@@ -24,7 +24,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | R package | version | NAMESPACE sha256 | in scope | exports | defined functions | surface matched |
 |---|---|---|---|---|---|---|
 | gamlss | 5.5-3 | `315c79f596a03c1d` | yes | 152 | 143 | 141 |
-| gamlss.add | 5.1-14 | `3c076e78b10c1984` | yes | 15 | 15 | 0 |
+| gamlss.add | 5.1-14 | `3c076e78b10c1984` | yes | 15 | 15 | 2 |
 | gamlss.cens | 5.0-8 | `d808f83ace3c6af1` | yes | 5 | 5 | 5 |
 | gamlss.data | 6.0-9 | `d9f9597e6df3f7b9` | yes | 0 | 0 | 0 |
 | gamlss.dist | 6.1-8 | `59a3b7074378aaeb` | yes | 654 | 630 | 650 |
@@ -57,14 +57,12 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fitFreeKnots | gamlss.add | function | R/gamlss.add/R/freeKnots-18-06-13.R:288 |
 | fk | gamlss.add | function | R/gamlss.add/R/fk-gamlss.R:6 |
 | ga | gamlss.add | function | R/gamlss.add/R/ga_new.R:6 |
-| ga.control | gamlss.add | function | R/gamlss.add/R/ga_new.R:76 |
 | gamlss.ba | gamlss.add | function | R/gamlss.add/R/ba.R:130 |
 | gamlss.fk | gamlss.add | function | R/gamlss.add/R/fk-gamlss.R:50 |
 | gamlss.ga | gamlss.add | function | R/gamlss.add/R/ga_new.R:104 |
 | gamlss.nn | gamlss.add | function | R/gamlss.add/R/nnet_gamlss.R:115 |
 | gamlss.tr | gamlss.add | function | R/gamlss.add/R/tree_gamlss.R:57 |
 | nn | gamlss.add | function | R/gamlss.add/R/nnet_gamlss.R:9 |
-| nn.control | gamlss.add | function | R/gamlss.add/R/nnet_gamlss.R:79 |
 | tr | gamlss.add | function | R/gamlss.add/R/tree_gamlss.R:9 |
 | plotBEOI | gamlss.dist | function | R/gamlss.dist/R/BEOI.r:234 |
 | plotBEZI | gamlss.dist | function | R/gamlss.dist/R/BEZI.r:228 |
@@ -319,7 +317,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | fp | public_api | implemented | tested | exported_api | 6 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 13 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 205 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 206 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | gamlss_cs | public_api | implemented | tested | exported_api | 3 |
 | gamlss.cy | gamlss | gamlss_cy | public_api | implemented | tested | exported_api | 1 |
@@ -423,15 +421,15 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fitFixedKnots | gamlss.add | - | missing | missing | unverified | not_available | 0 |
 | fitFreeKnots | gamlss.add | - | missing | missing | unverified | not_available | 0 |
 | fk | gamlss.add | - | missing | missing | unverified | not_available | 0 |
-| ga | gamlss.add | - | missing | missing | unverified | not_available | 2 |
-| ga.control | gamlss.add | - | missing | missing | unverified | not_available | 0 |
+| ga | gamlss.add | - | missing | missing | unverified | not_available | 3 |
+| ga.control | gamlss.add | ga_control | public_api | implemented | tested | exported_api | 1 |
 | gamlss.ba | gamlss.add | - | missing | missing | unverified | not_available | 0 |
 | gamlss.fk | gamlss.add | - | missing | missing | unverified | not_available | 0 |
 | gamlss.ga | gamlss.add | - | missing | missing | unverified | not_available | 0 |
 | gamlss.nn | gamlss.add | - | missing | missing | unverified | not_available | 0 |
 | gamlss.tr | gamlss.add | - | missing | missing | unverified | not_available | 2 |
-| nn | gamlss.add | - | missing | missing | unverified | not_available | 1 |
-| nn.control | gamlss.add | - | missing | missing | unverified | not_available | 0 |
+| nn | gamlss.add | - | missing | missing | unverified | not_available | 2 |
+| nn.control | gamlss.add | nn_control | public_api | implemented | tested | exported_api | 1 |
 | tr | gamlss.add | - | missing | missing | unverified | not_available | 3 |
 | cens | gamlss.cens | cens | public_api | implemented | tested | exported_api | 5 |
 | cens.d | gamlss.cens | cens_d | public_api | implemented | tested | exported_api | 1 |
@@ -1349,7 +1347,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 
 ## Python-only public exports
 
-365 names exported from `omnilss.__all__` have no R counterpart; they are Python-side additions (dataclasses, backends, utilities), not coverage gaps. The JSON artifact lists them all.
+366 names exported from `omnilss.__all__` have no R counterpart; they are Python-side additions (dataclasses, backends, utilities), not coverage gaps. The JSON artifact lists them all.
 
 - `AIC`
 - `BINOMIAL`
@@ -1391,4 +1389,4 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 - `ChooseDistResult`
 - `ComprehensiveDiagnostics`
 - `DELAPORT`
-- ... 325 more in the JSON artifact
+- ... 326 more in the JSON artifact

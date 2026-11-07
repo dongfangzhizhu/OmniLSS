@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 221,
+    "missing": 219,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 365
+    "extra": 366
   },
   "symbols": {
     "missing": [
@@ -24,14 +24,12 @@
       "gamlss.add::fitFreeKnots",
       "gamlss.add::fk",
       "gamlss.add::ga",
-      "gamlss.add::ga.control",
       "gamlss.add::gamlss.ba",
       "gamlss.add::gamlss.fk",
       "gamlss.add::gamlss.ga",
       "gamlss.add::gamlss.nn",
       "gamlss.add::gamlss.tr",
       "gamlss.add::nn",
-      "gamlss.add::nn.control",
       "gamlss.add::tr",
       "gamlss.dist::plotBEOI",
       "gamlss.dist::plotBEZI",
@@ -549,6 +547,7 @@
       "gaic_scaled",
       "gaic_table",
       "gaic_weights",
+      "gam_control",
       "gamlss_control_exact",
       "gamlss_cv",
       "gamlss_cv_data",
