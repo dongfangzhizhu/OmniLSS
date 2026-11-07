@@ -71,6 +71,38 @@ def _resolve_start_values(
     return resolved
 
 
+class _BaseNameView:
+    """A family seen under its base name (start-value tables only)."""
+
+    __slots__ = ("_family", "name")
+
+    def __init__(self, family: Any, name: str) -> None:
+        self._family = family
+        self.name = name
+
+    def __getattr__(self, item: str) -> Any:
+        return getattr(self._family, item)
+
+
+def _start_family(family: FamilyDefinition) -> Any:
+    """Key the start-value tables on the *base* family for truncated families.
+
+    R builds a brand-new family object in gen.trun() and leaves mu.initial /
+    sigma.initial empty, so gamlssML silently falls back to its internal
+    default; the generated name ("WEI3tr") matches none of the R start
+    expressions ported below.  Without this mapping the generic target=y
+    fallback is consumed as a link-scale value, so a log link turns the start
+    into exp(y) -- the D2.50 NBII signature.  Using the base family expression
+    keeps the start on the right scale and lands on the same MLE (WEI3tr now
+    reproduces R to 1e-6 instead of running off to mu ~ 225).
+    """
+
+    base = getattr(family, "base_name", None)
+    if not base or base == getattr(family, "name", None):
+        return family
+    return _BaseNameView(family, str(base))
+
+
 def _initial_parameter_value(
     family: FamilyDefinition,
     parameter: str,
@@ -80,6 +112,7 @@ def _initial_parameter_value(
 ) -> float:
     """Construct staged starting values for non-mu parameters."""
 
+    family = _start_family(family)
     if parameter == "sigma":
         return _initial_sigma(family, y, mu, w)
     if parameter == "nu":
@@ -363,6 +396,7 @@ def _initial_mu_target(
     (WLS) compression, kept for callers that need starting coefficients.
     """
 
+    family = _start_family(family)
     if family.name == "NO":
         # Deliberately target=y, not R's NO()$mu.initial=(y+mean)/2: the ML
         # one-step contract (test_gamlss_ml_sigma_scale_matches_rs_path) pins
@@ -752,6 +786,7 @@ def _initial_sigma(
 ) -> float:
     """Construct a family-aware starting point for the sigma parameter."""
 
+    family = _start_family(family)
     eps = np.finfo(np.float64).eps
     if family.name in ("ZABB", "ZIBB"):
         return 0.1

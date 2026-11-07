@@ -158,6 +158,25 @@ def _cdf_call_args(family: FamilyDefinition, values: dict) -> list:
     return args
 
 
+def _cdf_values(
+    family: FamilyDefinition, q: Any, args: list, params: dict
+) -> np.ndarray:
+    """Evaluate the family CDF, by keyword for truncated families.
+
+    A truncated family's CDF is R's trun.p closure, whose signature is
+    fun(q, lower_tail = TRUE, log_p = FALSE, **params): passing the distribution
+    parameters positionally binds them to lower_tail / log_p and the parameter
+    lookup then fails ("missing family parameter 'mu'"), which is what made every
+    truncated fit report NaN residuals.
+    """
+
+    if hasattr(family, "truncation_type"):
+        ordered = {name: params[name] for name in family.parameters if name in params}
+        if len(ordered) == len(family.parameters):
+            return np.asarray(family.p(q, **ordered), dtype=np.float64)
+    return np.asarray(family.p(q, *args), dtype=np.float64)
+
+
 def _generic_rqres(family: FamilyDefinition, values: dict) -> np.ndarray:
     """Randomized-quantile residuals from the family's own CDF.
 
@@ -184,10 +203,10 @@ def _generic_rqres(family: FamilyDefinition, values: dict) -> np.ndarray:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         if kind == "Continuous":
-            probabilities = np.asarray(family.p(y, *args), dtype=np.float64)
+            probabilities = _cdf_values(family, y, args, params)
         else:
-            lower = np.asarray(family.p(y - 1.0, *args), dtype=np.float64)
-            upper = np.asarray(family.p(y, *args), dtype=np.float64)
+            lower = _cdf_values(family, y - 1.0, args, params)
+            upper = _cdf_values(family, y, args, params)
             probabilities = 0.5 * (lower + upper)
     return _normal_quantile(probabilities)
 
