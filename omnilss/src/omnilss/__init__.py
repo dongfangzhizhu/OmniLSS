@@ -181,6 +181,7 @@ from .pspline_variants import (
     pbz,
     pvc,
 )
+from .add_controls import ga_control, gam_control, nn_control
 from .mixtures import MX_control, NP_control, dMX, dmx, mx_control, np_control, pMX, pmx
 from .spatial import NeighbourNB, nb2nb, nb2prec
 from .gamlssVGD_23_12_21 import TGD, TGDComparisonResult, TGDComparisonRow
@@ -1219,6 +1220,10 @@ __all__ = [
     "nb2nb",
     "nb2prec",
     "NeighbourNB",
+    # ── gamlss.add control objects ──
+    "nn_control",
+    "ga_control",
+    "gam_control",
     # ── gamlss TGD accessor ──
     "TGD",
     "TGDComparisonResult",
