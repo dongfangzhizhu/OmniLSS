@@ -11,6 +11,13 @@
 - **归属判定**：`git worktree add --detach` 到改动前 HEAD 跑同一批 id；但 **worktree 里没有 gitignored 的 `R/`** → `build_coverage` 出全 0 矩阵，**覆盖/能力矩阵类测试在 worktree 的结论不可信**，只信“主树失败、worktree 通过”那几条。
 - **pytest 9 的 FAILED 行带 ` - <reason>` 后缀**：当 id 传回去会报 `file or directory not found: -`，要 `split(" - ")[0]`；长列表用 `pytest @argfile`。
 - 全库现状（2026-11-01 实测）：75 failed，其中 71 个先于 D2.129 存在（簇见 DEVELOPMENT_PLAN 第十六节：CG/MIXED 路由 ~10、ZABB/ZIBB `bd` 6、`SmoothFitInfo` 签名 6、`RTestBus.eval_expr` 4、旧登记数字 5…）。
+- **`test_performance_benchmarks.py` 的 0.5s 阈值是机器负载计时器，不是正确性门禁**：4 片并行满载数小时后
+  可能连续多次单跑都超时（`NO_small`/`BE_small`）。归属判定别靠"重跑一次过了"：**把改动的源码临时换回
+  `git show HEAD:<path>` 跑同一批**（记得备份再恢复），旧版失败更多即非回归；或直接计时 A/B 比 median。
+  不要为了让它变绿去改阈值。
+- **新增/修改测试文件会让覆盖工件 stale**（`test_suite_sha256`）：改完测试后必须**最后**再跑
+  `generate_coverage_artifacts.py --date <今天>`，然后 `generate_symbol_coverage.py --check` +
+  无参 `coverage_diff_report.py` → `result: OK`；否则 `test_symbol_coverage_tool.py` 两个用例必挂。
 
 - 交接文档：仓库根 `HANDOFF.md`（2026-10-31）——新会话入口，含当前状态、已完成/待完成、必踩的坑。
 
@@ -68,6 +75,10 @@
 - "密度对、导数错"根因常在密度；修好一处可能更差（TF2），**不要单步变好就停**。
 - 同一密度两实现（dpqr_functions vs distributions 的 `_log_density`）**必须同步改**。
 - 转发壳先问：被转发的是同一个函数吗（TF2 签名偷换）。
+- **AD 二阶导 ≠ IRLS 需要的二阶导**：对 log-density 连求两次导得到的是**观测信息**，可以为**正**
+  （截断 WEI3 在 mu=4.96 处 d2l/dmu2=+0.099）→ RS 的 working weight 变负 → 拟合发散到 mu=166。
+  gamlss 对一切数值微分族固定 `d2ldx2 = -(dldx)^2`（恒 ≤0）。所以对**运行时构造的族**（trun/cens/自定义）
+  求闭包导数时，hessian 必须用 `-score²`：`build_ad_family(source_family=..., hessian_from_score=True)`。
 
 ## R 探针读取要点
 

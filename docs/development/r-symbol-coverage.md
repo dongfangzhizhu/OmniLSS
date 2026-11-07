@@ -317,7 +317,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | fp | public_api | implemented | tested | exported_api | 6 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 13 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 207 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 208 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | gamlss_cs | public_api | implemented | tested | exported_api | 3 |
 | gamlss.cy | gamlss | gamlss_cy | public_api | implemented | tested | exported_api | 1 |
@@ -431,7 +431,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | nn | gamlss.add | - | missing | missing | unverified | not_available | 2 |
 | nn.control | gamlss.add | nn_control | public_api | implemented | tested | exported_api | 1 |
 | tr | gamlss.add | - | missing | missing | unverified | not_available | 3 |
-| cens | gamlss.cens | cens | public_api | implemented | tested | exported_api | 5 |
+| cens | gamlss.cens | cens | public_api | implemented | tested | exported_api | 6 |
 | cens.d | gamlss.cens | cens_d | public_api | implemented | tested | exported_api | 1 |
 | cens.p | gamlss.cens | cens_p | public_api | implemented | tested | exported_api | 1 |
 | cens.q | gamlss.cens | cens_q | public_api | implemented | tested | exported_api | 1 |
@@ -541,7 +541,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | WARING | gamlss.dist | WARING | public_api | experimental | r_consistency_test | blocked | 7 |
 | WEI | gamlss.dist | WEI | public_api | experimental | r_consistency_test | blocked | 13 |
 | WEI2 | gamlss.dist | WEI2 | public_api | experimental | r_consistency_test | blocked | 11 |
-| WEI3 | gamlss.dist | WEI3 | public_api | experimental | r_consistency_test | blocked | 7 |
+| WEI3 | gamlss.dist | WEI3 | public_api | experimental | r_consistency_test | blocked | 8 |
 | YULE | gamlss.dist | YULE | public_api | experimental | r_consistency_test | blocked | 7 |
 | ZABB | gamlss.dist | ZABB | public_api | experimental | r_consistency_test | blocked | 11 |
 | ZABI | gamlss.dist | ZABI | public_api | experimental | capability:validated | blocked | 11 |
@@ -1295,7 +1295,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fitTail | gamlss.tr | - | missing | missing | unverified | not_available | 0 |
 | fitTailAll | gamlss.tr | - | missing | missing | unverified | not_available | 0 |
 | gen.trun | gamlss.tr | gen_trun | public_api | implemented | tested | exported_api | 2 |
-| trun | gamlss.tr | trun | public_api | implemented | tested | exported_api | 3 |
+| trun | gamlss.tr | trun | public_api | implemented | tested | exported_api | 4 |
 | trun.d | gamlss.tr | trun_d | public_api | implemented | tested | exported_api | 3 |
 | trun.p | gamlss.tr | trun_p | public_api | implemented | tested | exported_api | 3 |
 | trun.q | gamlss.tr | trun_q | public_api | implemented | tested | exported_api | 2 |
@@ -1308,7 +1308,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | Kumaraswamy | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | MN | gamlss2 | - | missing | missing | unverified | not_available | 3 |
 | OL | gamlss2 | - | missing | missing | unverified | not_available | 0 |
-| RS | gamlss2 | - | missing | missing | unverified | not_available | 101 |
+| RS | gamlss2 | - | missing | missing | unverified | not_available | 102 |
 | Rsq | gamlss2 | Rsq | module_export | implemented | unverified | internal | 0 |
 | available_families | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | bamlss2 | gamlss2 | - | missing | missing | unverified | not_available | 0 |

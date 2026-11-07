@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from dataclasses import fields as _dataclass_fields
+from dataclasses import is_dataclass as _is_dataclass
 from typing import Any
 
 import jax
@@ -48,12 +50,64 @@ def _prepare_jax_args(args: tuple[Any, ...]) -> tuple[list[jnp.ndarray], bool]:
     return prepared, scalar_output
 
 
-def build_ad_family(
-    family_class: type[FamilyDefinition],
-    name: str,
+def _log_density_from_family(
+    family: FamilyDefinition,
     parameters: tuple[str, ...],
-    log_pdf_func: Callable[..., jnp.ndarray],
-    type_: str = "Continuous",
+) -> Callable[..., jnp.ndarray]:
+    """Wrap an existing family's density closure as a scalar log-density.
+
+    This is what lets build_ad_family differentiate a family that was
+    *constructed at run time* (trun(), cens(), a user-supplied
+    FamilyDefinition) instead of a hand-written scalar kernel.  The closure is
+    called the way every family density is called -- family.d(y, log=True,
+    mu=..., sigma=...) -- so anything the family already encodes (truncation
+    normalisation, fixed shape parameters, ...) is part of the differentiated
+    expression.
+
+    Scalar in, scalar out: build_ad_family maps this with jax.vmap, and every
+    family density returns a length-1 array for scalar inputs.
+    """
+
+    density = getattr(family, "d", None)
+    if not callable(density):
+        raise TypeError(
+            f"Family {getattr(family, 'name', family)!r} has no d() closure to "
+            "differentiate; pass log_pdf_func= instead."
+        )
+
+    def log_pdf(y: Any, *params: Any) -> jnp.ndarray:
+        kwargs = dict(zip(parameters, params))
+        value = jnp.asarray(density(y, log=True, **kwargs), dtype=jnp.float64)
+        return jnp.reshape(value, ())
+
+    return log_pdf
+
+
+def _hessian_from_score(
+    score: Callable[..., Any],
+) -> Callable[..., jnp.ndarray]:
+    """gamlss scoring second derivative: d2l/dx2 := -(dl/dx)**2.
+
+    This is the convention R uses for every family it differentiates
+    numerically (gen.trun, gen.cens): the result is the expected negative
+    information, so it is never positive and IRLS working weights stay
+    positive.  A raw AD second derivative is the observed information, which
+    can change sign (and does, for truncated densities).
+    """
+
+    def hessian(*args: Any, **kwargs: Any) -> jnp.ndarray:
+        value = jnp.asarray(score(*args, **kwargs), dtype=jnp.float64)
+        return -(value**2)
+
+    return hessian
+
+
+def build_ad_family(
+    family_class: type[FamilyDefinition] | None = None,
+    name: str | None = None,
+    parameters: tuple[str, ...] | None = None,
+    log_pdf_func: Callable[..., jnp.ndarray] | None = None,
+    type_: str | None = None,
     links: Mapping[str, str] | None = None,
     link_functions: Mapping[str, Callable[..., Any]] | None = None,
     link_inverses: Mapping[str, Callable[..., Any]] | None = None,
@@ -67,6 +121,8 @@ def build_ad_family(
     constructor_parameters: Mapping[str, Any] | None = None,
     score_overrides: Mapping[str, Callable[..., Any]] | None = None,
     hessian_overrides: Mapping[str, Callable[..., Any]] | None = None,
+    source_family: FamilyDefinition | None = None,
+    hessian_from_score: bool | None = None,
 ) -> FamilyDefinition:
     """Build a FamilyDefinition dynamically using JAX auto-differentiation (AD).
     
@@ -76,6 +132,30 @@ def build_ad_family(
     
     Parameters
     ----------
+    source_family : FamilyDefinition, optional
+        An existing family whose own density closure is differentiated.
+        This is the way to AD a family that is built at run time --
+        trun(), cens(), or a caller-defined FamilyDefinition -- because
+        such families have no hand-written scalar kernel and no entry in
+        any name-keyed registry.  When given, any of name / parameters /
+        family_class / log_pdf_func that is left as None is taken from
+        source_family, log_pdf_func defaults to source_family.d called in
+        log mode, and the structural metadata (links, type, fixed
+        parameters, constructor parameters, p/q/r) is inherited unless the
+        caller overrides it.  The result is therefore the same distribution
+        as source_family, with an exact AD score instead of whatever
+        derivative set the source carried.
+    hessian_from_score : bool, optional
+        Replace each AD second derivative with the gamlss scoring form
+        -(score)**2.  Defaults to True when source_family is given, False for
+        the hand-written-kernel path.  The reason: IRLS needs the expected
+        negative information, and the raw second derivative of a
+        log-density is only that when the log-density is concave.  For a
+        truncated family it is routinely positive (WEI3tr at mu=4.96 has
+        d2l/dmu2 = +0.099), which makes the working weights negative and the
+        fit diverge -- R sidesteps this by giving every numerically
+        differentiated family d2ldx2 = -dldx**2.  Caller-supplied
+        hessian_overrides still win.
     d, p, q, r : callable, optional
         Explicit dpqr functions. If provided, they override the auto-generated
         placeholders and are JIT-compiled for performance.
@@ -104,6 +184,52 @@ def build_ad_family(
         (see ``_DERIV_TOLERANCE`` in ``tools/rs_family_parity_scan.py`` for the
         cases where R's own are only approximate).
     """
+    if source_family is not None:
+        # Everything the caller did not override comes from the family whose
+        # density we are differentiating.  In particular p/q/r: an AD-ified
+        # copy of a truncated family must keep the *truncated* CDF, otherwise
+        # residuals silently revert to the base distribution.
+        if family_class is None:
+            family_class = type(source_family)
+        if name is None:
+            name = source_family.name
+        if parameters is None:
+            parameters = tuple(source_family.parameters)
+        if log_pdf_func is None:
+            log_pdf_func = _log_density_from_family(source_family, tuple(parameters))
+        if type_ is None:
+            type_ = source_family.type
+        if links is None:
+            links = source_family.links
+        if link_functions is None:
+            link_functions = source_family.link_functions
+        if link_inverses is None:
+            link_inverses = source_family.link_inverses
+        if link_derivatives is None:
+            link_derivatives = source_family.link_derivatives
+        if fixed_parameters is None:
+            fixed_parameters = source_family.fixed_parameters
+        if fixed_parameter_defaults is None:
+            fixed_parameter_defaults = source_family.fixed_parameter_defaults
+        if constructor_parameters is None:
+            constructor_parameters = source_family.constructor_parameters
+        if d is None:
+            d = source_family.d
+        if p is None:
+            p = source_family.p
+        if q is None:
+            q = source_family.q
+        if r is None:
+            r = source_family.r
+
+    if type_ is None:
+        type_ = "Continuous"
+    if family_class is None or name is None or parameters is None or log_pdf_func is None:
+        raise TypeError(
+            "build_ad_family needs either (family_class, name, parameters, "
+            "log_pdf_func) or source_family=<FamilyDefinition>"
+        )
+
     # Pre-compile the vmapped log_pdf for reuse across g_dev_inc and _d
     _vmap_log_pdf = jax.jit(jax.vmap(log_pdf_func))
 
@@ -197,6 +323,16 @@ def build_ad_family(
     score_functions.update(derived_scores)
     hessian_functions.update(derived_hessians)
 
+    if hessian_from_score is None:
+        # A family that only exists as a closure has no analytic d2ldx2 to
+        # inherit, so use the gamlss numeric-derivative convention.
+        hessian_from_score = source_family is not None
+    if hessian_from_score:
+        for par in parameters:
+            if par in derived_hessians:
+                continue  # an explicit override is always the answer
+            hessian_functions[par] = _hessian_from_score(score_functions[par])
+
     # We also inject `pdf` into the class dynamically
     # since FamilyDefinition lacks it by default but tests/plot tools need it
     def _pdf(self, *args):
@@ -234,6 +370,30 @@ def build_ad_family(
     _q_final = q if q is not None else _q_placeholder
     _r_final = r if r is not None else _r_placeholder
     
+    # A family subclass carries extra dataclass fields that describe *what it
+    # is* -- TruncatedFamily.truncation_type/base_name, CensoredFamily
+    # .censoring_type, and whatever a caller-defined subclass adds.  Copying
+    # them is what keeps the AD-ified object usable by the rest of the
+    # pipeline: without base_name, the start-value mapping no longer sees a
+    # truncated family and falls back to the generic target (exp(y) on a log
+    # link).
+    extra_fields: dict[str, Any] = {}
+    if (
+        source_family is not None
+        and family_class is type(source_family)
+        and _is_dataclass(source_family)
+    ):
+        known = {
+            "name", "parameters", "g_dev_inc", "type", "links",
+            "link_functions", "link_inverses", "link_derivatives",
+            "score_functions", "hessian_functions", "fixed_parameters",
+            "d", "p", "q", "r", "constructor_parameters",
+            "fixed_parameter_defaults",
+        }
+        for field in _dataclass_fields(source_family):
+            if field.name not in known:
+                extra_fields[field.name] = getattr(source_family, field.name)
+
     return family_class(
         name=name,
         parameters=parameters,
@@ -252,4 +412,5 @@ def build_ad_family(
         p=_p_final,  # Add p function
         q=_q_final,  # Add q function
         r=_r_final,  # Add r function
+        **extra_fields,
     )
