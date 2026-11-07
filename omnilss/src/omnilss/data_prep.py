@@ -22,6 +22,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
+from scipy.stats import chi2
 
 _BANNER = "*" * 62
 
@@ -927,6 +928,349 @@ def data_void(
     return pd.DataFrame(values, index=names, columns=names)
 
 
+def _is_categorical(column: pd.Series) -> bool:
+    return (
+        isinstance(column.dtype, pd.CategoricalDtype)
+        or pd.api.types.is_object_dtype(column)
+        or pd.api.types.is_bool_dtype(column)
+    )
+
+
+def _term_columns(frame: pd.DataFrame, term: str) -> list[tuple[str, np.ndarray]]:
+    """Columns of one model.matrix term (treatment contrasts, first level dropped)."""
+
+    parts = [piece.strip() for piece in term.split(":") if piece.strip()]
+    components: list[list[tuple[str, np.ndarray]]] = []
+    for part in parts:
+        if part not in frame.columns:
+            raise ValueError(f"{part} is not a column of the data")
+        column = frame[part]
+        if _is_categorical(column):
+            categorical = pd.Categorical(column)
+            codes = categorical.codes
+            entries: list[tuple[str, np.ndarray]] = []
+            # R uses treatment contrasts and then drops the intercept.
+            for index, level in enumerate(categorical.categories[1:], start=1):
+                entries.append((f"{part}{level}", (codes == index).astype(float)))
+            components.append(entries)
+        else:
+            components.append([(part, column.to_numpy(dtype=float))])
+
+    if len(components) == 1:
+        return components[0]
+    products: list[tuple[str, np.ndarray]] = []
+    for first in components[0]:
+        for second in components[1]:
+            products.append((f"{first[0]}:{second[0]}", first[1] * second[1]))
+    for extra in components[2:]:
+        expanded: list[tuple[str, np.ndarray]] = []
+        for name, values in products:
+            for other_name, other_values in extra:
+                expanded.append((f"{name}:{other_name}", values * other_values))
+        products = expanded
+    return products
+
+
+def _model_matrix(frame: pd.DataFrame, terms: Sequence[str]) -> pd.DataFrame:
+    """model.matrix(formula, frame)[, -1] for the supported formula shapes."""
+
+    columns: dict[str, np.ndarray] = {}
+    for term in terms:
+        for name, values in _term_columns(frame, term):
+            columns[name] = values
+    return pd.DataFrame(columns, index=frame.index)
+
+
+def _expand_terms(terms: Sequence[str], interactions: bool) -> list[str]:
+    main = [str(term).strip() for term in terms if str(term).strip()]
+    if not interactions:
+        return main
+    expanded = list(main)
+    for first in range(len(main)):
+        for second in range(first + 1, len(main)):
+            expanded.append(f"{main[first]}:{main[second]}")
+    return expanded
+
+
+def _split_formula(formula: str) -> tuple[str, str]:
+    if "~" not in formula:
+        raise ValueError("the formula should contain ~")
+    left, right = formula.split("~", 1)
+    return left.strip(), right.strip()
+
+
+def _formula_terms(right: str, frame: pd.DataFrame) -> list[str]:
+    """Turn the right-hand side of a formula into model.matrix terms."""
+
+    text = right.strip()
+    if text.startswith("(") and text.endswith(")^2"):
+        inner = text[1:-3]
+        return _expand_terms(inner.split("+"), interactions=True)
+    if text == ".":
+        return [str(name) for name in frame.columns]
+    return [term.strip() for term in text.split("+") if term.strip()]
+
+
+def _factor_like_columns(frame: pd.DataFrame, columns: Sequence[str]) -> list[str]:
+    """R's whetherFactor heuristic: factor/character/logical, <10 distinct, Date."""
+
+    flagged: list[str] = []
+    for name in columns:
+        column = frame[name]
+        if _is_categorical(column):
+            flagged.append(name)
+            continue
+        if pd.api.types.is_datetime64_any_dtype(column):
+            flagged.append(name)
+            continue
+        if int(column.dropna().nunique()) < 10:
+            flagged.append(name)
+    return flagged
+
+
+def data_scale(
+    data: Any,
+    response: str | None = None,
+    position_response: int | None = None,
+    scale_to: str = "z-scores",
+    family: str = "NO",
+    scale_response: bool = False,
+) -> pd.DataFrame:
+    """R data_scale(): rescale the covariates of a data frame.
+
+    scale.to = "0to1" is the pure min-max map and is reproduced exactly.
+    scale.to = "z-scores" fits a gamlssML SHASHo model to every column in R, which
+    is not ported, so that branch raises NotImplementedError.
+    """
+
+    if data is None:
+        raise ValueError("the data frame is missing")
+    if response is None and position_response is None:
+        raise ValueError("response (or its position) should be given")
+    if scale_to not in ("z-scores", "0to1"):
+        raise ValueError("'arg' should be one of ['z-scores', '0to1']")
+    if scale_to == "z-scores":
+        raise NotImplementedError(
+            "data_scale(scale_to='z-scores') fits gamlssML(SHASHo) per column in R; "
+            "that fit is not ported -- use scale_to='0to1'"
+        )
+
+    frame = data.copy() if isinstance(data, pd.DataFrame) else pd.DataFrame(dict(data))
+    names = [str(name) for name in frame.columns]
+    if position_response is None:
+        if response not in names:
+            raise ValueError(f"{response} is not a column of the data")
+        position = names.index(str(response))
+    else:
+        position = int(position_response) - 1
+    response_name = names[position]
+
+    covariates = [name for name in names if name != response_name]
+    protected = _factor_like_columns(frame, covariates)
+    to_scale = [name for name in covariates if name not in protected]
+    if scale_response:
+        to_scale = [response_name, *to_scale]
+
+    for name in to_scale:
+        column = frame[name].to_numpy(dtype=float)
+        low = np.min(column)
+        high = np.max(column)
+        span = high - low
+        if span == 0.0:
+            frame[name] = 0.0
+        else:
+            frame[name] = (column - low) / span
+    return frame
+
+
+def data_vars2data(
+    data: Any,
+    response: str | None = None,
+    exclude: Sequence[str] | None = None,
+    type: str = "main.effect",
+    weights: Any = None,
+    nonlinear: bool = False,
+    basis: str = "poly",
+    arg: Any = 2,
+) -> pd.DataFrame:
+    """R data_vars2data(): response plus the model matrix of the other columns."""
+
+    if data is None:
+        raise ValueError("the data frame is missing")
+    if response is None:
+        raise ValueError("response should be given")
+    if type not in ("main.effect", "first.order"):
+        raise ValueError("'arg' should be one of ['main.effect', 'first.order']")
+    if nonlinear:
+        raise NotImplementedError(
+            "nonlinear = TRUE builds poly()/basis() terms through model.matrix; "
+            "that is not ported"
+        )
+
+    frame = data.copy() if isinstance(data, pd.DataFrame) else pd.DataFrame(dict(data))
+    frame.columns = [str(name) for name in frame.columns]
+    response_name = str(response)
+    if response_name not in frame.columns:
+        raise ValueError(f"{response_name} is not a column of the data")
+    if exclude is not None:
+        frame = frame.drop(columns=[str(name) for name in exclude if str(name) in frame.columns])
+
+    covariates = [name for name in frame.columns if name != response_name]
+    terms = _expand_terms(covariates, interactions=type == "first.order")
+    design = _model_matrix(frame, terms)
+
+    if type == "first.order":
+        design.columns = [name.replace(":", ".") for name in design.columns]
+
+    out = pd.DataFrame({response_name: frame[response_name].to_numpy()}, index=frame.index)
+    for name in design.columns:
+        out[name] = design[name].to_numpy()
+    return out
+
+
+def data_form2X(
+    data: Any,
+    formula: str | None = None,
+    response: str | None = None,
+    scale_to: str = "no",
+    family: str = "NO",
+) -> pd.DataFrame:
+    """R data_form2X(): model.matrix(formula)[, -1] after an optional rescaling."""
+
+    if data is None:
+        raise ValueError("the data frame is missing")
+    if response is None:
+        raise ValueError("the response should be set")
+    if scale_to not in ("no", "z-scores", "0to1"):
+        raise ValueError("'arg' should be one of ['no', 'z-scores', '0to1']")
+
+    frame = data.copy() if isinstance(data, pd.DataFrame) else pd.DataFrame(dict(data))
+    frame.columns = [str(name) for name in frame.columns]
+    response_name = str(response)
+    if response_name not in frame.columns:
+        raise ValueError(f"{response_name} is not a column of the data")
+
+    if formula is None:
+        if list(frame.columns)[0] != response_name:
+            raise ValueError("if no formula is given the response should be first in data")
+        terms = [name for name in frame.columns if name != response_name]
+    else:
+        left, right = _split_formula(formula)
+        response_name = left or response_name
+        if response_name not in frame.columns:
+            raise ValueError(f"{response_name} is not a column of the data")
+        terms = _formula_terms(right, frame)
+
+    if scale_to != "no":
+        frame = data_scale(
+            frame,
+            response=response_name,
+            scale_to=scale_to,
+            family=family,
+        )
+
+    return _model_matrix(frame, terms)
+
+
+def data_inter(
+    data: Any,
+    response: str | None = None,
+    weights: Any = None,
+    digits: int = 3,
+    plot: bool = False,
+    lower_tri_off: bool = True,
+    fit_method: str = "linear",
+    seed: int = 123,
+    percentage: float | None = None,
+    print_info: bool = True,
+) -> pd.DataFrame:
+    """R data_inter(): pairwise interaction p-values for the numeric covariates.
+
+    Every (i, j) entry is 1 - pchisq(AIC(m0, k = 0) - AIC(m1, k = 0), 1) comparing
+    y ~ xi + xj with y ~ xi * xj, i.e. the likelihood-ratio p-value of the product
+    term.  R also fits y_zscores(actY) first and never uses the result; that dead
+    call is skipped here (it is what makes R's version need gamlssML).
+
+    Only numeric covariates are supported: R hands factors to lm() but keeps df = 1
+    in the chi-square, which is wrong, so this raises instead of copying it.
+    """
+
+    if fit_method not in ("linear", "nonlinear"):
+        raise ValueError("'arg' should be one of ['linear', 'nonlinear']")
+    if fit_method == "nonlinear":
+        raise NotImplementedError(
+            "fit_method = 'nonlinear' uses mgcv::gam with s(x1, x2); that smoother is "
+            "not ported"
+        )
+    if data is None:
+        raise ValueError("nothing to do for this data frame")
+
+    frame = data.copy() if isinstance(data, pd.DataFrame) else pd.DataFrame(dict(data))
+    frame.columns = [str(name) for name in frame.columns]
+    if response is None:
+        raise ValueError("the response should be set")
+    response_name = str(response)
+    if response_name not in frame.columns:
+        raise ValueError("the response should be in data")
+    if frame.shape[0] <= 1:
+        raise ValueError("nothing to do for this data frame")
+
+    frame = data_cut(frame, percentage=percentage, seed=seed, print=print_info)
+    if frame.isna().any().any():
+        before = len(frame)
+        frame = frame.dropna()
+        warnings.warn(
+            f"{before - len(frame)} observations were omitted from the data",
+            UserWarning,
+            stacklevel=2,
+        )
+    if frame.shape[0] < 20:
+        raise ValueError("the size of the data set is too small\nto detect interaction")
+
+    if not pd.api.types.is_numeric_dtype(frame[response_name]):
+        raise ValueError("only numeric vectors as resposnces")
+    covariates = [name for name in frame.columns if name != response_name]
+    non_numeric = [name for name in covariates if _is_categorical(frame[name])]
+    if non_numeric:
+        raise ValueError(
+            "data_inter only supports numeric covariates; R passes factors to lm() "
+            "but keeps df = 1 in the chi-square"
+        )
+    if not covariates:
+        raise ValueError("no variable is left after taking out unwanded variables")
+    if len(covariates) == 1:
+        raise ValueError("only one variable is left")
+
+    response_values = frame[response_name].to_numpy(dtype=float)
+    count = response_values.shape[0]
+    weights_array = np.ones(count) if weights is None else np.asarray(weights, dtype=float)
+    size = len(covariates)
+    matrix = np.zeros((size, size))
+    for first in range(size):
+        for second in range(first + 1, size):
+            x1 = frame[covariates[first]].to_numpy(dtype=float)
+            x2 = frame[covariates[second]].to_numpy(dtype=float)
+            main = np.column_stack([np.ones(count), x1, x2])
+            interaction = np.column_stack([main, x1 * x2])
+            rss_main = _weighted_rss(main, response_values, weights_array)
+            rss_inter = _weighted_rss(interaction, response_values, weights_array)
+            delta = count * np.log(rss_main / rss_inter)
+            matrix[first, second] = float(chi2.sf(delta, 1))
+    matrix = matrix + matrix.T
+    values = _round_half_up(matrix, digits)
+    np.fill_diagonal(values, np.nan)
+    if lower_tri_off:
+        values[np.tril_indices(size, -1)] = np.nan
+    return pd.DataFrame(values, index=covariates, columns=covariates)
+
+
+def _weighted_rss(design: np.ndarray, response: np.ndarray, weights: np.ndarray) -> float:
+    root = np.sqrt(weights)
+    coefficients, *_ = np.linalg.lstsq(design * root[:, None], response * root, rcond=None)
+    residuals = response - design @ coefficients
+    return float(np.sum(weights * residuals**2))
+
+
 __all__ = [
     "data_boot_index",
     "data_boot_weights",
@@ -956,7 +1300,11 @@ __all__ = [
     "data_na_obs",
     "data_na_vars",
     "data_cor",
+    "data_form2X",
+    "data_inter",
     "data_pcor",
+    "data_scale",
+    "data_vars2data",
     "data_void",
     "data_omit",
     "data_only_continuous",
