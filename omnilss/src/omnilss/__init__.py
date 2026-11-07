@@ -292,7 +292,15 @@ from .family_capabilities import (
 from .fitDist import fitDist
 from .fitDistPred import fitDistPred, gamlssMLpred
 from .Formulae2data import Formulae2data, Formulae2DataResult
-from .FitTail import logSurv, loglogSurv, TailCurveResult
+from .FitTail import (
+    LogLogSurvFit,
+    TailCurveResult,
+    logSurv,
+    loglogSurv,
+    loglogSurv1,
+    loglogSurv2,
+    loglogSurv3,
+)
 from .fitted_plot import fitted_plot
 from .flexDist import FlexDistResult, flexDist
 from .find_hyper import find_hyper, FindHyperResult
@@ -1097,6 +1105,11 @@ __all__ = [
     # ── gamlss.dist inflated-beta means ──
     "meanBEZI",
     "meanBEOI",
+    # ── gamlss tail diagnostics ──
+    "loglogSurv1",
+    "loglogSurv2",
+    "loglogSurv3",
+    "LogLogSurvFit",
     "y_distinct",
     "y_factor",
     "data_cha2fac",
