@@ -338,7 +338,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gamlss.ri | gamlss | gamlss_ri | public_api | implemented | tested | exported_api | 1 |
 | gamlss.scope | gamlss | gamlss_scope | public_api | implemented | tested | exported_api | 1 |
 | gamlssCV | gamlss | gamlssCV | public_api | implemented | tested | exported_api | 1 |
-| gamlssML | gamlss | gamlssML | module_export | implemented | tested | internal | 4 |
+| gamlssML | gamlss | gamlssML | module_export | implemented | tested | internal | 5 |
 | gamlssMLpred | gamlss | gamlssMLpred | public_api | implemented | tested | exported_api | 1 |
 | gamlssNews | gamlss | - | missing | missing | unverified | not_available | 1 |
 | gamlssVGD | gamlss | gamlssVGD | public_api | implemented | tested | exported_api | 2 |
@@ -541,7 +541,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | WARING | gamlss.dist | WARING | public_api | experimental | r_consistency_test | blocked | 7 |
 | WEI | gamlss.dist | WEI | public_api | experimental | r_consistency_test | blocked | 13 |
 | WEI2 | gamlss.dist | WEI2 | public_api | experimental | r_consistency_test | blocked | 11 |
-| WEI3 | gamlss.dist | WEI3 | public_api | experimental | r_consistency_test | blocked | 5 |
+| WEI3 | gamlss.dist | WEI3 | public_api | experimental | r_consistency_test | blocked | 6 |
 | YULE | gamlss.dist | YULE | public_api | experimental | r_consistency_test | blocked | 7 |
 | ZABB | gamlss.dist | ZABB | public_api | experimental | r_consistency_test | blocked | 11 |
 | ZABI | gamlss.dist | ZABI | public_api | experimental | capability:validated | blocked | 11 |
@@ -1294,10 +1294,10 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | polys2polys | gamlss.spatial | - | missing | missing | unverified | not_available | 0 |
 | fitTail | gamlss.tr | - | missing | missing | unverified | not_available | 0 |
 | fitTailAll | gamlss.tr | - | missing | missing | unverified | not_available | 0 |
-| gen.trun | gamlss.tr | gen_trun | public_api | implemented | tested | exported_api | 1 |
-| trun | gamlss.tr | trun | public_api | implemented | tested | exported_api | 1 |
-| trun.d | gamlss.tr | trun_d | public_api | implemented | tested | exported_api | 2 |
-| trun.p | gamlss.tr | trun_p | public_api | implemented | tested | exported_api | 2 |
+| gen.trun | gamlss.tr | gen_trun | public_api | implemented | tested | exported_api | 2 |
+| trun | gamlss.tr | trun | public_api | implemented | tested | exported_api | 2 |
+| trun.d | gamlss.tr | trun_d | public_api | implemented | tested | exported_api | 3 |
+| trun.p | gamlss.tr | trun_p | public_api | implemented | tested | exported_api | 3 |
 | trun.q | gamlss.tr | trun_q | public_api | implemented | tested | exported_api | 2 |
 | trun.r | gamlss.tr | trun_r | public_api | implemented | tested | exported_api | 1 |
 | BS | gamlss2 | - | missing | missing | unverified | not_available | 0 |
