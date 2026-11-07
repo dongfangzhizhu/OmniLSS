@@ -8,14 +8,14 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - R packages parsed: 12 (out of scope: gamlss2)
 - R exported symbols: 1080 (in scope: 1036)
-- Python surface matched: 861 / missing: 219
+- Python surface matched: 863 / missing: 217
 - Family-linked symbols: 531 (dpqr kernels: 424)
-- Python-only public exports: 366
+- Python-only public exports: 368
 
-- **surface**: `missing` 219, `module_def` 223, `module_export` 103, `public_api` 359, `registry` 176
-- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 335, `missing` 219
-- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 183, `tested` 244, `unverified` 263
-- **admission**: `blocked` 526, `exported_api` 253, `internal` 77, `not_available` 219, `production_safe` 5
+- **surface**: `missing` 217, `module_def` 223, `module_export` 103, `public_api` 361, `registry` 176
+- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 337, `missing` 217
+- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 183, `tested` 246, `unverified` 261
+- **admission**: `blocked` 526, `exported_api` 255, `internal` 77, `not_available` 217, `production_safe` 5
 
 ## Per-package coverage
 
@@ -33,7 +33,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gamlss.mx | 6.0-4 | `b832557a4937461b` | yes | 12 | 12 | 4 |
 | gamlss.prepdata | 0.1.19 | `406a76c8aa06aa80` | yes | 59 | 58 | 40 |
 | gamlss.spatial | 3.0-3 | `af0e2b383e3eba93` | yes | 9 | 9 | 2 |
-| gamlss.tr | 5.1-10 | `bf338282c2d7ed1b` | yes | 8 | 8 | 6 |
+| gamlss.tr | 5.1-10 | `bf338282c2d7ed1b` | yes | 8 | 8 | 8 |
 | gamlss2 | 0.1-0 | `37944572f9da413c` | no | 44 | 42 | 2 |
 
 ## Symbols without any Python surface
@@ -215,8 +215,6 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gmrf | gamlss.spatial | function | R/gamlss.spatial/R/gmrf-for-gamlss.R:7 |
 | polys2nb | gamlss.spatial | function | R/gamlss.spatial/R/extraFunctions.R:8 |
 | polys2polys | gamlss.spatial | function | R/gamlss.spatial/R/extraFunctions.R:261 |
-| fitTail | gamlss.tr | function | R/gamlss.tr/R/FitTrunTail.R:51 |
-| fitTailAll | gamlss.tr | function | R/gamlss.tr/R/FitTrunTail.R:97 |
 | BS | gamlss2 | function | R/gamlss2/R/sampling.R:47 |
 | CG | gamlss2 | function | R/gamlss2/R/RS.R:714 |
 | GDF | gamlss2 | function | R/gamlss2/R/GDF.R:5 |
@@ -317,7 +315,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | fp | public_api | implemented | tested | exported_api | 6 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 13 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 208 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 209 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | gamlss_cs | public_api | implemented | tested | exported_api | 3 |
 | gamlss.cy | gamlss | gamlss_cy | public_api | implemented | tested | exported_api | 1 |
@@ -338,7 +336,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gamlss.ri | gamlss | gamlss_ri | public_api | implemented | tested | exported_api | 1 |
 | gamlss.scope | gamlss | gamlss_scope | public_api | implemented | tested | exported_api | 1 |
 | gamlssCV | gamlss | gamlssCV | public_api | implemented | tested | exported_api | 1 |
-| gamlssML | gamlss | gamlssML | module_export | implemented | tested | internal | 6 |
+| gamlssML | gamlss | gamlssML | module_export | implemented | tested | internal | 7 |
 | gamlssMLpred | gamlss | gamlssMLpred | public_api | implemented | tested | exported_api | 1 |
 | gamlssNews | gamlss | - | missing | missing | unverified | not_available | 1 |
 | gamlssVGD | gamlss | gamlssVGD | public_api | implemented | tested | exported_api | 2 |
@@ -427,7 +425,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gamlss.fk | gamlss.add | - | missing | missing | unverified | not_available | 0 |
 | gamlss.ga | gamlss.add | - | missing | missing | unverified | not_available | 0 |
 | gamlss.nn | gamlss.add | - | missing | missing | unverified | not_available | 0 |
-| gamlss.tr | gamlss.add | - | missing | missing | unverified | not_available | 2 |
+| gamlss.tr | gamlss.add | - | missing | missing | unverified | not_available | 3 |
 | nn | gamlss.add | - | missing | missing | unverified | not_available | 2 |
 | nn.control | gamlss.add | nn_control | public_api | implemented | tested | exported_api | 1 |
 | tr | gamlss.add | - | missing | missing | unverified | not_available | 3 |
@@ -500,7 +498,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | NBI | gamlss.dist | NBI | public_api | experimental | r_consistency_test | blocked | 19 |
 | NBII | gamlss.dist | NBII | public_api | experimental | r_consistency_test | blocked | 11 |
 | NET | gamlss.dist | NET | public_api | experimental | r_consistency_test | blocked | 12 |
-| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 148 |
+| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 149 |
 | NO2 | gamlss.dist | NO2 | public_api | experimental | r_consistency_test | blocked | 7 |
 | NOF | gamlss.dist | NOF | public_api | experimental | r_consistency_test | blocked | 5 |
 | PARETO | gamlss.dist | PARETO | public_api | experimental | r_consistency_test | blocked | 7 |
@@ -541,7 +539,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | WARING | gamlss.dist | WARING | public_api | experimental | r_consistency_test | blocked | 7 |
 | WEI | gamlss.dist | WEI | public_api | experimental | r_consistency_test | blocked | 13 |
 | WEI2 | gamlss.dist | WEI2 | public_api | experimental | r_consistency_test | blocked | 11 |
-| WEI3 | gamlss.dist | WEI3 | public_api | experimental | r_consistency_test | blocked | 8 |
+| WEI3 | gamlss.dist | WEI3 | public_api | experimental | r_consistency_test | blocked | 9 |
 | YULE | gamlss.dist | YULE | public_api | experimental | r_consistency_test | blocked | 7 |
 | ZABB | gamlss.dist | ZABB | public_api | experimental | r_consistency_test | blocked | 11 |
 | ZABI | gamlss.dist | ZABI | public_api | experimental | capability:validated | blocked | 11 |
@@ -565,7 +563,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | ZIPIG | gamlss.dist | ZIPIG | public_api | experimental | r_consistency_test | blocked | 8 |
 | ZISICHEL | gamlss.dist | ZISICHEL | public_api | experimental | r_consistency_test | blocked | 11 |
 | as.family | gamlss.dist | as_family | public_api | implemented | tested | exported_api | 1 |
-| as.gamlss.family | gamlss.dist | as_gamlss_family | public_api | implemented | tested | exported_api | 1 |
+| as.gamlss.family | gamlss.dist | as_gamlss_family | public_api | implemented | tested | exported_api | 2 |
 | binom_1_31 | gamlss.dist | binom_1_31 | module_def | implemented | unverified | internal | 0 |
 | binom_2_33 | gamlss.dist | binom_2_33 | module_def | implemented | unverified | internal | 0 |
 | binom_3_33 | gamlss.dist | binom_3_33 | module_def | implemented | unverified | internal | 0 |
@@ -684,7 +682,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | dWARING | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | dWEI | gamlss.dist | dWEI | module_export | experimental | capability:validated | blocked | 1 |
 | dWEI2 | gamlss.dist | dWEI2 | module_def | experimental | capability:unsupported | blocked | 1 |
-| dWEI3 | gamlss.dist | dWEI3 | module_export | experimental | capability:unsupported | blocked | 1 |
+| dWEI3 | gamlss.dist | dWEI3 | module_export | experimental | capability:unsupported | blocked | 2 |
 | dYULE | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | dZABB | gamlss.dist | dZABB | module_def | experimental | capability:unsupported | blocked | 2 |
 | dZABI | gamlss.dist | - | registry | experimental | capability:validated | blocked | 3 |
@@ -819,7 +817,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | pWARING | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | pWEI | gamlss.dist | pWEI | module_export | experimental | capability:validated | blocked | 1 |
 | pWEI2 | gamlss.dist | pWEI2 | module_def | experimental | capability:unsupported | blocked | 1 |
-| pWEI3 | gamlss.dist | pWEI3 | module_export | experimental | capability:unsupported | blocked | 1 |
+| pWEI3 | gamlss.dist | pWEI3 | module_export | experimental | capability:unsupported | blocked | 2 |
 | pYULE | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | pZABB | gamlss.dist | pZABB | module_def | experimental | capability:unsupported | blocked | 1 |
 | pZABI | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
@@ -1292,14 +1290,14 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | nb2prec | gamlss.spatial | nb2prec | public_api | implemented | tested | exported_api | 1 |
 | polys2nb | gamlss.spatial | - | missing | missing | unverified | not_available | 0 |
 | polys2polys | gamlss.spatial | - | missing | missing | unverified | not_available | 0 |
-| fitTail | gamlss.tr | - | missing | missing | unverified | not_available | 0 |
-| fitTailAll | gamlss.tr | - | missing | missing | unverified | not_available | 0 |
-| gen.trun | gamlss.tr | gen_trun | public_api | implemented | tested | exported_api | 2 |
-| trun | gamlss.tr | trun | public_api | implemented | tested | exported_api | 4 |
-| trun.d | gamlss.tr | trun_d | public_api | implemented | tested | exported_api | 3 |
-| trun.p | gamlss.tr | trun_p | public_api | implemented | tested | exported_api | 3 |
-| trun.q | gamlss.tr | trun_q | public_api | implemented | tested | exported_api | 2 |
-| trun.r | gamlss.tr | trun_r | public_api | implemented | tested | exported_api | 1 |
+| fitTail | gamlss.tr | fitTail | public_api | implemented | tested | exported_api | 1 |
+| fitTailAll | gamlss.tr | fitTailAll | public_api | implemented | tested | exported_api | 1 |
+| gen.trun | gamlss.tr | gen_trun | public_api | implemented | tested | exported_api | 3 |
+| trun | gamlss.tr | trun | public_api | implemented | tested | exported_api | 5 |
+| trun.d | gamlss.tr | trun_d | public_api | implemented | tested | exported_api | 4 |
+| trun.p | gamlss.tr | trun_p | public_api | implemented | tested | exported_api | 4 |
+| trun.q | gamlss.tr | trun_q | public_api | implemented | tested | exported_api | 3 |
+| trun.r | gamlss.tr | trun_r | public_api | implemented | tested | exported_api | 2 |
 | BS | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | CG | gamlss2 | - | missing | missing | unverified | not_available | 33 |
 | GAIC | gamlss2 | GAIC | public_api | implemented | tested | exported_api | 10 |
@@ -1347,7 +1345,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 
 ## Python-only public exports
 
-366 names exported from `omnilss.__all__` have no R counterpart; they are Python-side additions (dataclasses, backends, utilities), not coverage gaps. The JSON artifact lists them all.
+368 names exported from `omnilss.__all__` have no R counterpart; they are Python-side additions (dataclasses, backends, utilities), not coverage gaps. The JSON artifact lists them all.
 
 - `AIC`
 - `BINOMIAL`
@@ -1389,4 +1387,4 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 - `ChooseDistResult`
 - `ComprehensiveDiagnostics`
 - `DELAPORT`
-- ... 326 more in the JSON artifact
+- ... 328 more in the JSON artifact

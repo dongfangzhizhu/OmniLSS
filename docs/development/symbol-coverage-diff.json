@@ -4,11 +4,11 @@
   "baseline_error": "",
   "r_exports_total": 1080,
   "current_counts": {
-    "missing": 219,
+    "missing": 217,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 366
+    "extra": 368
   },
   "category_meaning": {
     "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
@@ -21,8 +21,8 @@
     "missing": {
       "new": [],
       "resolved": [],
-      "current_count": 219,
-      "baseline_count": 219
+      "current_count": 217,
+      "baseline_count": 217
     },
     "placeholder": {
       "new": [],
@@ -45,8 +45,8 @@
     "extra": {
       "new": [],
       "resolved": [],
-      "current_count": 366,
-      "baseline_count": 366
+      "current_count": 368,
+      "baseline_count": 368
     }
   },
   "regressions": [],

@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 219,
+    "missing": 217,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 366
+    "extra": 368
   },
   "symbols": {
     "missing": [
@@ -182,8 +182,6 @@
       "gamlss.spatial::gmrf",
       "gamlss.spatial::polys2nb",
       "gamlss.spatial::polys2polys",
-      "gamlss.tr::fitTail",
-      "gamlss.tr::fitTailAll",
       "gamlss2::BS",
       "gamlss2::CG",
       "gamlss2::GDF",
@@ -461,7 +459,9 @@
       "TGDResult",
       "TGDScopeResult",
       "TGDScopeRow",
+      "TailAllFit",
       "TailCurveResult",
+      "TailFit",
       "TermPlotEntry",
       "TermPlotResult",
       "TheoCentileSKResult",

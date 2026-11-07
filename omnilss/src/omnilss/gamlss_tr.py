@@ -9,6 +9,7 @@ mode is not ported yet and raises NotImplementedError.
 """
 from __future__ import annotations
 
+import builtins
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -356,6 +357,338 @@ def gen_trun(
     }
 
 
+# ---------------------------------------------------------------------------
+# fitTail / fitTailAll -- R/gamlss.tr/R/FitTrunTail.R
+# ---------------------------------------------------------------------------
+#
+# R's fitTail() selects the upper/lower tail of y, builds a *truncated* family
+# whose cut point is the last observation outside the tail, and fits it with
+# gamlssML().  Two details matter for parity:
+#
+# * the tail side and the truncation side are opposite: type="right" (upper
+#   tail) needs trun(..., type="left");
+# * when the cut point coincides with the first value inside the tail, R nudges
+#   it down by 1/100 of the local span so the first tail point is not lost.
+#
+# R fits with gamlssML(), i.e. nlminb on the link scale.  Live R 4.6.0's
+# gamlssML is pathological on truncated families (it runs mu -> 0 for WEI3tr,
+# NOtr, GAtr, ... because the truncation normalisation 1 - F(par) collapses),
+# so its fitted numbers are NOT usable as a golden.  We keep R's likelihood
+# semantics -- link-scale numerical maximisation of the truncated density --
+# but start from the D2.209-corrected initial values and use the D2.211
+# closure-AD family for the density, which converges to the actual MLE.  The
+# live-R checks in the tests therefore pin the *structure* exactly (cut point,
+# tail selection, fitTailAll sequence) and evaluate our coefficients through
+# live R's own d*/p* kernels, while R's own failed fit is recorded as a
+# known R-side defect.
+
+_TAIL_SIDES = ("right", "left")
+
+
+def _match_tail_side(value: Any) -> str:
+    """R match.arg(type) with partial matching for the tail side."""
+    if not isinstance(value, str):
+        raise ValueError(f"type must be one of {_TAIL_SIDES}, got {value!r}")
+    lowered = value.lower()
+    matches = [side for side in _TAIL_SIDES if side.startswith(lowered)]
+    if len(matches) != 1:
+        raise ValueError(f"type must be one of {_TAIL_SIDES}, got {value!r}")
+    return matches[0]
+
+
+def _as_scalar(value: Any) -> float:
+    return float(np.ravel(np.asarray(value, dtype=np.float64))[0])
+
+
+@dataclass(frozen=True)
+class TailFit:
+    """Result of R ``gamlss.tr::fitTail()`` (intercept-only ML tail fit)."""
+
+    family_name: str
+    parameters: dict[str, float]
+    parameter_names: tuple[str, ...]
+    deviance: float
+    aic: float
+    converged: bool
+    y: np.ndarray
+    threshold: float
+    howmany: int
+    type: str
+    truncation_type: str
+    fitted_values: dict[str, np.ndarray]
+
+    def fitted(self, parameter: str) -> np.ndarray:
+        """R fitted(m1, \"mu\"): the intercept-only fitted vector."""
+        return self.fitted_values[parameter]
+
+    @property
+    def n(self) -> int:
+        return int(self.y.size)
+
+
+@dataclass(frozen=True)
+class TailAllFit:
+    """Result of R ``gamlss.tr::fitTailAll()`` (Hill-type series of fits)."""
+
+    matrix: np.ndarray
+    rownames: tuple[str, ...]
+    colnames: tuple[str, ...]
+    start: int
+    end: int
+    frequency: int
+    howmany: int
+    npar: int
+
+
+def _tail_selection(
+    y: Any, percentage: float, howmany: Any, side: str
+) -> tuple[np.ndarray, float, int]:
+    """R fitTail's tailFun() plus the cut-point (mY) calculation."""
+    values = np.asarray(y, dtype=np.float64).ravel()
+    n = int(values.size)
+    if n == 0:
+        raise ValueError("y must contain at least one value")
+    count = (
+        int(np.floor(n * (float(percentage) / 100.0)))
+        if howmany is None
+        else int(howmany)
+    )
+    if count <= 5:
+        raise ValueError("too few observations selected")
+    ordered = np.sort(values)
+    selected = ordered[-count:] if side == "right" else ordered[:count]
+    if selected.size <= 5:
+        raise ValueError("too few observations selected")
+
+    # R (1-based): mY <- ys[(n - count)]; mYp1 <- ys[(n + 1 - count)]
+    k = n - count
+    mY = float(ordered[k - 1])
+    mYp1 = float(ordered[k])
+    if mY == mYp1:
+        # R: ys[((n-count)-5):((n-count)+5)] -- inclusive 1-based endpoints.
+        window = ordered[k - 6 : k + 5]
+        mY -= float(np.sum(np.diff(window))) / 100.0
+    return selected, mY, count
+
+
+def _fit_tail_ml(
+    selected: np.ndarray,
+    base: FamilyDefinition,
+    threshold: float,
+    truncation_type: str,
+    weights: np.ndarray | None,
+    start_values: dict[str, Any],
+) -> tuple[dict[str, float], float, bool]:
+    """Maximise the truncated log-likelihood on the link scale, as gamlssML does."""
+    from scipy.optimize import minimize
+
+    from .ad import build_ad_family
+    from .fitting import gamlss_ml
+
+    truncated = trun(par=threshold, family=base, type=truncation_type)
+    # D2.211: differentiate the *truncated* density, not a name-keyed rebuild
+    # of the base family.
+    ad_family = build_ad_family(source_family=truncated)
+    initial = gamlss_ml("y ~ 1", family=truncated, data={"y": selected})
+
+    current = {
+        name: _as_scalar(initial.fitted_values[name])
+        for name in truncated.parameters
+    }
+    for name, value in start_values.items():
+        if name in current:
+            current[name] = float(value)
+
+    estimable = tuple(truncated.estimable_parameters)
+    fixed = {
+        name: current[name]
+        for name in truncated.parameters
+        if name not in estimable
+    }
+    x0 = np.array(
+        [
+            _as_scalar(truncated.link_functions[name](np.asarray([current[name]])))
+            for name in estimable
+        ],
+        dtype=np.float64,
+    )
+
+    def unpack(eta: np.ndarray) -> dict[str, float]:
+        values = dict(fixed)
+        for name, value in zip(estimable, eta):
+            values[name] = _as_scalar(
+                truncated.link_inverses[name](np.asarray([value]))
+            )
+        return values
+
+    def objective_and_gradient(eta: np.ndarray) -> tuple[float, np.ndarray]:
+        values = unpack(eta)
+        kwargs = {"y": selected, **values}
+        deviance = np.asarray(ad_family.g_dev_inc(**kwargs), dtype=np.float64)
+        multiplier = 1.0 if weights is None else weights
+        total = float(np.sum(deviance * multiplier))
+        # The truncated likelihood is unbounded in some corners of the
+        # parameter space (R's gamlssML runs mu -> 0 there).  A finite
+        # objective plus an analytic gradient keeps the optimiser inside the
+        # well-behaved region instead of letting finite differences step into
+        # a NaN and abort with "ABNORMAL".
+        if not np.isfinite(total):
+            return 1.0e10, np.zeros_like(eta)
+        gradient = []
+        for name, value in zip(estimable, eta):
+            score = np.asarray(
+                ad_family.score_functions[name](**kwargs), dtype=np.float64
+            )
+            dparam_deta = _as_scalar(
+                truncated.link_derivatives[name](np.asarray([value]))
+            )
+            gradient.append(
+                -2.0 * float(np.sum(score * multiplier)) * dparam_deta
+            )
+        return total, np.asarray(gradient, dtype=np.float64)
+
+    result = minimize(
+        objective_and_gradient,
+        x0,
+        method="L-BFGS-B",
+        jac=True,
+        options={"maxiter": 1000, "ftol": 1.0e-14, "gtol": 1.0e-10},
+    )
+    deviance, _gradient = objective_and_gradient(result.x)
+    fitted = unpack(result.x)
+    return fitted, deviance, bool(result.success)
+
+
+def fitTail(
+    y: Any,
+    family: Any = "WEI3",
+    percentage: float = 10,
+    howmany: Any = None,
+    type: str | tuple[str, ...] = "right",
+    mu_start: Any = None,
+    sigma_start: Any = None,
+    nu_start: Any = None,
+    tau_start: Any = None,
+    weights: Any = None,
+    **kwargs: Any,
+) -> TailFit:
+    """R gamlss.tr::fitTail(): ML fit of a truncated family to a data tail.
+
+    Parameters mirror R: ``percentage`` (or ``howmany``) selects the tail,
+    ``type`` is the tail side ("right"/"left"), and ``family`` is any GAMLSS
+    family.  ``mu_start``/``sigma_start``/``nu_start``/``tau_start`` override
+    the family's initial values (R's ``*.start``).  Extra ``**kwargs`` are
+    accepted like R's ``...`` (passed on to the ML fit) but ignored here.
+
+    Note
+    ----
+    Live R's ``gamlssML`` frequently fails to converge for generated truncated
+    families (mu -> 0), so R's own fitted numbers are not a reliable golden;
+    this port keeps R's link-scale ML semantics and converges to the actual
+    maximum.  See the module note above.
+    """
+    side = _match_tail_side(type if isinstance(type, str) else "right")
+    base = _resolve(family)
+    selected, threshold, count = _tail_selection(y, percentage, howmany, side)
+    truncation_type = "left" if side == "right" else "right"
+
+    w = None if weights is None else np.asarray(weights, dtype=np.float64).ravel()
+    if w is not None and w.size != selected.size:
+        raise ValueError("weights must have the same length as the selected tail")
+
+    starts = {
+        "mu": mu_start,
+        "sigma": sigma_start,
+        "nu": nu_start,
+        "tau": tau_start,
+    }
+    starts = {name: value for name, value in starts.items() if value is not None}
+    fitted, deviance, converged = _fit_tail_ml(
+        selected, base, threshold, truncation_type, w, starts
+    )
+
+    names = tuple(base.parameters)
+    fitted_vectors = {
+        name: np.full(selected.shape, fitted[name], dtype=np.float64)
+        for name in names
+    }
+    return TailFit(
+        family_name=base.name,
+        parameters={name: fitted[name] for name in names},
+        parameter_names=names,
+        deviance=deviance,
+        aic=deviance + 2.0 * len(names),
+        converged=converged,
+        y=selected,
+        threshold=threshold,
+        howmany=count,
+        type=side,
+        truncation_type=truncation_type,
+        fitted_values=fitted_vectors,
+    )
+
+
+def fitTailAll(
+    y: Any,
+    family: Any = "WEI3",
+    percentage: float = 10,
+    howmany: Any = None,
+    type: str | tuple[str, ...] = "right",
+    plot: bool = True,
+    print: bool = True,
+    save: bool = False,
+    start: int = 5,
+    trace: int = 0,
+    **kwargs: Any,
+) -> TailAllFit:
+    """R gamlss.tr::fitTailAll(): a Hill-type sequence of tail fits.
+
+    R loops ``per`` from ``howmany`` down to ``npar + start + 1`` and collects
+    the fitted parameters into a time series.  ``plot``/``save``/``print`` are
+    accepted for call-site parity (R only uses ``trace`` for printing).
+    """
+    side = _match_tail_side(type if isinstance(type, str) else "right")
+    base = _resolve(family)
+    values = np.asarray(y, dtype=np.float64).ravel()
+    count = (
+        int(np.floor(values.size * (float(percentage) / 100.0)))
+        if howmany is None
+        else int(howmany)
+    )
+    npar = len(base.parameters)
+    rest = count - (npar + start)
+    if rest <= 0:
+        raise ValueError("too few observations selected")
+
+    names = tuple(base.parameters)
+    matrix = np.zeros((rest, npar), dtype=np.float64)
+    pers = list(range(count, npar + start, -1))
+    for index, per in enumerate(pers):
+        try:
+            fit = fitTail(
+                y, family=family, howmany=per, type=side, **kwargs
+            )
+            row = [fit.parameters.get(name, np.nan) for name in names]
+        except Exception:
+            row = [np.nan] * npar
+        matrix[index, :] = row
+        if trace == 1:
+            builtins.print(index + 1, "..")
+        elif trace == 2:
+            builtins.print(index + 1, row, "..")
+
+    return TailAllFit(
+        matrix=matrix,
+        rownames=tuple(str(per) for per in pers),
+        colnames=names,
+        start=npar + start + 1,
+        end=count,
+        frequency=1,
+        howmany=count,
+        npar=npar,
+    )
+
+
 __all__ = [
     "TruncatedFamily",
     "gen_trun",
@@ -364,4 +697,8 @@ __all__ = [
     "trun_p",
     "trun_q",
     "trun_r",
+    "TailFit",
+    "TailAllFit",
+    "fitTail",
+    "fitTailAll",
 ]

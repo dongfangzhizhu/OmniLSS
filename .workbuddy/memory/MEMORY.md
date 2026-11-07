@@ -65,6 +65,12 @@
 - 加预算反而更差 = 发散，入口常是初值；漏分支让它 raise，静默兜底就是缺陷。
 - `g_dev` 已是完整 deviance，别再乘 2。同名参数按角色不按前缀。monkey-patch 确认落到被用的绑定。
 - plateau 只是症状：地板比 R 落点高 → 根因在别的参数。
+- **截断似然在参数角落无上界**（`1-F(par)` 塌缩时 loglik→+inf）→ 数值差分会踩进 NaN，
+  `scipy.optimize` 报 `ABNORMAL` 并停在中途初值（表现为「多组初值结果各不相同」）。
+  用 `build_ad_family(source_family=trun(...))` 的**解析 score** 做 `jac=True`，别用默认数值梯度。
+- **「活 R 没收敛」先换同一份数据再下结论**：R 的 `gamlssML` 对截断族在**某些**样本上
+  确实会 mu→0（optim code=1），但用 R 自己 `rweibull` 的随机流与 Python 的 `RandomState`
+  数据不同，会误判成「R 数值不可信」。把 Python 数据 JSON 传给 R 后两边都收敛，parity 才成立。
 
 ## rel 荒谬 = 约定层问题
 

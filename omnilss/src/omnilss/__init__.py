@@ -373,7 +373,11 @@ from .o_variant_distributions import (
 from .gamlss_cens import CensoredFamily, cens, cens_d, cens_p, cens_q, gen_cens
 from .gamlss_scope import gamlss_scope
 from .gamlss_tr import (
+    TailAllFit,
+    TailFit,
     TruncatedFamily,
+    fitTail,
+    fitTailAll,
     gen_trun,
     trun,
     trun_d,
@@ -1241,12 +1245,16 @@ __all__ = [
     "gen_cens",
     # ── gamlss.tr truncation helpers ──
     "TruncatedFamily",
+    "TailFit",
+    "TailAllFit",
     "trun",
     "gen_trun",
     "trun_d",
     "trun_p",
     "trun_q",
     "trun_r",
+    "fitTail",
+    "fitTailAll",
     # ── R 'o' (original) parameterisation densities ──
     "dBCCGo",
     "dBCPEo",
