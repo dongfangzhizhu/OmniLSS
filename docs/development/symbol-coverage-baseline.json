@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 224,
+    "missing": 221,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 364
+    "extra": 365
   },
   "symbols": {
     "missing": [
@@ -235,9 +235,6 @@
       "gamlss::gamlss.re",
       "gamlss::gamlssNews",
       "gamlss::get.rqres",
-      "gamlss::loglogSurv1",
-      "gamlss::loglogSurv2",
-      "gamlss::loglogSurv3",
       "gamlss::re",
       "gamlss::rqres.plot",
       "gamlss::stepGAIC.CH",
@@ -385,6 +382,7 @@
       "LoResult",
       "LogLikResult",
       "LogLogPlotResult",
+      "LogLogSurvFit",
       "LogNormalFamily",
       "LogisticFamily",
       "METHOD_CAPABILITY_FEATURES",

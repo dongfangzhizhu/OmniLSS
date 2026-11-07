@@ -8,14 +8,14 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - R packages parsed: 12 (out of scope: gamlss2)
 - R exported symbols: 1080 (in scope: 1036)
-- Python surface matched: 856 / missing: 224
+- Python surface matched: 859 / missing: 221
 - Family-linked symbols: 531 (dpqr kernels: 424)
-- Python-only public exports: 364
+- Python-only public exports: 365
 
-- **surface**: `missing` 224, `module_def` 223, `module_export` 103, `public_api` 354, `registry` 176
-- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 330, `missing` 224
-- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 183, `tested` 239, `unverified` 268
-- **admission**: `blocked` 526, `exported_api` 248, `internal` 77, `not_available` 224, `production_safe` 5
+- **surface**: `missing` 221, `module_def` 223, `module_export` 103, `public_api` 357, `registry` 176
+- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 333, `missing` 221
+- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 183, `tested` 242, `unverified` 265
+- **admission**: `blocked` 526, `exported_api` 251, `internal` 77, `not_available` 221, `production_safe` 5
 
 ## Per-package coverage
 
@@ -23,7 +23,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 
 | R package | version | NAMESPACE sha256 | in scope | exports | defined functions | surface matched |
 |---|---|---|---|---|---|---|
-| gamlss | 5.5-3 | `315c79f596a03c1d` | yes | 152 | 143 | 138 |
+| gamlss | 5.5-3 | `315c79f596a03c1d` | yes | 152 | 143 | 141 |
 | gamlss.add | 5.1-14 | `3c076e78b10c1984` | yes | 15 | 15 | 0 |
 | gamlss.cens | 5.0-8 | `d808f83ace3c6af1` | yes | 5 | 5 | 5 |
 | gamlss.data | 6.0-9 | `d9f9597e6df3f7b9` | yes | 0 | 0 | 0 |
@@ -47,9 +47,6 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gamlss.re | gamlss | function | R/gamlss/R/re_gamlss_lme_test.R:119 |
 | gamlssNews | gamlss | function | R/gamlss/R/gamlss-5.R:20 |
 | get.rqres | gamlss | function | R/gamlss/R/rqresplot_new.R:7 |
-| loglogSurv1 | gamlss | function | R/gamlss/R/FitTail.R:36 |
-| loglogSurv2 | gamlss | function | R/gamlss/R/FitTail.R:78 |
-| loglogSurv3 | gamlss | function | R/gamlss/R/FitTail.R:120 |
 | re | gamlss | function | R/gamlss/R/re_gamlss_lme_test.R:27 |
 | rqres.plot | gamlss | function | R/gamlss/R/rqresplot_new.R:41 |
 | stepGAIC.CH | gamlss | function | R/gamlss/R/stepGAIC-03-10-13..R:260 |
@@ -280,7 +277,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | .realline | gamlss | _realline | module_export | implemented | unverified | internal | 0 |
 | .realplus | gamlss | _realplus | module_export | implemented | unverified | internal | 0 |
 | CV | gamlss | CV | public_api | implemented | tested | exported_api | 2 |
-| ECDF | gamlss | ECDF | public_api | implemented | tested | exported_api | 1 |
+| ECDF | gamlss | ECDF | public_api | implemented | tested | exported_api | 2 |
 | GAIC | gamlss | GAIC | public_api | implemented | tested | exported_api | 10 |
 | GAIC_scaled | gamlss | GAIC_scaled | module_export | implemented | unverified | internal | 0 |
 | GAIC_table | gamlss | GAIC_table | module_export | implemented | unverified | internal | 0 |
@@ -322,7 +319,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | fp | public_api | implemented | tested | exported_api | 6 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 13 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 204 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 205 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | gamlss_cs | public_api | implemented | tested | exported_api | 3 |
 | gamlss.cy | gamlss | gamlss_cy | public_api | implemented | tested | exported_api | 1 |
@@ -368,9 +365,9 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | logSurv | gamlss | logSurv | public_api | implemented | tested | exported_api | 2 |
 | logSurv0 | gamlss | logSurv0 | public_api | implemented | tested | exported_api | 1 |
 | loglogSurv | gamlss | loglogSurv | public_api | implemented | tested | exported_api | 2 |
-| loglogSurv1 | gamlss | - | missing | missing | unverified | not_available | 0 |
-| loglogSurv2 | gamlss | - | missing | missing | unverified | not_available | 0 |
-| loglogSurv3 | gamlss | - | missing | missing | unverified | not_available | 0 |
+| loglogSurv1 | gamlss | loglogSurv1 | public_api | implemented | tested | exported_api | 1 |
+| loglogSurv2 | gamlss | loglogSurv2 | public_api | implemented | tested | exported_api | 1 |
+| loglogSurv3 | gamlss | loglogSurv3 | public_api | implemented | tested | exported_api | 1 |
 | loglogplot | gamlss | loglogplot | public_api | implemented | tested | exported_api | 1 |
 | lp | gamlss | lp | public_api | implemented | r_consistency_test | exported_api | 8 |
 | lpred | gamlss | lpred | public_api | implemented | tested | exported_api | 1 |
@@ -1352,7 +1349,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 
 ## Python-only public exports
 
-364 names exported from `omnilss.__all__` have no R counterpart; they are Python-side additions (dataclasses, backends, utilities), not coverage gaps. The JSON artifact lists them all.
+365 names exported from `omnilss.__all__` have no R counterpart; they are Python-side additions (dataclasses, backends, utilities), not coverage gaps. The JSON artifact lists them all.
 
 - `AIC`
 - `BINOMIAL`
@@ -1394,4 +1391,4 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 - `ChooseDistResult`
 - `ComprehensiveDiagnostics`
 - `DELAPORT`
-- ... 324 more in the JSON artifact
+- ... 325 more in the JSON artifact
