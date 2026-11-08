@@ -171,6 +171,20 @@ from .family_plots import (
     plotZAIG,
 )
 from .copula_medians import ECDF_2D, median_cw, median_pc, median_sp, xy_median
+from .ggplots_diag import (
+    AcfData,
+    EmpiricalPdfTable,
+    ResidualIndexData,
+    SymmetryData,
+    resid_index,
+    resid_symmetry,
+    y_acf,
+    y_dots,
+    y_epdf,
+    y_epit,
+    y_pacf,
+    y_symmetry,
+)
 from .pcr import SVDResult, getSVD, which_Data_Corr
 from .smoother_fits import SmootherFit, gamlss_cs, gamlss_cy, gamlss_pb, gamlss_ps
 from .fractional_poly import FPFit, FPSpec, bfp, fp, gamlss_fp
@@ -1143,6 +1157,19 @@ __all__ = [
     "median_sp",
     "xy_median",
     "ECDF_2D",
+    # ── gamlss.ggplots single-variable diagnostics ──
+    "EmpiricalPdfTable",
+    "AcfData",
+    "SymmetryData",
+    "ResidualIndexData",
+    "y_epit",
+    "y_epdf",
+    "y_symmetry",
+    "resid_symmetry",
+    "y_dots",
+    "y_acf",
+    "y_pacf",
+    "resid_index",
     # ── gamlss tail diagnostics ──
     "loglogSurv1",
     "loglogSurv2",
