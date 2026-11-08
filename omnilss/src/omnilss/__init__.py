@@ -170,6 +170,7 @@ from .family_plots import (
     plotZAGA,
     plotZAIG,
 )
+from .copula_medians import ECDF_2D, median_cw, median_pc, median_sp, xy_median
 from .pcr import SVDResult, getSVD, which_Data_Corr
 from .smoother_fits import SmootherFit, gamlss_cs, gamlss_cy, gamlss_pb, gamlss_ps
 from .fractional_poly import FPFit, FPSpec, bfp, fp, gamlss_fp
@@ -1136,6 +1137,12 @@ __all__ = [
     "plotBEZI",
     "plotZAGA",
     "plotZAIG",
+    # ── gamlss.ggplots copula medians / 2-D ECDF ──
+    "median_cw",
+    "median_pc",
+    "median_sp",
+    "xy_median",
+    "ECDF_2D",
     # ── gamlss tail diagnostics ──
     "loglogSurv1",
     "loglogSurv2",
