@@ -8,14 +8,14 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - R packages parsed: 12 (out of scope: gamlss2)
 - R exported symbols: 1080 (in scope: 1036)
-- Python surface matched: 871 / missing: 209
+- Python surface matched: 876 / missing: 204
 - Family-linked symbols: 531 (dpqr kernels: 424)
 - Python-only public exports: 370
 
-- **surface**: `missing` 209, `module_def` 223, `module_export` 103, `public_api` 369, `registry` 176
-- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 345, `missing` 209
-- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 183, `tested` 254, `unverified` 253
-- **admission**: `blocked` 526, `exported_api` 263, `internal` 77, `not_available` 209, `production_safe` 5
+- **surface**: `missing` 204, `module_def` 223, `module_export` 103, `public_api` 374, `registry` 176
+- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 350, `missing` 204
+- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 183, `tested` 259, `unverified` 248
+- **admission**: `blocked` 526, `exported_api` 268, `internal` 77, `not_available` 204, `production_safe` 5
 
 ## Per-package coverage
 
@@ -29,7 +29,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gamlss.data | 6.0-9 | `d9f9597e6df3f7b9` | yes | 0 | 0 | 0 |
 | gamlss.dist | 6.1-8 | `59a3b7074378aaeb` | yes | 654 | 630 | 654 |
 | gamlss.foreach | 1.1-10 | `819542107cb0994b` | yes | 13 | 13 | 8 |
-| gamlss.ggplots | 2.1-34 | `cbe1ae29a3d583c1` | yes | 109 | 106 | 1 |
+| gamlss.ggplots | 2.1-34 | `cbe1ae29a3d583c1` | yes | 109 | 106 | 6 |
 | gamlss.mx | 6.0-4 | `b832557a4937461b` | yes | 12 | 12 | 8 |
 | gamlss.prepdata | 0.1.19 | `406a76c8aa06aa80` | yes | 59 | 58 | 40 |
 | gamlss.spatial | 3.0-3 | `af0e2b383e3eba93` | yes | 9 | 9 | 2 |
@@ -69,7 +69,6 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | centiles.boot | gamlss.foreach | function | R/gamlss.foreach/R/centiles.boot.R:23 |
 | fitQR | gamlss.foreach | function | R/gamlss.foreach/R/fitQR.R:10 |
 | fitRolling | gamlss.foreach | function | R/gamlss.foreach/R/FitRollingGamlss.R:7 |
-| ECDF_2D | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:286 |
 | add_resid_qqplot | gamlss.ggplots | function | R/gamlss.ggplots/R/add_resid_qqplot.R:5 |
 | bivar.fun.contour | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated_not_ggplot2.R:174 |
 | bivar.fun.image | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated_not_ggplot2.R:195 |
@@ -100,9 +99,6 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fitted_survival_data | gamlss.ggplots | function | R/gamlss.ggplots/R/fitted_cdf.R:371 |
 | fitted_terms | gamlss.ggplots | object | - |
 | histSmo_plot | gamlss.ggplots | function | R/gamlss.ggplots/R/histSmo_plot.R:10 |
-| median_cw | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:7 |
-| median_pc | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:30 |
-| median_sp | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:60 |
 | model_GAIC | gamlss.ggplots | function | R/gamlss.ggplots/R/model_GAIC.R:10 |
 | model_GAIC_lollipop | gamlss.ggplots | function | R/gamlss.ggplots/R/model_GAIC_lollipop.R:10 |
 | model_TD | gamlss.ggplots | function | R/gamlss.ggplots/R/model_TD.R:10 |
@@ -164,7 +160,6 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | xy_density_plain | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:412 |
 | xy_hist | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:294 |
 | xy_hist_kde2d | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:449 |
-| xy_median | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:127 |
 | xy_pit_density | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:546 |
 | xy_pit_hist | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:331 |
 | xy_pit_scatter | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:217 |
@@ -1088,12 +1083,12 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fitRolling | gamlss.foreach | - | missing | missing | unverified | not_available | 0 |
 | gamlss.pc | gamlss.foreach | gamlss_pc | public_api | implemented | tested | exported_api | 1 |
 | gamlss.pcr | gamlss.foreach | gamlss_pcr | public_api | implemented | tested | exported_api | 1 |
-| getSVD | gamlss.foreach | getSVD | public_api | implemented | tested | exported_api | 2 |
-| pc | gamlss.foreach | pc | public_api | implemented | tested | exported_api | 2 |
+| getSVD | gamlss.foreach | getSVD | public_api | implemented | tested | exported_api | 3 |
+| pc | gamlss.foreach | pc | public_api | implemented | tested | exported_api | 3 |
 | pcr | gamlss.foreach | pcr | public_api | implemented | tested | exported_api | 1 |
 | which.Data.Corr | gamlss.foreach | which_Data_Corr | public_api | implemented | tested | exported_api | 1 |
 | which.yX.Corr | gamlss.foreach | which_yX_Corr | public_api | implemented | tested | exported_api | 1 |
-| ECDF_2D | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| ECDF_2D | gamlss.ggplots | ECDF_2D | public_api | implemented | tested | exported_api | 1 |
 | add_resid_qqplot | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | bivar.fun.contour | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | bivar.fun.image | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
@@ -1124,9 +1119,9 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fitted_survival_data | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | fitted_terms | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | histSmo_plot | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| median_cw | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| median_pc | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| median_sp | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| median_cw | gamlss.ggplots | median_cw | public_api | implemented | tested | exported_api | 1 |
+| median_pc | gamlss.ggplots | median_pc | public_api | implemented | tested | exported_api | 1 |
+| median_sp | gamlss.ggplots | median_sp | public_api | implemented | tested | exported_api | 1 |
 | model_GAIC | gamlss.ggplots | - | missing | missing | unverified | not_available | 1 |
 | model_GAIC_lollipop | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | model_TD | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
@@ -1189,7 +1184,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | xy_density_plain | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | xy_hist | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | xy_hist_kde2d | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| xy_median | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| xy_median | gamlss.ggplots | xy_median | public_api | implemented | tested | exported_api | 1 |
 | xy_pit_density | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | xy_pit_hist | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | xy_pit_scatter | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
