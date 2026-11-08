@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 213,
+    "missing": 209,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 369
+    "extra": 370
   },
   "symbols": {
     "missing": [
@@ -31,10 +31,6 @@
       "gamlss.add::gamlss.tr",
       "gamlss.add::nn",
       "gamlss.add::tr",
-      "gamlss.dist::plotBEOI",
-      "gamlss.dist::plotBEZI",
-      "gamlss.dist::plotZAGA",
-      "gamlss.dist::plotZAIG",
       "gamlss.foreach::BayesianBoot",
       "gamlss.foreach::NonParametricBoot",
       "gamlss.foreach::centiles.boot",
@@ -364,6 +360,7 @@
       "HistSmoResult",
       "IGA",
       "ImplementationStatus",
+      "InflatedDensityPlot",
       "InverseGaussianFamily",
       "JohnsonSUFamily",
       "LINK_REGISTRY",
