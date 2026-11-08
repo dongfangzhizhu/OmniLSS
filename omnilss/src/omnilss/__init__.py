@@ -163,6 +163,13 @@ from .data_prep import (
     y_factor,
 )
 from .family_means import meanBEOI, meanBEZI
+from .family_plots import (
+    InflatedDensityPlot,
+    plotBEOI,
+    plotBEZI,
+    plotZAGA,
+    plotZAIG,
+)
 from .pcr import SVDResult, getSVD, which_Data_Corr
 from .smoother_fits import SmootherFit, gamlss_cs, gamlss_cy, gamlss_pb, gamlss_ps
 from .fractional_poly import FPFit, FPSpec, bfp, fp, gamlss_fp
@@ -1121,9 +1128,14 @@ __all__ = [
     "data_Kfold_weights",
     "data_boot_index",
     "data_boot_weights",
-    # ── gamlss.dist inflated-beta means ──
+    # ── gamlss.dist inflated-beta means and density plots ──
     "meanBEZI",
     "meanBEOI",
+    "InflatedDensityPlot",
+    "plotBEOI",
+    "plotBEZI",
+    "plotZAGA",
+    "plotZAIG",
     # ── gamlss tail diagnostics ──
     "loglogSurv1",
     "loglogSurv2",
