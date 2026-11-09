@@ -5,6 +5,15 @@
 ## 跑测试 / 覆盖工件
 
 - 491 个测试文件全量 >1.5h → **按文件分 4 片并行后台跑**（前台 2min 超时=SIGTERM 假失败）；单进程 `-q` 只出点。
+- **4 片并行的 `sqlite3.OperationalError: database is locked`（D2.216 全量 shard1 踩到）**：
+  `omnilss.api.grpc.server` 模块级 `REGISTRY = _ModelRegistry()` 在 import 时写**固定磁盘路径**
+  `registry.sqlite3`（`server.py:47` 的 `OMNILSS_MODEL_DB_PATH`，默认 `tempdir/omnilss-grpc-models/`），
+  含 DDL/UPDATE 且无 busy_timeout。含 gRPC/REST server import 的测试（`test_dos_limits` /
+  `test_server_security` / `test_grpc_server` / `test_fastapi_server` …）分散在多个分片，
+  并发启动撞同一 DB 写锁 → **collection 阶段整片 `Interrupted`、该片测试一个没跑（pytest `EXIT=2`）**，
+  不是 FAILED、与被测代码无关。归属判定：用 `OMNILSS_MODEL_DB_PATH=<独立文件>` 单跑该文件即 `EXIT=0`。
+  处置：给重跑片设独立 `OMNILSS_MODEL_DB_PATH` 环境变量（官方支持的隔离点），或等并发片结束再跑；
+  **别改源码/阈值掩盖**。注意通知里的 "exit code 0" 是外层 `echo EXIT=$?` 的，pytest 真值看输出文件。
 - **tests/ 或源码变更 → 同 commit 再生覆盖工件**：`generate_coverage_artifacts.py --date` + `coverage_diff_report.py` → `result: OK`。**改完测试要最后再生成一次**（先改测试再生成仍会报过期）。
 - **工件里嵌了 `python_source_commit`（`git log -1 -- <module>`）→ 必须「feat 提交 → 再生成 → chore 提交」两次提交**：
   只生成一次就和源码一起 commit，工件记的是**旧 HEAD**，提交后 `test_symbol_coverage_tool.py`
