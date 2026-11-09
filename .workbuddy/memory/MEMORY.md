@@ -5,6 +5,16 @@
 ## 跑测试 / 覆盖工件
 
 - 491 个测试文件全量 >1.5h → **按文件分 4 片并行后台跑**（前台 2min 超时=SIGTERM 假失败）；单进程 `-q` 只出点。
+- **会话上下文过长时 compact 会杀掉后台进程组（D2.216 全量踩到，重启 7 轮全倒在这）**：
+  每次用户回合切换 / compact → 后台 pytest 全被统一终止（输出停在中途、带 `Fatal Python error:
+  Aborted` 或直接截断、四片同一秒结束、`EXIT=127/3`），**不是 FAILED/ERROR、与代码无关**。
+  少数极慢文件（R bridge / 重拟合，单文件就要 1000s+）在整片模式要 1h+ 才跑得完，后台任务
+  活不过频繁 compact → 无限重启是死循环。判据：D2.214 的 full5 能全绿只是恰好中途未 compact。
+  **处置**：①别用「单文件独立进程」跑全量（每个文件重复付 JAX/registry 冷编译、并发抢 R 探针，
+  重文件必超时）——整片模式（135 文件共享一次编译）才是对的；②长套件要么在**上下文短的稳定
+  新会话**跑，要么用**前台同步命令分批**（每批 ≤10min、不依赖后台进程）；③`capture_output=True`
+  被杀时进度全丢，必须**stdout 实时写文件**；④证据链判定无回归：改动前后既有测试文件 diff +
+  综合复核 + 可续跑累计（clean/失败计数）+ 计时 flaky 的 A/B 归属。可续跑脚本范式见 `tmp/`。
 - **4 片并行的 `sqlite3.OperationalError: database is locked`（D2.216 全量 shard1 踩到）**：
   `omnilss.api.grpc.server` 模块级 `REGISTRY = _ModelRegistry()` 在 import 时写**固定磁盘路径**
   `registry.sqlite3`（`server.py:47` 的 `OMNILSS_MODEL_DB_PATH`，默认 `tempdir/omnilss-grpc-models/`），
