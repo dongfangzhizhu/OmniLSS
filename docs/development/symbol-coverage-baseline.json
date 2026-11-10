@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 189,
+    "missing": 184,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 375
+    "extra": 377
   },
   "symbols": {
     "missing": [
@@ -110,14 +110,9 @@
       "gamlss.ggplots::resp_mu",
       "gamlss.ggplots::resp_param",
       "gamlss.ggplots::resp_quantile",
-      "gamlss.ggplots::xy.density.contour",
-      "gamlss.ggplots::xy.density.image",
-      "gamlss.ggplots::xy.density.persp",
-      "gamlss.ggplots::xy_ECDF_hist",
       "gamlss.ggplots::xy_density",
       "gamlss.ggplots::xy_density_plain",
       "gamlss.ggplots::xy_hist",
-      "gamlss.ggplots::xy_hist_kde2d",
       "gamlss.ggplots::xy_pit_density",
       "gamlss.ggplots::xy_pit_hist",
       "gamlss.ggplots::xy_pit_scatter",
@@ -461,6 +456,7 @@
       "addtermAllP",
       "addterm_all",
       "artifact_schema_policy",
+      "bandwidth_nrd",
       "bbase",
       "build_gen_family_skeleton",
       "build_prediction_design_matrix",
@@ -558,6 +554,7 @@
       "is_discrete",
       "is_gamlss_cv",
       "is_gamlss_vgd",
+      "kde2d",
       "kurtosis",
       "likelihood_ratio_test",
       "list_family_capabilities",
