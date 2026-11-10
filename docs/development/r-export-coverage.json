@@ -1,6 +1,14 @@
 {
-  "generated_at": "2026-11-10T22:52:36.755310+00:00",
+  "generated_at": "2026-11-10T23:19:03.120586+00:00",
   "source_repo_root": "D:\\AI\\my\\githubprojs\\OmniLSS",
+  "scope": {
+    "out_of_scope_packages": [
+      "gamlss2"
+    ],
+    "in_scope_definition": "A symbol is in scope for 1.0 iff its R package is not listed in out_of_scope_packages. See stats.in_scope_exports for the count.",
+    "counting_note": "Out-of-scope exports are still enumerated in the per-symbol matrix for completeness and ARE included in raw totals (e.g. r_exports_total / surface_missing); they are NOT OmniLSS 1.0 delivery targets and do not count against 1.0 completeness. Filter on in_scope / in_scope_exports for the 1.0 figure.",
+    "notice": "gamlss2 is out of scope for OmniLSS 1.0: separate spec / version / evidence, does not block 1.0 (deliverable plan sections 1.2, 22.6)."
+  },
   "stats": {
     "total_registered": 146,
     "status_distribution": {

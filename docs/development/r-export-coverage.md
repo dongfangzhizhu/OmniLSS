@@ -1,5 +1,7 @@
 # OmniLSS registry implementation inventory
 
+> **Scope (P0-6):** `gamlss2` is **OUT OF SCOPE** for OmniLSS 1.0 (separate spec / version / evidence chain; it does not block 1.0). Out-of-scope exports are still enumerated in the per-symbol matrix for completeness and ARE included in raw totals (e.g. r_exports_total / surface_missing); they are NOT OmniLSS 1.0 delivery targets and do not count against 1.0 completeness. Filter on in_scope / in_scope_exports for the 1.0 figure.
+
 Registry metadata only: this report does not establish R export coverage or numerical parity.
 
 | Family | Implementation status |

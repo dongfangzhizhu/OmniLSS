@@ -1,5 +1,7 @@
 # GAMLSS 分布族 placeholder 迁移队列清单
 
+> **Scope (P0-6):** `gamlss2` is **OUT OF SCOPE** for OmniLSS 1.0 (separate spec / version / evidence chain; it does not block 1.0). Out-of-scope exports are still enumerated in the per-symbol matrix for completeness and ARE included in raw totals (e.g. r_exports_total / surface_missing); they are NOT OmniLSS 1.0 delivery targets and do not count against 1.0 completeness. Filter on in_scope / in_scope_exports for the 1.0 figure.
+
 > 生成日期：2026-11-10
 > 生成方式：`tools/generate_placeholder_migration_queue.py`
 > 状态来源：`omnilss.family_capabilities` 的代码派生 `implementation_status`（placeholder = 生产路由被拒，需重写）
