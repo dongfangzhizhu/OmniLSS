@@ -1,4 +1,4 @@
-"""R gamlss.spatial neighbourhood helpers: nb2nb() and nb2prec().
+"""R gamlss.spatial neighbourhood helpers: polys2nb(), nb2nb(), nb2prec().
 
 R source: R/gamlss.spatial/R/extraFunctions.R.
 
@@ -7,6 +7,14 @@ with a region.id attribute; gamlss wants a named list instead, which is what
 nb2nb() builds.  nb2prec() then turns that named neighbourhood into the Gaussian
 Markov random field precision matrix G: the diagonal holds the number of
 neighbours and every neighbour pair gets -1.
+
+``polys2nb`` (ported from Simon Wood's mgcv) builds the neighbourhood directly
+from polygon boundary coordinates: two areas are neighbours when they share at
+least one vertex.  A bounding-box prefilter (four overlap clauses per axis)
+cuts the O(n^2) vertex comparisons; ``uniquecombs``-style row de-duplication is
+used both to strip duplicate vertices and to count shared ones as
+``nrow(rbind(a, b)) - nrow(unique_rows(rbind(a, b)))``.  Numeric output is
+live-R verified in ``omnilss/tests/test_polys2nb.py``.
 
 G is returned as a pandas DataFrame with the region names on both axes, and is
 already reordered to the covariate level order (R's G[levels(x), levels(x)]
@@ -100,4 +108,104 @@ def nb2prec(
     return pd.DataFrame(matrix, index=knot_levels, columns=knot_levels)
 
 
-__all__ = ["NeighbourNB", "nb2nb", "nb2prec"]
+@dataclass(frozen=True)
+class PolyNB:
+    """R ``polys2nb`` result: 1-based neighbour indices + bounding box.
+
+    ``neighbours[k]`` holds the 1-based indices (R convention) of the areas
+    sharing a vertex with area ``k``; ``region_id`` carries ``names(polys)``.
+    ``xlim``/``ylim`` are ``(min, max)`` of all polygon bounding boxes.
+    """
+
+    neighbours: tuple[tuple[int, ...], ...]
+    region_id: tuple[str, ...]
+    xlim: tuple[float, float]
+    ylim: tuple[float, float]
+
+    def __post_init__(self) -> None:
+        if len(self.neighbours) != len(self.region_id):
+            raise ValueError("region.id and the neighbour list have different lengths")
+
+
+def _unique_rows(points: np.ndarray) -> np.ndarray:
+    """mgcv ``uniquecombs``: de-duplicate 2-D rows, keep first-occurrence order.
+
+    R's ``unique.matrix`` (which mgcv::uniquecombs wraps) preserves the order
+    of first appearance.  ``np.unique(..., axis=0)`` sorts lexicographically,
+    which changes row order -- we only need the *count* of unique rows for the
+    shared-vertex test, but keep first-order to mirror R exactly.
+    """
+    points = np.asarray(points, dtype=np.float64)
+    if points.size == 0:
+        return points.reshape(0, 2)
+    _, first = np.unique(points, axis=0, return_index=True)
+    return points[np.sort(first)]
+
+
+def polys2nb(polys: Any) -> PolyNB:
+    """R ``gamlss.spatial::polys2nb``: vertex-sharing neighbourhood of polygons.
+
+    ``polys`` is a mapping (region name -> Nx2 coordinate array, optional NA
+    separator rows) or a sequence of such arrays.  NA rows are dropped, then
+    each polygon's vertices are de-duplicated.  Two areas are neighbours when
+    their bounding boxes overlap AND ``rbind`` of their (unique) vertices has
+    fewer unique rows than total rows (i.e. at least one shared vertex).
+
+    R quirk reproduced: neighbours are defined by **shared vertices** only, so
+    a vertex lying on another polygon's edge segment is NOT detected (documented
+    warning in the R source).  Neighbour indices are 1-based (R convention).
+    """
+    if isinstance(polys, Mapping):
+        names = tuple(str(k) for k in polys)
+        raw = list(polys.values())
+    else:
+        raw = list(polys)
+        names = tuple(str(i + 1) for i in range(len(raw)))
+
+    cleaned: list[np.ndarray] = []
+    lo1 = np.empty(len(raw))
+    hi1 = np.empty(len(raw))
+    lo2 = np.empty(len(raw))
+    hi2 = np.empty(len(raw))
+    for i, poly in enumerate(raw):
+        arr = np.asarray(poly, dtype=np.float64)
+        if arr.ndim != 2 or arr.shape[1] != 2:
+            raise ValueError("each polygon must be an Nx2 coordinate array")
+        # R: polys[[i]][!is.na(rowSums(polys[[i]])),] -- drop rows with any NA
+        arr = arr[~np.isnan(arr).any(axis=1)]
+        lo1[i], hi1[i] = arr[:, 0].min(), arr[:, 0].max()
+        lo2[i], hi2[i] = arr[:, 1].min(), arr[:, 1].max()
+        cleaned.append(_unique_rows(arr))
+
+    n = len(raw)
+    neighbours: list[tuple[int, ...]] = []
+    for k in range(n):
+        # R's four-way bbox overlap clauses, per axis
+        ol1 = ((lo1[k] <= hi1) & (lo1[k] >= lo1)) | ((hi1[k] <= hi1) & (hi1[k] >= lo1)) \
+            | ((lo1 <= hi1[k]) & (lo1 >= lo1[k])) | ((hi1 <= hi1[k]) & (hi1 >= lo1[k]))
+        ol2 = ((lo2[k] <= hi2) & (lo2[k] >= lo2)) | ((hi2[k] <= hi2) & (hi2[k] >= lo2)) \
+            | ((lo2 <= hi2[k]) & (lo2 >= lo2[k])) | ((hi2 <= hi2[k]) & (hi2 >= lo2[k]))
+        overlap = ol1 & ol2
+        overlap[k] = False
+        candidates = np.nonzero(overlap)[0]
+        nb: list[int] = []
+        cok = cleaned[k]
+        for j in candidates:
+            co = np.vstack((cleaned[j], cok))
+            n_shared = co.shape[0] - _unique_rows(co).shape[0]
+            if n_shared > 0:
+                nb.append(int(j) + 1)   # 1-based R index
+        # R: unique(nb[[k]]) -- keep first-occurrence order
+        seen: set[int] = set()
+        uniq = [v for v in nb if not (v in seen or seen.add(v))]
+        neighbours.append(tuple(uniq))
+
+    return PolyNB(
+        neighbours=tuple(neighbours),
+        region_id=names,
+        xlim=(float(lo1.min()), float(hi1.max())),
+        ylim=(float(lo2.min()), float(hi2.max())),
+    )
+
+
+__all__ = ["NeighbourNB", "PolyNB", "nb2nb", "nb2prec", "polys2nb"]

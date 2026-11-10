@@ -236,7 +236,7 @@ from .mixtures import (
     pMX,
     pmx,
 )
-from .spatial import NeighbourNB, nb2nb, nb2prec
+from .spatial import NeighbourNB, PolyNB, nb2nb, nb2prec, polys2nb
 from .gamlssVGD_23_12_21 import TGD, TGDComparisonResult, TGDComparisonRow
 from .pcategorical import PCatFit, PCatSpec, gamlss_pcat, pcat, pairwise_differences
 from .pcr_series import (
@@ -1326,6 +1326,9 @@ __all__ = [
     "nb2nb",
     "nb2prec",
     "NeighbourNB",
+    # ── gamlss.spatial polys2nb (vertex-sharing polygon neighbourhood) ──
+    "polys2nb",
+    "PolyNB",
     # ── gamlss.add control objects ──
     "nn_control",
     "ga_control",
