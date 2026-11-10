@@ -21,6 +21,13 @@ from pathlib import Path
 from omnilss.family_capabilities import implementation_status_for_family
 from omnilss.distribution_registry import _REGISTERED_FAMILIES
 
+# P0-6: explicit out-of-scope declaration in this report too (dual import:
+# loaded as a namespace package by the orchestrator / as a direct CLI script).
+try:
+    from tools.coverage_scope import scope_line  # noqa: E402
+except ModuleNotFoundError:  # pragma: no cover - direct-script fallback
+    from coverage_scope import scope_line  # noqa: E402
+
 # Batch -> list of R family names (from roadmap appendix A).
 BATCHES = {
     "A1 偏态 t 与 SEP": [
@@ -63,6 +70,8 @@ def generate_queue(coverage: dict, out: Path, generated_date: str) -> None:
     }
     lines: list[str] = []
     lines.append("# GAMLSS 分布族 placeholder 迁移队列清单")
+    lines.append("")
+    lines.append(scope_line())
     lines.append("")
     lines.append(f"> 生成日期：{generated_date}")
     lines.append("> 生成方式：`tools/generate_placeholder_migration_queue.py`")

@@ -44,6 +44,7 @@ if str(REPO_ROOT) not in sys.path:  # allow ``python tools/coverage_diff_report.
     sys.path.insert(0, str(REPO_ROOT))
 
 from tools.generate_symbol_coverage import build_coverage  # noqa: E402
+from tools.coverage_scope import scope_line, scope_payload  # noqa: E402
 
 BASELINE_PATH = REPO_ROOT / "docs" / "development" / "symbol-coverage-baseline.json"
 OUT_JSON = REPO_ROOT / "docs" / "development" / "symbol-coverage-diff.json"
@@ -103,6 +104,7 @@ def build_baseline(current: dict[str, list[str]]) -> dict:
     return {
         "schema_version": SCHEMA_VERSION,
         "generated_by": "tools/coverage_diff_report.py --update-baseline",
+        "scope": scope_payload(),
         "note": (
             "Ratchet ceilings for D0.4: a symbol appearing in a ratchet category "
             "here may not newly appear in the same category. Lowering these lists "
@@ -169,6 +171,7 @@ def build_report(
         "baseline": _display_path(baseline_path),
         "baseline_error": baseline_error,
         "r_exports_total": coverage["stats"]["r_exports_total"],
+        "scope": scope_payload(),
         "current_counts": {key: len(values) for key, values in current.items()},
         "category_meaning": CATEGORY_MEANING,
         "categories": {},
@@ -197,6 +200,7 @@ def build_report(
 def render_report(report: dict, *, max_symbols: int = 25) -> str:
     """Human readable rendering of the D0.4 diff report."""
     lines = ["coverage difference report (D0.4)", f"baseline: {report['baseline']}"]
+    lines += ["", scope_line()]
     if report.get("failure"):
         lines.append(f"FAIL-CLOSED: {report['failure']}")
         lines.append("run: python tools/coverage_diff_report.py --update-baseline")

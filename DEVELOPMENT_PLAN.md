@@ -417,7 +417,9 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 - [ ] P0-3 `MIXED = RS(n1)→CG(n2)` 兼容模式或改名隔离
 - [ ] P0-4 CI 加 lint/type + 8 分片发布门禁
 - [ ] P0-5 逐族独立播种 + 全族流一次性重登记 `ZIPIG`/`ZINBI` 等数字
-- [ ] P0-6 每份覆盖报告显式标注 `gamlss2` out-of-scope
+- [x] P0-6 每份覆盖报告显式标注 `gamlss2` out-of-scope（D2.221 完成：`tools/coverage_scope.py`
+  单一真源，7 份报告全部带 scope 声明；`test_coverage_scope.py` 钉住；
+  `generate_coverage_artifacts.py --date` + `coverage_diff_report.py → OK`）
 - [ ] P1-1 冻结高频族清单（从 39 个 r_consistency validated 族起步）
 - [ ] P1-2 为高频族建立统一 RS fit golden（含收敛诊断 schema）与 newdata/序列化证据
 - [ ] P2-1 逐族归类 36 个 rsdev warn / 25 个 dpqr skip / 1 个 deriv skip

@@ -13,6 +13,13 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
 
+# P0-6: single source of truth for the out-of-scope declaration (dual import:
+# namespace package from the orchestrator / direct script from the CLI).
+try:
+    from tools.coverage_scope import scope_line, scope_payload  # noqa: E402
+except ModuleNotFoundError:  # pragma: no cover - direct-script fallback
+    from coverage_scope import scope_line, scope_payload  # noqa: E402
+
 
 def _family_has_dqr(name: str) -> bool:
     """Whether the family really carries d/p/q, not the build_ad_family stub.
@@ -49,6 +56,7 @@ def build_coverage() -> dict:
     coverage = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "source_repo_root": str(REPO_ROOT),
+        "scope": scope_payload(),
         "stats": {"total_registered": len(all_names)},
         "families": {},
     }
@@ -90,6 +98,7 @@ def write_coverage(coverage: dict, output: Path, markdown: Path | None = None) -
     if markdown is not None:
         lines = [
             "# OmniLSS registry implementation inventory", "",
+            scope_line(), "",
             "Registry metadata only: this report does not establish R export coverage or numerical parity.",
             "", "| Family | Implementation status |", "|---|---|",
         ]
