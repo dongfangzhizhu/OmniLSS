@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 183,
+    "missing": 182,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 379
+    "extra": 380
   },
   "symbols": {
     "missing": [
@@ -146,7 +146,6 @@
       "gamlss.spatial::draw.polys",
       "gamlss.spatial::gamlss.gmrf",
       "gamlss.spatial::gmrf",
-      "gamlss.spatial::polys2nb",
       "gamlss.spatial::polys2polys",
       "gamlss2::BS",
       "gamlss2::CG",
@@ -388,6 +387,7 @@
       "PlotCentileSKResult",
       "PlotDiagnosticsResult",
       "PoissonFamily",
+      "PolyNB",
       "PredictAllResult",
       "PredictionSchemaError",
       "ProDistResult",
