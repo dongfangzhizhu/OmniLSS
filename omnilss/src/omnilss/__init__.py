@@ -201,6 +201,7 @@ from .bivar_grid import (
     xy_density_persp,
     xy_hist_kde2d,
 )
+from .ecdf_bands import EcdfBand, EcdfData, y_ecdf
 from .pcr import SVDResult, getSVD, which_Data_Corr
 from .smoother_fits import SmootherFit, gamlss_cs, gamlss_cy, gamlss_pb, gamlss_ps
 from .fractional_poly import FPFit, FPSpec, bfp, fp, gamlss_fp
@@ -1202,6 +1203,10 @@ __all__ = [
     "xy_density_persp",
     "xy_hist_kde2d",
     "xy_ECDF_hist",
+    # ── gamlss.ggplots ECDF non-parametric confidence bands ──
+    "EcdfBand",
+    "EcdfData",
+    "y_ecdf",
     # ── gamlss tail diagnostics ──
     "loglogSurv1",
     "loglogSurv2",
