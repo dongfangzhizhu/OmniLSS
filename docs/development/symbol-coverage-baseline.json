@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 184,
+    "missing": 183,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 377
+    "extra": 379
   },
   "symbols": {
     "missing": [
@@ -117,7 +117,6 @@
       "gamlss.ggplots::xy_pit_hist",
       "gamlss.ggplots::xy_pit_scatter",
       "gamlss.ggplots::xy_scatter",
-      "gamlss.ggplots::y_ecdf",
       "gamlss.ggplots::y_hist",
       "gamlss.mx::gamlssMX",
       "gamlss.mx::gamlssMXfits",
@@ -299,6 +298,8 @@
       "DPO1",
       "DTopResult",
       "ECDFResult",
+      "EcdfBand",
+      "EcdfData",
       "EmpiricalPdfTable",
       "ExponentialFamily",
       "ExtractAICResult",
