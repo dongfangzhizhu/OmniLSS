@@ -187,12 +187,19 @@ from .ggplots_diag import (
 )
 from .bivar_grid import (
     BivarGrid,
+    bandwidth_nrd,
     bivar_fun_contour,
     bivar_fun_image,
     bivar_fun_persp,
+    kde2d,
     xy_ECDF_contour,
+    xy_ECDF_hist,
     xy_ECDF_image,
     xy_ECDF_persp,
+    xy_density_contour,
+    xy_density_image,
+    xy_density_persp,
+    xy_hist_kde2d,
 )
 from .pcr import SVDResult, getSVD, which_Data_Corr
 from .smoother_fits import SmootherFit, gamlss_cs, gamlss_cy, gamlss_pb, gamlss_ps
@@ -1187,6 +1194,14 @@ __all__ = [
     "bivar_fun_contour",
     "bivar_fun_image",
     "bivar_fun_persp",
+    # ── gamlss.ggplots bivariate KDE density grids (MASS::kde2d) ──
+    "bandwidth_nrd",
+    "kde2d",
+    "xy_density_contour",
+    "xy_density_image",
+    "xy_density_persp",
+    "xy_hist_kde2d",
+    "xy_ECDF_hist",
     # ── gamlss tail diagnostics ──
     "loglogSurv1",
     "loglogSurv2",

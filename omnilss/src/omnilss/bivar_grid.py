@@ -1,29 +1,39 @@
-"""Bivariate ECDF / function grid data from ``gamlss.ggplots`` (base-R plots).
+"""Bivariate ECDF / function / KDE grid data from ``gamlss.ggplots``.
 
-R sources: ``R/gamlss.ggplots/R/Copula_ralated_not_ggplot2.R``.  The R
-functions draw base-graphics surfaces (``persp`` / ``image`` / ``contour``);
+R sources: ``R/gamlss.ggplots/R/Copula_ralated_not_ggplot2.R`` and
+``Copula_ralated.R``.  The R functions draw base-graphics or ggplot2 surfaces;
 these ports return the numerical grid that would have been plotted instead.
 
-Two numeric kernels, both fully deterministic and live-R verified in
-``omnilss/tests/test_bivar_grid.py``:
+Numeric kernels, all fully deterministic and live-R verified in the
+``test_bivar_grid.py`` / ``test_bivar_density.py`` tests:
 
-* ``xy.ECDF.*``: a 40x40 grid ``z = outer(xg, yg, Vectorize(ECDF_2D))`` where
+* ``xy.ECDF.*`` / ``xy_ECDF_hist``: a 40x40 grid
+  ``z = outer(xg, yg, Vectorize(ECDF_2D))`` where
   ``ECDF_2D(vx, vy, x, y) = mean(x <= vx & y <= vy)`` (the D2.215 port).
-  ``xg``/``yg`` each span ``[min, max]`` with ``length=40``.
+  ``xg``/``yg`` each span ``[min, max]`` with ``length=40``.  ``xy_ECDF_hist``
+  (ggplot2) builds the *same* grid via ``expand.grid`` + ``mapply``.
 * ``bivar.fun.*``: an ``n`` x ``n`` grid ``Z = matrix(f(grid$x, grid$y), n, n)``
   over ``expand.grid`` of ``seq(xlim, length.out=n)`` x ``seq(ylim, length.out=n)``.
   R's ``expand.grid`` varies x fastest and ``matrix(..., nrow=n)`` fills
   column-major, so ``Z[i, j] = f(gx[i], gy[j])`` (row=x, col=y).
+* ``xy.density.*`` / ``xy_hist_kde2d``: ``MASS::kde2d(x, y, n=bins)`` -- a 2-D
+  Gaussian kernel density on an ``n`` x ``n`` grid.  Ported exactly, including
+  ``MASS::bandwidth.nrd`` (Silverman's rule with R's type-7 quantiles and
+  sample variance ddof=1) and the ``h/4`` factor; ``bins`` defaults to 50 for
+  the density trio (25 for ``xy.density.persp``) and ``xy_hist_kde2d``.
 
 R quirks reproduced: the three ``xy.ECDF.*`` variants compute the *identical*
 grid (only the drawing call differs); ``xy.ECDF.persp`` hard-codes
 ``xlab="x"``/``ylab="y"``/``main="Bivariate CDF"`` instead of using its own
-``xlab``/``main`` arguments (dead args); the three ``bivar.fun.*`` likewise
-compute the identical grid.  ``n`` defaults to 100 for ``bivar.fun.*``.
+``xlab``/``main`` arguments (dead args); the three ``bivar.fun.*`` and the
+three ``xy.density.*`` likewise compute identical grids.  ``n`` defaults to
+100 for ``bivar.fun.*``.  ``as.numeric`` / ``as.vector`` on an R matrix flattens
+column-major (``ravel(order="F")`` in NumPy).
 
-The sibling ``xy.density.*`` (``MASS::kde2d``), ``bivar_pdf`` / ``bivar_fun``
-(ggplot2) and ``bivar_fun_plotly`` are intentionally NOT ported here -- they
-need external KDE / plotting stacks; see the module tests for the boundary.
+The siblings ``bivar_pdf`` / ``bivar_fun`` / ``bivar_fun_plotly`` / ``xy_hist`` /
+``xy_density`` (ggplot2 bin2d / stat_density_2d) are intentionally NOT ported --
+their binning/stat layers are not pure numeric kernels; see the module tests for
+the boundary.
 """
 from __future__ import annotations
 
@@ -41,6 +51,13 @@ __all__ = [
     "bivar_fun_contour",
     "bivar_fun_image",
     "bivar_fun_persp",
+    "bandwidth_nrd",
+    "kde2d",
+    "xy_density_contour",
+    "xy_density_image",
+    "xy_density_persp",
+    "xy_hist_kde2d",
+    "xy_ECDF_hist",
 ]
 
 
@@ -146,3 +163,94 @@ def bivar_fun_persp(
 ) -> BivarGrid:
     """R ``bivar.fun.persp`` grid data."""
     return _bivar_fun_grid(f, xlim, ylim, n)
+
+
+# ---------------------------------------------------------------------------
+# MASS::kde2d kernel (used by xy.density.* and xy_hist_kde2d)
+# ---------------------------------------------------------------------------
+
+def bandwidth_nrd(a: Any) -> float:
+    """R ``MASS::bandwidth.nrd``: Silverman's rule-of-thumb bandwidth.
+
+    ``4 * 1.06 * min(sqrt(var(x)), IQR/1.34) * length(x)^(-1/5)`` with R's
+    sample variance (``ddof=1``) and type-7 quantiles (NumPy ``method="linear"``).
+    Verified against live R to ~1e-13.
+    """
+    arr = np.asarray(a, dtype=np.float64).ravel()
+    q25, q75 = np.quantile(arr, [0.25, 0.75], method="linear")
+    iqr_scaled = (q75 - q25) / 1.34
+    return float(4 * 1.06 * min(np.sqrt(np.var(arr, ddof=1)), iqr_scaled)
+                 * arr.size ** (-0.2))
+
+
+def kde2d(x: Any, y: Any, n: int = 25) -> BivarGrid:
+    """R ``MASS::kde2d(x, y, n)`` -- 2-D Gaussian kernel density estimate.
+
+    Grid spans ``[min, max]`` of each variable with ``n`` points; bandwidth is
+    ``bandwidth_nrd / 4`` per axis; ``z[i, j] = sum_k dnorm((gx[i]-x[k])/hx) *
+    dnorm((gy[j]-y[k])/hy) / (N * hx * hy)``.  R's ``var`` uses ddof=1 and
+    ``quantile`` is type-7.  Returns the ``(x, y, z)`` grid (R returns a list).
+    """
+    dx = _as_float_array(x)
+    dy = _as_float_array(y)
+    if dx.size != dy.size:
+        raise ValueError("data vectors must be the same length")
+    nx = dx.size
+    gx = np.linspace(dx.min(), dx.max(), int(n))
+    gy = np.linspace(dy.min(), dy.max(), int(n))
+    hx = bandwidth_nrd(dx) / 4.0
+    hy = bandwidth_nrd(dy) / 4.0
+    ax = (gx[:, None] - dx[None, :]) / hx
+    ay = (gy[:, None] - dy[None, :]) / hy
+    inv_sqrt_2pi = 1.0 / np.sqrt(2.0 * np.pi)
+    A = np.exp(-ax**2 / 2.0) * inv_sqrt_2pi   # dnorm(ax), shape (n, N)
+    B = np.exp(-ay**2 / 2.0) * inv_sqrt_2pi   # dnorm(ay), shape (n, N)
+    z = (A @ B.T) / (nx * hx * hy)            # R tcrossprod, shape (n, n)
+    return BivarGrid(x=gx, y=gy, z=z)
+
+
+def _density_grid(x: Any, y: Any, bins: int) -> BivarGrid:
+    # R xy.density.* accept either (x, y) or a 2-column matrix/data.frame
+    if y is None:
+        arr = np.asarray(x, dtype=np.float64)
+        if arr.ndim != 2 or arr.shape[1] != 2:
+            raise ValueError("Provide either (x, y) or a 2-column array")
+        dx, dy = arr[:, 0], arr[:, 1]
+    else:
+        dx, dy = x, y
+    return kde2d(dx, dy, n=int(bins))
+
+
+def xy_density_contour(x: Any, y: Any = None, bins: int = 50, **_: Any) -> BivarGrid:
+    """R ``xy.density.contour`` grid data (``MASS::kde2d``), ``bins``=50."""
+    return _density_grid(x, y, bins)
+
+
+def xy_density_image(x: Any, y: Any = None, bins: int = 50, **_: Any) -> BivarGrid:
+    """R ``xy.density.image`` grid data (``MASS::kde2d``), ``bins``=50."""
+    return _density_grid(x, y, bins)
+
+
+def xy_density_persp(x: Any, y: Any = None, bins: int = 25, **_: Any) -> BivarGrid:
+    """R ``xy.density.persp`` grid data (``MASS::kde2d``), ``bins``=25."""
+    return _density_grid(x, y, bins)
+
+
+def xy_hist_kde2d(x: Any, y: Any = None, bins: int = 50, **_: Any) -> BivarGrid:
+    """R ``xy_hist_kde2d`` grid data (``MASS::kde2d``), ``bins``=50.
+
+    R builds ``kde_df = expand.grid(x=kde$x, y=kde$y)`` and sets
+    ``kde_df$z = as.vector(kde$z)``; that long table is exactly the
+    column-major flatten of our ``BivarGrid.z``.
+    """
+    return _density_grid(x, y, bins)
+
+
+def xy_ECDF_hist(x: Any, y: Any, **_: Any) -> BivarGrid:
+    """R ``xy_ECDF_hist`` grid data -- the same 40x40 ECDF grid as
+    ``xy_ECDF_contour`` (``expand.grid`` + ``mapply(ECDF_2D)``).
+
+    This is a distinct R export (``Copula_ralated.R:491``) from the point-named
+    ``xy.ECDF.contour``; both compute the identical grid, verified against live R.
+    """
+    return _ecdf_grid(x, y)
