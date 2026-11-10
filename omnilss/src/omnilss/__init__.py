@@ -185,6 +185,15 @@ from .ggplots_diag import (
     y_pacf,
     y_symmetry,
 )
+from .bivar_grid import (
+    BivarGrid,
+    bivar_fun_contour,
+    bivar_fun_image,
+    bivar_fun_persp,
+    xy_ECDF_contour,
+    xy_ECDF_image,
+    xy_ECDF_persp,
+)
 from .pcr import SVDResult, getSVD, which_Data_Corr
 from .smoother_fits import SmootherFit, gamlss_cs, gamlss_cy, gamlss_pb, gamlss_ps
 from .fractional_poly import FPFit, FPSpec, bfp, fp, gamlss_fp
@@ -1170,6 +1179,14 @@ __all__ = [
     "y_acf",
     "y_pacf",
     "resid_index",
+    # ── gamlss.ggplots bivariate ECDF / function grid data ──
+    "BivarGrid",
+    "xy_ECDF_persp",
+    "xy_ECDF_image",
+    "xy_ECDF_contour",
+    "bivar_fun_contour",
+    "bivar_fun_image",
+    "bivar_fun_persp",
     # ── gamlss tail diagnostics ──
     "loglogSurv1",
     "loglogSurv2",
