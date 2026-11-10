@@ -10,11 +10,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 196,
+    "missing": 189,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 374
+    "extra": 375
   },
   "symbols": {
     "missing": [
@@ -37,9 +37,6 @@
       "gamlss.foreach::fitQR",
       "gamlss.foreach::fitRolling",
       "gamlss.ggplots::add_resid_qqplot",
-      "gamlss.ggplots::bivar.fun.contour",
-      "gamlss.ggplots::bivar.fun.image",
-      "gamlss.ggplots::bivar.fun.persp",
       "gamlss.ggplots::bivar_fun",
       "gamlss.ggplots::bivar_fun_plotly",
       "gamlss.ggplots::bivar_pdf",
@@ -113,13 +110,9 @@
       "gamlss.ggplots::resp_mu",
       "gamlss.ggplots::resp_param",
       "gamlss.ggplots::resp_quantile",
-      "gamlss.ggplots::xy.ECDF.contour",
-      "gamlss.ggplots::xy.ECDF.image",
-      "gamlss.ggplots::xy.ECDF.persp",
       "gamlss.ggplots::xy.density.contour",
       "gamlss.ggplots::xy.density.image",
       "gamlss.ggplots::xy.density.persp",
-      "gamlss.ggplots::xy_ECDF_contour",
       "gamlss.ggplots::xy_ECDF_hist",
       "gamlss.ggplots::xy_density",
       "gamlss.ggplots::xy_density_plain",
@@ -272,6 +265,7 @@
       "BI_LIST",
       "BetaFamily",
       "BinomialFamily",
+      "BivarGrid",
       "BoxCoxColeGreenFamily",
       "BoxCoxPowerExponentialFamily",
       "BoxCoxTFamily",
