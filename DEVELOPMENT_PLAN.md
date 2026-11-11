@@ -421,7 +421,11 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
   `surface matched 898 / missing 182`；按 P0-6 纪律**不再写死任何会漂移的计数**，
   一律指向 `r-symbol-coverage.json` / `symbol-coverage-diff.json`。
 - [ ] P0-3 `MIXED = RS(n1)→CG(n2)` 兼容模式或改名隔离
-- [ ] P0-4 CI 加 lint/type + 8 分片发布门禁
+- [x] P0-4 CI 加 lint/type + 8 分片发布门禁（D2.223 完成：`tools/pytest_shards.py` 确定性
+  8 分片工具 + `release.yml` 的 `sharded-suite` matrix 发布门禁（独立 DB / tee 实时落盘 /
+  静态门禁组 / 单进程性能基准复核）+ `publish-pypi needs` 全门禁化；
+  `omnilss/tests/test_release_sharding.py` 钉住）。注：`ci.yml` 早已有 lint/type +
+  分层 collection，本批把它们固化进**发布门禁** `pre-release-gate` 并去掉单进程全库跑。
 - [ ] P0-5 逐族独立播种 + 全族流一次性重登记 `ZIPIG`/`ZINBI` 等数字
 - [x] P0-6 每份覆盖报告显式标注 `gamlss2` out-of-scope（D2.221 完成：`tools/coverage_scope.py`
   单一真源，7 份报告全部带 scope 声明；`test_coverage_scope.py` 钉住；

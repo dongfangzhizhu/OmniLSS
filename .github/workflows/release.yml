@@ -35,19 +35,36 @@ jobs:
 
       - run: pip install uv
 
-      - name: Install dependencies
+      - name: Install dependencies (server + dev extras for tiered collection)
         run: |
           cd omnilss
-          uv pip install --system -e ".[dev]"
+          uv pip install --system -e ".[server,dev]"
 
-      - name: Full test suite
+      # P0-4 static release gates. The full suite no longer runs here in a single
+      # process (that is the >1.5h, compaction-fragile pattern); it is split
+      # across the 8 sharded-test jobs below instead.
+      - name: Whitespace / conflict-marker gate (git diff --check)
+        run: git diff --check
+
+      - name: Tiered collection gate (zero errors, strict skips)
         env:
           MPLBACKEND: Agg
           JAX_PLATFORMS: cpu
           JAX_ENABLE_X64: "true"
+          PYTHONPATH: omnilss/src
+        run: python tools/tiered_collection.py --mode collect --strict-skips --json
+
+      - name: Shard manifest is deterministic and lossless
+        run: python tools/pytest_shards.py --shards 8 --check
+
+      - name: Lint / type gate (ruff, black, mypy)
         run: |
           cd omnilss
-          python -m pytest tests/ -q
+          uv pip install --system ruff black mypy
+          ruff check src/omnilss/ --select E,W,F --ignore E501
+          black --check src/omnilss/
+          # Advisory only (matches ci.yml): full-codebase mypy is not yet clean.
+          mypy src/omnilss/ --ignore-missing-imports || echo "mypy: advisory"
 
       - name: Required-R gate (fail-closed, no skips)
         env:
@@ -61,6 +78,84 @@ jobs:
             exit 1
           fi
           echo "OK: required-R tests executed against real R"
+
+  # P0-4: full-suite release gate as 8 parallel shards. Whole-shard mode (one
+  # pytest process per shard) so JAX/registry cold-compilation is paid once,
+  # not once per file. Round-robin partition spreads the slow R-bridge files.
+  # Each shard gets its OWN OMNILSS_MODEL_DB_PATH to avoid the concurrent
+  # gRPC sqlite write lock (MEMORY.md D2.216); stdout is tee'd to a log file
+  # so progress survives an interruption instead of living only in a buffer.
+  sharded-suite:
+    name: "Full suite shard ${{ matrix.shard }}/8"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          cd omnilss
+          uv pip install --system -e ".[server,dev]"
+
+      - name: Generate deterministic 8-shard manifests
+        run: python tools/pytest_shards.py --shards 8 --out-dir tmp/release-shards
+
+      - name: Run shard ${{ matrix.shard }}
+        env:
+          MPLBACKEND: Agg
+          JAX_PLATFORMS: cpu
+          JAX_ENABLE_X64: "true"
+          PYTHONPATH: omnilss/src
+          OMNILSS_MODEL_DB_PATH: ${{ github.workspace }}/tmp/model-db-shard-${{ matrix.shard }}.sqlite3
+        run: |
+          set -o pipefail
+          python -m pytest @tmp/release-shards/shard${{ matrix.shard }}.txt \
+            -q -W ignore -p no:cacheprovider --tb=line \
+            2>&1 | tee tmp/shard-${{ matrix.shard }}.log
+
+      - name: Upload shard log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shard-${{ matrix.shard }}-log
+          path: tmp/shard-${{ matrix.shard }}.log
+          if-no-files-found: warn
+
+  # Performance benchmarks use wall-clock 0.5s thresholds that are noisy under
+  # parallel load (MEMORY.md). Re-run them alone, on an idle runner, so the
+  # release gate checks correctness parity rather than a contended timer.
+  benchmark-recheck:
+    name: Performance benchmark (isolated single run)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          cd omnilss
+          uv pip install --system -e ".[dev]"
+      - name: Performance benchmarks, single process
+        env:
+          MPLBACKEND: Agg
+          JAX_PLATFORMS: cpu
+          JAX_ENABLE_X64: "true"
+          PYTHONPATH: omnilss/src
+        run: |
+          python -m pytest omnilss/tests/test_performance_benchmarks.py \
+            -q -W ignore -p no:cacheprovider
 
   build:
     name: Build distribution
@@ -138,7 +233,7 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI
-    needs: [build, test-install, pre-release-gate]
+    needs: [build, test-install, pre-release-gate, sharded-suite, benchmark-recheck]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

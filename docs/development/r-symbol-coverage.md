@@ -363,7 +363,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | quantSheets | gamlss | quantSheets | public_api | implemented | tested | exported_api | 1 |
 | quantSheets.control | gamlss | quantSheets_control | public_api | implemented | tested | exported_api | 1 |
 | random | gamlss | random | public_api | implemented | r_consistency_test | exported_api | 31 |
-| re | gamlss | - | missing | missing | unverified | not_available | 35 |
+| re | gamlss | - | missing | missing | unverified | not_available | 36 |
 | refit | gamlss | refit | public_api | implemented | tested | exported_api | 2 |
 | ri | gamlss | ri | public_api | implemented | tested | exported_api | 4 |
 | rqres.plot | gamlss | - | missing | missing | unverified | not_available | 0 |
