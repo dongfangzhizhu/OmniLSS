@@ -3,13 +3,21 @@
 > 本文档从审计商业视角出发，将已验证能力映射为产品化路线。所有能力宣称
 > 均以开源核心（`omnilss/`）中的 R 一致性证据、golden artifact 与能力矩阵
 > 为支撑（见 `docs/architecture/core-pro-boundary.md` 的边界规则）。
+>
+> ⚠️ **P0-2 措辞校准**：本文的价值主张只针对「已由 validated 证据覆盖」的
+> 范围，不代表全库与 R `gamlss` 数值等价，也不是完成率声明。当前逐族/逐符号
+> 证据层级与范围以可重生成工件 `docs/development/r-symbol-coverage.json`
+> （`stats.per_layer`：surface matched ≠ 数值等价 ≠ validated parity）与
+> `docs/development/symbol-coverage-diff.json` 为准，本文不写死计数。
+> **`gamlss2` 为明确 OUT OF SCOPE**（`tools/coverage_scope.py`），不计入 1.0 交付目标。
 
 ## 1. 价值主张
 
-**分布回归（Distributional Regression）全栈**：对 Release 1 已验证的
-八核心分布族（NO/GA/PO/BI/NBI/BE/ZAGA/GU）、三算法（RS/CG/MIXED）、
-平滑器（pb/ps/cs）与预测，提供与 R `gamlss` 数值等价、可验证、可规模化、
-可商业化的 Python/JAX 实现。
+**分布回归（Distributional Regression）全栈**：对 Release 1 已由 R 一致性 /
+validated 证据覆盖的八核心分布族（NO/GA/PO/BI/NBI/BE/ZAGA/GU）、三算法
+（RS/CG/MIXED）、平滑器（pb/ps/cs）与预测，提供可规模化、可商业化的
+Python/JAX 实现；数值对齐声明仅限上述已验证范围，非全库 blanket 等价，
+具体覆盖以能力矩阵与 `docs/development/r-symbol-coverage.json` 为准。
 
 ## 2. 产品分层
 

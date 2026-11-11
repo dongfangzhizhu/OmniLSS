@@ -1,9 +1,21 @@
 {
-  "plan_doc": "/workspace/OmniLSS/docs/development/r-gamlss-coverage-and-plan-2026-05-22.md",
+  "plan_doc": "docs/development/r-gamlss-coverage-and-plan-2026-05-22.md",
   "requirements_total": 21,
   "requirements_ok": 21,
   "requirements_missing": 0,
   "all_ok": true,
+  "calibration": {
+    "note": "Historical 2026-05-22 path-existence audit against plan_doc. 'all_ok' and 'requirements_ok'==requirements_total ONLY mean each listed python_path existed at generation time. This is NOT a completion rate, NOT R numerical-equivalence / validated / parity / production-safe evidence, and NOT current OmniLSS coverage. Do not cite it as any of those.",
+    "authoritative_artifacts": [
+      "docs/development/r-symbol-coverage.json",
+      "docs/development/symbol-coverage-diff.json"
+    ],
+    "gamlss2_out_of_scope": true,
+    "out_of_scope_packages": [
+      "gamlss2"
+    ],
+    "scope_single_source": "tools/coverage_scope.py"
+  },
   "rows": [
     {
       "symbol": "gamlss",

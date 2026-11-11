@@ -256,7 +256,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | add1TGD | gamlss | add1TGD | public_api | implemented | tested | exported_api | 1 |
 | bfp | gamlss | bfp | public_api | implemented | tested | exported_api | 4 |
 | bp | gamlss | - | missing | missing | unverified | not_available | 0 |
-| calibration | gamlss | - | missing | missing | unverified | not_available | 10 |
+| calibration | gamlss | - | missing | missing | unverified | not_available | 11 |
 | centiles | gamlss | centiles | public_api | implemented | r_consistency_test | exported_api | 12 |
 | centiles.com | gamlss | centiles_com | module_export | implemented | tested | internal | 1 |
 | centiles.fan | gamlss | centiles_fan | public_api | implemented | tested | exported_api | 1 |
@@ -282,7 +282,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | fp | public_api | implemented | tested | exported_api | 6 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 14 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 211 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 212 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | gamlss_cs | public_api | implemented | tested | exported_api | 3 |
 | gamlss.cy | gamlss | gamlss_cy | public_api | implemented | tested | exported_api | 1 |
@@ -1277,7 +1277,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | Rsq | gamlss2 | Rsq | module_export | implemented | unverified | internal | 0 |
 | available_families | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | bamlss2 | gamlss2 | - | missing | missing | unverified | not_available | 0 |
-| calibration | gamlss2 | - | missing | missing | unverified | not_available | 10 |
+| calibration | gamlss2 | - | missing | missing | unverified | not_available | 11 |
 | cv_gamlss2 | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | discretize | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | elm | gamlss2 | - | missing | missing | unverified | not_available | 0 |
@@ -1285,7 +1285,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | find_family | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | find_gamlss2 | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | fit_family | gamlss2 | - | missing | missing | unverified | not_available | 1 |
-| gamlss2 | gamlss2 | - | missing | missing | unverified | not_available | 2 |
+| gamlss2 | gamlss2 | - | missing | missing | unverified | not_available | 3 |
 | gamlss2.formula | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | gamlss2.list | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | gamlss2_control | gamlss2 | - | missing | missing | unverified | not_available | 0 |

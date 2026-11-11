@@ -1,6 +1,11 @@
 # R 一致性验证与 golden artifact
 
-OmniLSS 的可靠性建立在**与 R `gamlss` 数值等价**的可验证承诺上（Phase 1-6）。
+OmniLSS 的可靠性建立在**逐族、逐符号 validated 的 R 一致性证据**之上（Phase 1-6），
+而非「全库与 R `gamlss` 数值等价」的 blanket 声明。任何数值对齐宣称都只适用于
+已由 R-backed 测试 / golden artifact / 能力矩阵覆盖的范围；当前范围与证据层级见
+`docs/development/r-symbol-coverage.json`（`stats.per_layer`）与
+`docs/development/symbol-coverage-diff.json`。`gamlss2` 为明确 OUT OF SCOPE
+（`tools/coverage_scope.py`），不属本承诺，也不计入 1.0 交付目标。
 
 ## 验证体系
 

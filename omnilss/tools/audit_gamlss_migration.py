@@ -59,15 +59,43 @@ def _missing(reqs: Iterable[Requirement]) -> list[dict[str, object]]:
     return rows
 
 
+#: P0-2 calibration.  This audit only checks that a handful of python_paths
+#: EXIST on disk (a 2026-05-22 plan-doc check).  ``all_ok`` / ``requirements_ok``
+#: are therefore path-existence results, NOT a completion rate, NOT R
+#: numerical-equivalence evidence, and NOT validated/parity/production-safe
+#: status.  Emitted into the JSON (regenerable, never hand-edited) so any reader
+#: sees the caveat inline; the authoritative, regenerable coverage is elsewhere.
+CALIBRATION: dict[str, object] = {
+    "note": (
+        "Historical 2026-05-22 path-existence audit against plan_doc. "
+        "'all_ok' and 'requirements_ok'==requirements_total ONLY mean each "
+        "listed python_path existed at generation time. This is NOT a "
+        "completion rate, NOT R numerical-equivalence / validated / parity / "
+        "production-safe evidence, and NOT current OmniLSS coverage. Do not "
+        "cite it as any of those."
+    ),
+    "authoritative_artifacts": [
+        "docs/development/r-symbol-coverage.json",
+        "docs/development/symbol-coverage-diff.json",
+    ],
+    "gamlss2_out_of_scope": True,
+    "out_of_scope_packages": ["gamlss2"],
+    "scope_single_source": "tools/coverage_scope.py",
+}
+
+
 def build_audit() -> dict[str, object]:
     rows = _missing(CORE_REQUIREMENTS)
     ok_count = sum(1 for r in rows if r["ok"])
     return {
-        "plan_doc": str(PLAN_DOC),
+        # repo-relative POSIX path (machine-independent, regenerable) instead
+        # of an absolute path that changed on every host's regeneration.
+        "plan_doc": PLAN_DOC.relative_to(REPO_ROOT).as_posix(),
         "requirements_total": len(rows),
         "requirements_ok": ok_count,
         "requirements_missing": len(rows) - ok_count,
         "all_ok": ok_count == len(rows),
+        "calibration": CALIBRATION,
         "rows": rows,
     }
 

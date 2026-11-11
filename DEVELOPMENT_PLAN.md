@@ -413,7 +413,13 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 ### 22.5 立即执行的前十五项（backlog，按依赖排序）
 
 - [ ] P0-1 修 `.codex/setup.sh` / devcontainer postCreate
-- [ ] P0-2 校准全部旧文档的 63%/等价措辞，标注 146/125/20/1 与 0 placeholder
+- [x] P0-2 校准全部旧文档的 63%/等价措辞（D2.222 完成：`migration-progress.md` /
+  `commercialization-assessment.md` / `tutorial-r-consistency.md` / `gamlss-core-migration-audit-2026-05-22.json`
+  四处就地校准 + `gamlss2` OUT OF SCOPE + 指向可重生成工件；`audit_gamlss_migration.py`
+  内建可重现 calibration 字段；`test_legacy_doc_calibration.py` 钉住）。
+  注：原条目「标注 146/125/20/1 与 0 placeholder」是 2026-09 的旧快照，现权威值
+  `surface matched 898 / missing 182`；按 P0-6 纪律**不再写死任何会漂移的计数**，
+  一律指向 `r-symbol-coverage.json` / `symbol-coverage-diff.json`。
 - [ ] P0-3 `MIXED = RS(n1)→CG(n2)` 兼容模式或改名隔离
 - [ ] P0-4 CI 加 lint/type + 8 分片发布门禁
 - [ ] P0-5 逐族独立播种 + 全族流一次性重登记 `ZIPIG`/`ZINBI` 等数字

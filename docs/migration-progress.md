@@ -1,11 +1,16 @@
 # OmniLSS — R `gamlss` / `gamlss.dist` 迁移进度
 
-> ⚠️ **本文件已过时（2026-05-23，基于 omnilss 0.3.0）。请勿用它作为当前完成率。**
-> 当前权威覆盖以可重生成的工件为准：`docs/development/r-symbol-coverage.json` /
-> `symbol-coverage-diff.json`（`tools/generate_symbol_coverage.py`、
-> `tools/coverage_diff_report.py`）。截至 2026-11-05：146 族、0 placeholder、
-> `implemented` 1 族；范围内 surface matched 698 / missing 382。
-> `gamlss2` 为**明确 out-of-scope**（`scope.out_of_scope_packages`），不计缺失。
+> ⚠️ **本文件已过时（2026-05-23 历史快照，基于 omnilss 0.3.0）。
+> 下文所有百分比（含 63% 综合完成率）、「已实现/等价」标注都是当时的人工逐文件
+> 盘点，不是当前完成率，也不是 validated 数值证据或 R 等价声明，请勿用于任何
+> 交付/完成率/等价宣称。**
+> 当前权威、可重生成的数据以 `docs/development/r-symbol-coverage.json` 与
+> `docs/development/symbol-coverage-diff.json` 为准（生成器
+> `tools/generate_symbol_coverage.py`、`tools/coverage_diff_report.py`）。
+> 本文件**不写死计数**：数字随每批迁移持续变化，一律以工件实时值为准。证据层级见
+> 工件 `stats.per_layer`：surface matched ≠ 数值等价 ≠ validated parity ≠ production-safe。
+> **`gamlss2` 为明确 OUT OF SCOPE**（`scope.out_of_scope_packages`，单一真源
+> `tools/coverage_scope.py`）：独立 spec/版本/证据链，不计入 1.0 交付目标，也不计入 1.0 缺失。
 >
 > 生成时间：2026-05-23  
 > 基准版本：R `gamlss` 5.5-3，`gamlss.dist` 6.1-1（`R/gamlss/` 和 `R/gamlss.dist/` 目录）  
@@ -1108,6 +1113,13 @@
 ---
 
 ## 4. 总体进度统计
+
+> ⚠️ **历史快照（2026-05-23，omnilss 0.3.0）——以下所有「完成率」百分比
+> （54%/63%/76%/51% 等）均为当时人工盘点，不是当前完成率、不是 validated 证据、
+> 也不是 R 等价/可交付声明。** 请勿引用本节任何数字作为现状。当前权威数据见
+> `docs/development/r-symbol-coverage.json`（`stats.per_layer`）与
+> `docs/development/symbol-coverage-diff.json`；`gamlss2` 为 OUT OF SCOPE。
+> 这些表格仅为保留历史盘点记录而留存。
 
 ### 4.1 gamlss 核心包（R/gamlss/R/）
 
