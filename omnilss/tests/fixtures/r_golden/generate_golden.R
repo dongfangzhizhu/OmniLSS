@@ -39,7 +39,14 @@ cases <- list(
   list(case = "exp_y_x_seed_20261117",    family = "EXP",    formula = "y ~ x", seed = 20261117, n = 90,  n_cyc = 100),
   list(case = "geom_y_x_seed_20261118",   family = "GEOM",   formula = "y ~ x", seed = 20261118, n = 120, n_cyc = 100),
   list(case = "igamma_y_x_seed_20261119", family = "IGAMMA", formula = "y ~ x", seed = 20261119, n = 90,  n_cyc = 100),
-  list(case = "no2_y_x_seed_20261120",    family = "NO2",    formula = "y ~ x", seed = 20261120, n = 90,  n_cyc = 100)
+  list(case = "no2_y_x_seed_20261120",    family = "NO2",    formula = "y ~ x", seed = 20261120, n = 90,  n_cyc = 100),
+  # D2.228 / P1 second batch: LO / RG / PE / NBII / BEINF.  All five matched
+  # live R across three seeds at 2e-4 with n.cyc = 100 (see the D2.228 log).
+  list(case = "lo_y_x_seed_20261121",     family = "LO",      formula = "y ~ x", seed = 20261121, n = 100, n_cyc = 100),
+  list(case = "rg_y_x_seed_20261122",     family = "RG",      formula = "y ~ x", seed = 20261122, n = 100, n_cyc = 100),
+  list(case = "pe_y_x_seed_20261123",     family = "PE",      formula = "y ~ x", seed = 20261123, n = 100, n_cyc = 100),
+  list(case = "nbii_y_x_seed_20261121",   family = "NBII",    formula = "y ~ x", seed = 20261121, n = 120, n_cyc = 100),
+  list(case = "beinf_y_x_seed_20261122",  family = "BEINF",   formula = "y ~ x", seed = 20261122, n = 120, n_cyc = 100)
 )
 
 # ---- helpers ---------------------------------------------------------------
@@ -92,6 +99,21 @@ make_data <- function(seed, n, family) {
   } else if (family == "NO2") {
     mu <- 1.0 + 0.4 * x
     y <- rNO2(n, mu = mu, sigma = 0.6)
+  } else if (family == "LO") {
+    mu <- 1.0 + 0.4 * x
+    y <- rLO(n, mu = mu, sigma = 0.6)
+  } else if (family == "RG") {
+    mu <- 1.0 + 0.4 * x
+    y <- rRG(n, mu = mu, sigma = 0.6)
+  } else if (family == "PE") {
+    mu <- 1.0 + 0.4 * x
+    y <- rPE(n, mu = mu, sigma = 0.8, nu = 1.4)
+  } else if (family == "NBII") {
+    mu <- 2.0 + 0.4 * x
+    y <- rNBII(n, mu = mu, sigma = 0.5)
+  } else if (family == "BEINF") {
+    mu <- plogis(0.3 + 0.3 * x)
+    y <- rBEINF(n, mu = mu, sigma = 0.3, nu = 0.15, tau = 0.15)
   } else {
     stop("unknown family ", family)
   }

@@ -154,5 +154,60 @@
     "gamlss_dist_version": "6.1.1",
     "content_hash": "f9065f11",
     "n_cyc": 100
+  },
+  "lo_y_x_seed_20261121": {
+    "family": "LO",
+    "formula": "y ~ x",
+    "seed": 20261121,
+    "n": 100,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "dc322e78",
+    "n_cyc": 100
+  },
+  "rg_y_x_seed_20261122": {
+    "family": "RG",
+    "formula": "y ~ x",
+    "seed": 20261122,
+    "n": 100,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "023605c8",
+    "n_cyc": 100
+  },
+  "pe_y_x_seed_20261123": {
+    "family": "PE",
+    "formula": "y ~ x",
+    "seed": 20261123,
+    "n": 100,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "37d9b61e",
+    "n_cyc": 100
+  },
+  "nbii_y_x_seed_20261121": {
+    "family": "NBII",
+    "formula": "y ~ x",
+    "seed": 20261121,
+    "n": 120,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "61d98a4d",
+    "n_cyc": 100
+  },
+  "beinf_y_x_seed_20261122": {
+    "family": "BEINF",
+    "formula": "y ~ x",
+    "seed": 20261122,
+    "n": 120,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "1c945518",
+    "n_cyc": 100
   }
 }
