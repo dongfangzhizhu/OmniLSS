@@ -358,7 +358,11 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
   在 n.cyc=100 下仍有平坦 nu/tau 脊导致的不同驻点，ZIPF 仅 2/3 seed 通过，
   DELAPORT 在安装版 gamlss.dist 6.1.1 无 `r` 函数——以上**均不晋级**
   （不用近似 deviance 掩盖系数分歧）。
-  `production_safe` 仍 5（需单独准入评审）；newdata/序列化/收敛诊断 schema 属后续批次。
+  `production_safe` 仍 5（需单独准入评审）。
+- **P1-2 证据轴（D2.229 完成）**：全部 20 个 golden fixture 现含 `newdata`（5 点 x 网格）、
+  `predicted`（R response 尺度参数预测）、`convergence`（iter/converged/n_cyc）；
+  `test_r_golden_predict_serialize.py` 61 例钉住「预测对活 R（2e-4）+ JSON 序列化往返
+  （1e-10）+ 收敛 schema 一致」，使每个 golden 成为 **fit→predict→persist** 的端到端证据。
 
 ### P2：收敛 / 拟合轨迹缺陷收口
 
@@ -468,7 +472,12 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
   单一真源，7 份报告全部带 scope 声明；`test_coverage_scope.py` 钉住；
   `generate_coverage_artifacts.py --date` + `coverage_diff_report.py → OK`）
 - [ ] P1-1 冻结高频族清单（从 39 个 r_consistency validated 族起步）
-- [ ] P1-2 为高频族建立统一 RS fit golden（含收敛诊断 schema）与 newdata/序列化证据
+- [x] P1-2 为高频族建立统一 RS fit golden（含收敛诊断 schema）与 newdata/序列化证据
+  （D2.229 完成：20 个 golden fixture 统一含 RS-fit 系数/deviance + `convergence`
+  {iter,converged,n_cyc} + `newdata` 5 点网格 + `predicted` response 尺度参数；
+  `test_r_golden_predict_serialize.py` 61 例：newdata 预测对活 R（rtol/atol=2e-4）、
+  `save_model_json`/`load_model_json` 往返预测漂移 ≤1e-10、收敛 schema 一致且两侧均收敛。
+  每个 golden 因此覆盖 fit → predict → persist 全链路）
 - [ ] P2-1 逐族归类 36 个 rsdev warn / 25 个 dpqr skip / 1 个 deriv skip
 - [ ] P2-2 修 BCTO deriv、SHASH 积分、NET clamp、JSU 轨迹、LNO intercept-only
 - [ ] P3-1 冻结 family/link/formula/prediction 契约

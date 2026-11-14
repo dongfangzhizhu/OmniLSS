@@ -273,7 +273,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | fp | public_api | implemented | tested | exported_api | 6 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 15 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 215 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 216 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | gamlss_cs | public_api | implemented | tested | exported_api | 3 |
 | gamlss.cy | gamlss | gamlss_cy | public_api | implemented | tested | exported_api | 1 |

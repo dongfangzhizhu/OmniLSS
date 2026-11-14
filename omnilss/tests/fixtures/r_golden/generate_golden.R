@@ -162,12 +162,33 @@ for (c in cases) {
     }
   }
 
+  # D2.229 / P1-2 evidence axis: fixed newdata predictions (response scale)
+  # and convergence diagnostics.  Predictions are what a user actually
+  # consumes; recording them turns the coefficient parity into an end-to-end
+  # predict parity artifact.
+  nd <- data.frame(x = c(-1, -0.5, 0, 0.5, 1))
+  predicted <- list()
+  for (p in fit$parameters) {
+    pv <- try(as.numeric(predict(fit, what = p, newdata = nd, type = "response", data = df)),
+              silent = TRUE)
+    if (!inherits(pv, "try-error") && length(pv) == nrow(nd) && all(is.finite(pv)))
+      predicted[[p]] <- as.list(pv)
+  }
+  ncyc_eff <- tryCatch(as.integer(fit$control$n.cyc), error = function(e) NA_integer_)
+
   payload <- list(
     case = c$case,
     family = c$family,
     formula = c$formula,
     data = list(x = dat$x, y = dat$y),
-    expected = expected
+    expected = expected,
+    newdata = list(x = as.numeric(nd$x)),
+    predicted = predicted,
+    convergence = list(
+      iter = as.integer(fit$iter),
+      converged = isTRUE(fit$converged),
+      n_cyc = ncyc_eff
+    )
   )
   if (!is.null(c$n_cyc)) payload$n_cyc <- c$n_cyc
 
