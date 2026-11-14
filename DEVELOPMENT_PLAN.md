@@ -337,7 +337,7 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 | P0-2 | 校准旧文档的过时措辞：`migration-progress.md` 的 63%/等价、`gamlss-core-migration-audit-2026-05-22.json` 等 | 文档只按 validated 证据声明；标注 `gamlss2` out-of-scope |
 | P0-3 | `MIXED` 名称/语义对齐（P0-03）：实现 `RS(n1)→CG(n2)` 兼容模式，或改名并隔离实验路由 | 与 R `mixed` 数值/语义对照通过；不破坏既有 MIXED 回归 |
 | P0-4 | CI 增 lint/type 步骤；全库 8 分片后台复测固定为发布门禁 | `git diff --check`、分层 collection 零错误、性能基准单跑复核 |
-| P0-5 | 逐族独立播种 + 一次性全族流重登记（D2.47 后 `ZIPIG`/`ZINBI` 登记数字已失效） | 登记表数字与全族流一致；子集运行不再产生假警报 |
+| P0-5 | 校准「D2.47 数字失效」过时前提（10-20 补记已证伪）；以全族流不变量测试钉住登记数字。字面「逐族独立播种」因会作废 19 族证据、需全族流活 R 重测数小时而推迟（D2.83 已用全族 payload 缓存达成子集同流） | 登记表数字与全族流一致；子集运行不再产生假警报 |
 | P0-6 | 覆盖工件生成器持续与源码同步；`gamlss2` out-of-scope 在每份报告显式标注 | `generate_coverage_artifacts.py --date` + `coverage_diff_report.py → OK` |
 
 ### P1：高频族证据晋级（把 125 个 experimental 变 validated）
@@ -437,7 +437,15 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
   静态门禁组 / 单进程性能基准复核）+ `publish-pypi needs` 全门禁化；
   `omnilss/tests/test_release_sharding.py` 钉住）。注：`ci.yml` 早已有 lint/type +
   分层 collection，本批把它们固化进**发布门禁** `pre-release-gate` 并去掉单进程全库跑。
-- [ ] P0-5 逐族独立播种 + 全族流一次性重登记 `ZIPIG`/`ZINBI` 等数字
+- [x] P0-5 登记表数字与全族流一致 + 子集运行不假警报（D2.225 完成：**验收标准两条
+  均已满足**——「D2.47 后 ZIPIG/ZINBI 数字失效」经 2026-10-20 补记**证伪**
+  （PIG 走独立核 `omnilss/pig.py`、不经 Bessel），D2.103 全族 146 族 rsdev
+  **0 fail**、11-01 逐族逐字段 **0 差异**；D2.83 `_build_jobs` 全族 payload
+  缓存已消除子集假警报且 `test_scan_sampling_is_order_stable.py` 钉住。本批补
+  `test_rsdev_registry_full_stream.py` 把「子集==全族」不变量从 3 个 `_PROBE`
+  族扩到**全部 19 个登记族** + 数字自洽断言。字面「逐族独立播种」是会作废
+  19 族证据、需全族流活 R 重测数小时的大重构，历史上一再推迟，按用户决策
+  **不做**并校准描述，而非改样本流制造假性完成）
 - [x] P0-6 每份覆盖报告显式标注 `gamlss2` out-of-scope（D2.221 完成：`tools/coverage_scope.py`
   单一真源，7 份报告全部带 scope 声明；`test_coverage_scope.py` 钉住；
   `generate_coverage_artifacts.py --date` + `coverage_diff_report.py → OK`）

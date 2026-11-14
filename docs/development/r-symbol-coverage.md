@@ -354,7 +354,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | quantSheets | gamlss | quantSheets | public_api | implemented | tested | exported_api | 1 |
 | quantSheets.control | gamlss | quantSheets_control | public_api | implemented | tested | exported_api | 1 |
 | random | gamlss | random | public_api | implemented | r_consistency_test | exported_api | 32 |
-| re | gamlss | - | missing | missing | unverified | not_available | 36 |
+| re | gamlss | - | missing | missing | unverified | not_available | 37 |
 | refit | gamlss | refit | public_api | implemented | tested | exported_api | 2 |
 | ri | gamlss | ri | public_api | implemented | tested | exported_api | 4 |
 | rqres.plot | gamlss | - | missing | missing | unverified | not_available | 0 |
@@ -465,8 +465,8 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | PARETO2 | gamlss.dist | PARETO2 | public_api | experimental | r_consistency_test | blocked | 10 |
 | PARETO2o | gamlss.dist | PARETO2o | public_api | implemented | r_consistency_test | exported_api | 6 |
 | PE | gamlss.dist | PE | public_api | experimental | r_consistency_test | blocked | 7 |
-| PE2 | gamlss.dist | PE2 | public_api | experimental | r_consistency_test | blocked | 10 |
-| PIG | gamlss.dist | PIG | public_api | experimental | r_consistency_test | blocked | 14 |
+| PE2 | gamlss.dist | PE2 | public_api | experimental | r_consistency_test | blocked | 11 |
+| PIG | gamlss.dist | PIG | public_api | experimental | r_consistency_test | blocked | 15 |
 | PIG2 | gamlss.dist | PIG2 | public_api | experimental | r_consistency_test | blocked | 5 |
 | PO | gamlss.dist | PO | public_api | experimental | r_consistency_test | blocked | 34 |
 | RG | gamlss.dist | RG | public_api | experimental | r_consistency_test | blocked | 6 |
@@ -506,7 +506,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | ZAIG | gamlss.dist | ZAIG | public_api | experimental | r_consistency_test | blocked | 13 |
 | ZALG | gamlss.dist | ZALG | public_api | experimental | r_consistency_test | blocked | 6 |
 | ZANBI | gamlss.dist | ZANBI | public_api | experimental | capability:unsupported | blocked | 9 |
-| ZAP | gamlss.dist | ZAP | public_api | experimental | r_consistency_test | blocked | 12 |
+| ZAP | gamlss.dist | ZAP | public_api | experimental | r_consistency_test | blocked | 13 |
 | ZAPIG | gamlss.dist | ZAPIG | public_api | experimental | r_consistency_test | blocked | 8 |
 | ZASICHEL | gamlss.dist | ZASICHEL | public_api | experimental | r_consistency_test | blocked | 12 |
 | ZAZIPF | gamlss.dist | ZAZIPF | public_api | experimental | r_consistency_test | blocked | 8 |
@@ -514,11 +514,11 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | ZIBI | gamlss.dist | ZIBI | public_api | experimental | capability:validated | blocked | 13 |
 | ZIBNB | gamlss.dist | ZIBNB | public_api | experimental | r_consistency_test | blocked | 11 |
 | ZINBF | gamlss.dist | ZINBF | public_api | experimental | r_consistency_test | blocked | 5 |
-| ZINBI | gamlss.dist | ZINBI | public_api | experimental | r_consistency_test | blocked | 14 |
+| ZINBI | gamlss.dist | ZINBI | public_api | experimental | r_consistency_test | blocked | 15 |
 | ZIP | gamlss.dist | ZIP | public_api | experimental | r_consistency_test | blocked | 18 |
 | ZIP2 | gamlss.dist | ZIP2 | public_api | experimental | r_consistency_test | blocked | 10 |
 | ZIPF | gamlss.dist | ZIPF | public_api | experimental | r_consistency_test | blocked | 8 |
-| ZIPIG | gamlss.dist | ZIPIG | public_api | experimental | r_consistency_test | blocked | 8 |
+| ZIPIG | gamlss.dist | ZIPIG | public_api | experimental | r_consistency_test | blocked | 9 |
 | ZISICHEL | gamlss.dist | ZISICHEL | public_api | experimental | r_consistency_test | blocked | 11 |
 | as.family | gamlss.dist | as_family | public_api | implemented | tested | exported_api | 1 |
 | as.gamlss.family | gamlss.dist | as_gamlss_family | public_api | implemented | tested | exported_api | 2 |
