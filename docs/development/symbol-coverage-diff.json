@@ -12,11 +12,11 @@
     "notice": "gamlss2 is out of scope for OmniLSS 1.0: separate spec / version / evidence, does not block 1.0 (deliverable plan sections 1.2, 22.6)."
   },
   "current_counts": {
-    "missing": 182,
+    "missing": 175,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 380
+    "extra": 386
   },
   "category_meaning": {
     "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
@@ -29,8 +29,8 @@
     "missing": {
       "new": [],
       "resolved": [],
-      "current_count": 182,
-      "baseline_count": 182
+      "current_count": 175,
+      "baseline_count": 175
     },
     "placeholder": {
       "new": [],
@@ -53,8 +53,8 @@
     "extra": {
       "new": [],
       "resolved": [],
-      "current_count": 380,
-      "baseline_count": 380
+      "current_count": 386,
+      "baseline_count": 386
     }
   },
   "regressions": [],

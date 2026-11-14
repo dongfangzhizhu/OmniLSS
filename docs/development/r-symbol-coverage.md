@@ -10,14 +10,14 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - R packages parsed: 12 (out of scope: gamlss2)
 - R exported symbols: 1080 (in scope: 1036)
-- Python surface matched: 898 / missing: 182
+- Python surface matched: 905 / missing: 175
 - Family-linked symbols: 531 (dpqr kernels: 424)
-- Python-only public exports: 380
+- Python-only public exports: 386
 
-- **surface**: `missing` 182, `module_def` 223, `module_export` 103, `public_api` 396, `registry` 176
-- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 372, `missing` 182
-- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 183, `tested` 281, `unverified` 226
-- **admission**: `blocked` 526, `exported_api` 290, `internal` 77, `not_available` 182, `production_safe` 5
+- **surface**: `missing` 175, `module_def` 223, `module_export` 103, `public_api` 403, `registry` 176
+- **kernel**: `compat_alias` 1, `experimental` 525, `implemented` 379, `missing` 175
+- **parity**: `capability:unsupported` 249, `capability:validated` 107, `golden:validated` 34, `r_consistency_test` 183, `tested` 288, `unverified` 219
+- **admission**: `blocked` 526, `exported_api` 297, `internal` 77, `not_available` 175, `production_safe` 5
 
 ## Per-package coverage
 
@@ -31,7 +31,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gamlss.data | 6.0-9 | `d9f9597e6df3f7b9` | yes | 0 | 0 | 0 |
 | gamlss.dist | 6.1-8 | `59a3b7074378aaeb` | yes | 654 | 630 | 654 |
 | gamlss.foreach | 1.1-10 | `819542107cb0994b` | yes | 13 | 13 | 8 |
-| gamlss.ggplots | 2.1-34 | `cbe1ae29a3d583c1` | yes | 109 | 106 | 27 |
+| gamlss.ggplots | 2.1-34 | `cbe1ae29a3d583c1` | yes | 109 | 106 | 34 |
 | gamlss.mx | 6.0-4 | `b832557a4937461b` | yes | 12 | 12 | 8 |
 | gamlss.prepdata | 0.1.19 | `406a76c8aa06aa80` | yes | 59 | 58 | 40 |
 | gamlss.spatial | 3.0-3 | `af0e2b383e3eba93` | yes | 9 | 9 | 3 |
@@ -145,13 +145,6 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | resp_mu | gamlss.ggplots | function | R/gamlss.ggplots/R/resp_mu.R:5 |
 | resp_param | gamlss.ggplots | function | R/gamlss.ggplots/R/resp_param.R:5 |
 | resp_quantile | gamlss.ggplots | function | R/gamlss.ggplots/R/resp_param.R:56 |
-| xy_density | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:371 |
-| xy_density_plain | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:412 |
-| xy_hist | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:294 |
-| xy_pit_density | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:546 |
-| xy_pit_hist | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:331 |
-| xy_pit_scatter | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:217 |
-| xy_scatter | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:152 |
 | y_hist | gamlss.ggplots | function | R/gamlss.ggplots/R/y_hist.R:6 |
 | gamlssMX | gamlss.mx | function | R/gamlss.mx/R/gamlssMX-10-11-07.R:17 |
 | gamlssMXfits | gamlss.mx | function | R/gamlss.mx/R/gamlssMX-10-11-07.R:479 |
@@ -362,7 +355,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | pvc.control | gamlss | pvc_control | public_api | implemented | tested | exported_api | 1 |
 | quantSheets | gamlss | quantSheets | public_api | implemented | tested | exported_api | 1 |
 | quantSheets.control | gamlss | quantSheets_control | public_api | implemented | tested | exported_api | 1 |
-| random | gamlss | random | public_api | implemented | r_consistency_test | exported_api | 31 |
+| random | gamlss | random | public_api | implemented | r_consistency_test | exported_api | 32 |
 | re | gamlss | - | missing | missing | unverified | not_available | 36 |
 | refit | gamlss | refit | public_api | implemented | tested | exported_api | 2 |
 | ri | gamlss | ri | public_api | implemented | tested | exported_api | 4 |
@@ -1063,8 +1056,8 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fitRolling | gamlss.foreach | - | missing | missing | unverified | not_available | 0 |
 | gamlss.pc | gamlss.foreach | gamlss_pc | public_api | implemented | tested | exported_api | 1 |
 | gamlss.pcr | gamlss.foreach | gamlss_pcr | public_api | implemented | tested | exported_api | 1 |
-| getSVD | gamlss.foreach | getSVD | public_api | implemented | tested | exported_api | 5 |
-| pc | gamlss.foreach | pc | public_api | implemented | tested | exported_api | 3 |
+| getSVD | gamlss.foreach | getSVD | public_api | implemented | tested | exported_api | 6 |
+| pc | gamlss.foreach | pc | public_api | implemented | tested | exported_api | 4 |
 | pcr | gamlss.foreach | pcr | public_api | implemented | tested | exported_api | 1 |
 | which.Data.Corr | gamlss.foreach | which_Data_Corr | public_api | implemented | tested | exported_api | 1 |
 | which.yX.Corr | gamlss.foreach | which_yX_Corr | public_api | implemented | tested | exported_api | 1 |
@@ -1160,15 +1153,15 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | xy.density.persp | gamlss.ggplots | xy_density_persp | public_api | implemented | tested | exported_api | 1 |
 | xy_ECDF_contour | gamlss.ggplots | xy_ECDF_contour | public_api | implemented | tested | exported_api | 2 |
 | xy_ECDF_hist | gamlss.ggplots | xy_ECDF_hist | public_api | implemented | tested | exported_api | 1 |
-| xy_density | gamlss.ggplots | - | missing | missing | unverified | not_available | 1 |
-| xy_density_plain | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| xy_hist | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| xy_density | gamlss.ggplots | xy_density | public_api | implemented | tested | exported_api | 2 |
+| xy_density_plain | gamlss.ggplots | xy_density_plain | public_api | implemented | tested | exported_api | 1 |
+| xy_hist | gamlss.ggplots | xy_hist | public_api | implemented | tested | exported_api | 1 |
 | xy_hist_kde2d | gamlss.ggplots | xy_hist_kde2d | public_api | implemented | tested | exported_api | 1 |
-| xy_median | gamlss.ggplots | xy_median | public_api | implemented | tested | exported_api | 1 |
-| xy_pit_density | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| xy_pit_hist | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| xy_pit_scatter | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| xy_scatter | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| xy_median | gamlss.ggplots | xy_median | public_api | implemented | tested | exported_api | 2 |
+| xy_pit_density | gamlss.ggplots | xy_pit_density | public_api | implemented | tested | exported_api | 1 |
+| xy_pit_hist | gamlss.ggplots | xy_pit_hist | public_api | implemented | tested | exported_api | 1 |
+| xy_pit_scatter | gamlss.ggplots | xy_pit_scatter | public_api | implemented | tested | exported_api | 1 |
+| xy_scatter | gamlss.ggplots | xy_scatter | public_api | implemented | tested | exported_api | 1 |
 | y_acf | gamlss.ggplots | y_acf | public_api | implemented | tested | exported_api | 1 |
 | y_dots | gamlss.ggplots | y_dots | public_api | implemented | tested | exported_api | 1 |
 | y_ecdf | gamlss.ggplots | y_ecdf | public_api | implemented | tested | exported_api | 1 |
@@ -1312,7 +1305,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 
 ## Python-only public exports
 
-380 names exported from `omnilss.__all__` have no R counterpart; they are Python-side additions (dataclasses, backends, utilities), not coverage gaps. The JSON artifact lists them all.
+386 names exported from `omnilss.__all__` have no R counterpart; they are Python-side additions (dataclasses, backends, utilities), not coverage gaps. The JSON artifact lists them all.
 
 - `AIC`
 - `AcfData`
@@ -1354,4 +1347,4 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 - `ChooseDistOrderRow`
 - `ChooseDistPredResult`
 - `ChooseDistResult`
-- ... 340 more in the JSON artifact
+- ... 346 more in the JSON artifact
