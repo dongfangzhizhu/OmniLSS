@@ -350,6 +350,12 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
   `parity` 从 `capability:validated` 升 `golden:validated`、`admission` 从 `blocked` 升 `production_safe`。
 - 目标：M1 前把 `golden:validated` 从 34、production_safe 从 5 提升一个数量级；
   无 R 结果的族只能标 `smoke-only`。
+- **进展（D2.227）**：第一批高频族 RS-fit golden 落地
+  （WEI/LOGNO/EXP/GEOM/IGAMMA/NO2，`regenerated/` + `manifest_template.cases`），
+  `golden:validated` **34→58**（+24 = 6 族 × 4 个 dpqr 符号；族构造器不计）。
+  两侧 n.cyc=100 对齐到共同最优点；TF/SHASH/SN1/ZIP/DEL/SIMPLEX/BCCG 在 n.cyc=100
+  下仍有平坦 nu/tau 脊导致的不同驻点，**不晋级**（不用近似 deviance 掩盖系数分歧）。
+  `production_safe` 仍 5（需单独准入评审）；newdata/序列化/收敛诊断 schema 属后续批次。
 
 ### P2：收敛 / 拟合轨迹缺陷收口
 

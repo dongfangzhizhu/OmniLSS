@@ -88,5 +88,71 @@
     "gamlss_version": "5.5.0",
     "gamlss_dist_version": "6.1.1",
     "content_hash": "8535d394"
+  },
+  "wei_y_x_seed_20261115": {
+    "family": "WEI",
+    "formula": "y ~ x",
+    "seed": 20261115,
+    "n": 100,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "70ef2052",
+    "n_cyc": 100
+  },
+  "logno_y_x_seed_20261116": {
+    "family": "LOGNO",
+    "formula": "y ~ x",
+    "seed": 20261116,
+    "n": 90,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "f878aa4a",
+    "n_cyc": 100
+  },
+  "exp_y_x_seed_20261117": {
+    "family": "EXP",
+    "formula": "y ~ x",
+    "seed": 20261117,
+    "n": 90,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "4a754789",
+    "n_cyc": 100
+  },
+  "geom_y_x_seed_20261118": {
+    "family": "GEOM",
+    "formula": "y ~ x",
+    "seed": 20261118,
+    "n": 120,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "6f6444e6",
+    "n_cyc": 100
+  },
+  "igamma_y_x_seed_20261119": {
+    "family": "IGAMMA",
+    "formula": "y ~ x",
+    "seed": 20261119,
+    "n": 90,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "23ec6153",
+    "n_cyc": 100
+  },
+  "no2_y_x_seed_20261120": {
+    "family": "NO2",
+    "formula": "y ~ x",
+    "seed": 20261120,
+    "n": 90,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "f9065f11",
+    "n_cyc": 100
   }
 }

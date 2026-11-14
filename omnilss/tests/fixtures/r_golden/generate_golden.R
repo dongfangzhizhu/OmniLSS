@@ -28,7 +28,18 @@ cases <- list(
   list(case = "nbi_y_x_seed_20260810", family = "NBI", formula = "y ~ x", seed = 20260810, n = 100),
   list(case = "be_y_x_seed_20260811",  family = "BE",  formula = "y ~ x", seed = 20260811, n = 90),
   list(case = "zaga_y_x_seed_20260812", family = "ZAGA", formula = "y ~ x", seed = 20260812, n = 120),
-  list(case = "gu_y_x_seed_20260813",  family = "GU",  formula = "y ~ x", seed = 20260813, n = 100)
+  list(case = "gu_y_x_seed_20260813",  family = "GU",  formula = "y ~ x", seed = 20260813, n = 100),
+  # D2.227 / P1: high-frequency families promoted to golden evidence.  Both
+  # sides run n.cyc = 100 here so they reach the same optimum: at the default
+  # budget the coefficient gaps for WEI/GEOM/NO2/IGAMMA sat above 2e-4 purely
+  # because R stopped earlier on a near-flat ridge, not because the densities
+  # differ (deviance matched to ~1e-8 in every case).
+  list(case = "wei_y_x_seed_20261115",    family = "WEI",    formula = "y ~ x", seed = 20261115, n = 100, n_cyc = 100),
+  list(case = "logno_y_x_seed_20261116",  family = "LOGNO",  formula = "y ~ x", seed = 20261116, n = 90,  n_cyc = 100),
+  list(case = "exp_y_x_seed_20261117",    family = "EXP",    formula = "y ~ x", seed = 20261117, n = 90,  n_cyc = 100),
+  list(case = "geom_y_x_seed_20261118",   family = "GEOM",   formula = "y ~ x", seed = 20261118, n = 120, n_cyc = 100),
+  list(case = "igamma_y_x_seed_20261119", family = "IGAMMA", formula = "y ~ x", seed = 20261119, n = 90,  n_cyc = 100),
+  list(case = "no2_y_x_seed_20261120",    family = "NO2",    formula = "y ~ x", seed = 20261120, n = 90,  n_cyc = 100)
 )
 
 # ---- helpers ---------------------------------------------------------------
@@ -63,6 +74,24 @@ make_data <- function(seed, n, family) {
   } else if (family == "GU") {
     mu <- 1.0 + 0.5 * x
     y <- rGU(n, mu = mu, sigma = 0.8)
+  } else if (family == "WEI") {
+    mu <- exp(0.3 + 0.3 * x)
+    y <- rWEI(n, mu = mu, sigma = 1.2)
+  } else if (family == "LOGNO") {
+    mu <- exp(1.0 + 0.3 * x)
+    y <- rLOGNO(n, mu = mu, sigma = 0.4)
+  } else if (family == "EXP") {
+    mu <- exp(0.5 + 0.3 * x)
+    y <- rEXP(n, mu = mu)
+  } else if (family == "GEOM") {
+    mu <- exp(0.8 + 0.2 * x)
+    y <- rGEOM(n, mu = mu)
+  } else if (family == "IGAMMA") {
+    mu <- exp(0.6 + 0.3 * x)
+    y <- rIGAMMA(n, mu = mu, sigma = 0.5)
+  } else if (family == "NO2") {
+    mu <- 1.0 + 0.4 * x
+    y <- rNO2(n, mu = mu, sigma = 0.6)
   } else {
     stop("unknown family ", family)
   }
@@ -93,8 +122,9 @@ for (c in cases) {
   df <- data.frame(y = dat$y, x = dat$x)
 
   fam <- gamlss.dist::gamlss.family(c$family)
-  fit <- gamlss(as.formula(c$formula), family = fam, data = df,
-                control = gamlss.control(trace = FALSE))
+  ctrl <- if (is.null(c$n_cyc)) gamlss.control(trace = FALSE)
+          else gamlss.control(trace = FALSE, n.cyc = c$n_cyc)
+  fit <- gamlss(as.formula(c$formula), family = fam, data = df, control = ctrl)
 
   mu_coef <- as.numeric(coef(fit, "mu"))
   expected <- list(
@@ -117,13 +147,14 @@ for (c in cases) {
     data = list(x = dat$x, y = dat$y),
     expected = expected
   )
+  if (!is.null(c$n_cyc)) payload$n_cyc <- c$n_cyc
 
   json_text <- toJSON(payload, digits = 17, auto_unbox = TRUE)
   fpath <- file.path(out_dir, paste0(c$case, ".json"))
   writeLines(json_text, fpath)
   message("wrote ", fpath)
 
-  manifest[[c$case]] <- list(
+  entry <- list(
     family = c$family,
     formula = c$formula,
     seed = c$seed,
@@ -133,6 +164,8 @@ for (c in cases) {
     gamlss_dist_version = as.character(packageVersion("gamlss.dist")),
     content_hash = content_hash(json_text)
   )
+  if (!is.null(c$n_cyc)) entry$n_cyc <- c$n_cyc
+  manifest[[c$case]] <- entry
 }
 
 manifest_path <- file.path(out_dir, "manifest.json")

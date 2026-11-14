@@ -36,6 +36,12 @@
     "nbi_y_x_seed_20260810": {"kind": "fitting"},
     "be_y_x_seed_20260811": {"kind": "fitting"},
     "zaga_y_x_seed_20260812": {"kind": "fitting"},
-    "gu_y_x_seed_20260813": {"kind": "fitting"}
+    "gu_y_x_seed_20260813": {"kind": "fitting"},
+    "wei_y_x_seed_20261115": {"kind": "fitting"},
+    "logno_y_x_seed_20261116": {"kind": "fitting"},
+    "exp_y_x_seed_20261117": {"kind": "fitting"},
+    "geom_y_x_seed_20261118": {"kind": "fitting"},
+    "igamma_y_x_seed_20261119": {"kind": "fitting"},
+    "no2_y_x_seed_20261120": {"kind": "fitting"}
   }
 }

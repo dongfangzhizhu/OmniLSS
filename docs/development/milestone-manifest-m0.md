@@ -1,12 +1,12 @@
 # Milestone M0 manifest (v0.4.0)
 
-- generated: 2026-11-14T23:12:05Z
-- source commit: 2b85b5929c52fae4f0df1ca481e36da0e8063a44 (branch main)
+- generated: 2026-11-14T23:19:56Z
+- source commit: 0167d9b407e12dbf9fbf05949ee8612cede80a9e (branch main)
 - environment pinned: True
 - python 3.10.19 / jax 0.6.2 (x64=True) / numpy 2.2.6 / scipy 1.15.3
 - R: R version 4.6.0 (2026-04-24 ucrt) / gamlss 5.5.0 / gamlss.dist 6.1.1
 - coverage: missing=173 matched=907 (diff ok=True)
-- seeds: be_y_x_seed_20260811=20260811, bi_y_x_seed_20260809=20260809, ga_y_x_seed_20260525=20260525, gu_y_x_seed_20260813=20260813, ig_y_x_seed_20260522=20260522, nbi_y_x_seed_20260810=20260810, no_y_x_seed_20260524=20260524, po_y_x_seed_20260523=20260523, zaga_y_x_seed_20260812=20260812
+- seeds: be_y_x_seed_20260811=20260811, bi_y_x_seed_20260809=20260809, exp_y_x_seed_20261117=20261117, ga_y_x_seed_20260525=20260525, geom_y_x_seed_20261118=20261118, gu_y_x_seed_20260813=20260813, ig_y_x_seed_20260522=20260522, igamma_y_x_seed_20261119=20261119, logno_y_x_seed_20261116=20261116, nbi_y_x_seed_20260810=20260810, no2_y_x_seed_20261120=20261120, no_y_x_seed_20260524=20260524, po_y_x_seed_20260523=20260523, wei_y_x_seed_20261115=20261115, zaga_y_x_seed_20260812=20260812
 - tolerances: {'default': 1e-06, 'fitting': 1e-06, 'dpqr': 1e-10}
 
 | gate | result | mode |
