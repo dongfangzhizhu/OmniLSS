@@ -201,6 +201,21 @@ from .bivar_grid import (
     xy_density_persp,
     xy_hist_kde2d,
 )
+from .copula_xy import (
+    DensityData,
+    HistogramData,
+    PITScores,
+    ScatterData,
+    hdr50_level,
+    pit_scores,
+    xy_density,
+    xy_density_plain,
+    xy_hist,
+    xy_pit_density,
+    xy_pit_hist,
+    xy_pit_scatter,
+    xy_scatter,
+)
 from .ecdf_bands import EcdfBand, EcdfData, y_ecdf
 from .pcr import SVDResult, getSVD, which_Data_Corr
 from .smoother_fits import SmootherFit, gamlss_cs, gamlss_cy, gamlss_pb, gamlss_ps
@@ -1203,6 +1218,20 @@ __all__ = [
     "xy_density_persp",
     "xy_hist_kde2d",
     "xy_ECDF_hist",
+    # ── gamlss.ggplots copula xy_* scatter / PIT / hist / density data ──
+    "PITScores",
+    "ScatterData",
+    "HistogramData",
+    "DensityData",
+    "pit_scores",
+    "hdr50_level",
+    "xy_scatter",
+    "xy_pit_scatter",
+    "xy_hist",
+    "xy_pit_hist",
+    "xy_density",
+    "xy_density_plain",
+    "xy_pit_density",
     # ── gamlss.ggplots ECDF non-parametric confidence bands ──
     "EcdfBand",
     "EcdfData",

@@ -30,10 +30,13 @@ three ``xy.density.*`` likewise compute identical grids.  ``n`` defaults to
 100 for ``bivar.fun.*``.  ``as.numeric`` / ``as.vector`` on an R matrix flattens
 column-major (``ravel(order="F")`` in NumPy).
 
-The siblings ``bivar_pdf`` / ``bivar_fun`` / ``bivar_fun_plotly`` / ``xy_hist`` /
-``xy_density`` (ggplot2 bin2d / stat_density_2d) are intentionally NOT ported --
-their binning/stat layers are not pure numeric kernels; see the module tests for
-the boundary.
+The siblings ``bivar_pdf`` / ``bivar_fun`` / ``bivar_fun_plotly``
+(ggplot2/plotly stacks) are intentionally NOT ported here -- they need external
+plotting stacks.  The underscore-named ``xy_hist`` / ``xy_density`` (and their
+``xy_pit_*`` / ``xy_scatter`` variants) ARE ported in
+:mod:`omnilss.copula_xy`, which returns their pure plot-data (PIT transform /
+50% HDR grid) while leaving the ggplot2 bin/KDE stat layers to the plotting
+stack.  See that module's tests for the boundary.
 """
 from __future__ import annotations
 
