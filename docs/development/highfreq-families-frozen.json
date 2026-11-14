@@ -1,0 +1,235 @@
+{
+  "counts": {
+    "excluded": 11,
+    "pending": 9,
+    "promoted": 20,
+    "total_validated": 40
+  },
+  "generated_at_utc": "2026-11-14T23:39:55Z",
+  "purpose": "P1-1 frozen high-frequency family list: every r_consistency-validated family is classified promoted (has golden), pending (not probed), or excluded (probed, rejected with a reason). Fail-closed on unclassified.",
+  "schema_version": 1,
+  "source_commit": "fc36e53a6bc6ed4d8e3ea774a4ce03143cf473e5",
+  "sources": {
+    "golden_manifest": "omnilss/tests/fixtures/r_golden/regenerated/manifest.json",
+    "validated_source": "omnilss.family_capabilities._R_CONSISTENCY_EVIDENCE"
+  },
+  "tiers": {
+    "excluded": [
+      {
+        "code": "unstable_seed",
+        "family": "BCCG",
+        "note": "2e-3..3e-1 coefficient gap across seeds; one seed jumped to another optimum."
+      },
+      {
+        "code": "coefficient_gap",
+        "family": "DEL",
+        "note": "sigma gap ~5e-2 and nu ~1.3e1 at n.cyc=100."
+      },
+      {
+        "code": "no_r_reference",
+        "family": "DELAPORT",
+        "note": "installed gamlss.dist 6.1.1 has no DELAPORT family / r function."
+      },
+      {
+        "code": "diverged",
+        "family": "GT",
+        "note": "R and our fit diverged at n.cyc=100 (mu gap ~8e7)."
+      },
+      {
+        "code": "flat_nu_tau_ridge",
+        "family": "JSUo",
+        "note": "coefficient gap ~5e-3 at n.cyc=100; 4-parameter heavy-tail ridge."
+      },
+      {
+        "code": "flat_nu_tau_ridge",
+        "family": "SHASH",
+        "note": "4-parameter flat ridge; coefficient gap ~1e-1 while deviance matched."
+      },
+      {
+        "code": "coefficient_gap",
+        "family": "SIMPLEX",
+        "note": "coefficient gap ~1e-3 at n.cyc=100."
+      },
+      {
+        "code": "flat_nu_ridge",
+        "family": "SN1",
+        "note": "nu ridge; coefficient gap ~8e-2 at n.cyc=100."
+      },
+      {
+        "code": "flat_nu_tau_ridge",
+        "family": "TF",
+        "note": "n.cyc=100 leaves a large coefficient gap from a different local optimum; deviance matched."
+      },
+      {
+        "code": "coefficient_gap",
+        "family": "ZIP",
+        "note": "sigma/nu gap ~2e-3 at n.cyc=100 on the probe sample."
+      },
+      {
+        "code": "unstable_seed",
+        "family": "ZIPF",
+        "note": "2/3 seeds pass 2e-4; third mu gap 7.7e-4 (no sigma in rZIPF)."
+      }
+    ],
+    "pending": [
+      {
+        "family": "BCPE",
+        "note": "four-parameter Box-Cox; expect a flat nu/tau ridge, probe at n.cyc>=500 first."
+      },
+      {
+        "family": "BCT",
+        "note": "four-parameter Box-Cox; same caution as BCPE."
+      },
+      {
+        "family": "IGA",
+        "note": "not_yet_probed"
+      },
+      {
+        "family": "LOGNO2",
+        "note": "R simulation needs a positive-mu parameterisation before probing."
+      },
+      {
+        "family": "NET",
+        "note": "not_yet_probed"
+      },
+      {
+        "family": "PARETO2",
+        "note": "probe sample produced extreme mu rejected by our validation; re-scale x."
+      },
+      {
+        "family": "ZABI",
+        "note": "needs the binomial two-column (bd) payload."
+      },
+      {
+        "family": "ZALG",
+        "note": "not probed yet."
+      },
+      {
+        "family": "ZIBI",
+        "note": "needs the binomial two-column (bd) payload."
+      }
+    ],
+    "promoted": [
+      {
+        "family": "BE",
+        "golden_cases": [
+          "be_y_x_seed_20260811"
+        ]
+      },
+      {
+        "family": "BEINF",
+        "golden_cases": [
+          "beinf_y_x_seed_20261122"
+        ]
+      },
+      {
+        "family": "BI",
+        "golden_cases": [
+          "bi_y_x_seed_20260809"
+        ]
+      },
+      {
+        "family": "EXP",
+        "golden_cases": [
+          "exp_y_x_seed_20261117"
+        ]
+      },
+      {
+        "family": "GA",
+        "golden_cases": [
+          "ga_y_x_seed_20260525"
+        ]
+      },
+      {
+        "family": "GEOM",
+        "golden_cases": [
+          "geom_y_x_seed_20261118"
+        ]
+      },
+      {
+        "family": "GU",
+        "golden_cases": [
+          "gu_y_x_seed_20260813"
+        ]
+      },
+      {
+        "family": "IG",
+        "golden_cases": [
+          "ig_y_x_seed_20260522"
+        ]
+      },
+      {
+        "family": "IGAMMA",
+        "golden_cases": [
+          "igamma_y_x_seed_20261119"
+        ]
+      },
+      {
+        "family": "LO",
+        "golden_cases": [
+          "lo_y_x_seed_20261121"
+        ]
+      },
+      {
+        "family": "LOGNO",
+        "golden_cases": [
+          "logno_y_x_seed_20261116"
+        ]
+      },
+      {
+        "family": "NBI",
+        "golden_cases": [
+          "nbi_y_x_seed_20260810"
+        ]
+      },
+      {
+        "family": "NBII",
+        "golden_cases": [
+          "nbii_y_x_seed_20261121"
+        ]
+      },
+      {
+        "family": "NO",
+        "golden_cases": [
+          "no_y_x_seed_20260524"
+        ]
+      },
+      {
+        "family": "NO2",
+        "golden_cases": [
+          "no2_y_x_seed_20261120"
+        ]
+      },
+      {
+        "family": "PE",
+        "golden_cases": [
+          "pe_y_x_seed_20261123"
+        ]
+      },
+      {
+        "family": "PO",
+        "golden_cases": [
+          "po_y_x_seed_20260523"
+        ]
+      },
+      {
+        "family": "RG",
+        "golden_cases": [
+          "rg_y_x_seed_20261122"
+        ]
+      },
+      {
+        "family": "WEI",
+        "golden_cases": [
+          "wei_y_x_seed_20261115"
+        ]
+      },
+      {
+        "family": "ZAGA",
+        "golden_cases": [
+          "zaga_y_x_seed_20260812"
+        ]
+      }
+    ]
+  }
+}

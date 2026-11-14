@@ -342,8 +342,11 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 
 ### P1：高频族证据晋级（把 125 个 experimental 变 validated）
 
-- 从 `_R_CONSISTENCY_EVIDENCE`（39 族）与三闸全绿族中，冻结一组高频族
-  （NO/GA/PO/BI/WEI/TF/NBI/ZIP/BCCG/BCPE/BCT/BE/IG/LOGNO/...）。
+- 从 `_R_CONSISTENCY_EVIDENCE` 与三闸全绿族中冻结高频族清单。**单一真源**：
+  `docs/development/highfreq-families-frozen.json`——按 promoted（有 golden）/
+  pending（未探）/ excluded（已探被拒，带 code+note）三层分类；
+  `tools/highfreq_family_freeze.py --check` fail-closed：每个 validated 族必须
+  恰好归入一层，新增 validated 族未分类即失败。
 - 每族补齐：R source map → d/p/q/r 固定点/边界/单调性/归一化/upper-tail/log-p →
   RS fit golden（系数/fitted/deviance/迭代/收敛原因）→ newdata 预测 → 序列化往返 → 服务 admission。
 - **验收**：`implementation_status` 升 `implemented`、`production_safe=validated`、
@@ -471,7 +474,13 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
 - [x] P0-6 每份覆盖报告显式标注 `gamlss2` out-of-scope（D2.221 完成：`tools/coverage_scope.py`
   单一真源，7 份报告全部带 scope 声明；`test_coverage_scope.py` 钉住；
   `generate_coverage_artifacts.py --date` + `coverage_diff_report.py → OK`）
-- [ ] P1-1 冻结高频族清单（从 39 个 r_consistency validated 族起步）
+- [x] P1-1 冻结高频族清单（D2.230 完成：`docs/development/highfreq-families-frozen.json`
+  把 `_R_CONSISTENCY_EVIDENCE` 的全部 validated 族分为 **promoted**（有 golden）/
+  **pending**（未探）/ **excluded**（已探被拒，每条带 code+note）三层，三层互斥、
+  并集等于 validated 集合（当次 20/9/11，合计 40，以工件为准）。`tools/highfreq_family_freeze.py`
+  `--check` fail-closed 并接入 `ci.yml`/`release.yml`；`test_highfreq_family_freeze.py`
+  8 例钉住分区/同步/门禁接线。注：本项原写的「39 族」按代码实测校正为 40，且不再
+  写死计数）
 - [x] P1-2 为高频族建立统一 RS fit golden（含收敛诊断 schema）与 newdata/序列化证据
   （D2.229 完成：20 个 golden fixture 统一含 RS-fit 系数/deviance + `convergence`
   {iter,converged,n_cyc} + `newdata` 5 点网格 + `predicted` response 尺度参数；
