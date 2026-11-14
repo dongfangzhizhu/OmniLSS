@@ -410,6 +410,15 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 每个里程碑必须有：固定 manifest（R/Python/JAX/NumPy/SciPy/x64 版本、源码 hash、seed、容差、命令）、
 `--require-r`、无隐性 skip、coverage diff、目标/相关 suite 与 collection 日志、可复现提交。
 
+**M0 状态（2026-11-15 达成）**：四门槛全绿，固定 manifest 由
+`tools/milestone_manifest.py` 生成并校验——`docs/development/milestone-manifest-m0.json`
+（+ `.md`）。5 道门禁（P0 全清 / 覆盖工件可重生成 / 分层 collection 0 错 0 skip /
+devcontainer 静态+fresh-clone 模拟 / golden gate `--require-r`=pinned）全 PASS；
+环境 pinned（Python 3.10 / JAX 0.6 x64 / R 4.6.0 / gamlss 5.5.0 / gamlss.dist 6.1.1）；
+seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --check`
+已接入 `ci.yml`（collection-gate）与 `release.yml`（pre-release-gate）。
+后续任何符号/测试变更须重生成覆盖工件与 manifest，否则门禁 fail（防漂移）。
+
 ### 22.5 立即执行的前十五项（backlog，按依赖排序）
 
 - [x] P0-1 修 `.codex/setup.sh` / devcontainer postCreate（D2.224 完成：根因是

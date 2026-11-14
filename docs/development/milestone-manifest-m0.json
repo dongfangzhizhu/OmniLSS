@@ -1,0 +1,124 @@
+{
+  "coverage": {
+    "ceiling_ok": true,
+    "command": "python tools/generate_coverage_artifacts.py --date <date>",
+    "current_counts": {
+      "compat_alias": 1,
+      "evidence_gap": 44,
+      "extra": 387,
+      "missing": 173,
+      "placeholder": 0
+    },
+    "diff_ok": true,
+    "provenance": {
+      "golden_manifest_sha256": "1502a1f0762b3553eac269c464c6e0d653cbdb0060ec66f7f9df3fb67c17c573",
+      "python_surface_sha256": "b52a50a5f9f6b95b8ef287a4f4d948f8ccfbc599a662083b9150bb9efb8d7594",
+      "r_namespace_sha256": "b51a29f54229ba5860387759ddf95f670613e80c1c86ccd16e2ed564bfbe1c2f",
+      "test_suite_sha256": "96df6c05d106b367e0c4cc832f3e9318beabac3bcea6175b8acf3c249954a52c"
+    },
+    "ratchet_ok": true,
+    "stats": {
+      "in_scope_exports": 1036,
+      "surface_matched": 907,
+      "surface_missing": 173
+    }
+  },
+  "environment": {
+    "jax": "0.6.2",
+    "jax_enable_x64": true,
+    "numpy": "2.2.6",
+    "python": "3.10.19",
+    "scipy": "1.15.3"
+  },
+  "environment_mismatches": [],
+  "environment_pinned_ok": true,
+  "gates": {
+    "coverage_regenerable": {
+      "command": "python tools/generate_symbol_coverage.py --check",
+      "mode": "--check executed",
+      "ok": true
+    },
+    "devcontainer": {
+      "evidence": [
+        "setup.sh present",
+        "setup.sh bundles R sources best-effort",
+        "Dockerfile does not COPY R/",
+        "gamlss installed via install.packages (online build)",
+        "devcontainer.json references setup.sh",
+        "devcontainer.gpu.json references setup.sh"
+      ],
+      "mode": "static + fresh-clone simulation (no docker in CI env)",
+      "ok": true
+    },
+    "golden_manifest_gate": {
+      "command": "python tools/golden_manifest_gate.py --require-r",
+      "label": "pinned",
+      "mode": "--require-r",
+      "ok": true,
+      "result": "OK"
+    },
+    "p0_clear": {
+      "checked": [
+        "P0-1",
+        "P0-2",
+        "P0-3",
+        "P0-4",
+        "P0-5",
+        "P0-6"
+      ],
+      "ok": true,
+      "open": []
+    },
+    "tiered_collection": {
+      "command": "python tools/tiered_collection.py --mode collect --strict-skips --json",
+      "ok": true,
+      "totals": {
+        "collected": 5350,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "tiers": 4
+      }
+    }
+  },
+  "generated_at_utc": "2026-11-14T23:12:05Z",
+  "milestone": "M0",
+  "notes": "M0 gate bundle per DEVELOPMENT_PLAN 22.4. Reproducibility is anchored by coverage provenance content hashes (HEAD-independent); source.commit is informational. Regenerate after any symbol/test change.",
+  "pinned_expected": {
+    "R_version_prefix": "R version 4.6.0",
+    "gamlss_dist_version": "6.1.1",
+    "gamlss_version": "5.5.0",
+    "jax_enable_x64": true,
+    "jax_version_prefix": "0.6",
+    "python_version_prefix": "3.10"
+  },
+  "r_environment": {
+    "available": true,
+    "gamlss_dist_version": "6.1.1",
+    "gamlss_version": "5.5.0",
+    "r_version": "R version 4.6.0 (2026-04-24 ucrt)"
+  },
+  "schema_version": 1,
+  "seeds": {
+    "be_y_x_seed_20260811": 20260811,
+    "bi_y_x_seed_20260809": 20260809,
+    "ga_y_x_seed_20260525": 20260525,
+    "gu_y_x_seed_20260813": 20260813,
+    "ig_y_x_seed_20260522": 20260522,
+    "nbi_y_x_seed_20260810": 20260810,
+    "no_y_x_seed_20260524": 20260524,
+    "po_y_x_seed_20260523": 20260523,
+    "zaga_y_x_seed_20260812": 20260812
+  },
+  "source": {
+    "branch": "main",
+    "commit": "2b85b5929c52fae4f0df1ca481e36da0e8063a44",
+    "dirty": true
+  },
+  "tolerances": {
+    "default": 1e-06,
+    "dpqr": 1e-10,
+    "fitting": 1e-06
+  },
+  "version": "0.4.0"
+}

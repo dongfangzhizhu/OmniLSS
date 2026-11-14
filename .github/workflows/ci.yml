@@ -115,6 +115,8 @@ jobs:
           path: tiered-collection.json
       - name: Golden manifest gate (D0.2, template/manifest validation only)
         run: python tools/golden_manifest_gate.py --check
+      - name: Milestone manifest gate (M0 evidence bundle in sync)
+        run: python tools/milestone_manifest.py --check
       - name: Symbol coverage artifact freshness (D0.1, needs vendored R/)
         if: hashFiles('R/gamlss/NAMESPACE') != ''
         run: python tools/generate_symbol_coverage.py --check
