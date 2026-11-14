@@ -40,6 +40,7 @@ def test_shard_env_strips_polluting_jax_x64_and_isolates_db():
     assert e0["FOO"] == "bar"  # unrelated env preserved
     assert base["JAX_ENABLE_X64"] == "true"  # caller's dict not mutated
     assert "shard-0" in e0["OMNILSS_MODEL_DB_PATH"]
+    assert e0["MPLBACKEND"] == "Agg"  # headless backend, matches ci.yml
     e1, _ = m.shard_env(1, ROOT / "tmp" / "full_baseline", base)
     assert e0["OMNILSS_MODEL_DB_PATH"] != e1["OMNILSS_MODEL_DB_PATH"]
 
@@ -62,10 +63,21 @@ def test_build_plan_is_deterministic_clean_and_complete(tmp_path: Path):
         assert e["n_files"] > 0
 
 
-def test_check_and_print_only_are_non_running():
+def test_check_and_print_only_are_non_running(tmp_path: Path):
     m = _load()
     assert m.main(["--shards", "4", "--check"]) == 0
-    assert m.main(["--shards", "4", "--print-only", "--out-dir", "tmp/full_baseline"]) == 0
+    # Use an isolated out_dir: --print-only must never touch a concurrent
+    # baseline's live DB files (they are locked on Windows -> WinError 32).
+    assert m.main(["--shards", "4", "--print-only", "--out-dir", str(tmp_path)]) == 0
+
+
+def test_print_only_never_deletes_existing_db_files(tmp_path: Path):
+    """Regression: --print-only once unlink()'d a live sqlite DB (WinError 32)."""
+    m = _load()
+    db = tmp_path / "model-db-shard-0.sqlite3"
+    db.write_text("live", encoding="utf-8")
+    assert m.main(["--shards", "4", "--print-only", "--out-dir", str(tmp_path)]) == 0
+    assert db.exists() and db.read_text(encoding="utf-8") == "live"
 
 
 def test_summarize_separates_timing_flaky_from_real_failures(tmp_path: Path):
@@ -137,7 +149,7 @@ def test_truncated_log_is_incomplete_not_a_false_green(tmp_path: Path):
     assert v["total_progress_fail_marks"] == 12
 
 
-def test_no_timeout_cap_is_default():
+def test_no_timeout_cap_is_default(tmp_path: Path):
     """The local-terminal runner must not self-terminate at 7200s."""
     m = _load()
     # Drive main() with --print-only (launches nothing) and capture stdout: it
@@ -146,11 +158,11 @@ def test_no_timeout_cap_is_default():
     import io
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
-        assert m.main(["--shards", "4", "--print-only", "--out-dir", "tmp/full_baseline"]) == 0
+        assert m.main(["--shards", "4", "--print-only", "--out-dir", str(tmp_path)]) == 0
     assert "timeout=no cap" in buf.getvalue()
     # and an explicit cap must be honored / reported
     buf2 = io.StringIO()
     with contextlib.redirect_stdout(buf2):
         assert m.main(["--shards", "4", "--print-only", "--timeout", "60",
-                       "--out-dir", "tmp/full_baseline"]) == 0
+                       "--out-dir", str(tmp_path)]) == 0
     assert "timeout=60s" in buf2.getvalue()

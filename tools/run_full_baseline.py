@@ -32,11 +32,13 @@ its 4 children and blocks until they are done, so there is exactly one process
 to wait for.  (It also works as a single background task in a SHORT, stable new
 session -- the D2.214 / 2026-11-10 recipe -- as long as no turn boundary occurs.)
 
-ENV DISCIPLINE: the ONLY override is ``OMNILSS_MODEL_DB_PATH``.  In particular
-``JAX_ENABLE_X64`` is stripped: exporting ``JAX_ENABLE_X64=true`` makes
-``tests/test_jax_config_isolation.py`` fail (it asserts the default is False/0)
--- an environment artifact, not a code regression.  The successful full5 /
-2026-11-10 baselines set nothing but the independent DB.
+ENV DISCIPLINE: ``JAX_ENABLE_X64`` is stripped (exporting it makes
+``tests/test_jax_config_isolation.py`` fail -- an environment artifact, not a
+code regression).  A headless ``MPLBACKEND=Agg`` is set to match ci.yml, so
+Tk-based plotting tests cannot hit a broken local Tcl/Tk.  Each shard also
+gets its own ``OMNILSS_MODEL_DB_PATH``.  The successful full5 / 2026-11-10
+baselines set only the independent DB; the two extra safeguards here are
+CI-aligned, not semantic changes.
 
 KNOWN FLAKY: ``test_performance_benchmarks.py`` / ``test_performance_snapshot_freeze.py``
 use 0.5s/1.0s wall-clock thresholds that fail under parallel load (machine-load
@@ -61,6 +63,9 @@ PYTEST_BASE = ("-m", "pytest")
 PYTEST_FLAGS = ("-q", "-W", "ignore", "-p", "no:cacheprovider", "--tb=line")
 #: env vars that must NOT be injected into a clean baseline child environment
 POLLUTING_ENV = ("JAX_ENABLE_X64",)
+#: headless matplotlib backend, matching ci.yml (3 jobs set MPLBACKEND: Agg).
+#: Without it, Tk-based plotting tests can fail with a broken local Tcl/Tk.
+FORCED_ENV = {"MPLBACKEND": "Agg"}
 #: test files whose failures are machine-load timing flaky, not correctness
 TIMING_FLAKY = ("test_performance_benchmarks.py", "test_performance_snapshot_freeze.py")
 PCT_RE = re.compile(r"\[\s*(\d+)%\]")
@@ -77,11 +82,16 @@ def _load_shards_module():
 
 
 def shard_env(index: int, out_dir: Path, base: dict | None = None) -> tuple[dict, list[str]]:
-    """Clean child env: copy base, strip polluting vars, set one private DB."""
+    """Clean child env: copy base, strip polluting vars, set one private DB.
+
+    Sets a headless matplotlib backend (FORCED_ENV) to match CI, but never
+    injects JAX_ENABLE_X64 (which would break test_jax_config_isolation.py).
+    """
     env = dict(os.environ if base is None else base)
     removed = [k for k in POLLUTING_ENV if k in env]
     for key in POLLUTING_ENV:
         env.pop(key, None)
+    env.update(FORCED_ENV)
     env["OMNILSS_MODEL_DB_PATH"] = str(out_dir / f"model-db-shard-{index}.sqlite3")
     return env, removed
 
@@ -223,9 +233,6 @@ def main(argv: list[str] | None = None) -> int:
 
     out_dir = args.out_dir if args.out_dir.is_absolute() else (ROOT / args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    # clear stale DB/log so a rerun cannot collide with a previous sqlite lock
-    for old in out_dir.glob("model-db-shard-*.sqlite3*"):
-        old.unlink(missing_ok=True)
 
     plan = build_plan(args.shards, out_dir, args.python)
     print(mod.manifest(files, args.shards))
@@ -239,6 +246,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.print_only:
         print("print-only: no suite run")
         return 0
+
+    # Clear stale DB/log ONLY now that we are about to launch child processes.
+    # --check/--print-only must never touch DB files: a full baseline may be
+    # running concurrently and those sqlite files are locked (WinError 32).
+    for old in out_dir.glob("model-db-shard-*.sqlite3*"):
+        old.unlink(missing_ok=True)
 
     # launch all shards; stdout goes straight to a file handle (real-time)
     running = []
