@@ -170,6 +170,7 @@ from .family_plots import (
     plotZAGA,
     plotZAIG,
 )
+from .family_curves import FamilyCurve, family_cdf, family_pdf
 from .copula_medians import ECDF_2D, median_cw, median_pc, median_sp, xy_median
 from .ggplots_diag import (
     AcfData,
@@ -1183,6 +1184,10 @@ __all__ = [
     "plotBEZI",
     "plotZAGA",
     "plotZAIG",
+    # ── gamlss.ggplots distribution-family pdf/cdf curves ──
+    "FamilyCurve",
+    "family_pdf",
+    "family_cdf",
     # ── gamlss.ggplots copula medians / 2-D ECDF ──
     "median_cw",
     "median_pc",
