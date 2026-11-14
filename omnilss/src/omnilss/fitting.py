@@ -650,14 +650,14 @@ def _apply_method_step(
     proposed_beta: np.ndarray,
     method_name: str,
 ) -> np.ndarray:
-    """Apply method-specific coefficient damping.
+    """Apply coefficient damping for the inline IRLS path only.
 
     Notes
     -----
     - RS: full step (no damping)
-    - MIXED: 75% step (damped RS, experimental)
-    - CG path: handled separately via ``fitting_cg.fit_cg()``;
-      this branch applies a 50% damped fallback for the legacy inline path only.
+    - MIXED: R-compatible ``RS(n1) -> CG(n2)`` via ``mixed_fit`` (P0-3); it is
+      dispatched before this inline loop and is NOT a damped RS step.
+    - CG: 50% damped fallback for the legacy inline path only.
     """
 
     return _apply_method_step_shared(previous_beta, proposed_beta, method_name)

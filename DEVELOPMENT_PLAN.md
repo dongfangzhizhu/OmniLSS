@@ -424,7 +424,14 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
   注：原条目「标注 146/125/20/1 与 0 placeholder」是 2026-09 的旧快照，现权威值
   `surface matched 898 / missing 182`；按 P0-6 纪律**不再写死任何会漂移的计数**，
   一律指向 `r-symbol-coverage.json` / `symbol-coverage-diff.json`。
-- [ ] P0-3 `MIXED = RS(n1)→CG(n2)` 兼容模式或改名隔离
+- [x] P0-3 `MIXED = RS(n1)→CG(n2)` 兼容模式或改名隔离（D2.225 完成：`mixed_fit`
+  早已实现 R-compatible `RS(n1)→CG(n2)`，本批补齐验收标准缺的**活 R 数值对照**——
+  `mixed()` 是 `gamlss()` 内部局部函数（`gamlss-5.R:163`），需字面 `method=mixed(n1,n2)`
+  调用；`test_mixed_r_parity.py` 12 例对活 R 4.6.0/gamlss 5.5.0 golden 验
+  mu/sigma 系数、deviance、fitted values（差距 mu≤2.2e-5 / sigma≤1.6e-4，
+  远严于既有 fit-parity 容差）；清理 `_apply_method_step` 的死代码
+  `MIXED→0.75 damped RS` 分支与两处过时 docstring，统一语义；
+  44 例既有 MIXED 回归 + golden gate 全过。已知边界 `mixed(0,n2)` 单独处置）
 - [x] P0-4 CI 加 lint/type + 8 分片发布门禁（D2.223 完成：`tools/pytest_shards.py` 确定性
   8 分片工具 + `release.yml` 的 `sharded-suite` matrix 发布门禁（独立 DB / tee 实时落盘 /
   静态门禁组 / 单进程性能基准复核）+ `publish-pypi needs` 全门禁化；

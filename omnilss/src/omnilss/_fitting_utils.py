@@ -252,10 +252,14 @@ def _weighted_least_squares(
 def _apply_method_step(
     previous_beta: np.ndarray, proposed_beta: np.ndarray, method_name: str
 ) -> np.ndarray:
+    """Apply coefficient damping for the inline IRLS path only.
+
+    Public ``method="MIXED"`` is R-compatible ``RS(n1) -> CG(n2)`` and is
+    dispatched to ``mixed_fit`` before the inline loop ever runs (P0-3); it is
+    NOT a damped RS step.  ``CG`` here is only the legacy inline fallback.
+    """
     if method_name == "CG":
         return previous_beta + 0.5 * (proposed_beta - previous_beta)
-    if method_name == "MIXED":
-        return previous_beta + 0.75 * (proposed_beta - previous_beta)
     return proposed_beta
 
 
