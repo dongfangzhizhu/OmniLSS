@@ -108,3 +108,49 @@ def test_summarize_ok_when_all_shards_clean(tmp_path: Path):
     v = m.summarize(plan)
     assert v["result"] == "OK"
     assert v["total_real_failures"] == 0 and v["total_timing_flaky"] == 0
+
+
+def test_truncated_log_is_incomplete_not_a_false_green(tmp_path: Path):
+    """A timeout-killed shard must NEVER be read as 'zero failures'.
+
+    Regression for the first real run: default --timeout 7200s terminated all 4
+    shards mid-run. Logs had progress F marks but no FAILED summary lines, and
+    the old summarize() reported failed=[] / REVIEW -- a misleading result.
+    """
+    m = _load()
+    truncated = tmp_path / "shard0.log"
+    truncated.write_text(
+        "........................................................................ [ 48%]\n"
+        "...............................................................FFFFFFFFF [ 55%]\n"
+        "FFF..................................................................... [ 59%]\n"
+        "...........\n",  # killed, never reached 100%, no short-test-summary
+        encoding="utf-8",
+    )
+    plan = [{"index": 0, "n_files": 138, "rc": 1, "log": truncated}]
+    v = m.summarize(plan)
+    assert v["result"] == "INCOMPLETE"          # not OK, not merely REVIEW
+    assert v["any_incomplete"] is True
+    assert v["shards"][0]["incomplete"] is True
+    assert v["shards"][0]["reached_100pct"] is False
+    assert v["shards"][0]["failed"] == []       # summary never printed
+    assert v["shards"][0]["progress_fail_marks"] == 12  # 9 + 3 F marks
+    assert v["total_progress_fail_marks"] == 12
+
+
+def test_no_timeout_cap_is_default():
+    """The local-terminal runner must not self-terminate at 7200s."""
+    m = _load()
+    # Drive main() with --print-only (launches nothing) and capture stdout: it
+    # prints "timeout=no cap" when the default (0) is in effect.
+    import contextlib
+    import io
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        assert m.main(["--shards", "4", "--print-only", "--out-dir", "tmp/full_baseline"]) == 0
+    assert "timeout=no cap" in buf.getvalue()
+    # and an explicit cap must be honored / reported
+    buf2 = io.StringIO()
+    with contextlib.redirect_stdout(buf2):
+        assert m.main(["--shards", "4", "--print-only", "--timeout", "60",
+                       "--out-dir", "tmp/full_baseline"]) == 0
+    assert "timeout=60s" in buf2.getvalue()

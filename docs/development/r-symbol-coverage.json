@@ -26,7 +26,7 @@
   "provenance": {
     "r_namespace_sha256": "b51a29f54229ba5860387759ddf95f670613e80c1c86ccd16e2ed564bfbe1c2f",
     "python_surface_sha256": "f9c7d17e1484972790ee693e9786811e5b63a127020037ea7a977f05de760d5d",
-    "test_suite_sha256": "6268af6d6574684465f241cb96176f524730e78c4284a552ff2ef3af10ae0686",
+    "test_suite_sha256": "fbf7da5027d08c5f1b5131e90809c83acdb2af8ee33efa3028bee2c0f62bb6d9",
     "golden_manifest_sha256": "1502a1f0762b3553eac269c464c6e0d653cbdb0060ec66f7f9df3fb67c17c573"
   },
   "layer_legend": {

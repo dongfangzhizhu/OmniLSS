@@ -3,10 +3,15 @@
 Run it in a LOCAL TERMINAL (not through an agent turn) and keep that terminal
 open until it prints the final verdict::
 
-    python tools/run_full_baseline.py
+    python tools/run_full_baseline.py                    # no timeout cap; wait it out
     python tools/run_full_baseline.py --shards 8          # same as CI gate
     python tools/run_full_baseline.py --print-only        # show commands, run nothing
     python tools/run_full_baseline.py --check             # shard invariants only
+
+By default there is NO wall-clock cap (4 whole-shard processes on one box can
+exceed 2h).  An earlier version capped at 7200s, which terminated all four
+shards mid-run and produced a misleading "zero failures / REVIEW" verdict;
+the runner now reports such a run as INCOMPLETE (never a valid baseline).
 
 What it does:
 
@@ -123,33 +128,72 @@ def _progress(log: Path) -> str:
     return f"{pcts[-1]}%" if pcts else "?"
 
 
+def _progress_fail_marks(text: str) -> int:
+    """Count ``F`` marks on progress lines (``....F...[55%]``).
+
+    A killed/terminated pytest prints its progress dots (including failure
+    ``F`` marks) but never the ``short test summary info`` FAILED lines.  These
+    marks are the only evidence that failures happened at all -- without them a
+    truncated log would be misread as "zero failures".
+    """
+    marks = 0
+    for line in text.splitlines():
+        if PCT_RE.search(line):
+            marks += line.split("[", 1)[0].count("F")
+    return marks
+
+
 def summarize(plan: list[dict]) -> dict:
-    """Parse each log: rc, 100% reached, FAILED/ERROR lines, timing classification."""
+    """Parse each log: rc, 100% reached, FAILED/ERROR lines, timing, completeness.
+
+    ``INCOMPLETE`` is deliberately distinct from ``REVIEW``: when a shard was
+    terminated before reaching 100% (timeout / Ctrl-C / killed process), its
+    failure list is NOT trustworthy -- reporting ``failed=[]`` as a clean result
+    would be a false green.  Incomplete results can never be a baseline.
+    """
     shards = []
     for entry in plan:
         text = entry["log"].read_text(encoding="utf-8", errors="replace") if entry["log"].exists() else ""
         failed = [l for l in text.splitlines() if l.startswith("FAILED") or l.startswith("ERROR")]
         timing = [l for l in failed if any(f in l for f in TIMING_FLAKY)]
         real = [l for l in failed if l not in timing]
+        reached = "[100%]" in text
+        rc = entry.get("rc")
+        progress_f = _progress_fail_marks(text)
+        # bad rc with no summary lines => process was killed before it could
+        # print "short test summary info"; not a clean zero-failure run.
+        killed_without_summary = rc not in (0, None) and not failed
+        incomplete = not reached or killed_without_summary
         shards.append({
             "index": entry["index"],
             "n_files": entry["n_files"],
-            "rc": entry.get("rc"),
-            "reached_100pct": "[100%]" in text,
+            "rc": rc,
+            "reached_100pct": reached,
+            "incomplete": incomplete,
+            "progress_fail_marks": progress_f,
             "failed": failed,
             "timing_flaky": timing,
             "real_failures": real,
             "log": entry["log"].as_posix(),
         })
+    any_incomplete = any(s["incomplete"] for s in shards)
     ok = all(
-        s["rc"] == 0 and not s["failed"] and s["reached_100pct"]
+        s["rc"] == 0 and not s["failed"] and s["reached_100pct"] and not s["incomplete"]
         for s in shards
     )
+    if any_incomplete:
+        result = "INCOMPLETE"
+    elif ok:
+        result = "OK"
+    else:
+        result = "REVIEW"
     return {
         "shards": shards,
         "total_real_failures": sum(len(s["real_failures"]) for s in shards),
         "total_timing_flaky": sum(len(s["timing_flaky"]) for s in shards),
-        "result": "OK" if ok else "REVIEW",
+        "total_progress_fail_marks": sum(s["progress_fail_marks"] for s in shards),
+        "any_incomplete": any_incomplete,
+        "result": result,
     }
 
 
@@ -158,7 +202,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--shards", type=int, default=4)
     p.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
     p.add_argument("--python", default=None)
-    p.add_argument("--timeout", type=float, default=7200.0, help="per-run wall-clock cap (seconds)")
+    p.add_argument(
+        "--timeout", type=float, default=0.0,
+        help="per-run wall-clock cap in seconds; 0 (default) = no cap. A local "
+             "terminal run must NOT cap itself: 4 whole-shard processes sharing "
+             "one machine routinely exceed 2h. Only set a cap when you actually "
+             "want an automatic abort.",
+    )
     p.add_argument("--print-only", action="store_true", help="print commands, run nothing")
     p.add_argument("--check", action="store_true", help="verify shard invariants, run nothing")
     args = p.parse_args(argv)
@@ -179,7 +229,8 @@ def main(argv: list[str] | None = None) -> int:
 
     plan = build_plan(args.shards, out_dir, args.python)
     print(mod.manifest(files, args.shards))
-    print(f"cwd={ROOT.as_posix()}  out_dir={out_dir.as_posix()}  timeout={args.timeout:.0f}s")
+    timeout_desc = "no cap" if args.timeout <= 0 else f"{args.timeout:.0f}s"
+    print(f"cwd={ROOT.as_posix()}  out_dir={out_dir.as_posix()}  timeout={timeout_desc}")
     for e in plan:
         print(f"  [{e['index']}] {e['n_files']:3d} files -> {e['log'].as_posix()}")
         print(f"       cmd: {' '.join(e['cmd'])}")
@@ -200,14 +251,14 @@ def main(argv: list[str] | None = None) -> int:
         running.append((e, proc, fh))
     print(f"\nlaunched {len(running)} shards; waiting in foreground (Ctrl-C aborts)...")
 
-    deadline = time.monotonic() + args.timeout
+    deadline = (time.monotonic() + args.timeout) if args.timeout > 0 else None
     try:
         while True:
             alive = [(e, proc, fh) for (e, proc, fh) in running if proc.poll() is None]
             if not alive:
                 break
-            if time.monotonic() > deadline:
-                print("TIMEOUT: terminating remaining shards")
+            if deadline is not None and time.monotonic() > deadline:
+                print("TIMEOUT: terminating remaining shards (will be reported INCOMPLETE)")
                 for (e, proc, fh) in alive:
                     proc.terminate()
                 break
@@ -232,14 +283,28 @@ def main(argv: list[str] | None = None) -> int:
     )
     print("\n==================== full baseline verdict ====================")
     for s in verdict["shards"]:
-        flag = "OK" if s["rc"] == 0 and not s["failed"] and s["reached_100pct"] else "CHECK"
+        if s["incomplete"]:
+            flag = "INCOMPLETE"
+        elif s["rc"] == 0 and not s["failed"] and s["reached_100pct"]:
+            flag = "OK"
+        else:
+            flag = "CHECK"
         print(f"  shard{s['index']}: rc={s['rc']} 100%={s['reached_100pct']} "
-              f"files={s['n_files']} failed={len(s['failed'])} [{flag}]  {s['log']}")
+              f"files={s['n_files']} failed={len(s['failed'])} "
+              f"progress_F={s['progress_fail_marks']} [{flag}]  {s['log']}")
         for line in s["failed"]:
             print(f"      {line}")
     print(f"  real failures={verdict['total_real_failures']}  "
-          f"timing flaky={verdict['total_timing_flaky']}")
+          f"timing flaky={verdict['total_timing_flaky']}  "
+          f"progress_F_marks={verdict['total_progress_fail_marks']}")
     print(f"  result: {verdict['result']}")
+    if verdict["any_incomplete"]:
+        print("  INCOMPLETE: one or more shards were terminated before 100%. This is "
+              "NOT a valid baseline -- failure lines were never printed. "
+              "Re-run with no timeout cap (default) and let every shard finish.")
+    if verdict["total_progress_fail_marks"] and not verdict["total_real_failures"]:
+        print("  NOTE: progress bars show failure (F) marks but no FAILED summary "
+              "lines -- the process was killed before pytest could print details.")
     if verdict["total_timing_flaky"]:
         print("  timing flaky -> re-run alone on an idle machine:")
         print("    python -m pytest omnilss/tests/test_performance_benchmarks.py -q -W ignore -p no:cacheprovider")
