@@ -18,11 +18,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 175,
+    "missing": 173,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 386
+    "extra": 387
   },
   "symbols": {
     "missing": [
@@ -55,8 +55,6 @@
       "gamlss.ggplots::centile_colour_both",
       "gamlss.ggplots::centile_colour_half",
       "gamlss.ggplots::centile_gray_both",
-      "gamlss.ggplots::family_cdf",
-      "gamlss.ggplots::family_pdf",
       "gamlss.ggplots::fit_PB",
       "gamlss.ggplots::fitted_cdf",
       "gamlss.ggplots::fitted_cdf_data",
@@ -310,6 +308,7 @@
       "FPSpec",
       "FamilyCapability",
       "FamilyCapabilityError",
+      "FamilyCurve",
       "FamilyDefinition",
       "FindHyperResult",
       "FitDistPredResult",
