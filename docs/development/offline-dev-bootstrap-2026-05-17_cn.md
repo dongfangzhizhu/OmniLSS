@@ -7,8 +7,10 @@
 ## 概要
 
 英文版 runbook 说明如何在有网络时构建一次 devcontainer 镜像，并在无网络的开发会话中离线复用：
-镜像内置 Python wheelhouse、CRAN 包缓存、`R/gamlss` 与 `R/gamlss.dist` 本地源码，以及
-`.codex/setup.sh` 的幂等初始化流程。
+镜像内置 Python wheelhouse、CRAN 包缓存（离线安装 R 包的权威来源）以及
+`.codex/setup.sh` 的幂等初始化流程。`R/` 为 gitignored 的 vendored 参考源码、
+fresh clone 中不存在，故镜像构建期不复制它；仅在 post-create 阶段若工作区存在 `R/`
+才由 `setup.sh` 尽力打包进 `/opt/omnilss-r-source`（缺失不致命）。详见英文版 P0-1。
 
 ## 快速命令
 

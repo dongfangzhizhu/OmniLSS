@@ -69,10 +69,15 @@ RUN mkdir -p "${OMNILSS_WHEELHOUSE}" && \
     date -u +%Y-%m-%dT%H:%M:%SZ > "${OMNILSS_WHEELHOUSE}/.complete" && \
     python -m pip install --no-index --find-links "${OMNILSS_WHEELHOUSE}" -r /tmp/requirements-dev.txt
 
-# Bundle the local R/gamlss and R/gamlss.dist sources so an offline contributor
-# can reinstall the R packages from disk if the renv/CRAN cache is missing.
-COPY R/gamlss "${OMNILSS_R_SOURCE}/gamlss"
-COPY R/gamlss.dist "${OMNILSS_R_SOURCE}/gamlss.dist"
+# NOTE: R/gamlss and R/gamlss.dist are vendored reference sources that are
+# gitignored (`.gitignore: R/`) and therefore ABSENT in a fresh clone.  They
+# must NOT be COPY'd here: a hard COPY of a missing path fails `docker build`
+# from a clean checkout (P0-1).  The image gets gamlss/gamlss.dist from the
+# online `install.packages` below plus the CRAN source tarball cache; the
+# optional vendored source bundle is done at *post-create* time by
+# `.codex/setup.sh`, which sees the workspace mount (where R/ may exist) and
+# copies it into OMNILSS_R_SOURCE only when present -- never failing otherwise.
+RUN mkdir -p "${OMNILSS_R_SOURCE}"
 
 # Cache CRAN tarballs for the R packages required by the validation gate,
 # including recursive dependencies. The cache is indexed as a local source
@@ -116,13 +121,15 @@ PY
 
 RUN Rscript -e "missing <- setdiff(c('renv','gamlss','gamlss.dist','jsonlite','languageserver'), rownames(installed.packages())); if (length(missing)) stop(paste('missing R packages in offline image:', paste(missing, collapse=', '))); cat('R offline dependency inventory: ok\n')"
 
-# Confirm the bundled R source trees and CRAN cache exist so an offline rebuild
-# is possible without re-running the online image build.
-RUN test -f "${OMNILSS_R_SOURCE}/gamlss/DESCRIPTION" \
-    && test -f "${OMNILSS_R_SOURCE}/gamlss.dist/DESCRIPTION" \
+# Confirm the CRAN source tarball cache exists so an offline rebuild is possible
+# without re-running the online image build.  The CRAN tarballs -- NOT the
+# gitignored R/ vendored trees -- are the authoritative offline install source;
+# the vendored R source bundle (OMNILSS_R_SOURCE) is best-effort and filled by
+# .codex/setup.sh at post-create time when R/ happens to be present.
+RUN test -d "${OMNILSS_R_SOURCE}" \
     && ls "${OMNILSS_R_CACHE}"/gamlss_*.tar.gz >/dev/null 2>&1 \
     && ls "${OMNILSS_R_CACHE}"/gamlss.dist_*.tar.gz >/dev/null 2>&1 \
-    && echo "R offline source/tarball inventory: ok"
+    && echo "R offline tarball inventory: ok"
 
 WORKDIR /workspace/OmniLSS
 

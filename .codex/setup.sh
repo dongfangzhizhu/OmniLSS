@@ -46,6 +46,25 @@ if "$python" -c "import grpc_tools" >/dev/null 2>&1; then
   echo "[setup] grpc_tools available"
 fi
 
+# 5. Best-effort bundle of the vendored R reference sources (P0-1).
+# R/ is gitignored and absent in a fresh clone, so the Dockerfile must NOT COPY
+# it (that would fail `docker build` from a clean checkout).  Here, at post-create
+# time, the workspace mount may contain R/; copy it into OMNILSS_R_SOURCE only
+# when both trees are present.  The CRAN tarball cache in OMNILSS_R_CACHE is the
+# authoritative offline source, so a missing R/ is never fatal.  Idempotent.
+r_source="${OMNILSS_R_SOURCE:-/opt/omnilss-r-source}"
+if [[ -d "$repo_root/R/gamlss" && -d "$repo_root/R/gamlss.dist" ]]; then
+  if mkdir -p "$r_source" 2>/dev/null \
+      && cp -r "$repo_root/R/gamlss" "$r_source/gamlss" \
+      && cp -r "$repo_root/R/gamlss.dist" "$r_source/gamlss.dist"; then
+    echo "[setup] bundled vendored R sources into $r_source"
+  else
+    echo "[setup] WARNING: could not bundle R sources (non-fatal; CRAN cache is the offline source)"
+  fi
+else
+  echo "[setup] R/ not present (gitignored); CRAN tarball cache is the offline R source"
+fi
+
 echo "[setup] done. Suggested next commands:"
 echo "  python benchmarks/run_local_validation.py --quick"
 echo "  python -m pytest omnilss/tests -q"

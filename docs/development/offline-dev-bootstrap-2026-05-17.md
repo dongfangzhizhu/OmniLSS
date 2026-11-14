@@ -17,8 +17,12 @@ The offline image must contain:
 
 - Python virtualenv: `/opt/omnilss-venv`.
 - Python wheelhouse: `/opt/omnilss-wheelhouse`.
-- R package source cache: `/opt/omnilss-r-cache`.
-- Bundled R sources copied from this repo: `/opt/omnilss-r-source`.
+- R package source cache: `/opt/omnilss-r-cache` (the authoritative offline
+  install source: recursive CRAN tarballs + a local `PACKAGES` index).
+- `/opt/omnilss-r-source`: optional vendored `R/gamlss` / `R/gamlss.dist`
+  source trees, best-effort bundled by `.codex/setup.sh` at post-create time.
+  `R/` is gitignored and absent in a fresh clone, so the Dockerfile does NOT
+  `COPY` it (that would break `docker build` from a clean checkout, P0-1).
 - `R`, `Rscript`, `gamlss`, `gamlss.dist`, `jsonlite`, `renv`, and
   `languageserver`.
 
@@ -41,8 +45,12 @@ The Dockerfile performs all network-dependent work at build time:
 - downloads recursive CRAN source dependencies (`Depends`, `Imports`, and
   `LinkingTo`) for the R validation stack into `/opt/omnilss-r-cache` and
   writes a local `PACKAGES` index;
-- installs the required R packages;
-- copies `R/gamlss/` and `R/gamlss.dist/` into `/opt/omnilss-r-source`.
+- installs the required R packages from CRAN.
+
+The vendored `R/` trees are not bundled at build time (they are gitignored).
+At post-create, `.codex/setup.sh` copies them into `/opt/omnilss-r-source`
+only if present in the workspace mount; the CRAN tarball cache remains the
+authoritative offline source either way.
 
 The image build fails if required Python or R modules are missing.
 

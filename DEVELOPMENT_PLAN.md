@@ -412,7 +412,11 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 
 ### 22.5 立即执行的前十五项（backlog，按依赖排序）
 
-- [ ] P0-1 修 `.codex/setup.sh` / devcontainer postCreate
+- [x] P0-1 修 `.codex/setup.sh` / devcontainer postCreate（D2.224 完成：根因是
+  Dockerfile 构建期 `COPY R/gamlss` 硬依赖 gitignored 的 `R/`（fresh clone 必失败）；
+  改为镜像构建期不 COPY、post-create 由 `setup.sh` 尽力打包（有 `R/` 才拷、缺失不致命），
+  R 包由在线 `install.packages` + CRAN tarball 缓存提供。`test_devcontainer_bootstrap.py`
+  钉住 clean-clone 构建不变量；fresh-clone 模拟验证无 COPY 指向 `R/`）。
 - [x] P0-2 校准全部旧文档的 63%/等价措辞（D2.222 完成：`migration-progress.md` /
   `commercialization-assessment.md` / `tutorial-r-consistency.md` / `gamlss-core-migration-audit-2026-05-22.json`
   四处就地校准 + `gamlss2` OUT OF SCOPE + 指向可重生成工件；`audit_gamlss_migration.py`
