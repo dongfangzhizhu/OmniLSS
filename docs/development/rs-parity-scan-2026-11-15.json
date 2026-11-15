@@ -1,0 +1,2192 @@
+[
+  {
+    "family": "BB",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "209.452 vs R 209.452"
+    }
+  },
+  {
+    "family": "BCCG",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 138.671)"
+    }
+  },
+  {
+    "family": "BCCGO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 142.088)"
+    }
+  },
+  {
+    "family": "BCCGUNTR",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "143.659 vs R 143.659"
+    }
+  },
+  {
+    "family": "BCPE",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "122.816 vs R 122.826"
+    }
+  },
+  {
+    "family": "BCPEO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "122.163 vs R 122.176"
+    }
+  },
+  {
+    "family": "BCPEUNTR",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "118.752 vs R 118.767"
+    }
+  },
+  {
+    "family": "BCT",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 135.531)"
+    }
+  },
+  {
+    "family": "BCTO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 127.734)"
+    }
+  },
+  {
+    "family": "BCTUNTR",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "138.411 vs R 138.411"
+    }
+  },
+  {
+    "family": "BE",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "-4.53391 vs R -4.53391"
+    }
+  },
+  {
+    "family": "BEINF",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "50.8072 vs R 50.8072"
+    }
+  },
+  {
+    "family": "BEINF0",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "61.7269 vs R 61.7269"
+    }
+  },
+  {
+    "family": "BEINF1",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "63.3348 vs R 63.3348"
+    }
+  },
+  {
+    "family": "BEO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "-2.62715 vs R -2.62698"
+    }
+  },
+  {
+    "family": "BEOI",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "53.7977 vs R 53.7977"
+    }
+  },
+  {
+    "family": "BEZI",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "63.6041 vs R 63.6041"
+    }
+  },
+  {
+    "family": "BI",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "257.756 vs R 257.756"
+    }
+  },
+  {
+    "family": "BINOM_1_31",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "BINOM_2_33",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "BINOM_3_33",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "BNB",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 198.741)"
+    }
+  },
+  {
+    "family": "CONTR01_2_13",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "CONTR01_4_33",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "CONTRPLUS_1_1",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: no function 'CONTRPLUS_1_1' in gamlss.dist"
+    }
+  },
+  {
+    "family": "CONTRPLUS_2_11",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "CONTRPLUS_3_13",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "CONTRPLUS_4_33",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "CONTR_2_12",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "CONTR_3_11",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "CONTR_4_13",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "COUNT_1_22",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "COUNT_1_31",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "COUNT_2_32",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "COUNT_2_32R",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "COUNT_2_33",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "COUNT_3_32",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "COUNT_3_33",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: The object argument is invalid"
+    }
+  },
+  {
+    "family": "DBI",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "215.845 vs R 215.845"
+    }
+  },
+  {
+    "family": "DBURR12",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 215.919)"
+    }
+  },
+  {
+    "family": "DEL",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "213.208 vs R 213.209"
+    }
+  },
+  {
+    "family": "DELAPORT",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "213.345 vs R 213.346"
+    }
+  },
+  {
+    "family": "DPO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "193.98 vs R 193.98"
+    }
+  },
+  {
+    "family": "DPO1",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "201.721 vs R 201.721"
+    }
+  },
+  {
+    "family": "EGB2",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 140.776)"
+    }
+  },
+  {
+    "family": "EXGAUS",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "139.161 vs R 139.16"
+    }
+  },
+  {
+    "family": "EXP",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "173.887 vs R 173.887"
+    }
+  },
+  {
+    "family": "GA",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "144.904 vs R 144.904"
+    }
+  },
+  {
+    "family": "GAF",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "ours 145.152 is below R 145.328 (rel 1.208e-03); R stopped early -- cross-checked with R's own density"
+    }
+  },
+  {
+    "family": "GB1",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py -13.5836)"
+    }
+  },
+  {
+    "family": "GB2",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 137.358)"
+    }
+  },
+  {
+    "family": "GENERALISEDPOISSON",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "207.202 vs R 207.202"
+    }
+  },
+  {
+    "family": "GEOM",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "221.523 vs R 221.523"
+    }
+  },
+  {
+    "family": "GEOMO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "238.844 vs R 238.845"
+    }
+  },
+  {
+    "family": "GG",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 134.036)"
+    }
+  },
+  {
+    "family": "GIG",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "133.721 vs R 133.721"
+    }
+  },
+  {
+    "family": "GP",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "ours 170.232 is below R 173.089 (rel 1.650e-02); R stopped early -- cross-checked with R's own density"
+    }
+  },
+  {
+    "family": "GPO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "202.713 vs R 202.713"
+    }
+  },
+  {
+    "family": "GT",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": "R attaches no counterpart for some slots; q: R numerical failure"
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R's fit diverged (reported 2573.75); R's best along its trace is 126.422 at cycle 5, ours 122.867 is below it"
+    }
+  },
+  {
+    "family": "GU",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "154.593 vs R 154.593"
+    }
+  },
+  {
+    "family": "IG",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "151.808 vs R 151.808"
+    }
+  },
+  {
+    "family": "IGA",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "148.354 vs R 148.354"
+    }
+  },
+  {
+    "family": "IGAMMA",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "162.678 vs R 162.678"
+    }
+  },
+  {
+    "family": "JSU",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 144.656)"
+    }
+  },
+  {
+    "family": "JSUO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 148.828)"
+    }
+  },
+  {
+    "family": "LG",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "246.975 vs R 246.975"
+    }
+  },
+  {
+    "family": "LNO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "161.779 vs R 161.779"
+    }
+  },
+  {
+    "family": "LO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "140.652 vs R 140.652"
+    }
+  },
+  {
+    "family": "LOGITNO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "-7.33935 vs R -7.33935"
+    }
+  },
+  {
+    "family": "LOGNO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "153.998 vs R 153.998"
+    }
+  },
+  {
+    "family": "LOGNO2",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "147.919 vs R 147.919"
+    }
+  },
+  {
+    "family": "LOGSHASH",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: could not find function \"dLOGSHASH\""
+    }
+  },
+  {
+    "family": "LOGSHASHO",
+    "deriv": {
+      "status": "skip",
+      "detail": "no support grid yields a finite density"
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: no function 'LOGSHASHO' in gamlss.dist"
+    }
+  },
+  {
+    "family": "LQNO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "150.68 vs R 150.68"
+    }
+  },
+  {
+    "family": "MN3",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "102.99 vs R 102.99"
+    }
+  },
+  {
+    "family": "MN4",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "130.948 vs R 130.948"
+    }
+  },
+  {
+    "family": "MN5",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "144.31 vs R 144.31"
+    }
+  },
+  {
+    "family": "MULTIN",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: response variable out of range"
+    }
+  },
+  {
+    "family": "NBF",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "212.176 vs R 212.178"
+    }
+  },
+  {
+    "family": "NBI",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "214.701 vs R 214.701"
+    }
+  },
+  {
+    "family": "NBII",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "210.69 vs R 210.69"
+    }
+  },
+  {
+    "family": "NET",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "150.75 vs R 150.75"
+    }
+  },
+  {
+    "family": "NO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "145.977 vs R 145.977"
+    }
+  },
+  {
+    "family": "NO2",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "148.09 vs R 148.09"
+    }
+  },
+  {
+    "family": "NOF",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "135.992 vs R 135.995"
+    }
+  },
+  {
+    "family": "PARETO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "276.523 vs R 276.523"
+    }
+  },
+  {
+    "family": "PARETO1",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "207.048 vs R 207.048"
+    }
+  },
+  {
+    "family": "PARETO1O",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "237.633 vs R 237.633"
+    }
+  },
+  {
+    "family": "PARETO2",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "ours 177.963 is below R 178.281 (rel 1.782e-03); R stopped early -- cross-checked with R's own density"
+    }
+  },
+  {
+    "family": "PARETO2O",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "ours 176.072 is below R 178.984 (rel 1.627e-02); R stopped early -- cross-checked with R's own density"
+    }
+  },
+  {
+    "family": "PE",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "128.996 vs R 129.021"
+    }
+  },
+  {
+    "family": "PE2",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "ours 123.512 is below R 126.3 (rel 2.207e-02); R stopped early -- cross-checked with R's own density"
+    }
+  },
+  {
+    "family": "PIG",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "214.768 vs R 214.768"
+    }
+  },
+  {
+    "family": "PIG2",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "235.593 vs R 235.593"
+    }
+  },
+  {
+    "family": "PO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "197.943 vs R 197.943"
+    }
+  },
+  {
+    "family": "RG",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "127.445 vs R 127.445"
+    }
+  },
+  {
+    "family": "RGE",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: x must greater than mu-sigma/nu \n "
+    }
+  },
+  {
+    "family": "SEP",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: NA's in the working vector or weights for parameter tau\n"
+    }
+  },
+  {
+    "family": "SEP1",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 125.658)"
+    }
+  },
+  {
+    "family": "SEP2",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R's fit diverged (reported 117498); R's best along its trace is 26034.5 at cycle 60, ours 115.98 is below it"
+    }
+  },
+  {
+    "family": "SEP3",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R's fit diverged (reported 136.966); R's best along its trace is 124.317 at cycle 10, ours 123.464 is below it"
+    }
+  },
+  {
+    "family": "SEP4",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R's fit diverged (reported 4281.36); R's best along its trace is 127.428 at cycle 2, ours 119.12 is below it"
+    }
+  },
+  {
+    "family": "SHASH",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 135.879)"
+    }
+  },
+  {
+    "family": "SHASHO",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 130.201)"
+    }
+  },
+  {
+    "family": "SHASHO2",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "133.632 vs R 133.632"
+    }
+  },
+  {
+    "family": "SI",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 218.738)"
+    }
+  },
+  {
+    "family": "SICHEL",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: NA/NaN/Inf in foreign function call (arg 5)"
+    }
+  },
+  {
+    "family": "SIMPLEX",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "-10.1088 vs R -10.1087"
+    }
+  },
+  {
+    "family": "SN1",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "137.119 vs R 137.12"
+    }
+  },
+  {
+    "family": "SN2",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 138.469)"
+    }
+  },
+  {
+    "family": "SST",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "139.455 vs R 139.456"
+    }
+  },
+  {
+    "family": "ST1",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "135.513 vs R 135.514"
+    }
+  },
+  {
+    "family": "ST2",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "139.77 vs R 139.77"
+    }
+  },
+  {
+    "family": "ST3",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 131.012)"
+    }
+  },
+  {
+    "family": "ST3C",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 138.12)"
+    }
+  },
+  {
+    "family": "ST4",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "136.594 vs R 136.595"
+    }
+  },
+  {
+    "family": "ST5",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R did not converge (py 138.096)"
+    }
+  },
+  {
+    "family": "TF",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "136.908 vs R 136.907"
+    }
+  },
+  {
+    "family": "TF2",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "142.8 vs R 142.8"
+    }
+  },
+  {
+    "family": "WARING",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R's reported deviance 208 is numerically invalid (sigma hits the 2.220e-16 floor; R's own density at sigma=1e-10 gives 221.661); ours 219.499 is below that"
+    }
+  },
+  {
+    "family": "WEI",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "134.988 vs R 134.988"
+    }
+  },
+  {
+    "family": "WEI2",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "8.02997 vs R 8.02999"
+    }
+  },
+  {
+    "family": "WEI3",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "137.738 vs R 137.738"
+    }
+  },
+  {
+    "family": "YULE",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "274.112 vs R 274.156"
+    }
+  },
+  {
+    "family": "ZABB",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "204.838 vs R 204.838"
+    }
+  },
+  {
+    "family": "ZABI",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "225.81 vs R 225.81"
+    }
+  },
+  {
+    "family": "ZABNB",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R's reported deviance 202.84 is numerically invalid (sigma hits the 2.220e-16 floor; R's own density at sigma=1e-10 gives 212.732); ours 209.912 is below that"
+    }
+  },
+  {
+    "family": "ZAGA",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "226.41 vs R 226.41"
+    }
+  },
+  {
+    "family": "ZAIG",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "207.02 vs R 207.02"
+    }
+  },
+  {
+    "family": "ZALG",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "235.464 vs R 235.464"
+    }
+  },
+  {
+    "family": "ZANBI",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R's reported deviance 208.385 is scored with a density that is not elementwise (R's own density evaluated elementwise gives 209.509); ours 209.285 is below that"
+    }
+  },
+  {
+    "family": "ZAP",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R's reported deviance 205.298 is scored with a density that is not elementwise (R's own density evaluated elementwise gives 205.079); ours 205.077 is below that"
+    }
+  },
+  {
+    "family": "ZAPIG",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "221.786 vs R 221.787"
+    }
+  },
+  {
+    "family": "ZASICHEL",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: NA/NaN/Inf in foreign function call (arg 5)"
+    }
+  },
+  {
+    "family": "ZAZIPF",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "ours 253.428 is below R 254.022 (rel 2.338e-03); R stopped early -- cross-checked with R's own density"
+    }
+  },
+  {
+    "family": "ZIBB",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "205.785 vs R 205.796"
+    }
+  },
+  {
+    "family": "ZIBI",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "223.541 vs R 223.542"
+    }
+  },
+  {
+    "family": "ZIBNB",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "R's reported deviance 196.261 is numerically invalid (sigma hits the 2.220e-16 floor; R's own density at sigma=1e-10 gives 202.95); ours 199.046 is below that"
+    }
+  },
+  {
+    "family": "ZILG",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "skip",
+      "detail": "no d/p/q counterpart in R"
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: no function 'ZILG' in gamlss.dist"
+    }
+  },
+  {
+    "family": "ZINBF",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "215.473 vs R 215.468"
+    }
+  },
+  {
+    "family": "ZINBI",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "208.31 vs R 208.387"
+    }
+  },
+  {
+    "family": "ZIP",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "209.543 vs R 209.543"
+    }
+  },
+  {
+    "family": "ZIP2",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "198.116 vs R 198.116"
+    }
+  },
+  {
+    "family": "ZIPF",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "pass",
+      "detail": "276.36 vs R 276.361"
+    }
+  },
+  {
+    "family": "ZIPIG",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "warn",
+      "detail": "ours 216.232 is below R 217.309 (rel 4.956e-03); R stopped early -- cross-checked with R's own density"
+    }
+  },
+  {
+    "family": "ZISICHEL",
+    "deriv": {
+      "status": "pass",
+      "detail": ""
+    },
+    "dpqr": {
+      "status": "pass",
+      "detail": ""
+    },
+    "rsdev": {
+      "status": "skip",
+      "detail": "R fit error: NA/NaN/Inf in foreign function call (arg 5)"
+    }
+  }
+]

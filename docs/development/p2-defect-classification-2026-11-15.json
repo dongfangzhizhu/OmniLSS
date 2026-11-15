@@ -1,0 +1,3245 @@
+{
+  "categories": {
+    "deriv": {
+      "skip_no_support_grid": [
+        "LOGSHASHO"
+      ]
+    },
+    "dpqr": {
+      "no_r_reference": [
+        "BCCGUNTR",
+        "BCPEUNTR",
+        "BCTUNTR",
+        "BINOM_1_31",
+        "BINOM_2_33",
+        "BINOM_3_33",
+        "CONTR01_2_13",
+        "CONTR01_4_33",
+        "CONTRPLUS_1_1",
+        "CONTRPLUS_2_11",
+        "CONTRPLUS_3_13",
+        "CONTRPLUS_4_33",
+        "CONTR_2_12",
+        "CONTR_3_11",
+        "CONTR_4_13",
+        "COUNT_1_22",
+        "COUNT_1_31",
+        "COUNT_2_32",
+        "COUNT_2_32R",
+        "COUNT_2_33",
+        "COUNT_3_32",
+        "COUNT_3_33",
+        "LOGSHASHO",
+        "MULTIN",
+        "ZILG"
+      ]
+    },
+    "rsdev": {
+      "r_fit_error": [
+        "BINOM_1_31",
+        "BINOM_2_33",
+        "BINOM_3_33",
+        "CONTR01_2_13",
+        "CONTR01_4_33",
+        "CONTRPLUS_1_1",
+        "CONTRPLUS_2_11",
+        "CONTRPLUS_3_13",
+        "CONTRPLUS_4_33",
+        "CONTR_2_12",
+        "CONTR_3_11",
+        "CONTR_4_13",
+        "COUNT_1_22",
+        "COUNT_1_31",
+        "COUNT_2_32",
+        "COUNT_2_32R",
+        "COUNT_2_33",
+        "COUNT_3_32",
+        "COUNT_3_33",
+        "LOGSHASH",
+        "LOGSHASHO",
+        "MULTIN",
+        "RGE",
+        "SEP",
+        "SICHEL",
+        "ZASICHEL",
+        "ZILG",
+        "ZISICHEL"
+      ],
+      "r_not_converged": [
+        "BCCG",
+        "BCCGO",
+        "BCT",
+        "BCTO",
+        "BNB",
+        "DBURR12",
+        "EGB2",
+        "GB1",
+        "GB2",
+        "GG",
+        "JSU",
+        "JSUO",
+        "SEP1",
+        "SHASHO",
+        "SI",
+        "SN2",
+        "ST3",
+        "ST3C",
+        "ST5"
+      ],
+      "registered_path_divergent": [
+        "SHASH"
+      ],
+      "registered_r_density_recycled": [
+        "ZANBI",
+        "ZAP"
+      ],
+      "registered_r_diverged": [
+        "GT",
+        "SEP2",
+        "SEP3",
+        "SEP4"
+      ],
+      "registered_r_early_stop": [
+        "GAF",
+        "GP",
+        "PARETO2",
+        "PARETO2O",
+        "PE2",
+        "WARING",
+        "ZAZIPF",
+        "ZIPIG"
+      ],
+      "registered_r_reference_invalid": [
+        "ZABNB",
+        "ZIBNB"
+      ]
+    }
+  },
+  "counts": {
+    "non_pass": {
+      "deriv": 1,
+      "dpqr": 25,
+      "rsdev": 64
+    },
+    "status": {
+      "deriv": {
+        "pass": 145,
+        "skip": 1
+      },
+      "dpqr": {
+        "pass": 121,
+        "skip": 25
+      },
+      "rsdev": {
+        "pass": 82,
+        "skip": 28,
+        "warn": 36
+      }
+    }
+  },
+  "entries": [
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BB",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BCCG",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BCCGO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BCCGUNTR",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BCPE",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BCPEO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BCPEUNTR",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BCT",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BCTO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BCTUNTR",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BE",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BEINF",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BEINF0",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BEINF1",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BEO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BEOI",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BEZI",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BI",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BINOM_1_31",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BINOM_2_33",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BINOM_3_33",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BNB",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "CONTR01_2_13",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "CONTR01_4_33",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "CONTRPLUS_1_1",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "CONTRPLUS_2_11",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "CONTRPLUS_3_13",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "CONTRPLUS_4_33",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "CONTR_2_12",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "CONTR_3_11",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "CONTR_4_13",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "COUNT_1_22",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "COUNT_1_31",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "COUNT_2_32",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "COUNT_2_32R",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "COUNT_2_33",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "COUNT_3_32",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "COUNT_3_33",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "DBI",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "DBURR12",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "DEL",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "DELAPORT",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "DPO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "DPO1",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "EGB2",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "EXGAUS",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "EXP",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GA",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GAF",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GB1",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GB2",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GENERALISEDPOISSON",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GEOM",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GEOMO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GG",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GIG",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GP",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GPO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GT",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GU",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "IG",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "IGA",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "IGAMMA",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "JSU",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "JSUO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "LG",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "LNO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "LO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "LOGITNO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "LOGNO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "LOGNO2",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "LOGSHASH",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "skip_no_support_grid",
+      "detail": "no support grid yields a finite density",
+      "family": "LOGSHASHO",
+      "gate": "deriv",
+      "status": "skip"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "LQNO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "MN3",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "MN4",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "MN5",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "MULTIN",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "NBF",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "NBI",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "NBII",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "NET",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "NO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "NO2",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "NOF",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PARETO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PARETO1",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PARETO1O",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PARETO2",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PARETO2O",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PE",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PE2",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PIG",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PIG2",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "RG",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "RGE",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SEP",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SEP1",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SEP2",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SEP3",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SEP4",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SHASH",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SHASHO",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SHASHO2",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SI",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SICHEL",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SIMPLEX",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SN1",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SN2",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SST",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ST1",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ST2",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ST3",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ST3C",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ST4",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ST5",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "TF",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "TF2",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "WARING",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "WEI",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "WEI2",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "WEI3",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "YULE",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZABB",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZABI",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZABNB",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZAGA",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZAIG",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZALG",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZANBI",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZAP",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZAPIG",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZASICHEL",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZAZIPF",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZIBB",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZIBI",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZIBNB",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZILG",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZINBF",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZINBI",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZIP",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZIP2",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZIPF",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZIPIG",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZISICHEL",
+      "gate": "deriv",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BB",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BCCG",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BCCGO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "BCCGUNTR",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BCPE",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BCPEO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "BCPEUNTR",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BCT",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BCTO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "BCTUNTR",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BE",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BEINF",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BEINF0",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BEINF1",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BEO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BEOI",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BEZI",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BI",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "BINOM_1_31",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "BINOM_2_33",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "BINOM_3_33",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "BNB",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "CONTR01_2_13",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "CONTR01_4_33",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "CONTRPLUS_1_1",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "CONTRPLUS_2_11",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "CONTRPLUS_3_13",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "CONTRPLUS_4_33",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "CONTR_2_12",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "CONTR_3_11",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "CONTR_4_13",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "COUNT_1_22",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "COUNT_1_31",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "COUNT_2_32",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "COUNT_2_32R",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "COUNT_2_33",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "COUNT_3_32",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "COUNT_3_33",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "DBI",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "DBURR12",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "DEL",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "DELAPORT",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "DPO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "DPO1",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "EGB2",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "EXGAUS",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "EXP",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GA",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GAF",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GB1",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GB2",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GENERALISEDPOISSON",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GEOM",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GEOMO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GG",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GIG",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GP",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GPO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "R attaches no counterpart for some slots; q: R numerical failure",
+      "family": "GT",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "GU",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "IG",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "IGA",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "IGAMMA",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "JSU",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "JSUO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "LG",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "LNO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "LO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "LOGITNO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "LOGNO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "LOGNO2",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "LOGSHASH",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "LOGSHASHO",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "LQNO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "MN3",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "MN4",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "MN5",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "MULTIN",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "NBF",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "NBI",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "NBII",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "NET",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "NO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "NO2",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "NOF",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PARETO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PARETO1",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PARETO1O",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PARETO2",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PARETO2O",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PE",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PE2",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PIG",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PIG2",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "PO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "RG",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "RGE",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SEP",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SEP1",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SEP2",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SEP3",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SEP4",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SHASH",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SHASHO",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SHASHO2",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SI",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SICHEL",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SIMPLEX",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SN1",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SN2",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "SST",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ST1",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ST2",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ST3",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ST3C",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ST4",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ST5",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "TF",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "TF2",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "WARING",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "WEI",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "WEI2",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "WEI3",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "YULE",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZABB",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZABI",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZABNB",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZAGA",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZAIG",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZALG",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZANBI",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZAP",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZAPIG",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZASICHEL",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZAZIPF",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZIBB",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZIBI",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZIBNB",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "no_r_reference",
+      "detail": "no d/p/q counterpart in R",
+      "family": "ZILG",
+      "gate": "dpqr",
+      "status": "skip"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZINBF",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZINBI",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZIP",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZIP2",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZIPF",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZIPIG",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "",
+      "family": "ZISICHEL",
+      "gate": "dpqr",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "209.452 vs R 209.452",
+      "family": "BB",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 138.671)",
+      "family": "BCCG",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 142.088)",
+      "family": "BCCGO",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "143.659 vs R 143.659",
+      "family": "BCCGUNTR",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "122.816 vs R 122.826",
+      "family": "BCPE",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "122.163 vs R 122.176",
+      "family": "BCPEO",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "118.752 vs R 118.767",
+      "family": "BCPEUNTR",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 135.531)",
+      "family": "BCT",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 127.734)",
+      "family": "BCTO",
+      "gate": "rsdev",
+      "mechanism": "deriv: BCT tau cross-block needs a custom JVP",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "138.411 vs R 138.411",
+      "family": "BCTUNTR",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "-4.53391 vs R -4.53391",
+      "family": "BE",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "50.8072 vs R 50.8072",
+      "family": "BEINF",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "61.7269 vs R 61.7269",
+      "family": "BEINF0",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "63.3348 vs R 63.3348",
+      "family": "BEINF1",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "-2.62715 vs R -2.62698",
+      "family": "BEO",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "53.7977 vs R 53.7977",
+      "family": "BEOI",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "63.6041 vs R 63.6041",
+      "family": "BEZI",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "257.756 vs R 257.756",
+      "family": "BI",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "BINOM_1_31",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "BINOM_2_33",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "BINOM_3_33",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 198.741)",
+      "family": "BNB",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "CONTR01_2_13",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "CONTR01_4_33",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: no function 'CONTRPLUS_1_1' in gamlss.dist",
+      "family": "CONTRPLUS_1_1",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "CONTRPLUS_2_11",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "CONTRPLUS_3_13",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "CONTRPLUS_4_33",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "CONTR_2_12",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "CONTR_3_11",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "CONTR_4_13",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "COUNT_1_22",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "COUNT_1_31",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "COUNT_2_32",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "COUNT_2_32R",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "COUNT_2_33",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "COUNT_3_32",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: The object argument is invalid",
+      "family": "COUNT_3_33",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "pass",
+      "detail": "215.845 vs R 215.845",
+      "family": "DBI",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 215.919)",
+      "family": "DBURR12",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "213.208 vs R 213.209",
+      "family": "DEL",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "213.345 vs R 213.346",
+      "family": "DELAPORT",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "193.98 vs R 193.98",
+      "family": "DPO",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "201.721 vs R 201.721",
+      "family": "DPO1",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 140.776)",
+      "family": "EGB2",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "139.161 vs R 139.16",
+      "family": "EXGAUS",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "173.887 vs R 173.887",
+      "family": "EXP",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "144.904 vs R 144.904",
+      "family": "GA",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "registered_r_early_stop",
+      "detail": "ours 145.152 is below R 145.328 (rel 1.208e-03); R stopped early -- cross-checked with R's own density",
+      "evidence": "D2.101.  R's GAF fit never converges: sweeping n.cyc on live R gives145.378392 at 2, 145.369399 at 5, 145.354905 at 10, 145.343774 at 14,145.327873 at 20, 145.281724 at 40 and 145.245264 at 60 -- it is stillcreeping down at 60, so the reported 145.3279 is where the absolute-changecriterion stopped it, not an optimum.  Our fit lands at 145.152, beloweven R's value at n.cyc = 60.  Note the gap is small (0.13 across the wholesweep) -- this family is registered because the gate's 1e-3 threshold istighter than the drift, not because anything is wrong with the fit.",
+      "family": "GAF",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py -13.5836)",
+      "family": "GB1",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 137.358)",
+      "family": "GB2",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "207.202 vs R 207.202",
+      "family": "GENERALISEDPOISSON",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "221.523 vs R 221.523",
+      "family": "GEOM",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "238.844 vs R 238.845",
+      "family": "GEOMO",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 134.036)",
+      "family": "GG",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "133.721 vs R 133.721",
+      "family": "GIG",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "registered_r_early_stop",
+      "detail": "ours 170.232 is below R 173.089 (rel 1.650e-02); R stopped early -- cross-checked with R's own density",
+      "evidence": "D2.101.  R's GP fit is still descending after 60 cycles: sweeping n.cyc onlive R gives 189.322607 at 2, 181.410991 at 5, 176.444505 at 10,174.617084 at 14, 173.088533 at 20, 171.101794 at 40 and 170.380407 at 60.The reported 173.0885 is a stopping point, not an optimum.  Our fit landsat 170.232, below R's value even at n.cyc = 60.",
+      "family": "GP",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "202.713 vs R 202.713",
+      "family": "GPO",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "registered_r_diverged",
+      "detail": "R's fit diverged (reported 2573.75); R's best along its trace is 126.422 at cycle 5, ours 122.867 is below it",
+      "evidence": "D2.95.  R own GT fit blows up after a few cycles: sweeping n.cyc on live Rgives 142.5272 at 2, 126.4221 at 5, 10430.0040 at 10, 7022.2289 at 14,2573.7485 at 20, 5393747492 at 40 and 324483079 at 60.  The reported2573.7485 is an artefact; the best value R reaches anywhere on its traceis 126.4221 at cycle 5, and ours (122.867) is below it.",
+      "family": "GT",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "154.593 vs R 154.593",
+      "family": "GU",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "151.808 vs R 151.808",
+      "family": "IG",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "148.354 vs R 148.354",
+      "family": "IGA",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "162.678 vs R 162.678",
+      "family": "IGAMMA",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 144.656)",
+      "family": "JSU",
+      "gate": "rsdev",
+      "mechanism": "fit trajectory stops at a poor stationary point",
+      "status": "warn"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 148.828)",
+      "family": "JSUO",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "246.975 vs R 246.975",
+      "family": "LG",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "161.779 vs R 161.779",
+      "family": "LNO",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "140.652 vs R 140.652",
+      "family": "LO",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "-7.33935 vs R -7.33935",
+      "family": "LOGITNO",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "153.998 vs R 153.998",
+      "family": "LOGNO",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "147.919 vs R 147.919",
+      "family": "LOGNO2",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: could not find function \"dLOGSHASH\"",
+      "family": "LOGSHASH",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: no function 'LOGSHASHO' in gamlss.dist",
+      "family": "LOGSHASHO",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "pass",
+      "detail": "150.68 vs R 150.68",
+      "family": "LQNO",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "102.99 vs R 102.99",
+      "family": "MN3",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "130.948 vs R 130.948",
+      "family": "MN4",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "144.31 vs R 144.31",
+      "family": "MN5",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: response variable out of range",
+      "family": "MULTIN",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "pass",
+      "detail": "212.176 vs R 212.178",
+      "family": "NBF",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "214.701 vs R 214.701",
+      "family": "NBI",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "210.69 vs R 210.69",
+      "family": "NBII",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "150.75 vs R 150.75",
+      "family": "NET",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "145.977 vs R 145.977",
+      "family": "NO",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "148.09 vs R 148.09",
+      "family": "NO2",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "135.992 vs R 135.995",
+      "family": "NOF",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "276.523 vs R 276.523",
+      "family": "PARETO",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "207.048 vs R 207.048",
+      "family": "PARETO1",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "237.633 vs R 237.633",
+      "family": "PARETO1O",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "registered_r_early_stop",
+      "detail": "ours 177.963 is below R 178.281 (rel 1.782e-03); R stopped early -- cross-checked with R's own density",
+      "evidence": "D2.101.  R's PARETO2 fit is still descending after 60 cycles: sweepingn.cyc on live R gives 195.016134 at 2, 186.850467 at 5, 181.726596 at 10,179.848325 at 14, 178.280648 at 20, 176.256608 at 40 and 175.525198 at 60.Our fit lands at 177.963 -- below R's value at the gate budget (178.2806)but ABOVE R's value at n.cyc = 60 (175.5252).  Registered as a stoppingpoint at the budget the gate uses; the note records that giving R morecycles keeps improving it, so this is not a claim that we are better.",
+      "family": "PARETO2",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "registered_r_early_stop",
+      "detail": "ours 176.072 is below R 178.984 (rel 1.627e-02); R stopped early -- cross-checked with R's own density",
+      "evidence": "D2.103.  Re-measured on the reproducible sample; the D2.30/D2.34 evidencebelow is unchanged in mechanism.  Live R's function is PARETO2o (lower-caseo) -- a sweep that asks for PARETO2O gets nothing back, which is how anearlier attempt to re-measure this family silently produced no numbers at all.Sweeping n.cyc on live R: 196.016004 at 2, 187.587636 at 5, 182.406644 at 10,180.553734 at 14, 178.983862 at 20, 176.837913 at 40 and 176.077439 at 60 --still descending, so the reported 178.9839 is a stopping point.  Our fitlands at 176.072, below even R's value at n.cyc = 60 (176.0774).",
+      "family": "PARETO2O",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "128.996 vs R 129.021",
+      "family": "PE",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "registered_r_early_stop",
+      "detail": "ours 123.512 is below R 126.3 (rel 2.207e-02); R stopped early -- cross-checked with R's own density",
+      "evidence": "D2.101.  The clearest plateau of the group: R's PE2 fit gives 128.080179at 2, 126.516126 at 5 and then 126.300046 at 10, 14, 20, 40 and 60 --unchanged to six decimals from cycle 10 on.  It halts the moment theabsolute change drops under c.crit.  Our fit lands at 123.512, 2.79 belowR's halt.",
+      "family": "PE2",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "214.768 vs R 214.768",
+      "family": "PIG",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "235.593 vs R 235.593",
+      "family": "PIG2",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "197.943 vs R 197.943",
+      "family": "PO",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "127.445 vs R 127.445",
+      "family": "RG",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: x must greater than mu-sigma/nu",
+      "family": "RGE",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: NA's in the working vector or weights for parameter tau",
+      "family": "SEP",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 125.658)",
+      "family": "SEP1",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "registered_r_diverged",
+      "detail": "R's fit diverged (reported 117498); R's best along its trace is 26034.5 at cycle 60, ours 115.98 is below it",
+      "evidence": "D2.95.  R own SEP2 fit is still descending into nonsense at every budget:sweeping n.cyc on live R gives 463287.7168 at 2, 321533.1838 at 5,209468.4130 at 10, 161765.5385 at 14, 117498.3693 at 20, 54237.9972 at 40and 26034.4671 at 60 -- for 48 observations.  It never plateaus, so thereported 117498 is one sample of a runaway trajectory, not a likelihood atany point; the best value R reaches anywhere on its trace is 26034.4671 atcycle 60.  Our fit lands at 115.98, two orders of magnitude below that.",
+      "family": "SEP2",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "registered_r_diverged",
+      "detail": "R's fit diverged (reported 136.966); R's best along its trace is 124.317 at cycle 10, ours 123.464 is below it",
+      "evidence": "D2.94.  R own SEP3 fit is unstable, not early-stopped: sweeping n.cyc onlive R gives 140.1742383098 at 2, 135.8619435572 at 5, 124.3172849763 at 10,2687.7273835719 at 14, 136.9656446576 at 20 and 7362.4272050501 at 60.  Thereported 136.9656 is a mid-cycle number from an oscillating trajectory, notthe likelihood at any converged point; the best value R reaches anywhere onits trace is 124.3173 at cycle 10.  Our fit lands at 123.4637, below that.Getting there needed R own SEP3 initial values (mu = (y+mean(y))/2,sigma = sd(y), nu = 1, tau = 2) plus rs_fit best-finite-cycle fallback(D2.92): before ",
+      "family": "SEP3",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "registered_r_diverged",
+      "detail": "R's fit diverged (reported 4281.36); R's best along its trace is 127.428 at cycle 2, ours 119.12 is below it",
+      "evidence": "D2.94.  R own SEP4 fit does not converge at all: sweeping n.cyc on live Rgives 127.4283950023 at 2, 26763.6471361861 at 5, 10598.2091752837 at 10,6989.7553018627 at 14, 4281.3573553256 at 20, 10557.6298411140 at 40 and530.8039492254 at 60.  The reported 4281.3574 is an artefact of thatoscillation; the best value R reaches anywhere on its trace is 127.4284 atcycle 2.  Our fit lands at 119.1197, below that.  Getting there needed Rown SEP4 initial values (mu = (y+mean(y))/2, sigma = sd(y), nu = 2, tau = 2)-- before them SEP4 reported 1.30e27 (D2.88).",
+      "family": "SEP4",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "registered_path_divergent",
+      "detail": "R did not converge (py 135.879)",
+      "evidence": "D2.67, full-family-stream sample.  Cycles 1-16 are BIT-IDENTICAL to live R (every coefficient and the global deviance, checked individually at k = 1..16); the first difference appears in cycle 17, and only in sigma (mu is still identical that cycle: ours 0.175949 vs R 0.219194 on the log link).  Instrumenting rs_step shows the sigma inner fit ending after 4 iterations (7 halvings) with a deviance change just under cc = 0.001, while R takes the extra iteration -- a knife-edge in the inner stopping rule, not a derivative or density defect: our dSHASH matches R's to 1e-16 at the cycle-16 coeffici",
+      "family": "SHASH",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 130.201)",
+      "family": "SHASHO",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "133.632 vs R 133.632",
+      "family": "SHASHO2",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 218.738)",
+      "family": "SI",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: NA/NaN/Inf in foreign function call (arg 5)",
+      "family": "SICHEL",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "pass",
+      "detail": "-10.1088 vs R -10.1087",
+      "family": "SIMPLEX",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "137.119 vs R 137.12",
+      "family": "SN1",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 138.469)",
+      "family": "SN2",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "139.455 vs R 139.456",
+      "family": "SST",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "135.513 vs R 135.514",
+      "family": "ST1",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "139.77 vs R 139.77",
+      "family": "ST2",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 131.012)",
+      "family": "ST3",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 138.12)",
+      "family": "ST3C",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "136.594 vs R 136.595",
+      "family": "ST4",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "r_not_converged",
+      "detail": "R did not converge (py 138.096)",
+      "family": "ST5",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "136.908 vs R 136.907",
+      "family": "TF",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "142.8 vs R 142.8",
+      "family": "TF2",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "registered_r_early_stop",
+      "detail": "R's reported deviance 208 is numerically invalid (sigma hits the 2.220e-16 floor; R's own density at sigma=1e-10 gives 221.661); ours 219.499 is below that",
+      "evidence": "D2.65 two-step adjudication on the full-family-stream sample.\nStep 1: R converges to 230 exactly (trace 241.18 -> 229 -> 230 -> 230) and stays there at n.cyc = 200 -- a stationary point that is worse than ours, the PE2 disposition.\nStep 2: R's own dWARING at our coefficients returns 228.75 against our 228.809581 (rel 2.6e-04): the two densities agree to within a rounding-scale difference and both put our point below R's 230.  Perturbing either coefficient by 1e-3 raises our deviance.\nStream discipline: numbers bind to the full-family sample stream.",
+      "family": "WARING",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "134.988 vs R 134.988",
+      "family": "WEI",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "8.02997 vs R 8.02999",
+      "family": "WEI2",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "137.738 vs R 137.738",
+      "family": "WEI3",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "274.112 vs R 274.156",
+      "family": "YULE",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "204.838 vs R 204.838",
+      "family": "ZABB",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "225.81 vs R 225.81",
+      "family": "ZABI",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "registered_r_reference_invalid",
+      "detail": "R's reported deviance 202.84 is numerically invalid (sigma hits the 2.220e-16 floor; R's own density at sigma=1e-10 gives 212.732); ours 209.912 is below that",
+      "evidence": "D2.64, full-family-stream sample.  R's ZABNB fit at n.cyc=20 ends\nwith sigma = exp(-36.043655) = 2.220446e-16 (the double epsilon),\nconverged = FALSE, and its per-cycle deviance jumping between 189\nand 214.  Sweeping sigma at R's own fitted mu/nu/tau through R's\nown dZABNB gives 214.832625 / 214.825477 / 214.825406 / 214.825431\n/ 214.827885 / 213.304614 / 204.911418 at sigma = 1e-4 / 1e-6 /\n1e-8 / 1e-10 / 1e-12 / 1e-15 / eps: the likelihood is flat at\n214.825 from 1e-6 to 1e-10 and then collapses as the floor is\napproached, so 202.9046 (the reported G.deviance) is not the\ndeviance at any sigma",
+      "family": "ZABNB",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "226.41 vs R 226.41",
+      "family": "ZAGA",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "207.02 vs R 207.02",
+      "family": "ZAIG",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "235.464 vs R 235.464",
+      "family": "ZALG",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "registered_r_density_recycled",
+      "detail": "R's reported deviance 208.385 is scored with a density that is not elementwise (R's own density evaluated elementwise gives 209.509); ours 209.285 is below that",
+      "evidence": "D2.85.  R dZANBI normalises with fy0 <- dNBI(0, mu=mu, sigma=sigma, log=TRUE),and R dNBI does NOT recycle the scalar x against a vector mu: measured onlive R, length(dNBI(0, mu=c(2,8), sigma=c(0.1,0.1), log=TRUE)) is 1, not 2(the value is f0 at the first mu).  So the whole vector shares one f0, whileour implementation evaluates each observation own -- which is what dZANBIown source formula says it should do.  On the scanner sample(sigma -> 0.0347, nu = 0.0625) R reports 208.384659; evaluating theelementwise formula at R own fitted mu gives 209.50928, i.e. R number is1.12 too low.  Our fit stop",
+      "family": "ZANBI",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "registered_r_density_recycled",
+      "detail": "R's reported deviance 205.298 is scored with a density that is not elementwise (R's own density evaluated elementwise gives 205.079); ours 205.077 is below that",
+      "evidence": "D2.86.  Same route as ZANBI (D2.85) through a different base: R dZAPnormalises with fy0 computed from dPO(0, mu), and R dPO does not recyclethe scalar x against a vector mu -- measured on live R,length(dPO(0, mu=c(2,8))) is 1.  So the whole vector shares the firstobservation f0 while ours evaluates each row own.On the scanner sample R reports 205.297527 at sigma_eta = -3.1354942159and mu = (1.3125593808, -0.0187669487); evaluating OUR elementwisedensity at those exact parameters gives 205.078628, i.e. R number is0.219 too high.  Our own fit stops at 205.077211, below that reference.",
+      "family": "ZAP",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "221.786 vs R 221.787",
+      "family": "ZAPIG",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: NA/NaN/Inf in foreign function call (arg 5)",
+      "family": "ZASICHEL",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "registered_r_early_stop",
+      "detail": "ours 253.428 is below R 254.022 (rel 2.338e-03); R stopped early -- cross-checked with R's own density",
+      "evidence": "D2.97.  R reports the SAME deviance at every budget: 254.0221775634 atn.cyc = 2, 5, 10, 14, 20, 40 and 60 -- it halts the moment the absolutechange drops under c.crit and never moves again, which is the plateaupattern, not an optimum.  Self-check that this is a stopping point and not adensity difference: evaluating OUR elementwise density at R's own fittedparameters (mu = -0.4077391078 + 0.1154482426*x, nu_eta = -1.7676619176 on alogit link, so nu = 0.14583333) gives 254.0520519509717 against R's reported254.0221775634 -- rel 1.2e-4, so both sides minimise the same objective andonly the stoppi",
+      "family": "ZAZIPF",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "pass",
+      "detail": "205.785 vs R 205.796",
+      "family": "ZIBB",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "223.541 vs R 223.542",
+      "family": "ZIBI",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "registered_r_reference_invalid",
+      "detail": "R's reported deviance 196.261 is numerically invalid (sigma hits the 2.220e-16 floor; R's own density at sigma=1e-10 gives 202.95); ours 199.046 is below that",
+      "evidence": "D2.103.  Re-measured on the reproducible sample; the D2.64 sigma-floormechanism below is unchanged.  R's ZIBNB fit at n.cyc = 20 ends withsigma = exp(-36.0562194433) = 2.220446e-16 (the double epsilon), and itsswept deviance oscillates (186.530 / 191.329 / 206.305 / 204.245 / 196.261 /193.849 / 191.521 at n.cyc = 2/5/10/14/20/40/60), so the reported 196.2607 isnot a likelihood at any point.  Sweeping sigma at R's own fitted mu/nu/tauthrough R's own dZIBNB gives 202.9517863422 (1e-4), 202.9500870204 (1e-6),202.9500700113 (1e-8) and 202.9500332261 (1e-10): a flat plateau, which isthe number to c",
+      "family": "ZIBNB",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: no function 'ZILG' in gamlss.dist",
+      "family": "ZILG",
+      "gate": "rsdev",
+      "status": "skip"
+    },
+    {
+      "code": "pass",
+      "detail": "215.473 vs R 215.468",
+      "family": "ZINBF",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "208.31 vs R 208.387",
+      "family": "ZINBI",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "209.543 vs R 209.543",
+      "family": "ZIP",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "198.116 vs R 198.116",
+      "family": "ZIP2",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "pass",
+      "detail": "276.36 vs R 276.361",
+      "family": "ZIPF",
+      "gate": "rsdev",
+      "status": "pass"
+    },
+    {
+      "code": "registered_r_early_stop",
+      "detail": "ours 216.232 is below R 217.309 (rel 4.956e-03); R stopped early -- cross-checked with R's own density",
+      "evidence": "D2.103.  Re-measured on the reproducible sample; the D2.30 plateau evidencebelow is unchanged in mechanism.  Sweeping n.cyc on live R now gives217.101023 at 2, 217.201327 at 5, 217.263238 at 10, 217.287561 at 14,217.308852 at 20, 217.334548 at 40 and 217.334548 at 60 -- R is notdescending at all, it drifts up and then freezes, which is the same plateaubehaviour D2.30 recorded.  Our fit lands at 216.232, below R's halt.",
+      "family": "ZIPIG",
+      "gate": "rsdev",
+      "status": "warn"
+    },
+    {
+      "code": "r_fit_error",
+      "detail": "R fit error: NA/NaN/Inf in foreign function call (arg 5)",
+      "family": "ZISICHEL",
+      "gate": "rsdev",
+      "status": "skip"
+    }
+  ],
+  "schema_version": 1,
+  "source": {
+    "command": "python tools/rs_family_parity_scan.py --json <scan> --quiet",
+    "families": 146,
+    "gates": [
+      "deriv",
+      "dpqr",
+      "rsdev"
+    ],
+    "scan": "docs/development/rs-parity-scan-2026-11-15.json",
+    "scan_sha256": "e973b0e806d346e0dc7d760ac740eeeb8f5849e50bccaa95b7dfbc12b62080f8"
+  },
+  "unclassified": [],
+  "verdict": {
+    "all_failures_classified": true,
+    "non_pass_total": 90,
+    "notes": "Every non-pass carries a category. 'no_r_reference' means R's own package cannot produce the reference; 'registered_*' are the scanner's adjudicated R-side outcomes (early stop / divergence / path / density recycling); flat-ridge families are those whose deviance matched but the optimum did not."
+  }
+}

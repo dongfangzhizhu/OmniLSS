@@ -386,7 +386,13 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 ### P2：收敛 / 拟合轨迹缺陷收口
 
 - 逐族处理 `rsdev` 的 36 个 warn、`dpqr` 的 25 个 skip（标记「R 侧无参照」并清单化，不硬凑）、
-  `deriv` 的 1 个 skip（GT，探针 >180s）。
+  `deriv` 的 1 个 skip。**D2.236 校准**：当前扫描的 deriv skip 是 **LOGSHASHO**
+  （「no support grid yields a finite density」），原记的「GT 探针 >180s」已不再成立
+  （GT deriv 本次 pass）。
+- **归类工件（D2.236）**：`docs/development/p2-defect-classification-2026-11-15.json`（+ `.md`）
+  消费 `docs/development/rs-parity-scan-2026-11-15.json`，90 个非通过项**全部归类**
+  （`unclassified=0`，`all_failures_classified=true`）；tool
+  `tools/p2_defect_classification.py --check` fail-closed（scan sha256 变更即要求重生成）。
 - 挂账缺陷：BCTO deriv、BCT tau 交叉块（custom JVP 或等 JAX 补规则）、SHASH 密度积分、
   NET clamp、PARETO1o 幽灵 score、JSU 拟合轨迹、LNO intercept-only、EXGAUS q uniroot 残差。
 - 纪律：失败必须分类（R 密度缺陷/发散/地板/早停/我们更优），不得用 skip 隐藏；
@@ -518,7 +524,13 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
   `test_r_golden_predict_serialize.py` 61 例：newdata 预测对活 R（rtol/atol=2e-4）、
   `save_model_json`/`load_model_json` 往返预测漂移 ≤1e-10、收敛 schema 一致且两侧均收敛。
   每个 golden 因此覆盖 fit → predict → persist 全链路）
-- [ ] P2-1 逐族归类 36 个 rsdev warn / 25 个 dpqr skip / 1 个 deriv skip
+- [x] P2-1 逐族归类 36 个 rsdev warn / 25 个 dpqr skip / 1 个 deriv skip
+  （D2.236 完成：全族活 R 扫描 146 族复现 **36/25/1**；rsdev warn 36 分为
+  `r_not_converged` 19 / `registered_r_early_stop` 8 / `registered_r_diverged` 4 /
+  `registered_r_reference_invalid` 2 / `registered_r_density_recycled` 2 /
+  `registered_path_divergent` 1；rsdev skip 28 全为 `r_fit_error`；dpqr skip 25 全为
+  `no_r_reference`；deriv skip 1 = LOGSHASHO「无有限密度支撑网格」。90 个非通过项
+  `unclassified=0`。工件 + fail-closed 工具 + 7 例测试。**P2-2 的挂账缺陷修复仍未做**）
 - [ ] P2-2 修 BCTO deriv、SHASH 积分、NET clamp、JSU 轨迹、LNO intercept-only
 - [ ] P3-1 冻结 family/link/formula/prediction 契约
 - [ ] P3-2 实现 `checklink`/`make.link.gamlss`/`as.family`/`gen.Family` 框架
