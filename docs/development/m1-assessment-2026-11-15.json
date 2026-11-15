@@ -1,0 +1,79 @@
+{
+  "counts": {
+    "baseline_golden_validated": 34,
+    "dpqr_golden": 86,
+    "dpqr_other": 0,
+    "dpqr_r_consistency": 2,
+    "dpqr_symbols": 88,
+    "golden_symbols_in_promoted_families": 86,
+    "golden_validated_total": 86,
+    "growth_ratio": 2.5294,
+    "kernel_implemented_families": 1,
+    "kernel_layer": {
+      "experimental": 105,
+      "implemented": 5
+    },
+    "placeholder_in_scope": 0,
+    "promoted_families": 22,
+    "r_consistency_symbols_in_promoted_families": 24,
+    "symbols_in_promoted_families": 110
+  },
+  "criteria": {
+    "golden_validated_order_of_magnitude": {
+      "detail": "34 -> 86 (2.53x); the literal 10x target would need ~340 symbols, which the 40-family validated pool cannot supply (18 excluded for documented R-side/flat-ridge reasons)",
+      "met": false
+    },
+    "highfreq_dpqr_parity_by_evidence": {
+      "detail": "every promoted dpqr symbol has either a golden fixture or a live-R r_consistency test; none is bare capability/tested/unverified",
+      "met": true
+    },
+    "highfreq_dpqr_parity_direct": {
+      "detail": "86/88 dpqr symbols carry golden parity directly; 2 are labelled r_consistency_test because that rule takes precedence over golden in generate_symbol_coverage.py:381",
+      "met": false
+    },
+    "highfreq_surface_parity": {
+      "detail": "no promoted family has a missing-surface symbol",
+      "met": true
+    },
+    "kernel_implemented": {
+      "detail": "1/22 promoted families have an implemented kernel; the rest are experimental because admission is blocked (production_safe=5). Kernel promotion is M3 admission work, not M1 parity.",
+      "met": false
+    },
+    "no_placeholder_in_scope": {
+      "detail": "in-scope placeholder symbols: 0",
+      "met": true
+    }
+  },
+  "milestone": "M1",
+  "promoted_families": [
+    "BE",
+    "BEINF",
+    "BI",
+    "EXP",
+    "GA",
+    "GEOM",
+    "GU",
+    "IG",
+    "IGAMMA",
+    "LO",
+    "LOGNO",
+    "LOGNO2",
+    "NBI",
+    "NBII",
+    "NET",
+    "NO",
+    "NO2",
+    "PE",
+    "PO",
+    "RG",
+    "WEI",
+    "ZAGA"
+  ],
+  "schema_version": 1,
+  "target_version": "0.5.0",
+  "verdict": {
+    "core_m1_parity_met": true,
+    "literal_all_criteria_met": false,
+    "notes": "M1 is met on the parity meaning that matters: every promoted high-frequency family has surface parity, d/p/q/r evidence parity, and no placeholder. It is NOT met on two literal wordings: golden:validated did not grow 10x (the frozen pool caps it at ~110), and kernel=implemented is blocked admission work that belongs to M3. Also note the r_consistency>golden precedence suppresses 24 golden labels; that is a reporting-rule finding, not a parity gap."
+  }
+}

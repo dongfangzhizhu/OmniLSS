@@ -451,6 +451,20 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
 已接入 `ci.yml`（collection-gate）与 `release.yml`（pre-release-gate）。
 后续任何符号/测试变更须重生成覆盖工件与 manifest，否则门禁 fail（防漂移）。
 
+**M1 状态（2026-11-15 评估）**：见 `docs/development/m1-assessment-2026-11-15.json`
+（+ `.md`，tool `tools/m1_assessment.py --check`）。
+- **核心 M1 parity 达成**（`core_m1_parity_met: true`）：22 个高频族（冻结清单 promoted）
+  全部 surface parity、d/p/q/r 证据 parity（86/88 直接 `golden:validated`，另 2 个
+  pNO/rNO 被 r_consistency 优先级压制但仍是活 R 证据）、in-scope placeholder = 0。
+- **两条字面口径未达**：① `golden:validated` 34→86（2.53x）；字面「数量级」需 ~340，
+  而 validated 池仅 40 族（18 族有据可查地 excluded）→ 上限约 110，10x 不可达；
+  ② kernel=`implemented` 仅 1/22（其余 `experimental`，admission blocked 属 **M3** 工作）。
+- **报告规则发现**：coverage 的 `r_consistency_test` **优先于** `golden`
+  （`generate_symbol_coverage.py:381`），压制了 24 个 golden 标签（22 构造器 + pNO/rNO）；
+  这是标签口径问题，不是 parity 缺口，**未私自改规则**。
+- 结论：M1 以「高频族 parity 全覆盖」判定**达成**；量化/kernel 字面口径需在 M3 或
+  重新表述时处理。
+
 ### 22.5 立即执行的前十五项（backlog，按依赖排序）
 
 - [x] P0-1 修 `.codex/setup.sh` / devcontainer postCreate（D2.224 完成：根因是
