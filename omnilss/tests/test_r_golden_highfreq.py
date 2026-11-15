@@ -46,6 +46,9 @@ CASES = (
     "pe_y_x_seed_20261123",
     "nbii_y_x_seed_20261121",
     "beinf_y_x_seed_20261122",
+    # D2.232 batch 3
+    "net_y_x_seed_20261127",
+    "logno2_y_x_seed_20261128",
 )
 
 
@@ -66,6 +69,12 @@ def test_highfreq_golden_replay(case):
     for param in ("mu", "sigma", "nu", "tau"):
         key = f"{param}_coefficients"
         if key not in expected:
+            continue
+        if param not in model.coefficients:
+            # R records a *fixed* parameter (NET's nu/tau); our family fixes it
+            # too, so there is no coefficient to compare -- but only then.
+            fixed = tuple(getattr(model.family, "fixed_parameters", ()) or ())
+            assert param in fixed, (case, param, "not fixed but has no coefficient")
             continue
         np.testing.assert_allclose(
             np.ravel(np.asarray(model.coefficients[param], dtype=float)),

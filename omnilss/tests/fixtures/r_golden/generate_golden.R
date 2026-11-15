@@ -46,7 +46,11 @@ cases <- list(
   list(case = "rg_y_x_seed_20261122",     family = "RG",      formula = "y ~ x", seed = 20261122, n = 100, n_cyc = 100),
   list(case = "pe_y_x_seed_20261123",     family = "PE",      formula = "y ~ x", seed = 20261123, n = 100, n_cyc = 100),
   list(case = "nbii_y_x_seed_20261121",   family = "NBII",    formula = "y ~ x", seed = 20261121, n = 120, n_cyc = 100),
-  list(case = "beinf_y_x_seed_20261122",  family = "BEINF",   formula = "y ~ x", seed = 20261122, n = 120, n_cyc = 100)
+  list(case = "beinf_y_x_seed_20261122",  family = "BEINF",   formula = "y ~ x", seed = 20261122, n = 120, n_cyc = 100),
+  # D2.232 / P1 third batch: NET (nu/tau fixed at 1.5/2, mu+sigma estimated)
+  # and LOGNO2.  Both matched live R across three seeds at 2e-4 with n.cyc=100.
+  list(case = "net_y_x_seed_20261127",    family = "NET",     formula = "y ~ x", seed = 20261127, n = 120, n_cyc = 100),
+  list(case = "logno2_y_x_seed_20261128", family = "LOGNO2",  formula = "y ~ x", seed = 20261128, n = 120, n_cyc = 100)
 )
 
 # ---- helpers ---------------------------------------------------------------
@@ -114,6 +118,12 @@ make_data <- function(seed, n, family) {
   } else if (family == "BEINF") {
     mu <- plogis(0.3 + 0.3 * x)
     y <- rBEINF(n, mu = mu, sigma = 0.3, nu = 0.15, tau = 0.15)
+  } else if (family == "NET") {
+    mu <- 1.0 + 0.3 * x
+    y <- rNET(n, mu = mu, sigma = 0.7, nu = 1.5, tau = 2.0)
+  } else if (family == "LOGNO2") {
+    mu <- exp(0.5 + 0.3 * x)
+    y <- rLOGNO2(n, mu = mu, sigma = 0.4)
   } else {
     stop("unknown family ", family)
   }
@@ -153,12 +163,15 @@ for (c in cases) {
     mu_coefficients = as.list(mu_coef),
     deviance = as.numeric(deviance(fit))
   )
-  # Record coefficients on the link scale for every estimable parameter
-  # (sigma for GA/NO/IG/BE/NBI/GU/ZAGA, nu for ZAGA), matching what the
-  # OmniLSS replay tests compare against.
-  for (p in fit$parameters) {
-    if (p != "mu") {
-      expected[[paste0(p, "_coefficients")]] <- as.list(as.numeric(coef(fit, p)))
+  # Record coefficients on the link scale for every *estimated* parameter.
+  # R returns numeric(0) for a fixed parameter (NET's nu/tau); writing that as
+  # an empty list would advertise a coefficient the replay model does not have.
+  estimated <- names(fam$parameters)[unlist(fam$parameters)]
+  for (p in estimated) {
+    if (p == "mu") next
+    cf <- try(as.numeric(coef(fit, p)), silent = TRUE)
+    if (!inherits(cf, "try-error") && length(cf) > 0 && all(is.finite(cf))) {
+      expected[[paste0(p, "_coefficients")]] <- as.list(cf)
     }
   }
 
@@ -168,7 +181,7 @@ for (c in cases) {
   # predict parity artifact.
   nd <- data.frame(x = c(-1, -0.5, 0, 0.5, 1))
   predicted <- list()
-  for (p in fit$parameters) {
+  for (p in estimated) {
     pv <- try(as.numeric(predict(fit, what = p, newdata = nd, type = "response", data = df)),
               silent = TRUE)
     if (!inherits(pv, "try-error") && length(pv) == nrow(nd) && all(is.finite(pv)))

@@ -209,5 +209,27 @@
     "gamlss_dist_version": "6.1.1",
     "content_hash": "9c83dd3b",
     "n_cyc": 100
+  },
+  "net_y_x_seed_20261127": {
+    "family": "NET",
+    "formula": "y ~ x",
+    "seed": 20261127,
+    "n": 120,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "3c92a4f8",
+    "n_cyc": 100
+  },
+  "logno2_y_x_seed_20261128": {
+    "family": "LOGNO2",
+    "formula": "y ~ x",
+    "seed": 20261128,
+    "n": 120,
+    "R_version": "R version 4.6.0 (2026-04-24 ucrt)",
+    "gamlss_version": "5.5.0",
+    "gamlss_dist_version": "6.1.1",
+    "content_hash": "c1adae1c",
+    "n_cyc": 100
   }
 }

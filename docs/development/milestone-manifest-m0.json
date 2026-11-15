@@ -11,10 +11,10 @@
     },
     "diff_ok": true,
     "provenance": {
-      "golden_manifest_sha256": "c1aa98418c36e2b1090a4e924b7d57c154e3149ad9e0e657895151b006818485",
+      "golden_manifest_sha256": "b4bdaebe5a7a62d687ff42469d6e56ee1297bc5685c4345aec88b956d2700365",
       "python_surface_sha256": "f7e3ed778eb5fcbfbcffbc6aceb4a1cc149eccc82253598bfc1397cc215ba430",
       "r_namespace_sha256": "b51a29f54229ba5860387759ddf95f670613e80c1c86ccd16e2ed564bfbe1c2f",
-      "test_suite_sha256": "5468f6cc316882148290adaa4aee837e08eea460a03179bfd87cf7f7dc826184"
+      "test_suite_sha256": "81e7532c82242c82107a89372af608839f60482311af70e5ba0129eb7ae547f0"
     },
     "ratchet_ok": true,
     "stats": {
@@ -81,7 +81,7 @@
       }
     }
   },
-  "generated_at_utc": "2026-11-15T00:08:22Z",
+  "generated_at_utc": "2026-11-15T22:01:07Z",
   "milestone": "M0",
   "notes": "M0 gate bundle per DEVELOPMENT_PLAN 22.4. Reproducibility is anchored by coverage provenance content hashes (HEAD-independent); source.commit is informational. Regenerate after any symbol/test change.",
   "pinned_expected": {
@@ -110,9 +110,11 @@
     "ig_y_x_seed_20260522": 20260522,
     "igamma_y_x_seed_20261119": 20261119,
     "lo_y_x_seed_20261121": 20261121,
+    "logno2_y_x_seed_20261128": 20261128,
     "logno_y_x_seed_20261116": 20261116,
     "nbi_y_x_seed_20260810": 20260810,
     "nbii_y_x_seed_20261121": 20261121,
+    "net_y_x_seed_20261127": 20261127,
     "no2_y_x_seed_20261120": 20261120,
     "no_y_x_seed_20260524": 20260524,
     "pe_y_x_seed_20261123": 20261123,
@@ -123,7 +125,7 @@
   },
   "source": {
     "branch": "main",
-    "commit": "ea9d16104412358b6080cc72b1f22596173a8e0b",
+    "commit": "94c7d95f2c8da21700f5717401ab99e39c68c1f1",
     "dirty": true
   },
   "tolerances": {

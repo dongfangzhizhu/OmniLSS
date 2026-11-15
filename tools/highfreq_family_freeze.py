@@ -98,6 +98,22 @@ EXCLUSIONS: dict[str, dict[str, str]] = {
             "test_binomial_zero_variants_bd.py::TestTheRReferenceIsDefective."
         ),
     },
+    "IGA": {
+        "code": "no_r_reference",
+        "note": "installed gamlss.dist 6.1.1 has no IGA family (gamlss.family('IGA') errors).",
+    },
+    "ZALG": {
+        "code": "unstable_mu",
+        "note": "1/3 seeds within 2e-4; mu gap 1.2e-3..4.1e-3 while deviance matched (flat mu ridge).",
+    },
+    "PARETO2": {
+        "code": "flat_mu_sigma_ridge",
+        "note": (
+            "deviance matches to 4 digits but mu/sigma differ ~1e-2 on every seed "
+            "(heavy-tail shape ridge); heavy-tail samples (ymax>2000) also fail "
+            "initial-value validation."
+        ),
+    },
     "ZIBI": {
         "code": "r_density_vectorization_defect",
         "note": (
@@ -112,9 +128,6 @@ EXCLUSIONS: dict[str, dict[str, str]] = {
 PENDING_NOTES: dict[str, str] = {
     "BCPE": "four-parameter Box-Cox; expect a flat nu/tau ridge, probe at n.cyc>=500 first.",
     "BCT": "four-parameter Box-Cox; same caution as BCPE.",
-    "LOGNO2": "R simulation needs a positive-mu parameterisation before probing.",
-    "PARETO2": "probe sample produced extreme mu rejected by our validation; re-scale x.",
-    "ZALG": "not probed yet.",
 }
 
 

@@ -366,6 +366,11 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
   `predicted`（R response 尺度参数预测）、`convergence`（iter/converged/n_cyc）；
   `test_r_golden_predict_serialize.py` 61 例钉住「预测对活 R（2e-4）+ JSON 序列化往返
   （1e-10）+ 收敛 schema 一致」，使每个 golden 成为 **fit→predict→persist** 的端到端证据。
+- **第三批（D2.232）**：NET（nu/tau 固定 1.5/2，估计 mu/sigma）与 LOGNO2 **晋级**，
+  `golden:validated` **78→86**。IGA（安装版 gamlss.dist 无此族）、ZALG（仅 1/3 seed，
+  mu 差 1e-3~4e-3）、PARETO2（deviance 吻合到 4 位但 mu/sigma 差 ~1e-2，重尾形状平坦脊；
+  重尾样本 ymax>2000 还触发初值校验）归入 **excluded**。冻结清单现
+  promoted 22 / pending 2（BCPE、BCT）/ excluded 16。
 - **ZABI/ZIBI（D2.231）**：探测确认**不能晋级**——R 的向量化 `dZABI`/`dZIBI` 用
   `dBI(0, bd, mu)`（标量 x）算归一化/零质量，R 的 `dBI` 因 `ifelse(x<0, 0, fy)`
   在标量 x 下截断为长度 1，把第 1 个观测的值循环给全部行；R 自身拟合优化的是这个
