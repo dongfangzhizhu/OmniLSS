@@ -1,14 +1,14 @@
 {
   "counts": {
-    "excluded": 11,
-    "pending": 9,
+    "excluded": 13,
+    "pending": 7,
     "promoted": 20,
     "total_validated": 40
   },
-  "generated_at_utc": "2026-11-14T23:39:55Z",
+  "generated_at_utc": "2026-11-15T00:04:50Z",
   "purpose": "P1-1 frozen high-frequency family list: every r_consistency-validated family is classified promoted (has golden), pending (not probed), or excluded (probed, rejected with a reason). Fail-closed on unclassified.",
   "schema_version": 1,
-  "source_commit": "fc36e53a6bc6ed4d8e3ea774a4ce03143cf473e5",
+  "source_commit": "ea9d16104412358b6080cc72b1f22596173a8e0b",
   "sources": {
     "golden_manifest": "omnilss/tests/fixtures/r_golden/regenerated/manifest.json",
     "validated_source": "omnilss.family_capabilities._R_CONSISTENCY_EVIDENCE"
@@ -61,6 +61,16 @@
         "note": "n.cyc=100 leaves a large coefficient gap from a different local optimum; deviance matched."
       },
       {
+        "code": "r_density_vectorization_defect",
+        "family": "ZABI",
+        "note": "R's vectorised dZABI collapses the hurdle correction to row 1 (scalar dBI(0, ..) truncates via ifelse), so R's own fit optimises a defective objective and its coefficients are not a parity target. Ours is the elementwise density; pinned by test_binomial_zero_variants_bd.py::TestTheRReferenceIsDefective."
+      },
+      {
+        "code": "r_density_vectorization_defect",
+        "family": "ZIBI",
+        "note": "R's vectorised dZIBI pastes row 1's base zero mass onto every y==0 row (same scalar-dBI collapse); pinned by test_binomial_zero_variants_bd.py::TestTheRReferenceIsDefective."
+      },
+      {
         "code": "coefficient_gap",
         "family": "ZIP",
         "note": "sigma/nu gap ~2e-3 at n.cyc=100 on the probe sample."
@@ -97,16 +107,8 @@
         "note": "probe sample produced extreme mu rejected by our validation; re-scale x."
       },
       {
-        "family": "ZABI",
-        "note": "needs the binomial two-column (bd) payload."
-      },
-      {
         "family": "ZALG",
         "note": "not probed yet."
-      },
-      {
-        "family": "ZIBI",
-        "note": "needs the binomial two-column (bd) payload."
       }
     ],
     "promoted": [
