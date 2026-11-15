@@ -366,6 +366,10 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
   `predicted`（R response 尺度参数预测）、`convergence`（iter/converged/n_cyc）；
   `test_r_golden_predict_serialize.py` 61 例钉住「预测对活 R（2e-4）+ JSON 序列化往返
   （1e-10）+ 收敛 schema 一致」，使每个 golden 成为 **fit→predict→persist** 的端到端证据。
+- **收尾（D2.233）**：BCPE/BCT 长预算探针（n.cyc 100→2000）——两侧均 **<25 周期收敛**，
+  预算完全不影响结果，但停在**不同局部最优**（BCPE dev 115.219 vs 115.225；BCT 135.069 vs
+  135.081，系数差 1e-2~1e-1）→ 归 `excluded`（`flat_four_param_ridge`）。
+  **P1 家族清单收口：promoted 22 / pending 0 / excluded 18（validated 40）。**
 - **第三批（D2.232）**：NET（nu/tau 固定 1.5/2，估计 mu/sigma）与 LOGNO2 **晋级**，
   `golden:validated` **78→86**。IGA（安装版 gamlss.dist 无此族）、ZALG（仅 1/3 seed，
   mu 差 1e-3~4e-3）、PARETO2（deviance 吻合到 4 位但 mu/sigma 差 ~1e-2，重尾形状平坦脊；

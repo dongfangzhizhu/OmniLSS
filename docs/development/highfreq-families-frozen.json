@@ -1,14 +1,14 @@
 {
   "counts": {
-    "excluded": 16,
-    "pending": 2,
+    "excluded": 18,
+    "pending": 0,
     "promoted": 22,
     "total_validated": 40
   },
-  "generated_at_utc": "2026-11-15T21:57:45Z",
+  "generated_at_utc": "2026-11-15T22:06:21Z",
   "purpose": "P1-1 frozen high-frequency family list: every r_consistency-validated family is classified promoted (has golden), pending (not probed), or excluded (probed, rejected with a reason). Fail-closed on unclassified.",
   "schema_version": 1,
-  "source_commit": "94c7d95f2c8da21700f5717401ab99e39c68c1f1",
+  "source_commit": "0f80b335ed2cd08ffc0f30315126f38aa6f6e066",
   "sources": {
     "golden_manifest": "omnilss/tests/fixtures/r_golden/regenerated/manifest.json",
     "validated_source": "omnilss.family_capabilities._R_CONSISTENCY_EVIDENCE"
@@ -19,6 +19,16 @@
         "code": "unstable_seed",
         "family": "BCCG",
         "note": "2e-3..3e-1 coefficient gap across seeds; one seed jumped to another optimum."
+      },
+      {
+        "code": "flat_four_param_ridge",
+        "family": "BCPE",
+        "note": "both sides converge in <25 cycles, so a longer budget changes nothing; they stop at different local optima of a very flat likelihood (deviance 115.219 vs 115.225, coefficients off by 3e-3..4e-2). Not a fit-coefficient parity target."
+      },
+      {
+        "code": "flat_four_param_ridge",
+        "family": "BCT",
+        "note": "same as BCPE: both converge early, budget-independent, different optima (deviance 135.069 vs 135.081, nu/tau off by ~1e-1)."
       },
       {
         "code": "coefficient_gap",
@@ -96,16 +106,7 @@
         "note": "2/3 seeds pass 2e-4; third mu gap 7.7e-4 (no sigma in rZIPF)."
       }
     ],
-    "pending": [
-      {
-        "family": "BCPE",
-        "note": "four-parameter Box-Cox; expect a flat nu/tau ridge, probe at n.cyc>=500 first."
-      },
-      {
-        "family": "BCT",
-        "note": "four-parameter Box-Cox; same caution as BCPE."
-      }
-    ],
+    "pending": [],
     "promoted": [
       {
         "family": "BE",

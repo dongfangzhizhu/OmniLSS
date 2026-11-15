@@ -1,9 +1,9 @@
 # P1-1 frozen high-frequency family list
 
-- generated: 2026-11-15T21:57:45Z
-- source commit: 94c7d95f2c8da21700f5717401ab99e39c68c1f1
+- generated: 2026-11-15T22:06:21Z
+- source commit: 0f80b335ed2cd08ffc0f30315126f38aa6f6e066
 - validated families: 40
-- promoted: 22 / pending: 2 / excluded: 16
+- promoted: 22 / pending: 0 / excluded: 18
 
 ## Promoted (golden evidence present)
 
@@ -36,14 +36,14 @@
 
 | family | note |
 |---|---|
-| BCPE | four-parameter Box-Cox; expect a flat nu/tau ridge, probe at n.cyc>=500 first. |
-| BCT | four-parameter Box-Cox; same caution as BCPE. |
 
 ## Excluded (probed, rejected)
 
 | family | code | note |
 |---|---|---|
 | BCCG | unstable_seed | 2e-3..3e-1 coefficient gap across seeds; one seed jumped to another optimum. |
+| BCPE | flat_four_param_ridge | both sides converge in <25 cycles, so a longer budget changes nothing; they stop at different local optima of a very flat likelihood (deviance 115.219 vs 115.225, coefficients off by 3e-3..4e-2). Not a fit-coefficient parity target. |
+| BCT | flat_four_param_ridge | same as BCPE: both converge early, budget-independent, different optima (deviance 135.069 vs 135.081, nu/tau off by ~1e-1). |
 | DEL | coefficient_gap | sigma gap ~5e-2 and nu ~1.3e1 at n.cyc=100. |
 | DELAPORT | no_r_reference | installed gamlss.dist 6.1.1 has no DELAPORT family / r function. |
 | GT | diverged | R and our fit diverged at n.cyc=100 (mu gap ~8e7). |

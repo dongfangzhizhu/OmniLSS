@@ -98,6 +98,22 @@ EXCLUSIONS: dict[str, dict[str, str]] = {
             "test_binomial_zero_variants_bd.py::TestTheRReferenceIsDefective."
         ),
     },
+    "BCPE": {
+        "code": "flat_four_param_ridge",
+        "note": (
+            "both sides converge in <25 cycles, so a longer budget changes "
+            "nothing; they stop at different local optima of a very flat "
+            "likelihood (deviance 115.219 vs 115.225, coefficients off by "
+            "3e-3..4e-2). Not a fit-coefficient parity target."
+        ),
+    },
+    "BCT": {
+        "code": "flat_four_param_ridge",
+        "note": (
+            "same as BCPE: both converge early, budget-independent, different "
+            "optima (deviance 135.069 vs 135.081, nu/tau off by ~1e-1)."
+        ),
+    },
     "IGA": {
         "code": "no_r_reference",
         "note": "installed gamlss.dist 6.1.1 has no IGA family (gamlss.family('IGA') errors).",
@@ -125,10 +141,9 @@ EXCLUSIONS: dict[str, dict[str, str]] = {
 }
 
 #: Validated families not yet probed, with a short next-step hint.
-PENDING_NOTES: dict[str, str] = {
-    "BCPE": "four-parameter Box-Cox; expect a flat nu/tau ridge, probe at n.cyc>=500 first.",
-    "BCT": "four-parameter Box-Cox; same caution as BCPE.",
-}
+#: Every validated family is now classified, so nothing is pending.  Kept as
+#: the extension point for a newly admitted family that has not been probed.
+PENDING_NOTES: dict[str, str] = {}
 
 
 def _golden_families() -> dict[str, list[str]]:
