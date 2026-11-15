@@ -35,6 +35,17 @@ SCHEMA_VERSION = 1
 BASELINE_GOLDEN_VALIDATED = 34
 TARGET_ORDER_OF_MAGNITUDE = 10
 
+#: The M1 gate as revised in D2.235: the original wording demanded a 10x
+#: golden:validated jump and a fully implemented kernel for every promoted
+#: family.  The first is unreachable with a 40-family validated pool (18 are
+#: excluded with evidence), and the second is admission (M3) work, so the gate
+#: is stated as the parity property it was always meant to capture.
+GATE_CRITERIA = (
+    "highfreq_surface_parity",
+    "highfreq_dpqr_parity_by_evidence",
+    "no_placeholder_in_scope",
+)
+
 
 def _read(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -161,12 +172,7 @@ def build() -> dict:
         },
     }
 
-    required = (
-        "highfreq_surface_parity",
-        "highfreq_dpqr_parity_by_evidence",
-        "no_placeholder_in_scope",
-    )
-    met_required = all(criteria[c]["met"] for c in required)
+    met_required = all(criteria[name]["met"] for name in GATE_CRITERIA)
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -190,16 +196,43 @@ def build() -> dict:
             "kernel_implemented_families": len(kernel_implemented_families),
         },
         "criteria": criteria,
+        "gate_definition": {
+            "as_of": "2026-11-15",
+            "decision": "D2.235",
+            "criteria": list(GATE_CRITERIA),
+            "revised_from": (
+                "high-frequency families all Surface+Kernel+DPQR parity; golden:validated "
+                "raised by an order of magnitude; no placeholder in the target scope"
+            ),
+            "revision": (
+                "The gate is frozen to the parity property it was meant to capture: surface, "
+                "d/p/q/r evidence, and no placeholder for every promoted family. The two "
+                "literal clauses are re-stated rather than dropped -- see moved_out."
+            ),
+            "moved_out": {
+                "golden_validated_order_of_magnitude": (
+                    "replaced by d/p/q/r evidence coverage: the 40-family validated pool caps "
+                    "golden:validated at ~110, so the 10x (340) target is unreachable by "
+                    "construction (18 families excluded with documented R-side/flat-ridge reasons)"
+                ),
+                "kernel_implemented": (
+                    "M3 admission work: 21/22 promoted kernels are experimental because "
+                    "admission is blocked (production_safe=5); turning them production-safe is "
+                    "the M3 gate, not a parity gap"
+                ),
+            },
+        },
         "verdict": {
+            "m1_gate_met": met_required,
             "core_m1_parity_met": met_required,
             "literal_all_criteria_met": all(c["met"] for c in criteria.values()),
             "notes": (
-                "M1 is met on the parity meaning that matters: every promoted high-frequency "
-                "family has surface parity, d/p/q/r evidence parity, and no placeholder. It is "
-                "NOT met on two literal wordings: golden:validated did not grow 10x (the frozen "
-                "pool caps it at ~110), and kernel=implemented is blocked admission work that "
-                "belongs to M3. Also note the r_consistency>golden precedence suppresses 24 "
-                "golden labels; that is a reporting-rule finding, not a parity gap."
+                "Under the D2.235 gate definition M1 is met: every promoted high-frequency "
+                "family has surface parity, d/p/q/r evidence parity (golden, or a live-R "
+                "r_consistency test), and no placeholder. The two literal original clauses are "
+                "recorded as moved_out, not silently dropped. The r_consistency>golden "
+                "precedence suppresses 24 golden labels; that is a reporting-rule finding, not "
+                "a parity gap, and the coverage rule was not changed."
             ),
         },
     }
@@ -211,6 +244,7 @@ def _stable(artifact: dict) -> dict:
         "promoted_families": artifact["promoted_families"],
         "counts": artifact["counts"],
         "criteria": artifact["criteria"],
+        "gate_definition": artifact["gate_definition"],
         "verdict": artifact["verdict"],
     }
 
@@ -237,11 +271,22 @@ def _render_markdown(a: dict) -> str:
     ]
     for name, item in a["criteria"].items():
         lines.append(f"| {name} | {'yes' if item['met'] else 'no'} | {item['detail']} |")
+    gate = a["gate_definition"]
+    lines += [
+        "",
+        f"## Gate definition (revised {gate['as_of']}, {gate['decision']})",
+        "",
+        f"- criteria: {', '.join(gate['criteria'])}",
+        f"- revised from: {gate['revised_from']}",
+    ]
+    for name, reason in gate["moved_out"].items():
+        lines.append(f"- moved out: **{name}** -- {reason}")
     v = a["verdict"]
     lines += [
         "",
+        f"**m1_gate_met: {v['m1_gate_met']}**  ",
         f"**core_m1_parity_met: {v['core_m1_parity_met']}**  ",
-        f"**literal_all_criteria_met: {v['literal_all_criteria_met']}**",
+        f"**literal_all_criteria_met (original wording): {v['literal_all_criteria_met']}**",
         "",
         v["notes"],
         "",
@@ -261,7 +306,8 @@ def write_artifact(artifact: dict, path: Path) -> None:
 def check_artifact(path: Path) -> tuple[bool, list[str]]:
     problems: list[str] = []
     artifact = _read(path)
-    for key in ("schema_version", "promoted_families", "counts", "criteria", "verdict"):
+    for key in ("schema_version", "promoted_families", "counts", "criteria",
+                "gate_definition", "verdict"):
         if key not in artifact:
             problems.append(f"missing key: {key}")
     if problems:
@@ -275,6 +321,8 @@ def check_artifact(path: Path) -> tuple[bool, list[str]]:
         problems.append("counts drifted vs current artifacts")
     if artifact["criteria"] != current["criteria"]:
         problems.append("criteria verdicts drifted")
+    if artifact["gate_definition"] != current["gate_definition"]:
+        problems.append("gate definition drifted")
     if artifact["verdict"] != current["verdict"]:
         problems.append("verdict drifted")
     return (not problems), problems

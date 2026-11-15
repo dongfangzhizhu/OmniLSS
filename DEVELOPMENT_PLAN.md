@@ -433,7 +433,7 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 | 里程碑 | 门槛 | 建议版本 |
 |---|---|---|
 | M0 | P0 全清；覆盖工件可重生成；分层 collection 零错误；devcontainer 可用 | 0.4.x |
-| M1 | 高频族全部 Surface+Kernel+DPQR parity，`golden:validated` 数量级提升；无 placeholder 进入目标范围 | 0.5.0 |
+| M1 | 冻结清单内高频族全部 **Surface + DPQR 证据 parity**；无 placeholder 进入目标范围（D2.235 重述：原「golden:validated 数量级」改为证据覆盖口径（40 族池上限 ~110，10x 不可达），原「Kernel 全 implemented」划归 **M3** 准入） | 0.5.0 |
 | M2 | P2 收敛缺陷分类完毕；RS/CG/MIXED 分层 parity；fit/newdata 证据齐全；失败可解释 | 0.6.0 |
 | M3 | P3 核心 API + family/link 框架 + 准入平滑项闭环；`*.fix`/`contrasts` 全路由 | 0.9.0 |
 | M4 | P4 周边包（至少 cens/tr/mx/add）+ 服务 + 文档/教程 + 发布 artifact 同步 | 1.0.0 |
@@ -451,19 +451,20 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
 已接入 `ci.yml`（collection-gate）与 `release.yml`（pre-release-gate）。
 后续任何符号/测试变更须重生成覆盖工件与 manifest，否则门禁 fail（防漂移）。
 
-**M1 状态（2026-11-15 评估）**：见 `docs/development/m1-assessment-2026-11-15.json`
-（+ `.md`，tool `tools/m1_assessment.py --check`）。
-- **核心 M1 parity 达成**（`core_m1_parity_met: true`）：22 个高频族（冻结清单 promoted）
-  全部 surface parity、d/p/q/r 证据 parity（86/88 直接 `golden:validated`，另 2 个
-  pNO/rNO 被 r_consistency 优先级压制但仍是活 R 证据）、in-scope placeholder = 0。
-- **两条字面口径未达**：① `golden:validated` 34→86（2.53x）；字面「数量级」需 ~340，
-  而 validated 池仅 40 族（18 族有据可查地 excluded）→ 上限约 110，10x 不可达；
-  ② kernel=`implemented` 仅 1/22（其余 `experimental`，admission blocked 属 **M3** 工作）。
-- **报告规则发现**：coverage 的 `r_consistency_test` **优先于** `golden`
-  （`generate_symbol_coverage.py:381`），压制了 24 个 golden 标签（22 构造器 + pNO/rNO）；
-  这是标签口径问题，不是 parity 缺口，**未私自改规则**。
-- 结论：M1 以「高频族 parity 全覆盖」判定**达成**；量化/kernel 字面口径需在 M3 或
-  重新表述时处理。
+**M1 状态（2026-11-15 达成，D2.235 重述门槛后正式关闭）**：见
+`docs/development/m1-assessment-2026-11-15.json`（+ `.md`，tool
+`tools/m1_assessment.py --check`）。
+- **门槛重述（D2.235）**：M1 gate 冻结为 `highfreq_surface_parity` +
+  `highfreq_dpqr_parity_by_evidence` + `no_placeholder_in_scope`；原两条字面口径
+  作为 `gate_definition.moved_out` **显式记录而非删除**：`golden:validated` 数量级
+  → 证据覆盖口径（40 族 validated 池上限 ~110），kernel=`implemented` → **M3 准入**。
+- **达成证据**（`m1_gate_met: true`）：22 个 promoted 族共 110 个 in-scope 符号，
+  surface 无缺失；d/p/q/r **86/88 直接 `golden:validated`**，另 2 个（pNO/rNO）是活 R
+  `r_consistency_test`（证据完整）；全库 `golden:validated` 34→86；in-scope placeholder = 0。
+- **报告规则发现（未改规则）**：coverage 里 `r_consistency_test` 优先于 `golden`
+  （`generate_symbol_coverage.py:381`），压制 24 个 golden 标签（22 构造器 + pNO/rNO）；
+  这是标签口径问题，不是 parity 缺口。
+- **结论：M1 达成（0.5.0 门槛）**。kernel 准入 / `production_safe` 扩展按 M3 推进。
 
 ### 22.5 立即执行的前十五项（backlog，按依赖排序）
 

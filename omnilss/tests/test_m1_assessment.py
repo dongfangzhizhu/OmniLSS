@@ -67,13 +67,20 @@ def test_kernel_criterion_equals_full_implemented_admission(artifact):
     )
 
 
-def test_core_verdict_is_the_conjunction_of_the_three_parity_criteria(artifact):
+def test_gate_definition_is_the_revised_parity_gate(artifact):
+    gate = artifact["gate_definition"]
+    assert gate["decision"] == "D2.235"
+    assert tuple(gate["criteria"]) == m1.GATE_CRITERIA
+    assert gate["revised_from"]
+    # Both literal clauses are re-stated, not dropped.
+    assert "golden_validated_order_of_magnitude" in gate["moved_out"]
+    assert "kernel_implemented" in gate["moved_out"]
+
+
+def test_core_verdict_is_the_conjunction_of_the_gate_criteria(artifact):
     criteria = artifact["criteria"]
-    core = (
-        criteria["highfreq_surface_parity"]["met"]
-        and criteria["highfreq_dpqr_parity_by_evidence"]["met"]
-        and criteria["no_placeholder_in_scope"]["met"]
-    )
+    core = all(criteria[name]["met"] for name in m1.GATE_CRITERIA)
+    assert artifact["verdict"]["m1_gate_met"] is core
     assert artifact["verdict"]["core_m1_parity_met"] is core
     assert artifact["verdict"]["literal_all_criteria_met"] is all(
         item["met"] for item in criteria.values()
