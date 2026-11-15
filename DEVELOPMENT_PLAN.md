@@ -366,6 +366,13 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
   `predicted`（R response 尺度参数预测）、`convergence`（iter/converged/n_cyc）；
   `test_r_golden_predict_serialize.py` 61 例钉住「预测对活 R（2e-4）+ JSON 序列化往返
   （1e-10）+ 收敛 schema 一致」，使每个 golden 成为 **fit→predict→persist** 的端到端证据。
+- **ZABI/ZIBI（D2.231）**：探测确认**不能晋级**——R 的向量化 `dZABI`/`dZIBI` 用
+  `dBI(0, bd, mu)`（标量 x）算归一化/零质量，R 的 `dBI` 因 `ifelse(x<0, 0, fy)`
+  在标量 x 下截断为长度 1，把第 1 个观测的值循环给全部行；R 自身拟合优化的是这个
+  **缺陷目标**，其系数不是 parity 目标。已归入冻结清单 `excluded`
+  （`r_density_vectorization_defect`，D2.71 的缺陷测试已钉住）。顺带修复
+  `gamlss(..., bd=10)` kwarg 被静默忽略（落到 optimizer_kwargs）导致 bd=1、
+  deviance=inf 的 API 缺陷。
 
 ### P2：收敛 / 拟合轨迹缺陷收口
 
@@ -477,7 +484,7 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
 - [x] P1-1 冻结高频族清单（D2.230 完成：`docs/development/highfreq-families-frozen.json`
   把 `_R_CONSISTENCY_EVIDENCE` 的全部 validated 族分为 **promoted**（有 golden）/
   **pending**（未探）/ **excluded**（已探被拒，每条带 code+note）三层，三层互斥、
-  并集等于 validated 集合（当次 20/9/11，合计 40，以工件为准）。`tools/highfreq_family_freeze.py`
+  并集等于 validated 集合（计数以工件为准；D2.231 起 ZABI/ZIBI 归 excluded）。`tools/highfreq_family_freeze.py`
   `--check` fail-closed 并接入 `ci.yml`/`release.yml`；`test_highfreq_family_freeze.py`
   8 例钉住分区/同步/门禁接线。注：本项原写的「39 族」按代码实测校正为 40，且不再
   写死计数）

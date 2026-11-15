@@ -225,6 +225,45 @@ class TestFit:
         )
         assert float(total.sum()) == pytest.approx(model.deviance, rel=1e-12)
 
+    def test_bd_keyword_is_forwarded_like_a_data_column(self):
+        """D2.231: gamlss(..., bd=10) must not be swallowed by **kwargs.
+
+        Before this fix the keyword landed in optimizer_kwargs, the fixed
+        parameter resolver fell back to the family default bd=1, and every
+        y > 1 observation had zero density -- the fit reported an infinite
+        deviance and wandered to a boundary.  The keyword now travels through
+        the same data channel as a bd column, so the two routes must agree
+        exactly.
+        """
+        from omnilss import gamlss
+
+        rng = np.random.default_rng(2311)
+        n = 80
+        x = rng.normal(size=n)
+        mu = 1.0 / (1.0 + np.exp(-(0.2 + 0.5 * x)))
+        y = rng.binomial(10, mu).astype(float)
+        base = {"y": y, "x": x}
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            by_keyword = gamlss(
+                "y ~ x", family="ZABI", data=base, bd=10.0,
+                method="RS", max_iter=20,
+            )
+            by_column = gamlss(
+                "y ~ x", family="ZABI",
+                data={**base, "bd": np.full(n, 10.0)},
+                method="RS", max_iter=20,
+            )
+        assert np.isfinite(by_keyword.deviance)
+        assert by_keyword.converged
+        for parameter in ("mu", "nu"):
+            np.testing.assert_allclose(
+                np.ravel(by_keyword.coefficients[parameter]),
+                np.ravel(by_column.coefficients[parameter]),
+                rtol=0.0, atol=0.0,
+            )
+        assert by_keyword.deviance == by_column.deviance
+
 
 class TestTheRReferenceIsDefective:
     """Documentation-by-assertion: the defect is on R's side, not ours."""

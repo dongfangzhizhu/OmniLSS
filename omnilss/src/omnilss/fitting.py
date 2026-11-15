@@ -1367,6 +1367,17 @@ def gamlss(
     requested_method_name = method_name
     family = resolve_family(family)
 
+    # D2.231: a fixed-parameter value passed as a keyword (R users write
+    # gamlss(..., bd=10) because R's dZABI/dZIBI take bd) must travel through
+    # the same channel as a data column.  It used to fall into
+    # **optimizer_kwargs and be dropped, so ZABI/BI silently used the family
+    # default bd=1: every y > 1 then had zero density and the fit reported an
+    # infinite deviance.  Move it into a copied data dict instead.
+    for _fixed_name in getattr(family, "fixed_parameters", ()) or ():
+        if _fixed_name in optimizer_kwargs:
+            data = dict(data)
+            data[_fixed_name] = optimizer_kwargs.pop(_fixed_name)
+
     # R parity: `gamlss()` aborts before any IRLS step when the response
     # leaves the family's support (gamlss-5.R:960 ->
     # `if (!family$y.valid(y)) stop("response variable out of range")`).

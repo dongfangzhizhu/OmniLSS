@@ -88,6 +88,24 @@ EXCLUSIONS: dict[str, dict[str, str]] = {
         "code": "no_r_reference",
         "note": "installed gamlss.dist 6.1.1 has no DELAPORT family / r function.",
     },
+    "ZABI": {
+        "code": "r_density_vectorization_defect",
+        "note": (
+            "R's vectorised dZABI collapses the hurdle correction to row 1 "
+            "(scalar dBI(0, ..) truncates via ifelse), so R's own fit optimises "
+            "a defective objective and its coefficients are not a parity target. "
+            "Ours is the elementwise density; pinned by "
+            "test_binomial_zero_variants_bd.py::TestTheRReferenceIsDefective."
+        ),
+    },
+    "ZIBI": {
+        "code": "r_density_vectorization_defect",
+        "note": (
+            "R's vectorised dZIBI pastes row 1's base zero mass onto every y==0 "
+            "row (same scalar-dBI collapse); pinned by "
+            "test_binomial_zero_variants_bd.py::TestTheRReferenceIsDefective."
+        ),
+    },
 }
 
 #: Validated families not yet probed, with a short next-step hint.
@@ -97,8 +115,6 @@ PENDING_NOTES: dict[str, str] = {
     "LOGNO2": "R simulation needs a positive-mu parameterisation before probing.",
     "PARETO2": "probe sample produced extreme mu rejected by our validation; re-scale x.",
     "ZALG": "not probed yet.",
-    "ZABI": "needs the binomial two-column (bd) payload.",
-    "ZIBI": "needs the binomial two-column (bd) payload.",
 }
 
 
