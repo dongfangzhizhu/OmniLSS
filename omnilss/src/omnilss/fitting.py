@@ -436,6 +436,16 @@ def _resolve_fixed_parameter_values(
             name=parameter,
             n_obs=n_obs,
         )
+    # D2.237: R's dNET/pNET/qNET stop with "tau must greater or equal than nu"
+    # and gamlss() therefore never enters the fit with tau < nu.  The raw kernel
+    # clamps tau to nu for AD/jit safety (a Python raise inside the traced
+    # density would break jit), so enforce R's domain at the fitting boundary,
+    # where the fixed nu/tau actually come from.
+    if family.name == "NET" and {"nu", "tau"} <= set(resolved):
+        if np.any(np.asarray(resolved["tau"]) < np.asarray(resolved["nu"])):
+            from .family_schema import FamilyValidationError
+
+            raise FamilyValidationError("tau must greater or equal than nu")
     return resolved
 
 

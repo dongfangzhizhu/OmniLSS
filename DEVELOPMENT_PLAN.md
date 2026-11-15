@@ -395,6 +395,9 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
   `tools/p2_defect_classification.py --check` fail-closed（scan sha256 变更即要求重生成）。
 - 挂账缺陷：BCTO deriv、BCT tau 交叉块（custom JVP 或等 JAX 补规则）、SHASH 密度积分、
   NET clamp、PARETO1o 幽灵 score、JSU 拟合轨迹、LNO intercept-only、EXGAUS q uniroot 残差。
+  **D2.237 复验**：BCTO deriv=pass；SHASH 质量=1.000000（[-40,40] 与 [-400,400]）；
+  NET 在拟合边界强制 `tau>=nu`（raw kernel 仍 clamp 以保 jit）；JSU `max_iter=200`
+  收敛到 316.3600（R 316.3632，略优）；LNO intercept-only 收敛。以上均已不再是缺陷。
 - 纪律：失败必须分类（R 密度缺陷/发散/地板/早停/我们更优），不得用 skip 隐藏；
   「我们更低」要有 R 密度复现判据。
 
@@ -531,7 +534,12 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
   `registered_path_divergent` 1；rsdev skip 28 全为 `r_fit_error`；dpqr skip 25 全为
   `no_r_reference`；deriv skip 1 = LOGSHASHO「无有限密度支撑网格」。90 个非通过项
   `unclassified=0`。工件 + fail-closed 工具 + 7 例测试。**P2-2 的挂账缺陷修复仍未做**）
-- [ ] P2-2 修 BCTO deriv、SHASH 积分、NET clamp、JSU 轨迹、LNO intercept-only
+- [x] P2-2 修 BCTO deriv、SHASH 积分、NET clamp、JSU 轨迹、LNO intercept-only
+  （D2.237 完成，逐项复验：BCTO deriv `pass`；SHASH 密度质量 `1.000000`；
+  **NET** 新增拟合边界校验 `tau>=nu`（R 的 `dNET` stop 语义；raw kernel 保留 clamp
+  以保 `jax.jit(fam.d)`，`test_net_tau_domain.py` 4 例钉住两侧语义）；
+  JSU `max_iter=200` 收敛到 316.3600（R 316.3632；R 默认预算本身未收敛）；
+  LNO intercept-only 收敛。**P2-2 清单全部关闭**）
 - [ ] P3-1 冻结 family/link/formula/prediction 契约
 - [ ] P3-2 实现 `checklink`/`make.link.gamlss`/`as.family`/`gen.Family` 框架
 - [ ] P3-3 `*.fix`/`contrasts` 扩到 CG/MIXED/joint + 分类预测重建
