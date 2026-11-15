@@ -273,7 +273,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | fp | public_api | implemented | tested | exported_api | 6 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 15 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 216 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 217 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | gamlss_cs | public_api | implemented | tested | exported_api | 3 |
 | gamlss.cy | gamlss | gamlss_cy | public_api | implemented | tested | exported_api | 1 |
@@ -455,7 +455,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | NBF | gamlss.dist | NBF | public_api | experimental | capability:unsupported | blocked | 3 |
 | NBI | gamlss.dist | NBI | public_api | experimental | r_consistency_test | blocked | 20 |
 | NBII | gamlss.dist | NBII | public_api | experimental | r_consistency_test | blocked | 12 |
-| NET | gamlss.dist | NET | public_api | experimental | r_consistency_test | blocked | 13 |
+| NET | gamlss.dist | NET | public_api | experimental | r_consistency_test | blocked | 14 |
 | NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 152 |
 | NO2 | gamlss.dist | NO2 | public_api | experimental | r_consistency_test | blocked | 8 |
 | NOF | gamlss.dist | NOF | public_api | experimental | r_consistency_test | blocked | 5 |
@@ -599,7 +599,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | dNBF | gamlss.dist | dNBF | module_def | experimental | capability:unsupported | blocked | 0 |
 | dNBI | gamlss.dist | dNBI | module_export | experimental | golden:validated | blocked | 1 |
 | dNBII | gamlss.dist | dNBII | module_export | experimental | golden:validated | blocked | 2 |
-| dNET | gamlss.dist | dNET | module_def | experimental | golden:validated | blocked | 2 |
+| dNET | gamlss.dist | dNET | module_def | experimental | golden:validated | blocked | 3 |
 | dNO | gamlss.dist | dNO | module_export | implemented | golden:validated | production_safe | 1 |
 | dNO2 | gamlss.dist | dNO2 | module_export | experimental | golden:validated | blocked | 1 |
 | dNOF | gamlss.dist | dNOF | module_def | experimental | capability:unsupported | blocked | 1 |
@@ -734,7 +734,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | pNBF | gamlss.dist | pNBF | module_def | experimental | capability:unsupported | blocked | 0 |
 | pNBI | gamlss.dist | pNBI | module_export | experimental | golden:validated | blocked | 0 |
 | pNBII | gamlss.dist | pNBII | module_export | experimental | golden:validated | blocked | 2 |
-| pNET | gamlss.dist | pNET | module_def | experimental | golden:validated | blocked | 2 |
+| pNET | gamlss.dist | pNET | module_def | experimental | golden:validated | blocked | 3 |
 | pNO | gamlss.dist | pNO | module_export | implemented | r_consistency_test | production_safe | 1 |
 | pNO2 | gamlss.dist | pNO2 | module_export | experimental | golden:validated | blocked | 1 |
 | pNOF | gamlss.dist | pNOF | module_def | experimental | capability:unsupported | blocked | 1 |
@@ -859,7 +859,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | qNBF | gamlss.dist | qNBF | module_def | experimental | capability:unsupported | blocked | 0 |
 | qNBI | gamlss.dist | qNBI | module_export | experimental | golden:validated | blocked | 0 |
 | qNBII | gamlss.dist | qNBII | module_export | experimental | golden:validated | blocked | 1 |
-| qNET | gamlss.dist | qNET | module_def | experimental | golden:validated | blocked | 2 |
+| qNET | gamlss.dist | qNET | module_def | experimental | golden:validated | blocked | 3 |
 | qNO | gamlss.dist | qNO | module_export | implemented | golden:validated | production_safe | 0 |
 | qNO2 | gamlss.dist | qNO2 | module_export | experimental | golden:validated | blocked | 1 |
 | qNOF | gamlss.dist | qNOF | module_def | experimental | capability:unsupported | blocked | 1 |
