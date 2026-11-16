@@ -60,6 +60,8 @@ jobs:
         run: python tools/milestone_manifest.py --check
       - name: High-frequency family freeze gate (P1-1)
         run: python tools/highfreq_family_freeze.py --check
+      - name: P3-1 contract gate (family / link / formula / prediction)
+        run: python tools/contract_freeze.py --check
 
       - name: Lint / type gate (ruff, black, mypy)
         run: |

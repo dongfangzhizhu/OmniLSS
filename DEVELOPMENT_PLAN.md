@@ -444,7 +444,7 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 | M0 | P0 全清；覆盖工件可重生成；分层 collection 零错误；devcontainer 可用 | 0.4.x |
 | M1 | 冻结清单内高频族全部 **Surface + DPQR 证据 parity**；无 placeholder 进入目标范围（D2.235 重述：原「golden:validated 数量级」改为证据覆盖口径（40 族池上限 ~110，10x 不可达），原「Kernel 全 implemented」划归 **M3** 准入） | 0.5.0 |
 | M2 | P2 收敛缺陷分类完毕；RS/CG/MIXED 分层 parity；fit/newdata 证据齐全；失败可解释（D2.239 达成：四项均有可校验工件，见 §22.4 M2 状态） | 0.6.0 |
-| M3 | P3 核心 API + family/link 框架 + 准入平滑项闭环；`*.fix`/`contrasts` 全路由（D2.240 证据清单 + D2.241 准入完成：22/22 promoted 族 production_safe，路由门改为任何非 ok 一律拒绝；P3-1..P3-3 未完成） | 0.9.0 |
+| M3 | P3 核心 API + family/link 框架 + 准入平滑项闭环；`*.fix`/`contrasts` 全路由（D2.240 证据清单 + D2.241 准入完成：22/22 promoted 族 production_safe，路由门改为任何非 ok 一律拒绝；D2.242 P3-1 契约冻结完成并入 CI；P3-2 局部、P3-3 未完成） | 0.9.0 |
 | M4 | P4 周边包（至少 cens/tr/mx/add）+ 服务 + 文档/教程 + 发布 artifact 同步 | 1.0.0 |
 | 独立 | P5 在线层、P6 性能/GPU，各自独立门禁与发布 | 并行 |
 
@@ -534,6 +534,19 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
 - `implementation_status_for_family`（纯代码推导、忽略准入）对这批族仍返回 experimental——
   该函数表达的是「是否有真实数值内核」，与准入是两层，测试同时钉住两者。
 
+**M3 契约冻结（2026-11-15，D2.242 / P3-1）**：见
+`docs/development/p3-contracts-2026-11-15.json`（+ `.md`，tool
+`tools/contract_freeze.py --check`，已接入 CI 与 release 门禁）。
+- **family**：`FamilyDefinition` 字段集 + 22 个 promoted 族的 parameters/nopar/type/
+  fixed/estimable/dpqr 可调用性/links 键；不变量 `nopar == len(parameters)` 且
+  `estimable == parameters - fixed`。两种固定参数形态都覆盖：BI 的 `bd` 在参数元组之外、
+  NET 的 `nu/tau` 在元组内被标为固定。
+- **link**：`LinkGamlss` 五个 R 槽 + 18 个受支持 link 的往返探针；`logshiftto1/2` 冻结
+  **+1e-5 偏移**（R 的非对称分支），`mu_eta` 有限非零。
+- **formula**：`ParsedFormula` 字段 + 7 个规范公式（线性/平滑/张量/截距）的解析结构。
+- **prediction**：`predict_params`/`predict_response` 的键、形状、缺列报错、多余列容忍。
+- 失败即 `--check` 失败：新增 link 无探针、参数元组或解析结构变化、预测行为退化。
+
 ### 22.5 立即执行的前十五项（backlog，按依赖排序）
 
 - [x] P0-1 修 `.codex/setup.sh` / devcontainer postCreate（D2.224 完成：根因是
@@ -599,7 +612,16 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
   以保 `jax.jit(fam.d)`，`test_net_tau_domain.py` 4 例钉住两侧语义）；
   JSU `max_iter=200` 收敛到 316.3600（R 316.3632；R 默认预算本身未收敛）；
   LNO intercept-only 收敛。**P2-2 清单全部关闭**）
-- [ ] P3-1 冻结 family/link/formula/prediction 契约
+- [x] P3-1 冻结 family/link/formula/prediction 契约（D2.242 完成：`tools/contract_freeze.py`
+  产出 `docs/development/p3-contracts-2026-11-15.json`（+ `.md`），四块契约均**活体探测**
+  而非抄写签名——family：22 个 promoted 族的参数元组/nopar/固定参数/可估参数/dpqr 可调用性
+  （不变量 `estimable == parameters - fixed`，同时覆盖 BI 的 bd 在参数元组之外与 NET 的
+  nu/tau 在元组内被固定两种形态）；link：18 个受支持 link 各有探测域与往返探针，并把
+  `logshiftto1/2` 的 **+1e-5 偏移**作为契约一部分冻结（那是 R 的非对称分支，不是缺陷）；
+  formula：7 个规范公式的线性/平滑/张量项与截距解析结构；prediction：`predict_params`
+  键等于可估参数、形状随 newdata、缺列抛 `PredictionSchemaError`（ValueError 子类）、
+  多余列被容忍。`--check` 双向 fail-closed（新增 link 无探针、参数元组变化、解析结构变化
+  均失败），已接入 `ci.yml`/`release.yml`；9 例测试钉住判据与门禁接线）
 - [ ] P3-2 实现 `checklink`/`make.link.gamlss`/`as.family`/`gen.Family` 框架
 - [ ] P3-3 `*.fix`/`contrasts` 扩到 CG/MIXED/joint + 分类预测重建
 - [x] P3-4 `production_safe` 准入闭环（D2.240 证据清单 → D2.241 准入执行：22 个 promoted 族

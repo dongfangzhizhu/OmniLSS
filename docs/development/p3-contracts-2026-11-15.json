@@ -1,0 +1,886 @@
+{
+  "areas": {
+    "family": {
+      "dataclass_fields": [
+        "constructor_parameters",
+        "d",
+        "fixed_parameter_defaults",
+        "fixed_parameters",
+        "g_dev_inc",
+        "hessian_functions",
+        "link_derivatives",
+        "link_functions",
+        "link_inverses",
+        "links",
+        "name",
+        "p",
+        "parameters",
+        "q",
+        "r",
+        "score_functions",
+        "type"
+      ],
+      "families": {
+        "BE": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "sigma"
+          ],
+          "nopar": 2,
+          "parameters": [
+            "mu",
+            "sigma"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Continuous"
+        },
+        "BEINF": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma",
+            "nu",
+            "tau"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "nu",
+            "sigma",
+            "tau"
+          ],
+          "nopar": 4,
+          "parameters": [
+            "mu",
+            "sigma",
+            "nu",
+            "tau"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Mixed"
+        },
+        "BI": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu"
+          ],
+          "fixed_parameters": [
+            "bd"
+          ],
+          "link_keys": [
+            "mu"
+          ],
+          "nopar": 1,
+          "parameters": [
+            "mu"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Discrete"
+        },
+        "EXP": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu"
+          ],
+          "nopar": 1,
+          "parameters": [
+            "mu"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Continuous"
+        },
+        "GA": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "sigma"
+          ],
+          "nopar": 2,
+          "parameters": [
+            "mu",
+            "sigma"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Continuous"
+        },
+        "GEOM": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu"
+          ],
+          "nopar": 1,
+          "parameters": [
+            "mu"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Discrete"
+        },
+        "GU": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "sigma"
+          ],
+          "nopar": 2,
+          "parameters": [
+            "mu",
+            "sigma"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Continuous"
+        },
+        "IG": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "sigma"
+          ],
+          "nopar": 2,
+          "parameters": [
+            "mu",
+            "sigma"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Continuous"
+        },
+        "IGAMMA": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "sigma"
+          ],
+          "nopar": 2,
+          "parameters": [
+            "mu",
+            "sigma"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Continuous"
+        },
+        "LO": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "sigma"
+          ],
+          "nopar": 2,
+          "parameters": [
+            "mu",
+            "sigma"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Continuous"
+        },
+        "LOGNO": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "sigma"
+          ],
+          "nopar": 2,
+          "parameters": [
+            "mu",
+            "sigma"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Continuous"
+        },
+        "LOGNO2": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "sigma"
+          ],
+          "nopar": 2,
+          "parameters": [
+            "mu",
+            "sigma"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Continuous"
+        },
+        "NBI": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "sigma"
+          ],
+          "nopar": 2,
+          "parameters": [
+            "mu",
+            "sigma"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Discrete"
+        },
+        "NBII": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "sigma"
+          ],
+          "nopar": 2,
+          "parameters": [
+            "mu",
+            "sigma"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Discrete"
+        },
+        "NET": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma"
+          ],
+          "fixed_parameters": [
+            "nu",
+            "tau"
+          ],
+          "link_keys": [
+            "mu",
+            "nu",
+            "sigma",
+            "tau"
+          ],
+          "nopar": 4,
+          "parameters": [
+            "mu",
+            "sigma",
+            "nu",
+            "tau"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Continuous"
+        },
+        "NO": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "sigma"
+          ],
+          "nopar": 2,
+          "parameters": [
+            "mu",
+            "sigma"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Continuous"
+        },
+        "NO2": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "sigma"
+          ],
+          "nopar": 2,
+          "parameters": [
+            "mu",
+            "sigma"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Continuous"
+        },
+        "PE": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma",
+            "nu"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "nu",
+            "sigma"
+          ],
+          "nopar": 3,
+          "parameters": [
+            "mu",
+            "sigma",
+            "nu"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Continuous"
+        },
+        "PO": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu"
+          ],
+          "nopar": 1,
+          "parameters": [
+            "mu"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Discrete"
+        },
+        "RG": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "sigma"
+          ],
+          "nopar": 2,
+          "parameters": [
+            "mu",
+            "sigma"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Continuous"
+        },
+        "WEI": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "sigma"
+          ],
+          "nopar": 2,
+          "parameters": [
+            "mu",
+            "sigma"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Continuous"
+        },
+        "ZAGA": {
+          "cdf_callable": true,
+          "density_callable": true,
+          "estimable_parameters": [
+            "mu",
+            "sigma",
+            "nu"
+          ],
+          "fixed_parameters": [],
+          "link_keys": [
+            "mu",
+            "nu",
+            "sigma"
+          ],
+          "nopar": 3,
+          "parameters": [
+            "mu",
+            "sigma",
+            "nu"
+          ],
+          "quantile_callable": true,
+          "sampler_callable": true,
+          "type": "Mixed"
+        }
+      },
+      "members": [
+        "pdf",
+        "nopar",
+        "estimable_parameters",
+        "from_mapping"
+      ]
+    },
+    "formula": {
+      "cases": [
+        {
+          "formula": "y ~ x",
+          "has_intercept": true,
+          "linear_variables": [
+            "x"
+          ],
+          "response": "y",
+          "smooth_terms": [],
+          "tensor_terms": []
+        },
+        {
+          "formula": "y ~ x + z",
+          "has_intercept": true,
+          "linear_variables": [
+            "x",
+            "z"
+          ],
+          "response": "y",
+          "smooth_terms": [],
+          "tensor_terms": []
+        },
+        {
+          "formula": "y ~ x - 1",
+          "has_intercept": false,
+          "linear_variables": [
+            "x"
+          ],
+          "response": "y",
+          "smooth_terms": [],
+          "tensor_terms": []
+        },
+        {
+          "formula": "y ~ 1",
+          "has_intercept": true,
+          "linear_variables": [],
+          "response": "y",
+          "smooth_terms": [],
+          "tensor_terms": []
+        },
+        {
+          "formula": "y ~ pb(x)",
+          "has_intercept": true,
+          "linear_variables": [],
+          "response": "y",
+          "smooth_terms": [
+            {
+              "smoother": "pb",
+              "variable": "x"
+            }
+          ],
+          "tensor_terms": []
+        },
+        {
+          "formula": "y ~ s(x, k=3)",
+          "has_intercept": true,
+          "linear_variables": [],
+          "response": "y",
+          "smooth_terms": [
+            {
+              "smoother": "s",
+              "variable": "x"
+            }
+          ],
+          "tensor_terms": []
+        },
+        {
+          "formula": "y ~ te(x, z)",
+          "has_intercept": true,
+          "linear_variables": [],
+          "response": "y",
+          "smooth_terms": [],
+          "tensor_terms": [
+            {
+              "smoother": "te",
+              "variables": [
+                "x",
+                "z"
+              ]
+            }
+          ]
+        }
+      ],
+      "fields": [
+        "has_intercept",
+        "linear_terms",
+        "response",
+        "smooth_terms",
+        "tensor_terms"
+      ]
+    },
+    "link": {
+      "class_members": [
+        "name",
+        "linkfun",
+        "linkinv",
+        "mu_eta",
+        "valideta",
+        "as_dict"
+      ],
+      "probes": {
+        "(0,2]": {
+          "domain": [
+            0.25,
+            0.5,
+            1.5,
+            2.0
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 0.0,
+          "roundtrip_within_tolerance": true
+        },
+        "(0,5]": {
+          "domain": [
+            0.5,
+            1.0,
+            3.0,
+            5.0
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 0.0,
+          "roundtrip_within_tolerance": true
+        },
+        "(1,3]": {
+          "domain": [
+            1.5,
+            2.0,
+            2.5,
+            3.0
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 0.0,
+          "roundtrip_within_tolerance": true
+        },
+        "1/mu^2": {
+          "domain": [
+            0.25,
+            0.5,
+            1.0,
+            2.0
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 0.0,
+          "roundtrip_within_tolerance": true
+        },
+        "[-1,1]": {
+          "domain": [
+            0.1,
+            0.3,
+            0.5,
+            0.7,
+            0.9
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 0.0,
+          "roundtrip_within_tolerance": true
+        },
+        "cauchit": {
+          "domain": [
+            0.1,
+            0.3,
+            0.5,
+            0.7,
+            0.9
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 0.0,
+          "roundtrip_within_tolerance": true
+        },
+        "cloglog": {
+          "domain": [
+            0.1,
+            0.3,
+            0.5,
+            0.7,
+            0.9
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 0.0,
+          "roundtrip_within_tolerance": true
+        },
+        "identity": {
+          "domain": [
+            -2.0,
+            -1.0,
+            0.0,
+            1.0,
+            2.0
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 0.0,
+          "roundtrip_within_tolerance": true
+        },
+        "inverse": {
+          "domain": [
+            0.25,
+            0.5,
+            1.0,
+            2.0
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 0.0,
+          "roundtrip_within_tolerance": true
+        },
+        "log": {
+          "domain": [
+            0.25,
+            0.5,
+            1.0,
+            2.0
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 0.0,
+          "roundtrip_within_tolerance": true
+        },
+        "logit": {
+          "domain": [
+            0.1,
+            0.3,
+            0.5,
+            0.7,
+            0.9
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 0.0,
+          "roundtrip_within_tolerance": true
+        },
+        "logshiftto0": {
+          "domain": [
+            0.25,
+            0.5,
+            1.0,
+            2.0
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 0.0,
+          "roundtrip_within_tolerance": true
+        },
+        "logshiftto1": {
+          "domain": [
+            1.5,
+            2.0,
+            3.0,
+            4.0
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 1e-05,
+          "roundtrip_within_tolerance": true
+        },
+        "logshiftto2": {
+          "domain": [
+            2.5,
+            3.0,
+            4.0,
+            5.0
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 1e-05,
+          "roundtrip_within_tolerance": true
+        },
+        "mu^2": {
+          "domain": [
+            0.25,
+            0.5,
+            1.0,
+            2.0
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 0.0,
+          "roundtrip_within_tolerance": true
+        },
+        "probit": {
+          "domain": [
+            0.1,
+            0.3,
+            0.5,
+            0.7,
+            0.9
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 0.0,
+          "roundtrip_within_tolerance": true
+        },
+        "slog": {
+          "domain": [
+            0.25,
+            0.5,
+            1.0,
+            2.0
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 0.0,
+          "roundtrip_within_tolerance": true
+        },
+        "sqrt": {
+          "domain": [
+            0.25,
+            0.5,
+            1.0,
+            2.0
+          ],
+          "mu_eta_finite_nonzero": true,
+          "offset": 0.0,
+          "roundtrip_within_tolerance": true
+        }
+      },
+      "supported_links": [
+        "(0,2]",
+        "(0,5]",
+        "(1,3]",
+        "1/mu^2",
+        "[-1,1]",
+        "cauchit",
+        "cloglog",
+        "identity",
+        "inverse",
+        "log",
+        "logit",
+        "logshiftto0",
+        "logshiftto1",
+        "logshiftto2",
+        "mu^2",
+        "probit",
+        "slog",
+        "sqrt"
+      ]
+    },
+    "prediction": {
+      "estimated_parameters": [
+        "mu",
+        "sigma"
+      ],
+      "extra_column_tolerated": true,
+      "functions": [
+        "predict_params",
+        "predict_response",
+        "predict_quantiles",
+        "centiles",
+        "build_prediction_design_matrix"
+      ],
+      "keys_are_estimable_parameters": true,
+      "missing_column_error": "PredictionSchemaError",
+      "missing_column_raises_schema_error": true,
+      "newdata_points": 3,
+      "predict_response_length_follows_newdata": true,
+      "schema_error_is_value_error": true,
+      "values_follow_newdata_length": true
+    }
+  },
+  "criteria": {
+    "family_contract_holds": {
+      "detail": "22 promoted families: nopar == len(parameters), estimable == parameters minus fixed (covers BI's bd outside the tuple and NET's fixed nu/tau inside it), d/p/q/r callable",
+      "met": true
+    },
+    "formula_contract_holds": {
+      "detail": "ParsedFormula fields frozen; 7 canonical formulas parse to a recorded structure",
+      "met": true
+    },
+    "link_contract_holds": {
+      "detail": "18 supported links each have a probe; round-trip within 1e-9 (including the documented 1e-5 offset for logshiftto1/2) and a finite non-zero mu_eta",
+      "met": true
+    },
+    "prediction_contract_holds": {
+      "detail": "predict_params keys == estimable parameters, shapes follow newdata, missing column raises PredictionSchemaError, extra column tolerated",
+      "met": true
+    }
+  },
+  "decision": "D2.242",
+  "milestone": "M3",
+  "schema_version": 1,
+  "sources": {
+    "families": "docs/development/highfreq-families-frozen.json",
+    "family": "omnilss/families.py + omnilss/distribution_registry.py",
+    "formula": "omnilss/formula_parser.py",
+    "link": "omnilss/gamlss_family.py",
+    "prediction": "omnilss/prediction.py"
+  },
+  "task": "P3-1",
+  "verdict": {
+    "contract_frozen": true,
+    "notes": "Frozen at the public shape M3 builds on. The link offsets are part of the contract, not a defect: logshiftto1/2 mirror R's asymmetric branch. A new link without a probe, a changed parameter tuple or a changed formula parse fails --check."
+  }
+}

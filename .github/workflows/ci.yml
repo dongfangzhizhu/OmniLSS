@@ -119,6 +119,8 @@ jobs:
         run: python tools/milestone_manifest.py --check
       - name: High-frequency family freeze gate (P1-1)
         run: python tools/highfreq_family_freeze.py --check
+      - name: P3-1 contract gate (family / link / formula / prediction)
+        run: python tools/contract_freeze.py --check
       - name: Symbol coverage artifact freshness (D0.1, needs vendored R/)
         if: hashFiles('R/gamlss/NAMESPACE') != ''
         run: python tools/generate_symbol_coverage.py --check
