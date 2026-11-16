@@ -40,7 +40,7 @@
 | [x] | `LG` | `LG` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `LNO` | `LNO` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `LOGITNO` | `LOGITNO` | experimental | 状态已离开 placeholder（experimental） |
-| [x] | `NET` | `NET` | experimental | 状态已离开 placeholder（experimental） |
+| [x] | `NET` | `NET` | implemented | 状态已离开 placeholder（implemented） |
 
 ## A3 离散与零膨胀计数
 
@@ -53,7 +53,7 @@
 | [x] | `YULE` | `YULE` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `NBF` | `NBF` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `GPO` | `GPO` | experimental | 状态已离开 placeholder（experimental） |
-| [x] | `NBII` | `NBII` | experimental | 状态已离开 placeholder（experimental） |
+| [x] | `NBII` | `NBII` | implemented | 状态已离开 placeholder（implemented） |
 | [x] | `ZALG` | `ZALG` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `ZIP` | `ZIP` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `ZIP2` | `ZIP2` | experimental | 状态已离开 placeholder（experimental） |
@@ -66,7 +66,7 @@
 | [x] | `GB1` | `GB1` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `GB2` | `GB2` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `GIG` | `GIG` | experimental | 状态已离开 placeholder（experimental） |
-| [x] | `NO2` | `NO2` | experimental | 状态已离开 placeholder（experimental） |
+| [x] | `NO2` | `NO2` | implemented | 状态已离开 placeholder（implemented） |
 | [x] | `NOF` | `NOF` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `PARETO` | `PARETO` | experimental | 状态已离开 placeholder（experimental） |
 | [x] | `PARETO1` | `PARETO1` | experimental | 状态已离开 placeholder（experimental） |
