@@ -444,7 +444,7 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 | M0 | P0 全清；覆盖工件可重生成；分层 collection 零错误；devcontainer 可用 | 0.4.x |
 | M1 | 冻结清单内高频族全部 **Surface + DPQR 证据 parity**；无 placeholder 进入目标范围（D2.235 重述：原「golden:validated 数量级」改为证据覆盖口径（40 族池上限 ~110，10x 不可达），原「Kernel 全 implemented」划归 **M3** 准入） | 0.5.0 |
 | M2 | P2 收敛缺陷分类完毕；RS/CG/MIXED 分层 parity；fit/newdata 证据齐全；失败可解释（D2.239 达成：四项均有可校验工件，见 §22.4 M2 状态） | 0.6.0 |
-| M3 | P3 核心 API + family/link 框架 + 准入平滑项闭环；`*.fix`/`contrasts` 全路由 | 0.9.0 |
+| M3 | P3 核心 API + family/link 框架 + 准入平滑项闭环；`*.fix`/`contrasts` 全路由（D2.240 已完成准入证据清单：1 admitted / 21 eligible / 0 blocked，见 §22.4 M3 状态；准入决策与 P3-1..P3-3 未完成） | 0.9.0 |
 | M4 | P4 周边包（至少 cens/tr/mx/add）+ 服务 + 文档/教程 + 发布 artifact 同步 | 1.0.0 |
 | 独立 | P5 在线层、P6 性能/GPU，各自独立门禁与发布 | 并行 |
 
@@ -504,6 +504,19 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
   （pass/flat_ridge/r_error/r_not_converged/mismatch/py_error），NBII 的 R `CG()` 报错与
   11 个 flat_ridge 均单列归类。
 - **`m2_gate_met: true`**。M2 正式关闭（0.6.0 门槛）。
+
+**M3 准入证据（2026-11-15 清单完成，D2.240）**：见
+`docs/development/m3-admission-evidence-2026-11-15.json`（+ `.md`，tool
+`tools/m3_admission_evidence.py --check`）。**这是清单，不是准入决定**。
+- 硬门 9 项（三闸 pass、r_consistency validated、golden fit fixture、M2 活体预测 /
+  JSON 往返 / 收敛、分层路由无 mismatch/py_error）对 22 个 promoted 族逐族计算。
+- 结果：**admitted 1（NO）/ eligible_not_admitted 21 / blocked 0**；
+  软标记 7 族（GU/IGAMMA/NBI/NBII/PE/RG/WEI 的 `flat_ridge`，NBII 另有 R 侧 `CG()` 报错）。
+- **注册表声明审计**：`_PRODUCTION_SAFE`、`_RS_FIT_EVIDENCE`、`_PREDICTION_EVIDENCE`
+  的每一条声明都有工件支撑（`registry_claims_backed: true`，violations=0）；
+  ZIP 的预测证据来自专用测试 `test_zip_prediction_serialization.py`。
+- 口径澄清：审计文档里的「production_safe 5」是**符号数**（NO 的构造器+d/p/q/r），
+  族数是 **1**；M1 工件文案已同步校正。
 
 ### 22.5 立即执行的前十五项（backlog，按依赖排序）
 
@@ -573,6 +586,11 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
 - [ ] P3-1 冻结 family/link/formula/prediction 契约
 - [ ] P3-2 实现 `checklink`/`make.link.gamlss`/`as.family`/`gen.Family` 框架
 - [ ] P3-3 `*.fix`/`contrasts` 扩到 CG/MIXED/joint + 分类预测重建
+- [ ] P3-4 `production_safe` 准入闭环（D2.240 已产出证据清单：22 个 promoted 族中
+  **1 族 admitted（NO）、21 族证据齐备未准入、0 族 blocked**，工件
+  `docs/development/m3-admission-evidence-2026-11-15.json`；下一步是**准入决策**——
+  一次性把这 21 族加入 `_PRODUCTION_SAFE`/`_RS_FIT_EVIDENCE`/`_PREDICTION_EVIDENCE`，
+  并把 7 个族的 `flat_ridge`/R 侧报错软标记写入发布说明）
 - [ ] P5-1 定义 OmniLSS↔ondil distribution contract 与独立流式 golden
 - [ ] P6-1 `log_bessel_kv` JAX 原生实现（含精度与耗时双验收）
 

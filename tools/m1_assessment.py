@@ -163,7 +163,8 @@ def build() -> dict:
             "detail": (
                 f"{len(kernel_implemented_families)}/{len(promoted)} promoted families have an "
                 "implemented kernel; the rest are experimental because admission is blocked "
-                "(production_safe=5). Kernel promotion is M3 admission work, not M1 parity."
+                "(production_safe: 1 family / 5 symbols). Kernel promotion is M3 admission work, "
+                "not M1 parity."
             ),
         },
         "no_placeholder_in_scope": {
@@ -217,7 +218,7 @@ def build() -> dict:
                 ),
                 "kernel_implemented": (
                     "M3 admission work: 21/22 promoted kernels are experimental because "
-                    "admission is blocked (production_safe=5); turning them production-safe is "
+                    "admission is blocked (production_safe: 1 family / 5 symbols); turning them production-safe is "
                     "the M3 gate, not a parity gap"
                 ),
             },

@@ -36,7 +36,7 @@
       "met": true
     },
     "kernel_implemented": {
-      "detail": "1/22 promoted families have an implemented kernel; the rest are experimental because admission is blocked (production_safe=5). Kernel promotion is M3 admission work, not M1 parity.",
+      "detail": "1/22 promoted families have an implemented kernel; the rest are experimental because admission is blocked (production_safe: 1 family / 5 symbols). Kernel promotion is M3 admission work, not M1 parity.",
       "met": false
     },
     "no_placeholder_in_scope": {
@@ -54,7 +54,7 @@
     "decision": "D2.235",
     "moved_out": {
       "golden_validated_order_of_magnitude": "replaced by d/p/q/r evidence coverage: the 40-family validated pool caps golden:validated at ~110, so the 10x (340) target is unreachable by construction (18 families excluded with documented R-side/flat-ridge reasons)",
-      "kernel_implemented": "M3 admission work: 21/22 promoted kernels are experimental because admission is blocked (production_safe=5); turning them production-safe is the M3 gate, not a parity gap"
+      "kernel_implemented": "M3 admission work: 21/22 promoted kernels are experimental because admission is blocked (production_safe: 1 family / 5 symbols); turning them production-safe is the M3 gate, not a parity gap"
     },
     "revised_from": "high-frequency families all Surface+Kernel+DPQR parity; golden:validated raised by an order of magnitude; no placeholder in the target scope",
     "revision": "The gate is frozen to the parity property it was meant to capture: surface, d/p/q/r evidence, and no placeholder for every promoted family. The two literal clauses are re-stated rather than dropped -- see moved_out."
