@@ -323,7 +323,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | loglogSurv2 | gamlss | loglogSurv2 | public_api | implemented | tested | exported_api | 1 |
 | loglogSurv3 | gamlss | loglogSurv3 | public_api | implemented | tested | exported_api | 1 |
 | loglogplot | gamlss | loglogplot | public_api | implemented | tested | exported_api | 1 |
-| lp | gamlss | lp | public_api | implemented | r_consistency_test | exported_api | 8 |
+| lp | gamlss | lp | public_api | implemented | r_consistency_test | exported_api | 9 |
 | lpred | gamlss | lpred | public_api | implemented | tested | exported_api | 1 |
 | numeric.deriv | gamlss | numeric_deriv | public_api | implemented | r_consistency_test | exported_api | 7 |
 | par.plot | gamlss | par_plot | public_api | implemented | tested | exported_api | 1 |
@@ -1257,14 +1257,14 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | trun.q | gamlss.tr | trun_q | public_api | implemented | tested | exported_api | 3 |
 | trun.r | gamlss.tr | trun_r | public_api | implemented | tested | exported_api | 2 |
 | BS | gamlss2 | - | missing | missing | unverified | not_available | 0 |
-| CG | gamlss2 | - | missing | missing | unverified | not_available | 34 |
+| CG | gamlss2 | - | missing | missing | unverified | not_available | 35 |
 | GAIC | gamlss2 | GAIC | public_api | implemented | tested | exported_api | 10 |
 | GDF | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | KS | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | Kumaraswamy | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | MN | gamlss2 | - | missing | missing | unverified | not_available | 3 |
 | OL | gamlss2 | - | missing | missing | unverified | not_available | 0 |
-| RS | gamlss2 | - | missing | missing | unverified | not_available | 104 |
+| RS | gamlss2 | - | missing | missing | unverified | not_available | 105 |
 | Rsq | gamlss2 | Rsq | module_export | implemented | unverified | internal | 0 |
 | available_families | gamlss2 | - | missing | missing | unverified | not_available | 0 |
 | bamlss2 | gamlss2 | - | missing | missing | unverified | not_available | 0 |

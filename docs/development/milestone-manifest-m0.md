@@ -1,7 +1,7 @@
 # Milestone M0 manifest (v0.4.0)
 
-- generated: 2026-11-15T23:47:16Z
-- source commit: 15034785e7eb2b850ebf7a0e0eec353406f035eb (branch main)
+- generated: 2026-11-16T00:04:27Z
+- source commit: ca8b8c955d7607913c524055d6a45c6a354f4970 (branch main)
 - environment pinned: True
 - python 3.10.19 / jax 0.6.2 (x64=True) / numpy 2.2.6 / scipy 1.15.3
 - R: R version 4.6.0 (2026-04-24 ucrt) / gamlss 5.5.0 / gamlss.dist 6.1.1
