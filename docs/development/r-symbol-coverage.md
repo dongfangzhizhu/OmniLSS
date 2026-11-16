@@ -327,7 +327,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | lpred | gamlss | lpred | public_api | implemented | tested | exported_api | 1 |
 | numeric.deriv | gamlss | numeric_deriv | public_api | implemented | r_consistency_test | exported_api | 7 |
 | par.plot | gamlss | par_plot | public_api | implemented | tested | exported_api | 1 |
-| pb | gamlss | pb | public_api | implemented | r_consistency_test | exported_api | 42 |
+| pb | gamlss | pb | public_api | implemented | r_consistency_test | exported_api | 43 |
 | pb.control | gamlss | pb_control | public_api | implemented | tested | exported_api | 2 |
 | pbc | gamlss | pbc | public_api | implemented | tested | exported_api | 5 |
 | pbc.control | gamlss | pbc_control | public_api | implemented | tested | exported_api | 1 |
@@ -409,7 +409,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | BEOI | gamlss.dist | BEOI | public_api | experimental | r_consistency_test | blocked | 12 |
 | BEZI | gamlss.dist | BEZI | public_api | experimental | r_consistency_test | blocked | 12 |
 | BEo | gamlss.dist | BEo | public_api | implemented | r_consistency_test | exported_api | 6 |
-| BI | gamlss.dist | BI | public_api | implemented | r_consistency_test | production_safe | 29 |
+| BI | gamlss.dist | BI | public_api | implemented | r_consistency_test | production_safe | 30 |
 | BNB | gamlss.dist | BNB | public_api | experimental | r_consistency_test | blocked | 14 |
 | DBI | gamlss.dist | DBI | public_api | experimental | r_consistency_test | blocked | 13 |
 | DBURR12 | gamlss.dist | DBURR12 | public_api | experimental | r_consistency_test | blocked | 5 |
@@ -455,7 +455,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | NBF | gamlss.dist | NBF | public_api | experimental | capability:unsupported | blocked | 3 |
 | NBI | gamlss.dist | NBI | public_api | implemented | r_consistency_test | production_safe | 20 |
 | NBII | gamlss.dist | NBII | public_api | implemented | r_consistency_test | production_safe | 12 |
-| NET | gamlss.dist | NET | public_api | implemented | r_consistency_test | production_safe | 14 |
+| NET | gamlss.dist | NET | public_api | implemented | r_consistency_test | production_safe | 15 |
 | NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 153 |
 | NO2 | gamlss.dist | NO2 | public_api | implemented | r_consistency_test | production_safe | 8 |
 | NOF | gamlss.dist | NOF | public_api | experimental | r_consistency_test | blocked | 5 |
