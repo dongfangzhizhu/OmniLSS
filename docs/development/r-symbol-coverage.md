@@ -456,7 +456,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | NBI | gamlss.dist | NBI | public_api | experimental | r_consistency_test | blocked | 20 |
 | NBII | gamlss.dist | NBII | public_api | experimental | r_consistency_test | blocked | 12 |
 | NET | gamlss.dist | NET | public_api | experimental | r_consistency_test | blocked | 14 |
-| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 152 |
+| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 153 |
 | NO2 | gamlss.dist | NO2 | public_api | experimental | r_consistency_test | blocked | 8 |
 | NOF | gamlss.dist | NOF | public_api | experimental | r_consistency_test | blocked | 5 |
 | PARETO | gamlss.dist | PARETO | public_api | experimental | r_consistency_test | blocked | 7 |
@@ -515,7 +515,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | ZIBNB | gamlss.dist | ZIBNB | public_api | experimental | r_consistency_test | blocked | 11 |
 | ZINBF | gamlss.dist | ZINBF | public_api | experimental | r_consistency_test | blocked | 5 |
 | ZINBI | gamlss.dist | ZINBI | public_api | experimental | r_consistency_test | blocked | 15 |
-| ZIP | gamlss.dist | ZIP | public_api | experimental | r_consistency_test | blocked | 19 |
+| ZIP | gamlss.dist | ZIP | public_api | experimental | r_consistency_test | blocked | 20 |
 | ZIP2 | gamlss.dist | ZIP2 | public_api | experimental | r_consistency_test | blocked | 10 |
 | ZIPF | gamlss.dist | ZIPF | public_api | experimental | r_consistency_test | blocked | 9 |
 | ZIPIG | gamlss.dist | ZIPIG | public_api | experimental | r_consistency_test | blocked | 9 |
