@@ -1,0 +1,732 @@
+{
+  "counts": {
+    "live_converged_ok": 22,
+    "live_errors": [],
+    "live_predictions_ok": 22,
+    "live_roundtrip_ok": 22,
+    "promoted_families": 22,
+    "static_evidence_complete": 22
+  },
+  "criteria": {
+    "convergence_complete": {
+      "detail": "22/22 refits report converged=True",
+      "met": true
+    },
+    "failures_explainable": {
+      "detail": "every non-pass carries a category: P2 classification (90 entries) plus layered r_error=['NBII'], r_not_converged=0, flat_ridge=7",
+      "met": true
+    },
+    "fit_newdata_evidence_live": {
+      "detail": "22/22 refits reproduce R's newdata predictions within atol=0.0002",
+      "met": true
+    },
+    "fit_newdata_evidence_static": {
+      "detail": "22/22 promoted fixtures carry deviance + coefficient blocks + convergence + newdata + predicted",
+      "met": true
+    },
+    "layered_parity_our_side": {
+      "detail": "66 cells; counts={'flat_ridge': 11, 'pass': 54, 'r_error': 1}; mismatch=0, py_error=0",
+      "met": true
+    },
+    "p2_defects_classified": {
+      "detail": "90 non-pass entries across three gates, unclassified=0",
+      "met": true
+    },
+    "serialization_roundtrip": {
+      "detail": "22/22 JSON round-trips drift <= 1e-10",
+      "met": true
+    }
+  },
+  "live_replay": true,
+  "milestone": "M2",
+  "promoted_families": [
+    "BE",
+    "BEINF",
+    "BI",
+    "EXP",
+    "GA",
+    "GEOM",
+    "GU",
+    "IG",
+    "IGAMMA",
+    "LO",
+    "LOGNO",
+    "LOGNO2",
+    "NBI",
+    "NBII",
+    "NET",
+    "NO",
+    "NO2",
+    "PE",
+    "PO",
+    "RG",
+    "WEI",
+    "ZAGA"
+  ],
+  "rows": [
+    {
+      "case": "be_y_x_seed_20260811",
+      "family": "BE",
+      "live": {
+        "converged": true,
+        "deviance_rel": 1.2754997820573972e-07,
+        "iter": 3,
+        "predicted_max_abs_gap": 2.1332011768127046e-07,
+        "predicted_max_rel_gap": 3.9789009252293997e-07,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "mu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "sigma"
+        ]
+      }
+    },
+    {
+      "case": "beinf_y_x_seed_20261122",
+      "family": "BEINF",
+      "live": {
+        "converged": true,
+        "deviance_rel": 5.7619563224952044e-08,
+        "iter": 3,
+        "predicted_max_abs_gap": 1.3488428496577498e-05,
+        "predicted_max_rel_gap": 8.003125198387176e-05,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "nu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "nu",
+          "sigma",
+          "tau"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "nu",
+          "sigma",
+          "tau"
+        ]
+      }
+    },
+    {
+      "case": "bi_y_x_seed_20260809",
+      "family": "BI",
+      "live": {
+        "converged": true,
+        "deviance_rel": 0.0,
+        "iter": 2,
+        "predicted_max_abs_gap": 2.2515322939398175e-13,
+        "predicted_max_rel_gap": 3.0256211765647413e-13,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "mu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu"
+        ]
+      }
+    },
+    {
+      "case": "exp_y_x_seed_20261117",
+      "family": "EXP",
+      "live": {
+        "converged": true,
+        "deviance_rel": 4.2213855243724627e-14,
+        "iter": 2,
+        "predicted_max_abs_gap": 6.344137384317605e-07,
+        "predicted_max_rel_gap": 3.823113655265924e-07,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "mu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu"
+        ]
+      }
+    },
+    {
+      "case": "ga_y_x_seed_20260525",
+      "family": "GA",
+      "live": {
+        "converged": true,
+        "deviance_rel": 3.0726460490580664e-15,
+        "iter": 3,
+        "predicted_max_abs_gap": 5.034769934297856e-09,
+        "predicted_max_rel_gap": 2.6175762692315042e-09,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "mu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "sigma"
+        ]
+      }
+    },
+    {
+      "case": "geom_y_x_seed_20261118",
+      "family": "GEOM",
+      "live": {
+        "converged": true,
+        "deviance_rel": 4.8573246906547384e-11,
+        "iter": 2,
+        "predicted_max_abs_gap": 5.600789645976434e-05,
+        "predicted_max_rel_gap": 2.7998005051840784e-05,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "mu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu"
+        ]
+      }
+    },
+    {
+      "case": "gu_y_x_seed_20260813",
+      "family": "GU",
+      "live": {
+        "converged": true,
+        "deviance_rel": 6.976154782472102e-10,
+        "iter": 4,
+        "predicted_max_abs_gap": 8.372549668234086e-06,
+        "predicted_max_rel_gap": 1.1541078369301281e-05,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "mu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "sigma"
+        ]
+      }
+    },
+    {
+      "case": "ig_y_x_seed_20260522",
+      "family": "IG",
+      "live": {
+        "converged": true,
+        "deviance_rel": 8.398064245901098e-08,
+        "iter": 3,
+        "predicted_max_abs_gap": 0.00048479373091447897,
+        "predicted_max_rel_gap": 0.00012889863849187464,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "mu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "sigma"
+        ]
+      }
+    },
+    {
+      "case": "igamma_y_x_seed_20261119",
+      "family": "IGAMMA",
+      "live": {
+        "converged": true,
+        "deviance_rel": 9.876209316088369e-12,
+        "iter": 9,
+        "predicted_max_abs_gap": 1.1764938356861876e-07,
+        "predicted_max_rel_gap": 4.5488795637505546e-08,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "mu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "sigma"
+        ]
+      }
+    },
+    {
+      "case": "lo_y_x_seed_20261121",
+      "family": "LO",
+      "live": {
+        "converged": true,
+        "deviance_rel": 4.607835146931901e-09,
+        "iter": 4,
+        "predicted_max_abs_gap": 0.00013721583718817598,
+        "predicted_max_rel_gap": 0.00012064831966299909,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "mu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "sigma"
+        ]
+      }
+    },
+    {
+      "case": "logno_y_x_seed_20261116",
+      "family": "LOGNO",
+      "live": {
+        "converged": true,
+        "deviance_rel": 0.0,
+        "iter": 2,
+        "predicted_max_abs_gap": 2.458588888032409e-13,
+        "predicted_max_rel_gap": 5.960304056085598e-13,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "sigma",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "sigma"
+        ]
+      }
+    },
+    {
+      "case": "logno2_y_x_seed_20261128",
+      "family": "LOGNO2",
+      "live": {
+        "converged": true,
+        "deviance_rel": 2.7270530334533813e-16,
+        "iter": 2,
+        "predicted_max_abs_gap": 1.1657341758564144e-15,
+        "predicted_max_rel_gap": 3.322559265415543e-15,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "sigma",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "sigma"
+        ]
+      }
+    },
+    {
+      "case": "nbi_y_x_seed_20260810",
+      "family": "NBI",
+      "live": {
+        "converged": true,
+        "deviance_rel": 5.238607904159537e-09,
+        "iter": 3,
+        "predicted_max_abs_gap": 0.0001949029458085949,
+        "predicted_max_rel_gap": 0.0006971261398039115,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "sigma",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "sigma"
+        ]
+      }
+    },
+    {
+      "case": "nbii_y_x_seed_20261121",
+      "family": "NBII",
+      "live": {
+        "converged": true,
+        "deviance_rel": 7.367598176200959e-09,
+        "iter": 3,
+        "predicted_max_abs_gap": 0.00033337483084672215,
+        "predicted_max_rel_gap": 0.00013249573407202333,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "mu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "sigma"
+        ]
+      }
+    },
+    {
+      "case": "net_y_x_seed_20261127",
+      "family": "NET",
+      "live": {
+        "converged": true,
+        "deviance_rel": 1.693961021340693e-10,
+        "iter": 3,
+        "predicted_max_abs_gap": 1.6686933053344788e-05,
+        "predicted_max_rel_gap": 2.1516608694342575e-05,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "mu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "sigma"
+        ]
+      }
+    },
+    {
+      "case": "no_y_x_seed_20260524",
+      "family": "NO",
+      "live": {
+        "converged": true,
+        "deviance_rel": 8.571196931904016e-16,
+        "iter": 2,
+        "predicted_max_abs_gap": 1.1284306822290091e-12,
+        "predicted_max_rel_gap": 2.2319761894284005e-12,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "sigma",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "sigma"
+        ]
+      }
+    },
+    {
+      "case": "no2_y_x_seed_20261120",
+      "family": "NO2",
+      "live": {
+        "converged": true,
+        "deviance_rel": 2.680748429929942e-10,
+        "iter": 2,
+        "predicted_max_abs_gap": 1.5367140395849965e-05,
+        "predicted_max_rel_gap": 3.3275434833590876e-05,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "sigma",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "sigma"
+        ]
+      }
+    },
+    {
+      "case": "pe_y_x_seed_20261123",
+      "family": "PE",
+      "live": {
+        "converged": true,
+        "deviance_rel": 4.4072118863823973e-10,
+        "iter": 4,
+        "predicted_max_abs_gap": 3.261477511151689e-05,
+        "predicted_max_rel_gap": 1.8397092382304684e-05,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "nu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "nu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "nu",
+          "sigma"
+        ]
+      }
+    },
+    {
+      "case": "po_y_x_seed_20260523",
+      "family": "PO",
+      "live": {
+        "converged": true,
+        "deviance_rel": 0.0,
+        "iter": 2,
+        "predicted_max_abs_gap": 1.135936322782527e-08,
+        "predicted_max_rel_gap": 9.120871107898618e-09,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "mu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu"
+        ]
+      }
+    },
+    {
+      "case": "rg_y_x_seed_20261122",
+      "family": "RG",
+      "live": {
+        "converged": true,
+        "deviance_rel": 4.982011842215572e-10,
+        "iter": 4,
+        "predicted_max_abs_gap": 0.0001144592096442576,
+        "predicted_max_rel_gap": 0.00015847747748458756,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "mu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "sigma"
+        ]
+      }
+    },
+    {
+      "case": "wei_y_x_seed_20261115",
+      "family": "WEI",
+      "live": {
+        "converged": true,
+        "deviance_rel": 1.4556366676696902e-09,
+        "iter": 6,
+        "predicted_max_abs_gap": 0.00010918754253186336,
+        "predicted_max_rel_gap": 6.728038690856295e-05,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "mu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "sigma"
+        ]
+      }
+    },
+    {
+      "case": "zaga_y_x_seed_20260812",
+      "family": "ZAGA",
+      "live": {
+        "converged": true,
+        "deviance_rel": 9.025168994024606e-14,
+        "iter": 2,
+        "predicted_max_abs_gap": 4.349734910036318e-07,
+        "predicted_max_rel_gap": 4.438948137118944e-07,
+        "predicted_missing": [],
+        "predicted_within_tolerance": true,
+        "predicted_worst_parameter": "mu",
+        "roundtrip_max_abs_drift": 0.0
+      },
+      "static": {
+        "estimated_coefficient_blocks": [
+          "mu",
+          "nu",
+          "sigma"
+        ],
+        "has_convergence": true,
+        "has_deviance": true,
+        "has_newdata": true,
+        "has_predicted": true,
+        "predicted_parameters": [
+          "mu",
+          "nu",
+          "sigma"
+        ]
+      }
+    }
+  ],
+  "schema_version": 1,
+  "sources": {
+    "frozen_families": "docs/development/highfreq-families-frozen.json",
+    "golden_manifest": "omnilss/tests/fixtures/r_golden/regenerated/manifest.json",
+    "layered_parity": "docs/development/layered-parity-2026-11-15.json",
+    "p2_classification": "docs/development/p2-defect-classification-2026-11-15.json"
+  },
+  "target_version": "0.6.0",
+  "tolerances": {
+    "predict_atol": 0.0002,
+    "predict_rtol": 0.0002,
+    "roundtrip_rtol": 1e-10
+  },
+  "verdict": {
+    "gate_criteria": [
+      "p2_defects_classified",
+      "layered_parity_our_side",
+      "fit_newdata_evidence_static",
+      "fit_newdata_evidence_live",
+      "serialization_roundtrip",
+      "failures_explainable",
+      "convergence_complete"
+    ],
+    "m2_gate_met": true,
+    "notes": "M2 is met when the P2 classification is exhaustive, our three fitting routes have no mismatch, every promoted fixture carries fit + newdata + convergence evidence, our refits reproduce R's newdata predictions and survive a JSON round-trip, and every non-pass has a category. flat_ridge and R-side errors are classified, not counted as our failures."
+  }
+}

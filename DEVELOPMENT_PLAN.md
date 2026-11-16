@@ -443,7 +443,7 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 |---|---|---|
 | M0 | P0 全清；覆盖工件可重生成；分层 collection 零错误；devcontainer 可用 | 0.4.x |
 | M1 | 冻结清单内高频族全部 **Surface + DPQR 证据 parity**；无 placeholder 进入目标范围（D2.235 重述：原「golden:validated 数量级」改为证据覆盖口径（40 族池上限 ~110，10x 不可达），原「Kernel 全 implemented」划归 **M3** 准入） | 0.5.0 |
-| M2 | P2 收敛缺陷分类完毕；RS/CG/MIXED 分层 parity；fit/newdata 证据齐全；失败可解释 | 0.6.0 |
+| M2 | P2 收敛缺陷分类完毕；RS/CG/MIXED 分层 parity；fit/newdata 证据齐全；失败可解释（D2.239 达成：四项均有可校验工件，见 §22.4 M2 状态） | 0.6.0 |
 | M3 | P3 核心 API + family/link 框架 + 准入平滑项闭环；`*.fix`/`contrasts` 全路由 | 0.9.0 |
 | M4 | P4 周边包（至少 cens/tr/mx/add）+ 服务 + 文档/教程 + 发布 artifact 同步 | 1.0.0 |
 | 独立 | P5 在线层、P6 性能/GPU，各自独立门禁与发布 | 并行 |
@@ -488,6 +488,22 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
   `TypeError: _net_log_pdf() missing 'nu'`）；② MIXED 的 RS→CG 边界检查按 NO 标定过严
   （`rtol=1e-7`），BE/IG 的合法拟合被拒 → 放宽到 1e-4（22 族实测最大合法 gap 2.9e-5）。
 - M2 剩余：`fit/newdata 证据` 按 M2 口径汇总（golden 已含 predicted/序列化轴）。
+
+**M2 状态（2026-11-15 达成，D2.239）**：见 `docs/development/m2-assessment-2026-11-15.json`
+（+ `.md`，tool `tools/m2_assessment.py --check`）。M2 四项门槛与证据：
+- **P2 缺陷分类完毕**（`p2_defects_classified`）：`p2-defect-classification-2026-11-15.json`
+  90 个三闸非通过项全部归类，`unclassified=0`。
+- **RS/CG/MIXED 分层 parity**（`layered_parity_our_side`）：`layered-parity-2026-11-15.json`
+  66 cell，`mismatch=0`、`py_error=0`，`our_side_parity_ok=true`。
+- **fit/newdata 证据齐全**（`fit_newdata_evidence_static` + `_live` + `serialization_roundtrip`
+  + `convergence_complete`）：22 个 promoted 族 fixture 全部含 deviance、逐估计参数系数块、
+  `convergence{iter,converged,n_cyc}`、5 点 `newdata` 与 R `predicted`；**活体复测** 22/22
+  重拟合的 newdata 预测在 `atol=rtol=2e-4` 内复现 R，22/22 JSON 往返漂移 ≤1e-10，
+  22/22 `converged=True`。
+- **失败可解释**（`failures_explainable`）：P2 分类齐备 + 分层 cell 全部落在文档化词汇内
+  （pass/flat_ridge/r_error/r_not_converged/mismatch/py_error），NBII 的 R `CG()` 报错与
+  11 个 flat_ridge 均单列归类。
+- **`m2_gate_met: true`**。M2 正式关闭（0.6.0 门槛）。
 
 ### 22.5 立即执行的前十五项（backlog，按依赖排序）
 
