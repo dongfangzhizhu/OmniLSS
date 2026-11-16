@@ -162,9 +162,9 @@ def build() -> dict:
             "met": len(kernel_implemented_families) == len(promoted),
             "detail": (
                 f"{len(kernel_implemented_families)}/{len(promoted)} promoted families have an "
-                "implemented kernel; the rest are experimental because admission is blocked "
-                "(production_safe: 1 family / 5 symbols). Kernel promotion is M3 admission work, "
-                "not M1 parity."
+                "implemented kernel. Kernel promotion was M3 admission work rather than M1 "
+                "parity; D2.241 closed it by admitting the evidence-eligible batch, so this "
+                "criterion tracks the registry rather than being an M1 target."
             ),
         },
         "no_placeholder_in_scope": {
@@ -217,9 +217,10 @@ def build() -> dict:
                     "construction (18 families excluded with documented R-side/flat-ridge reasons)"
                 ),
                 "kernel_implemented": (
-                    "M3 admission work: 21/22 promoted kernels are experimental because "
-                    "admission is blocked (production_safe: 1 family / 5 symbols); turning them production-safe is "
-                    "the M3 gate, not a parity gap"
+                    "M3 admission work: at the time of the M1 gate 21/22 promoted kernels were "
+                    "experimental because admission was blocked (production_safe: 1 family / 5 "
+                    "symbols). D2.241 admitted the evidence-eligible batch, so this is now "
+                    "closed; it was never a parity gap"
                 ),
             },
         },

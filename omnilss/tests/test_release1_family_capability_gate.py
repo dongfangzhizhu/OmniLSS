@@ -87,7 +87,7 @@ def test_dbi_stays_fail_closed_after_leaving_the_compat_alias_list(route):
     Asserted per route rather than once, because the routes have separate
     gates and a family can be blocked on one and admitted on another --
     ``test_experimental_family_is_fail_closed_only_on_production_route``
-    already distinguishes that shape for GA.
+    already distinguishes that shape for DEL.
 
     There is deliberately **no opt-in** on this function: its docstring rules
     out migration flags "so that placeholder and compatibility-alias kernels
@@ -130,9 +130,26 @@ def test_implemented_family_is_admitted_and_unsafe_exploratory_fit_is_blocked():
 
 def test_experimental_family_is_fail_closed_only_on_production_route():
     with pytest.raises(ProductionFamilyRejectedError) as caught:
-        require_production_family_route("GA", "RS", route="service")
+        require_production_family_route("DEL", "RS", route="service")
     report = caught.value.to_dict()
     assert report["implementation_status"] == "experimental"
+    assert report["code"] == "experimental_requires_opt_in"
+
+
+def test_admitted_family_still_cannot_use_an_experimental_route():
+    """D2.241: admitting a family must not widen its production surface.
+
+    GA is production-safe, but cg_fit is still experimental for every family, so
+    the production route must reject CG instead of returning an ok=False report
+    that the service caller ignores.
+    """
+    assert require_production_family_route("GA", "RS", route="service")["ok"] is True
+    with pytest.raises(ProductionFamilyRejectedError) as caught:
+        require_production_family_route("GA", "CG", route="service")
+    report = caught.value.to_dict()
+    assert report["ok"] is False
+    assert report["feature"] == "cg_fit"
+    assert report["status"] == "experimental"
     assert report["code"] == "experimental_requires_opt_in"
 
 

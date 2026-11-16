@@ -179,19 +179,52 @@ _R_CONSISTENCY_EVIDENCE = frozenset(
 # yet a universal production default.
 _RS_JAX_SUPPORTED = frozenset({"NO", "GA", "PO", "BI", "WEI", "TF"})
 
-# Fixed R regression coverage for the ordinary RS fitting route.  This is a
-# feature-level admission signal only; it does not make the family production
-# safe or claim CG/MIXED parity.
-_RS_FIT_EVIDENCE = frozenset({"NO", "ZIP"})
+# Production-safe admission batch D2.241.  Every family below passed all nine
+# hard gates recorded in docs/development/m3-admission-evidence-2026-11-15.json:
+# deriv / dpqr / rsdev parity against live R, validated r_consistency evidence, a
+# golden fit fixture (deviance + coefficient blocks + convergence), live newdata
+# predictions reproduced to 2e-4, a JSON round-trip drift <= 1e-10, a converged
+# refit, and no layered-route mismatch.  Seven families carry soft flags in that
+# artifact (flat_ridge on one or more routes, and NBII's R-side CG error); they
+# are admitted on the same evidence because both routes reach the same
+# likelihood and the newdata predictions match R.  The flags are part of the
+# admission record, not a hidden footnote.
+_PRODUCTION_SAFE = frozenset(
+    {
+        "BE",
+        "BEINF",
+        "BI",
+        "EXP",
+        "GA",
+        "GEOM",
+        "GU",
+        "IG",
+        "IGAMMA",
+        "LO",
+        "LOGNO",
+        "LOGNO2",
+        "NBI",
+        "NBII",
+        "NET",
+        "NO",
+        "NO2",
+        "PE",
+        "PO",
+        "RG",
+        "WEI",
+        "ZAGA",
+    }
+)
 
-# End-to-end newdata prediction and artifact round-trip evidence.  Serialization
-# itself is a package-wide contract; this set records families exercised through
-# that contract without implying production-safe status.
-_PREDICTION_EVIDENCE = frozenset({"NO", "ZIP"})
+# Fixed R regression coverage for the ordinary RS fitting route.  Derived from the
+# admission batch (each of those families has golden RS fit evidence) plus ZIP,
+# whose scanner RS deviance matches R although it is not in the golden set.
+_RS_FIT_EVIDENCE = _PRODUCTION_SAFE | frozenset({"ZIP"})
 
-# Keep this set small.  A family is production-safe only when the current codebase
-# has strong evidence across fit, prediction, artifact, and R-consistency paths.
-_PRODUCTION_SAFE = frozenset({"NO"})
+# End-to-end newdata prediction and artifact round-trip evidence: the admission
+# batch has golden predicted values and the M2 live round-trip, ZIP has a
+# dedicated prediction/serialization test.
+_PREDICTION_EVIDENCE = _PRODUCTION_SAFE | frozenset({"ZIP"})
 
 _KNOWN_COMPAT_ALIAS_FAMILIES = frozenset(
     {
@@ -1066,13 +1099,13 @@ def require_production_family_route(
     report = {**report, "route": route}
     if report["ok"]:
         return report
-    if report.get("implementation_status") in {
-        ImplementationStatus.PLACEHOLDER.value,
-        ImplementationStatus.COMPAT_ALIAS.value,
-        ImplementationStatus.EXPERIMENTAL.value,
-    }:
-        raise ProductionFamilyRejectedError(report)
-    return report
+    # D2.241: fail closed on ANY non-ok report.  The previous code only raised
+    # for placeholder/alias/experimental *implementation status* and otherwise
+    # returned the failing report, which the service and benchmark callers
+    # ignore -- so an admitted family could reach a route whose feature is still
+    # experimental (CG / MIXED / RS_JAX for most families).  Admitting a family
+    # must not widen its production surface to routes without evidence.
+    raise ProductionFamilyRejectedError(report)
 
 
 def require_method_route(

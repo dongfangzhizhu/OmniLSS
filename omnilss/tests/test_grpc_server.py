@@ -837,7 +837,7 @@ def test_grpc_batch_fit_rejects_non_production_family(monkeypatch) -> None:
             ),
             fit_pb2.FitRequest(
                 formula="y ~ x",
-                family="GA",
+                family="DEL",
                 data_json=json.dumps({"y": [2.0, 3.0], "x": [0.0, 1.0]}),
                 sigma_formula="~ 1",
                 method="RS",

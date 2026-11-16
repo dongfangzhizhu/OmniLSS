@@ -96,9 +96,13 @@ def test_dpqr_placeholder_helpers_are_marked_placeholder():
         assert _dpqr_function_uses_placeholder(helper_name) is True
 
 def test_ad_families_with_explicit_dpqr_are_not_false_placeholder():
+    # The invariant is "not misclassified as a placeholder", not "stays
+    # experimental": D2.241 admitted BE/WEI/IG/NBI/NBII, which legitimately
+    # promotes their implementation status to IMPLEMENTED.  The code-derived
+    # status (which ignores admission) stays EXPERIMENTAL for all of them.
     for family_name in ("BB", "BE", "WEI", "IG", "NBI", "NBII", "SEP1", "ST1", "TF", "GB2", "GB1"):
         capability = get_family_capability(family_name)
-        assert capability.implementation_status is ImplementationStatus.EXPERIMENTAL
+        assert capability.implementation_status is not ImplementationStatus.PLACEHOLDER
         assert implementation_status_for_family(family_name) is (
             ImplementationStatus.EXPERIMENTAL
         )
@@ -150,10 +154,12 @@ def test_unsupported_jax_route_is_reported():
 
 
 def test_experimental_features_require_explicit_opt_in():
+    # GA became production-safe in D2.241, so the sample is DEL, which still has
+    # no RS fit evidence and therefore an experimental rs_fit feature.
     with pytest.raises(FamilyCapabilityError, match="experimental"):
-        require_family_capability("GA", "rs_fit")
+        require_family_capability("DEL", "rs_fit")
     assert (
-        require_family_capability("GA", "rs_fit", allow_experimental=True).name == "GA"
+        require_family_capability("DEL", "rs_fit", allow_experimental=True).name == "DEL"
     )
 
 
@@ -195,7 +201,7 @@ def test_method_route_capability_report_supports_service_admission():
         "message": "family 'NO' method 'RS' is validated through capability feature 'rs_fit'",
     }
 
-    experimental = method_route_capability_report("GA", "RS", strict=True)
+    experimental = method_route_capability_report("DEL", "RS", strict=True)
     assert experimental["ok"] is False
     assert experimental["code"] == "experimental_requires_opt_in"
     assert experimental["status"] == "experimental"
@@ -278,8 +284,8 @@ def test_capability_matrix_exposes_method_route_feature_map():
 def test_require_method_route_uses_family_capability_tiers():
     assert require_method_route("NO", "RS").name == "NO"
     with pytest.raises(FamilyCapabilityError, match="experimental"):
-        require_method_route("GA", "RS")
-    assert require_method_route("GA", "RS", allow_experimental=True).name == "GA"
+        require_method_route("DEL", "RS")
+    assert require_method_route("DEL", "RS", allow_experimental=True).name == "DEL"
     with pytest.raises(FamilyCapabilityError, match="does not support"):
         require_method_route("GB2", "RS_JAX", allow_experimental=True)
     with pytest.raises(KeyError, match="capability routing map"):

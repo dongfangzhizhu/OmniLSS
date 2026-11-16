@@ -1,18 +1,14 @@
 {
   "counts": {
-    "admitted": 1,
+    "admitted": 22,
     "blocked": 0,
-    "eligible_not_admitted": 21,
+    "eligible_not_admitted": 0,
     "promoted_families": 22,
     "soft_flagged": 7
   },
   "families": [
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "BE",
       "golden_case": "be_y_x_seed_20260811",
       "hard_gates": {
@@ -44,23 +40,19 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "BEINF",
       "golden_case": "beinf_y_x_seed_20261122",
       "hard_gates": {
@@ -92,23 +84,19 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "BI",
       "golden_case": "bi_y_x_seed_20260809",
       "hard_gates": {
@@ -140,23 +128,19 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "EXP",
       "golden_case": "exp_y_x_seed_20261117",
       "hard_gates": {
@@ -188,23 +172,19 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "GA",
       "golden_case": "ga_y_x_seed_20260525",
       "hard_gates": {
@@ -236,23 +216,19 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "GEOM",
       "golden_case": "geom_y_x_seed_20261118",
       "hard_gates": {
@@ -284,23 +260,19 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "GU",
       "golden_case": "gu_y_x_seed_20260813",
       "hard_gates": {
@@ -332,10 +304,10 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [
@@ -343,14 +315,10 @@
         ],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "IG",
       "golden_case": "ig_y_x_seed_20260522",
       "hard_gates": {
@@ -382,23 +350,19 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "IGAMMA",
       "golden_case": "igamma_y_x_seed_20261119",
       "hard_gates": {
@@ -430,10 +394,10 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [
@@ -441,14 +405,10 @@
         ],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "LO",
       "golden_case": "lo_y_x_seed_20261121",
       "hard_gates": {
@@ -480,23 +440,19 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "LOGNO",
       "golden_case": "logno_y_x_seed_20261116",
       "hard_gates": {
@@ -528,23 +484,19 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "LOGNO2",
       "golden_case": "logno2_y_x_seed_20261128",
       "hard_gates": {
@@ -576,23 +528,19 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "NBI",
       "golden_case": "nbi_y_x_seed_20260810",
       "hard_gates": {
@@ -624,10 +572,10 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [
@@ -637,14 +585,10 @@
         ],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "NBII",
       "golden_case": "nbii_y_x_seed_20261121",
       "hard_gates": {
@@ -676,10 +620,10 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [
@@ -689,14 +633,10 @@
           "CG"
         ]
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "NET",
       "golden_case": "net_y_x_seed_20261127",
       "hard_gates": {
@@ -728,16 +668,16 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
       "admission_actions": [],
@@ -784,11 +724,7 @@
       "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "NO2",
       "golden_case": "no2_y_x_seed_20261120",
       "hard_gates": {
@@ -820,23 +756,19 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "PE",
       "golden_case": "pe_y_x_seed_20261123",
       "hard_gates": {
@@ -868,10 +800,10 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [
@@ -880,14 +812,10 @@
         ],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "PO",
       "golden_case": "po_y_x_seed_20260523",
       "hard_gates": {
@@ -919,23 +847,19 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "RG",
       "golden_case": "rg_y_x_seed_20261122",
       "hard_gates": {
@@ -967,10 +891,10 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [
@@ -979,14 +903,10 @@
         ],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "WEI",
       "golden_case": "wei_y_x_seed_20261115",
       "hard_gates": {
@@ -1018,10 +938,10 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [
@@ -1029,14 +949,10 @@
         ],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     },
     {
-      "admission_actions": [
-        "add_to_PRODUCTION_SAFE",
-        "add_to_RS_FIT_EVIDENCE",
-        "add_to_PREDICTION_EVIDENCE"
-      ],
+      "admission_actions": [],
       "family": "ZAGA",
       "golden_case": "zaga_y_x_seed_20260812",
       "hard_gates": {
@@ -1068,16 +984,16 @@
       },
       "missing_gates": [],
       "registered": {
-        "prediction": false,
-        "production_safe": false,
+        "prediction": true,
+        "production_safe": true,
         "r_consistency": true,
-        "rs_fit": false
+        "rs_fit": true
       },
       "soft_flags": {
         "flat_ridge_cells": [],
         "r_side_route_errors": []
       },
-      "status": "eligible"
+      "status": "admitted"
     }
   ],
   "gate_definition": {
@@ -1107,7 +1023,112 @@
         "declared": [
           {
             "backed": true,
+            "family": "BE",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "BEINF",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "BI",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "EXP",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "GA",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "GEOM",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "GU",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "IG",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "IGAMMA",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "LO",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "LOGNO",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "LOGNO2",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "NBI",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "NBII",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "NET",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
             "family": "NO",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "NO2",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "PE",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "PO",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "RG",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "WEI",
+            "requirement": "prediction"
+          },
+          {
+            "backed": true,
+            "family": "ZAGA",
             "requirement": "prediction"
           },
           {
@@ -1122,7 +1143,112 @@
         "declared": [
           {
             "backed": true,
+            "family": "BE",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "BEINF",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "BI",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "EXP",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "GA",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "GEOM",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "GU",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "IG",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "IGAMMA",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "LO",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "LOGNO",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "LOGNO2",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "NBI",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "NBII",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "NET",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
             "family": "NO",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "NO2",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "PE",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "PO",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "RG",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "WEI",
+            "requirement": "production_safe"
+          },
+          {
+            "backed": true,
+            "family": "ZAGA",
             "requirement": "production_safe"
           }
         ],
@@ -1132,7 +1258,112 @@
         "declared": [
           {
             "backed": true,
+            "family": "BE",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "BEINF",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "BI",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "EXP",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "GA",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "GEOM",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "GU",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "IG",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "IGAMMA",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "LO",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "LOGNO",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "LOGNO2",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "NBI",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "NBII",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "NET",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
             "family": "NO",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "NO2",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "PE",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "PO",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "RG",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "WEI",
+            "requirement": "rs_fit"
+          },
+          {
+            "backed": true,
+            "family": "ZAGA",
             "requirement": "rs_fit"
           },
           {
@@ -1157,10 +1388,6 @@
   },
   "summary": {
     "admitted": [
-      "NO"
-    ],
-    "blocked": [],
-    "eligible_not_admitted": [
       "BE",
       "BEINF",
       "BI",
@@ -1176,19 +1403,22 @@
       "NBI",
       "NBII",
       "NET",
+      "NO",
       "NO2",
       "PE",
       "PO",
       "RG",
       "WEI",
       "ZAGA"
-    ]
+    ],
+    "blocked": [],
+    "eligible_not_admitted": []
   },
   "target_version": "0.9.0",
   "verdict": {
     "admission_inventory_complete": true,
     "admitted_subset_of_eligible": true,
-    "notes": "This is an inventory, not an admission decision. 21 of the 22 promoted families have every hard gate green but are not in _PRODUCTION_SAFE; admitting them is one deliberate registry change plus a release note, and the flat_ridge / r_side_route_error soft flags must be carried into that record. M3 also requires P3-1/P3-2/P3-3, which this artifact does not cover.",
+    "notes": "This is an inventory, not an admission decision. Of 22 promoted families: 22 admitted, 0 eligible but unregistered, 0 blocked. Soft flags (flat_ridge / r_side_route_error) are carried in the family rows and must travel with any admission record. M3 also requires P3-1/P3-2/P3-3, which this artifact does not cover.",
     "registry_claims_backed": true
   }
 }

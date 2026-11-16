@@ -323,12 +323,12 @@ def build() -> dict:
                 row["status"] in {"admitted", "eligible", "blocked"} for row in families
             ),
             "notes": (
-                "This is an inventory, not an admission decision. 21 of the 22 promoted "
-                "families have every hard gate green but are not in _PRODUCTION_SAFE; "
-                "admitting them is one deliberate registry change plus a release note, "
-                "and the flat_ridge / r_side_route_error soft flags must be carried into "
-                "that record. M3 also requires P3-1/P3-2/P3-3, which this artifact does "
-                "not cover."
+                f"This is an inventory, not an admission decision. Of {counts['promoted_families']} "
+                f"promoted families: {counts['admitted']} admitted, "
+                f"{counts['eligible_not_admitted']} eligible but unregistered, "
+                f"{counts['blocked']} blocked. Soft flags (flat_ridge / r_side_route_error) "
+                "are carried in the family rows and must travel with any admission record. "
+                "M3 also requires P3-1/P3-2/P3-3, which this artifact does not cover."
             ),
         },
     }

@@ -57,11 +57,11 @@ def test_http_route_capability_endpoint_reports_admission_decision():
     try:
         host, port = server.server_address
         payload, headers = _get_json(
-            f"http://{host}:{port}/route-capability?family=GA&method=RS&strict=true",
+            f"http://{host}:{port}/route-capability?family=DEL&method=RS&strict=true",
             request_id="route-1",
         )
 
-        assert payload == method_route_capability_report("GA", "RS", strict=True)
+        assert payload == method_route_capability_report("DEL", "RS", strict=True)
         assert payload["ok"] is False
         assert payload["code"] == "experimental_requires_opt_in"
         assert headers["X-Request-ID"] == "route-1"

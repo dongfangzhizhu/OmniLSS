@@ -361,7 +361,7 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
   在 n.cyc=100 下仍有平坦 nu/tau 脊导致的不同驻点，ZIPF 仅 2/3 seed 通过，
   DELAPORT 在安装版 gamlss.dist 6.1.1 无 `r` 函数——以上**均不晋级**
   （不用近似 deviance 掩盖系数分歧）。
-  `production_safe` 仍 5（需单独准入评审）。
+  `production_safe` 当时仍 5（符号数），后由 D2.241 准入到 **110 符号 / 22 族**。
 - **P1-2 证据轴（D2.229 完成）**：全部 20 个 golden fixture 现含 `newdata`（5 点 x 网格）、
   `predicted`（R response 尺度参数预测）、`convergence`（iter/converged/n_cyc）；
   `test_r_golden_predict_serialize.py` 61 例钉住「预测对活 R（2e-4）+ JSON 序列化往返
@@ -444,7 +444,7 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 | M0 | P0 全清；覆盖工件可重生成；分层 collection 零错误；devcontainer 可用 | 0.4.x |
 | M1 | 冻结清单内高频族全部 **Surface + DPQR 证据 parity**；无 placeholder 进入目标范围（D2.235 重述：原「golden:validated 数量级」改为证据覆盖口径（40 族池上限 ~110，10x 不可达），原「Kernel 全 implemented」划归 **M3** 准入） | 0.5.0 |
 | M2 | P2 收敛缺陷分类完毕；RS/CG/MIXED 分层 parity；fit/newdata 证据齐全；失败可解释（D2.239 达成：四项均有可校验工件，见 §22.4 M2 状态） | 0.6.0 |
-| M3 | P3 核心 API + family/link 框架 + 准入平滑项闭环；`*.fix`/`contrasts` 全路由（D2.240 已完成准入证据清单：1 admitted / 21 eligible / 0 blocked，见 §22.4 M3 状态；准入决策与 P3-1..P3-3 未完成） | 0.9.0 |
+| M3 | P3 核心 API + family/link 框架 + 准入平滑项闭环；`*.fix`/`contrasts` 全路由（D2.240 证据清单 + D2.241 准入完成：22/22 promoted 族 production_safe，路由门改为任何非 ok 一律拒绝；P3-1..P3-3 未完成） | 0.9.0 |
 | M4 | P4 周边包（至少 cens/tr/mx/add）+ 服务 + 文档/教程 + 发布 artifact 同步 | 1.0.0 |
 | 独立 | P5 在线层、P6 性能/GPU，各自独立门禁与发布 | 并行 |
 
@@ -518,6 +518,22 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
 - 口径澄清：审计文档里的「production_safe 5」是**符号数**（NO 的构造器+d/p/q/r），
   族数是 **1**；M1 工件文案已同步校正。
 
+**M3 准入执行（2026-11-15，D2.241）**：按方案 A 一次性准入证据齐备的 21 族。
+- `_PRODUCTION_SAFE` 由 1 → **22**（promoted 全体），`_RS_FIT_EVIDENCE` /
+  `_PREDICTION_EVIDENCE` 由该集合派生并并上 ZIP（其证据是扫描器 RS deviance 与专用预测测试）。
+- 覆盖工件：`implementation_status` implemented **1 → 22 族**（experimental 125 → 104），
+  `admission=production_safe` 符号 **5 → 110**、`blocked` 526 → 421；`golden:validated` 仍 86。
+- **路由门修复**：`require_production_family_route` 原只在 placeholder/alias/experimental
+  **实现状态**时抛错，其余非 ok 报告直接返回而被 service/benchmark 调用方忽略——准入会让
+  已准入族在 CG/MIXED 等仍是 experimental 的路由上被静默放行。现改为**任何非 ok 报告一律抛
+  `ProductionFamilyRejectedError`**；`test_admitted_family_still_cannot_use_an_experimental_route`
+  钉住「GA+RS 可准入、GA+CG 仍拒绝」。
+- 测试样本更新：原以 GA 作「实验族」的能力/发布门/gRPC/HTTP 测试改用 **DEL**（仍为
+  experimental 且无 RS fit 证据）；`test_ad_families_with_explicit_dpqr` 的不变量改为
+  「不是 placeholder」而非「永远 experimental」。
+- `implementation_status_for_family`（纯代码推导、忽略准入）对这批族仍返回 experimental——
+  该函数表达的是「是否有真实数值内核」，与准入是两层，测试同时钉住两者。
+
 ### 22.5 立即执行的前十五项（backlog，按依赖排序）
 
 - [x] P0-1 修 `.codex/setup.sh` / devcontainer postCreate（D2.224 完成：根因是
@@ -586,11 +602,11 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
 - [ ] P3-1 冻结 family/link/formula/prediction 契约
 - [ ] P3-2 实现 `checklink`/`make.link.gamlss`/`as.family`/`gen.Family` 框架
 - [ ] P3-3 `*.fix`/`contrasts` 扩到 CG/MIXED/joint + 分类预测重建
-- [ ] P3-4 `production_safe` 准入闭环（D2.240 已产出证据清单：22 个 promoted 族中
-  **1 族 admitted（NO）、21 族证据齐备未准入、0 族 blocked**，工件
-  `docs/development/m3-admission-evidence-2026-11-15.json`；下一步是**准入决策**——
-  一次性把这 21 族加入 `_PRODUCTION_SAFE`/`_RS_FIT_EVIDENCE`/`_PREDICTION_EVIDENCE`，
-  并把 7 个族的 `flat_ridge`/R 侧报错软标记写入发布说明）
+- [x] P3-4 `production_safe` 准入闭环（D2.240 证据清单 → D2.241 准入执行：22 个 promoted 族
+  **全部 admitted**（原 1 族），`admission=production_safe` 符号 5 → 110、blocked 526 → 421；
+  `_RS_FIT_EVIDENCE`/`_PREDICTION_EVIDENCE` 由该集合派生并并上 ZIP；7 个族的
+  `flat_ridge`/R 侧报错软标记保留在 `docs/development/m3-admission-evidence-2026-11-15.json`
+  随准入记录；同时修复路由门「非 ok 报告不抛错」的 fail-open 漏洞）
 - [ ] P5-1 定义 OmniLSS↔ondil distribution contract 与独立流式 golden
 - [ ] P6-1 `log_bessel_kv` JAX 原生实现（含精度与耗时双验收）
 
