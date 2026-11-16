@@ -2089,6 +2089,12 @@ def gamlss(
         cg_result = fit_cg(
             family=family,
             y=jnp.asarray(y, dtype=jnp.float64),
+            # D2.238: fixed parameters (NET nu/tau, EXP sigma) are not
+            # estimated, so the CG likelihood has no beta_* for them; pass the
+            # resolved values or the density is called with missing arguments.
+            fixed_parameter_values=_resolve_fixed_parameter_values(
+                family, data, len(y), y
+            ),
             X_mu=jnp.asarray(mu_x, dtype=jnp.float64),
             X_sigma=cg_designs["X_sigma"],
             X_nu=cg_designs["X_nu"],

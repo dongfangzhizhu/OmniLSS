@@ -306,10 +306,14 @@ def mixed_fit(
     # D2.137: CG starts from X @ beta (the coefficients are the state it
     # continues from), while an RS model stopped after one outer cycle reports
     # the deviance of its entry linear predictor -- the two differ by one inner
-    # WLS step (measured 2e-8 absolute on a normal sample, i.e. rel ~2.5e-10).
-    # The tolerance covers that bookkeeping gap and nothing larger.
+    # WLS step.  D2.238: that bookkeeping gap is NOT uniform across families.
+    # It is 2e-8 absolute on a normal sample (rel 2.5e-10) but 2.75e-3 on IG
+    # (rel 2.9e-5), so the old rtol=1e-7 rejected legitimate MIXED fits for
+    # BE and IG.  The bound is now 1e-4 -- still two orders of magnitude below
+    # a real state corruption (which is O(1) relative), and above the measured
+    # worst legitimate gap across the 22 promoted families.
     if not cg_history or not np.isclose(
-        cg_history[0], boundary_deviance, rtol=1e-7, atol=1e-6
+        cg_history[0], boundary_deviance, rtol=1e-4, atol=1e-4
     ):
         raise RuntimeError(
             "MIXED RS/CG boundary deviance changed before the first CG update"

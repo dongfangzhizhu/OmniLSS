@@ -124,6 +124,7 @@ def fit_cg(
     regularization: float = 1e-6,
     verbose: bool = False,
     return_fisher: bool = False,
+    fixed_parameter_values: Optional[Dict[str, jnp.ndarray]] = None,
 ) -> CGResult:
     """Fit GAMLSS model using Cole-Green algorithm.
 
@@ -217,7 +218,9 @@ def fit_cg(
 
     # Define log-likelihood function
     def log_likelihood(params_dict, data_dict):
-        return _compute_log_likelihood(params_dict, data_dict, family, design_matrices)
+        return _compute_log_likelihood(
+            params_dict, data_dict, family, design_matrices, fixed_parameter_values
+        )
 
     # CG iteration loop
     deviance_history = []
@@ -490,6 +493,7 @@ def _compute_log_likelihood(
     data: Dict[str, jnp.ndarray],
     family,
     design_matrices: Dict[str, Optional[jnp.ndarray]],
+    fixed_parameter_values: Optional[Dict[str, jnp.ndarray]] = None,
 ) -> float:
     """Compute log-likelihood for current parameters.
 
@@ -529,6 +533,10 @@ def _compute_log_likelihood(
             sigma = family.link_inverses["sigma"](eta_sigma)
         else:
             sigma = jnp.exp(eta_sigma)
+    elif fixed_parameter_values and "sigma" in fixed_parameter_values:
+        # D2.238: a fixed sigma (EXP) is not estimated, so there is no
+        # beta_sigma; the density still needs its value.
+        sigma = fixed_parameter_values["sigma"]
 
     # Compute nu if present
     nu = None
@@ -538,6 +546,8 @@ def _compute_log_likelihood(
             nu = family.link_inverses["nu"](eta_nu)
         else:
             nu = eta_nu
+    elif fixed_parameter_values and "nu" in fixed_parameter_values:
+        nu = fixed_parameter_values["nu"]
 
     # Compute tau if present
     tau = None
@@ -547,6 +557,8 @@ def _compute_log_likelihood(
             tau = family.link_inverses["tau"](eta_tau)
         else:
             tau = jnp.exp(eta_tau)
+    elif fixed_parameter_values and "tau" in fixed_parameter_values:
+        tau = fixed_parameter_values["tau"]
 
     # Compute log-likelihood
     if hasattr(family, "log_likelihood"):

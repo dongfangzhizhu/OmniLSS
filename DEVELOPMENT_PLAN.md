@@ -475,6 +475,20 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
   这是标签口径问题，不是 parity 缺口。
 - **结论：M1 达成（0.5.0 门槛）**。kernel 准入 / `production_safe` 扩展按 M3 推进。
 
+**M2 分层 parity（2026-11-15 落地）**：见 `docs/development/layered-parity-2026-11-15.json`
+（+ `.md`，tool `tools/layered_parity.py --check`）。
+- 范围：22 个 promoted 族 × {RS, CG, MIXED} = **66 cell**，R 侧同一样本
+  `RS(n.cyc=100)` / `CG(n.cyc=100)` / `mixed(1,100)`。
+- 结果：**pass 54 / flat_ridge 11 / r_error 1**；`mismatch=0`、`py_error=0`，
+  **`our_side_parity_ok: true`**（`all_layers_pass: false`，因 flat_ridge/r_error）。
+- `flat_ridge`：deviance 与 R 一致到 dev_rel ≤1e-4 且系数差 ≤5e-2，参数弱识别
+  （GU/IGAMMA/NBI/NBII/PE/RG/WEI 的 sigma 或 nu）。
+- `r_error`：NBII 的 R `CG()` 自身报错（"missing value where TRUE/FALSE"）。
+- 本批修复的两个真实缺陷：① CG 路由对固定参数族漏传 nu/tau/sigma（NET 的 CG 曾
+  `TypeError: _net_log_pdf() missing 'nu'`）；② MIXED 的 RS→CG 边界检查按 NO 标定过严
+  （`rtol=1e-7`），BE/IG 的合法拟合被拒 → 放宽到 1e-4（22 族实测最大合法 gap 2.9e-5）。
+- M2 剩余：`fit/newdata 证据` 按 M2 口径汇总（golden 已含 predicted/序列化轴）。
+
 ### 22.5 立即执行的前十五项（backlog，按依赖排序）
 
 - [x] P0-1 修 `.codex/setup.sh` / devcontainer postCreate（D2.224 完成：根因是
