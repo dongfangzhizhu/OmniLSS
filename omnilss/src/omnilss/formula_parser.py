@@ -21,7 +21,7 @@ import numpy as np
 
 _SMOOTH_CALL_PATTERN = re.compile(
     r"\b(pb|ps|cs|s|random|re|ri|lo|pcat|fp|bfp|cy|te|ti|"
-    r"pvc|pbm|pbz|pbo|pbc|pbp|scs|ga|ba)\s*\("
+    r"pvc|pbm|pbz|pbo|pbc|pbp|scs|ga|ba|fk|tr)\s*\("
 )
 
 #: Synthetic response used when parsing an inner additive formula (ga/ba).
@@ -247,6 +247,11 @@ def parse_formula(formula: str) -> ParsedFormula:
             # This package fits every term jointly from one design matrix, so
             # the tree cannot be represented as fixed columns; refuse clearly
             # instead of treating tr(~ x) as a linear variable.
+            elif smoother == 'fk':
+                raise NotImplementedError(
+                    "fk() free-knot terms are not supported inside gamlss()/gamlss_ml(); "
+                    "fit the basis with gamlss_fk(fk(x), y, w) or fitFreeKnots() directly"
+                )
             elif smoother == 'tr':
                 raise NotImplementedError(
                     "tr() tree terms are not supported inside gamlss()/gamlss_ml(); "
