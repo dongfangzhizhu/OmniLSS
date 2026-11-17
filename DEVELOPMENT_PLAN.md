@@ -423,9 +423,10 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 （+ `.md`，tool `tools/m4_scope_inventory.py --check`）。按上面的优先级逐包记录
 surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件里出现但未分类的周边包直接报错。
 - **表面完整（2 包）**：`gamlss.cens`（5/5）、`gamlss.tr`（8/8），且都有专用证据模块。
-- **缺口（D2.246 时 6 包 120 个；D2.251 后 4 包 103 个）**：`gamlss.spatial` 缺 6、
-  `gamlss.foreach` 缺 5、`gamlss.prepdata` 缺 19、`gamlss.ggplots` 缺 73；
-  `gamlss.mx`（D2.247）与 `gamlss.add`（D2.251）已补齐，连同 cens/tr 共 **4 包 surface 完整**。
+- **缺口（D2.246 时 6 包 120 个；D2.252 后 3 包 97 个）**：`gamlss.foreach` 缺 5、
+  `gamlss.prepdata` 缺 19、`gamlss.ggplots` 缺 73；`gamlss.mx`（D2.247）、
+  `gamlss.add`（D2.251）、`gamlss.spatial`（D2.252）已补齐，连同 cens/tr 共
+  **5 包 surface 完整**。
 - **无函数表面（1 包）**：`gamlss.data`（仅数据集）。
 - **无专用证据模块（3 包）**：`gamlss.foreach`、`gamlss.prepdata`、`gamlss.ggplots`——
   标为待补证据，而不是假定覆盖。
@@ -434,8 +435,8 @@ surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件
   MX 与 NP 的拟合对活 R 对齐到 1e-6 / 1e-8（dev、prob、mu、sigma、mass points、
   EM 迭代数）；未移植分支（`pi.formula` 含协变量、`zero.component`、`mixture="gq"`、
   `random=~x`）显式抛 `NotImplementedError`，不近似。
-- **下一批**：`gamlss.spatial`（6）——`MRF`/`MRFA`/`gmrf`/`gamlss.gmrf`/几何
-  辅助（`draw.polys`/`polys2polys`）。
+- **下一批**：`gamlss.foreach`（5）——`BayesianBoot`/`NonParametricBoot`/
+  `centiles.boot`/`fitQR`/`fitRolling`。
 
 ### P5：ondil 在线层（独立轨道，独立发布，不混入 R 完成率）
 
@@ -709,8 +710,13 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   `fk`/`gamlss.fk`/`fitFixedKnots`/`fitFreeKnots`/`centilesTwo` 自由节点组（目标与
   R 一致到 1e-12、掩码与 mgcv 逐格一致）、`nn`/`gamlss.nn` 单隐层网络（功能验证，
   不声称与 nnet 逐位一致）。`gamlss.add` **surface 15/15 完整**）
-- [ ] P4-3 `gamlss.spatial`（6 个缺失符号），随后 `gamlss.foreach`（5）、
-  `gamlss.prepdata`（19）；`gamlss.ggplots`（73）最后
+- [x] P4-3 `gamlss.spatial` 补齐 6 个符号（D2.252 完成：`MRF`（Q-function 边际似然）、
+  `MRFA`（交替 lambda/df）、`gmrf`/`gamlss.gmrf`（项 + 回调）、`draw.polys`（几何 +
+  可选绘图）、`polys2polys`（sp 鸭子类型转换）。MRFA 对活 R **逐位一致**（beta 2e-16），
+  MRF 相对差 ~1e-6；`gamlss.spatial` **surface 9/9 完整**）
+- [ ] P4-4 `gamlss.foreach`（5 个缺失符号：`BayesianBoot`/`NonParametricBoot`/
+  `centiles.boot`/`fitQR`/`fitRolling`），随后 `gamlss.prepdata`（19）；
+  `gamlss.ggplots`（73）最后
 - [ ] P5-1 定义 OmniLSS↔ondil distribution contract 与独立流式 golden
 - [ ] P6-1 `log_bessel_kv` JAX 原生实现（含精度与耗时双验收）
 
