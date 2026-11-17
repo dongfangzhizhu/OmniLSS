@@ -10,14 +10,14 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - R packages parsed: 12 (out of scope: gamlss2)
 - R exported symbols: 1080 (in scope: 1036)
-- Python surface matched: 907 / missing: 173
+- Python surface matched: 911 / missing: 169
 - Family-linked symbols: 531 (dpqr kernels: 424)
 - Python-only public exports: 387
 
-- **surface**: `missing` 173, `module_def` 223, `module_export` 103, `public_api` 405, `registry` 176
-- **kernel**: `compat_alias` 1, `experimental` 420, `implemented` 486, `missing` 173
-- **parity**: `capability:unsupported` 249, `capability:validated` 55, `golden:validated` 86, `r_consistency_test` 183, `tested` 290, `unverified` 217
-- **admission**: `blocked` 421, `exported_api` 299, `internal` 77, `not_available` 173, `production_safe` 110
+- **surface**: `missing` 169, `module_def` 223, `module_export` 103, `public_api` 409, `registry` 176
+- **kernel**: `compat_alias` 1, `experimental` 420, `implemented` 490, `missing` 169
+- **parity**: `capability:unsupported` 249, `capability:validated` 55, `golden:validated` 86, `r_consistency_test` 183, `tested` 294, `unverified` 213
+- **admission**: `blocked` 421, `exported_api` 303, `internal` 77, `not_available` 169, `production_safe` 110
 
 ## Per-package coverage
 
@@ -32,7 +32,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gamlss.dist | 6.1-8 | `59a3b7074378aaeb` | yes | 654 | 630 | 654 |
 | gamlss.foreach | 1.1-10 | `819542107cb0994b` | yes | 13 | 13 | 8 |
 | gamlss.ggplots | 2.1-34 | `cbe1ae29a3d583c1` | yes | 109 | 106 | 36 |
-| gamlss.mx | 6.0-4 | `b832557a4937461b` | yes | 12 | 12 | 8 |
+| gamlss.mx | 6.0-4 | `b832557a4937461b` | yes | 12 | 12 | 12 |
 | gamlss.prepdata | 0.1.19 | `406a76c8aa06aa80` | yes | 59 | 58 | 40 |
 | gamlss.spatial | 3.0-3 | `af0e2b383e3eba93` | yes | 9 | 9 | 3 |
 | gamlss.tr | 5.1-10 | `bf338282c2d7ed1b` | yes | 8 | 8 | 8 |
@@ -144,10 +144,6 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | resp_param | gamlss.ggplots | function | R/gamlss.ggplots/R/resp_param.R:5 |
 | resp_quantile | gamlss.ggplots | function | R/gamlss.ggplots/R/resp_param.R:56 |
 | y_hist | gamlss.ggplots | function | R/gamlss.ggplots/R/y_hist.R:6 |
-| gamlssMX | gamlss.mx | function | R/gamlss.mx/R/gamlssMX-10-11-07.R:17 |
-| gamlssMXfits | gamlss.mx | function | R/gamlss.mx/R/gamlssMX-10-11-07.R:479 |
-| gamlssNP | gamlss.mx | function | R/gamlss.mx/R/gamlssNP.R:18 |
-| plotMP | gamlss.mx | function | R/gamlss.mx/R/gamlssNP.R:912 |
 | ACE | gamlss.prepdata | function | R/gamlss.prepdata/R/ACE5.R:117 |
 | ACE.iter | gamlss.prepdata | function | R/gamlss.prepdata/R/ACE5.R:22 |
 | cor_boot | gamlss.prepdata | function | R/gamlss.prepdata/R/cor_perm_test.R:162 |
@@ -273,7 +269,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | fp | public_api | implemented | tested | exported_api | 6 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 15 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 220 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 221 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | gamlss_cs | public_api | implemented | tested | exported_api | 3 |
 | gamlss.cy | gamlss | gamlss_cy | public_api | implemented | tested | exported_api | 1 |
@@ -353,7 +349,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | pvc.control | gamlss | pvc_control | public_api | implemented | tested | exported_api | 1 |
 | quantSheets | gamlss | quantSheets | public_api | implemented | tested | exported_api | 1 |
 | quantSheets.control | gamlss | quantSheets_control | public_api | implemented | tested | exported_api | 1 |
-| random | gamlss | random | public_api | implemented | r_consistency_test | exported_api | 32 |
+| random | gamlss | random | public_api | implemented | r_consistency_test | exported_api | 33 |
 | re | gamlss | - | missing | missing | unverified | not_available | 38 |
 | refit | gamlss | refit | public_api | implemented | tested | exported_api | 2 |
 | ri | gamlss | ri | public_api | implemented | tested | exported_api | 4 |
@@ -456,7 +452,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | NBI | gamlss.dist | NBI | public_api | implemented | r_consistency_test | production_safe | 20 |
 | NBII | gamlss.dist | NBII | public_api | implemented | r_consistency_test | production_safe | 12 |
 | NET | gamlss.dist | NET | public_api | implemented | r_consistency_test | production_safe | 15 |
-| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 154 |
+| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 155 |
 | NO2 | gamlss.dist | NO2 | public_api | implemented | r_consistency_test | production_safe | 8 |
 | NOF | gamlss.dist | NOF | public_api | experimental | r_consistency_test | blocked | 5 |
 | PARETO | gamlss.dist | PARETO | public_api | experimental | r_consistency_test | blocked | 7 |
@@ -1171,15 +1167,15 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | MX.control | gamlss.mx | MX_control | public_api | implemented | tested | exported_api | 1 |
 | NP.control | gamlss.mx | NP_control | public_api | implemented | tested | exported_api | 1 |
 | dMX | gamlss.mx | dMX | public_api | implemented | tested | exported_api | 1 |
-| gamlssMX | gamlss.mx | - | missing | missing | unverified | not_available | 2 |
-| gamlssMXfits | gamlss.mx | - | missing | missing | unverified | not_available | 0 |
-| gamlssNP | gamlss.mx | - | missing | missing | unverified | not_available | 1 |
+| gamlssMX | gamlss.mx | gamlssMX | public_api | implemented | tested | exported_api | 3 |
+| gamlssMXfits | gamlss.mx | gamlssMXfits | public_api | implemented | tested | exported_api | 1 |
+| gamlssNP | gamlss.mx | gamlssNP | public_api | implemented | tested | exported_api | 2 |
 | get_cdfMX | gamlss.mx | get_cdfMX | public_api | implemented | tested | exported_api | 1 |
 | get_cdfNP | gamlss.mx | get_cdfNP | public_api | implemented | tested | exported_api | 1 |
-| get_pdfMX | gamlss.mx | get_pdfMX | public_api | implemented | tested | exported_api | 1 |
-| get_pdfNP | gamlss.mx | get_pdfNP | public_api | implemented | tested | exported_api | 1 |
+| get_pdfMX | gamlss.mx | get_pdfMX | public_api | implemented | tested | exported_api | 2 |
+| get_pdfNP | gamlss.mx | get_pdfNP | public_api | implemented | tested | exported_api | 2 |
 | pMX | gamlss.mx | pMX | public_api | implemented | tested | exported_api | 1 |
-| plotMP | gamlss.mx | - | missing | missing | unverified | not_available | 0 |
+| plotMP | gamlss.mx | plotMP | public_api | implemented | tested | exported_api | 1 |
 | ACE | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
 | ACE.iter | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |
 | cor_boot | gamlss.prepdata | - | missing | missing | unverified | not_available | 0 |

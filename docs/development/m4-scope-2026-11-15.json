@@ -1,12 +1,12 @@
 {
   "counts": {
-    "missing_symbols": 120,
+    "missing_symbols": 116,
     "no_function_surface": 1,
     "out_of_scope": 3,
     "packages": 9,
     "packages_without_evidence_tests": 3,
-    "surface_complete": 2,
-    "surface_gap": 6
+    "surface_complete": 3,
+    "surface_gap": 5
   },
   "decision": "D2.246",
   "milestone": "M4",
@@ -67,25 +67,18 @@
         "test_mixtures_accessors.py"
       ],
       "exported": 12,
-      "missing_symbols": [
-        "gamlssMX",
-        "gamlssMXfits",
-        "gamlssNP",
-        "plotMP"
-      ],
-      "next_action": "implement 4 missing symbols",
+      "missing_symbols": [],
+      "next_action": "upgrade evidence for 12 tested symbols to golden",
       "order": 1,
       "package": "gamlss.mx",
       "parity": {
-        "tested": 8,
-        "unverified": 4
+        "tested": 12
       },
       "priority": 2,
       "rationale": "finite mixtures are the next modelling capability",
-      "status": "surface_gap",
+      "status": "surface_complete",
       "surface": {
-        "missing": 4,
-        "public_api": 8
+        "public_api": 12
       },
       "tracked_symbols": 12
     },
@@ -356,9 +349,9 @@
   "task": "P4 scope",
   "verdict": {
     "first_work_item": {
-      "missing": 4,
-      "next_action": "implement 4 missing symbols",
-      "package": "gamlss.mx",
+      "missing": 13,
+      "next_action": "implement 13 missing symbols",
+      "package": "gamlss.add",
       "priority": 2
     },
     "inventory_complete": true,
