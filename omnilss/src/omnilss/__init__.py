@@ -240,9 +240,13 @@ from .add_controls import ga_control, gam_control, nn_control
 from .mixtures import (
     MX_control,
     MixtureFit,
+    MixturePersp,
     NP_control,
     dMX,
     dmx,
+    gamlssMX,
+    gamlssMXfits,
+    gamlssNP,
     get_cdfMX,
     get_cdfNP,
     get_pdfMX,
@@ -250,6 +254,7 @@ from .mixtures import (
     mx_control,
     np_control,
     pMX,
+    plotMP,
     pmx,
 )
 from .spatial import NeighbourNB, PolyNB, nb2nb, nb2prec, polys2nb
@@ -1346,6 +1351,10 @@ __all__ = [
     "dmx",
     "pmx",
     "dMX",
+    "gamlssMX",
+    "gamlssMXfits",
+    "gamlssNP",
+    "plotMP",
     "pMX",
     "mx_control",
     "np_control",

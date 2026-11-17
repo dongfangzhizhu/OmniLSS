@@ -423,14 +423,18 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 （+ `.md`，tool `tools/m4_scope_inventory.py --check`）。按上面的优先级逐包记录
 surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件里出现但未分类的周边包直接报错。
 - **表面完整（2 包）**：`gamlss.cens`（5/5）、`gamlss.tr`（8/8），且都有专用证据模块。
-- **缺口（6 包，共 120 个缺失符号）**：`gamlss.mx` 缺 4、`gamlss.add` 缺 13、
+- **缺口（D2.246 时 6 包 120 个；D2.247 后 5 包 116 个）**：`gamlss.add` 缺 13、
   `gamlss.spatial` 缺 6、`gamlss.foreach` 缺 5、`gamlss.prepdata` 缺 19、
-  `gamlss.ggplots` 缺 73。
+  `gamlss.ggplots` 缺 73；`gamlss.mx` 已补齐（见下）。
 - **无函数表面（1 包）**：`gamlss.data`（仅数据集）。
 - **无专用证据模块（3 包）**：`gamlss.foreach`、`gamlss.prepdata`、`gamlss.ggplots`——
   标为待补证据，而不是假定覆盖。
-- **推荐首批**：`gamlss.mx`（优先级 2、仅 4 个符号、已有 `test_mixtures.py`），
-  即 `gamlssMX` / `gamlssMXfits` / `gamlssNP` / `plotMP`。
+- **首批已完成（D2.247）**：`gamlss.mx` 的 `gamlssMX` / `gamlssMXfits` / `gamlssNP` /
+  `plotMP` 全部落地，12/12 符号 surface=public_api、kernel=implemented、parity=tested。
+  MX 与 NP 的拟合对活 R 对齐到 1e-6 / 1e-8（dev、prob、mu、sigma、mass points、
+  EM 迭代数）；未移植分支（`pi.formula` 含协变量、`zero.component`、`mixture="gq"`、
+  `random=~x`）显式抛 `NotImplementedError`，不近似。
+- **下一批**：`gamlss.add`（13 个缺失符号）。
 
 ### P5：ondil 在线层（独立轨道，独立发布，不混入 R 完成率）
 
@@ -693,10 +697,15 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   `_RS_FIT_EVIDENCE`/`_PREDICTION_EVIDENCE` 由该集合派生并并上 ZIP；7 个族的
   `flat_ridge`/R 侧报错软标记保留在 `docs/development/m3-admission-evidence-2026-11-15.json`
   随准入记录；同时修复路由门「非 ok 报告不抛错」的 fail-open 漏洞）
-- [ ] P4-1 `gamlss.mx` 补齐 4 个缺失符号（`gamlssMX`/`gamlssMXfits`/`gamlssNP`/`plotMP`）
-  + 证据（D2.246 盘点推荐首批；已有 `test_mixtures.py`/`test_mixtures_accessors.py`）。
-  随后按优先级推进 `gamlss.add`（13）、`gamlss.spatial`（6）、`gamlss.foreach`（5）、
-  `gamlss.prepdata`（19）；`gamlss.ggplots`（73）最后
+- [x] P4-1 `gamlss.mx` 补齐 4 个缺失符号（D2.247 完成：`gamlssMX` EM 混合（常量先验）、
+  `gamlssMXfits` 多次随机起点取最优、`gamlssNP` NPML（`mixture="np"` + `random=~1`）、
+  `plotMP` 3D 几何 + 可选 matplotlib 渲染；对活 R 的 dev/prob/mu/sigma/mass/EM 迭代数
+  对齐 1e-6~1e-8。**未移植分支显式 NotImplementedError**：`pi.formula` 含协变量（需
+  multinom）、`zero.component`、`mixture="gq"`、`random=~x`。顺带修 `dmx` 对标量 y
+  崩溃的既有缺陷。12 例测试）
+- [ ] P4-2 `gamlss.add` 补齐 13 个缺失符号（`ba`/`ga`/`nn`/`fk`/`gamlss.*` 等）；
+  随后 `gamlss.spatial`（6）、`gamlss.foreach`（5）、`gamlss.prepdata`（19）；
+  `gamlss.ggplots`（73）最后
 - [ ] P5-1 定义 OmniLSS↔ondil distribution contract 与独立流式 golden
 - [ ] P6-1 `log_bessel_kv` JAX 原生实现（含精度与耗时双验收）
 
