@@ -444,7 +444,7 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 | M0 | P0 全清；覆盖工件可重生成；分层 collection 零错误；devcontainer 可用 | 0.4.x |
 | M1 | 冻结清单内高频族全部 **Surface + DPQR 证据 parity**；无 placeholder 进入目标范围（D2.235 重述：原「golden:validated 数量级」改为证据覆盖口径（40 族池上限 ~110，10x 不可达），原「Kernel 全 implemented」划归 **M3** 准入） | 0.5.0 |
 | M2 | P2 收敛缺陷分类完毕；RS/CG/MIXED 分层 parity；fit/newdata 证据齐全；失败可解释（D2.239 达成：四项均有可校验工件，见 §22.4 M2 状态） | 0.6.0 |
-| M3 | P3 核心 API + family/link 框架 + 准入平滑项闭环；`*.fix`/`contrasts` 全路由（D2.240 证据清单 → D2.241 准入 22/22 → D2.242 P3-1 契约冻结入 CI → D2.243 P3-2 gen.Family 可拟合 → D2.244 P3-3 fix 全路由 + 分类预测重建。**M3 门槛四项完成**） | 0.9.0 |
+| M3 | P3 核心 API + family/link 框架 + 准入平滑项闭环；`*.fix`/`contrasts` 全路由（D2.245 达成：D2.241 准入 22/22 → D2.242 P3-1 契约冻结入 CI → D2.243 P3-2 gen.Family 可拟合 → D2.244 P3-3 fix 全路由 + 分类预测重建；6/6 判据见 §22.4 M3 状态） | 0.9.0 |
 | M4 | P4 周边包（至少 cens/tr/mx/add）+ 服务 + 文档/教程 + 发布 artifact 同步 | 1.0.0 |
 | 独立 | P5 在线层、P6 性能/GPU，各自独立门禁与发布 | 并行 |
 
@@ -546,6 +546,22 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
 - **formula**：`ParsedFormula` 字段 + 7 个规范公式（线性/平滑/张量/截距）的解析结构。
 - **prediction**：`predict_params`/`predict_response` 的键、形状、缺列报错、多余列容忍。
 - 失败即 `--check` 失败：新增 link 无探针、参数元组或解析结构变化、预测行为退化。
+
+**M3 状态（2026-11-15 达成，D2.245）**：见
+`docs/development/m3-assessment-2026-11-15.json`（+ `.md`，tool
+`tools/m3_assessment.py --check`）。6 项判据全部为真，其中两项是**活体探针**而非
+「测试文件存在」：
+- `p3_contracts_frozen`：P3-1 契约工件的 `contract_frozen`（D2.242）。
+- `gen_family_fits_like_r`：现场构造 logNO 并用 RS 拟合，deviance 对活 R
+  140.3831 在 1e-6 内（D2.243）。
+- `fix_on_every_route`：现场对 RS/CG/MIXED 跑 `sigma.fix=TRUE, sigma.start=0.5`，
+  deviance 均为 R 的 67.1324138595735，且 `sigma` 不进入系数（D2.244）。
+- `categorical_prediction_rebuilt`：现场对 CG/MIXED 拟合因子模型并重建预测，
+  deviance 与 `pred_mu` 均对 contrasts golden（D2.244）。
+- `admission_closed`：准入清单 22/22（D2.241）。
+- `prior_milestones_intact`：M1、M2 的 gate verdict 仍为真。
+**`m3_gate_met: true`**，M3 正式关闭（0.9.0 门槛）。M4（周边包/服务/文档/发布 artifact）
+不受本判定覆盖。
 
 **M3 全路由 fix（2026-11-15，D2.244 / P3-3）**：`*.fix` 现对五个方法生效，活 R 基准
 （NO、n=60、seed=5）：`sigma.fix=TRUE, sigma.start=0.5` 时 RS/CG/mixed 的 dev 均为
