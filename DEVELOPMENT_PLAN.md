@@ -419,6 +419,19 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 4. `gamlss.ggplots` 数据层与 `gamlss.data`（外观不要求像素一致，优先级最低）。
 - `gamlss2` 维持 out-of-scope：单独规格/版本/证据，不阻塞 1.0。
 
+**P4 范围盘点（2026-11-15，D2.246）**：见 `docs/development/m4-scope-2026-11-15.json`
+（+ `.md`，tool `tools/m4_scope_inventory.py --check`）。按上面的优先级逐包记录
+surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件里出现但未分类的周边包直接报错。
+- **表面完整（2 包）**：`gamlss.cens`（5/5）、`gamlss.tr`（8/8），且都有专用证据模块。
+- **缺口（6 包，共 120 个缺失符号）**：`gamlss.mx` 缺 4、`gamlss.add` 缺 13、
+  `gamlss.spatial` 缺 6、`gamlss.foreach` 缺 5、`gamlss.prepdata` 缺 19、
+  `gamlss.ggplots` 缺 73。
+- **无函数表面（1 包）**：`gamlss.data`（仅数据集）。
+- **无专用证据模块（3 包）**：`gamlss.foreach`、`gamlss.prepdata`、`gamlss.ggplots`——
+  标为待补证据，而不是假定覆盖。
+- **推荐首批**：`gamlss.mx`（优先级 2、仅 4 个符号、已有 `test_mixtures.py`），
+  即 `gamlssMX` / `gamlssMXfits` / `gamlssNP` / `plotMP`。
+
 ### P5：ondil 在线层（独立轨道，独立发布，不混入 R 完成率）
 
 - 先定义 OmniLSS↔ondil 共享 distribution contract（参数/support/link/score/信息矩阵）。
@@ -445,7 +458,7 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 | M1 | 冻结清单内高频族全部 **Surface + DPQR 证据 parity**；无 placeholder 进入目标范围（D2.235 重述：原「golden:validated 数量级」改为证据覆盖口径（40 族池上限 ~110，10x 不可达），原「Kernel 全 implemented」划归 **M3** 准入） | 0.5.0 |
 | M2 | P2 收敛缺陷分类完毕；RS/CG/MIXED 分层 parity；fit/newdata 证据齐全；失败可解释（D2.239 达成：四项均有可校验工件，见 §22.4 M2 状态） | 0.6.0 |
 | M3 | P3 核心 API + family/link 框架 + 准入平滑项闭环；`*.fix`/`contrasts` 全路由（D2.245 达成：D2.241 准入 22/22 → D2.242 P3-1 契约冻结入 CI → D2.243 P3-2 gen.Family 可拟合 → D2.244 P3-3 fix 全路由 + 分类预测重建；6/6 判据见 §22.4 M3 状态） | 0.9.0 |
-| M4 | P4 周边包（至少 cens/tr/mx/add）+ 服务 + 文档/教程 + 发布 artifact 同步 | 1.0.0 |
+| M4 | P4 周边包（至少 cens/tr/mx/add）+ 服务 + 文档/教程 + 发布 artifact 同步（D2.246 已完成范围盘点：cens/tr 表面完整，mx 为首个缺口共 120 个缺失符号；见 §P4 状态） | 1.0.0 |
 | 独立 | P5 在线层、P6 性能/GPU，各自独立门禁与发布 | 并行 |
 
 每个里程碑必须有：固定 manifest（R/Python/JAX/NumPy/SciPy/x64 版本、源码 hash、seed、容差、命令）、
@@ -680,6 +693,10 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   `_RS_FIT_EVIDENCE`/`_PREDICTION_EVIDENCE` 由该集合派生并并上 ZIP；7 个族的
   `flat_ridge`/R 侧报错软标记保留在 `docs/development/m3-admission-evidence-2026-11-15.json`
   随准入记录；同时修复路由门「非 ok 报告不抛错」的 fail-open 漏洞）
+- [ ] P4-1 `gamlss.mx` 补齐 4 个缺失符号（`gamlssMX`/`gamlssMXfits`/`gamlssNP`/`plotMP`）
+  + 证据（D2.246 盘点推荐首批；已有 `test_mixtures.py`/`test_mixtures_accessors.py`）。
+  随后按优先级推进 `gamlss.add`（13）、`gamlss.spatial`（6）、`gamlss.foreach`（5）、
+  `gamlss.prepdata`（19）；`gamlss.ggplots`（73）最后
 - [ ] P5-1 定义 OmniLSS↔ondil distribution contract 与独立流式 golden
 - [ ] P6-1 `log_bessel_kv` JAX 原生实现（含精度与耗时双验收）
 
