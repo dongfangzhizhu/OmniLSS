@@ -906,9 +906,35 @@ def SEP2():
     )
 
 
+def _fisher_hessians(family):
+    """R's Fisher-scoring second derivatives: -dld*^2, floored at -1e-15.
+
+    SEP3/SEP4 define d2ldm2/d2ldd2/d2ldv2/d2ldt2 as minus the squared score
+    (SEP3.R lines 44-51, SEP4.R lines 44-51), not as the observed curvature that
+    autodiff would give.  At tau = 1 SEP3 is an asymmetric Laplace whose
+    log-density is piecewise linear in mu, so the AD Hessian is exactly zero and
+    the IWLS weights collapse (measured: mu jumped to -1.2e6 in one step while
+    R converges).  The Fisher form keeps the fit on R's trajectory.
+    """
+
+    import jax.numpy as jnp
+
+    hessians = {}
+    for name, score in (family.score_functions or {}).items():
+        def make(score_fn):
+            def hessian(**kwargs):
+                value = score_fn(**kwargs)
+                return jnp.minimum(-value * value, -1e-15)
+
+            return hessian
+
+        hessians[name] = make(score)
+    return hessians
+
+
 def SEP3():
     """Skew Exponential Power Type 3 (R SEP3)."""
-    return build_ad_family(
+    family = build_ad_family(
         family_class=SEP3Family,
         name="SEP3",
         parameters=("mu", "sigma", "nu", "tau"),
@@ -922,6 +948,9 @@ def SEP3():
         link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
         link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative, "tau": log_derivative},
     )
+    from dataclasses import replace
+
+    return replace(family, hessian_functions=_fisher_hessians(family))
 
 
 def SEP4():
@@ -940,6 +969,9 @@ def SEP4():
         link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
         link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative, "tau": log_derivative},
     )
+    from dataclasses import replace
+
+    return replace(family, hessian_functions=_fisher_hessians(family))
 
 
 # ============================================================================

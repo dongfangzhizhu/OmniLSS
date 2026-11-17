@@ -423,10 +423,10 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 （+ `.md`，tool `tools/m4_scope_inventory.py --check`）。按上面的优先级逐包记录
 surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件里出现但未分类的周边包直接报错。
 - **表面完整（2 包）**：`gamlss.cens`（5/5）、`gamlss.tr`（8/8），且都有专用证据模块。
-- **缺口（D2.246 时 6 包 120 个；D2.252 后 3 包 97 个）**：`gamlss.foreach` 缺 5、
-  `gamlss.prepdata` 缺 19、`gamlss.ggplots` 缺 73；`gamlss.mx`（D2.247）、
-  `gamlss.add`（D2.251）、`gamlss.spatial`（D2.252）已补齐，连同 cens/tr 共
-  **5 包 surface 完整**。
+- **缺口（D2.246 时 6 包 120 个；D2.253 后 2 包 92 个）**：`gamlss.prepdata` 缺 19、
+  `gamlss.ggplots` 缺 73；`gamlss.mx`（D2.247）、`gamlss.add`（D2.251）、
+  `gamlss.spatial`（D2.252）、`gamlss.foreach`（D2.253）已补齐，连同 cens/tr 共
+  **6 包 surface 完整**。
 - **无函数表面（1 包）**：`gamlss.data`（仅数据集）。
 - **无专用证据模块（3 包）**：`gamlss.foreach`、`gamlss.prepdata`、`gamlss.ggplots`——
   标为待补证据，而不是假定覆盖。
@@ -435,8 +435,8 @@ surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件
   MX 与 NP 的拟合对活 R 对齐到 1e-6 / 1e-8（dev、prob、mu、sigma、mass points、
   EM 迭代数）；未移植分支（`pi.formula` 含协变量、`zero.component`、`mixture="gq"`、
   `random=~x`）显式抛 `NotImplementedError`，不近似。
-- **下一批**：`gamlss.foreach`（5）——`BayesianBoot`/`NonParametricBoot`/
-  `centiles.boot`/`fitQR`/`fitRolling`。
+- **下一批**：`gamlss.prepdata`（19）——数据诊断族（`data_*`）、`ACE`、
+  相关性检验（`cor_*`）等。
 
 ### P5：ondil 在线层（独立轨道，独立发布，不混入 R 完成率）
 
@@ -714,9 +714,13 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   `MRFA`（交替 lambda/df）、`gmrf`/`gamlss.gmrf`（项 + 回调）、`draw.polys`（几何 +
   可选绘图）、`polys2polys`（sp 鸭子类型转换）。MRFA 对活 R **逐位一致**（beta 2e-16），
   MRF 相对差 ~1e-6；`gamlss.spatial` **surface 9/9 完整**）
-- [ ] P4-4 `gamlss.foreach`（5 个缺失符号：`BayesianBoot`/`NonParametricBoot`/
-  `centiles.boot`/`fitQR`/`fitRolling`），随后 `gamlss.prepdata`（19）；
-  `gamlss.ggplots`（73）最后
+- [x] P4-4 `gamlss.foreach` 补齐 5 个符号（D2.253 完成：`fitQR`（SEP3 固定三参的
+  分位数回归，deviance 对活 R 1e-5）、`fitRolling`（滚动重拟合 + 一步预测 +
+  GDincr）、`NonParametricBoot`/`BayesianBoot`（行重采样 / Dirichlet 权重）、
+  `centiles.boot`（重采样 centile 曲线，含 calibration）。`gamlss.foreach`
+  **surface 13/13 完整**）
+- [ ] P4-5 `gamlss.prepdata`（19 个缺失符号：`ACE`/`data_*` 诊断族/`cor_*` 检验等）
+- [ ] P4-6 `gamlss.ggplots`（73 个缺失符号，外观层最后）
 - [ ] P5-1 定义 OmniLSS↔ondil distribution contract 与独立流式 golden
 - [ ] P6-1 `log_bessel_kv` JAX 原生实现（含精度与耗时双验收）
 

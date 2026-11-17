@@ -252,6 +252,15 @@ from .additive import (
     tr,
     tree_control,
 )
+from .foreach_tools import (
+    BayesianBoot,
+    BootResult,
+    CentilesBoot,
+    NonParametricBoot,
+    centiles_boot,
+    fitQR,
+    fitRolling,
+)
 from .spatial_models import (
     GmrfControl,
     GmrfFit,
@@ -1412,6 +1421,13 @@ __all__ = [
     "tr",
     "fk",
     "nn",
+    "fitQR",
+    "fitRolling",
+    "NonParametricBoot",
+    "BayesianBoot",
+    "centiles_boot",
+    "BootResult",
+    "CentilesBoot",
     "MRF",
     "MRFA",
     "gmrf",
