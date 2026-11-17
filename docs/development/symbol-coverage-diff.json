@@ -12,11 +12,11 @@
     "notice": "gamlss2 is out of scope for OmniLSS 1.0: separate spec / version / evidence, does not block 1.0 (deliverable plan sections 1.2, 22.6)."
   },
   "current_counts": {
-    "missing": 158,
+    "missing": 156,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 399
+    "extra": 402
   },
   "category_meaning": {
     "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
@@ -38,14 +38,16 @@
         "gamlss.add::gamlss.ba",
         "gamlss.add::gamlss.fk",
         "gamlss.add::gamlss.ga",
+        "gamlss.add::gamlss.nn",
         "gamlss.add::gamlss.tr",
+        "gamlss.add::nn",
         "gamlss.add::tr",
         "gamlss.mx::gamlssMX",
         "gamlss.mx::gamlssMXfits",
         "gamlss.mx::gamlssNP",
         "gamlss.mx::plotMP"
       ],
-      "current_count": 158,
+      "current_count": 156,
       "baseline_count": 173
     },
     "placeholder": {
@@ -74,6 +76,9 @@
         "FkFit",
         "FkTerm",
         "FreeKnotFit",
+        "NeuralNet",
+        "NnFit",
+        "NnTerm",
         "RegressionTree",
         "TreeControl",
         "TreeFit",
@@ -82,7 +87,7 @@
         "tree_control"
       ],
       "resolved": [],
-      "current_count": 399,
+      "current_count": 402,
       "baseline_count": 387
     }
   },
@@ -126,7 +131,15 @@
     },
     {
       "category": "missing",
+      "symbol": "gamlss.add::gamlss.nn"
+    },
+    {
+      "category": "missing",
       "symbol": "gamlss.add::gamlss.tr"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.add::nn"
     },
     {
       "category": "missing",

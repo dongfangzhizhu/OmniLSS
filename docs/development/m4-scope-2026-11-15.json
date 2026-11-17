@@ -1,12 +1,12 @@
 {
   "counts": {
-    "missing_symbols": 105,
+    "missing_symbols": 103,
     "no_function_surface": 1,
     "out_of_scope": 3,
     "packages": 9,
     "packages_without_evidence_tests": 3,
-    "surface_complete": 3,
-    "surface_gap": 5
+    "surface_complete": 4,
+    "surface_gap": 4
   },
   "decision": "D2.246",
   "milestone": "M4",
@@ -87,24 +87,19 @@
         "test_add_controls.py"
       ],
       "exported": 15,
-      "missing_symbols": [
-        "gamlss.nn",
-        "nn"
-      ],
-      "next_action": "implement 2 missing symbols",
+      "missing_symbols": [],
+      "next_action": "hold: surface complete and evidence modules exist",
       "order": 2,
       "package": "gamlss.add",
       "parity": {
         "r_consistency_test": 1,
-        "tested": 12,
-        "unverified": 2
+        "tested": 14
       },
       "priority": 2,
       "rationale": "additive terms (ga/ba/nn/fk/tr) extend the formula surface",
-      "status": "surface_gap",
+      "status": "surface_complete",
       "surface": {
-        "missing": 2,
-        "public_api": 13
+        "public_api": 15
       },
       "tracked_symbols": 15
     },
@@ -339,10 +334,10 @@
   "task": "P4 scope",
   "verdict": {
     "first_work_item": {
-      "missing": 2,
-      "next_action": "implement 2 missing symbols",
-      "package": "gamlss.add",
-      "priority": 2
+      "missing": 6,
+      "next_action": "implement 6 missing symbols",
+      "package": "gamlss.spatial",
+      "priority": 3
     },
     "inventory_complete": true,
     "notes": "This is a scope inventory, not an M4 gate. gamlss.cens and gamlss.tr already have full surface plus dedicated evidence modules; gamlss.mx is the first package with a surface gap, so it is the recommended next batch. Packages without a dedicated test module are flagged rather than assumed covered."
