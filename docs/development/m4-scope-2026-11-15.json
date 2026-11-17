@@ -1,6 +1,6 @@
 {
   "counts": {
-    "missing_symbols": 112,
+    "missing_symbols": 110,
     "no_function_surface": 1,
     "out_of_scope": 3,
     "packages": 9,
@@ -94,23 +94,22 @@
         "fk",
         "gamlss.fk",
         "gamlss.nn",
-        "gamlss.tr",
-        "nn",
-        "tr"
+        "nn"
       ],
-      "next_action": "implement 9 missing symbols",
+      "next_action": "implement 7 missing symbols",
       "order": 2,
       "package": "gamlss.add",
       "parity": {
-        "tested": 6,
-        "unverified": 9
+        "r_consistency_test": 1,
+        "tested": 7,
+        "unverified": 7
       },
       "priority": 2,
       "rationale": "additive terms (ga/ba/nn/fk/tr) extend the formula surface",
       "status": "surface_gap",
       "surface": {
-        "missing": 9,
-        "public_api": 6
+        "missing": 7,
+        "public_api": 8
       },
       "tracked_symbols": 15
     },
@@ -345,8 +344,8 @@
   "task": "P4 scope",
   "verdict": {
     "first_work_item": {
-      "missing": 9,
-      "next_action": "implement 9 missing symbols",
+      "missing": 7,
+      "next_action": "implement 7 missing symbols",
       "package": "gamlss.add",
       "priority": 2
     },
