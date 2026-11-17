@@ -252,6 +252,13 @@ from .additive import (
     tr,
     tree_control,
 )
+from .neural import (
+    NeuralNet,
+    NnFit,
+    NnTerm,
+    gamlss_nn,
+    nn,
+)
 from .freeknots import (
     CentileSurface,
     FkControl,
@@ -1390,6 +1397,11 @@ __all__ = [
     "ba",
     "tr",
     "fk",
+    "nn",
+    "gamlss_nn",
+    "NeuralNet",
+    "NnFit",
+    "NnTerm",
     "centilesTwo",
     "fitFixedKnots",
     "fitFreeKnots",
