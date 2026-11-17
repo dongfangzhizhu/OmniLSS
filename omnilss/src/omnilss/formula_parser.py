@@ -21,8 +21,11 @@ import numpy as np
 
 _SMOOTH_CALL_PATTERN = re.compile(
     r"\b(pb|ps|cs|s|random|re|ri|lo|pcat|fp|bfp|cy|te|ti|"
-    r"pvc|pbm|pbz|pbo|pbc|pbp|scs)\s*\("
+    r"pvc|pbm|pbz|pbo|pbc|pbp|scs|ga|ba)\s*\("
 )
+
+#: Synthetic response used when parsing an inner additive formula (ga/ba).
+_ADDITIVE_RESPONSE = "__additive_response__"
 
 
 def has_smooth_terms(formula: str | None) -> bool:
@@ -240,6 +243,19 @@ def parse_formula(formula: str) -> ParsedFormula:
                 # Parse tensor product term
                 tensor = _parse_tensor_term(smoother, args_str)
                 tensor_terms.append(tensor)
+            # gamlss.add terms: ga(~ pb(x)) / ba(~ pb(x)) delegate their inner
+            # formula to the same smooth machinery, so the outer formula parses
+            # to exactly the terms the inner formula names.
+            elif smoother in ('ga', 'ba'):
+                inner_text = args_str.strip()
+                if not inner_text.startswith('~'):
+                    raise ValueError(
+                        f"{smoother}() needs an inner formula starting with ~, got {inner_text!r}"
+                    )
+                inner = parse_formula(f'{_ADDITIVE_RESPONSE} {inner_text}')
+                linear_terms.extend(inner.linear_terms)
+                smooth_terms.extend(inner.smooth_terms)
+                tensor_terms.extend(inner.tensor_terms)
             # Check if it's a recognized smooth term
             elif smoother in ('pb', 'ps', 'cs', 's', 'lo', 'random', 're', 'ri', 'pcat', 'fp', 'bfp', 'cy', 'pvc', 'pbm', 'pbz', 'pbo', 'pbc'):
                 # Parse smooth term

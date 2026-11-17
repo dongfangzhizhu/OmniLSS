@@ -423,9 +423,9 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 （+ `.md`，tool `tools/m4_scope_inventory.py --check`）。按上面的优先级逐包记录
 surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件里出现但未分类的周边包直接报错。
 - **表面完整（2 包）**：`gamlss.cens`（5/5）、`gamlss.tr`（8/8），且都有专用证据模块。
-- **缺口（D2.246 时 6 包 120 个；D2.247 后 5 包 116 个）**：`gamlss.add` 缺 13、
-  `gamlss.spatial` 缺 6、`gamlss.foreach` 缺 5、`gamlss.prepdata` 缺 19、
-  `gamlss.ggplots` 缺 73；`gamlss.mx` 已补齐（见下）。
+- **缺口（D2.246 时 6 包 120 个；D2.247 后 116 个；D2.248 后 112 个）**：
+  `gamlss.add` 缺 9、`gamlss.spatial` 缺 6、`gamlss.foreach` 缺 5、
+  `gamlss.prepdata` 缺 19、`gamlss.ggplots` 缺 73；`gamlss.mx` 已补齐。
 - **无函数表面（1 包）**：`gamlss.data`（仅数据集）。
 - **无专用证据模块（3 包）**：`gamlss.foreach`、`gamlss.prepdata`、`gamlss.ggplots`——
   标为待补证据，而不是假定覆盖。
@@ -434,7 +434,7 @@ surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件
   MX 与 NP 的拟合对活 R 对齐到 1e-6 / 1e-8（dev、prob、mu、sigma、mass points、
   EM 迭代数）；未移植分支（`pi.formula` 含协变量、`zero.component`、`mixture="gq"`、
   `random=~x`）显式抛 `NotImplementedError`，不近似。
-- **下一批**：`gamlss.add`（13 个缺失符号）。
+- **下一批**：`gamlss.add` 剩余 9 个符号（D2.248 已把 ga/ba 两组落地）。
 
 ### P5：ondil 在线层（独立轨道，独立发布，不混入 R 完成率）
 
@@ -703,9 +703,13 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   对齐 1e-6~1e-8。**未移植分支显式 NotImplementedError**：`pi.formula` 含协变量（需
   multinom）、`zero.component`、`mixture="gq"`、`random=~x`。顺带修 `dmx` 对标量 y
   崩溃的既有缺陷。12 例测试）
-- [ ] P4-2 `gamlss.add` 补齐 13 个缺失符号（`ba`/`ga`/`nn`/`fk`/`gamlss.*` 等）；
-  随后 `gamlss.spatial`（6）、`gamlss.foreach`（5）、`gamlss.prepdata`（19）；
-  `gamlss.ggplots`（73）最后
+- [ ] P4-2 `gamlss.add` 补齐 13 个缺失符号（**D2.248 完成 4/13**：`ga`/`ba` 项构造 +
+  `gamlss.ga`/`gamlss.ba` 加权拟合回调，公式展开后与显式 smooth 拟合逐位等价；
+  **剩余 9**：`nn`/`gamlss.nn`/`fk`/`gamlss.fk`/`tr`/`gamlss.tr`/
+  `centilesTwo`/`fitFixedKnots`/`fitFreeKnots`——nn 需网络拟合、fk 需自由节点优化、
+  tr 依赖截断族，均比 ga/ba 重）
+- [ ] P4-3 `gamlss.add` 剩余 9 个符号；随后 `gamlss.spatial`（6）、
+  `gamlss.foreach`（5）、`gamlss.prepdata`（19）；`gamlss.ggplots`（73）最后
 - [ ] P5-1 定义 OmniLSS↔ondil distribution contract 与独立流式 golden
 - [ ] P6-1 `log_bessel_kv` JAX 原生实现（含精度与耗时双验收）
 

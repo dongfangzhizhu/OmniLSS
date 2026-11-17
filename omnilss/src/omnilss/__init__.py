@@ -237,6 +237,14 @@ from .pspline_variants import (
     pvc,
 )
 from .add_controls import ga_control, gam_control, nn_control
+from .additive import (
+    AdditiveFit,
+    AdditiveTerm,
+    ba,
+    ga,
+    gamlss_ba,
+    gamlss_ga,
+)
 from .mixtures import (
     MX_control,
     MixtureFit,
@@ -1351,6 +1359,10 @@ __all__ = [
     "dmx",
     "pmx",
     "dMX",
+    "ga",
+    "ba",
+    "gamlss_ga",
+    "gamlss_ba",
     "gamlssMX",
     "gamlssMXfits",
     "gamlssNP",
