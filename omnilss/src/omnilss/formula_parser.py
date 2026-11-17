@@ -243,6 +243,15 @@ def parse_formula(formula: str) -> ParsedFormula:
                 # Parse tensor product term
                 tensor = _parse_tensor_term(smoother, args_str)
                 tensor_terms.append(tensor)
+            # gamlss.add tree terms are backfitted by rpart inside R's gamlss.
+            # This package fits every term jointly from one design matrix, so
+            # the tree cannot be represented as fixed columns; refuse clearly
+            # instead of treating tr(~ x) as a linear variable.
+            elif smoother == 'tr':
+                raise NotImplementedError(
+                    "tr() tree terms are not supported inside gamlss()/gamlss_ml(); "
+                    "fit the tree with gamlss_tr(tr(...), y, w, data=...) instead"
+                )
             # gamlss.add terms: ga(~ pb(x)) / ba(~ pb(x)) delegate their inner
             # formula to the same smooth machinery, so the outer formula parses
             # to exactly the terms the inner formula names.

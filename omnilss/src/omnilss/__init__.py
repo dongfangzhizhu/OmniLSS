@@ -240,10 +240,17 @@ from .add_controls import ga_control, gam_control, nn_control
 from .additive import (
     AdditiveFit,
     AdditiveTerm,
+    RegressionTree,
+    TreeControl,
+    TreeFit,
+    TreeTerm,
     ba,
     ga,
     gamlss_ba,
     gamlss_ga,
+    gamlss_tr,
+    tr,
+    tree_control,
 )
 from .mixtures import (
     MX_control,
@@ -467,6 +474,12 @@ from .gamlss_tr import (
     trun_q,
     trun_r,
 )
+# Importing the gamlss_tr submodule binds the package attribute to the module,
+# which shadows the gamlss.add callback of the same R name.  The R symbols live
+# in different packages (gamlss.add::gamlss.tr vs gamlss.tr::...), so the
+# top-level name stays the additive-tree callback; the truncation package is
+# reached through trun/gen_trun and the submodule itself.
+from .additive import gamlss_tr as gamlss_tr  # noqa: F811
 from .logLik import logLik
 from .loglogSurv import logSurv0
 from .loglogplot import loglogplot, LogLogPlotResult
@@ -1361,8 +1374,15 @@ __all__ = [
     "dMX",
     "ga",
     "ba",
+    "tr",
     "gamlss_ga",
     "gamlss_ba",
+    "gamlss_tr",
+    "RegressionTree",
+    "TreeControl",
+    "TreeFit",
+    "TreeTerm",
+    "tree_control",
     "gamlssMX",
     "gamlssMXfits",
     "gamlssNP",
