@@ -444,7 +444,7 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 | M0 | P0 全清；覆盖工件可重生成；分层 collection 零错误；devcontainer 可用 | 0.4.x |
 | M1 | 冻结清单内高频族全部 **Surface + DPQR 证据 parity**；无 placeholder 进入目标范围（D2.235 重述：原「golden:validated 数量级」改为证据覆盖口径（40 族池上限 ~110，10x 不可达），原「Kernel 全 implemented」划归 **M3** 准入） | 0.5.0 |
 | M2 | P2 收敛缺陷分类完毕；RS/CG/MIXED 分层 parity；fit/newdata 证据齐全；失败可解释（D2.239 达成：四项均有可校验工件，见 §22.4 M2 状态） | 0.6.0 |
-| M3 | P3 核心 API + family/link 框架 + 准入平滑项闭环；`*.fix`/`contrasts` 全路由（D2.240 证据清单 + D2.241 准入完成：22/22 promoted 族 production_safe，路由门改为任何非 ok 一律拒绝；D2.242 P3-1 契约冻结完成并入 CI；P3-2 局部、P3-3 未完成） | 0.9.0 |
+| M3 | P3 核心 API + family/link 框架 + 准入平滑项闭环；`*.fix`/`contrasts` 全路由（D2.240 证据清单 + D2.241 准入完成：22/22 promoted 族 production_safe，路由门改为任何非 ok 一律拒绝；D2.242 P3-1 契约冻结完成并入 CI；D2.243 P3-2 完成：gen.Family 导数按 R 语义包装、拟合对活 R 1e-11；P3-3 未完成） | 0.9.0 |
 | M4 | P4 周边包（至少 cens/tr/mx/add）+ 服务 + 文档/教程 + 发布 artifact 同步 | 1.0.0 |
 | 独立 | P5 在线层、P6 性能/GPU，各自独立门禁与发布 | 并行 |
 
@@ -547,6 +547,16 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
 - **prediction**：`predict_params`/`predict_response` 的键、形状、缺列报错、多余列容忍。
 - 失败即 `--check` 失败：新增 link 无探针、参数元组或解析结构变化、预测行为退化。
 
+**M3 gen.Family 收尾（2026-11-15，D2.243 / P3-2）**：`family_generator.Family()` 现在把
+基族的 score/hessian 包装成「先做响应变换再调用」，与 R 在导数 body 里把 `y` 改写成
+`log(y)`/`logit(y)` 等价。此前 `GeneratedFamily` 直接复制基族导数，拟合路径会拿**原始
+响应**算梯度、拿**变换后响应**算 deviance，两者不一致：同一 logNO 样本 RS 拟合 deviance
+**413.47 vs R 140.38**，系数全错。包装后：
+- logNO：dev 140.38306650049347（R 140.3830665004935），mu/sigma 最大差 3.3e-16 / 1.7e-11；
+- logitNO：dev -188.5069659133473（R -188.50696591334733），差 3.9e-16 / 8.9e-14。
+测试新增：导数包装的结构不变量（score/hessian 在 y 处等于基族在 log y 处）+ 两例活 R
+RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
+
 ### 22.5 立即执行的前十五项（backlog，按依赖排序）
 
 - [x] P0-1 修 `.codex/setup.sh` / devcontainer postCreate（D2.224 完成：根因是
@@ -622,7 +632,13 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
   键等于可估参数、形状随 newdata、缺列抛 `PredictionSchemaError`（ValueError 子类）、
   多余列被容忍。`--check` 双向 fail-closed（新增 link 无探针、参数元组变化、解析结构变化
   均失败），已接入 `ci.yml`/`release.yml`；9 例测试钉住判据与门禁接线）
-- [ ] P3-2 实现 `checklink`/`make.link.gamlss`/`as.family`/`gen.Family` 框架
+- [x] P3-2 实现 `checklink`/`make.link.gamlss`/`as.family`/`gen.Family` 框架（D2.243 完成：
+  四个符号均已在 `gamlss_family.py`/`family_generator.py` 落地；本批补齐 `gen.Family`
+  的**可拟合性**——`Family()` 原样复制基族 score/hessian，而它们会收到未变换的 y，导致
+  transformed deviance 与梯度不一致（同一数据 logNO 拟合 deviance 413.47 vs R 140.38）。
+  现按 R 的 body 改写语义在调用边界包装 y→log(y)/logit(y)；logNO 与 logitNO 的 RS 拟合
+  对活 R 对齐到 **1e-11 / 1e-13**（deviance、mu、sigma），测试同时钉住「导数看到的是
+  变换后的响应」这一结构不变量）
 - [ ] P3-3 `*.fix`/`contrasts` 扩到 CG/MIXED/joint + 分类预测重建
 - [x] P3-4 `production_safe` 准入闭环（D2.240 证据清单 → D2.241 准入执行：22 个 promoted 族
   **全部 admitted**（原 1 族），`admission=production_safe` 符号 5 → 110、blocked 526 → 421；

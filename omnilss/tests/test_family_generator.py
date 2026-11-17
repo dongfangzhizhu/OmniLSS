@@ -213,3 +213,93 @@ def test_transformed_families_match_live_r() -> None:
             atol=1e-12,
             err_msg=f"{f} {t} quantile",
         )
+
+
+def test_generated_derivatives_see_the_transformed_response() -> None:
+    """D2.243: score/hessian must be evaluated at transform(y).
+
+    R's Family() rewrites y to log(y) inside the derivative bodies.  Before the
+    wrapper was added the generated family mixed a transformed deviance with
+    gradients at the raw response, and an RS fit returned deviance 413.47 where
+    R returns 140.38 on the same sample.
+    """
+    base = _resolve_family("NO")
+    log_family = Family("NO", "log")
+    y = jnp.asarray([0.5, 1.0, 2.5], dtype=jnp.float64)
+    mu = jnp.asarray([0.3, 0.3, 0.3], dtype=jnp.float64)
+    sigma = jnp.asarray([0.8, 0.8, 0.8], dtype=jnp.float64)
+    np.testing.assert_allclose(
+        np.asarray(log_family.score_functions["mu"](y, mu, sigma), dtype=float),
+        np.asarray(base.score_functions["mu"](jnp.log(y), mu, sigma), dtype=float),
+        rtol=0.0,
+        atol=0.0,
+    )
+    np.testing.assert_allclose(
+        np.asarray(log_family.score_functions["sigma"](y, mu, sigma), dtype=float),
+        np.asarray(base.score_functions["sigma"](jnp.log(y), mu, sigma), dtype=float),
+        rtol=0.0,
+        atol=0.0,
+    )
+    np.testing.assert_allclose(
+        np.asarray(log_family.hessian_functions["mu"](y, mu, sigma), dtype=float),
+        np.asarray(base.hessian_functions["mu"](jnp.log(y), mu, sigma), dtype=float),
+        rtol=0.0,
+        atol=0.0,
+    )
+
+
+@pytest.mark.parametrize(
+    "transform,seed,mu_scale,sigma_scale,deviance,mu_coef,sigma_coef",
+    [
+        (
+            "log", 42, 0.3, 0.4,
+            140.3830665004935,
+            (0.43908389769441319, 0.36313077671600119),
+            (-0.98996841514882172,),
+        ),
+        (
+            "logit", 77, 0.5, 0.35,
+            -188.50696591334733,
+            (0.14193788197275153, 0.46144047154206708),
+            (-0.99366711370308858,),
+        ),
+    ],
+)
+def test_generated_family_fit_matches_r_rs(
+    transform, seed, mu_scale, sigma_scale, deviance, mu_coef, sigma_coef
+) -> None:
+    """Live R 4.6.0 + gamlss.dist 6.1.1: gen.Family("NO", type) then RS(n.cyc=100).
+
+    Values captured from the R run recorded in the D2.243 log.  Before the
+    derivative fix this fit disagreed by deviance 413.47 vs 140.38 (log).
+    """
+    import numpy as np
+
+    from omnilss import gamlss
+
+    rng = np.random.default_rng(seed)
+    n = 80 if transform == "log" else 90
+    x = rng.normal(size=n)
+    if transform == "log":
+        y = np.exp(0.5 + mu_scale * x + rng.normal(scale=sigma_scale, size=n))
+    else:
+        z = 0.2 + mu_scale * x + rng.normal(scale=sigma_scale, size=n)
+        y = 1.0 / (1.0 + np.exp(-z))
+    model = gamlss(
+        "y ~ x", family=Family("NO", transform), data={"y": y, "x": x},
+        method="RS", max_iter=100,
+    )
+    assert model.converged
+    assert float(model.g_dev) == pytest.approx(deviance, rel=2e-4, abs=1e-6)
+    np.testing.assert_allclose(
+        np.ravel(np.asarray(model.coefficients["mu"], dtype=float)),
+        np.asarray(mu_coef, dtype=float),
+        rtol=2e-4,
+        atol=2e-4,
+    )
+    np.testing.assert_allclose(
+        np.ravel(np.asarray(model.coefficients["sigma"], dtype=float)),
+        np.asarray(sigma_coef, dtype=float),
+        rtol=2e-4,
+        atol=2e-4,
+    )

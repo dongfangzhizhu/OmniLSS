@@ -82,6 +82,32 @@ def _log_jacobian(x: Any, type_: str) -> Any:
     return jnp.log(xs) + jnp.log1p(-xs)
 
 
+def _wrap_derivative(fn: Callable[..., Any] | None, type_: str) -> Callable[..., Any] | None:
+    """Rewrite a base score / hessian so it sees the transformed response.
+
+    The transformation only touches y, so the derivative of the transformed
+    log-likelihood with respect to a parameter is the base derivative evaluated
+    at transform(y).  R's Family() gets this by rewriting y to log(y) in the
+    derivative bodies; here the wrapper does the same at the call boundary.
+
+    Without this the fitting path mixes a transformed deviance with gradients
+    taken at the raw response -- measured as deviance 413.47 vs R's 140.38 on
+    the same sample.
+    """
+
+    if fn is None:
+        return None
+
+    def wrapped(*args: Any, **kwargs: Any) -> Any:
+        if args:
+            args = (_transform(args[0], type_),) + tuple(args[1:])
+        elif "y" in kwargs:
+            kwargs = {**kwargs, "y": _transform(kwargs["y"], type_)}
+        return fn(*args, **kwargs)
+
+    return wrapped
+
+
 def family_d(family: Any = "NO", type: str = "log", **kwargs: Any) -> Callable[..., Any]:
     """R Family.d: density closure for the log / logit transformed family."""
 
@@ -178,6 +204,17 @@ def Family(family: Any = "NO", type: str = "log", local: bool = True, **kwargs: 
     def g_dev_inc(y: Any, **params: Any) -> Any:
         return -2.0 * d(y, log=True, **params)
 
+    score_functions = (
+        {key: _wrap_derivative(value, type_) for key, value in fam.score_functions.items()}
+        if fam.score_functions
+        else None
+    )
+    hessian_functions = (
+        {key: _wrap_derivative(value, type_) for key, value in fam.hessian_functions.items()}
+        if fam.hessian_functions
+        else None
+    )
+
     name = f"{type_}{fam.name}"
     return GeneratedFamily(
         name=name,
@@ -188,8 +225,8 @@ def Family(family: Any = "NO", type: str = "log", local: bool = True, **kwargs: 
         link_functions=fam.link_functions,
         link_inverses=fam.link_inverses,
         link_derivatives=fam.link_derivatives,
-        score_functions=fam.score_functions,
-        hessian_functions=fam.hessian_functions,
+        score_functions=score_functions,
+        hessian_functions=hessian_functions,
         fixed_parameters=fam.fixed_parameters,
         d=d,
         p=p,
