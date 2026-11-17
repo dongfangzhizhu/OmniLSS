@@ -12,11 +12,11 @@
     "notice": "gamlss2 is out of scope for OmniLSS 1.0: separate spec / version / evidence, does not block 1.0 (deliverable plan sections 1.2, 22.6)."
   },
   "current_counts": {
-    "missing": 156,
+    "missing": 150,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 402
+    "extra": 408
   },
   "category_meaning": {
     "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
@@ -45,9 +45,15 @@
         "gamlss.mx::gamlssMX",
         "gamlss.mx::gamlssMXfits",
         "gamlss.mx::gamlssNP",
-        "gamlss.mx::plotMP"
+        "gamlss.mx::plotMP",
+        "gamlss.spatial::MRF",
+        "gamlss.spatial::MRFA",
+        "gamlss.spatial::draw.polys",
+        "gamlss.spatial::gamlss.gmrf",
+        "gamlss.spatial::gmrf",
+        "gamlss.spatial::polys2polys"
       ],
-      "current_count": 156,
+      "current_count": 150,
       "baseline_count": 173
     },
     "placeholder": {
@@ -76,18 +82,24 @@
         "FkFit",
         "FkTerm",
         "FreeKnotFit",
+        "GmrfControl",
+        "GmrfFit",
+        "GmrfTerm",
         "NeuralNet",
         "NnFit",
         "NnTerm",
+        "PolygonPlot",
         "RegressionTree",
+        "SpatialFit",
         "TreeControl",
         "TreeFit",
         "TreeTerm",
         "fk_control",
+        "gmrf_control",
         "tree_control"
       ],
       "resolved": [],
-      "current_count": 402,
+      "current_count": 408,
       "baseline_count": 387
     }
   },
@@ -160,6 +172,30 @@
     {
       "category": "missing",
       "symbol": "gamlss.mx::plotMP"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.spatial::MRF"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.spatial::MRFA"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.spatial::draw.polys"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.spatial::gamlss.gmrf"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.spatial::gmrf"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.spatial::polys2polys"
     }
   ],
   "ok": true,
