@@ -1,12 +1,12 @@
 {
   "counts": {
-    "missing_symbols": 97,
+    "missing_symbols": 92,
     "no_function_surface": 1,
     "out_of_scope": 3,
     "packages": 9,
     "packages_without_evidence_tests": 3,
-    "surface_complete": 5,
-    "surface_gap": 3
+    "surface_complete": 6,
+    "surface_gap": 2
   },
   "decision": "D2.246",
   "milestone": "M4",
@@ -126,26 +126,18 @@
     {
       "evidence_tests": [],
       "exported": 13,
-      "missing_symbols": [
-        "BayesianBoot",
-        "NonParametricBoot",
-        "centiles.boot",
-        "fitQR",
-        "fitRolling"
-      ],
-      "next_action": "implement 5 missing symbols",
+      "missing_symbols": [],
+      "next_action": "upgrade evidence for 13 tested symbols to golden",
       "order": 2,
       "package": "gamlss.foreach",
       "parity": {
-        "tested": 8,
-        "unverified": 5
+        "tested": 13
       },
       "priority": 3,
       "rationale": "parallel/bootstrap helpers are infrastructure",
-      "status": "surface_gap",
+      "status": "surface_complete",
       "surface": {
-        "missing": 5,
-        "public_api": 8
+        "public_api": 13
       },
       "tracked_symbols": 13
     },
@@ -325,9 +317,9 @@
   "task": "P4 scope",
   "verdict": {
     "first_work_item": {
-      "missing": 5,
-      "next_action": "implement 5 missing symbols",
-      "package": "gamlss.foreach",
+      "missing": 19,
+      "next_action": "implement 19 missing symbols",
+      "package": "gamlss.prepdata",
       "priority": 3
     },
     "inventory_complete": true,

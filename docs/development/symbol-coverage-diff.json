@@ -12,11 +12,11 @@
     "notice": "gamlss2 is out of scope for OmniLSS 1.0: separate spec / version / evidence, does not block 1.0 (deliverable plan sections 1.2, 22.6)."
   },
   "current_counts": {
-    "missing": 150,
+    "missing": 145,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 408
+    "extra": 410
   },
   "category_meaning": {
     "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
@@ -42,6 +42,11 @@
         "gamlss.add::gamlss.tr",
         "gamlss.add::nn",
         "gamlss.add::tr",
+        "gamlss.foreach::BayesianBoot",
+        "gamlss.foreach::NonParametricBoot",
+        "gamlss.foreach::centiles.boot",
+        "gamlss.foreach::fitQR",
+        "gamlss.foreach::fitRolling",
         "gamlss.mx::gamlssMX",
         "gamlss.mx::gamlssMXfits",
         "gamlss.mx::gamlssNP",
@@ -53,7 +58,7 @@
         "gamlss.spatial::gmrf",
         "gamlss.spatial::polys2polys"
       ],
-      "current_count": 150,
+      "current_count": 145,
       "baseline_count": 173
     },
     "placeholder": {
@@ -76,7 +81,9 @@
     },
     "extra": {
       "new": [
+        "BootResult",
         "CentileSurface",
+        "CentilesBoot",
         "FixedKnotFit",
         "FkControl",
         "FkFit",
@@ -99,7 +106,7 @@
         "tree_control"
       ],
       "resolved": [],
-      "current_count": 408,
+      "current_count": 410,
       "baseline_count": 387
     }
   },
@@ -156,6 +163,26 @@
     {
       "category": "missing",
       "symbol": "gamlss.add::tr"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.foreach::BayesianBoot"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.foreach::NonParametricBoot"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.foreach::centiles.boot"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.foreach::fitQR"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.foreach::fitRolling"
     },
     {
       "category": "missing",
