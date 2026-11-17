@@ -1,6 +1,6 @@
 {
   "counts": {
-    "missing_symbols": 116,
+    "missing_symbols": 112,
     "no_function_surface": 1,
     "out_of_scope": 3,
     "packages": 9,
@@ -88,33 +88,29 @@
       ],
       "exported": 15,
       "missing_symbols": [
-        "ba",
         "centilesTwo",
         "fitFixedKnots",
         "fitFreeKnots",
         "fk",
-        "ga",
-        "gamlss.ba",
         "gamlss.fk",
-        "gamlss.ga",
         "gamlss.nn",
         "gamlss.tr",
         "nn",
         "tr"
       ],
-      "next_action": "implement 13 missing symbols",
+      "next_action": "implement 9 missing symbols",
       "order": 2,
       "package": "gamlss.add",
       "parity": {
-        "tested": 2,
-        "unverified": 13
+        "tested": 6,
+        "unverified": 9
       },
       "priority": 2,
       "rationale": "additive terms (ga/ba/nn/fk/tr) extend the formula surface",
       "status": "surface_gap",
       "surface": {
-        "missing": 13,
-        "public_api": 2
+        "missing": 9,
+        "public_api": 6
       },
       "tracked_symbols": 15
     },
@@ -349,8 +345,8 @@
   "task": "P4 scope",
   "verdict": {
     "first_work_item": {
-      "missing": 13,
-      "next_action": "implement 13 missing symbols",
+      "missing": 9,
+      "next_action": "implement 9 missing symbols",
       "package": "gamlss.add",
       "priority": 2
     },

@@ -12,7 +12,7 @@
     "notice": "gamlss2 is out of scope for OmniLSS 1.0: separate spec / version / evidence, does not block 1.0 (deliverable plan sections 1.2, 22.6)."
   },
   "current_counts": {
-    "missing": 169,
+    "missing": 165,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
@@ -29,12 +29,16 @@
     "missing": {
       "new": [],
       "resolved": [
+        "gamlss.add::ba",
+        "gamlss.add::ga",
+        "gamlss.add::gamlss.ba",
+        "gamlss.add::gamlss.ga",
         "gamlss.mx::gamlssMX",
         "gamlss.mx::gamlssMXfits",
         "gamlss.mx::gamlssNP",
         "gamlss.mx::plotMP"
       ],
-      "current_count": 169,
+      "current_count": 165,
       "baseline_count": 173
     },
     "placeholder": {
@@ -64,6 +68,22 @@
   },
   "regressions": [],
   "improvements": [
+    {
+      "category": "missing",
+      "symbol": "gamlss.add::ba"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.add::ga"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.add::gamlss.ba"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.add::gamlss.ga"
+    },
     {
       "category": "missing",
       "symbol": "gamlss.mx::gamlssMX"
