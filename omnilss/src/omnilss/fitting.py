@@ -1447,11 +1447,13 @@ def gamlss(
             )
     fixed_parameters = [name for name, flag in fixed_flags.items() if flag]
     if fixed_parameters:
-        if method_name != "RS":
-            raise ValueError(
-                "mu_fix/sigma_fix/nu_fix/tau_fix are implemented for method='RS' "
-                f"only; got method={method_name!r}"
-            )
+        # D2.244: the override is method-independent -- it rewrites the family's
+        # fixed set and freezes the value in a data column, which every backend
+        # (RS, CG, MIXED, JOINT, LBFGS) already resolves through
+        # _resolve_fixed_parameter_values.  Restricting it to RS was a leftover
+        # from when only RS read fixed parameters; R applies mu.fix/sigma.fix
+        # identically for RS(), CG() and mixed() (live R: all three return
+        # deviance 67.1324138595735 on the same sigma.start=0.5 sample).
         _y_fixed = np.asarray(data[_response_column], dtype=np.float64)
         _w_fixed = (
             np.ones(_y_fixed.size, dtype=np.float64)

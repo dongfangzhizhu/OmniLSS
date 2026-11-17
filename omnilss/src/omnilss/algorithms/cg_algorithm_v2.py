@@ -21,6 +21,7 @@ from .._fitting_init import (
     _resolve_start_values,
 )
 from .._fitting_utils import _is_intercept_only_formula, _resolve_parameter_formulas
+from ..formula_parser import parse_formula as _parse_full_formula
 from ..cg_derivatives import EtaDerivativeBundle, eta_score_hessian
 from ..distributions import resolve_family
 from ..fitting import (
@@ -469,9 +470,16 @@ def cg_fit_v2(
     fitted_values_jax = {
         p: jnp.asarray(params[p], dtype=jnp.float64) for p in family.parameters
     }
+    # D2.244: fixed parameters have no coefficient -- R returns NULL for
+    # sigma.coefficients when sigma.fix=TRUE, and the RS path already omits
+    # them.  The old comprehension emitted a fake [params[p][0]] for every
+    # family parameter, so CG/MIXED reported a sigma coefficient for a fixed
+    # sigma.  Only estimable parameters carry coefficients here; fitted values
+    # keep every parameter, which is what prediction and deviance read.
     coefficients_jax = {
-        p: jnp.asarray(coefs.get(p, np.array([params[p][0]])), dtype=jnp.float64)
-        for p in family.parameters
+        p: jnp.asarray(coefs[p], dtype=jnp.float64)
+        for p in family.estimable_parameters
+        if p in coefs
     }
     linear_predictors_jax = {
         p: jnp.asarray(
@@ -491,7 +499,13 @@ def cg_fit_v2(
             else {
                 "term_labels": predictor_labels.get(p, []),
                 "response": response_name,
-                "intercept": _is_intercept_only_formula(resolved_formulas[p]),
+                # D2.244: this slot records whether the formula HAS an
+                # intercept, not whether it is intercept-only.  The old call
+                # made "y ~ g + x" look intercept-free, so the design schema
+                # rebuilt prediction with 3 columns while the fit had 4 and
+                # MIXED prediction raised a schema error.  Fixed parameters
+                # keep their dedicated term above.
+                "intercept": bool(_parse_full_formula(resolved_formulas[p]).has_intercept),
                 "formula": resolved_formulas[p],
             }
         )

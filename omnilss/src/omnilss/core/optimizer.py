@@ -235,6 +235,17 @@ class JointOptimizer:
         opt_state = self.optimizer.init(params)
         loss_history = []
         grad_norms = [] if self.track_grad_norms else None
+
+        # D2.244: return the best iterate, not the last one.  Adam with a fixed
+        # learning rate orbits the optimum; the loop's stopping rule (loss
+        # change < tol) can fire while the current iterate is materially worse
+        # than one it already visited -- measured on the NO sigma.fix sample:
+        # reported deviance 67.1638 against 67.1324 at the best point.  Tracking
+        # the best costs one forward pass per iteration and never reports a
+        # worse point than one actually visited.
+        value_fn = jax.jit(loss_fn)
+        best_params = params
+        best_loss = float(value_fn(params, data))
         
         # Create JIT-compiled update function
         @jax.jit
@@ -256,6 +267,10 @@ class JointOptimizer:
             params, opt_state, loss, grads = update_step(params, opt_state, data)
             loss_val = float(loss)
             loss_history.append(loss_val)
+            current_loss = float(value_fn(params, data))
+            if current_loss < best_loss:
+                best_loss = current_loss
+                best_params = params
             
             # Track gradient norms if requested
             if self.track_grad_norms:
@@ -278,8 +293,8 @@ class JointOptimizer:
                         print("-" * 60)
                         print(f"Converged at iteration {i} (loss change < {self.tol})")
                     return OptimizationResult(
-                        params=params,
-                        loss=loss_val,
+                        params=best_params,
+                        loss=best_loss,
                         n_iter=i,
                         converged=True,
                         loss_history=loss_history,
@@ -292,8 +307,8 @@ class JointOptimizer:
                         print("-" * 60)
                         print(f"Converged at iteration {i} (grad norm < {self.grad_tol})")
                     return OptimizationResult(
-                        params=params,
-                        loss=loss_val,
+                        params=best_params,
+                        loss=best_loss,
                         n_iter=i,
                         converged=True,
                         loss_history=loss_history,
@@ -313,8 +328,8 @@ class JointOptimizer:
         )
         
         return OptimizationResult(
-            params=params,
-            loss=loss_val,
+            params=best_params,
+            loss=best_loss,
             n_iter=self.max_iter,
             converged=False,
             loss_history=loss_history,

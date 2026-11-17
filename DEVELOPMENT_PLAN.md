@@ -444,7 +444,7 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 | M0 | P0 全清；覆盖工件可重生成；分层 collection 零错误；devcontainer 可用 | 0.4.x |
 | M1 | 冻结清单内高频族全部 **Surface + DPQR 证据 parity**；无 placeholder 进入目标范围（D2.235 重述：原「golden:validated 数量级」改为证据覆盖口径（40 族池上限 ~110，10x 不可达），原「Kernel 全 implemented」划归 **M3** 准入） | 0.5.0 |
 | M2 | P2 收敛缺陷分类完毕；RS/CG/MIXED 分层 parity；fit/newdata 证据齐全；失败可解释（D2.239 达成：四项均有可校验工件，见 §22.4 M2 状态） | 0.6.0 |
-| M3 | P3 核心 API + family/link 框架 + 准入平滑项闭环；`*.fix`/`contrasts` 全路由（D2.240 证据清单 + D2.241 准入完成：22/22 promoted 族 production_safe，路由门改为任何非 ok 一律拒绝；D2.242 P3-1 契约冻结完成并入 CI；D2.243 P3-2 完成：gen.Family 导数按 R 语义包装、拟合对活 R 1e-11；P3-3 未完成） | 0.9.0 |
+| M3 | P3 核心 API + family/link 框架 + 准入平滑项闭环；`*.fix`/`contrasts` 全路由（D2.240 证据清单 → D2.241 准入 22/22 → D2.242 P3-1 契约冻结入 CI → D2.243 P3-2 gen.Family 可拟合 → D2.244 P3-3 fix 全路由 + 分类预测重建。**M3 门槛四项完成**） | 0.9.0 |
 | M4 | P4 周边包（至少 cens/tr/mx/add）+ 服务 + 文档/教程 + 发布 artifact 同步 | 1.0.0 |
 | 独立 | P5 在线层、P6 性能/GPU，各自独立门禁与发布 | 并行 |
 
@@ -547,6 +547,14 @@ seeds 与 tolerances 取自 `manifest_template.json`。`milestone_manifest.py --
 - **prediction**：`predict_params`/`predict_response` 的键、形状、缺列报错、多余列容忍。
 - 失败即 `--check` 失败：新增 link 无探针、参数元组或解析结构变化、预测行为退化。
 
+**M3 全路由 fix（2026-11-15，D2.244 / P3-3）**：`*.fix` 现对五个方法生效，活 R 基准
+（NO、n=60、seed=5）：`sigma.fix=TRUE, sigma.start=0.5` 时 RS/CG/mixed 的 dev 均为
+67.1324138595735、mu 相同、sigma 固定 0.5；不给 start 时 dev 76.6316455840832、
+sigma 固定 0.598641360014006（R 的 `sigma.initial = rep(sd(y))`）。同时修复：
+cg_fit_v2 的固定参数伪系数、cg_fit_v2 的 intercept 元数据、NO/NO2 的 sigma 初值、
+JOINT 的 best-iterate。分类预测在 CG/MIXED 下对 golden 的 treatment/sum 两种编码均通过
+（dev 与 pred_mu）。
+
 **M3 gen.Family 收尾（2026-11-15，D2.243 / P3-2）**：`family_generator.Family()` 现在把
 基族的 score/hessian 包装成「先做响应变换再调用」，与 R 在导数 body 里把 `y` 改写成
 `log(y)`/`logit(y)` 等价。此前 `GeneratedFamily` 直接复制基族导数，拟合路径会拿**原始
@@ -639,7 +647,18 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   现按 R 的 body 改写语义在调用边界包装 y→log(y)/logit(y)；logNO 与 logitNO 的 RS 拟合
   对活 R 对齐到 **1e-11 / 1e-13**（deviance、mu、sigma），测试同时钉住「导数看到的是
   变换后的响应」这一结构不变量）
-- [ ] P3-3 `*.fix`/`contrasts` 扩到 CG/MIXED/joint + 分类预测重建
+- [x] P3-3 `*.fix`/`contrasts` 扩到 CG/MIXED/joint + 分类预测重建（D2.244 完成：
+  `mu/sigma/nu/tau.fix` 从「仅 RS」放开到 **RS / CG / MIXED / JOINT / LBFGS**——override 本就
+  是与方法无关的「改写 fixed 集合 + 冻结值进 data」；三条路由对活 R 一致
+  （dev 67.1324138595735 @ sigma.start=0.5；dev 76.6316455840832 @ 默认 sigma.initial）。
+  过程中修掉 4 个真实缺陷：① NO 的 `sigma.initial` 缺失（无 start 时冻结在 eps 地板，
+  dev ~1e13 vs R 76.63，补 `rep(sd(y))`，NO2 补 `rep(var(y))`）；② `cg_fit_v2` 给固定参数
+  造伪系数（MIXED 报 sigma.coefficients，R 为 NULL）；③ `cg_fit_v2` 把 terms 的
+  `intercept` 记成「是否仅截距」（`y~g+x` → False），使 MIXED 因子预测按 3 列重建而 schema
+  要 4 列、直接报错；④ JOINT 返回最后一轮 Adam iterate 而非访问过的最优点
+  （`sigma.fix` 下 dev 67.1638 vs 67.1324），改为 best-iterate 追踪。
+  `test_p3_fix_methods.py` 12 例：三方法 × 有/无 sigma.start、JOINT、flag 类型校验、
+  CG/MIXED × 两种 contrasts 的因子预测对 R golden（`contrasts_2026-11-01.json`））
 - [x] P3-4 `production_safe` 准入闭环（D2.240 证据清单 → D2.241 准入执行：22 个 promoted 族
   **全部 admitted**（原 1 族），`admission=production_safe` 符号 5 → 110、blocked 526 → 421；
   `_RS_FIT_EVIDENCE`/`_PREDICTION_EVIDENCE` 由该集合派生并并上 ZIP；7 个族的

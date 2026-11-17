@@ -788,6 +788,20 @@ def _initial_sigma(
 
     family = _start_family(family)
     eps = np.finfo(np.float64).eps
+    if family.name == "NO":
+        # R NO()$sigma.initial (live R 4.6.0 / gamlss.dist 6.1.1):
+        #     sigma <- rep(sd(y), length(y))
+        # R's sd() is the n-1 estimator.  The generic residual form below is
+        # evaluated against the initial mu target, which for NO is the response
+        # itself, so the residual is identically zero and sigma starts on the
+        # eps floor.  That is invisible while sigma is estimated (the first
+        # IRLS step recovers) but with sigma.fix=TRUE the start IS the value:
+        # measured deviance 1.0e13 against R's 76.63 (D2.244).
+        return float(np.std(y, ddof=1))
+    if family.name == "NO2":
+        # R NO2()$sigma.initial: sigma <- rep(var(y), length(y)) -- variance
+        # scale, not sd (NO2's sigma is the variance).  n-1 estimator.
+        return float(np.var(y, ddof=1))
     if family.name in ("ZABB", "ZIBB"):
         return 0.1
     if family.name == "PARETO1o":
