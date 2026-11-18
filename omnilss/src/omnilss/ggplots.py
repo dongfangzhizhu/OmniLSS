@@ -393,35 +393,42 @@ def moment_bucket(
         else:
             values = np.asarray(item, dtype=np.float64)
             samples.append(values[np.isfinite(values)])
+    from .momentSK import momentSK
+
     rows = []
     rng = np.random.default_rng(seed)
     for sample in samples:
         n = sample.size
         if n < 4:
             raise ValueError("moment_bucket needs at least four values")
-        skew = float(stats.skew(sample))
-        kurt = float(stats.kurtosis(sample, fisher=True))
+        moments = momentSK(sample)
+        skew = moments.skewness
+        kurt = moments.excess_kurtosis
         band = _bucket_band(skew, n)
+        polygon = _ci95_polygon(n)
         cloud = []
         for _ in range(int(no_bootstrap)):
             draw = rng.choice(sample, size=n, replace=True)
-            cloud.append(
-                (float(stats.skew(draw)), float(stats.kurtosis(draw, fisher=True)))
-            )
+            boot = momentSK(draw)
+            # R's bucket cloud lives on the transformed SK coordinates.
+            cloud.append((boot.trans_skew, boot.trans_kurt))
         rows.append(
             {
                 "skewness": skew,
                 "kurtosis": kurt,
+                "trans_skew": moments.trans_skew,
+                "trans_kurt": moments.trans_kurt,
+                "jarque_bera": moments.jarque_bera,
                 "band": band,
+                "polygon": polygon,
                 "bootstrap": np.asarray(cloud) if cloud else np.zeros((0, 2)),
             }
         )
     figure, axes = _figure() if plot else (None, None)
     if axes is not None:
         for row in rows:
-            axes.scatter(row["skewness"], row["kurtosis"], color="red")
-            if row["band"]:
-                axes.fill_between(*zip(*row["band"]), alpha=0.2, color="gray")
+            axes.scatter(row["trans_skew"], row["trans_kurt"], color="red")
+            axes.fill(row["polygon"]["X"], row["polygon"]["Y"], alpha=0.2, color="gray")
     return GGPlot("moment_bucket", {"rows": rows, "no_bootstrap": int(no_bootstrap)}, figure)
 
 
@@ -2117,6 +2124,447 @@ def fitted_terms(
     }
 
 
+
+
+# ---------------------------------------------------------------------------
+# Bucket-plot style variants (D2.259)
+# ---------------------------------------------------------------------------
+
+
+def _ci95_polygon(n: int) -> pd.DataFrame:
+    """R's CI95/CI95.2/CI95.3/CI95.4 outline in transformed SK coordinates."""
+
+    xx = np.linspace(0.0, 0.99, 101)
+
+    def ci95(values: np.ndarray) -> np.ndarray:
+        gamma1 = values / (1.0 - values)
+        gamma2 = np.sqrt(
+            (24.0 / n) * (stats.chi2.ppf(0.95, 2) - (n / 6.0) * gamma1**2)
+        )
+        return gamma2 / (1.0 + np.abs(gamma2))
+
+    y1 = ci95(xx)
+    y2 = ci95(-xx)
+    y3 = -ci95(-xx)
+    y4 = -ci95(xx)
+    x_out = np.concatenate([xx, xx[::-1], -xx, -xx[::-1]])
+    y_out = np.concatenate([y1, y4[::-1], y3, y2[::-1]])
+    return pd.DataFrame({"X": x_out, "Y": y_out}).dropna()
+
+
+def _moment_boundary() -> pd.DataFrame:
+    """R boundaryf(): the theoretical skewness/kurtosis boundary."""
+
+    t = np.linspace(0.0, 0.99999, 1000)
+    skew = t / (1.0 - t)
+    kurt = 1.0 + skew**2
+    excess = kurt - 3.0
+    return pd.DataFrame(
+        {"tskew": t, "tkurt": excess / (1.0 + np.abs(excess))}
+    )
+
+
+@dataclass(frozen=True)
+class BucketSpec:
+    """A bucket-plot layer set (R returns ggplot layers here).
+
+    The theoretical boundary is data and is returned; R's reference
+    distribution curves come from the package's extdata (MomentSkewKurt1.RData /
+    CentileSkewKurt.Rdata), which is not vendored in this repository, so the
+    reference field stays None rather than being invented.
+    """
+
+    kind: str
+    variant: str
+    legend: bool
+    line_width: float
+    type: str | None
+    boundary: pd.DataFrame | None
+    reference: Any = None
+    note: str = ""
+
+
+def _bucket_spec(kind: str, variant: str, legend: bool, line_width: float,
+                 type: str | None = None) -> BucketSpec:
+    if kind == "moment":
+        return BucketSpec(
+            kind=kind,
+            variant=variant,
+            legend=bool(legend),
+            line_width=float(line_width),
+            type=None,
+            boundary=_moment_boundary(),
+            note=(
+                "R loads the reference distribution curves from "
+                "extdata/MomentSkewKurt1.RData, which is not vendored here; "
+                "only the theoretical boundary is returned."
+            ),
+        )
+    if type not in ("tail", "central"):
+        raise ValueError('type must be "tail" or "central"')
+    return BucketSpec(
+        kind=kind,
+        variant=variant,
+        legend=bool(legend),
+        line_width=float(line_width),
+        type=str(type),
+        boundary=None,
+        note=(
+            "R loads the centile reference curves from "
+            "extdata/CentileSkewKurt.Rdata, which is not vendored here."
+        ),
+    )
+
+
+def moment_colour_half(legend: bool = True) -> BucketSpec:
+    """R moment_colour_half: coloured moment-bucket background, one half."""
+
+    return _bucket_spec("moment", "colour_half", legend, 0.5)
+
+
+def moment_gray_half(legend: bool = False) -> BucketSpec:
+    """R moment_gray_half: grey moment-bucket background, one half."""
+
+    return _bucket_spec("moment", "gray_half", legend, 0.5)
+
+
+def moment_colour_both(legend: bool = True, line_width: float = 1) -> BucketSpec:
+    """R moment_colour_both: coloured moment-bucket background, both halves."""
+
+    return _bucket_spec("moment", "colour_both", legend, line_width)
+
+
+def moment_gray_both(line_width: float = 1) -> BucketSpec:
+    """R moment_gray_both: grey moment-bucket background, both halves."""
+
+    return _bucket_spec("moment", "gray_both", False, line_width)
+
+
+def centile_colour_half(
+    type: str = "tail", legend: bool = True, line_width: float = 1
+) -> BucketSpec:
+    """R centile_colour_half: coloured centile-bucket background, one half."""
+
+    return _bucket_spec("centile", "colour_half", legend, line_width, type)
+
+
+def centile_colour_both(
+    type: str = "tail", legend: bool = True, line_width: float = 1
+) -> BucketSpec:
+    """R centile_colour_both: coloured centile-bucket background, both halves."""
+
+    return _bucket_spec("centile", "colour_both", legend, line_width, type)
+
+
+def centile_gray_both(
+    type: str = "tail", legend: bool = True, line_width: float = 0.5
+) -> BucketSpec:
+    """R centile_gray_both: grey centile-bucket background, both halves."""
+
+    return _bucket_spec("centile", "gray_both", legend, line_width, type)
+
+
+def _bucket_series(objects: Sequence[Any], text_to_show: Any) -> tuple[list[str], list[np.ndarray]]:
+    if not objects:
+        raise ValueError("at least one numeric vector or model is required")
+    names = (
+        [f"model_{index + 1}" for index in range(len(objects))]
+        if text_to_show is None
+        else ([text_to_show] if isinstance(text_to_show, str) else list(text_to_show))
+    )
+    if len(names) != len(objects):
+        raise ValueError("text_to_show must have one entry per object")
+    samples = []
+    for item in objects:
+        if hasattr(item, "residuals"):
+            values = np.asarray(item.residuals, dtype=np.float64)
+            weights = getattr(item, "weights", None)
+            if weights is not None:
+                values = values[np.asarray(weights, dtype=np.float64) != 0]
+            samples.append(values[np.isfinite(values)])
+        else:
+            values = np.asarray(item, dtype=np.float64).ravel()
+            samples.append(values[np.isfinite(values)])
+    size = min(sample.size for sample in samples)
+    return [str(name) for name in names], [sample[:size] for sample in samples]
+
+
+def _bucket_groups(xvar: Any, n_inter: int) -> np.ndarray:
+    column = np.asarray(xvar)
+    if column.dtype.kind in "iuf":
+        return np.asarray(
+            pd.qcut(np.asarray(column, dtype=np.float64), int(n_inter), duplicates="drop").astype(str)
+        )
+    return column.astype(str)
+
+
+def _palette(count: int) -> list[str]:
+    base = ["#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f"]
+    return [base[index % len(base)] for index in range(count)]
+
+
+def moment_bucket_wrap(
+    x: Any = None,
+    *others: Any,
+    weights: Any = None,
+    xvar: Any = None,
+    n_inter: int = 4,
+    no_bootstrap: int = 99,
+    seed: int = 123,
+    text_to_show: Any = None,
+    plot: bool = True,
+    **kwargs: Any,
+) -> Any:
+    """R moment_bucket_wrap: moment bucket per interval of one covariate."""
+
+    from .momentSK import momentSK
+
+    names, samples = _bucket_series((x, *others), text_to_show)
+    if xvar is None:
+        raise ValueError("moment_buckets_wrap() expects one xvar")
+    groups = _bucket_groups(xvar, n_inter)
+    if groups.size != samples[0].size:
+        raise ValueError("xvar and the data must have the same length")
+    colours = _palette(len(names))
+    rng = np.random.default_rng(seed)
+    bootstrap_rows = []
+    point_rows = []
+    band_rows = []
+    for level in sorted(set(groups.tolist())):
+        mask = groups == level
+        subset = int(mask.sum())
+        if subset < 4:
+            continue
+        for index, (label, sample) in enumerate(zip(names, samples)):
+            values = sample[mask]
+            for _ in range(int(no_bootstrap)):
+                draw = values[rng.integers(0, subset, size=subset)]
+                boot = momentSK(draw)
+                bootstrap_rows.append(
+                    (boot.trans_skew, boot.trans_kurt, label, colours[index], level)
+                )
+            point = momentSK(values)
+            point_rows.append(
+                (point.trans_skew, point.trans_kurt, label, level)
+            )
+        polygon = _ci95_polygon(subset)
+        for row in polygon.itertuples(index=False):
+            band_rows.append((row.X, row.Y, level))
+    bootstrap = pd.DataFrame(
+        bootstrap_rows, columns=["X", "Y", "Model", "Col", "Z"]
+    )
+    points = pd.DataFrame(point_rows, columns=["X", "Y", "Model", "Z"])
+    band = pd.DataFrame(band_rows, columns=["X", "Y", "Z"])
+    text = "moment buckets by covariate interval"
+    figure, axes = _figure()
+    if axes is not None:
+        axes.scatter(points["X"], points["Y"], color="red")
+    return GGPlot(
+        "moment_bucket_wrap",
+        {
+            "bootstrap": bootstrap,
+            "points": points,
+            "band": band,
+            "n_inter": int(n_inter),
+            "spec": moment_gray_both(line_width=0.3),
+        },
+        figure,
+    )
+
+
+def _centile_simulation(n: int, n_sim: int = 1000, seed: int = 1234) -> pd.DataFrame:
+    """R centSim: centileSK of n-sim normal samples."""
+
+    from .centileSK import centileSK
+
+    rng = np.random.default_rng(seed)
+    rows = []
+    for _ in range(int(n_sim)):
+        stats_ = centileSK(rng.normal(size=int(n)))
+        rows.append(
+            (stats_.s025, stats_.s001, stats_.k001, stats_.excess_k001, stats_.trans_k001)
+        )
+    return pd.DataFrame(rows, columns=["Sc", "St", "K", "Ke", "Kt"])
+
+
+def _confidence_ellipse(
+    x_values: np.ndarray, y_values: np.ndarray, level: float = 0.95, n_points: int = 100
+) -> pd.DataFrame:
+    """Covariance ellipse scaled by sqrt(qchisq(level, 2)), like ellipse::ellipse."""
+
+    matrix = np.vstack([np.asarray(x_values, float), np.asarray(y_values, float)])
+    covariance = np.cov(matrix)
+    centre = matrix.mean(axis=1)
+    values, vectors = np.linalg.eigh(covariance)
+    order = np.argsort(values)[::-1]
+    values = values[order]
+    vectors = vectors[:, order]
+    radius = np.sqrt(stats.chi2.ppf(level, 2))
+    theta = np.linspace(0.0, 2.0 * np.pi, int(n_points))
+    circle = np.vstack([np.cos(theta), np.sin(theta)])
+    points = vectors @ np.diag(np.sqrt(values)) @ circle * radius + centre[:, None]
+    return pd.DataFrame({"x": points[0], "y": points[1]})
+
+
+def _centile_bucket_frame(
+    names: Sequence[str],
+    samples: Sequence[np.ndarray],
+    groups: np.ndarray | None,
+    type: str,
+    no_bootstrap: int,
+    seed: int,
+    sim_test: bool,
+    no_sim_test: int,
+    seed_test: int,
+) -> dict:
+    from .centileSK import centileSK
+
+    colours = _palette(len(names))
+    rng = np.random.default_rng(seed)
+    bootstrap_rows = []
+    point_rows = []
+    simulation_rows = []
+    categories = [None] if groups is None else sorted(set(groups.tolist()))
+    for level in categories:
+        mask = np.ones(samples[0].size, dtype=bool) if level is None else (groups == level)
+        subset = int(mask.sum())
+        if subset < 4:
+            continue
+        for index, (label, sample) in enumerate(zip(names, samples)):
+            values = sample[mask]
+            for _ in range(int(no_bootstrap)):
+                draw = values[rng.integers(0, subset, size=subset)]
+                boot = centileSK(draw)
+                bootstrap_rows.append(
+                    (boot.s025, boot.s001, boot.trans_k001, label, colours[index], level)
+                )
+            point = centileSK(values)
+            point_rows.append(
+                (point.s025, point.s001, point.trans_k001, label, level)
+            )
+        if sim_test:
+            simulation = _centile_simulation(subset, no_sim_test, seed_test)
+            column = "Sc" if str(type) == "central" else "St"
+            ellipse = _confidence_ellipse(
+                simulation[column].to_numpy(), simulation["Ke"].to_numpy()
+            )
+            # R passes Ke through the same (0,1) transform used for centiles.
+            ellipse["y"] = ellipse["y"] / (1.0 + np.abs(ellipse["y"]))
+            ellipse["Z"] = level
+            simulation_rows.extend(
+                (row.x, row.y, row.Z) for row in ellipse.itertuples(index=False)
+            )
+    return {
+        "bootstrap": pd.DataFrame(
+            bootstrap_rows, columns=["S0.25", "S0.01", "K0.01", "Model", "Col", "Z"]
+        ),
+        "points": pd.DataFrame(
+            point_rows, columns=["S0.25", "S0.01", "K0.01", "Model", "Z"]
+        ),
+        "simulation": pd.DataFrame(simulation_rows, columns=["x", "y", "Z"]),
+        "type": str(type),
+    }
+
+
+def centile_bucket(
+    x: Any = None,
+    *others: Any,
+    type: str = "tail",
+    weights: Any = None,
+    no_bootstrap: int = 99,
+    seed: int = 123,
+    text_to_show: Any = None,
+    colour_bucket: bool = False,
+    line_width: float = 0.5,
+    sim_test: bool = False,
+    no_sim_test: int = 1000,
+    seed_test: int = 1234,
+    plot: bool = True,
+    **kwargs: Any,
+) -> Any:
+    """R centile_bucket: centile-based SK bucket plot."""
+
+    if str(type) not in {"tail", "central"}:
+        raise ValueError('type must be "tail" or "central"')
+    names, samples = _bucket_series((x, *others), text_to_show)
+    data = _centile_bucket_frame(
+        names, samples, None, type, no_bootstrap, seed, sim_test,
+        no_sim_test, seed_test,
+    )
+    x_column = "S0.25" if str(type) == "central" else "S0.01"
+    figure, axes = _figure() if plot else (None, None)
+    if axes is not None:
+        points = data["points"]
+        axes.scatter(points[x_column], points["K0.01"], color="red")
+    return GGPlot(
+        "centile_bucket",
+        {
+            **data,
+            "x_column": x_column,
+            "spec": (
+                centile_colour_both(type=type, legend=False, line_width=line_width)
+                if colour_bucket
+                else centile_gray_both(type=type, line_width=line_width)
+            ),
+        },
+        figure,
+    )
+
+
+def centile_bucket_wrap(
+    x: Any = None,
+    *others: Any,
+    type: str = "tail",
+    weights: Any = None,
+    xvar: Any = None,
+    n_inter: int = 4,
+    no_bootstrap: int = 99,
+    seed: int = 123,
+    text_to_show: Any = None,
+    colour_bucket: bool = False,
+    line_width: float = 0.5,
+    sim_test: bool = False,
+    no_sim_test: int = 1000,
+    seed_test: int = 1234,
+    plot: bool = True,
+    **kwargs: Any,
+) -> Any:
+    """R centile_bucket_wrap: centile bucket per interval of one covariate."""
+
+    if str(type) not in {"tail", "central"}:
+        raise ValueError('type must be "tail" or "central"')
+    names, samples = _bucket_series((x, *others), text_to_show)
+    if xvar is None:
+        raise ValueError("centile_buckets_wrap() expects one xvar")
+    groups = _bucket_groups(xvar, n_inter)
+    if groups.size != samples[0].size:
+        raise ValueError("xvar and the data must have the same length")
+    data = _centile_bucket_frame(
+        names, samples, groups, type, no_bootstrap, seed, sim_test,
+        no_sim_test, seed_test,
+    )
+    x_column = "S0.25" if str(type) == "central" else "S0.01"
+    figure, axes = _figure() if plot else (None, None)
+    if axes is not None:
+        points = data["points"]
+        for level, group in points.groupby("Z", sort=False):
+            axes.scatter(group[x_column], group["K0.01"], s=8)
+    return GGPlot(
+        "centile_bucket_wrap",
+        {
+            **data,
+            "x_column": x_column,
+            "n_inter": int(n_inter),
+            "spec": (
+                centile_colour_both(type=type, legend=False, line_width=line_width)
+                if colour_bucket
+                else centile_gray_both(type=type, line_width=line_width)
+            ),
+        },
+        figure,
+    )
+
+
 __all__ = [
     "GGPlot",
     "add_resid_qqplot",
@@ -2134,6 +2582,17 @@ __all__ = [
     "fitted_pdf_data",
     "model_density",
     "model_qqplot",
+    "BucketSpec",
+    "centile_bucket",
+    "centile_bucket_wrap",
+    "centile_colour_both",
+    "centile_colour_half",
+    "centile_gray_both",
+    "moment_bucket_wrap",
+    "moment_colour_both",
+    "moment_colour_half",
+    "moment_gray_both",
+    "moment_gray_half",
     "model_GAIC",
     "model_GAIC_lollipop",
     "model_TD",
