@@ -52,6 +52,40 @@ def _flatten_coefficients(model: Any) -> np.ndarray:
     return np.concatenate(parts) if parts else np.array([], dtype=np.float64)
 
 
+def _parameter_formula_kwargs(call: Mapping[str, Any]) -> dict[str, str]:
+    """Keep the model's non-mu formulas (sigma/nu/tau) when refitting.
+
+    gamlss(formula) alone refits a mean-only model, so a bootstrap/rolling/centile
+    refit of a model with sigma_formula="~ x" silently loses the sigma model and
+    returns fewer coefficients than the original fit.
+    """
+
+    formulas = call.get("parameter_formulas") or {}
+    kwargs = {}
+    for parameter, formula in dict(formulas).items():
+        if parameter != "mu" and isinstance(formula, str) and formula.strip():
+            kwargs[f"{parameter}_formula"] = formula
+    return kwargs
+
+
+def _coefficient_names(model: Any) -> tuple[str, ...]:
+    """R names(unlist(coef(model))): "mu.(Intercept)", "mu.x", "sigma.x", ..."""
+
+    names: list[str] = []
+    for parameter in model.family.estimable_parameters:
+        if parameter not in model.coefficients:
+            continue
+        info = model.terms.get(parameter) or {}
+        labels = [str(label) for label in info.get("term_labels", [])]
+        count = int(np.ravel(np.asarray(model.coefficients[parameter])).size)
+        prefix = ["(Intercept)"] if info.get("intercept", True) else []
+        candidate = prefix + labels
+        if len(candidate) != count:
+            candidate = [f"X{index + 1}" for index in range(count)]
+        names.extend(f"{parameter}.{label}" for label in candidate)
+    return tuple(names)
+
+
 def fitQR(
     formula: str = None,
     data: Mapping[str, Any] = None,
@@ -133,7 +167,10 @@ def fitRolling(
         kwargs = {}
         for name, full in starts.items():
             kwargs[f"{name}_start"] = full[start:stop]
-        model = gamlss(formula, family=family, data=window_data, method=method, **kwargs)
+        model = gamlss(
+            formula, family=family, data=window_data, method=method,
+            **_parameter_formula_kwargs(call), **kwargs,
+        )
         next_data = {
             key: np.asarray(value)[stop : stop + 1] for key, value in values.items()
         }
@@ -167,6 +204,7 @@ class BootResult:
     orig_call: Any
     seed: int
     failed: int
+    coef_names: tuple[str, ...] = ()
 
 
 def _bootstrap(
@@ -209,7 +247,10 @@ def _bootstrap(
             fit_data = {name: np.asarray(value)[indices] for name, value in values.items()}
             fit_kwargs = {}
         try:
-            model = gamlss(formula, family=family, data=fit_data, method=method, **fit_kwargs)
+            model = gamlss(
+                formula, family=family, data=fit_data, method=method,
+                **_parameter_formula_kwargs(call), **fit_kwargs,
+            )
             predicted = predict_params(model, target)
             coefficients.append(_flatten_coefficients(model))
             for name in samples:
@@ -236,6 +277,7 @@ def _bootstrap(
         orig_call=call,
         seed=int(seed),
         failed=count - trueB,
+        coef_names=_coefficient_names(obj),
     )
 
 
@@ -341,7 +383,10 @@ def centiles_boot(
         indices = rng.integers(0, n, size=n)
         resampled = {name: np.asarray(value)[indices] for name, value in values.items()}
         try:
-            model = gamlss(formula, family=family, data=resampled, method=method)
+            model = gamlss(
+                formula, family=family, data=resampled, method=method,
+                **_parameter_formula_kwargs(call),
+            )
             effective = centiles
             if calibration:
                 residuals = np.asarray(model.residuals, dtype=np.float64)

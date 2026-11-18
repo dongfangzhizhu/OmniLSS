@@ -2874,6 +2874,130 @@ def bivar_pdf(
     )
 
 
+
+
+# ---------------------------------------------------------------------------
+# Bootstrap coefficient plots (D2.262)
+# ---------------------------------------------------------------------------
+
+
+def _bootstrap_inputs(x: Any) -> tuple[np.ndarray, np.ndarray, list[str]]:
+    if not (hasattr(x, "boot") and hasattr(x, "orig_coef")):
+        raise ValueError(
+            "the function needs NonParametric.Boot or Bayesian.Boot objects"
+        )
+    boot = np.asarray(x.boot, dtype=np.float64)
+    if boot.ndim != 2:
+        raise ValueError("x$boot should be a matrix of bootstrap coefficients")
+    original = np.asarray(x.orig_coef, dtype=np.float64).ravel()
+    names = list(getattr(x, "coef_names", ()) or ())
+    if len(names) != boot.shape[1]:
+        names = [f"coef_{index + 1}" for index in range(boot.shape[1])]
+    return boot, original, names
+
+
+def _bootstrap_plot_data(
+    values: np.ndarray, original: float, name: str
+) -> dict[str, Any]:
+    quantiles = np.quantile(values, [0.025, 0.5, 0.975])
+    return {
+        "values": values,
+        "orig": float(original),
+        "quantiles": np.asarray(quantiles, dtype=np.float64),
+        "name": name,
+    }
+
+
+def _bootstrap_figure(data: Mapping[str, Any], alpha: float, dens_fill: str,
+                      line_col: str) -> Any:
+    figure, axes = _figure()
+    if axes is None:
+        return None
+    values = np.asarray(data["values"], dtype=np.float64)
+    if values.size >= 3 and float(np.var(values)) > 0.0:
+        grid = np.linspace(float(values.min()), float(values.max()), 256)
+        axes.plot(grid, stats.gaussian_kde(values)(grid), color=dens_fill)
+        axes.fill_between(grid, 0.0, stats.gaussian_kde(values)(grid),
+                          alpha=alpha, color=dens_fill)
+    else:
+        axes.hist(values, bins=min(20, max(3, values.size)), alpha=alpha,
+                  color=dens_fill)
+    axes.axvline(data["orig"], color="black")
+    for value in np.asarray(data["quantiles"]):
+        axes.axvline(float(value), color=line_col)
+    axes.set_xlabel(data["name"])
+    axes.set_ylabel("density")
+    return figure
+
+
+def boot_coef_one(
+    x: Any = None,
+    par: int = 1,
+    rug: bool = True,
+    alpha: float = 0.2,
+    hist_col: str = "black",
+    hist_fill: str = "white",
+    line_col: str = "gray",
+    dens_fill: str = "#FF6666",
+    title: str | None = None,
+    plot: bool = True,
+) -> Any:
+    """R boot_coef_one: density of one bootstrap coefficient."""
+
+    boot, original, names = _bootstrap_inputs(x)
+    index = int(par) - 1
+    if not 0 <= index < boot.shape[1]:
+        raise ValueError("par is outside the bootstrap coefficient columns")
+    data = _bootstrap_plot_data(boot[:, index], original[index], names[index])
+    data["title"] = title or names[index]
+    if not plot:
+        return data
+    figure = _bootstrap_figure(data, alpha, dens_fill, line_col)
+    return GGPlot("boot_coef_one", data, figure)
+
+
+def boot_coef(
+    x: Any = None,
+    terms: Any = None,
+    hist_col: str = "black",
+    hist_fill: str = "white",
+    dens_fill: str = "#FF6666",
+    alpha: float = 0.2,
+    line_col: str = "gray",
+    nrow: int | None = None,
+    ncol: int | None = None,
+    plots_per_page: int = 9,
+    one_by_one: bool = False,
+    title: str | None = None,
+    plot: bool = True,
+) -> dict[str, Any]:
+    """R boot_coef: one density (with the original estimate and 95% limits) per coefficient."""
+
+    boot, original, names = _bootstrap_inputs(x)
+    if terms is None:
+        selected = list(range(boot.shape[1]))
+    else:
+        listed = [terms] if isinstance(terms, (str, int)) else list(terms)
+        selected = []
+        for item in listed:
+            if isinstance(item, str):
+                if item not in names:
+                    raise ValueError(f"term {item!r} is not a bootstrap coefficient")
+                selected.append(names.index(item))
+            else:
+                index = int(item) - 1
+                if not 0 <= index < boot.shape[1]:
+                    raise ValueError(f"term index {item} is outside the columns")
+                selected.append(index)
+    charts = {}
+    for index in selected:
+        data = _bootstrap_plot_data(boot[:, index], original[index], names[index])
+        data["title"] = title or names[index]
+        figure = _bootstrap_figure(data, alpha, dens_fill, line_col) if plot else None
+        charts[names[index]] = GGPlot("boot_coef", data, figure)
+    return charts
+
+
 __all__ = [
     "GGPlot",
     "add_resid_qqplot",
@@ -2896,6 +3020,8 @@ __all__ = [
     "bivar_fun",
     "bivar_fun_plotly",
     "bivar_pdf",
+    "boot_coef",
+    "boot_coef_one",
     "centile_bucket",
     "centile_bucket_wrap",
     "centile_colour_both",

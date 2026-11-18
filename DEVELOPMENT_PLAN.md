@@ -423,7 +423,7 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 （+ `.md`，tool `tools/m4_scope_inventory.py --check`）。按上面的优先级逐包记录
 surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件里出现但未分类的周边包直接报错。
 - **表面完整（2 包）**：`gamlss.cens`（5/5）、`gamlss.tr`（8/8），且都有专用证据模块。
-- **缺口（D2.246 时 6 包 120 个；D2.261 后仅 `gamlss.ggplots` 缺 6 个）**：
+- **缺口（D2.246 时 6 包 120 个；D2.262 后仅 `gamlss.ggplots` 缺 4 个）**：
   `gamlss.mx`（D2.247）、`gamlss.add`（D2.251）、`gamlss.spatial`（D2.252）、
   `gamlss.foreach`（D2.253）、`gamlss.prepdata`（D2.254）已补齐，连同 cens/tr 共
   **7 包 surface 完整**；只剩外观层 `gamlss.ggplots`。
@@ -435,8 +435,8 @@ surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件
   MX 与 NP 的拟合对活 R 对齐到 1e-6 / 1e-8（dev、prob、mu、sigma、mass points、
   EM 迭代数）；未移植分支（`pi.formula` 含协变量、`zero.component`、`mixture="gq"`、
   `random=~x`）显式抛 `NotImplementedError`，不近似。
-- **下一批**：`gamlss.ggplots` 剩余 6 个——`boot_coef*`（2）、`pcr_*`（2）、
-  `fit_PB`、`histSmo_plot`。
+- **下一批**：`gamlss.ggplots` 剩余 4 个——`pcr_path`/`pcr_coef_path`、
+  `fit_PB`、`histSmo_plot`（最后一组）。
 
 ### P5：ondil 在线层（独立轨道，独立发布，不混入 R 完成率）
 
@@ -750,8 +750,10 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   CDF 曲线，离散族用整数网格，lower_tail 可控，支持二项 bd 固定参数）、
   `quantile_gamlss`（每观测一个分位数）。**D2.261 再完成 3 个双变量曲面**：
   `bivar_fun`/`bivar_fun_plotly`（n×n 网格 + Z 矩阵，expand.grid 的 x 最快序）、
-  `bivar_pdf`（按密度排序累积分位质量，取 50% HDR 阈值）。**剩余 6**：
-  `boot_coef*`（2）、`pcr_*`（2）、`fit_PB`、`histSmo_plot`）
+  `bivar_pdf`（按密度排序累积分位质量，取 50% HDR 阈值）。**D2.262 再完成 2 个自助系数图**：
+  `boot_coef`/`boot_coef_one`（逐系数密度 + 原估计 + 2.5/50/97.5 分位线；列名遵循
+  R 的 `mu.(Intercept)` 形式），并修复多参数模型 bootstrap 丢失 sigma/nu/tau 公式的缺陷。
+  **剩余 4**：`pcr_path`/`pcr_coef_path`、`fit_PB`、`histSmo_plot`）
 - [ ] P5-1 定义 OmniLSS↔ondil distribution contract 与独立流式 golden
 - [ ] P6-1 `log_bessel_kv` JAX 原生实现（含精度与耗时双验收）
 
