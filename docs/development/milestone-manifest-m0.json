@@ -5,22 +5,22 @@
     "current_counts": {
       "compat_alias": 1,
       "evidence_gap": 44,
-      "extra": 416,
-      "missing": 75,
+      "extra": 417,
+      "missing": 65,
       "placeholder": 0
     },
     "diff_ok": true,
     "provenance": {
       "golden_manifest_sha256": "b4bdaebe5a7a62d687ff42469d6e56ee1297bc5685c4345aec88b956d2700365",
-      "python_surface_sha256": "14b2da634d37812e4d252ba9ab21382d5164f5d8d54ba28fb496906e139d83c9",
+      "python_surface_sha256": "38baed6701fa1e03d20ff3f86ba09e00a7bb1ac2430dfa8bdf8335908f94d0a3",
       "r_namespace_sha256": "b51a29f54229ba5860387759ddf95f670613e80c1c86ccd16e2ed564bfbe1c2f",
-      "test_suite_sha256": "12cd3ea0dcffd82b93d06106e9874c337d281b7077446b9ddb9870189e35421d"
+      "test_suite_sha256": "bff63b17704578435b4748b5ef5e5829d692c0e5e5291a422c664eca25524af5"
     },
     "ratchet_ok": true,
     "stats": {
       "in_scope_exports": 1036,
-      "surface_matched": 1005,
-      "surface_missing": 75
+      "surface_matched": 1015,
+      "surface_missing": 65
     }
   },
   "environment": {
@@ -81,7 +81,7 @@
       }
     }
   },
-  "generated_at_utc": "2026-11-18T22:15:30Z",
+  "generated_at_utc": "2026-11-18T22:30:34Z",
   "milestone": "M0",
   "notes": "M0 gate bundle per DEVELOPMENT_PLAN 22.4. Reproducibility is anchored by coverage provenance content hashes (HEAD-independent); source.commit is informational. Regenerate after any symbol/test change.",
   "pinned_expected": {
@@ -125,7 +125,7 @@
   },
   "source": {
     "branch": "main",
-    "commit": "a3302e618b6d27332d469c03d6d1ecb6a65f89ed",
+    "commit": "f72b0010fd61f6bd31c0d1e5a95c3e5c9f6b8caa",
     "dirty": true
   },
   "tolerances": {

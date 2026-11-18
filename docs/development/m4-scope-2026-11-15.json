@@ -1,6 +1,6 @@
 {
   "counts": {
-    "missing_symbols": 22,
+    "missing_symbols": 12,
     "no_function_surface": 1,
     "out_of_scope": 3,
     "packages": 9,
@@ -168,37 +168,27 @@
         "bivar_pdf",
         "boot_coef",
         "boot_coef_one",
-        "centile_bucket",
-        "centile_bucket_wrap",
-        "centile_colour_both",
-        "centile_colour_half",
-        "centile_gray_both",
         "fit_PB",
         "histSmo_plot",
-        "moment_bucket_wrap",
-        "moment_colour_both",
-        "moment_colour_half",
-        "moment_gray_both",
-        "moment_gray_half",
         "pcr_coef_path",
         "pcr_path",
         "predict_cdf",
         "predict_pdf",
         "quantile_gamlss"
       ],
-      "next_action": "implement 22 missing symbols",
+      "next_action": "implement 12 missing symbols",
       "order": 1,
       "package": "gamlss.ggplots",
       "parity": {
-        "tested": 87,
-        "unverified": 22
+        "tested": 97,
+        "unverified": 12
       },
       "priority": 4,
       "rationale": "presentation layer; pixel parity is explicitly not required",
       "status": "surface_gap",
       "surface": {
-        "missing": 22,
-        "public_api": 87
+        "missing": 12,
+        "public_api": 97
       },
       "tracked_symbols": 109
     },
@@ -244,8 +234,8 @@
   "task": "P4 scope",
   "verdict": {
     "first_work_item": {
-      "missing": 22,
-      "next_action": "implement 22 missing symbols",
+      "missing": 12,
+      "next_action": "implement 12 missing symbols",
       "package": "gamlss.ggplots",
       "priority": 4
     },
