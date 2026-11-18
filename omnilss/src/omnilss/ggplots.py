@@ -1199,11 +1199,937 @@ def model_mom_bucket(*args: Any, **kwargs: Any) -> Any:
     return GGPlot("model_mom_bucket", result.data, result.figure)
 
 
+
+
+# ---------------------------------------------------------------------------
+# Parameter/residual diagnostics (D2.258)
+# ---------------------------------------------------------------------------
+
+
+def _weight_mask(model: Any) -> np.ndarray:
+    residuals = np.asarray(model.residuals, dtype=np.float64)
+    weights = getattr(model, "weights", None)
+    if weights is None:
+        return np.ones(residuals.size, dtype=bool)
+    return np.asarray(weights, dtype=np.float64) != 0
+
+
+def _masked_residuals(model: Any) -> tuple[np.ndarray, np.ndarray]:
+    """R get_residuals()/get_weights(): observations keep their 1-based index."""
+
+    residuals = np.asarray(model.residuals, dtype=np.float64)
+    observations = np.arange(1, residuals.size + 1)
+    keep = _weight_mask(model)
+    return observations[keep], residuals[keep]
+
+
+def _fitted_parameter(model: Any, name: str) -> np.ndarray:
+    if name not in model.fitted_values:
+        raise ValueError(f"parameter {name!r} is not fitted in this model")
+    return np.asarray(model.fitted_values[name], dtype=np.float64)
+
+
+def _fitted_quantile(model: Any, quantile: float, newdata: Any = None) -> np.ndarray:
+    from .prediction import predict_params
+
+    if newdata is None:
+        params = {
+            name: np.asarray(model.fitted_values[name], dtype=np.float64)
+            for name in model.family.parameters
+            if name in model.fitted_values
+        }
+    else:
+        params = predict_params(model, dict(newdata))
+    args = [np.asarray(params[name], dtype=np.float64) for name in model.family.parameters
+            if name in params]
+    return np.asarray(model.family.q(float(quantile), *args), dtype=np.float64)
+
+
+def _response_vector(model: Any) -> np.ndarray:
+    return np.asarray(model.y, dtype=np.float64)
+
+
+def _outlier_frame(observations: np.ndarray, values: np.ndarray, value: float,
+                   x: np.ndarray) -> pd.DataFrame:
+    flagged = (values >= value) | (values <= -value)
+    return pd.DataFrame(
+        {
+            "obs": observations,
+            "sdres": values,
+            "fv": x,
+            "color": np.where(flagged, "outlier", "normal"),
+            "txt": np.where(flagged, observations, np.nan),
+        }
+    )
+
+
+def _residual_diagnostic(
+    kind: str,
+    model: Any,
+    values: np.ndarray,
+    fitted: np.ndarray,
+    value: float,
+    plot: bool,
+    title: str | None,
+    xlab: str,
+    ylab: str = "Quantile Residuals",
+) -> Any:
+    observations, residuals = _masked_residuals(model)
+    fitted_values = fitted[_weight_mask(model)]
+    frame = _outlier_frame(observations, residuals, value, fitted_values)
+    outliers = frame.loc[frame["color"] == "outlier", ["obs", "sdres"]].rename(
+        columns={"obs": "observation", "sdres": "quan_resid"}
+    )
+    title = title or f"{kind} of model"
+    if not plot:
+        return {"data": frame, "outliers": outliers, "threshold": float(value)}
+    figure, axes = _figure()
+    if axes is not None:
+        axes.vlines(frame["fv"], 0.0, frame["sdres"], color="steelblue")
+        axes.scatter(frame["fv"], frame["sdres"], facecolors="none", edgecolors="steelblue")
+        axes.axhline(0.0, color="gray")
+        for line in (value, -value):
+            axes.axhline(line, color="red")
+        axes.set_xlabel(xlab)
+        axes.set_ylabel(ylab)
+        axes.set_title(title)
+    return GGPlot(
+        kind,
+        {"data": frame, "outliers": outliers, "threshold": float(value)},
+        figure,
+    )
+
+
+def resid_mu(
+    obj: Any = None,
+    resid: Any = None,
+    plot: bool = True,
+    value: float = 2,
+    title: str | None = None,
+    annotate: bool = True,
+) -> Any:
+    """R resid_mu: quantile residuals against the fitted mu."""
+
+    if obj is None:
+        raise ValueError("A GAMLSS fitted object should be used")
+    _require_model(obj, "resid_mu")
+    return _residual_diagnostic(
+        "resid_mu", obj, np.asarray(obj.residuals, float),
+        _fitted_parameter(obj, "mu"), value, plot, title, "mu fitted values",
+    )
+
+
+def resid_median(
+    obj: Any = None,
+    resid: Any = None,
+    plot: bool = True,
+    value: float = 3,
+    title: str | None = None,
+    annotate: bool = True,
+) -> Any:
+    """R resid_median: quantile residuals against the fitted median."""
+
+    if obj is None:
+        raise ValueError("A GAMLSS fitted object should be used")
+    _require_model(obj, "resid_median")
+    return _residual_diagnostic(
+        "resid_median", obj, np.asarray(obj.residuals, float),
+        _fitted_quantile(obj, 0.5), value, plot, title, "mu fitted values",
+    )
+
+
+def resid_param(
+    obj: Any = None,
+    param: str = "mu",
+    title: str | None = None,
+    line_col: str = "darkred",
+    point_col: str = "steelblue",
+    point_shape: int = 20,
+) -> Any:
+    """R resid_param: quantile residuals against one fitted parameter."""
+
+    _require_model(obj, "resid_param")
+    if param not in obj.family.parameters:
+        raise ValueError(f"parameter {param!r} is not in the family")
+    observations, residuals = _masked_residuals(obj)
+    fitted = _fitted_parameter(obj, param)[_weight_mask(obj)]
+    frame = pd.DataFrame({"obs": observations, "resid": residuals, "fv": fitted})
+    correlation = float(np.corrcoef(frame["resid"], frame["fv"])[0, 1])
+    text = title or f"r = {correlation:.3f}"
+    figure, axes = _figure()
+    if axes is not None:
+        axes.scatter(frame["fv"], frame["resid"], s=12, color=point_col)
+        axes.set_xlabel(param)
+        axes.set_ylabel("residuals")
+        axes.set_title(text)
+    return GGPlot(
+        "resid_param", {"data": frame, "correlation": correlation, "param": param}, figure
+    )
+
+
+def resid_quantile(
+    obj: Any = None,
+    quantile: float = 0.5,
+    title: str | None = None,
+    newdata: Any = None,
+    line_col: str = "darkred",
+    point_col: str = "steelblue",
+    point_shape: int = 20,
+) -> Any:
+    """R resid_quantile: residuals against one fitted quantile."""
+
+    _require_model(obj, "resid_quantile")
+    observations, residuals = _masked_residuals(obj)
+    fitted = _fitted_quantile(obj, quantile, newdata)
+    if newdata is None:
+        fitted = fitted[_weight_mask(obj)]
+    frame = pd.DataFrame({"obs": observations, "y": residuals, "fv": fitted})
+    correlation = float(np.corrcoef(frame["y"], frame["fv"])[0, 1])
+    text = title or f"r = {correlation:.3f}"
+    figure, axes = _figure()
+    if axes is not None:
+        axes.scatter(frame["fv"], frame["y"], s=12, color=point_col)
+        axes.set_xlabel(f"{quantile} quantile")
+        axes.set_ylabel("response")
+        axes.set_title(text)
+    return GGPlot(
+        "resid_quantile",
+        {"data": frame, "correlation": correlation, "quantile": float(quantile)},
+        figure,
+    )
+
+
+def resid_xvar(
+    obj: Any = None,
+    xvar: Any = None,
+    plot: bool = True,
+    value: float = 2,
+    title: str | None = None,
+    annotate: bool = True,
+) -> Any:
+    """R resid_xvar: quantile residuals against one covariate."""
+
+    _require_model(obj, "resid_xvar")
+    if xvar is None:
+        raise ValueError("the xvar has to be set")
+    values = dict((obj.call or {}).get("data") or {})
+    if isinstance(xvar, str):
+        if xvar not in values:
+            raise ValueError(f"covariate {xvar!r} is not in the data")
+        column = np.asarray(values[xvar])
+        xname = xvar
+    else:
+        column = np.asarray(xvar)
+        xname = "xvar"
+    observations, residuals = _masked_residuals(obj)
+    keep = _weight_mask(obj)
+    column = column[keep]
+    frame = _outlier_frame(observations, residuals, value, _fitted_parameter(obj, "mu")[keep])
+    frame[xname] = column
+    is_factor = column.dtype.kind not in "iuf"
+    outliers = frame.loc[frame["color"] == "outlier", ["obs", "sdres"]].rename(
+        columns={"obs": "observation", "sdres": "quan_resid"}
+    )
+    text = title or f"Residuals against {xname}"
+    if not plot:
+        return {"data": frame, "outliers": outliers, "threshold": float(value),
+                "xname": xname, "is_factor": bool(is_factor)}
+    figure, axes = _figure()
+    if axes is not None:
+        if is_factor:
+            categories = sorted({str(item) for item in column})
+            positions = [categories.index(str(item)) for item in column]
+            axes.scatter(positions, frame["sdres"], s=6, alpha=0.9)
+            axes.set_xticks(range(len(categories)))
+            axes.set_xticklabels(categories)
+        else:
+            axes.scatter(column, frame["sdres"], s=6, color="steelblue")
+        axes.axhline(0.0, color="gray")
+        axes.axhline(value, color="red")
+        axes.axhline(-value, color="red")
+        axes.set_xlabel(xname)
+        axes.set_ylabel("Quantile Residuals")
+        axes.set_title(text)
+    return GGPlot(
+        "resid_xvar",
+        {"data": frame, "outliers": outliers, "threshold": float(value),
+         "xname": xname, "is_factor": bool(is_factor)},
+        figure,
+    )
+
+
+def resid_wp(
+    obj: Any = None,
+    resid: Any = None,
+    value: float = 3,
+    points_col: str = "steelblue",
+    poly_col: str = "darkred",
+    check_overlap: bool = True,
+    title: str | None = None,
+    ylim: float | None = None,
+) -> Any:
+    """R resid_wp: worm plot with a cubic polynomial through the ordinates."""
+
+    if obj is None and resid is None:
+        raise ValueError("A GAMLSS fitted object or the argument resid should be used")
+    if obj is not None:
+        _require_model(obj, "resid_wp")
+        observations, residuals = _masked_residuals(obj)
+    else:
+        residuals = np.asarray(resid, dtype=np.float64)
+        residuals = residuals[np.isfinite(residuals)]
+        observations = np.arange(1, residuals.size + 1)
+    x = stats.norm.ppf(_ppoints(residuals.size))[np.argsort(np.argsort(residuals))]
+    deviation = residuals - x
+    coefficients = np.polyfit(x, deviation, 3)
+    fitted = np.polyval(coefficients, x)
+    frame = pd.DataFrame(
+        {
+            "obs": observations,
+            "rqres": deviation,
+            "x": x,
+            "fv": fitted,
+            "color": np.where(np.abs(residuals) >= value, "outlier", "normal"),
+            "txt": np.where(np.abs(residuals) >= value, observations, np.nan),
+        }
+    )
+    band = _worm_band(float(np.max(np.abs(x))) + 0.5, frame.shape[0], 0.95)
+    text = title or "Worm-plot for model"
+    figure, axes = _figure()
+    if axes is not None:
+        axes.fill_between(band["z"], band["low"], band["high"], alpha=0.1)
+        axes.scatter(frame["x"], frame["rqres"], s=8, color=points_col, alpha=0.8)
+        axes.plot(frame["x"], frame["fv"], color=poly_col)
+        for line in (band["low"], band["high"]):
+            axes.plot(band["z"], line, linestyle="--", color="gray")
+        axes.axhline(0.0, color="gray")
+        axes.axvline(0.0, color="gray")
+        axes.set_xlabel("Unit normal quantile")
+        axes.set_ylabel("Deviation")
+        axes.set_title(text)
+    return GGPlot("resid_wp", {"data": frame, "band": band}, figure)
+
+
+def resid_wp_wrap(
+    obj: Any = None,
+    resid: Any = None,
+    value: float = 3,
+    xvar: Any = None,
+    n_inter: int = 4,
+    points_col: str = "steelblue",
+    poly_col: str = "darkred",
+    alpha_bound: float = 0.1,
+    check_overlap: bool = True,
+    title: str | None = None,
+    ylim: float | None = None,
+) -> Any:
+    """R resid_wp_wrap: worm plots faceted by intervals of one covariate."""
+
+    if xvar is None:
+        raise ValueError("resid_wp_wrap() expects one xvar")
+    if obj is not None:
+        _require_model(obj, "resid_wp_wrap")
+        residuals = np.asarray(obj.residuals, dtype=np.float64)
+        values = dict((obj.call or {}).get("data") or {})
+        if isinstance(xvar, str):
+            if xvar not in values:
+                raise ValueError(f"covariate {xvar!r} is not in the data")
+            column = np.asarray(values[xvar])
+        else:
+            column = np.asarray(xvar)
+    else:
+        residuals = np.asarray(resid, dtype=np.float64)
+        column = np.asarray(xvar)
+    if column.size != residuals.size:
+        raise ValueError("xvar and the residuals must have the same length")
+    if column.dtype.kind in "iuf":
+        groups = np.asarray(
+            pd.qcut(np.asarray(column, float), int(n_inter), duplicates="drop").astype(str)
+        )
+    else:
+        groups = np.asarray(column).astype(str)
+    frames = []
+    bands = []
+    for level in sorted(set(groups.tolist())):
+        mask = groups == level
+        if not np.any(mask):
+            continue
+        subset = residuals[mask]
+        subset = subset[np.isfinite(subset)]
+        x = stats.norm.ppf(_ppoints(subset.size))[np.argsort(np.argsort(subset))]
+        deviation = subset - x
+        fitted = np.polyval(np.polyfit(x, deviation, 3), x)
+        frames.append(
+            pd.DataFrame(
+                {
+                    "rqres": deviation,
+                    "x": x,
+                    "fv": fitted,
+                    "Z": level,
+                    "color": np.where(np.abs(subset) >= value, "outlier", "normal"),
+                }
+            )
+        )
+        band = _worm_band(float(np.max(np.abs(x))) + 0.5, int(mask.sum()), 0.95)
+        band["Z"] = level
+        bands.append(band)
+    data = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    band = pd.concat(bands, ignore_index=True) if bands else pd.DataFrame()
+    text = title or "worm-plots of residuals"
+    figure, axes = _figure()
+    if axes is not None:
+        axes.scatter(data["x"], data["rqres"], s=8, color=points_col, alpha=0.8)
+        axes.axhline(0.0, color="gray")
+        axes.axvline(0.0, color="gray")
+        axes.set_title(text)
+    return GGPlot("resid_wp_wrap", {"data": data, "band": band, "n_inter": int(n_inter)}, figure)
+
+
+def _np_bands(values: np.ndarray, kind: str, conf_level: str) -> pd.DataFrame:
+    """R's NPOwen.bands / NPJagerWellner.bands (SMIR NPL bands)."""
+
+    counts = pd.Series(np.asarray(values, dtype=np.float64)).value_counts().sort_index()
+    yi = counts.index.to_numpy(dtype=np.float64)
+    cn = np.cumsum(counts.to_numpy(dtype=np.float64))
+    nn = np.full(cn.size, float(np.sum(counts.to_numpy(dtype=np.float64)) + 1.0))
+    p = cn / nn
+    log_nn = np.log(nn)
+    if kind == "Owen":
+        if conf_level == "95":
+            near = 3.0123 + 0.4835 * log_nn - 0.00957 * log_nn**2 - 0.001488 * log_nn**3
+            far = 3.0806 + 0.4894 * log_nn - 0.02086 * log_nn**2
+        else:
+            near = -4.626 - 0.541 * log_nn + 0.0242 * log_nn**2
+            far = -4.71 - 0.512 * log_nn + 0.0219 * log_nn**2
+    else:
+        if conf_level == "95":
+            near = 3.6792 + 0.5720 * log_nn - 0.0567 * log_nn**2 + 0.0027 * log_nn**3
+            far = 3.7752 + 0.5062 * log_nn - 0.0417 * log_nn**2 + 0.0016 * log_nn**3
+        else:
+            near = 5.3318 + 0.5539 * log_nn - 0.00370 * log_nn**2
+            far = 5.6392 + 0.4018 * log_nn - 0.0183 * log_nn**2
+    scale = np.sqrt(2.0 * np.where(nn <= 100, near, far))
+    phi = stats.beta.cdf(p, 1.0 / 3.0, 1.0 / 3.0)
+    se = 1.0 / (5.3 * np.sqrt(nn * np.power(p * (1.0 - p), 1.0 / 3.0)))
+    upper = np.clip(phi + scale * se, 0.0, 1.0)
+    lower = np.clip(phi - scale * se, 0.0, 1.0)
+    return pd.DataFrame(
+        {
+            "x": yi,
+            "lower": stats.beta.ppf(lower, 1.0 / 3.0, 1.0 / 3.0),
+            "upper": stats.beta.ppf(upper, 1.0 / 3.0, 1.0 / 3.0),
+        }
+    )
+
+
+def resid_dtop(
+    obj: Any = None,
+    resid: Any = None,
+    type: str = "Owen",
+    conf_level: str = "95",
+    value: float = 2,
+    points_col: str = "steelblue",
+    check_overlap: bool = True,
+    title: str | None = None,
+) -> Any:
+    """R resid_dtop: detrended Owen plot with SMIR NPL confidence bands."""
+
+    if str(type) not in {"Owen", "JW"}:
+        raise ValueError('type must be "Owen" or "JW"')
+    if str(conf_level) not in {"95", "99"}:
+        raise ValueError('conf.level must be "95" or "99"')
+    if obj is None and resid is None:
+        raise ValueError("A GAMLSS fitted object or the argument resid should be used")
+    if obj is not None:
+        _require_model(obj, "resid_dtop")
+        observations, residuals = _masked_residuals(obj)
+    else:
+        residuals = np.asarray(resid, dtype=np.float64)
+        keep = np.isfinite(residuals)
+        residuals = residuals[keep]
+        observations = np.arange(1, residuals.size + 1)
+    # R ECDF(): fraction of the sample at or below each residual.
+    ordered = np.sort(residuals)
+    mm = np.searchsorted(ordered, residuals, side="right") / residuals.size
+    mm = np.clip(mm, 1e-300, 1.0 - 1e-16)
+    zscore = stats.norm.ppf(mm)
+    deviation = zscore - residuals
+    order = np.argsort(residuals)
+    frame = pd.DataFrame(
+        {
+            "obs": observations[order],
+            "rqres": residuals[order],
+            "dzscores": deviation[order],
+            "color": np.where(np.abs(residuals[order]) >= value, "outlier", "normal"),
+            "txt": np.where(np.abs(residuals[order]) >= value, observations[order], np.nan),
+        }
+    )
+    band = _np_bands(residuals, str(type), str(conf_level))
+    band["lower"] = stats.norm.ppf(np.clip(band["lower"], 1e-12, 1 - 1e-12)) - band["x"]
+    band["upper"] = stats.norm.ppf(np.clip(band["upper"], 1e-12, 1 - 1e-12)) - band["x"]
+    text = title or "Owen-plot for model"
+    figure, axes = _figure()
+    if axes is not None:
+        axes.fill_between(band["x"], band["lower"], band["upper"], alpha=0.2)
+        axes.scatter(frame["rqres"], frame["dzscores"], s=8, color=points_col)
+        axes.axhline(0.0, color="gray")
+        axes.set_xlabel("ordered norm. quan. residuals")
+        axes.set_ylabel(f"{conf_level}% confidence intervals")
+        axes.set_title(text)
+    return GGPlot(
+        "resid_dtop",
+        {"data": frame, "band": band, "type": str(type), "conf_level": str(conf_level)},
+        figure,
+    )
+
+
+def _response_scatter(
+    kind: str,
+    model: Any,
+    fitted: np.ndarray,
+    xlab: str,
+    title: str | None,
+    diagonal: bool,
+) -> GGPlot:
+    observations, _ = _masked_residuals(model)
+    keep = _weight_mask(model)
+    response = _response_vector(model)[keep]
+    frame = pd.DataFrame({"obs": observations, "y": response, "fv": fitted[keep]})
+    correlation = float(np.corrcoef(frame["y"], frame["fv"])[0, 1])
+    text = title or f"r = {correlation:.3f}"
+    figure, axes = _figure()
+    if axes is not None:
+        axes.scatter(frame["fv"], frame["y"], s=12, color="steelblue")
+        if diagonal:
+            limits = [float(np.min(frame[["y", "fv"]].min())), float(np.max(frame[["y", "fv"]].max()))]
+            axes.plot(limits, limits, color="darkred")
+        axes.set_xlabel(xlab)
+        axes.set_ylabel("response")
+        axes.set_title(text)
+    return GGPlot(kind, {"data": frame, "correlation": correlation}, figure)
+
+
+def resp_mu(obj: Any = None, title: str | None = None, **kwargs: Any) -> GGPlot:
+    """R resp_mu: response against fitted mu with the identity line."""
+
+    _require_model(obj, "resp_mu")
+    return _response_scatter(
+        "resp_mu", obj, _fitted_parameter(obj, "mu"), "mu fitted values", title, True
+    )
+
+
+def resp_param(obj: Any = None, param: str = "mu", title: str | None = None,
+               **kwargs: Any) -> GGPlot:
+    """R resp_param: response against one fitted parameter."""
+
+    _require_model(obj, "resp_param")
+    if param not in obj.family.parameters:
+        raise ValueError(f"parameter {param!r} is not in the family")
+    return _response_scatter(
+        "resp_param", obj, _fitted_parameter(obj, param), param, title, False
+    )
+
+
+def resp_quantile(
+    obj: Any = None,
+    quantile: float = 0.5,
+    title: str | None = None,
+    newdata: Any = None,
+    **kwargs: Any,
+) -> GGPlot:
+    """R resp_quantile: response against one fitted quantile."""
+
+    _require_model(obj, "resp_quantile")
+    fitted = _fitted_quantile(obj, quantile, newdata)
+    result = _response_scatter(
+        "resp_quantile", obj, fitted, f"{quantile} quantile", title, False
+    )
+    data = dict(result.data)
+    data["quantile"] = float(quantile)
+    return GGPlot("resp_quantile", data, result.figure)
+
+
+def fitted_leverage(
+    obj: Any = None,
+    plot: bool = True,
+    title: str | None = None,
+    quan_val: float = 0.99,
+    annotate: bool = True,
+    line_col: str = "steelblue",
+    point_col: str = "steelblue",
+    annot_col: str = "darkred",
+) -> Any:
+    """R fitted_leverage: linear-model leverage of the mu design."""
+
+    _require_model(obj, "fitted_leverage")
+    from .formula_parser import build_design_matrix, parse_formula
+
+    formula = (obj.call or {}).get("formula")
+    values = dict((obj.call or {}).get("data") or {})
+    if not formula or not values:
+        raise ValueError("the model needs a stored formula and data")
+    design, _smooth = build_design_matrix(parse_formula(str(formula)), values)
+    design = np.asarray(design, dtype=np.float64)
+    weights = np.asarray(obj.weights, dtype=np.float64)
+    root_w = np.sqrt(weights)
+    weighted = design * root_w[:, None]
+    gram = weighted.T @ weighted
+    leverage = np.einsum("ij,jk,ik->i", weighted, np.linalg.pinv(gram), weighted)
+    threshold = float(np.quantile(leverage, float(quan_val)))
+    observations = np.arange(1, leverage.size + 1)
+    keep = weights != 0
+    frame = pd.DataFrame(
+        {
+            "obs": observations[keep],
+            "hat": leverage[keep],
+            "color": np.where(leverage[keep] >= threshold, "outlier", "normal"),
+        }
+    )
+    frame["txt"] = np.where(frame["color"] == "outlier", frame["obs"], np.nan)
+    rn2 = 2.0 * design.shape[1] / design.shape[0]
+    text = title or "Linear leverage of model"
+    if not plot:
+        return {
+            "leverage": frame["hat"].to_numpy(),
+            "index": frame["obs"].to_numpy(),
+            "threshold": threshold,
+            "rn2": float(rn2),
+            "data": frame,
+        }
+    figure, axes = _figure()
+    if axes is not None:
+        axes.vlines(frame["obs"], 0.0, frame["hat"], color=line_col)
+        axes.scatter(frame["obs"], frame["hat"], facecolors="none", edgecolors=point_col)
+        axes.set_xlabel("Observation number")
+        axes.set_ylabel("linear leverage")
+        axes.set_title(text)
+    return GGPlot(
+        "fitted_leverage",
+        {
+            "data": frame,
+            "leverage": frame["hat"].to_numpy(),
+            "index": frame["obs"].to_numpy(),
+            "threshold": threshold,
+            "rn2": float(rn2),
+        },
+        figure,
+    )
+
+
+def fitted_devianceIncr(
+    obj: Any = None,
+    plot: bool = True,
+    title: str | None = None,
+    quan_val: float = 0.99,
+    annotate: bool = True,
+    line_col: str = "steelblue",
+    point_col: str = "darkblue",
+    annot_col: str = "white",
+    newdata: Any = None,
+) -> Any:
+    """R fitted_devianceIncr: per-observation deviance increments."""
+
+    _require_model(obj, "fitted_devianceIncr")
+    from .DevianceIncr import devianceIncr
+
+    increments = np.asarray(devianceIncr(obj, newdata=newdata), dtype=np.float64)
+    threshold = float(np.quantile(increments, float(quan_val)))
+    observations = np.arange(1, increments.size + 1)
+    if newdata is None:
+        keep = _weight_mask(obj)
+        observations = observations[keep]
+        increments = increments[keep]
+    frame = pd.DataFrame(
+        {
+            "obs": observations,
+            "DIncr": increments,
+            "color": np.where(increments >= threshold, "outlier", "normal"),
+        }
+    )
+    frame["txt"] = np.where(frame["color"] == "outlier", frame["obs"], np.nan)
+    text = title or "Deviance increment of model"
+    if not plot:
+        return {"data": frame, "threshold": threshold,
+                "outliers": frame.loc[frame["color"] == "outlier", ["obs", "DIncr"]]}
+    figure, axes = _figure()
+    if axes is not None:
+        axes.vlines(frame["obs"], 0.0, frame["DIncr"], color=line_col)
+        axes.scatter(frame["obs"], frame["DIncr"], s=10, color=point_col)
+        axes.set_xlabel("Observation number")
+        axes.set_ylabel("Deviance increment")
+        axes.set_title(text)
+    return GGPlot(
+        "fitted_devianceIncr",
+        {"data": frame, "threshold": threshold,
+         "outliers": frame.loc[frame["color"] == "outlier", ["obs", "DIncr"]]},
+        figure,
+    )
+
+
+def fitted_survival(
+    model: Any = None,
+    obs: Any = 1,
+    title: str | None = None,
+    from_: float = 0,
+    to: float = 10,
+    no_points: int = 201,
+    alpha: float = 1,
+    lower_tail: bool = True,
+    plot: bool = True,
+    **kwargs: Any,
+) -> Any:
+    """R fitted_survival: fitted survival curves at selected observations."""
+
+    _require_model(model, "fitted_survival")
+    observations = np.atleast_1d(np.asarray(obs, dtype=int)) - 1
+    if np.any(observations < 0):
+        raise ValueError("obs must be 1-based observation indices")
+    fixed = [name for name in model.family.parameters if name not in model.fitted_values]
+    if fixed:
+        raise NotImplementedError(
+            "fitted_survival's binomial branch (fixed bd) is not ported"
+        )
+    discrete = str(getattr(model.family, "type_", "")).lower() == "discrete"
+    grid = (
+        np.arange(float(from_), float(to) + 1.0, 1.0)
+        if discrete
+        else np.linspace(float(from_), float(to), int(no_points))
+    )
+    curves = {}
+    for index in observations:
+        args = [
+            np.full(grid.size, float(np.asarray(model.fitted_values[name], float)[index]))
+            for name in model.family.parameters
+        ]
+        cdf = np.asarray(model.family.p(grid, *args), dtype=np.float64)
+        curves[str(index + 1)] = 1.0 - cdf if lower_tail else cdf
+    text = title or "Fitted survival functions from model"
+    if not plot:
+        return {"grid": grid, "survival": curves, "obs": observations + 1,
+                "discrete": bool(discrete)}
+    figure, axes = _figure()
+    if axes is not None:
+        for curve in curves.values():
+            if discrete:
+                axes.step(grid, curve, where="post")
+            else:
+                axes.plot(grid, curve)
+        axes.set_xlabel("y")
+        axes.set_ylabel(f"{model.family.name}(y)")
+        axes.set_title(text)
+    return GGPlot(
+        "fitted_survival",
+        {"grid": grid, "survival": curves, "obs": observations + 1,
+         "discrete": bool(discrete)},
+        figure,
+    )
+
+
+def fitted_survival_data(
+    model: Any = None,
+    obs: Any = 1,
+    from_: float = 0,
+    to: float = 10,
+    plot: bool = True,
+    **kwargs: Any,
+) -> Any:
+    """R fitted_survival_data: survival curves plus vertical response lines."""
+
+    base = fitted_survival(model, obs=obs, from_=from_, to=to, plot=False, **kwargs)
+    observations = np.atleast_1d(np.asarray(obs, dtype=int)) - 1
+    observed = _response_vector(model)[observations]
+    data = dict(base)
+    data["observed"] = observed
+    if not plot:
+        return data
+    figure, axes = _figure()
+    if axes is not None:
+        for curve in data["survival"].values():
+            if data["discrete"]:
+                axes.step(data["grid"], curve, where="post")
+            else:
+                axes.plot(data["grid"], curve)
+        for value in observed:
+            axes.axvline(float(value), linestyle="--")
+        axes.set_xlabel("y")
+        axes.set_ylabel(f"{model.family.name}(y)")
+    return GGPlot("fitted_survival_data", data, figure)
+
+
+def _centile_frame(
+    model: Any,
+    x_values: np.ndarray,
+    percentages: np.ndarray,
+    params: Mapping[str, np.ndarray],
+    y_values: np.ndarray,
+) -> pd.DataFrame:
+    frames = []
+    for percentage in percentages:
+        args = [np.asarray(params[name], dtype=np.float64)
+                for name in model.family.parameters if name in params]
+        label = str(int(percentage)) if float(percentage).is_integer() else str(percentage)
+        frames.append(
+            pd.DataFrame(
+                {
+                    "c": np.asarray(model.family.q(percentage / 100.0, *args), dtype=np.float64),
+                    "x": x_values,
+                    "y": y_values,
+                    "centiles": label,
+                }
+            )
+        )
+    return pd.concat(frames, ignore_index=True)
+
+
+def _centile_x_setup(model: Any, xvar: Any) -> tuple[str, np.ndarray]:
+    values = dict((model.call or {}).get("data") or {})
+    if not values:
+        raise ValueError("data are required in the original fit or the xvar")
+    if isinstance(xvar, str):
+        if xvar not in values:
+            raise ValueError(f"covariate {xvar!r} is not in the data")
+        return xvar, np.asarray(values[xvar], dtype=np.float64)
+    if xvar is not None:
+        return "xvar", np.asarray(xvar, dtype=np.float64)
+    covariates = _covariate_names(model)
+    if len(covariates) != 1:
+        raise ValueError("fitted_centiles is design for one x only")
+    return covariates[0], np.asarray(values[covariates[0]], dtype=np.float64)
+
+
+def fitted_centiles(
+    obj: Any = None,
+    cent: Any = (99.4, 98, 90, 75, 50, 25, 10, 2, 0.4),
+    xvar: Any = None,
+    plot: bool = True,
+    title: str | None = None,
+) -> Any:
+    """R fitted_centiles: centile curves at the observed covariate values."""
+
+    _require_model(obj, "fitted_centiles")
+    percentages = np.asarray(cent, dtype=np.float64)
+    x_name, x_values = _centile_x_setup(obj, xvar)
+    order = np.argsort(x_values)
+    params = {
+        name: np.asarray(obj.fitted_values[name], dtype=np.float64)[order]
+        for name in obj.family.parameters
+        if name in obj.fitted_values
+    }
+    data = _centile_frame(
+        obj, x_values[order], percentages, params,
+        _response_vector(obj)[order],
+    )
+    text = title or f"Centile curves using {obj.family.name}"
+    if not plot:
+        return data
+    figure, axes = _figure()
+    if axes is not None:
+        for label, group in data.groupby("centiles", sort=False):
+            axes.plot(group["x"], group["c"], linewidth=0.8)
+        axes.set_xlabel(x_name)
+        axes.set_ylabel("centiles")
+        axes.set_title(text)
+    return GGPlot(
+        "fitted_centiles",
+        {"data": data, "cent": percentages, "x": x_name},
+        figure,
+    )
+
+
+def fitted_centiles_legend(
+    obj: Any = None,
+    cent: Any = (99.4, 98, 90, 75, 50, 25, 10, 2, 0.4),
+    xvar: Any = None,
+    save_data: bool = False,
+    plot: bool = True,
+    title: str | None = None,
+) -> Any:
+    """R fitted_centiles_legend: fitted_centiles with save.data support."""
+
+    result = fitted_centiles(obj, cent=cent, xvar=xvar, plot=plot, title=title)
+    if isinstance(result, pd.DataFrame):
+        return result
+    if save_data:
+        return result.data["data"]
+    return GGPlot("fitted_centiles_legend", result.data, result.figure)
+
+
+def fitted_centiles_gap(
+    obj: Any = None,
+    cent: Any = (98, 90, 75, 50, 25, 10, 2),
+    xvar: Any = None,
+    plot: bool = True,
+    title: str | None = None,
+) -> Any:
+    """R fitted_centiles_gap: centile curves on an evenly spaced x grid.
+
+    R predicts at data.frame(ga = ooxvar), so this branch only makes sense for
+    a single-covariate model; other covariates would have to be invented.
+    """
+
+    _require_model(obj, "fitted_centiles_gap")
+    from .prediction import predict_params
+
+    percentages = np.asarray(cent, dtype=np.float64)
+    x_name, x_values = _centile_x_setup(obj, xvar)
+    covariates = _covariate_names(obj)
+    if len(covariates) > 1:
+        raise NotImplementedError(
+            "fitted_centiles_gap only supports a single-covariate model"
+        )
+    grid = np.linspace(float(x_values.min()), float(x_values.max()), x_values.size)
+    params = predict_params(obj, {x_name: grid})
+    # R recycles the response ordered by x across the centile blocks.
+    ordered_response = _response_vector(obj)[np.argsort(x_values)]
+    data = _centile_frame(obj, grid, percentages, params, ordered_response)
+    text = title or f"Centile curves using {obj.family.name}"
+    if not plot:
+        return data
+    figure, axes = _figure()
+    if axes is not None:
+        for label, group in data.groupby("centiles", sort=False):
+            axes.plot(group["x"], group["c"], linewidth=0.8)
+        axes.set_xlabel(x_name)
+        axes.set_ylabel("centiles")
+        axes.set_title(text)
+    return GGPlot(
+        "fitted_centiles_gap", {"data": data, "cent": percentages, "x": x_name}, figure
+    )
+
+
+def fitted_terms(
+    object: Any = None,
+    what: str = "mu",
+    parameter: str | None = None,
+    data: Any = None,
+    terms: Any = None,
+    plot: bool = True,
+    **kwargs: Any,
+) -> dict:
+    """R fitted_terms: term-level partial effects (an alias of pe_terms in R)."""
+
+    chosen = parameter or (what if isinstance(what, str) else "mu")
+    kwargs.pop("type", None)
+    result = pe_terms(object, terms=terms, data=data, parameter=chosen, plot=plot, **kwargs)
+    return {
+        name: GGPlot("fitted_terms", chart.data, chart.figure)
+        for name, chart in result.items()
+    }
+
+
 __all__ = [
     "GGPlot",
     "add_resid_qqplot",
     "fitted_cdf",
     "fitted_cdf_data",
+    "fitted_centiles",
+    "fitted_centiles_gap",
+    "fitted_centiles_legend",
+    "fitted_devianceIncr",
+    "fitted_leverage",
+    "fitted_survival",
+    "fitted_survival_data",
+    "fitted_terms",
     "fitted_pdf",
     "fitted_pdf_data",
     "model_density",
@@ -1229,7 +2155,18 @@ __all__ = [
     "pe_pdf_grid",
     "pe_terms",
     "resid_density",
+    "resid_dtop",
     "resid_ecdf",
+    "resid_median",
+    "resid_mu",
+    "resid_param",
+    "resid_quantile",
+    "resid_wp",
+    "resid_wp_wrap",
+    "resid_xvar",
+    "resp_mu",
+    "resp_param",
+    "resp_quantile",
     "resid_plots",
     "resid_qqplot",
     "y_dots",
