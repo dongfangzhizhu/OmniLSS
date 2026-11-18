@@ -1,12 +1,12 @@
 {
   "counts": {
-    "missing_symbols": 4,
+    "missing_symbols": 0,
     "no_function_surface": 1,
     "out_of_scope": 3,
     "packages": 9,
     "packages_without_evidence_tests": 3,
-    "surface_complete": 7,
-    "surface_gap": 1
+    "surface_complete": 8,
+    "surface_gap": 0
   },
   "decision": "D2.246",
   "milestone": "M4",
@@ -162,25 +162,18 @@
     {
       "evidence_tests": [],
       "exported": 109,
-      "missing_symbols": [
-        "fit_PB",
-        "histSmo_plot",
-        "pcr_coef_path",
-        "pcr_path"
-      ],
-      "next_action": "implement 4 missing symbols",
+      "missing_symbols": [],
+      "next_action": "upgrade evidence for 109 tested symbols to golden",
       "order": 1,
       "package": "gamlss.ggplots",
       "parity": {
-        "tested": 105,
-        "unverified": 4
+        "tested": 109
       },
       "priority": 4,
       "rationale": "presentation layer; pixel parity is explicitly not required",
-      "status": "surface_gap",
+      "status": "surface_complete",
       "surface": {
-        "missing": 4,
-        "public_api": 105
+        "public_api": 109
       },
       "tracked_symbols": 109
     },
@@ -225,12 +218,7 @@
   },
   "task": "P4 scope",
   "verdict": {
-    "first_work_item": {
-      "missing": 4,
-      "next_action": "implement 4 missing symbols",
-      "package": "gamlss.ggplots",
-      "priority": 4
-    },
+    "first_work_item": null,
     "inventory_complete": true,
     "notes": "This is a scope inventory, not an M4 gate. gamlss.cens and gamlss.tr already have full surface plus dedicated evidence modules; gamlss.mx is the first package with a surface gap, so it is the recommended next batch. Packages without a dedicated test module are flagged rather than assumed covered."
   }

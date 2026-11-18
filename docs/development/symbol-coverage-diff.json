@@ -12,11 +12,11 @@
     "notice": "gamlss2 is out of scope for OmniLSS 1.0: separate spec / version / evidence, does not block 1.0 (deliverable plan sections 1.2, 22.6)."
   },
   "current_counts": {
-    "missing": 57,
+    "missing": 53,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 418
+    "extra": 419
   },
   "category_meaning": {
     "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
@@ -58,6 +58,7 @@
         "gamlss.ggplots::centile_colour_both",
         "gamlss.ggplots::centile_colour_half",
         "gamlss.ggplots::centile_gray_both",
+        "gamlss.ggplots::fit_PB",
         "gamlss.ggplots::fitted_cdf",
         "gamlss.ggplots::fitted_cdf_data",
         "gamlss.ggplots::fitted_centiles",
@@ -70,6 +71,7 @@
         "gamlss.ggplots::fitted_survival",
         "gamlss.ggplots::fitted_survival_data",
         "gamlss.ggplots::fitted_terms",
+        "gamlss.ggplots::histSmo_plot",
         "gamlss.ggplots::model_GAIC",
         "gamlss.ggplots::model_GAIC_lollipop",
         "gamlss.ggplots::model_TD",
@@ -88,6 +90,8 @@
         "gamlss.ggplots::moment_colour_half",
         "gamlss.ggplots::moment_gray_both",
         "gamlss.ggplots::moment_gray_half",
+        "gamlss.ggplots::pcr_coef_path",
+        "gamlss.ggplots::pcr_path",
         "gamlss.ggplots::pe_1_parameter",
         "gamlss.ggplots::pe_2_parameter",
         "gamlss.ggplots::pe_eta",
@@ -146,7 +150,7 @@
         "gamlss.spatial::gmrf",
         "gamlss.spatial::polys2polys"
       ],
-      "current_count": 57,
+      "current_count": 53,
       "baseline_count": 173
     },
     "placeholder": {
@@ -187,6 +191,7 @@
         "NeuralNet",
         "NnFit",
         "NnTerm",
+        "PSplineFit",
         "PermutationTest",
         "PolygonPlot",
         "RegressionTree",
@@ -202,7 +207,7 @@
         "tree_control"
       ],
       "resolved": [],
-      "current_count": 418,
+      "current_count": 419,
       "baseline_count": 387
     }
   },
@@ -326,6 +331,10 @@
     },
     {
       "category": "missing",
+      "symbol": "gamlss.ggplots::fit_PB"
+    },
+    {
+      "category": "missing",
       "symbol": "gamlss.ggplots::fitted_cdf"
     },
     {
@@ -371,6 +380,10 @@
     {
       "category": "missing",
       "symbol": "gamlss.ggplots::fitted_terms"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::histSmo_plot"
     },
     {
       "category": "missing",
@@ -443,6 +456,14 @@
     {
       "category": "missing",
       "symbol": "gamlss.ggplots::moment_gray_half"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::pcr_coef_path"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::pcr_path"
     },
     {
       "category": "missing",
