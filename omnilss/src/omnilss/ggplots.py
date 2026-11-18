@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 import numpy as np
+import pandas as pd
 from scipy import stats
 
 
@@ -689,6 +690,515 @@ def pe_terms(obj: Any = None, terms: Any = None, data: Any = None, **kwargs: Any
     return {str(term): pe_1_parameter(obj, str(term), data=values, **kwargs) for term in terms}
 
 
+
+
+# ---------------------------------------------------------------------------
+# model_* comparisons and residual diagnostics (D2.257)
+# ---------------------------------------------------------------------------
+
+
+def _gaic_value(model: Any, k: float, corrected: bool) -> float:
+    from .operations import _gaic_single
+
+    return _gaic_single(model, k=float(k), c=bool(corrected))
+
+
+def _model_names(count: int, names: Any) -> list[str]:
+    if names is None:
+        return [f"model_{index + 1}" for index in range(count)]
+    listed = [names] if isinstance(names, str) else list(names)
+    if len(listed) != count:
+        raise ValueError("names must have one entry per model")
+    return [str(name) for name in listed]
+
+
+def _scaled_table(
+    values: np.ndarray,
+    labels: list[str],
+    diff_limit: float,
+    column_name: str = "value",
+) -> pd.DataFrame:
+    """R's delta/scaled construction: delta relative to the max, cut at diff.dev."""
+
+    values = np.asarray(values, dtype=np.float64)
+    # R filters on the distance from the minimum, then reports delta as
+    # max - value (so the worst model gets 0 and the best gets the full span).
+    distance = values - float(np.nanmin(values))
+    kept = distance < float(diff_limit)
+    span = float(np.nanmax(values[kept])) - float(np.nanmin(values[kept]))
+    if span <= 0:
+        span = 1.0
+    delta = float(np.nanmax(values[kept])) - values
+    scaled = delta / span
+    return pd.DataFrame(
+        {
+            column_name: values[kept],
+            "delta": np.round(delta[kept], 3),
+            "scaled": np.round(scaled[kept], 4),
+        },
+        index=[label for label, keep in zip(labels, kept) if keep],
+    )
+
+
+def _comparison_plot(
+    kind: str,
+    table: pd.DataFrame,
+    scale: str,
+    col: str,
+    horiz: bool,
+    title: str,
+    plot: bool,
+) -> Any:
+    if not plot:
+        return table
+    figure, axes = _figure()
+    if axes is not None:
+        column = "scaled" if scale == "[0,1]" else "delta"
+        positions = np.arange(len(table))
+        axes.barh(positions, table[column].to_numpy(), color=col)
+        axes.set_yticks(positions)
+        axes.set_yticklabels(list(table.index))
+        axes.set_title(title)
+    return GGPlot(
+        kind,
+        {"table": table, "scale": scale, "column": "scaled" if scale == "[0,1]" else "delta"},
+        figure,
+    )
+
+
+def model_GAIC(
+    object: Any = None,
+    *others: Any,
+    k: float = 2,
+    c: bool = False,
+    plot: bool = True,
+    which: int = 1,
+    diff_dev: float = 1000,
+    scale: str = "[0,1]",
+    col: str = "rosybrown",
+    horiz: bool = True,
+    names: Any = None,
+    title: str | None = None,
+) -> Any:
+    """R model_GAIC: GAIC comparison table (matrix, model list, or one model).
+
+    A single model returns its GAIC value, exactly as R does; several models (or
+    a matrix of candidate GAICs) return the delta/scaled table, and plot=True
+    wraps it in a GGPlot.
+    """
+
+    if str(scale) not in {"[0,1]", "[max,min]"}:
+        raise ValueError('scale must be "[0,1]" or "[max,min]"')
+    models = [object, *others]
+    is_model = [hasattr(item, "g_dev") and hasattr(item, "df_fit") for item in models]
+    if all(is_model):
+        if len(models) == 1:
+            return _gaic_value(models[0], k, c)
+        values = np.asarray([_gaic_value(model, k, c) for model in models], dtype=np.float64)
+        labels = _model_names(len(models), names)
+        table = _scaled_table(values, labels, diff_dev, column_name="AIC")
+        df_by_label = {
+            label: float(model.df_fit) for label, model in zip(labels, models)
+        }
+        table.insert(0, "df", [df_by_label[label] for label in table.index])
+        text = title or f"GAIC's in {scale} scale"
+        return _comparison_plot("model_GAIC", table, scale, col, horiz, text, plot)
+
+    matrix = np.asarray(object, dtype=np.float64)
+    if matrix.ndim != 2:
+        raise ValueError("the matrix of GAIC values must be two-dimensional")
+    column = int(which) - 1
+    if column < 0 or column >= matrix.shape[1]:
+        raise ValueError("which is outside the matrix columns")
+    selected = matrix[:, column]
+    finite = ~np.isnan(selected)
+    labels = [str(value) for value in np.asarray(
+        getattr(object, "index", np.arange(matrix.shape[0]))
+    )[finite]]
+    table = _scaled_table(selected[finite], labels, diff_dev, column_name="GAIC")
+    text = title or f"GAIC's ordered from {scale}"
+    return _comparison_plot("model_GAIC", table, scale, col, horiz, text, plot)
+
+
+def model_GAIC_lollipop(object: Any = None, *others: Any, **kwargs: Any) -> Any:
+    """R model_GAIC_lollipop: the GAIC table drawn as lollipops."""
+
+    kwargs.setdefault("col", "skyblue")
+    result = model_GAIC(object, *others, **kwargs)
+    if isinstance(result, GGPlot):
+        return GGPlot("model_GAIC_lollipop", result.data, result.figure)
+    return result
+
+
+def model_TD(
+    *models: Any,
+    newdata: Mapping[str, Any] | None = None,
+    plot: bool = True,
+    diff_TD: float = 1000,
+    scale: str = "[0,1]",
+    col: str = "rosybrown",
+    horiz: bool = True,
+    names: Any = None,
+    title: str | None = None,
+) -> Any:
+    """R model_TD: test global deviance on newdata for each model."""
+
+    from .gamlssVGD_23_12_21 import get_tgd
+
+    if str(scale) not in {"[0,1]", "[min,max]"}:
+        raise ValueError('scale must be "[0,1]" or "[min,max]"')
+    if len(models) == 1:
+        raise ValueError("The function needs more than one model")
+    if newdata is None:
+        raise ValueError("The newdata option is needed (you can use the training set)")
+    for model in models:
+        if not (hasattr(model, "family") and hasattr(model, "df_fit")):
+            raise ValueError("some of the objects are not gamlss")
+    values = np.asarray(
+        [float(get_tgd(model, newdata=dict(newdata)).test_global_deviance) for model in models],
+        dtype=np.float64,
+    )
+    table = _scaled_table(values, _model_names(len(models), names), diff_TD, column_name="TD")
+    text = title or f"Test Deviance's ordered from {scale}"
+    return _comparison_plot("model_TD", table, scale, col, horiz, text, plot)
+
+
+def model_TD_lollipop(*models: Any, **kwargs: Any) -> Any:
+    """R model_TD_lollipop: the test-deviance table as lollipops."""
+
+    kwargs.setdefault("col", "skyblue")
+    result = model_TD(*models, **kwargs)
+    if isinstance(result, GGPlot):
+        return GGPlot("model_TD_lollipop", result.data, result.figure)
+    return result
+
+
+def _response_name(model: Any) -> str:
+    from .formula_parser import parse_formula
+
+    formula = (model.call or {}).get("formula")
+    if not formula:
+        raise ValueError("the model call does not record a formula")
+    return parse_formula(str(formula)).response
+
+
+def _covariate_names(model: Any) -> list[str]:
+    formula = (model.call or {}).get("formula")
+    if not formula:
+        return []
+    rhs = str(formula).split("~", 1)[-1]
+    return [
+        part.strip()
+        for part in rhs.split("+")
+        if part.strip() not in {"", "1", "-1"}
+    ]
+
+
+def model_centiles(
+    obj: Any = None,
+    *others: Any,
+    cent: Any = (97, 90, 75, 50, 25, 10, 3),
+    xvar: Any = None,
+    in_one: bool = False,
+    plot: bool = True,
+    names: Any = None,
+    title: str | None = None,
+) -> Any:
+    """R model_centiles: centile curves for one or more models.
+
+    The x covariate is taken from xvar (or from the model's formula/data) and the
+    curves are evaluated at the fitted parameters of each observation, ordered by
+    x, exactly as fitted_centiles_legend does with save.data = TRUE.
+    """
+
+    models = [obj, *others]
+    for model in models:
+        _require_model(model, "model_centiles")
+    percentages = np.asarray(cent, dtype=np.float64)
+    labels = _model_names(len(models), names)
+    x_name = None
+    if xvar is not None:
+        x_name = xvar if isinstance(xvar, str) else None
+    frames = []
+    for label, model in zip(labels, models):
+        values = dict((model.call or {}).get("data") or {})
+        if not values:
+            raise ValueError("data are required in the original fit or the xvar")
+        response = _response_name(model)
+        if x_name is None:
+            covariates = _covariate_names(model)
+            if len(covariates) != 1:
+                raise ValueError("fitted_centiles is design for one x only")
+            x_name = covariates[0]
+        x_values = np.asarray(values[x_name], dtype=np.float64)
+        order = np.argsort(x_values)
+        params = {
+            name: np.asarray(model.fitted_values[name], dtype=np.float64)[order]
+            for name in model.family.parameters
+            if name in model.fitted_values
+        }
+        for percentage in percentages:
+            args = [params[name] for name in model.family.parameters if name in params]
+            frame = pd.DataFrame(
+                {
+                    "c": np.asarray(model.family.q(percentage / 100.0, *args), dtype=np.float64),
+                    "x": x_values[order],
+                    "y": np.asarray(values[response], dtype=np.float64)[order],
+                    "centiles": str(int(percentage)) if float(percentage).is_integer() else str(percentage),
+                    "Y": label,
+                }
+            )
+            frames.append(frame)
+    data = pd.concat(frames, ignore_index=True)
+    if not plot:
+        return data
+    figure, axes = _figure()
+    if axes is not None:
+        for (label, centile), group in data.groupby(["Y", "centiles"], sort=False):
+            axes.plot(group["x"], group["c"], linewidth=0.7)
+    return GGPlot(
+        "model_centiles",
+        {"data": data, "cent": percentages, "x": x_name, "in_one": bool(in_one)},
+        figure,
+    )
+
+
+def model_wp(
+    obj: Any = None,
+    *others: Any,
+    level: float = 0.95,
+    plot: bool = True,
+    names: Any = None,
+    title: str | None = None,
+) -> Any:
+    """R model_wp: worm plot (deviation against the unit normal quantile)."""
+
+    models = [obj, *others]
+    for model in models:
+        _require_model(model, "model_wp")
+    if len(models) < 2:
+        raise ValueError("you need more than two models")
+    labels = _model_names(len(models), names)
+    frames = []
+    for label, model in zip(labels, models):
+        residuals = np.asarray(model.residuals, dtype=np.float64)
+        weights = getattr(model, "weights", None)
+        observations = np.arange(1, residuals.size + 1)
+        if weights is not None:
+            keep = np.asarray(weights, dtype=np.float64) != 0
+            residuals = residuals[keep]
+            observations = observations[keep]
+        finite = np.isfinite(residuals)
+        residuals = residuals[finite]
+        observations = observations[finite]
+        x = stats.norm.ppf(_ppoints(residuals.size))[np.argsort(np.argsort(residuals))]
+        frames.append(
+            pd.DataFrame(
+                {"obs": observations, "rqres": residuals - x, "x": x, "model": label}
+            )
+        )
+    data = pd.concat(frames, ignore_index=True)
+    band = _worm_band(float(np.max(np.abs(data["x"]))) + 0.5, data.shape[0], level)
+    text = title or "worm-plots of residuals from different models"
+    if not plot:
+        return {"data": data, "band": band}
+    figure, axes = _figure()
+    if axes is not None:
+        axes.fill_between(band["z"], band["low"], band["high"], alpha=0.1)
+        for label, group in data.groupby("model", sort=False):
+            axes.scatter(group["x"], group["rqres"], s=8, alpha=0.8, label=label)
+        axes.axhline(0.0, color="gray")
+        axes.axvline(0.0, color="gray")
+        axes.set_title(text)
+    return GGPlot("model_wp", {"data": data, "band": band}, figure)
+
+
+def _worm_band(xlim: float, n: int, level: float) -> pd.DataFrame:
+    dz = 0.25
+    z = np.arange(-xlim, xlim + dz / 2, dz)
+    p = stats.norm.cdf(z)
+    se = (1.0 / stats.norm.pdf(z)) * np.sqrt(p * (1.0 - p) / max(n, 1))
+    quantile = stats.norm.ppf((1.0 - level) / 2.0)
+    low = quantile * se
+    return pd.DataFrame({"high": -low, "low": low, "z": z})
+
+
+def model_wp_wrap(
+    obj: Any = None,
+    *others: Any,
+    xvar: Any = None,
+    n_inter: int = 4,
+    level: float = 0.95,
+    plot: bool = True,
+    names: Any = None,
+    title: str | None = None,
+) -> Any:
+    """R model_wp_wrap: worm plots faceted by intervals of one covariate."""
+
+    models = [obj, *others]
+    for model in models:
+        _require_model(model, "model_wp_wrap")
+    if len(models) < 2:
+        raise ValueError("you need more than two models")
+    if xvar is None:
+        raise ValueError("worm plot wrap() expects one xvar")
+    values = dict((models[0].call or {}).get("data") or {})
+    if values and isinstance(xvar, str) and xvar in values:
+        column = np.asarray(values[xvar])
+    else:
+        column = np.asarray(xvar)
+    if column.size == 0:
+        raise ValueError("xvar must not be empty")
+    if column.dtype.kind in "iuf":
+        bins = pd.qcut(np.asarray(column, dtype=np.float64), int(n_inter), duplicates="drop")
+        groups = np.asarray(bins.astype(str))
+    else:
+        groups = np.asarray(column).astype(str)
+    labels = _model_names(len(models), names)
+    frames = []
+    for level_value in sorted(set(groups.tolist())):
+        mask = groups == level_value
+        if not np.any(mask):
+            continue
+        subset_size = int(mask.sum())
+        for label, model in zip(labels, models):
+            residuals = np.asarray(model.residuals, dtype=np.float64)[mask]
+            weights = getattr(model, "weights", None)
+            keep = np.ones(residuals.size, dtype=bool)
+            if weights is not None:
+                keep = np.asarray(weights, dtype=np.float64)[mask] != 0
+            residuals = residuals[keep]
+            residuals = residuals[np.isfinite(residuals)]
+            x = stats.norm.ppf(_ppoints(residuals.size))[np.argsort(np.argsort(residuals))]
+            frames.append(
+                pd.DataFrame(
+                    {"rqres": residuals - x, "x": x, "model": label, "Z": level_value}
+                )
+            )
+        band = _worm_band(float(np.max(np.abs(frames[-1]["x"]))) + 0.5, subset_size, level)
+        band["Z"] = level_value
+        frames.append(band.assign(kind="band"))
+    data = pd.concat([frame for frame in frames if "model" in frame], ignore_index=True)
+    bands = pd.concat([frame for frame in frames if "kind" in frame], ignore_index=True)
+    text = title or "worm-plots of residuals from different models"
+    if not plot:
+        return {"data": data, "band": bands}
+    figure, axes = _figure()
+    if axes is not None:
+        axes.scatter(data["x"], data["rqres"], s=8, alpha=0.8)
+        axes.axhline(0.0, color="gray")
+        axes.axvline(0.0, color="gray")
+        axes.set_title(text)
+    return GGPlot("model_wp_wrap", {"data": data, "band": bands}, figure)
+
+
+def model_pca(obj: Any = None, *others: Any, scale: bool = True, plot: bool = True,
+              names: Any = None) -> Any:
+    """R model_pca: principal components of the residual matrix of several models."""
+
+    models = [obj, *others]
+    for model in models:
+        _require_model(model, "model_pca")
+    if len(models) < 2:
+        raise ValueError("you need more than two models")
+    labels = _model_names(len(models), names)
+    columns = []
+    for model in models:
+        residuals = np.asarray(model.residuals, dtype=np.float64)
+        weights = getattr(model, "weights", None)
+        if weights is not None:
+            residuals = residuals[np.asarray(weights, dtype=np.float64) != 0]
+        columns.append(residuals[np.isfinite(residuals)])
+    size = min(column.size for column in columns)
+    matrix = np.column_stack([column[:size] for column in columns])
+    centered = matrix - matrix.mean(axis=0)
+    if scale:
+        spread = centered.std(axis=0, ddof=1)
+        spread[spread == 0] = 1.0
+        centered = centered / spread
+    u, s, vt = np.linalg.svd(centered, full_matrices=False)
+    scores = u * s
+    rotation = vt.T
+    sdev = s / np.sqrt(max(size - 1, 1))
+    arrows = pd.DataFrame(
+        {
+            "PC1": rotation[:, 0] * sdev[0],
+            "PC2": rotation[:, 1] * sdev[1],
+            "label": labels,
+        }
+    )
+    if not plot:
+        return {"scores": scores[:, :2], "arrows": arrows, "sdev": sdev}
+    figure, axes = _figure()
+    if axes is not None:
+        axes.scatter(scores[:, 0], scores[:, 1], s=6, color="grey", alpha=0.75)
+        axes.axhline(0.0, linewidth=0.25)
+        axes.axvline(0.0, linewidth=0.25)
+        for row in arrows.itertuples(index=False):
+            axes.arrow(0.0, 0.0, row.PC1, row.PC2, length_includes_head=True,
+                       head_width=0.02, color="steelblue")
+            axes.annotate(row.label, (row.PC1, row.PC2))
+        axes.set_title("Residuals PCA")
+    return GGPlot(
+        "model_pca", {"scores": scores[:, :2], "arrows": arrows, "sdev": sdev}, figure
+    )
+
+
+def model_devianceIncr_diff(
+    model1: Any = None,
+    model2: Any = None,
+    against: str = "index",
+    tol: float = 20,
+    data: Any = None,
+    newdata: Any = None,
+    plot: bool = True,
+) -> Any:
+    """R model_devianceIncr_diff: per-observation deviance-increment difference."""
+
+    for model in (model1, model2):
+        _require_model(model, "model_devianceIncr_diff")
+    from .DevianceIncr import devianceIncr
+
+    first = np.asarray(devianceIncr(model1, newdata=newdata), dtype=np.float64)
+    second = np.asarray(devianceIncr(model2, newdata=newdata), dtype=np.float64)
+    if first.size != second.size:
+        raise ValueError("The two models should have the same no of obsrvations")
+    difference = first - second
+    is_outlier = np.abs(difference) >= float(tol)
+    index = np.arange(1, first.size + 1)
+    values = dict(data) if data is not None else (
+        dict((model1.call or {}).get("data") or {}) if (model1.call or {}).get("data") else None
+    )
+    if values is None:
+        raise ValueError("The data argument is needed in obj")
+    frame = pd.DataFrame({key: np.asarray(value)[: first.size] for key, value in values.items()})
+    frame["diff"] = difference
+    frame["col"] = np.where(is_outlier, "outlier", "normal")
+    frame["index"] = index
+    frame["txt"] = np.where(is_outlier, index, np.nan)
+    x_values = frame["index"] if str(against) == "index" else frame[str(against)]
+    if not plot:
+        return frame
+    figure, axes = _figure()
+    if axes is not None:
+        # R's "steelblue4" has no matplotlib equivalent; use the closest name.
+        axes.vlines(x_values, 0.0, difference, color="steelblue")
+        axes.scatter(x_values, difference, facecolors="none", edgecolors="steelblue")
+        axes.set_xlabel(str(against))
+    return GGPlot(
+        "model_devianceIncr_diff",
+        {"data": frame, "x": np.asarray(x_values), "against": str(against)},
+        figure,
+    )
+
+
+def model_mom_bucket(*args: Any, **kwargs: Any) -> Any:
+    """R model_mom_bucket: alias of moment_bucket for model residuals."""
+
+    result = moment_bucket(*args, **kwargs)
+    return GGPlot("model_mom_bucket", result.data, result.figure)
+
+
 __all__ = [
     "GGPlot",
     "add_resid_qqplot",
@@ -698,6 +1208,16 @@ __all__ = [
     "fitted_pdf_data",
     "model_density",
     "model_qqplot",
+    "model_GAIC",
+    "model_GAIC_lollipop",
+    "model_TD",
+    "model_TD_lollipop",
+    "model_centiles",
+    "model_devianceIncr_diff",
+    "model_mom_bucket",
+    "model_pca",
+    "model_wp",
+    "model_wp_wrap",
     "moment_bucket",
     "pe_1_parameter",
     "pe_2_parameter",
