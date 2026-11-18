@@ -10,14 +10,14 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - R packages parsed: 12 (out of scope: gamlss2)
 - R exported symbols: 1080 (in scope: 1036)
-- Python surface matched: 967 / missing: 113
+- Python surface matched: 976 / missing: 104
 - Family-linked symbols: 531 (dpqr kernels: 424)
 - Python-only public exports: 416
 
-- **surface**: `missing` 113, `module_def` 223, `module_export` 103, `public_api` 465, `registry` 176
-- **kernel**: `compat_alias` 1, `experimental` 420, `implemented` 546, `missing` 113
-- **parity**: `capability:unsupported` 249, `capability:validated` 55, `golden:validated` 86, `r_consistency_test` 184, `tested` 349, `unverified` 157
-- **admission**: `blocked` 421, `exported_api` 359, `internal` 77, `not_available` 113, `production_safe` 110
+- **surface**: `missing` 104, `module_def` 223, `module_export` 103, `public_api` 474, `registry` 176
+- **kernel**: `compat_alias` 1, `experimental` 420, `implemented` 555, `missing` 104
+- **parity**: `capability:unsupported` 249, `capability:validated` 55, `golden:validated` 86, `r_consistency_test` 184, `tested` 358, `unverified` 148
+- **admission**: `blocked` 421, `exported_api` 368, `internal` 77, `not_available` 104, `production_safe` 110
 
 ## Per-package coverage
 
@@ -31,7 +31,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gamlss.data | 6.0-9 | `d9f9597e6df3f7b9` | yes | 0 | 0 | 0 |
 | gamlss.dist | 6.1-8 | `59a3b7074378aaeb` | yes | 654 | 630 | 654 |
 | gamlss.foreach | 1.1-10 | `819542107cb0994b` | yes | 13 | 13 | 13 |
-| gamlss.ggplots | 2.1-34 | `cbe1ae29a3d583c1` | yes | 109 | 106 | 49 |
+| gamlss.ggplots | 2.1-34 | `cbe1ae29a3d583c1` | yes | 109 | 106 | 58 |
 | gamlss.mx | 6.0-4 | `b832557a4937461b` | yes | 12 | 12 | 12 |
 | gamlss.prepdata | 0.1.19 | `406a76c8aa06aa80` | yes | 59 | 58 | 59 |
 | gamlss.spatial | 3.0-3 | `af0e2b383e3eba93` | yes | 9 | 9 | 9 |
@@ -90,15 +90,6 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | moment_gray_half | gamlss.ggplots | function | R/gamlss.ggplots/R/Bucket_plot.R:125 |
 | pcr_coef_path | gamlss.ggplots | function | R/gamlss.ggplots/R/pcr_coef_path.R:14 |
 | pcr_path | gamlss.ggplots | function | R/gamlss.ggplots/R/pcr_coef_path.R:42 |
-| pe_1_parameter | gamlss.ggplots | function | R/gamlss.ggplots/R/pe_1_parameter_new.R:37 |
-| pe_2_parameter | gamlss.ggplots | function | R/gamlss.ggplots/R/pe_1_parameter_new.R:253 |
-| pe_eta | gamlss.ggplots | function | R/gamlss.ggplots/R/pe_1_parameter_new.R:517 |
-| pe_eta_grid | gamlss.ggplots | function | R/gamlss.ggplots/R/pe_1_parameter_new.R:626 |
-| pe_param | gamlss.ggplots | function | R/gamlss.ggplots/R/pe_1_parameter_new.R:443 |
-| pe_param_grid | gamlss.ggplots | function | R/gamlss.ggplots/R/pe_1_parameter_new.R:591 |
-| pe_pdf | gamlss.ggplots | function | R/gamlss.ggplots/R/pe_pdf.R:11 |
-| pe_pdf_grid | gamlss.ggplots | function | R/gamlss.ggplots/R/pe_pdf_grid.R:1 |
-| pe_terms | gamlss.ggplots | object | - |
 | predict_cdf | gamlss.ggplots | function | R/gamlss.ggplots/R/predict_cdf.R:14 |
 | predict_pdf | gamlss.ggplots | function | R/gamlss.ggplots/R/predict_pdf.R:14 |
 | quantile_gamlss | gamlss.ggplots | function | R/gamlss.ggplots/R/resp_param.R:110 |
@@ -213,7 +204,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | fp | public_api | implemented | tested | exported_api | 6 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 15 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 228 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 229 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | gamlss_cs | public_api | implemented | tested | exported_api | 3 |
 | gamlss.cy | gamlss | gamlss_cy | public_api | implemented | tested | exported_api | 1 |
@@ -396,7 +387,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | NBI | gamlss.dist | NBI | public_api | implemented | r_consistency_test | production_safe | 20 |
 | NBII | gamlss.dist | NBII | public_api | implemented | r_consistency_test | production_safe | 12 |
 | NET | gamlss.dist | NET | public_api | implemented | r_consistency_test | production_safe | 15 |
-| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 162 |
+| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 163 |
 | NO2 | gamlss.dist | NO2 | public_api | implemented | r_consistency_test | production_safe | 8 |
 | NOF | gamlss.dist | NOF | public_api | experimental | r_consistency_test | blocked | 5 |
 | PARETO | gamlss.dist | PARETO | public_api | experimental | r_consistency_test | blocked | 7 |
@@ -1053,15 +1044,15 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | moment_gray_half | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | pcr_coef_path | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | pcr_path | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| pe_1_parameter | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| pe_2_parameter | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| pe_eta | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| pe_eta_grid | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| pe_param | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| pe_param_grid | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| pe_pdf | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| pe_pdf_grid | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| pe_terms | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| pe_1_parameter | gamlss.ggplots | pe_1_parameter | public_api | implemented | tested | exported_api | 1 |
+| pe_2_parameter | gamlss.ggplots | pe_2_parameter | public_api | implemented | tested | exported_api | 1 |
+| pe_eta | gamlss.ggplots | pe_eta | public_api | implemented | tested | exported_api | 1 |
+| pe_eta_grid | gamlss.ggplots | pe_eta_grid | public_api | implemented | tested | exported_api | 1 |
+| pe_param | gamlss.ggplots | pe_param | public_api | implemented | tested | exported_api | 1 |
+| pe_param_grid | gamlss.ggplots | pe_param_grid | public_api | implemented | tested | exported_api | 1 |
+| pe_pdf | gamlss.ggplots | pe_pdf | public_api | implemented | tested | exported_api | 1 |
+| pe_pdf_grid | gamlss.ggplots | pe_pdf_grid | public_api | implemented | tested | exported_api | 1 |
+| pe_terms | gamlss.ggplots | pe_terms | public_api | implemented | tested | exported_api | 1 |
 | predict_cdf | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | predict_pdf | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | prof_term | gamlss.ggplots | prof_term | public_api | implemented | tested | exported_api | 1 |

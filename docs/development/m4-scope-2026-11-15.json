@@ -1,6 +1,6 @@
 {
   "counts": {
-    "missing_symbols": 60,
+    "missing_symbols": 51,
     "no_function_surface": 1,
     "out_of_scope": 3,
     "packages": 9,
@@ -200,15 +200,6 @@
         "moment_gray_half",
         "pcr_coef_path",
         "pcr_path",
-        "pe_1_parameter",
-        "pe_2_parameter",
-        "pe_eta",
-        "pe_eta_grid",
-        "pe_param",
-        "pe_param_grid",
-        "pe_pdf",
-        "pe_pdf_grid",
-        "pe_terms",
         "predict_cdf",
         "predict_pdf",
         "quantile_gamlss",
@@ -224,19 +215,19 @@
         "resp_param",
         "resp_quantile"
       ],
-      "next_action": "implement 60 missing symbols",
+      "next_action": "implement 51 missing symbols",
       "order": 1,
       "package": "gamlss.ggplots",
       "parity": {
-        "tested": 49,
-        "unverified": 60
+        "tested": 58,
+        "unverified": 51
       },
       "priority": 4,
       "rationale": "presentation layer; pixel parity is explicitly not required",
       "status": "surface_gap",
       "surface": {
-        "missing": 60,
-        "public_api": 49
+        "missing": 51,
+        "public_api": 58
       },
       "tracked_symbols": 109
     },
@@ -282,8 +273,8 @@
   "task": "P4 scope",
   "verdict": {
     "first_work_item": {
-      "missing": 60,
-      "next_action": "implement 60 missing symbols",
+      "missing": 51,
+      "next_action": "implement 51 missing symbols",
       "package": "gamlss.ggplots",
       "priority": 4
     },

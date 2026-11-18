@@ -12,7 +12,7 @@
     "notice": "gamlss2 is out of scope for OmniLSS 1.0: separate spec / version / evidence, does not block 1.0 (deliverable plan sections 1.2, 22.6)."
   },
   "current_counts": {
-    "missing": 113,
+    "missing": 104,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
@@ -55,6 +55,15 @@
         "gamlss.ggplots::model_density",
         "gamlss.ggplots::model_qqplot",
         "gamlss.ggplots::moment_bucket",
+        "gamlss.ggplots::pe_1_parameter",
+        "gamlss.ggplots::pe_2_parameter",
+        "gamlss.ggplots::pe_eta",
+        "gamlss.ggplots::pe_eta_grid",
+        "gamlss.ggplots::pe_param",
+        "gamlss.ggplots::pe_param_grid",
+        "gamlss.ggplots::pe_pdf",
+        "gamlss.ggplots::pe_pdf_grid",
+        "gamlss.ggplots::pe_terms",
         "gamlss.ggplots::resid_density",
         "gamlss.ggplots::resid_ecdf",
         "gamlss.ggplots::resid_plots",
@@ -90,7 +99,7 @@
         "gamlss.spatial::gmrf",
         "gamlss.spatial::polys2polys"
       ],
-      "current_count": 113,
+      "current_count": 104,
       "baseline_count": 173
     },
     "placeholder": {
@@ -253,6 +262,42 @@
     {
       "category": "missing",
       "symbol": "gamlss.ggplots::moment_bucket"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::pe_1_parameter"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::pe_2_parameter"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::pe_eta"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::pe_eta_grid"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::pe_param"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::pe_param_grid"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::pe_pdf"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::pe_pdf_grid"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::pe_terms"
     },
     {
       "category": "missing",
