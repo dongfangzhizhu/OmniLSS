@@ -10,14 +10,14 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - R packages parsed: 12 (out of scope: gamlss2)
 - R exported symbols: 1080 (in scope: 1036)
-- Python surface matched: 954 / missing: 126
+- Python surface matched: 967 / missing: 113
 - Family-linked symbols: 531 (dpqr kernels: 424)
-- Python-only public exports: 415
+- Python-only public exports: 416
 
-- **surface**: `missing` 126, `module_def` 223, `module_export` 103, `public_api` 452, `registry` 176
-- **kernel**: `compat_alias` 1, `experimental` 420, `implemented` 533, `missing` 126
-- **parity**: `capability:unsupported` 249, `capability:validated` 55, `golden:validated` 86, `r_consistency_test` 184, `tested` 336, `unverified` 170
-- **admission**: `blocked` 421, `exported_api` 346, `internal` 77, `not_available` 126, `production_safe` 110
+- **surface**: `missing` 113, `module_def` 223, `module_export` 103, `public_api` 465, `registry` 176
+- **kernel**: `compat_alias` 1, `experimental` 420, `implemented` 546, `missing` 113
+- **parity**: `capability:unsupported` 249, `capability:validated` 55, `golden:validated` 86, `r_consistency_test` 184, `tested` 349, `unverified` 157
+- **admission**: `blocked` 421, `exported_api` 359, `internal` 77, `not_available` 113, `production_safe` 110
 
 ## Per-package coverage
 
@@ -31,7 +31,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gamlss.data | 6.0-9 | `d9f9597e6df3f7b9` | yes | 0 | 0 | 0 |
 | gamlss.dist | 6.1-8 | `59a3b7074378aaeb` | yes | 654 | 630 | 654 |
 | gamlss.foreach | 1.1-10 | `819542107cb0994b` | yes | 13 | 13 | 13 |
-| gamlss.ggplots | 2.1-34 | `cbe1ae29a3d583c1` | yes | 109 | 106 | 36 |
+| gamlss.ggplots | 2.1-34 | `cbe1ae29a3d583c1` | yes | 109 | 106 | 49 |
 | gamlss.mx | 6.0-4 | `b832557a4937461b` | yes | 12 | 12 | 12 |
 | gamlss.prepdata | 0.1.19 | `406a76c8aa06aa80` | yes | 59 | 58 | 59 |
 | gamlss.spatial | 3.0-3 | `af0e2b383e3eba93` | yes | 9 | 9 | 9 |
@@ -53,7 +53,6 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | rqres.plot | gamlss | function | R/gamlss/R/rqresplot_new.R:41 |
 | stepGAIC.CH | gamlss | function | R/gamlss/R/stepGAIC-03-10-13..R:260 |
 | stepTGDAll.A | gamlss | function | R/gamlss/R/stepTGDAll-A-parallel.R:3 |
-| add_resid_qqplot | gamlss.ggplots | function | R/gamlss.ggplots/R/add_resid_qqplot.R:5 |
 | bivar_fun | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:630 |
 | bivar_fun_plotly | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated_not_ggplot2.R:256 |
 | bivar_pdf | gamlss.ggplots | function | R/gamlss.ggplots/R/Copula_ralated.R:587 |
@@ -65,15 +64,11 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | centile_colour_half | gamlss.ggplots | function | R/gamlss.ggplots/R/Bucket_plot.R:548 |
 | centile_gray_both | gamlss.ggplots | function | R/gamlss.ggplots/R/Bucket_plot.R:900 |
 | fit_PB | gamlss.ggplots | function | R/gamlss.ggplots/R/fit_PB.R:6 |
-| fitted_cdf | gamlss.ggplots | function | R/gamlss.ggplots/R/fitted_cdf.R:12 |
-| fitted_cdf_data | gamlss.ggplots | function | R/gamlss.ggplots/R/fitted_cdf.R:188 |
 | fitted_centiles | gamlss.ggplots | function | R/gamlss.ggplots/R/fitted_centiles_3.R:11 |
 | fitted_centiles_gap | gamlss.ggplots | function | R/gamlss.ggplots/R/fitted_centiles_3.R:350 |
 | fitted_centiles_legend | gamlss.ggplots | function | R/gamlss.ggplots/R/fitted_centiles_3.R:181 |
 | fitted_devianceIncr | gamlss.ggplots | function | R/gamlss.ggplots/R/fitted_devianceIncr.R:5 |
 | fitted_leverage | gamlss.ggplots | function | R/gamlss.ggplots/R/fitted_leverage.R:14 |
-| fitted_pdf | gamlss.ggplots | function | R/gamlss.ggplots/R/fitted_pdf.R:14 |
-| fitted_pdf_data | gamlss.ggplots | function | R/gamlss.ggplots/R/fitted_pdf.R:192 |
 | fitted_survival | gamlss.ggplots | function | R/gamlss.ggplots/R/fitted_cdf.R:198 |
 | fitted_survival_data | gamlss.ggplots | function | R/gamlss.ggplots/R/fitted_cdf.R:371 |
 | fitted_terms | gamlss.ggplots | object | - |
@@ -83,14 +78,11 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | model_TD | gamlss.ggplots | function | R/gamlss.ggplots/R/model_TD.R:10 |
 | model_TD_lollipop | gamlss.ggplots | function | R/gamlss.ggplots/R/model_TD.R:77 |
 | model_centiles | gamlss.ggplots | function | R/gamlss.ggplots/R/model_centiles_2.R:6 |
-| model_density | gamlss.ggplots | function | R/gamlss.ggplots/R/model_density.R:8 |
 | model_devianceIncr_diff | gamlss.ggplots | function | R/gamlss.ggplots/R/fitted_devianceIncr.R:99 |
 | model_mom_bucket | gamlss.ggplots | object | - |
 | model_pca | gamlss.ggplots | function | R/gamlss.ggplots/R/model_pca.R:7 |
-| model_qqplot | gamlss.ggplots | function | R/gamlss.ggplots/R/model_qqplot.R:5 |
 | model_wp | gamlss.ggplots | function | R/gamlss.ggplots/R/model_wp.R:5 |
 | model_wp_wrap | gamlss.ggplots | function | R/gamlss.ggplots/R/model_wp_wrap.R:5 |
-| moment_bucket | gamlss.ggplots | function | R/gamlss.ggplots/R/Bucket_plot.R:1158 |
 | moment_bucket_wrap | gamlss.ggplots | function | R/gamlss.ggplots/R/Bucket_plot.R:1411 |
 | moment_colour_both | gamlss.ggplots | function | R/gamlss.ggplots/R/Bucket_plot.R:235 |
 | moment_colour_half | gamlss.ggplots | function | R/gamlss.ggplots/R/Bucket_plot.R:22 |
@@ -110,14 +102,10 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | predict_cdf | gamlss.ggplots | function | R/gamlss.ggplots/R/predict_cdf.R:14 |
 | predict_pdf | gamlss.ggplots | function | R/gamlss.ggplots/R/predict_pdf.R:14 |
 | quantile_gamlss | gamlss.ggplots | function | R/gamlss.ggplots/R/resp_param.R:110 |
-| resid_density | gamlss.ggplots | function | R/gamlss.ggplots/R/resid_density.R:5 |
 | resid_dtop | gamlss.ggplots | function | R/gamlss.ggplots/R/resid_dtop_ecdf.R:11 |
-| resid_ecdf | gamlss.ggplots | function | R/gamlss.ggplots/R/resid_dtop_ecdf.R:190 |
 | resid_median | gamlss.ggplots | function | R/gamlss.ggplots/R/resid_median.R:5 |
 | resid_mu | gamlss.ggplots | function | R/gamlss.ggplots/R/resid_mu.R:10 |
 | resid_param | gamlss.ggplots | function | R/gamlss.ggplots/R/resid_param.R:5 |
-| resid_plots | gamlss.ggplots | function | R/gamlss.ggplots/R/resid_plots.R:5 |
-| resid_qqplot | gamlss.ggplots | function | R/gamlss.ggplots/R/resid_qqplot.R:5 |
 | resid_quantile | gamlss.ggplots | function | R/gamlss.ggplots/R/resid_param.R:61 |
 | resid_wp | gamlss.ggplots | function | R/gamlss.ggplots/R/resid_wp_new.R:5 |
 | resid_wp_wrap | gamlss.ggplots | function | R/gamlss.ggplots/R/resid_wp_wrap.R:5 |
@@ -125,7 +113,6 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | resp_mu | gamlss.ggplots | function | R/gamlss.ggplots/R/resp_mu.R:5 |
 | resp_param | gamlss.ggplots | function | R/gamlss.ggplots/R/resp_param.R:5 |
 | resp_quantile | gamlss.ggplots | function | R/gamlss.ggplots/R/resp_param.R:56 |
-| y_hist | gamlss.ggplots | function | R/gamlss.ggplots/R/y_hist.R:6 |
 | BS | gamlss2 | function | R/gamlss2/R/sampling.R:47 |
 | CG | gamlss2 | function | R/gamlss2/R/RS.R:714 |
 | GDF | gamlss2 | function | R/gamlss2/R/GDF.R:5 |
@@ -226,7 +213,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | fp | public_api | implemented | tested | exported_api | 6 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 15 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 227 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 228 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | gamlss_cs | public_api | implemented | tested | exported_api | 3 |
 | gamlss.cy | gamlss | gamlss_cy | public_api | implemented | tested | exported_api | 1 |
@@ -409,7 +396,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | NBI | gamlss.dist | NBI | public_api | implemented | r_consistency_test | production_safe | 20 |
 | NBII | gamlss.dist | NBII | public_api | implemented | r_consistency_test | production_safe | 12 |
 | NET | gamlss.dist | NET | public_api | implemented | r_consistency_test | production_safe | 15 |
-| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 161 |
+| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 162 |
 | NO2 | gamlss.dist | NO2 | public_api | implemented | r_consistency_test | production_safe | 8 |
 | NOF | gamlss.dist | NOF | public_api | experimental | r_consistency_test | blocked | 5 |
 | PARETO | gamlss.dist | PARETO | public_api | experimental | r_consistency_test | blocked | 7 |
@@ -1013,7 +1000,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | which.Data.Corr | gamlss.foreach | which_Data_Corr | public_api | implemented | tested | exported_api | 1 |
 | which.yX.Corr | gamlss.foreach | which_yX_Corr | public_api | implemented | tested | exported_api | 1 |
 | ECDF_2D | gamlss.ggplots | ECDF_2D | public_api | implemented | tested | exported_api | 3 |
-| add_resid_qqplot | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| add_resid_qqplot | gamlss.ggplots | add_resid_qqplot | public_api | implemented | tested | exported_api | 1 |
 | bivar.fun.contour | gamlss.ggplots | bivar_fun_contour | public_api | implemented | tested | exported_api | 1 |
 | bivar.fun.image | gamlss.ggplots | bivar_fun_image | public_api | implemented | tested | exported_api | 1 |
 | bivar.fun.persp | gamlss.ggplots | bivar_fun_persp | public_api | implemented | tested | exported_api | 1 |
@@ -1030,15 +1017,15 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | family_cdf | gamlss.ggplots | family_cdf | public_api | implemented | tested | exported_api | 1 |
 | family_pdf | gamlss.ggplots | family_pdf | public_api | implemented | tested | exported_api | 8 |
 | fit_PB | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| fitted_cdf | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| fitted_cdf_data | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| fitted_cdf | gamlss.ggplots | fitted_cdf | public_api | implemented | tested | exported_api | 1 |
+| fitted_cdf_data | gamlss.ggplots | fitted_cdf_data | public_api | implemented | tested | exported_api | 1 |
 | fitted_centiles | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | fitted_centiles_gap | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | fitted_centiles_legend | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | fitted_devianceIncr | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | fitted_leverage | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| fitted_pdf | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| fitted_pdf_data | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| fitted_pdf | gamlss.ggplots | fitted_pdf | public_api | implemented | tested | exported_api | 1 |
+| fitted_pdf_data | gamlss.ggplots | fitted_pdf_data | public_api | implemented | tested | exported_api | 1 |
 | fitted_survival | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | fitted_survival_data | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | fitted_terms | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
@@ -1051,14 +1038,14 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | model_TD | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | model_TD_lollipop | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | model_centiles | gamlss.ggplots | - | missing | missing | unverified | not_available | 1 |
-| model_density | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| model_density | gamlss.ggplots | model_density | public_api | implemented | tested | exported_api | 1 |
 | model_devianceIncr_diff | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | model_mom_bucket | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | model_pca | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| model_qqplot | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| model_qqplot | gamlss.ggplots | model_qqplot | public_api | implemented | tested | exported_api | 1 |
 | model_wp | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | model_wp_wrap | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| moment_bucket | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| moment_bucket | gamlss.ggplots | moment_bucket | public_api | implemented | tested | exported_api | 1 |
 | moment_bucket_wrap | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | moment_colour_both | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | moment_colour_half | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
@@ -1079,15 +1066,15 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | predict_pdf | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | prof_term | gamlss.ggplots | prof_term | public_api | implemented | tested | exported_api | 1 |
 | quantile_gamlss | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| resid_density | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| resid_density | gamlss.ggplots | resid_density | public_api | implemented | tested | exported_api | 1 |
 | resid_dtop | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| resid_ecdf | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| resid_ecdf | gamlss.ggplots | resid_ecdf | public_api | implemented | tested | exported_api | 1 |
 | resid_index | gamlss.ggplots | resid_index | public_api | implemented | tested | exported_api | 1 |
 | resid_median | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | resid_mu | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | resid_param | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| resid_plots | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| resid_qqplot | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| resid_plots | gamlss.ggplots | resid_plots | public_api | implemented | tested | exported_api | 1 |
+| resid_qqplot | gamlss.ggplots | resid_qqplot | public_api | implemented | tested | exported_api | 1 |
 | resid_quantile | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
 | resid_symmetry | gamlss.ggplots | resid_symmetry | public_api | implemented | tested | exported_api | 1 |
 | resid_wp | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
@@ -1114,11 +1101,11 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | xy_pit_scatter | gamlss.ggplots | xy_pit_scatter | public_api | implemented | tested | exported_api | 1 |
 | xy_scatter | gamlss.ggplots | xy_scatter | public_api | implemented | tested | exported_api | 1 |
 | y_acf | gamlss.ggplots | y_acf | public_api | implemented | tested | exported_api | 1 |
-| y_dots | gamlss.ggplots | y_dots | public_api | implemented | tested | exported_api | 1 |
+| y_dots | gamlss.ggplots | y_dots | public_api | implemented | tested | exported_api | 2 |
 | y_ecdf | gamlss.ggplots | y_ecdf | public_api | implemented | tested | exported_api | 1 |
 | y_epdf | gamlss.ggplots | y_epdf | public_api | implemented | tested | exported_api | 1 |
 | y_epit | gamlss.ggplots | y_epit | public_api | implemented | tested | exported_api | 1 |
-| y_hist | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| y_hist | gamlss.ggplots | y_hist | public_api | implemented | tested | exported_api | 1 |
 | y_pacf | gamlss.ggplots | y_pacf | public_api | implemented | tested | exported_api | 1 |
 | y_symmetry | gamlss.ggplots | y_symmetry | public_api | implemented | tested | exported_api | 1 |
 | MX.control | gamlss.mx | MX_control | public_api | implemented | tested | exported_api | 1 |
@@ -1256,7 +1243,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 
 ## Python-only public exports
 
-415 names exported from `omnilss.__all__` have no R counterpart; they are Python-side additions (dataclasses, backends, utilities), not coverage gaps. The JSON artifact lists them all.
+416 names exported from `omnilss.__all__` have no R counterpart; they are Python-side additions (dataclasses, backends, utilities), not coverage gaps. The JSON artifact lists them all.
 
 - `AIC`
 - `AcfData`
@@ -1298,4 +1285,4 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 - `CheckCentileSKResult`
 - `CheckMomentSKResult`
 - `ChooseDistOrderResult`
-- ... 375 more in the JSON artifact
+- ... 376 more in the JSON artifact

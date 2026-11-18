@@ -1,6 +1,6 @@
 {
   "counts": {
-    "missing_symbols": 73,
+    "missing_symbols": 60,
     "no_function_surface": 1,
     "out_of_scope": 3,
     "packages": 9,
@@ -163,7 +163,6 @@
       "evidence_tests": [],
       "exported": 109,
       "missing_symbols": [
-        "add_resid_qqplot",
         "bivar_fun",
         "bivar_fun_plotly",
         "bivar_pdf",
@@ -175,15 +174,11 @@
         "centile_colour_half",
         "centile_gray_both",
         "fit_PB",
-        "fitted_cdf",
-        "fitted_cdf_data",
         "fitted_centiles",
         "fitted_centiles_gap",
         "fitted_centiles_legend",
         "fitted_devianceIncr",
         "fitted_leverage",
-        "fitted_pdf",
-        "fitted_pdf_data",
         "fitted_survival",
         "fitted_survival_data",
         "fitted_terms",
@@ -193,14 +188,11 @@
         "model_TD",
         "model_TD_lollipop",
         "model_centiles",
-        "model_density",
         "model_devianceIncr_diff",
         "model_mom_bucket",
         "model_pca",
-        "model_qqplot",
         "model_wp",
         "model_wp_wrap",
-        "moment_bucket",
         "moment_bucket_wrap",
         "moment_colour_both",
         "moment_colour_half",
@@ -220,36 +212,31 @@
         "predict_cdf",
         "predict_pdf",
         "quantile_gamlss",
-        "resid_density",
         "resid_dtop",
-        "resid_ecdf",
         "resid_median",
         "resid_mu",
         "resid_param",
-        "resid_plots",
-        "resid_qqplot",
         "resid_quantile",
         "resid_wp",
         "resid_wp_wrap",
         "resid_xvar",
         "resp_mu",
         "resp_param",
-        "resp_quantile",
-        "y_hist"
+        "resp_quantile"
       ],
-      "next_action": "implement 73 missing symbols",
+      "next_action": "implement 60 missing symbols",
       "order": 1,
       "package": "gamlss.ggplots",
       "parity": {
-        "tested": 36,
-        "unverified": 73
+        "tested": 49,
+        "unverified": 60
       },
       "priority": 4,
       "rationale": "presentation layer; pixel parity is explicitly not required",
       "status": "surface_gap",
       "surface": {
-        "missing": 73,
-        "public_api": 36
+        "missing": 60,
+        "public_api": 49
       },
       "tracked_symbols": 109
     },
@@ -295,8 +282,8 @@
   "task": "P4 scope",
   "verdict": {
     "first_work_item": {
-      "missing": 73,
-      "next_action": "implement 73 missing symbols",
+      "missing": 60,
+      "next_action": "implement 60 missing symbols",
       "package": "gamlss.ggplots",
       "priority": 4
     },

@@ -12,11 +12,11 @@
     "notice": "gamlss2 is out of scope for OmniLSS 1.0: separate spec / version / evidence, does not block 1.0 (deliverable plan sections 1.2, 22.6)."
   },
   "current_counts": {
-    "missing": 126,
+    "missing": 113,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 415
+    "extra": 416
   },
   "category_meaning": {
     "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
@@ -47,6 +47,19 @@
         "gamlss.foreach::centiles.boot",
         "gamlss.foreach::fitQR",
         "gamlss.foreach::fitRolling",
+        "gamlss.ggplots::add_resid_qqplot",
+        "gamlss.ggplots::fitted_cdf",
+        "gamlss.ggplots::fitted_cdf_data",
+        "gamlss.ggplots::fitted_pdf",
+        "gamlss.ggplots::fitted_pdf_data",
+        "gamlss.ggplots::model_density",
+        "gamlss.ggplots::model_qqplot",
+        "gamlss.ggplots::moment_bucket",
+        "gamlss.ggplots::resid_density",
+        "gamlss.ggplots::resid_ecdf",
+        "gamlss.ggplots::resid_plots",
+        "gamlss.ggplots::resid_qqplot",
+        "gamlss.ggplots::y_hist",
         "gamlss.mx::gamlssMX",
         "gamlss.mx::gamlssMXfits",
         "gamlss.mx::gamlssNP",
@@ -77,7 +90,7 @@
         "gamlss.spatial::gmrf",
         "gamlss.spatial::polys2polys"
       ],
-      "current_count": 126,
+      "current_count": 113,
       "baseline_count": 173
     },
     "placeholder": {
@@ -109,6 +122,7 @@
         "FkFit",
         "FkTerm",
         "FreeKnotFit",
+        "GGPlot",
         "GmrfControl",
         "GmrfFit",
         "GmrfTerm",
@@ -130,7 +144,7 @@
         "tree_control"
       ],
       "resolved": [],
-      "current_count": 415,
+      "current_count": 416,
       "baseline_count": 387
     }
   },
@@ -207,6 +221,58 @@
     {
       "category": "missing",
       "symbol": "gamlss.foreach::fitRolling"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::add_resid_qqplot"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::fitted_cdf"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::fitted_cdf_data"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::fitted_pdf"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::fitted_pdf_data"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::model_density"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::model_qqplot"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::moment_bucket"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::resid_density"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::resid_ecdf"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::resid_plots"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::resid_qqplot"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::y_hist"
     },
     {
       "category": "missing",
