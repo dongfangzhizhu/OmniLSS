@@ -1,6 +1,6 @@
 {
   "counts": {
-    "missing_symbols": 6,
+    "missing_symbols": 4,
     "no_function_surface": 1,
     "out_of_scope": 3,
     "packages": 9,
@@ -163,26 +163,24 @@
       "evidence_tests": [],
       "exported": 109,
       "missing_symbols": [
-        "boot_coef",
-        "boot_coef_one",
         "fit_PB",
         "histSmo_plot",
         "pcr_coef_path",
         "pcr_path"
       ],
-      "next_action": "implement 6 missing symbols",
+      "next_action": "implement 4 missing symbols",
       "order": 1,
       "package": "gamlss.ggplots",
       "parity": {
-        "tested": 103,
-        "unverified": 6
+        "tested": 105,
+        "unverified": 4
       },
       "priority": 4,
       "rationale": "presentation layer; pixel parity is explicitly not required",
       "status": "surface_gap",
       "surface": {
-        "missing": 6,
-        "public_api": 103
+        "missing": 4,
+        "public_api": 105
       },
       "tracked_symbols": 109
     },
@@ -228,8 +226,8 @@
   "task": "P4 scope",
   "verdict": {
     "first_work_item": {
-      "missing": 6,
-      "next_action": "implement 6 missing symbols",
+      "missing": 4,
+      "next_action": "implement 4 missing symbols",
       "package": "gamlss.ggplots",
       "priority": 4
     },
