@@ -12,11 +12,11 @@
     "notice": "gamlss2 is out of scope for OmniLSS 1.0: separate spec / version / evidence, does not block 1.0 (deliverable plan sections 1.2, 22.6)."
   },
   "current_counts": {
-    "missing": 145,
+    "missing": 126,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 410
+    "extra": 415
   },
   "category_meaning": {
     "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
@@ -51,6 +51,25 @@
         "gamlss.mx::gamlssMXfits",
         "gamlss.mx::gamlssNP",
         "gamlss.mx::plotMP",
+        "gamlss.prepdata::ACE",
+        "gamlss.prepdata::ACE.iter",
+        "gamlss.prepdata::cor_boot",
+        "gamlss.prepdata::cor_perm_test",
+        "gamlss.prepdata::data_association",
+        "gamlss.prepdata::data_bucket",
+        "gamlss.prepdata::data_leverage",
+        "gamlss.prepdata::data_mcor",
+        "gamlss.prepdata::data_outliers",
+        "gamlss.prepdata::data_plot",
+        "gamlss.prepdata::data_response",
+        "gamlss.prepdata::data_xyplot",
+        "gamlss.prepdata::data_zscores",
+        "gamlss.prepdata::mcor",
+        "gamlss.prepdata::y_outliers",
+        "gamlss.prepdata::y_outliers_both",
+        "gamlss.prepdata::y_outliers_by",
+        "gamlss.prepdata::y_outliers_z",
+        "gamlss.prepdata::y_zscores",
         "gamlss.spatial::MRF",
         "gamlss.spatial::MRFA",
         "gamlss.spatial::draw.polys",
@@ -58,7 +77,7 @@
         "gamlss.spatial::gmrf",
         "gamlss.spatial::polys2polys"
       ],
-      "current_count": 145,
+      "current_count": 126,
       "baseline_count": 173
     },
     "placeholder": {
@@ -84,6 +103,7 @@
         "BootResult",
         "CentileSurface",
         "CentilesBoot",
+        "CorrelationBootstrap",
         "FixedKnotFit",
         "FkControl",
         "FkFit",
@@ -95,18 +115,22 @@
         "NeuralNet",
         "NnFit",
         "NnTerm",
+        "PermutationTest",
         "PolygonPlot",
         "RegressionTree",
         "SpatialFit",
         "TreeControl",
         "TreeFit",
         "TreeTerm",
+        "ZScores",
+        "association",
+        "cramer_phi",
         "fk_control",
         "gmrf_control",
         "tree_control"
       ],
       "resolved": [],
-      "current_count": 410,
+      "current_count": 415,
       "baseline_count": 387
     }
   },
@@ -199,6 +223,82 @@
     {
       "category": "missing",
       "symbol": "gamlss.mx::plotMP"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::ACE"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::ACE.iter"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::cor_boot"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::cor_perm_test"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::data_association"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::data_bucket"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::data_leverage"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::data_mcor"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::data_outliers"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::data_plot"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::data_response"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::data_xyplot"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::data_zscores"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::mcor"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::y_outliers"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::y_outliers_both"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::y_outliers_by"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::y_outliers_z"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.prepdata::y_zscores"
     },
     {
       "category": "missing",

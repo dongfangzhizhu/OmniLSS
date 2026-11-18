@@ -1,12 +1,12 @@
 {
   "counts": {
-    "missing_symbols": 92,
+    "missing_symbols": 73,
     "no_function_surface": 1,
     "out_of_scope": 3,
     "packages": 9,
     "packages_without_evidence_tests": 3,
-    "surface_complete": 6,
-    "surface_gap": 2
+    "surface_complete": 7,
+    "surface_gap": 1
   },
   "decision": "D2.246",
   "milestone": "M4",
@@ -144,40 +144,18 @@
     {
       "evidence_tests": [],
       "exported": 59,
-      "missing_symbols": [
-        "ACE",
-        "ACE.iter",
-        "cor_boot",
-        "cor_perm_test",
-        "data_association",
-        "data_bucket",
-        "data_leverage",
-        "data_mcor",
-        "data_outliers",
-        "data_plot",
-        "data_response",
-        "data_xyplot",
-        "data_zscores",
-        "mcor",
-        "y_outliers",
-        "y_outliers_both",
-        "y_outliers_by",
-        "y_outliers_z",
-        "y_zscores"
-      ],
-      "next_action": "implement 19 missing symbols",
+      "missing_symbols": [],
+      "next_action": "upgrade evidence for 59 tested symbols to golden",
       "order": 3,
       "package": "gamlss.prepdata",
       "parity": {
-        "tested": 40,
-        "unverified": 19
+        "tested": 59
       },
       "priority": 3,
       "rationale": "data diagnostics support modelling but are not a fit path",
-      "status": "surface_gap",
+      "status": "surface_complete",
       "surface": {
-        "missing": 19,
-        "public_api": 40
+        "public_api": 59
       },
       "tracked_symbols": 59
     },
@@ -317,10 +295,10 @@
   "task": "P4 scope",
   "verdict": {
     "first_work_item": {
-      "missing": 19,
-      "next_action": "implement 19 missing symbols",
-      "package": "gamlss.prepdata",
-      "priority": 3
+      "missing": 73,
+      "next_action": "implement 73 missing symbols",
+      "package": "gamlss.ggplots",
+      "priority": 4
     },
     "inventory_complete": true,
     "notes": "This is a scope inventory, not an M4 gate. gamlss.cens and gamlss.tr already have full surface plus dedicated evidence modules; gamlss.mx is the first package with a surface gap, so it is the recommended next batch. Packages without a dedicated test module are flagged rather than assumed covered."
