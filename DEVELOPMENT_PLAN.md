@@ -437,9 +437,14 @@ surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件
   MX 与 NP 的拟合对活 R 对齐到 1e-6 / 1e-8（dev、prob、mu、sigma、mass points、
   EM 迭代数）；未移植分支（`pi.formula` 含协变量、`zero.component`、`mixture="gq"`、
   `random=~x`）显式抛 `NotImplementedError`，不近似。
-- **M4 状态（D2.264）**：全部 8 个周边包 surface 完整、缺口 0、无首个工作项，且
-  每个包都有专用证据模块（`packages_without_evidence_tests=0`）。下一步是 P5（ondil
-  在线层）与 P6（`log_bessel_kv` JAX 原生）。
+- **M4 状态（D2.265）**：全部 8 个周边包 surface 完整、缺口 0、无首个工作项；
+  每个包都有专用证据模块（`packages_without_evidence_tests=0`），并且 6 个周边包
+  各有活 R 一致性测试（`test_r_consistency_gamlss_*.py`），共 16 个符号的 parity
+  从 `tested` 升到 `r_consistency_test`：mx 3/12、add 4/15、spatial 2/9、
+  foreach 1/13、prepdata 1/59、ggplots 5/109。这 6 包的盘点动作已从
+  "upgrade evidence … to golden" 变为 "hold"。`gamlss.cens`/`gamlss.tr` 仍建议
+  提升到 golden（需要 golden manifest 语料，属独立的更大工作）。
+  下一步是 P5（ondil 在线层）与 P6（`log_bessel_kv` JAX 原生）。
 
 ### P5：ondil 在线层（独立轨道，独立发布，不混入 R 完成率）
 

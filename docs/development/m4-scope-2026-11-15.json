@@ -68,11 +68,12 @@
       ],
       "exported": 12,
       "missing_symbols": [],
-      "next_action": "upgrade evidence for 12 tested symbols to golden",
+      "next_action": "hold: surface complete and evidence modules exist",
       "order": 1,
       "package": "gamlss.mx",
       "parity": {
-        "tested": 12
+        "r_consistency_test": 3,
+        "tested": 9
       },
       "priority": 2,
       "rationale": "finite mixtures are the next modelling capability",
@@ -92,8 +93,8 @@
       "order": 2,
       "package": "gamlss.add",
       "parity": {
-        "r_consistency_test": 1,
-        "tested": 14
+        "r_consistency_test": 4,
+        "tested": 11
       },
       "priority": 2,
       "rationale": "additive terms (ga/ba/nn/fk/tr) extend the formula surface",
@@ -109,11 +110,12 @@
       ],
       "exported": 9,
       "missing_symbols": [],
-      "next_action": "upgrade evidence for 9 tested symbols to golden",
+      "next_action": "hold: surface complete and evidence modules exist",
       "order": 1,
       "package": "gamlss.spatial",
       "parity": {
-        "tested": 9
+        "r_consistency_test": 2,
+        "tested": 7
       },
       "priority": 3,
       "rationale": "spatial smoothers build on the smooth-term framework",
@@ -129,11 +131,12 @@
       ],
       "exported": 13,
       "missing_symbols": [],
-      "next_action": "upgrade evidence for 13 tested symbols to golden",
+      "next_action": "hold: surface complete and evidence modules exist",
       "order": 2,
       "package": "gamlss.foreach",
       "parity": {
-        "tested": 13
+        "r_consistency_test": 1,
+        "tested": 12
       },
       "priority": 3,
       "rationale": "parallel/bootstrap helpers are infrastructure",
@@ -149,11 +152,12 @@
       ],
       "exported": 59,
       "missing_symbols": [],
-      "next_action": "upgrade evidence for 59 tested symbols to golden",
+      "next_action": "hold: surface complete and evidence modules exist",
       "order": 3,
       "package": "gamlss.prepdata",
       "parity": {
-        "tested": 59
+        "r_consistency_test": 1,
+        "tested": 58
       },
       "priority": 3,
       "rationale": "data diagnostics support modelling but are not a fit path",
@@ -169,11 +173,12 @@
       ],
       "exported": 109,
       "missing_symbols": [],
-      "next_action": "upgrade evidence for 109 tested symbols to golden",
+      "next_action": "hold: surface complete and evidence modules exist",
       "order": 1,
       "package": "gamlss.ggplots",
       "parity": {
-        "tested": 109
+        "r_consistency_test": 5,
+        "tested": 104
       },
       "priority": 4,
       "rationale": "presentation layer; pixel parity is explicitly not required",
