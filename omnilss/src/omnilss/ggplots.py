@@ -2706,6 +2706,174 @@ def quantile_gamlss(obj: Any = None, quantile: float = 0.5, newdata: Any = None)
     return np.asarray(_fitted_quantile(obj, float(quantile), newdata), dtype=np.float64)
 
 
+
+
+# ---------------------------------------------------------------------------
+# Bivariate surface helpers (D2.261)
+# ---------------------------------------------------------------------------
+
+
+def _bivar_grid(
+    xlim: Sequence[float], ylim: Sequence[float], n: int
+) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
+    xs = np.linspace(float(xlim[0]), float(xlim[1]), int(n))
+    ys = np.linspace(float(ylim[0]), float(ylim[1]), int(n))
+    mesh = np.meshgrid(xs, ys, indexing="xy")
+    frame = pd.DataFrame({"x": mesh[0].ravel(), "y": mesh[1].ravel()})
+    return xs, ys, frame
+
+
+def _evaluate_bivariate(function: Any, xs: np.ndarray, ys: np.ndarray,
+                        vectorised: bool, kwargs: Mapping[str, Any]) -> np.ndarray:
+    if vectorised:
+        try:
+            values = np.asarray(function(xs, ys, **kwargs), dtype=np.float64).ravel()
+            if values.size == xs.size:
+                return values
+        except Exception:  # noqa: BLE001 - fall back to the scalar (mapply) path
+            pass
+    return np.array(
+        [float(function(xi, yi, **kwargs)) for xi, yi in zip(xs, ys)],
+        dtype=np.float64,
+    )
+
+
+@dataclass(frozen=True)
+class BivarSurface:
+    """Bivariate surface data: grids, the long frame, and an optional figure."""
+
+    x: np.ndarray
+    y: np.ndarray
+    z: np.ndarray
+    frame: pd.DataFrame
+    level: float | None = None
+    mass: float | None = None
+    figure: Any = None
+
+
+def bivar_fun(
+    fun: Any = None,
+    xlim: Sequence[float] = (-3, 3),
+    ylim: Sequence[float] = (-3, 3),
+    n: int = 100,
+    xlab: str = "x",
+    ylab: str = "y",
+    plot: bool = True,
+    **kwargs: Any,
+) -> BivarSurface:
+    """R bivar_fun: contour data of a bivariate function on an n x n grid.
+
+    R builds expand.grid(x, y) (x varying fastest) and evaluates fun(x, y, ...)
+    vectorised; the port returns the same long frame plus the Z matrix with rows
+    by x and columns by y (R's matrix(z, nrow = n)).
+    """
+
+    if fun is None or not callable(fun):
+        raise ValueError("bivar_fun needs a bivariate function")
+    xs, ys, frame = _bivar_grid(xlim, ylim, n)
+    values = _evaluate_bivariate(fun, frame["x"].to_numpy(), frame["y"].to_numpy(),
+                                 True, kwargs)
+    frame["z"] = values
+    z = values.reshape(int(n), int(n)).T
+    figure = None
+    if plot:
+        figure, axes = _figure()
+        if axes is not None:
+            mesh = np.meshgrid(xs, ys, indexing="xy")
+            axes.contourf(mesh[0], mesh[1], z.T, levels=12)
+            axes.set_xlabel(xlab)
+            axes.set_ylabel(ylab)
+    return BivarSurface(x=xs, y=ys, z=z, frame=frame, figure=figure)
+
+
+def bivar_fun_plotly(
+    f: Any = None,
+    xlim: Sequence[float] = (-3, 3),
+    ylim: Sequence[float] = (-3, 3),
+    n: int = 100,
+    plot: bool = True,
+    **kwargs: Any,
+) -> BivarSurface:
+    """R bivar_fun_plotly: surface data for plotly::add_surface.
+
+    plotly is not a dependency here, so the surface (x, y, Z) is returned and,
+    when plot and matplotlib are available, rendered as a 3-D surface instead.
+    """
+
+    if f is None or not callable(f):
+        raise ValueError("bivar_fun_plotly needs a bivariate function")
+    xs, ys, frame = _bivar_grid(xlim, ylim, n)
+    values = _evaluate_bivariate(f, frame["x"].to_numpy(), frame["y"].to_numpy(),
+                                 True, kwargs)
+    frame["z"] = values
+    z = values.reshape(int(n), int(n)).T
+    figure = None
+    if plot:
+        try:
+            import matplotlib
+
+            matplotlib.use("Agg", force=False)
+            import matplotlib.pyplot as plt
+
+            figure = plt.figure()
+            axes = figure.add_subplot(111, projection="3d")
+            mesh = np.meshgrid(xs, ys, indexing="xy")
+            axes.plot_surface(mesh[0], mesh[1], z.T, cmap="viridis")
+        except Exception:  # pragma: no cover - matplotlib is optional
+            figure = None
+    return BivarSurface(x=xs, y=ys, z=z, frame=frame, figure=figure)
+
+
+def bivar_pdf(
+    pdf: Any = None,
+    xlim: Sequence[float] = (-3, 3),
+    ylim: Sequence[float] = (-3, 3),
+    n: int = 200,
+    xlab: str = "x",
+    ylab: str = "y",
+    hdv: bool = True,
+    plot: bool = True,
+    **kwargs: Any,
+) -> BivarSurface:
+    """R bivar_pdf: bivariate density surface with the 50% HDR contour.
+
+    R evaluates the density with mapply (scalar calls), sorts the grid by
+    density, accumulates z * dx * dy, normalises by the maximum (not the total)
+    and takes the first cell reaching 0.5 as the median-region threshold.
+    """
+
+    if pdf is None or not callable(pdf):
+        raise ValueError("bivar_pdf needs a bivariate density function")
+    xs, ys, frame = _bivar_grid(xlim, ylim, n)
+    values = _evaluate_bivariate(pdf, frame["x"].to_numpy(), frame["y"].to_numpy(),
+                                 False, kwargs)
+    frame["z"] = values
+    z = values.reshape(int(n), int(n)).T
+    dx = float(xs[1] - xs[0]) if xs.size > 1 else 1.0
+    dy = float(ys[1] - ys[0]) if ys.size > 1 else 1.0
+    order = np.argsort(-values, kind="mergesort")
+    cumulative = np.cumsum(values[order]) * dx * dy
+    maximum = float(cumulative[-1]) if cumulative.size else 0.0
+    if maximum > 0:
+        cumulative = cumulative / maximum
+    index = int(np.argmax(cumulative >= 0.5)) if cumulative.size else 0
+    level = float(values[order][index]) if values.size else 0.0
+    mass = float(np.sum(values)) * dx * dy
+    figure = None
+    if plot:
+        figure, axes = _figure()
+        if axes is not None:
+            mesh = np.meshgrid(xs, ys, indexing="xy")
+            axes.contourf(mesh[0], mesh[1], z.T, levels=12, alpha=0.8)
+            axes.contour(mesh[0], mesh[1], z.T, levels=[level], colors="red")
+            axes.set_xlabel(xlab)
+            axes.set_ylabel(ylab)
+            axes.set_title("50% Probability Region (Median Region)")
+    return BivarSurface(
+        x=xs, y=ys, z=z, frame=frame, level=level, mass=mass, figure=figure
+    )
+
+
 __all__ = [
     "GGPlot",
     "add_resid_qqplot",
@@ -2723,7 +2891,11 @@ __all__ = [
     "fitted_pdf_data",
     "model_density",
     "model_qqplot",
+    "BivarSurface",
     "BucketSpec",
+    "bivar_fun",
+    "bivar_fun_plotly",
+    "bivar_pdf",
     "centile_bucket",
     "centile_bucket_wrap",
     "centile_colour_both",
