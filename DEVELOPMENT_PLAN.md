@@ -423,7 +423,7 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 （+ `.md`，tool `tools/m4_scope_inventory.py --check`）。按上面的优先级逐包记录
 surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件里出现但未分类的周边包直接报错。
 - **表面完整（2 包）**：`gamlss.cens`（5/5）、`gamlss.tr`（8/8），且都有专用证据模块。
-- **缺口（D2.246 时 6 包 120 个；D2.255 后仅 `gamlss.ggplots` 缺 60 个）**：
+- **缺口（D2.246 时 6 包 120 个；D2.256 后仅 `gamlss.ggplots` 缺 51 个）**：
   `gamlss.mx`（D2.247）、`gamlss.add`（D2.251）、`gamlss.spatial`（D2.252）、
   `gamlss.foreach`（D2.253）、`gamlss.prepdata`（D2.254）已补齐，连同 cens/tr 共
   **7 包 surface 完整**；只剩外观层 `gamlss.ggplots`。
@@ -435,7 +435,8 @@ surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件
   MX 与 NP 的拟合对活 R 对齐到 1e-6 / 1e-8（dev、prob、mu、sigma、mass points、
   EM 迭代数）；未移植分支（`pi.formula` 含协变量、`zero.component`、`mixture="gq"`、
   `random=~x`）显式抛 `NotImplementedError`，不近似。
-- **下一批**：`gamlss.ggplots` 剩余 60 个——先补样式/参考带变体与 `pe_*` 偏效应，
+- **下一批**：`gamlss.ggplots` 剩余 51 个——样式/参考带变体（`*_gray_*`/
+  `*_colour_*`/`*_half`/`*_wrap`/`*_lollipop`）与 `model_*` 包装，
   再处理 `bivar_*`/`pcr_*`/`boot_coef*`。
 
 ### P5：ondil 在线层（独立轨道，独立发布，不混入 R 完成率）
@@ -728,10 +729,13 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
 - [ ] P4-6 `gamlss.ggplots`（**D2.255 首批完成 14 个**：`y_hist`/`y_dots`（
   median±value·MAD 规则）、`fitted_pdf`/`fitted_cdf` 及 `*_data`、`model_qqplot`/
   `model_density`、`resid_qqplot`/`resid_density`/`resid_ecdf`/`resid_plots`/
-  `add_resid_qqplot`、`moment_bucket`；返回数据层 + 可选 matplotlib 渲染，像素一致性
-  按 P4 不要求。**剩余 60**：多为样式/参考带变体（`*_gray_*`/`*_colour_*`/
-  `*_half`/`*_wrap`/`*_lollipop`）与 `pe_*`（偏效应）/`model_*` 包装、
-  `bivar_*`、`pcr_*`、`boot_coef*`、`fit_PB`、`histSmo_plot`）
+  `add_resid_qqplot`、`moment_bucket`；**D2.256 再完成 9 个 `pe_*` 偏效应**：
+  `pe_1_parameter`/`pe_2_parameter`/`pe_param`/`pe_eta`/`pe_param_grid`/
+  `pe_eta_grid`/`pe_pdf`/`pe_pdf_grid`/`pe_terms`（沿协变量取参数/eta，其他变量
+  固定场景值，中心化后返回效果曲线）。返回数据层 + 可选 matplotlib 渲染，像素一致性
+  按 P4 不要求。**剩余 51**：多为样式/参考带变体（`*_gray_*`/`*_colour_*`/
+  `*_half`/`*_wrap`/`*_lollipop`）、`model_*` 包装、`bivar_*`、`pcr_*`、
+  `boot_coef*`、`fit_PB`、`histSmo_plot`、其余 `resid_*`）
 - [ ] P5-1 定义 OmniLSS↔ondil distribution contract 与独立流式 golden
 - [ ] P6-1 `log_bessel_kv` JAX 原生实现（含精度与耗时双验收）
 

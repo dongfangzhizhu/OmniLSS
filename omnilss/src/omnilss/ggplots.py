@@ -436,6 +436,259 @@ def _bucket_band(skew: float, n: int) -> tuple[tuple[float, float], ...]:
     return tuple((float(a), float(b)) for a, b in zip(xi, gamma2))
 
 
+
+
+# ---------------------------------------------------------------------------
+# pe_* partial effects (D2.256)
+# ---------------------------------------------------------------------------
+
+
+def _model_data(model: Any, data: Any, name: str) -> dict:
+    if data is not None:
+        return dict(data)
+    stored = (model.call or {}).get("data")
+    if stored is None:
+        raise ValueError(f"{name}: data are not defined for the model")
+    return dict(stored)
+
+
+def _scenario_frame(
+    model: Any,
+    values: Mapping[str, Any],
+    term: str,
+    grid: np.ndarray,
+    scenario: Mapping[str, Any] | None,
+    how_scenario: str,
+) -> dict[str, np.ndarray]:
+    """Hold every other covariate at its scenario value while term varies."""
+
+    scenario = dict(scenario or {})
+    frame = {}
+    for name, column in values.items():
+        array = np.asarray(column)
+        if name == term:
+            frame[name] = grid
+            continue
+        if name in scenario:
+            frame[name] = np.full(grid.size, scenario[name])
+            continue
+        if array.dtype.kind in "iuf":
+            numeric = np.asarray(array, dtype=np.float64)
+            if how_scenario == "last":
+                frame[name] = np.full(grid.size, float(numeric[-1]))
+            elif how_scenario == "median":
+                frame[name] = np.full(grid.size, float(np.median(numeric)))
+            else:
+                frame[name] = np.full(grid.size, float(np.mean(numeric)))
+        else:
+            levels = sorted({str(value) for value in array})
+            frame[name] = np.full(grid.size, levels[0], dtype=object)
+    return frame
+
+
+def _center_value(grid: np.ndarray, effect: np.ndarray, centered_from: str) -> float:
+    if centered_from == "none":
+        return 0.0
+    if centered_from == "median":
+        target = float(np.median(grid))
+    else:
+        target = float(np.mean(grid))
+    closest = int(np.argmin(np.abs(grid - target)))
+    return float(effect[closest])
+
+
+def pe_1_parameter(
+    obj: Any = None,
+    term: str = None,
+    data: Any = None,
+    n_points: int = 100,
+    parameter: str = "mu",
+    type: str = "parameter",
+    scenario: Mapping[str, Any] | None = None,
+    how_scenario: str = "median",
+    centered_from: str = "mean",
+    plot: bool = True,
+    **kwargs: Any,
+) -> GGPlot:
+    """R pe_1_parameter: one term's partial effect on a parameter or its eta.
+
+    The covariate is varied over its observed range while every other covariate
+    is held at the scenario value (median / last / mean), then the chosen
+    parameter is predicted and centred at its mean (default).
+    """
+
+    _require_model(obj, "pe_1_parameter")
+    if term is None:
+        raise ValueError("pe_1_parameter needs a term")
+    values = _model_data(obj, data, "pe_1_parameter")
+    if term not in values:
+        raise ValueError(f"term {term!r} is not in the data")
+    if parameter not in obj.family.parameters:
+        raise ValueError(f"parameter {parameter!r} is not in the family")
+    if str(type) not in {"parameter", "eta"}:
+        raise ValueError('type must be "parameter" or "eta"')
+    column = np.asarray(values[term])
+    if column.dtype.kind in "iuf":
+        numeric = np.asarray(column, dtype=np.float64)
+        grid = np.linspace(float(numeric.min()), float(numeric.max()), int(n_points))
+    else:
+        grid = np.asarray(sorted({str(value) for value in column}))
+    frame = _scenario_frame(obj, values, term, grid, scenario, how_scenario)
+    from .prediction import predict_params
+
+    predicted = np.asarray(predict_params(obj, frame)[parameter], dtype=np.float64)
+    if str(type) == "eta":
+        link = obj.family.link_functions[parameter]
+        import jax.numpy as jnp
+
+        raw = np.asarray(link(jnp.asarray(predicted, dtype=jnp.float64)), dtype=np.float64)
+    else:
+        raw = predicted
+    center = _center_value(grid, raw, str(centered_from))
+    effect = raw - center
+    figure, axes = _figure() if plot else (None, None)
+    if axes is not None:
+        axes.plot(grid, effect, color="darkblue")
+    return GGPlot(
+        "pe_1_parameter",
+        {
+            "term": term,
+            "x": grid,
+            "effect": effect,
+            "raw": raw,
+            "parameter": parameter,
+            "type": str(type),
+            "centered_at": center,
+            "centered_from": str(centered_from),
+        },
+        figure,
+    )
+
+
+def pe_param(obj: Any = None, term: str = None, **kwargs: Any) -> GGPlot:
+    """R pe_param: partial effect on the parameter scale (type = "parameter")."""
+
+    kwargs.pop("type", None)
+    return pe_1_parameter(obj, term, type="parameter", **kwargs)
+
+
+def pe_eta(obj: Any = None, term: str = None, **kwargs: Any) -> GGPlot:
+    """R pe_eta: partial effect on the linear-predictor scale."""
+
+    kwargs.pop("type", None)
+    return pe_1_parameter(obj, term, type="eta", **kwargs)
+
+
+def pe_2_parameter(obj: Any = None, terms: Any = None, **kwargs: Any) -> dict:
+    """R pe_2_parameter: partial effects for two (or more) terms."""
+
+    if terms is None:
+        raise ValueError("pe_2_parameter needs the terms")
+    terms = [terms] if isinstance(terms, str) else list(terms)
+    return {
+        str(term): pe_1_parameter(obj, str(term), **kwargs) for term in terms
+    }
+
+
+def pe_param_grid(obj: Any = None, terms: Any = None, **kwargs: Any) -> dict:
+    """R pe_param_grid: parameter-scale partial effects for several terms."""
+
+    kwargs.pop("type", None)
+    return pe_2_parameter(obj, terms, type="parameter", **kwargs)
+
+
+def pe_eta_grid(obj: Any = None, terms: Any = None, **kwargs: Any) -> dict:
+    """R pe_eta_grid: eta-scale partial effects for several terms."""
+
+    kwargs.pop("type", None)
+    return pe_2_parameter(obj, terms, type="eta", **kwargs)
+
+
+def pe_pdf(
+    obj: Any = None,
+    term: str = None,
+    data: Any = None,
+    n_points: int = 100,
+    parameter: str = "mu",
+    points: int = 5,
+    no_points: int = 201,
+    scenario: Mapping[str, Any] | None = None,
+    how_scenario: str = "median",
+    plot: bool = True,
+    **kwargs: Any,
+) -> GGPlot:
+    """R pe_pdf: fitted densities at several values of one term."""
+
+    _require_model(obj, "pe_pdf")
+    if term is None:
+        raise ValueError("pe_pdf needs a term")
+    values = _model_data(obj, data, "pe_pdf")
+    if term not in values:
+        raise ValueError(f"term {term!r} is not in the data")
+    column = np.asarray(values[term])
+    if column.dtype.kind not in "iuf":
+        grid = np.asarray(sorted({str(value) for value in column}))
+    else:
+        numeric = np.asarray(column, dtype=np.float64)
+        grid = np.linspace(float(numeric.min()), float(numeric.max()), int(n_points))
+    count = min(int(points), grid.size)
+    picks = np.unique(np.linspace(0, grid.size - 1, count).round().astype(int))
+    frame = _scenario_frame(obj, values, term, grid[picks], scenario, how_scenario)
+    from .prediction import predict_params
+
+    params = predict_params(obj, frame)
+    # The density grid spans the observed response range.
+    formula = (obj.call or {}).get("formula", "")
+    response_name = formula.split("~")[0].strip() if "~" in formula else list(values)[0]
+    response = np.asarray(values[response_name], dtype=np.float64)
+    density_grid = np.linspace(float(response.min()), float(response.max()), int(no_points))
+    curves = {}
+    for index, pick in enumerate(picks):
+        args = [
+            np.full(density_grid.size, np.asarray(params[name], dtype=np.float64)[index])
+            for name in obj.family.parameters
+        ]
+        curves[str(float(grid[pick]) if grid.dtype.kind in "iuf" else grid[pick])] = np.asarray(
+            obj.family.d(density_grid, *args), dtype=np.float64
+        )
+    figure, axes = _figure() if plot else (None, None)
+    if axes is not None:
+        for curve in curves.values():
+            axes.plot(density_grid, curve)
+    return GGPlot(
+        "pe_pdf",
+        {"term": term, "grid": density_grid, "values": grid[picks], "density": curves},
+        figure,
+    )
+
+
+def pe_pdf_grid(obj: Any = None, terms: Any = None, **kwargs: Any) -> dict:
+    """R pe_pdf_grid: densities along several terms."""
+
+    if terms is None:
+        raise ValueError("pe_pdf_grid needs the terms")
+    terms = [terms] if isinstance(terms, str) else list(terms)
+    return {str(term): pe_pdf(obj, str(term), **kwargs) for term in terms}
+
+
+def pe_terms(obj: Any = None, terms: Any = None, data: Any = None, **kwargs: Any) -> dict:
+    """R pe_terms: partial effects for the model's terms (or a given subset)."""
+
+    _require_model(obj, "pe_terms")
+    values = _model_data(obj, data, "pe_terms")
+    if terms is None:
+        formula = (obj.call or {}).get("formula", "")
+        rhs = formula.split("~", 1)[-1] if "~" in formula else ""
+        terms = [
+            part.strip() for part in rhs.split("+")
+            if part.strip() not in {"", "1", "-1"} and part.strip() in values
+        ]
+    terms = [terms] if isinstance(terms, str) else list(terms)
+    if not terms:
+        raise ValueError("pe_terms found no covariates to vary")
+    return {str(term): pe_1_parameter(obj, str(term), data=values, **kwargs) for term in terms}
+
+
 __all__ = [
     "GGPlot",
     "add_resid_qqplot",
@@ -446,6 +699,15 @@ __all__ = [
     "model_density",
     "model_qqplot",
     "moment_bucket",
+    "pe_1_parameter",
+    "pe_2_parameter",
+    "pe_eta",
+    "pe_eta_grid",
+    "pe_param",
+    "pe_param_grid",
+    "pe_pdf",
+    "pe_pdf_grid",
+    "pe_terms",
     "resid_density",
     "resid_ecdf",
     "resid_plots",
