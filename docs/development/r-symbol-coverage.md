@@ -10,14 +10,14 @@ Layer values are decoded in the `layer_legend` object of `r-symbol-coverage.json
 
 - R packages parsed: 12 (out of scope: gamlss2)
 - R exported symbols: 1080 (in scope: 1036)
-- Python surface matched: 1015 / missing: 65
+- Python surface matched: 1018 / missing: 62
 - Family-linked symbols: 531 (dpqr kernels: 424)
 - Python-only public exports: 417
 
-- **surface**: `missing` 65, `module_def` 223, `module_export` 103, `public_api` 513, `registry` 176
-- **kernel**: `compat_alias` 1, `experimental` 420, `implemented` 594, `missing` 65
-- **parity**: `capability:unsupported` 249, `capability:validated` 55, `golden:validated` 86, `r_consistency_test` 184, `tested` 397, `unverified` 109
-- **admission**: `blocked` 421, `exported_api` 407, `internal` 77, `not_available` 65, `production_safe` 110
+- **surface**: `missing` 62, `module_def` 223, `module_export` 103, `public_api` 516, `registry` 176
+- **kernel**: `compat_alias` 1, `experimental` 420, `implemented` 597, `missing` 62
+- **parity**: `capability:unsupported` 249, `capability:validated` 55, `golden:validated` 86, `r_consistency_test` 184, `tested` 400, `unverified` 106
+- **admission**: `blocked` 421, `exported_api` 410, `internal` 77, `not_available` 62, `production_safe` 110
 
 ## Per-package coverage
 
@@ -31,7 +31,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | gamlss.data | 6.0-9 | `d9f9597e6df3f7b9` | yes | 0 | 0 | 0 |
 | gamlss.dist | 6.1-8 | `59a3b7074378aaeb` | yes | 654 | 630 | 654 |
 | gamlss.foreach | 1.1-10 | `819542107cb0994b` | yes | 13 | 13 | 13 |
-| gamlss.ggplots | 2.1-34 | `cbe1ae29a3d583c1` | yes | 109 | 106 | 97 |
+| gamlss.ggplots | 2.1-34 | `cbe1ae29a3d583c1` | yes | 109 | 106 | 100 |
 | gamlss.mx | 6.0-4 | `b832557a4937461b` | yes | 12 | 12 | 12 |
 | gamlss.prepdata | 0.1.19 | `406a76c8aa06aa80` | yes | 59 | 58 | 59 |
 | gamlss.spatial | 3.0-3 | `af0e2b383e3eba93` | yes | 9 | 9 | 9 |
@@ -62,9 +62,6 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | histSmo_plot | gamlss.ggplots | function | R/gamlss.ggplots/R/histSmo_plot.R:10 |
 | pcr_coef_path | gamlss.ggplots | function | R/gamlss.ggplots/R/pcr_coef_path.R:14 |
 | pcr_path | gamlss.ggplots | function | R/gamlss.ggplots/R/pcr_coef_path.R:42 |
-| predict_cdf | gamlss.ggplots | function | R/gamlss.ggplots/R/predict_cdf.R:14 |
-| predict_pdf | gamlss.ggplots | function | R/gamlss.ggplots/R/predict_pdf.R:14 |
-| quantile_gamlss | gamlss.ggplots | function | R/gamlss.ggplots/R/resp_param.R:110 |
 | BS | gamlss2 | function | R/gamlss2/R/sampling.R:47 |
 | CG | gamlss2 | function | R/gamlss2/R/RS.R:714 |
 | GDF | gamlss2 | function | R/gamlss2/R/GDF.R:5 |
@@ -165,7 +162,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | fittedPlot | gamlss | - | missing | missing | unverified | not_available | 0 |
 | fp | gamlss | fp | public_api | implemented | tested | exported_api | 6 |
 | fv | gamlss | fv | public_api | implemented | tested | exported_api | 16 |
-| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 232 |
+| gamlss | gamlss | gamlss | public_api | implemented | r_consistency_test | exported_api | 233 |
 | gamlss.control | gamlss | gamlss_control | public_api | implemented | r_consistency_test | exported_api | 41 |
 | gamlss.cs | gamlss | gamlss_cs | public_api | implemented | tested | exported_api | 3 |
 | gamlss.cy | gamlss | gamlss_cy | public_api | implemented | tested | exported_api | 1 |
@@ -301,7 +298,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | BEOI | gamlss.dist | BEOI | public_api | experimental | r_consistency_test | blocked | 12 |
 | BEZI | gamlss.dist | BEZI | public_api | experimental | r_consistency_test | blocked | 12 |
 | BEo | gamlss.dist | BEo | public_api | implemented | r_consistency_test | exported_api | 6 |
-| BI | gamlss.dist | BI | public_api | implemented | r_consistency_test | production_safe | 30 |
+| BI | gamlss.dist | BI | public_api | implemented | r_consistency_test | production_safe | 31 |
 | BNB | gamlss.dist | BNB | public_api | experimental | r_consistency_test | blocked | 14 |
 | DBI | gamlss.dist | DBI | public_api | experimental | r_consistency_test | blocked | 13 |
 | DBURR12 | gamlss.dist | DBURR12 | public_api | experimental | r_consistency_test | blocked | 5 |
@@ -348,7 +345,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | NBI | gamlss.dist | NBI | public_api | implemented | r_consistency_test | production_safe | 20 |
 | NBII | gamlss.dist | NBII | public_api | implemented | r_consistency_test | production_safe | 12 |
 | NET | gamlss.dist | NET | public_api | implemented | r_consistency_test | production_safe | 15 |
-| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 166 |
+| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 167 |
 | NO2 | gamlss.dist | NO2 | public_api | implemented | r_consistency_test | production_safe | 8 |
 | NOF | gamlss.dist | NOF | public_api | experimental | r_consistency_test | blocked | 5 |
 | PARETO | gamlss.dist | PARETO | public_api | experimental | r_consistency_test | blocked | 7 |
@@ -360,7 +357,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | PE2 | gamlss.dist | PE2 | public_api | experimental | r_consistency_test | blocked | 11 |
 | PIG | gamlss.dist | PIG | public_api | experimental | r_consistency_test | blocked | 15 |
 | PIG2 | gamlss.dist | PIG2 | public_api | experimental | r_consistency_test | blocked | 5 |
-| PO | gamlss.dist | PO | public_api | implemented | r_consistency_test | production_safe | 34 |
+| PO | gamlss.dist | PO | public_api | implemented | r_consistency_test | production_safe | 35 |
 | RG | gamlss.dist | RG | public_api | implemented | r_consistency_test | production_safe | 7 |
 | RGE | gamlss.dist | RGE | public_api | experimental | r_consistency_test | blocked | 7 |
 | SEP | gamlss.dist | SEP | public_api | experimental | r_consistency_test | blocked | 6 |
@@ -1014,10 +1011,10 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | pe_pdf | gamlss.ggplots | pe_pdf | public_api | implemented | tested | exported_api | 1 |
 | pe_pdf_grid | gamlss.ggplots | pe_pdf_grid | public_api | implemented | tested | exported_api | 1 |
 | pe_terms | gamlss.ggplots | pe_terms | public_api | implemented | tested | exported_api | 1 |
-| predict_cdf | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
-| predict_pdf | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| predict_cdf | gamlss.ggplots | predict_cdf | public_api | implemented | tested | exported_api | 1 |
+| predict_pdf | gamlss.ggplots | predict_pdf | public_api | implemented | tested | exported_api | 1 |
 | prof_term | gamlss.ggplots | prof_term | public_api | implemented | tested | exported_api | 1 |
-| quantile_gamlss | gamlss.ggplots | - | missing | missing | unverified | not_available | 0 |
+| quantile_gamlss | gamlss.ggplots | quantile_gamlss | public_api | implemented | tested | exported_api | 1 |
 | resid_density | gamlss.ggplots | resid_density | public_api | implemented | tested | exported_api | 1 |
 | resid_dtop | gamlss.ggplots | resid_dtop | public_api | implemented | tested | exported_api | 1 |
 | resid_ecdf | gamlss.ggplots | resid_ecdf | public_api | implemented | tested | exported_api | 1 |

@@ -12,7 +12,7 @@
     "notice": "gamlss2 is out of scope for OmniLSS 1.0: separate spec / version / evidence, does not block 1.0 (deliverable plan sections 1.2, 22.6)."
   },
   "current_counts": {
-    "missing": 65,
+    "missing": 62,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
@@ -92,6 +92,9 @@
         "gamlss.ggplots::pe_pdf",
         "gamlss.ggplots::pe_pdf_grid",
         "gamlss.ggplots::pe_terms",
+        "gamlss.ggplots::predict_cdf",
+        "gamlss.ggplots::predict_pdf",
+        "gamlss.ggplots::quantile_gamlss",
         "gamlss.ggplots::resid_density",
         "gamlss.ggplots::resid_dtop",
         "gamlss.ggplots::resid_ecdf",
@@ -138,7 +141,7 @@
         "gamlss.spatial::gmrf",
         "gamlss.spatial::polys2polys"
       ],
-      "current_count": 65,
+      "current_count": 62,
       "baseline_count": 173
     },
     "placeholder": {
@@ -450,6 +453,18 @@
     {
       "category": "missing",
       "symbol": "gamlss.ggplots::pe_terms"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::predict_cdf"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::predict_pdf"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::quantile_gamlss"
     },
     {
       "category": "missing",
