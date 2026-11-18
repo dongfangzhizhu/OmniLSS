@@ -423,7 +423,7 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 （+ `.md`，tool `tools/m4_scope_inventory.py --check`）。按上面的优先级逐包记录
 surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件里出现但未分类的周边包直接报错。
 - **表面完整（2 包）**：`gamlss.cens`（5/5）、`gamlss.tr`（8/8），且都有专用证据模块。
-- **缺口（D2.246 时 6 包 120 个；D2.259 后仅 `gamlss.ggplots` 缺 12 个）**：
+- **缺口（D2.246 时 6 包 120 个；D2.260 后仅 `gamlss.ggplots` 缺 9 个）**：
   `gamlss.mx`（D2.247）、`gamlss.add`（D2.251）、`gamlss.spatial`（D2.252）、
   `gamlss.foreach`（D2.253）、`gamlss.prepdata`（D2.254）已补齐，连同 cens/tr 共
   **7 包 surface 完整**；只剩外观层 `gamlss.ggplots`。
@@ -435,9 +435,8 @@ surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件
   MX 与 NP 的拟合对活 R 对齐到 1e-6 / 1e-8（dev、prob、mu、sigma、mass points、
   EM 迭代数）；未移植分支（`pi.formula` 含协变量、`zero.component`、`mixture="gq"`、
   `random=~x`）显式抛 `NotImplementedError`，不近似。
-- **下一批**：`gamlss.ggplots` 剩余 12 个——`bivar_*`（3）、`pcr_*`（2）、
-  `predict_pdf`/`predict_cdf`/`quantile_gamlss`、`boot_coef*`（2）、`fit_PB`、
-  `histSmo_plot`。
+- **下一批**：`gamlss.ggplots` 剩余 9 个——`bivar_*`（3）、`pcr_*`（2）、
+  `boot_coef*`（2）、`fit_PB`、`histSmo_plot`。
 
 ### P5：ondil 在线层（独立轨道，独立发布，不混入 R 完成率）
 
@@ -747,7 +746,9 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   `centile_colour_half`/`centile_colour_both`/`centile_gray_both`（type=tail/central），
   `moment_bucket_wrap`/`centile_bucket`/`centile_bucket_wrap`（逐区间变换坐标 + CI95/
   模拟椭圆）。同时把 `momentSK`/`centileSK` 升级为 R 的加权/变换版本（对活 R 1e-15）。
-  **剩余 12**：`bivar_*`（3）、`pcr_*`（2）、`predict_*`/`quantile_gamlss`、
+  **D2.260 再完成 3 个预测辅助**：`predict_pdf`/`predict_cdf`（newdata 逐行的密度/
+  CDF 曲线，离散族用整数网格，lower_tail 可控，支持二项 bd 固定参数）、
+  `quantile_gamlss`（每观测一个分位数）。**剩余 9**：`bivar_*`（3）、`pcr_*`（2）、
   `boot_coef*`（2）、`fit_PB`、`histSmo_plot`）
 - [ ] P5-1 定义 OmniLSS↔ondil distribution contract 与独立流式 golden
 - [ ] P6-1 `log_bessel_kv` JAX 原生实现（含精度与耗时双验收）

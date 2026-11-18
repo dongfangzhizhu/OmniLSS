@@ -1896,7 +1896,9 @@ def fitted_survival(
         raise NotImplementedError(
             "fitted_survival's binomial branch (fixed bd) is not ported"
         )
-    discrete = str(getattr(model.family, "type_", "")).lower() == "discrete"
+    discrete = str(
+        getattr(model.family, "type", getattr(model.family, "type_", ""))
+    ).lower() == "discrete"
     grid = (
         np.arange(float(from_), float(to) + 1.0, 1.0)
         if discrete
@@ -2565,6 +2567,145 @@ def centile_bucket_wrap(
     )
 
 
+
+
+# ---------------------------------------------------------------------------
+# predict_pdf / predict_cdf / quantile_gamlss (D2.260)
+# ---------------------------------------------------------------------------
+
+
+def _newdata_parameters(model: Any, newdata: Any, name: str) -> dict[str, np.ndarray]:
+    if newdata is None:
+        raise ValueError(f"the argument newdata is required for {name}")
+    from .prediction import predict_params
+
+    params = predict_params(model, dict(newdata))
+    return {key: np.asarray(value, dtype=np.float64).ravel() for key, value in params.items()}
+
+
+def _prediction_grid(model: Any, from_: float, to: float, no_points: int) -> tuple[np.ndarray, bool]:
+    discrete = str(
+        getattr(model.family, "type", getattr(model.family, "type_", ""))
+    ).lower() == "discrete"
+    grid = (
+        np.arange(float(from_), float(to) + 1.0, 1.0)
+        if discrete
+        else np.linspace(float(from_), float(to), int(no_points))
+    )
+    return grid, discrete
+
+
+def _density_at_rows(
+    model: Any, params: Mapping[str, np.ndarray], grid: np.ndarray, kind: str
+) -> dict[str, np.ndarray]:
+    """Evaluate d/p per newdata row.
+
+    Fixed parameters (the binomial bd) are taken from the predictions as well:
+    predict_params returns them when newdata carries the column, and R's
+    predict_pdf passes them to the density in the same way.
+    """
+
+    fixed = list(getattr(model.family, "fixed_parameters", ()) or ())
+    names = list(model.family.parameters) + fixed
+    size = len(next(iter(params.values())))
+    curves = {}
+    for index in range(size):
+        kwargs = {}
+        for name in names:
+            if name in params:
+                kwargs[name] = float(np.asarray(params[name]).ravel()[index])
+        for name in fixed:
+            if name not in kwargs:
+                raise ValueError(
+                    f"{kind}: the fixed parameter {name!r} is not in newdata"
+                )
+        function = model.family.d if kind == "predict_pdf" else model.family.p
+        curves[str(index + 1)] = np.asarray(function(grid, **kwargs), dtype=np.float64)
+    return curves
+
+
+def predict_pdf(
+    model: Any = None,
+    newdata: Any = None,
+    title: str | None = None,
+    from_: float = 0,
+    to: float = 10,
+    no_points: int = 201,
+    alpha: float = 0.4,
+    plot: bool = True,
+    **kwargs: Any,
+) -> Any:
+    """R predict_pdf: fitted densities at the parameters of newdata rows."""
+
+    _require_model(model, "predict_pdf")
+    params = _newdata_parameters(model, newdata, "predict_pdf")
+    grid, discrete = _prediction_grid(model, from_, to, no_points)
+    curves = _density_at_rows(model, params, grid, "predict_pdf")
+    text = title or "Fitted pdf's from model"
+    data = {"grid": grid, "density": curves, "discrete": bool(discrete),
+            "rows": len(curves)}
+    if not plot:
+        return data
+    figure, axes = _figure()
+    if axes is not None:
+        for curve in curves.values():
+            if discrete:
+                axes.vlines(grid, 0.0, curve, alpha=alpha)
+            else:
+                axes.fill_between(grid, 0.0, curve, alpha=alpha)
+        axes.set_xlabel("y")
+        axes.set_ylabel(f"{model.family.name}(y)")
+        axes.set_title(text)
+    return GGPlot("predict_pdf", data, figure)
+
+
+def predict_cdf(
+    model: Any = None,
+    newdata: Any = None,
+    title: str | None = None,
+    from_: float = 0,
+    to: float = 10,
+    no_points: int = 201,
+    alpha: float = 0.4,
+    lower_tail: bool = True,
+    plot: bool = True,
+    **kwargs: Any,
+) -> Any:
+    """R predict_cdf: fitted CDFs at the parameters of newdata rows."""
+
+    _require_model(model, "predict_cdf")
+    params = _newdata_parameters(model, newdata, "predict_cdf")
+    grid, discrete = _prediction_grid(model, from_, to, no_points)
+    curves = _density_at_rows(model, params, grid, "predict_cdf")
+    if not lower_tail:
+        curves = {key: 1.0 - value for key, value in curves.items()}
+    text = title or "Predicted cdf's from model"
+    data = {"grid": grid, "cdf": curves, "discrete": bool(discrete),
+            "rows": len(curves), "lower_tail": bool(lower_tail)}
+    if not plot:
+        return data
+    figure, axes = _figure()
+    if axes is not None:
+        for curve in curves.values():
+            if discrete:
+                axes.step(grid, curve, where="post", alpha=alpha)
+            else:
+                axes.plot(grid, curve, alpha=alpha)
+        axes.set_xlabel("y")
+        axes.set_ylabel(f"{model.family.name}(y)")
+        axes.set_title(text)
+    return GGPlot("predict_cdf", data, figure)
+
+
+def quantile_gamlss(obj: Any = None, quantile: float = 0.5, newdata: Any = None) -> np.ndarray:
+    """R quantile_gamlss: one fitted quantile per observation (or newdata row)."""
+
+    _require_model(obj, "quantile_gamlss")
+    if not 0.0 < float(quantile) < 1.0:
+        raise ValueError("quantile should be between 0 and 1")
+    return np.asarray(_fitted_quantile(obj, float(quantile), newdata), dtype=np.float64)
+
+
 __all__ = [
     "GGPlot",
     "add_resid_qqplot",
@@ -2612,6 +2753,9 @@ __all__ = [
     "pe_param_grid",
     "pe_pdf",
     "pe_pdf_grid",
+    "predict_cdf",
+    "predict_pdf",
+    "quantile_gamlss",
     "pe_terms",
     "resid_density",
     "resid_dtop",
