@@ -12,7 +12,7 @@
     "notice": "gamlss2 is out of scope for OmniLSS 1.0: separate spec / version / evidence, does not block 1.0 (deliverable plan sections 1.2, 22.6)."
   },
   "current_counts": {
-    "missing": 94,
+    "missing": 75,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
@@ -50,8 +50,16 @@
         "gamlss.ggplots::add_resid_qqplot",
         "gamlss.ggplots::fitted_cdf",
         "gamlss.ggplots::fitted_cdf_data",
+        "gamlss.ggplots::fitted_centiles",
+        "gamlss.ggplots::fitted_centiles_gap",
+        "gamlss.ggplots::fitted_centiles_legend",
+        "gamlss.ggplots::fitted_devianceIncr",
+        "gamlss.ggplots::fitted_leverage",
         "gamlss.ggplots::fitted_pdf",
         "gamlss.ggplots::fitted_pdf_data",
+        "gamlss.ggplots::fitted_survival",
+        "gamlss.ggplots::fitted_survival_data",
+        "gamlss.ggplots::fitted_terms",
         "gamlss.ggplots::model_GAIC",
         "gamlss.ggplots::model_GAIC_lollipop",
         "gamlss.ggplots::model_TD",
@@ -75,9 +83,20 @@
         "gamlss.ggplots::pe_pdf_grid",
         "gamlss.ggplots::pe_terms",
         "gamlss.ggplots::resid_density",
+        "gamlss.ggplots::resid_dtop",
         "gamlss.ggplots::resid_ecdf",
+        "gamlss.ggplots::resid_median",
+        "gamlss.ggplots::resid_mu",
+        "gamlss.ggplots::resid_param",
         "gamlss.ggplots::resid_plots",
         "gamlss.ggplots::resid_qqplot",
+        "gamlss.ggplots::resid_quantile",
+        "gamlss.ggplots::resid_wp",
+        "gamlss.ggplots::resid_wp_wrap",
+        "gamlss.ggplots::resid_xvar",
+        "gamlss.ggplots::resp_mu",
+        "gamlss.ggplots::resp_param",
+        "gamlss.ggplots::resp_quantile",
         "gamlss.ggplots::y_hist",
         "gamlss.mx::gamlssMX",
         "gamlss.mx::gamlssMXfits",
@@ -109,7 +128,7 @@
         "gamlss.spatial::gmrf",
         "gamlss.spatial::polys2polys"
       ],
-      "current_count": 94,
+      "current_count": 75,
       "baseline_count": 173
     },
     "placeholder": {
@@ -255,11 +274,43 @@
     },
     {
       "category": "missing",
+      "symbol": "gamlss.ggplots::fitted_centiles"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::fitted_centiles_gap"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::fitted_centiles_legend"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::fitted_devianceIncr"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::fitted_leverage"
+    },
+    {
+      "category": "missing",
       "symbol": "gamlss.ggplots::fitted_pdf"
     },
     {
       "category": "missing",
       "symbol": "gamlss.ggplots::fitted_pdf_data"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::fitted_survival"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::fitted_survival_data"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::fitted_terms"
     },
     {
       "category": "missing",
@@ -355,7 +406,23 @@
     },
     {
       "category": "missing",
+      "symbol": "gamlss.ggplots::resid_dtop"
+    },
+    {
+      "category": "missing",
       "symbol": "gamlss.ggplots::resid_ecdf"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::resid_median"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::resid_mu"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::resid_param"
     },
     {
       "category": "missing",
@@ -364,6 +431,34 @@
     {
       "category": "missing",
       "symbol": "gamlss.ggplots::resid_qqplot"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::resid_quantile"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::resid_wp"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::resid_wp_wrap"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::resid_xvar"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::resp_mu"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::resp_param"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::resp_quantile"
     },
     {
       "category": "missing",
