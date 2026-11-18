@@ -97,8 +97,12 @@ def test_first_work_item_is_the_first_gap_in_plan_order(artifact):
         (row for row in artifact["packages"] if row["missing_symbols"]),
         key=lambda row: (row["priority"], row["order"]),
     )
-    expected = ordered[0]
     first = artifact["verdict"]["first_work_item"]
+    if not ordered:
+        # M4 完成（D2.263）：没有缺口时不应再报首个工作项。
+        assert first is None
+        return
+    expected = ordered[0]
     assert first["package"] == expected["package"]
     assert first["priority"] == expected["priority"]
     assert first["missing"] == len(expected["missing_symbols"])

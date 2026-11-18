@@ -2998,6 +2998,378 @@ def boot_coef(
     return charts
 
 
+
+
+# ---------------------------------------------------------------------------
+# P-spline helper, PCR paths and smoothed histograms (D2.263)
+# ---------------------------------------------------------------------------
+
+
+def _tpower(x: np.ndarray, knots: np.ndarray, power: int) -> np.ndarray:
+    return np.power(np.maximum(x[:, None] - knots[None, :], 0.0), power)
+
+
+def _bbase(x: np.ndarray, xl: float, xr: float, ndx: int, deg: int) -> tuple[np.ndarray, np.ndarray]:
+    """R fit_PB::bbase: truncated-power B-spline basis."""
+
+    dx = (xr - xl) / ndx
+    knots = np.arange(xl - deg * dx, xr + deg * dx + dx / 2.0, dx)
+    design = _tpower(x, knots, deg)
+    count = design.shape[1]
+    difference = np.diff(np.eye(count), n=deg + 1, axis=0) / (_gamma(deg + 1) * dx**deg)
+    basis = (-1.0) ** (deg + 1) * design @ difference.T
+    return basis, knots
+
+
+def _gamma(value: int) -> float:
+    from math import gamma
+
+    return float(gamma(value))
+
+
+def _regpen(
+    response: np.ndarray, root_w: np.ndarray, design: np.ndarray,
+    penalty: np.ndarray, lambda_: float,
+) -> dict[str, Any]:
+    """R fit_PB::regpen via SVD of rbind(R, sqrt(lambda) * D)."""
+
+    q, r = np.linalg.qr(root_w[:, None] * design)
+    coefficients = design.shape[1]
+    qy = q.T @ (root_w * response)
+    stacked = np.vstack([r, np.sqrt(lambda_) * penalty])
+    u, d, vt = np.linalg.svd(stacked, full_matrices=False)
+    threshold = d.max() * np.finfo(np.float64).eps**0.8 if d.size else 0.0
+    rank = int(np.sum(d > threshold))
+    u1 = u[:coefficients, :rank]
+    y1 = u1.T @ qy
+    beta = vt[:rank].T @ (y1 / d[:rank])
+    hat = u1 @ u1.T
+    edf = float(np.trace(hat))
+    vcov = vt.T @ np.diag(1.0 / d**2) @ vt
+    weights = root_w**2
+    leverage = np.sum((design @ vcov) * design, axis=1) * weights
+    return {"beta": beta, "edf": edf, "leverage": leverage, "vcov": vcov}
+
+
+@dataclass(frozen=True)
+class PSplineFit:
+    """R fit_PB's "Psplines" object, reduced to the plotting payload."""
+
+    x: np.ndarray
+    y: np.ndarray
+    fitted_values: np.ndarray
+    lower: np.ndarray
+    upper: np.ndarray
+    coef: np.ndarray
+    lambda_: float
+    sigma: float
+    sigma_b: float
+    df: float
+    deviance: float
+    deviance_increment: np.ndarray
+    penalty: float
+    knots: np.ndarray
+    grid: np.ndarray
+    smooth: np.ndarray
+    var_fitted: np.ndarray
+    vcov_coef: np.ndarray
+    xname: str
+    yname: str
+    figure: Any = None
+
+
+def fit_PB(
+    x: Any = None,
+    y: Any = None,
+    weights: Any = None,
+    data: Any = None,
+    xmin: float | None = None,
+    xmax: float | None = None,
+    nseg: int = 20,
+    lambda_: float = 10,
+    order: int = 2,
+    degree: int = 3,
+    max_df: float = 20,
+    ylim: Any = None,
+    plot: bool = False,
+    col_ribbon: str = "pink",
+    xname: str = "x",
+    yname: str = "y",
+) -> PSplineFit:
+    """R fit_PB: penalized B-spline fit with the REML-type lambda update."""
+
+    if data is not None:
+        x = np.asarray(data[x] if isinstance(x, str) else x, dtype=np.float64)
+        y = np.asarray(data[y] if isinstance(y, str) else y, dtype=np.float64)
+        if isinstance(weights, str):
+            weights = data[weights]
+    if x is None or y is None:
+        raise ValueError("fit_PB needs x and y")
+    x_values = np.asarray(x, dtype=np.float64).ravel()
+    y_values = np.asarray(y, dtype=np.float64).ravel()
+    if x_values.size != y_values.size:
+        raise ValueError("x and y must have the same length")
+    w = (
+        np.ones(x_values.size)
+        if weights is None
+        else np.asarray(weights, dtype=np.float64).ravel()
+    )
+    if w.size != y_values.size:
+        raise ValueError("response and weights should be the same length")
+    basis, knots = _bbase(x_values, float(x_values.min()), float(x_values.max()), int(nseg), int(degree))
+    nb = basis.shape[1]
+    penalty = np.diff(np.eye(nb), n=int(order), axis=0)
+    n = x_values.size
+    root_w = np.sqrt(w)
+    n_obs = float(np.sum(w != 0))
+
+    lambda_value = float(lambda_)
+    lambda_value = min(max(lambda_value, 1e-7), 1e7)
+    fit = _regpen(y_values, root_w, basis, penalty, lambda_value)
+    sigma2 = 0.0
+    tau2 = 1e-7
+    for _ in range(50):
+        fitted = basis @ fit["beta"]
+        gamma_diff = penalty @ np.asarray(fit["beta"]).ravel()
+        sigma2 = float(np.sum(w * (y_values - fitted) ** 2) / max(n_obs - fit["edf"], 1e-12))
+        tau2 = float(np.sum(gamma_diff**2) / max(fit["edf"] - int(order), 1e-12))
+        if tau2 < 1e-7:
+            tau2 = 1e-7
+        previous = lambda_value
+        lambda_value = sigma2 / tau2
+        lambda_value = min(max(lambda_value, 1e-7), 1e7)
+        if abs(lambda_value - previous) < 1e-7:
+            break
+        fit = _regpen(y_values, root_w, basis, penalty, lambda_value)
+
+    if fit["edf"] >= float(max_df):
+        def edf_gap(log_lambda: float) -> float:
+            return _regpen(y_values, root_w, basis, penalty, float(np.exp(log_lambda)))["edf"] - float(max_df)
+
+        from scipy.optimize import brentq
+
+        low, high = -30.0, 30.0
+        if np.sign(edf_gap(low)) == np.sign(edf_gap(high)):
+            log_lambda = 30.0
+        else:
+            log_lambda = float(brentq(edf_gap, low, high))
+        lambda_value = float(np.exp(log_lambda))
+        fit = _regpen(y_values, root_w, basis, penalty, lambda_value)
+
+    beta = np.asarray(fit["beta"], dtype=np.float64).ravel()
+    fitted = basis @ beta
+    variance_fitted = (
+        np.asarray(fit["leverage"], dtype=np.float64) / np.where(w == 0, 1.0, w) * sigma2
+    )
+    lower = fitted - 2.0 * np.sqrt(variance_fitted)
+    upper = fitted + 2.0 * np.sqrt(variance_fitted)
+    sigma = float(np.sqrt(max(sigma2, 0.0)))
+    from scipy.interpolate import CubicSpline
+
+    grid = np.linspace(float(x_values.min()), float(x_values.max()), 500)
+    basis_grid, _ = _bbase(grid, float(x_values.min()), float(x_values.max()), int(nseg), int(degree))
+    smooth = basis_grid @ beta
+    # R: splinefun(x1, z, method = "natural")
+    spline = CubicSpline(grid, smooth, bc_type="natural")
+    log_density = -0.5 * np.log(2.0 * np.pi * sigma**2) - 0.5 * (y_values - fitted) ** 2 / sigma**2
+    deviance_increment = -2.0 * log_density
+    graph = penalty.T @ penalty
+    figure = None
+    if plot:
+        figure, axes = _figure()
+        if axes is not None:
+            axes.scatter(x_values, y_values, s=4, color="black")
+            axes.plot(x_values, fitted, color="blue")
+            order_idx = np.argsort(x_values)
+            axes.fill_between(x_values[order_idx], lower[order_idx], upper[order_idx],
+                              alpha=0.5, color=col_ribbon)
+            axes.set_xlabel(xname)
+            axes.set_ylabel(yname)
+    return PSplineFit(
+        x=x_values,
+        y=y_values,
+        fitted_values=fitted,
+        lower=lower,
+        upper=upper,
+        coef=beta,
+        lambda_=lambda_value,
+        sigma=sigma,
+        sigma_b=float(np.sqrt(tau2)),
+        df=float(fit["edf"]),
+        deviance=float(np.sum(deviance_increment)),
+        deviance_increment=deviance_increment,
+        penalty=float(lambda_value * beta @ graph @ beta),
+        knots=knots,
+        grid=grid,
+        smooth=smooth,
+        var_fitted=variance_fitted,
+        vcov_coef=np.asarray(fit["vcov"], dtype=np.float64) * sigma2,
+        xname=xname,
+        yname=yname,
+        figure=figure,
+    )
+
+
+
+
+def pcr_coef_path(x: Any = None, legend: bool = False, plot: bool = True) -> Any:
+    """R pcr_coef_path: coefficient paths of a PCR object.
+
+    R builds da = t(coefficients[1:M, 1:M]) and plots c(da) against c(row(da))
+    grouped by c(col(da)); the frame below keeps that (lambda, beta, group) layout
+    with lambda = row index and group = column index of da (both 1-based).
+    """
+
+    if x is None or not hasattr(x, "coefficients") or not hasattr(x, "gamma"):
+        raise ValueError("the object should be a PCR class")
+    coefficients = np.asarray(x.coefficients, dtype=np.float64)
+    count = len(np.ravel(np.asarray(x.gamma, dtype=np.float64)))
+    if coefficients.ndim != 2 or coefficients.shape[0] < count:
+        raise ValueError("the PCR coefficients do not match the gamma length")
+    da = coefficients[:count, :count].T
+    rows, columns = np.indices(da.shape)
+    frame = pd.DataFrame(
+        {
+            "lambda": rows.ravel(order="F") + 1,
+            "beta": da.ravel(order="F"),
+            "group": columns.ravel(order="F") + 1,
+        }
+    )
+    data = {"data": frame, "pc": int(getattr(x, "pc", 0)), "legend": bool(legend)}
+    if not plot:
+        return data
+    figure, axes = _figure()
+    if axes is not None:
+        for group, part in frame.groupby("group", sort=True):
+            axes.plot(part["lambda"], part["beta"], linewidth=0.8)
+        axes.set_xlabel("lambda")
+        axes.set_ylabel("beta")
+        if not legend:
+            axes.legend().remove() if axes.get_legend() else None
+    return GGPlot("pcr_coef_path", data, figure)
+
+
+def pcr_path(
+    x: Any = None,
+    parameter: str = "mu",
+    legend: bool = False,
+    plot: bool = True,
+) -> Any:
+    """R pcr_path: coefficient paths of the PCR smoother inside a gamlss model."""
+
+    _require_model(x, "pcr_path")
+    if str(parameter) not in {"mu", "sigma", "nu", "tau"}:
+        raise ValueError('parameter must be one of "mu", "sigma", "nu", "tau"')
+    slots = getattr(x, "additional_slots", None) or {}
+    smooth_fits = dict(slots.get("smooth_fits") or {}).get(str(parameter)) or []
+    selected = None
+    for smooth in smooth_fits:
+        candidate = getattr(smooth, "coef_smo", None)
+        if (
+            candidate is not None
+            and hasattr(candidate, "coefficients")
+            and hasattr(candidate, "gamma")
+            and hasattr(candidate, "pc")
+        ):
+            selected = candidate
+            break
+    if selected is None:
+        raise NotImplementedError(
+            "no PCR smoother found in this model; fit the path with "
+            "pcr_coef_path(fit_pcr(...)) instead"
+        )
+    result = pcr_coef_path(selected, legend=legend, plot=plot)
+    if isinstance(result, dict):
+        return {**result, "pc": int(selected.pc)}
+    data = dict(result.data)
+    figure = result.figure
+    if plot:
+        figure, axes = _figure()
+        if axes is not None:
+            frame = data["data"]
+            for group, part in frame.groupby("group", sort=True):
+                axes.plot(part["lambda"], part["beta"], linewidth=0.8)
+            axes.axvline(int(selected.pc), color="gray")
+            axes.set_xlabel("lambda")
+            axes.set_ylabel("beta")
+    return GGPlot("pcr_path", data, figure)
+
+
+def _field(obj: Any, name: str, default: Any = None) -> Any:
+    if isinstance(obj, Mapping):
+        return obj.get(name, default)
+    return getattr(obj, name, default)
+
+
+def histSmo_plot(
+    x: Any = None,
+    col_fill_bar: str = "gray",
+    col_bar: str = "pink",
+    col_line: str = "darkblue",
+    width_line: float = 1,
+    title: str | None = None,
+    xlabel: str | None = None,
+    plot: bool = True,
+) -> Any:
+    """R histSmo_plot: histogram bars plus the smoothed density.
+
+    Accepts R's histSmo payload (an object/dict with discrete, x, density and
+    hist) as well as this package's HistSmoResult, for which the smoothed curve
+    is evaluated at the bin mids (the reduced payload has no separate grid).
+    """
+
+    if x is None:
+        raise ValueError("this function is designated for histSmo objects")
+    discrete = bool(_field(x, "discrete", False))
+    if "hist" in (x.keys() if isinstance(x, Mapping) else dir(x)) and _field(x, "hist") is not None:
+        hist = _field(x, "hist")
+        counts = np.asarray(_field(hist, "counts"), dtype=np.float64)
+        mids = np.asarray(_field(hist, "mids"), dtype=np.float64)
+        density = np.asarray(_field(hist, "density"), dtype=np.float64)
+        xname = str(_field(hist, "xname", "x"))
+        curve_x = np.asarray(_field(x, "x", mids), dtype=np.float64)
+        curve_y = np.asarray(_field(x, "density", density), dtype=np.float64)
+    elif hasattr(x, "bin_edges"):
+        edges = np.asarray(x.bin_edges, dtype=np.float64)
+        counts = np.asarray(x.counts, dtype=np.float64)
+        mids = 0.5 * (edges[1:] + edges[:-1])
+        density = np.asarray(x.density, dtype=np.float64)
+        xname = "x"
+        curve_x = mids
+        curve_y = density
+    else:
+        counts = np.asarray(_field(x, "counts"), dtype=np.float64)
+        mids = np.asarray(_field(x, "x"), dtype=np.float64)
+        density = np.asarray(_field(x, "density"), dtype=np.float64)
+        xname = str(_field(x, "xname", "x"))
+        curve_x = mids
+        curve_y = density
+    if discrete:
+        frequency = counts / float(np.sum(counts)) if np.sum(counts) else counts
+        bars_x, curve_x, curve_y = mids, mids, density
+    else:
+        frequency = density
+    text = title or f"smooth histogram of {xname}"
+    data = {
+        "bars": pd.DataFrame({"x": mids, "freq": frequency}),
+        "curve": pd.DataFrame({"x": np.asarray(curve_x), "density": np.asarray(curve_y)}),
+        "discrete": discrete,
+        "xname": xname,
+        "title": text,
+    }
+    if not plot:
+        return data
+    figure, axes = _figure()
+    if axes is not None:
+        width = float(mids[1] - mids[0]) * 0.9 if mids.size > 1 else 0.5
+        axes.bar(mids, frequency, width=width, color=col_fill_bar, edgecolor=col_bar)
+        axes.plot(np.asarray(curve_x), np.asarray(curve_y), color=col_line, linewidth=width_line)
+        axes.set_ylabel("Frequency" if discrete else "density")
+        axes.set_xlabel(xlabel if xlabel is not None else ("" if discrete else xname))
+        axes.set_title(text)
+    return GGPlot("histSmo_plot", data, figure)
+
+
 __all__ = [
     "GGPlot",
     "add_resid_qqplot",
@@ -3011,6 +3383,11 @@ __all__ = [
     "fitted_survival",
     "fitted_survival_data",
     "fitted_terms",
+    "fit_PB",
+    "histSmo_plot",
+    "pcr_coef_path",
+    "pcr_path",
+    "PSplineFit",
     "fitted_pdf",
     "fitted_pdf_data",
     "model_density",

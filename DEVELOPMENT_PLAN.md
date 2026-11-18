@@ -422,11 +422,11 @@ R 自己在 gamlss-5.R:305 只用绝对变化（`abs(G.dev.old-G.dev) > c.crit`�
 **P4 范围盘点（2026-11-15，D2.246）**：见 `docs/development/m4-scope-2026-11-15.json`
 （+ `.md`，tool `tools/m4_scope_inventory.py --check`）。按上面的优先级逐包记录
 surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件里出现但未分类的周边包直接报错。
-- **表面完整（2 包）**：`gamlss.cens`（5/5）、`gamlss.tr`（8/8），且都有专用证据模块。
-- **缺口（D2.246 时 6 包 120 个；D2.262 后仅 `gamlss.ggplots` 缺 4 个）**：
-  `gamlss.mx`（D2.247）、`gamlss.add`（D2.251）、`gamlss.spatial`（D2.252）、
-  `gamlss.foreach`（D2.253）、`gamlss.prepdata`（D2.254）已补齐，连同 cens/tr 共
-  **7 包 surface 完整**；只剩外观层 `gamlss.ggplots`。
+- **表面完整（8 包，D2.263 达成）**：`gamlss.cens`（5/5）、`gamlss.tr`（8/8）、
+  `gamlss.mx`（12/12，D2.247）、`gamlss.add`（15/15，D2.251）、
+  `gamlss.spatial`（9/9，D2.252）、`gamlss.foreach`（13/13，D2.253）、
+  `gamlss.prepdata`（59/59，D2.254）、`gamlss.ggplots`（109/109，D2.255–D2.263）。
+  覆盖缺口从 D2.246 的 6 包 120 个降到 **0**。
 - **无函数表面（1 包）**：`gamlss.data`（仅数据集）。
 - **无专用证据模块（3 包）**：`gamlss.foreach`、`gamlss.prepdata`、`gamlss.ggplots`——
   标为待补证据，而不是假定覆盖。
@@ -435,8 +435,9 @@ surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件
   MX 与 NP 的拟合对活 R 对齐到 1e-6 / 1e-8（dev、prob、mu、sigma、mass points、
   EM 迭代数）；未移植分支（`pi.formula` 含协变量、`zero.component`、`mixture="gq"`、
   `random=~x`）显式抛 `NotImplementedError`，不近似。
-- **下一批**：`gamlss.ggplots` 剩余 4 个——`pcr_path`/`pcr_coef_path`、
-  `fit_PB`、`histSmo_plot`（最后一组）。
+- **M4 状态（D2.263）**：全部 8 个周边包 surface 完整，缺口 0，无首个工作项。
+  剩余的是「证据模块」补强（`gamlss.foreach`/`gamlss.prepdata`/`gamlss.ggplots`
+  目前用跨包测试文件而非专用证据模块），以及 P5（ondil）与 P6。
 
 ### P5：ondil 在线层（独立轨道，独立发布，不混入 R 完成率）
 
@@ -725,7 +726,8 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   `mcor`/`data_mcor`、`association`/`data_association`（Cramér's V 偏差校正 /
   Spearman / sqrt(R²)）、`data_bucket`/`data_leverage`/`data_plot`/`data_response`/
   `data_xyplot`。绘图降级为结构化结果。`gamlss.prepdata` **surface 59/59 完整**）
-- [ ] P4-6 `gamlss.ggplots`（**D2.255 首批完成 14 个**：`y_hist`/`y_dots`（
+- [x] P4-6 `gamlss.ggplots` 补齐 73 个符号（D2.255–D2.263 完成 **109/109**；
+  **D2.255 首批完成 14 个**：`y_hist`/`y_dots`（
   median±value·MAD 规则）、`fitted_pdf`/`fitted_cdf` 及 `*_data`、`model_qqplot`/
   `model_density`、`resid_qqplot`/`resid_density`/`resid_ecdf`/`resid_plots`/
   `add_resid_qqplot`、`moment_bucket`；**D2.256 再完成 9 个 `pe_*` 偏效应**：
@@ -753,7 +755,10 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   `bivar_pdf`（按密度排序累积分位质量，取 50% HDR 阈值）。**D2.262 再完成 2 个自助系数图**：
   `boot_coef`/`boot_coef_one`（逐系数密度 + 原估计 + 2.5/50/97.5 分位线；列名遵循
   R 的 `mu.(Intercept)` 形式），并修复多参数模型 bootstrap 丢失 sigma/nu/tau 公式的缺陷。
-  **剩余 4**：`pcr_path`/`pcr_coef_path`、`fit_PB`、`histSmo_plot`）
+  **D2.263 收尾 4 个**：`fit_PB`（P-spline + REML 型 lambda 迭代，lambda/df/sigma/deviance
+  与活 R 一致到 1e-9）、`pcr_coef_path`/`pcr_path`（PCR 系数路径，长表顺序照 R 的
+  c(row/c(col))）、`histSmo_plot`（直方图 + 平滑密度，兼容 R 的 histSmo 载荷与本包
+  HistSmoResult）。**gamlss.ggplots surface 109/109 完整**）
 - [ ] P5-1 定义 OmniLSS↔ondil distribution contract 与独立流式 golden
 - [ ] P6-1 `log_bessel_kv` JAX 原生实现（含精度与耗时双验收）
 
