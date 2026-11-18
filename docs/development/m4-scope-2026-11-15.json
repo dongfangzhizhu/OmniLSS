@@ -4,7 +4,7 @@
     "no_function_surface": 1,
     "out_of_scope": 3,
     "packages": 9,
-    "packages_without_evidence_tests": 3,
+    "packages_without_evidence_tests": 0,
     "surface_complete": 8,
     "surface_gap": 0
   },
@@ -124,7 +124,9 @@
       "tracked_symbols": 9
     },
     {
-      "evidence_tests": [],
+      "evidence_tests": [
+        "test_gamlss_foreach_evidence.py"
+      ],
       "exported": 13,
       "missing_symbols": [],
       "next_action": "upgrade evidence for 13 tested symbols to golden",
@@ -142,7 +144,9 @@
       "tracked_symbols": 13
     },
     {
-      "evidence_tests": [],
+      "evidence_tests": [
+        "test_gamlss_prepdata_evidence.py"
+      ],
       "exported": 59,
       "missing_symbols": [],
       "next_action": "upgrade evidence for 59 tested symbols to golden",
@@ -160,7 +164,9 @@
       "tracked_symbols": 59
     },
     {
-      "evidence_tests": [],
+      "evidence_tests": [
+        "test_gamlss_ggplots_evidence.py"
+      ],
       "exported": 109,
       "missing_symbols": [],
       "next_action": "upgrade evidence for 109 tested symbols to golden",

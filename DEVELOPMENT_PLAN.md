@@ -428,16 +428,18 @@ surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件
   `gamlss.prepdata`（59/59，D2.254）、`gamlss.ggplots`（109/109，D2.255–D2.263）。
   覆盖缺口从 D2.246 的 6 包 120 个降到 **0**。
 - **无函数表面（1 包）**：`gamlss.data`（仅数据集）。
-- **无专用证据模块（3 包）**：`gamlss.foreach`、`gamlss.prepdata`、`gamlss.ggplots`——
-  标为待补证据，而不是假定覆盖。
+- **专用证据模块（D2.264 补齐）**：`gamlss.foreach`（`test_gamlss_foreach_evidence.py`）、
+  `gamlss.prepdata`（`test_gamlss_prepdata_evidence.py`）、`gamlss.ggplots`
+  （`test_gamlss_ggplots_evidence.py`）——三者都先核对覆盖工件（符号数、surface、
+  parity），再跑各自的工作流；`packages_without_evidence_tests` 从 3 降到 **0**。
 - **首批已完成（D2.247）**：`gamlss.mx` 的 `gamlssMX` / `gamlssMXfits` / `gamlssNP` /
   `plotMP` 全部落地，12/12 符号 surface=public_api、kernel=implemented、parity=tested。
   MX 与 NP 的拟合对活 R 对齐到 1e-6 / 1e-8（dev、prob、mu、sigma、mass points、
   EM 迭代数）；未移植分支（`pi.formula` 含协变量、`zero.component`、`mixture="gq"`、
   `random=~x`）显式抛 `NotImplementedError`，不近似。
-- **M4 状态（D2.263）**：全部 8 个周边包 surface 完整，缺口 0，无首个工作项。
-  剩余的是「证据模块」补强（`gamlss.foreach`/`gamlss.prepdata`/`gamlss.ggplots`
-  目前用跨包测试文件而非专用证据模块），以及 P5（ondil）与 P6。
+- **M4 状态（D2.264）**：全部 8 个周边包 surface 完整、缺口 0、无首个工作项，且
+  每个包都有专用证据模块（`packages_without_evidence_tests=0`）。下一步是 P5（ondil
+  在线层）与 P6（`log_bessel_kv` JAX 原生）。
 
 ### P5：ondil 在线层（独立轨道，独立发布，不混入 R 完成率）
 
