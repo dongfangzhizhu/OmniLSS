@@ -12,11 +12,11 @@
     "notice": "gamlss2 is out of scope for OmniLSS 1.0: separate spec / version / evidence, does not block 1.0 (deliverable plan sections 1.2, 22.6)."
   },
   "current_counts": {
-    "missing": 62,
+    "missing": 59,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 417
+    "extra": 418
   },
   "category_meaning": {
     "missing": "R 导出符号在 Python 侧没有任何 surface（surface 层为 missing）",
@@ -48,6 +48,9 @@
         "gamlss.foreach::fitQR",
         "gamlss.foreach::fitRolling",
         "gamlss.ggplots::add_resid_qqplot",
+        "gamlss.ggplots::bivar_fun",
+        "gamlss.ggplots::bivar_fun_plotly",
+        "gamlss.ggplots::bivar_pdf",
         "gamlss.ggplots::centile_bucket",
         "gamlss.ggplots::centile_bucket_wrap",
         "gamlss.ggplots::centile_colour_both",
@@ -141,7 +144,7 @@
         "gamlss.spatial::gmrf",
         "gamlss.spatial::polys2polys"
       ],
-      "current_count": 62,
+      "current_count": 59,
       "baseline_count": 173
     },
     "placeholder": {
@@ -164,6 +167,7 @@
     },
     "extra": {
       "new": [
+        "BivarSurface",
         "BootResult",
         "BucketSpec",
         "CentileSurface",
@@ -196,7 +200,7 @@
         "tree_control"
       ],
       "resolved": [],
-      "current_count": 417,
+      "current_count": 418,
       "baseline_count": 387
     }
   },
@@ -277,6 +281,18 @@
     {
       "category": "missing",
       "symbol": "gamlss.ggplots::add_resid_qqplot"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::bivar_fun"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::bivar_fun_plotly"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::bivar_pdf"
     },
     {
       "category": "missing",

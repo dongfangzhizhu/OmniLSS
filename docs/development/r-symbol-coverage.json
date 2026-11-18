@@ -25,8 +25,8 @@
   },
   "provenance": {
     "r_namespace_sha256": "b51a29f54229ba5860387759ddf95f670613e80c1c86ccd16e2ed564bfbe1c2f",
-    "python_surface_sha256": "41eabcf603eca9028e3d1ad2b3cf5f333bf0a1cc6069a02076f9f03da41c3198",
-    "test_suite_sha256": "6eefec5f5bd43fc2cfa9c401c5d03dc6e6014616835241918308e34672faa8ba",
+    "python_surface_sha256": "30cb5eaa135850ce55c60d1eb13a44a331e4ad74376326f32ac6a4d3c893c039",
+    "test_suite_sha256": "0b5bb1eb6aff788ef62e94be9637f53409c3ac9f159b5bcee7bba2dce467b692",
     "golden_manifest_sha256": "b4bdaebe5a7a62d687ff42469d6e56ee1297bc5685c4345aec88b956d2700365"
   },
   "layer_legend": {
@@ -62,38 +62,38 @@
     "r_packages": 12,
     "r_exports_total": 1080,
     "in_scope_exports": 1036,
-    "surface_matched": 1018,
-    "surface_missing": 62,
+    "surface_matched": 1021,
+    "surface_missing": 59,
     "family_linked": 531,
     "dpqr_linked": 424,
-    "python_only_public_exports": 417,
+    "python_only_public_exports": 418,
     "per_layer": {
       "surface": {
-        "missing": 62,
+        "missing": 59,
         "module_def": 223,
         "module_export": 103,
-        "public_api": 516,
+        "public_api": 519,
         "registry": 176
       },
       "kernel": {
         "compat_alias": 1,
         "experimental": 420,
-        "implemented": 597,
-        "missing": 62
+        "implemented": 600,
+        "missing": 59
       },
       "parity": {
         "capability:unsupported": 249,
         "capability:validated": 55,
         "golden:validated": 86,
         "r_consistency_test": 184,
-        "tested": 400,
-        "unverified": 106
+        "tested": 403,
+        "unverified": 103
       },
       "admission": {
         "blocked": 421,
-        "exported_api": 410,
+        "exported_api": 413,
         "internal": 77,
-        "not_available": 62,
+        "not_available": 59,
         "production_safe": 110
       }
     },
@@ -164,7 +164,7 @@
         "namespace_sha256": "cbe1ae29a3d583c1",
         "exported": 109,
         "defined_functions": 106,
-        "surface_matched": 100,
+        "surface_matched": 103,
         "auxiliary_exports": 0,
         "s3method_count": 7
       },
@@ -1065,9 +1065,9 @@
     {"r_symbol": "bivar.fun.contour", "r_package": "gamlss.ggplots", "r_package_version": "2.1-34", "r_kind": "function", "r_family": null, "r_family_kind": null, "r_source_sha256": "eeb118edd2c9cdf1", "python_symbol": "bivar_fun_contour", "python_modules": ["__init__.py", "bivar_grid.py"], "python_exported_from": ["__init__.py", "bivar_grid.py"], "python_source_commit": "bf0ae67", "layers": {"surface": "public_api", "kernel": "implemented", "parity": "tested", "admission": "exported_api"}, "evidence": {"r_definitions": ["R/gamlss.ggplots/R/Copula_ralated_not_ggplot2.R:174"], "tests": ["omnilss/tests/test_bivar_grid.py"], "test_count": 1, "golden_cases": []}, "in_scope": true},
     {"r_symbol": "bivar.fun.image", "r_package": "gamlss.ggplots", "r_package_version": "2.1-34", "r_kind": "function", "r_family": null, "r_family_kind": null, "r_source_sha256": "eeb118edd2c9cdf1", "python_symbol": "bivar_fun_image", "python_modules": ["__init__.py", "bivar_grid.py"], "python_exported_from": ["__init__.py", "bivar_grid.py"], "python_source_commit": "bf0ae67", "layers": {"surface": "public_api", "kernel": "implemented", "parity": "tested", "admission": "exported_api"}, "evidence": {"r_definitions": ["R/gamlss.ggplots/R/Copula_ralated_not_ggplot2.R:195"], "tests": ["omnilss/tests/test_bivar_grid.py"], "test_count": 1, "golden_cases": []}, "in_scope": true},
     {"r_symbol": "bivar.fun.persp", "r_package": "gamlss.ggplots", "r_package_version": "2.1-34", "r_kind": "function", "r_family": null, "r_family_kind": null, "r_source_sha256": "eeb118edd2c9cdf1", "python_symbol": "bivar_fun_persp", "python_modules": ["__init__.py", "bivar_grid.py"], "python_exported_from": ["__init__.py", "bivar_grid.py"], "python_source_commit": "bf0ae67", "layers": {"surface": "public_api", "kernel": "implemented", "parity": "tested", "admission": "exported_api"}, "evidence": {"r_definitions": ["R/gamlss.ggplots/R/Copula_ralated_not_ggplot2.R:223"], "tests": ["omnilss/tests/test_bivar_grid.py"], "test_count": 1, "golden_cases": []}, "in_scope": true},
-    {"r_symbol": "bivar_fun", "r_package": "gamlss.ggplots", "r_package_version": "2.1-34", "r_kind": "function", "r_family": null, "r_family_kind": null, "r_source_sha256": "dfe538b325e6521c", "python_symbol": null, "python_modules": [], "python_exported_from": [], "python_source_commit": "unknown", "layers": {"surface": "missing", "kernel": "missing", "parity": "unverified", "admission": "not_available"}, "evidence": {"r_definitions": ["R/gamlss.ggplots/R/Copula_ralated.R:630"], "tests": ["omnilss/tests/test_bivar_grid.py"], "test_count": 1, "golden_cases": []}, "in_scope": true},
-    {"r_symbol": "bivar_fun_plotly", "r_package": "gamlss.ggplots", "r_package_version": "2.1-34", "r_kind": "function", "r_family": null, "r_family_kind": null, "r_source_sha256": "eeb118edd2c9cdf1", "python_symbol": null, "python_modules": [], "python_exported_from": [], "python_source_commit": "unknown", "layers": {"surface": "missing", "kernel": "missing", "parity": "unverified", "admission": "not_available"}, "evidence": {"r_definitions": ["R/gamlss.ggplots/R/Copula_ralated_not_ggplot2.R:256"], "tests": [], "test_count": 0, "golden_cases": []}, "in_scope": true},
-    {"r_symbol": "bivar_pdf", "r_package": "gamlss.ggplots", "r_package_version": "2.1-34", "r_kind": "function", "r_family": null, "r_family_kind": null, "r_source_sha256": "dfe538b325e6521c", "python_symbol": null, "python_modules": [], "python_exported_from": [], "python_source_commit": "unknown", "layers": {"surface": "missing", "kernel": "missing", "parity": "unverified", "admission": "not_available"}, "evidence": {"r_definitions": ["R/gamlss.ggplots/R/Copula_ralated.R:587"], "tests": [], "test_count": 0, "golden_cases": []}, "in_scope": true},
+    {"r_symbol": "bivar_fun", "r_package": "gamlss.ggplots", "r_package_version": "2.1-34", "r_kind": "function", "r_family": null, "r_family_kind": null, "r_source_sha256": "dfe538b325e6521c", "python_symbol": "bivar_fun", "python_modules": ["__init__.py", "ggplots.py"], "python_exported_from": ["__init__.py", "ggplots.py"], "python_source_commit": "bf0ae67", "layers": {"surface": "public_api", "kernel": "implemented", "parity": "tested", "admission": "exported_api"}, "evidence": {"r_definitions": ["R/gamlss.ggplots/R/Copula_ralated.R:630"], "tests": ["omnilss/tests/test_bivar_grid.py", "omnilss/tests/test_gamlss_ggplots_bivar.py"], "test_count": 2, "golden_cases": []}, "in_scope": true},
+    {"r_symbol": "bivar_fun_plotly", "r_package": "gamlss.ggplots", "r_package_version": "2.1-34", "r_kind": "function", "r_family": null, "r_family_kind": null, "r_source_sha256": "eeb118edd2c9cdf1", "python_symbol": "bivar_fun_plotly", "python_modules": ["__init__.py", "ggplots.py"], "python_exported_from": ["__init__.py", "ggplots.py"], "python_source_commit": "bf0ae67", "layers": {"surface": "public_api", "kernel": "implemented", "parity": "tested", "admission": "exported_api"}, "evidence": {"r_definitions": ["R/gamlss.ggplots/R/Copula_ralated_not_ggplot2.R:256"], "tests": ["omnilss/tests/test_gamlss_ggplots_bivar.py"], "test_count": 1, "golden_cases": []}, "in_scope": true},
+    {"r_symbol": "bivar_pdf", "r_package": "gamlss.ggplots", "r_package_version": "2.1-34", "r_kind": "function", "r_family": null, "r_family_kind": null, "r_source_sha256": "dfe538b325e6521c", "python_symbol": "bivar_pdf", "python_modules": ["__init__.py", "ggplots.py"], "python_exported_from": ["__init__.py", "ggplots.py"], "python_source_commit": "bf0ae67", "layers": {"surface": "public_api", "kernel": "implemented", "parity": "tested", "admission": "exported_api"}, "evidence": {"r_definitions": ["R/gamlss.ggplots/R/Copula_ralated.R:587"], "tests": ["omnilss/tests/test_gamlss_ggplots_bivar.py"], "test_count": 1, "golden_cases": []}, "in_scope": true},
     {"r_symbol": "boot_coef", "r_package": "gamlss.ggplots", "r_package_version": "2.1-34", "r_kind": "function", "r_family": null, "r_family_kind": null, "r_source_sha256": "288d90984ae574fb", "python_symbol": null, "python_modules": [], "python_exported_from": [], "python_source_commit": "unknown", "layers": {"surface": "missing", "kernel": "missing", "parity": "unverified", "admission": "not_available"}, "evidence": {"r_definitions": ["R/gamlss.ggplots/R/boot_coef.R:34"], "tests": [], "test_count": 0, "golden_cases": []}, "in_scope": true},
     {"r_symbol": "boot_coef_one", "r_package": "gamlss.ggplots", "r_package_version": "2.1-34", "r_kind": "function", "r_family": null, "r_family_kind": null, "r_source_sha256": "288d90984ae574fb", "python_symbol": null, "python_modules": [], "python_exported_from": [], "python_source_commit": "unknown", "layers": {"surface": "missing", "kernel": "missing", "parity": "unverified", "admission": "not_available"}, "evidence": {"r_definitions": ["R/gamlss.ggplots/R/boot_coef.R:4"], "tests": [], "test_count": 0, "golden_cases": []}, "in_scope": true},
     {"r_symbol": "centile_bucket", "r_package": "gamlss.ggplots", "r_package_version": "2.1-34", "r_kind": "function", "r_family": null, "r_family_kind": null, "r_source_sha256": "3494c97285bcc6b0", "python_symbol": "centile_bucket", "python_modules": ["__init__.py", "ggplots.py"], "python_exported_from": ["__init__.py", "ggplots.py"], "python_source_commit": "bf0ae67", "layers": {"surface": "public_api", "kernel": "implemented", "parity": "tested", "admission": "exported_api"}, "evidence": {"r_definitions": ["R/gamlss.ggplots/R/Bucket_plot.R:1277"], "tests": ["omnilss/tests/test_gamlss_ggplots_bucket.py"], "test_count": 1, "golden_cases": []}, "in_scope": true},
@@ -1310,6 +1310,7 @@
     "BetaFamily",
     "BinomialFamily",
     "BivarGrid",
+    "BivarSurface",
     "BootResult",
     "BoxCoxColeGreenFamily",
     "BoxCoxPowerExponentialFamily",

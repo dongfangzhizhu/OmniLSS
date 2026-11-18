@@ -1,6 +1,6 @@
 {
   "counts": {
-    "missing_symbols": 9,
+    "missing_symbols": 6,
     "no_function_surface": 1,
     "out_of_scope": 3,
     "packages": 9,
@@ -163,9 +163,6 @@
       "evidence_tests": [],
       "exported": 109,
       "missing_symbols": [
-        "bivar_fun",
-        "bivar_fun_plotly",
-        "bivar_pdf",
         "boot_coef",
         "boot_coef_one",
         "fit_PB",
@@ -173,19 +170,19 @@
         "pcr_coef_path",
         "pcr_path"
       ],
-      "next_action": "implement 9 missing symbols",
+      "next_action": "implement 6 missing symbols",
       "order": 1,
       "package": "gamlss.ggplots",
       "parity": {
-        "tested": 100,
-        "unverified": 9
+        "tested": 103,
+        "unverified": 6
       },
       "priority": 4,
       "rationale": "presentation layer; pixel parity is explicitly not required",
       "status": "surface_gap",
       "surface": {
-        "missing": 9,
-        "public_api": 100
+        "missing": 6,
+        "public_api": 103
       },
       "tracked_symbols": 109
     },
@@ -231,8 +228,8 @@
   "task": "P4 scope",
   "verdict": {
     "first_work_item": {
-      "missing": 9,
-      "next_action": "implement 9 missing symbols",
+      "missing": 6,
+      "next_action": "implement 6 missing symbols",
       "package": "gamlss.ggplots",
       "priority": 4
     },
