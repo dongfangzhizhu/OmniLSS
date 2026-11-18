@@ -12,7 +12,7 @@
     "notice": "gamlss2 is out of scope for OmniLSS 1.0: separate spec / version / evidence, does not block 1.0 (deliverable plan sections 1.2, 22.6)."
   },
   "current_counts": {
-    "missing": 104,
+    "missing": 94,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
@@ -52,8 +52,18 @@
         "gamlss.ggplots::fitted_cdf_data",
         "gamlss.ggplots::fitted_pdf",
         "gamlss.ggplots::fitted_pdf_data",
+        "gamlss.ggplots::model_GAIC",
+        "gamlss.ggplots::model_GAIC_lollipop",
+        "gamlss.ggplots::model_TD",
+        "gamlss.ggplots::model_TD_lollipop",
+        "gamlss.ggplots::model_centiles",
         "gamlss.ggplots::model_density",
+        "gamlss.ggplots::model_devianceIncr_diff",
+        "gamlss.ggplots::model_mom_bucket",
+        "gamlss.ggplots::model_pca",
         "gamlss.ggplots::model_qqplot",
+        "gamlss.ggplots::model_wp",
+        "gamlss.ggplots::model_wp_wrap",
         "gamlss.ggplots::moment_bucket",
         "gamlss.ggplots::pe_1_parameter",
         "gamlss.ggplots::pe_2_parameter",
@@ -99,7 +109,7 @@
         "gamlss.spatial::gmrf",
         "gamlss.spatial::polys2polys"
       ],
-      "current_count": 104,
+      "current_count": 94,
       "baseline_count": 173
     },
     "placeholder": {
@@ -253,11 +263,51 @@
     },
     {
       "category": "missing",
+      "symbol": "gamlss.ggplots::model_GAIC"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::model_GAIC_lollipop"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::model_TD"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::model_TD_lollipop"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::model_centiles"
+    },
+    {
+      "category": "missing",
       "symbol": "gamlss.ggplots::model_density"
     },
     {
       "category": "missing",
+      "symbol": "gamlss.ggplots::model_devianceIncr_diff"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::model_mom_bucket"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::model_pca"
+    },
+    {
+      "category": "missing",
       "symbol": "gamlss.ggplots::model_qqplot"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::model_wp"
+    },
+    {
+      "category": "missing",
+      "symbol": "gamlss.ggplots::model_wp_wrap"
     },
     {
       "category": "missing",
