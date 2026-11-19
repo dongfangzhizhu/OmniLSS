@@ -255,11 +255,12 @@ def trun(
     par_values = _check_par(par, type)
     d = trun_d(par_values, base, type, varying=varying)
     p = trun_p(par_values, base, type, varying=varying)
-    # R's trun() regenerates only d and p; q and r stay the base family's.
-    # Use trun_q / trun_r directly when the truncation must be reflected in
-    # quantiles or draws.
-    q = base.q
-    r = base.r
+    # R's trun() builds the fitting family (which carries no q/r), while
+    # gen.trun() assigns qNOtr/rNOtr from trun.q/trun.r.  This family object
+    # exposes q/r directly, so they must be the truncation-aware ones -- the base
+    # quantile would silently return values outside the truncated support.
+    q = trun_q(par_values, base, type, varying=varying)
+    r = trun_r(par_values, base, type, varying=varying)
 
     def g_dev_inc(y: Any, **params: Any) -> Any:
         return -2.0 * d(y, log=True, **params)

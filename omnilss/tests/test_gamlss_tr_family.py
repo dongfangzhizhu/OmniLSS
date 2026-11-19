@@ -77,20 +77,17 @@ def test_density_and_cdf_delegate_to_the_trun_helpers() -> None:
     )
 
 
-def test_quantile_stays_the_base_family_quantile() -> None:
-    # R's trun() regenerates only d and p, so q and r remain the base ones.
-    from omnilss.distribution_registry import resolve
-
+def test_quantile_is_truncation_aware() -> None:
+    # R's gen.trun assigns qNOtr from trun.q; a base-family quantile would return
+    # values outside the truncated support, so family.q must match trun_q.
     family = trun(0.0, "NO", "left")
     probs = jnp.asarray([0.2, 0.5, 0.8], dtype=jnp.float64)
     np.testing.assert_allclose(
         np.asarray(family.q(probs, mu=0.0, sigma=1.0)),
-        np.asarray(resolve("NO").q(probs, 0.0, 1.0)),
+        np.asarray(trun_q(0.0, "NO", "left")(probs, mu=0.0, sigma=1.0)),
         rtol=1e-12,
     )
-    # The truncation-aware quantile is available explicitly through trun_q.
-    truncated = np.asarray(trun_q(0.0, "NO", "left")(probs, mu=0.0, sigma=1.0))
-    assert np.all(truncated >= 0.0)
+    assert np.all(np.asarray(family.q(probs, mu=0.0, sigma=1.0)) >= 0.0)
 
 
 def test_g_dev_inc_is_elementwise_minus_two_log_density() -> None:

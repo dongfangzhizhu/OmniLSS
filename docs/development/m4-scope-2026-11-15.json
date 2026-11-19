@@ -26,11 +26,12 @@
       ],
       "exported": 5,
       "missing_symbols": [],
-      "next_action": "upgrade evidence for 5 tested symbols to golden",
+      "next_action": "hold: surface complete and evidence modules exist",
       "order": 99,
       "package": "gamlss.cens",
       "parity": {
-        "tested": 5
+        "r_consistency_test": 4,
+        "tested": 1
       },
       "priority": 1,
       "rationale": "censoring is a modelling need, not a presentation layer",
@@ -47,11 +48,12 @@
       ],
       "exported": 8,
       "missing_symbols": [],
-      "next_action": "upgrade evidence for 8 tested symbols to golden",
+      "next_action": "hold: surface complete and evidence modules exist",
       "order": 99,
       "package": "gamlss.tr",
       "parity": {
-        "tested": 8
+        "r_consistency_test": 5,
+        "tested": 3
       },
       "priority": 1,
       "rationale": "truncation pairs with censoring in the same user workflow",

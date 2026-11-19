@@ -437,13 +437,19 @@ surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件
   MX 与 NP 的拟合对活 R 对齐到 1e-6 / 1e-8（dev、prob、mu、sigma、mass points、
   EM 迭代数）；未移植分支（`pi.formula` 含协变量、`zero.component`、`mixture="gq"`、
   `random=~x`）显式抛 `NotImplementedError`，不近似。
-- **M4 状态（D2.265）**：全部 8 个周边包 surface 完整、缺口 0、无首个工作项；
-  每个包都有专用证据模块（`packages_without_evidence_tests=0`），并且 6 个周边包
-  各有活 R 一致性测试（`test_r_consistency_gamlss_*.py`），共 16 个符号的 parity
-  从 `tested` 升到 `r_consistency_test`：mx 3/12、add 4/15、spatial 2/9、
-  foreach 1/13、prepdata 1/59、ggplots 5/109。这 6 包的盘点动作已从
-  "upgrade evidence … to golden" 变为 "hold"。`gamlss.cens`/`gamlss.tr` 仍建议
-  提升到 golden（需要 golden manifest 语料，属独立的更大工作）。
+- **M4 状态（D2.266）**：全部 8 个周边包 surface 完整、缺口 0、无首个工作项；
+  每个包都有专用证据模块（`packages_without_evidence_tests=0`），并且 8 个包都有
+  活 R 一致性测试（`test_r_consistency_gamlss_*.py`），共 25 个符号的 parity 从
+  `tested` 升到 `r_consistency_test`：cens 4/5、tr 5/8、mx 3/12、add 4/15、
+  spatial 2/9、foreach 1/13、prepdata 1/59、ggplots 5/109。**8 个包的盘点动作全部为
+  "hold"**。
+- **关于 "golden"**：盘点工具对非 family 符号的 parity 只有
+  `r_consistency_test`/`tested`/`unverified` 三档，`golden:*` 仅由
+  `fixtures/r_golden/regenerated/manifest.json` 里的 **family** 用例产生。周边包的
+  符号（cens.d、trun.d 等）不是 registry family，所以 "升 golden" 在其 schema 下
+  不可达；D2.266 用活 R 对照把它们升到 `r_consistency_test`，这是这些符号能达到的
+  最高档，且每包动作已达 "hold"。真正要加 golden 语料，需要为 `generate_golden.R`
+  增加 censored/truncated 族用例，属独立的更大工作。
   下一步是 P5（ondil 在线层）与 P6（`log_bessel_kv` JAX 原生）。
 
 ### P5：ondil 在线层（独立轨道，独立发布，不混入 R 完成率）
