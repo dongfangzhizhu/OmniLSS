@@ -191,5 +191,5 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 - `debianjaxgpu/` = WSL Debian 的 JAX GPU 环境，非本项目源码，**勿清理勿修改**。
 
 ## 特殊函数内核（D2.267）
-- **kernel 基准 ≠ 工作流基准**：JAX 原生 log_bessel_kv 单次调用只比 scipy pure_callback 慢 1.7×（0.45 vs 0.27 ms，n=48），但一次 SI 拟合（n=40, max_iter=1）慢 70×（371 s vs 5.31 s）——回调的 vmap_method="expand_dims" 把整批合成一次主机调用，原生核在拟合循环里逐观测付费。**任何「替换内核」的验收都必须测真实工作流**。原生实现归档在 omnilss/bessel_native.py（opt-in），默认仍是回调。
+- **kernel 基准 ≠ 工作流基准**：JAX 原生 log_bessel_kv 单次调用只比 scipy pure_callback 慢 1.7×（1.16 vs 0.70 ms，n=48），但一次 SI 拟合（n=40, max_iter=1）慢 39×（683 s vs 17.5 s，含 JIT；D2.267 手记的 70× 已作废）——回调的 vmap_method="expand_dims" 把整批合成一次主机调用，原生核在拟合循环里逐观测付费。**任何「替换内核」的验收都必须测真实工作流**，且数字必须由工具实测（D2.268：写死在工具里的常数等于誊抄）。原生实现归档在 omnilss/bessel_native.py（opt-in），默认仍是回调。
 - **比值比对数差稳 100 倍**：GIG/SI 的 c=K_{nu+1}/K_nu 进入指数（尾部系数 ~300），两个 log 相减（4e-14）会被放大到 5e-12；用 ODE 传播的斜率算 c=(nu-y'/y)/x 得 5e-16。log_bessel_kv_ratio 里实现了这条路径（nu<0 用 K_{a-1}/K_a=c-2a/x）。

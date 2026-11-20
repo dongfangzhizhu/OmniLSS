@@ -473,6 +473,13 @@ surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件
   opt-in；启用前必须在 GPU 上重测拟合周期。同轮发现的 `c=K_{nu+1}/K_nu` 条件数问题
   （对数差 4e-14 → dGIG 尾部 4.9e-12；斜率法 5e-16 → 1.1e-13）记录在
   `log_bessel_kv_ratio`，启用原生核时 GIG/SI/SICHEL 必须改用它。
+  **D2.268 复测**：D2.267 的 fit cycle 是手记常数塞进工具，工件不可复现。改由
+  `tools/bessel_native_scan.py` 的 `fit_cycle()` 实测：两条路径各跑一次 SI 拟合，并在
+  各自的核（回调 `_log_bessel_kv_scipy` / 原生 `_native_log_kv`）上挂调用计数守卫，
+  patch 没命中就直接抛错，避免「同一内核测两遍还报 39×」。本机 `.venv` 3.10.16、
+  含 JIT 编译：n=40、max_iter=1 回调 17.51 s vs 原生 683.31 s（**39×**，不是手记的 70×）；
+  单次核调用原生仅慢 1.7×（1.16 vs 0.70 ms，n=48）。绝对值随机器状态浮动，结论不变：
+  默认继续走 scipy 回调，原生核 opt-in。
 - `debianjaxgpu`（WSL GPU）验证：GPU/CPU parity、RS_JAX 六族扩面、cross-over 阈值基准、
   cold/warm 区分。性能只能在一致性 gate 通过之后运行。
 - 减少 SICHEL 族 `lax.scan` 固定 100000 步的动态上界（`while_loop` 范式）。
@@ -782,8 +789,9 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   c(row/c(col))）、`histSmo_plot`（直方图 + 平滑密度，兼容 R 的 histSmo 载荷与本包
   HistSmoResult）。**gamlss.ggplots surface 109/109 完整**）
 - [ ] P5-1 定义 OmniLSS↔ondil distribution contract 与独立流式 golden
-- [x] P6-1 `log_bessel_kv` JAX 原生实现（D2.267：精度 5.7e-14 达成；CPU 拟合周期
-  70× 回退 → 归档为 opt-in 实验模块，默认回调不变；GPU 重测后再决定是否切换）
+- [x] P6-1 `log_bessel_kv` JAX 原生实现（D2.267 精度 5.7e-14 达成；CPU 拟合周期
+  回退（手记 70× / D2.268 工具实测 39×）→ 归档为 opt-in 实验模块，默认回调不变；
+  GPU 重测后再决定是否切换）
 
 ### 22.6 风险与决策
 

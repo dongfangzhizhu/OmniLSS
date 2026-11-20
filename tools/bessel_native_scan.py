@@ -193,29 +193,118 @@ def timing(rows: int = 48) -> dict:
     }
 
 
-def _artifact() -> dict:
+#: P6-1 acceptance 2 is the *fit cycle*, not the kernel call.  A per-call
+#: benchmark hides the regression (D2.267: native 0.45 ms vs callback 0.27 ms
+#: per call, yet the fit is 70x slower) because the callback batches the whole
+#: vmap into one host call while the native kernel is paid per element inside
+#: the fitting loop.  The numbers below are measured here, not copied from the
+#: notebook that found the regression, so the artifact stays reproducible.
+FIT_ROWS = 40
+FIT_MAX_ITER = 1
+FIT_SEED = 20261115
+
+
+def _si_data(rows: int = FIT_ROWS, seed: int = FIT_SEED):
+    """Synthetic SI response: counts with a log-linear mean in one covariate."""
+    import pandas as pd
+
+    rng = np.random.default_rng(seed)
+    x = np.linspace(-1.5, 1.5, rows)
+    y = rng.poisson(np.exp(0.35 + 0.5 * x)).astype(float)
+    return pd.DataFrame({"y": y, "x": x})
+
+
+def _fit_once(data, *, max_iter: int, patch_module, patch_name: str, kernel=None):
+    """One SI fit; returns (seconds, calls seen by the patched kernel)."""
+    import omnilss.bessel as bessel
+
+    from omnilss.fitting import gamlss
+
+    state = {"calls": 0}
+    original_hook = getattr(patch_module, patch_name)
+
+    def _counted(*args, **kwargs):
+        state["calls"] += 1
+        return original_hook(*args, **kwargs)
+
+    original_kernel = bessel.log_bessel_kv
+    setattr(patch_module, patch_name, _counted)
+    if kernel is not None:
+        bessel.log_bessel_kv = kernel
+    try:
+        start = time.perf_counter()
+        gamlss("y ~ x", data=data, family="SI", max_iter=max_iter)
+        elapsed = time.perf_counter() - start
+    finally:
+        setattr(patch_module, patch_name, original_hook)
+        bessel.log_bessel_kv = original_kernel
+    return elapsed, state["calls"]
+
+
+def fit_cycle(rows: int = FIT_ROWS, max_iter: int = FIT_MAX_ITER) -> dict:
+    """Time one SI fit on each kernel, counting the calls the fit actually made.
+
+    The callback path is counted at bessel._log_bessel_kv_scipy (its
+    pure_callback payload) and the native path at bessel_native._native_log_kv,
+    so a silent no-op patch fails the run instead of quietly timing the same
+    kernel twice.
+    """
+    import jax
+
+    jax.config.update("jax_enable_x64", True)
+
+    import omnilss.bessel as bessel
+    import omnilss.bessel_native as native_mod
+
+    data = _si_data(rows)
+    callback_s, callback_calls = _fit_once(
+        data, max_iter=max_iter, patch_module=bessel, patch_name="_log_bessel_kv_scipy"
+    )
+    native_s, native_calls = _fit_once(
+        data,
+        max_iter=max_iter,
+        patch_module=native_mod,
+        patch_name="_native_log_kv",
+        kernel=native_mod.log_bessel_kv_native,
+    )
+    if callback_calls == 0 or native_calls == 0:
+        raise RuntimeError(
+            "fit cycle did not touch the patched kernel "
+            f"(callback calls={callback_calls}, native calls={native_calls}); "
+            "the comparison would be meaningless"
+        )
+    speedup = callback_s / native_s
+    return {
+        "family": "SI",
+        "rows": rows,
+        "max_iter": max_iter,
+        "seed": FIT_SEED,
+        "scipy_callback_s": callback_s,
+        "native_s": native_s,
+        "speedup": speedup,
+        "kernel_calls": {"scipy_callback": callback_calls, "native": native_calls},
+        "command": (
+            "python tools/bessel_native_scan.py --write "
+            "docs/development/bessel-native-2026-11-15.json"
+        ),
+        "verdict": (
+            "enabled candidate: the native fit cycle is not slower"
+            if speedup >= 1.0
+            else f"not enabled: CPU fit cycle regresses {1.0 / speedup:.0f}x"
+        ),
+    }
+
+
+def _artifact(*, measure_fit_cycle: bool = True) -> dict:
     payload = scan()
     payload.update(
         {
             "timing": timing(),
-            # The second P6-1 acceptance is the *fit cycle*, not the kernel call.
-            # Measured with a one-iteration SI fit on n = 40 (command documented
-            # below); the native kernel is 70x slower, so it stays opt-in and the
-            # families keep the scipy callback.
-            "fit_cycle": {
-                "family": "SI",
-                "rows": 40,
-                "max_iter": 1,
-                "scipy_callback_s": 5.31,
-                "native_s": 371.46,
-                "speedup": 5.31 / 371.46,
-                "command": (
-                    "python - <<'PY' ... omnilss.gamlss('y ~ x', family='SI', "
-                    "data=..., max_iter=1) with bessel.log_bessel_kv patched to "
-                    "the pure_callback version / to bessel_native.log_bessel_kv_native"
-                ),
-                "verdict": "not enabled: CPU fit cycle regresses 70x",
-            },
+            "fit_cycle": (
+                fit_cycle()
+                if measure_fit_cycle
+                else {"skipped": True, "reason": "--skip-fit-cycle"}
+            ),
             "commit": _git_commit(),
             "platform": platform.platform(),
             "python": platform.python_version(),
@@ -240,13 +329,18 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--write", type=Path, default=None, help="artifact path")
     parser.add_argument("--check", action="store_true", help="fail above tolerance")
-    parser.add_argument("--skip-timing", action="store_true")
+    parser.add_argument("--skip-timing", action="store_true",
+                        help="skip the kernel micro-benchmark and the fit cycle")
+    parser.add_argument("--skip-fit-cycle", action="store_true",
+                        help="score the grid but skip the minutes-long SI fit cycle")
     args = parser.parse_args(argv)
 
     if args.check:
         payload = scan()
+    elif args.skip_timing:
+        payload = scan()
     else:
-        payload = _artifact() if not args.skip_timing else scan()
+        payload = _artifact(measure_fit_cycle=not args.skip_fit_cycle)
 
     print(
         json.dumps(
@@ -266,6 +360,16 @@ def main(argv: list[str] | None = None) -> int:
                 speedup["primal_ms"],
                 speedup["grad_x_ms"],
                 speedup["grad_nu_ms"],
+            )
+        )
+
+    fit = payload.get("fit_cycle", {})
+    if "speedup" in fit:
+        print(
+            "fit cycle (SI, rows={}, max_iter={}): callback {:.2f}s vs native {:.2f}s "
+            "-> {}".format(
+                fit["rows"], fit["max_iter"], fit["scipy_callback_s"],
+                fit["native_s"], fit["verdict"],
             )
         )
 

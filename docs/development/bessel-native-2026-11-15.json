@@ -17,8 +17,8 @@
   "tolerance": 1e-12,
   "worst_relative_error": 5.684341886080963e-14,
   "worst_at": {
-    "nu": 18.5,
-    "x": 5.623413251903491e-06
+    "nu": 13.5,
+    "x": 1e-08
   },
   "per_region": {
     "series": {
@@ -39,34 +39,39 @@
   "timing": {
     "rows": 48,
     "native": {
-      "primal_ms": 0.41466000002401415,
-      "grad_x_ms": 0.7387200001176097,
-      "grad_nu_ms": 0.7588399999804096
+      "primal_ms": 1.163429999996879,
+      "grad_x_ms": 2.5545299999976123,
+      "grad_nu_ms": 2.2649199999250413
     },
     "scipy_callback": {
-      "primal_ms": 0.2920750000157568,
-      "grad_x_ms": 0.3611300000557094,
-      "grad_nu_ms": 0.38003999998181826
+      "primal_ms": 0.695545000007769,
+      "grad_x_ms": 1.205240000035701,
+      "grad_nu_ms": 1.0476500000550004
     },
     "speedup": {
-      "primal_ms": 0.7043722567859015,
-      "grad_x_ms": 0.48885910764324075,
-      "grad_nu_ms": 0.5008170365184089
+      "primal_ms": 0.5978400075721229,
+      "grad_x_ms": 0.47180498958196915,
+      "grad_nu_ms": 0.4625549688685132
     }
   },
   "fit_cycle": {
     "family": "SI",
     "rows": 40,
     "max_iter": 1,
-    "scipy_callback_s": 5.31,
-    "native_s": 371.46,
-    "speedup": 0.01429494427394605,
-    "command": "python - <<'PY' ... omnilss.gamlss('y ~ x', family='SI', data=..., max_iter=1) with bessel.log_bessel_kv patched to the pure_callback version / to bessel_native.log_bessel_kv_native",
-    "verdict": "not enabled: CPU fit cycle regresses 70x"
+    "seed": 20261115,
+    "scipy_callback_s": 17.514810699999543,
+    "native_s": 683.3121691999995,
+    "speedup": 0.02563222417142861,
+    "kernel_calls": {
+      "scipy_callback": 488,
+      "native": 680
+    },
+    "command": "python tools/bessel_native_scan.py --write docs/development/bessel-native-2026-11-15.json",
+    "verdict": "not enabled: CPU fit cycle regresses 39x"
   },
-  "commit": "f1a1c52",
+  "commit": "b706f30",
   "platform": "Windows-10-10.0.26100-SP0",
-  "python": "3.10.19",
+  "python": "3.10.16",
   "versions": {
     "jax": "0.6.2",
     "numpy": "2.2.6",
