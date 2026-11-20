@@ -193,3 +193,9 @@ jax.scipy.special.betaln 自带 ~3.5e-8 误差 → 手写 `_lbeta`。**跨库同
 ## 特殊函数内核（D2.267）
 - **kernel 基准 ≠ 工作流基准**：JAX 原生 log_bessel_kv 单次调用只比 scipy pure_callback 慢 1.7×（1.16 vs 0.70 ms，n=48），但一次 SI 拟合（n=40, max_iter=1）慢 39×（683 s vs 17.5 s，含 JIT；D2.267 手记的 70× 已作废）——回调的 vmap_method="expand_dims" 把整批合成一次主机调用，原生核在拟合循环里逐观测付费。**任何「替换内核」的验收都必须测真实工作流**，且数字必须由工具实测（D2.268：写死在工具里的常数等于誊抄）。原生实现归档在 omnilss/bessel_native.py（opt-in），默认仍是回调。
 - **比值比对数差稳 100 倍**：GIG/SI 的 c=K_{nu+1}/K_nu 进入指数（尾部系数 ~300），两个 log 相减（4e-14）会被放大到 5e-12；用 ODE 传播的斜率算 c=(nu-y'/y)/x 得 5e-16。log_bessel_kv_ratio 里实现了这条路径（nu<0 用 K_{a-1}/K_a=c-2a/x）。
+
+## 对外契约（P5，D2.269）
+- **链接导数的方向**：ondil `link_derivative`=dη/dμ，`inverse_derivative`=dμ/dη；OmniLSS `Link.derivative`=dμ/dη。同名对接会静默错梯度，正确映射是 `derivative ↔ inverse_derivative`。
+- **ondil 在本 venv 装不上**（硬依赖 scikit-learn+numba），只能读源码当参考；"对 ondil 对拍"只能是 optional skip，硬门禁要用 scipy + 解析导数基线。
+- **契约文档**：`docs/development/p5-ondil-distribution-contract-2026-11-15.md`（22 族参数序 1:1、score/hessian 必须逐观测、7 条已知缺陷）。
+

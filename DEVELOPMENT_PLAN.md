@@ -455,6 +455,8 @@ surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件
 ### P5：ondil 在线层（独立轨道，独立发布，不混入 R 完成率）
 
 - 先定义 OmniLSS↔ondil 共享 distribution contract（参数/support/link/score/信息矩阵）。
+  **D2.269 契约文档**：`docs/development/p5-ondil-distribution-contract-2026-11-15.md`
+  （22 族参数序 1:1；链接方向、逐观测导数形状、support 规范化比较、ondil 不可导入三条硬约束）。
 - 再实现在线估计器契约（`partial_fit`/`update`/forget factor）、流式 golden、chunk 顺序不变性、
   warm-start、漂移/缺失值/并发、性能与内存基线。
 - **多元分布**（MVN/MVT 的 Cholesky/LowRank/ModifiedCholesky）作为独立能力面补齐。
@@ -788,7 +790,16 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   与活 R 一致到 1e-9）、`pcr_coef_path`/`pcr_path`（PCR 系数路径，长表顺序照 R 的
   c(row/c(col))）、`histSmo_plot`（直方图 + 平滑密度，兼容 R 的 histSmo 载荷与本包
   HistSmoResult）。**gamlss.ggplots surface 109/109 完整**）
-- [ ] P5-1 定义 OmniLSS↔ondil distribution contract 与独立流式 golden
+- [x] P5-1a OmniLSS↔ondil 分布契约文档（D2.269）：
+  `docs/development/p5-ondil-distribution-contract-2026-11-15.md` —— 两侧现状（含 ondil 硬依赖
+  scikit-learn/numba、本 venv 不可导入 → 只能作源码参考）+ theta↔params 列序规则 + 逐字段映射表 +
+  链函数方向陷阱（`derivative`=dμ/dη ↔ `inverse_derivative`）+ score/hessian 逐观测形状契约 +
+  7 条已知缺陷（含 OmniLSS adapter 求和成标量、ondil `logpmf` 守卫调错）+ 22 个重叠族参数序核对
+  （全部 1:1）+ 流式 golden 契约草案（7 项判据）+ 6 个未决问题
+- [ ] P5-1b 契约适配层 `omnilss/ondil_contract.py` + `tools/ondil_contract_scan.py` 工件 + 一致性测试
+  （基线 = scipy + 解析导数；ondil 直连对拍为 optional，不许把 skip 当通过；先修 `adapters.score/hessian`
+  的 `jnp.sum` 与只填对角两处契约违反）
+- [ ] P5-1c 独立流式 golden（`partial_fit`/`update`/forget、分批不变性、warm start、漂移/缺失/性能内存）
 - [x] P6-1 `log_bessel_kv` JAX 原生实现（D2.267 精度 5.7e-14 达成；CPU 拟合周期
   回退（手记 70× / D2.268 工具实测 39×）→ 归档为 opt-in 实验模块，默认回调不变；
   GPU 重测后再决定是否切换）
