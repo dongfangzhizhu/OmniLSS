@@ -12,9 +12,9 @@
     "diff_ok": true,
     "provenance": {
       "golden_manifest_sha256": "b4bdaebe5a7a62d687ff42469d6e56ee1297bc5685c4345aec88b956d2700365",
-      "python_surface_sha256": "067e783495f079f40694af9f6096b18603b14994ecafa37772ad203e4fdd4b74",
+      "python_surface_sha256": "fdc20992c8cca2a9bc8ffa6951ece71c2ec3bfb3d60d7b624c97423c8a9baaa9",
       "r_namespace_sha256": "b51a29f54229ba5860387759ddf95f670613e80c1c86ccd16e2ed564bfbe1c2f",
-      "test_suite_sha256": "81f71350b669f88770e59c7e466c756162dfc64600868e18fc38ffad5bde99ce"
+      "test_suite_sha256": "11acbae9fa38d6e970b2964c72ce88f3042b4692e7bf344a87443ffd5deec3f6"
     },
     "ratchet_ok": true,
     "stats": {
@@ -27,7 +27,7 @@
     "jax": "0.6.2",
     "jax_enable_x64": true,
     "numpy": "2.2.6",
-    "python": "3.10.19",
+    "python": "3.10.16",
     "scipy": "1.15.3"
   },
   "environment_mismatches": [],
@@ -35,7 +35,7 @@
   "gates": {
     "coverage_regenerable": {
       "command": "python tools/generate_symbol_coverage.py --check",
-      "mode": "--check executed",
+      "mode": "diff flags (pass --verify-coverage to run the gate)",
       "ok": true
     },
     "devcontainer": {
@@ -73,7 +73,7 @@
       "command": "python tools/tiered_collection.py --mode collect --strict-skips --json",
       "ok": true,
       "totals": {
-        "collected": 5350,
+        "collected": 5744,
         "errors": 0,
         "failed": 0,
         "skipped": 0,
@@ -81,7 +81,7 @@
       }
     }
   },
-  "generated_at_utc": "2026-11-19T00:12:40Z",
+  "generated_at_utc": "2026-11-20T23:02:37Z",
   "milestone": "M0",
   "notes": "M0 gate bundle per DEVELOPMENT_PLAN 22.4. Reproducibility is anchored by coverage provenance content hashes (HEAD-independent); source.commit is informational. Regenerate after any symbol/test change.",
   "pinned_expected": {
@@ -125,7 +125,7 @@
   },
   "source": {
     "branch": "main",
-    "commit": "cb13515eba1ed658a773b259e50e33e2b8213a4b",
+    "commit": "71c04668dfeb0b9e1461879cdbecd737e0884f75",
     "dirty": true
   },
   "tolerances": {

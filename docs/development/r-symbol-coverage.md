@@ -359,7 +359,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | SHASH | gamlss.dist | SHASH | public_api | experimental | r_consistency_test | blocked | 20 |
 | SHASHo | gamlss.dist | SHASHo | public_api | implemented | r_consistency_test | exported_api | 15 |
 | SHASHo2 | gamlss.dist | SHASHo2 | public_api | implemented | r_consistency_test | exported_api | 6 |
-| SI | gamlss.dist | SI | public_api | experimental | r_consistency_test | blocked | 9 |
+| SI | gamlss.dist | SI | public_api | experimental | r_consistency_test | blocked | 10 |
 | SICHEL | gamlss.dist | SICHEL | public_api | experimental | r_consistency_test | blocked | 19 |
 | SIMPLEX | gamlss.dist | SIMPLEX | public_api | experimental | r_consistency_test | blocked | 7 |
 | SN1 | gamlss.dist | SN1 | public_api | experimental | r_consistency_test | blocked | 8 |
@@ -456,7 +456,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | dGEOM | gamlss.dist | dGEOM | module_export | implemented | golden:validated | production_safe | 0 |
 | dGEOMo | gamlss.dist | dGEOMo | public_api | implemented | tested | exported_api | 1 |
 | dGG | gamlss.dist | dGG | module_def | experimental | capability:unsupported | blocked | 1 |
-| dGIG | gamlss.dist | dGIG | module_def | experimental | capability:unsupported | blocked | 3 |
+| dGIG | gamlss.dist | dGIG | module_def | experimental | capability:unsupported | blocked | 4 |
 | dGP | gamlss.dist | dGP | module_def | experimental | capability:unsupported | blocked | 2 |
 | dGPO | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |
 | dGT | gamlss.dist | dGT | module_def | experimental | capability:validated | blocked | 1 |
