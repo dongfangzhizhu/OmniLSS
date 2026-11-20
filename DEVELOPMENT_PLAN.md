@@ -464,6 +464,15 @@ surface 缺口、证据模块与下一步动作，**fail-closed**：覆盖工件
 
 - `bessel.py` 的 `log_bessel_kv` 去 `pure_callback`：JAX 原生实现 + custom JVP。
   双验收：对数网格（nu −5..20、x 1e-8..1e3）逐点 1e-12 相对误差 + Sichel 拟合周期耗时下降。
+  **D2.267 结果**：原生实现落在 `omnilss/bessel_native.py`（三分区：Debye 渐近 /
+  u=ln x 的 16 阶 Taylor ODE 传播 / 小参数级数），**精度验收通过**（1275 点，K 的
+  相对误差最差 5.68e-14，工件 `docs/development/bessel-native-2026-11-15.json`，
+  工具 `tools/bessel_native_scan.py`）；**耗时验收不通过**——n=40、SI、max_iter=1
+  时 scipy 回调 5.31 s vs 原生 371.46 s（70×），因为拟合循环逐观测调用、原生核按元素
+  付费，而回调把 vmap 批成一次主机调用。**默认路径保持回调**（fail-closed），原生核
+  opt-in；启用前必须在 GPU 上重测拟合周期。同轮发现的 `c=K_{nu+1}/K_nu` 条件数问题
+  （对数差 4e-14 → dGIG 尾部 4.9e-12；斜率法 5e-16 → 1.1e-13）记录在
+  `log_bessel_kv_ratio`，启用原生核时 GIG/SI/SICHEL 必须改用它。
 - `debianjaxgpu`（WSL GPU）验证：GPU/CPU parity、RS_JAX 六族扩面、cross-over 阈值基准、
   cold/warm 区分。性能只能在一致性 gate 通过之后运行。
 - 减少 SICHEL 族 `lax.scan` 固定 100000 步的动态上界（`while_loop` 范式）。
@@ -773,7 +782,8 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   c(row/c(col))）、`histSmo_plot`（直方图 + 平滑密度，兼容 R 的 histSmo 载荷与本包
   HistSmoResult）。**gamlss.ggplots surface 109/109 完整**）
 - [ ] P5-1 定义 OmniLSS↔ondil distribution contract 与独立流式 golden
-- [ ] P6-1 `log_bessel_kv` JAX 原生实现（含精度与耗时双验收）
+- [x] P6-1 `log_bessel_kv` JAX 原生实现（D2.267：精度 5.7e-14 达成；CPU 拟合周期
+  70× 回退 → 归档为 opt-in 实验模块，默认回调不变；GPU 重测后再决定是否切换）
 
 ### 22.6 风险与决策
 
