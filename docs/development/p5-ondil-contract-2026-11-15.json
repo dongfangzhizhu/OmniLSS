@@ -1,0 +1,2616 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-11-20T23:40:51Z",
+  "commit": "7ebaca1",
+  "contract": "docs/development/p5-ondil-distribution-contract-2026-11-15.md",
+  "ondil_available": false,
+  "ondil_source": {
+    "path": "ondil/src/ondil/distributions",
+    "families_parsed": 22
+  },
+  "summary": {
+    "families": 22,
+    "order_mismatches": 0,
+    "support_mismatches": 0,
+    "support_exemptions": [
+      "EXP",
+      "IGAMMA",
+      "LOGNO",
+      "LOGNO2"
+    ],
+    "boundary_violations": [
+      "IG",
+      "IGAMMA",
+      "LOGNO",
+      "LOGNO2",
+      "ZAGA"
+    ],
+    "known_boundary_violations": [
+      "IG",
+      "IGAMMA",
+      "LOGNO",
+      "LOGNO2",
+      "ZAGA"
+    ]
+  },
+  "order_mismatches": [],
+  "support_mismatches": [],
+  "families": [
+    {
+      "family": "BE",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma"
+      ],
+      "estimable": [
+        "mu",
+        "sigma"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": 0.0,
+        "upper": 1.0,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": 0.0,
+          "upper": 1.0,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5
+        ],
+        "points": [
+          0.001,
+          0.0,
+          -0.001
+        ],
+        "logpdf": [
+          -2.5196662338274263,
+          -Infinity,
+          -Infinity
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "beta",
+      "ondil_support": {
+        "lower": 5e-324,
+        "upper": 0.9999999999999999,
+        "lower_closed": false,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "BEINF",
+      "type": "Mixed",
+      "parameters": [
+        "mu",
+        "sigma",
+        "nu",
+        "tau"
+      ],
+      "estimable": [
+        "mu",
+        "sigma",
+        "nu",
+        "tau"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma",
+        "2": "nu",
+        "3": "tau"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": 0.0,
+        "upper": 1.0,
+        "lower_closed": true,
+        "upper_closed": true
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "nu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "tau": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "nu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "tau": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported (atoms in the log-density)",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (Mixed)",
+        "pmf": "unsupported (Mixed)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": 0.0,
+          "upper": 1.0,
+          "lower_closed": true,
+          "upper_closed": true
+        },
+        "theta": [
+          0.5,
+          0.5,
+          3.0,
+          2.0
+        ],
+        "points": [
+          0.001,
+          0.0,
+          -0.001
+        ],
+        "logpdf": [
+          -4.311425703055481,
+          -0.6931471805599452,
+          -Infinity
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "betainflated",
+      "ondil_support": {
+        "lower": 0.0,
+        "upper": 1.0,
+        "lower_closed": true,
+        "upper_closed": true
+      }
+    },
+    {
+      "family": "BEINF0",
+      "type": "Mixed",
+      "parameters": [
+        "mu",
+        "sigma",
+        "nu"
+      ],
+      "estimable": [
+        "mu",
+        "sigma",
+        "nu"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma",
+        "2": "nu"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": 0.0,
+        "upper": 1.0,
+        "lower_closed": true,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "nu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "nu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported (atoms in the log-density)",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (Mixed)",
+        "pmf": "unsupported (Mixed)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": 0.0,
+          "upper": 1.0,
+          "lower_closed": true,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5,
+          3.0
+        ],
+        "points": [
+          0.001,
+          0.0,
+          -0.001
+        ],
+        "logpdf": [
+          -3.9059605949473166,
+          -0.2876820724517808,
+          -Infinity
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "betainflatedzero",
+      "ondil_support": {
+        "lower": 0.0,
+        "upper": 0.9999999999999999,
+        "lower_closed": true,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "EXP",
+      "type": "Continuous",
+      "parameters": [
+        "mu"
+      ],
+      "estimable": [
+        "mu"
+      ],
+      "theta_order": {
+        "0": "mu"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": 0.0,
+        "upper": null,
+        "lower_closed": true,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "n/a (single parameter)",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": true,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5
+        ],
+        "points": [
+          0.001,
+          0.0,
+          -0.001
+        ],
+        "logpdf": [
+          0.6911471805599453,
+          0.6931471805599453,
+          -Infinity
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "exponential",
+      "ondil_support": {
+        "lower": 5e-324,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "GA",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma"
+      ],
+      "estimable": [
+        "mu",
+        "sigma"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": 0.0,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5
+        ],
+        "points": [
+          0.001,
+          0.0,
+          -0.001
+        ],
+        "logpdf": [
+          -14.205259139455123,
+          -Infinity,
+          -Infinity
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "gamma",
+      "ondil_support": {
+        "lower": 5e-324,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "GU",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma"
+      ],
+      "estimable": [
+        "mu",
+        "sigma"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5
+        ],
+        "points": [
+          0.5,
+          -10.0,
+          -1000.0
+        ],
+        "logpdf": [
+          -0.3068528194400547,
+          -20.306852820198312,
+          -2000.30685281944
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "gumbel",
+      "ondil_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "IG",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma"
+      ],
+      "estimable": [
+        "mu",
+        "sigma"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": 0.0,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5
+        ],
+        "points": [
+          0.001,
+          0.0,
+          -0.001
+        ],
+        "logpdf": [
+          -1981.8721584341715,
+          NaN,
+          NaN
+        ],
+        "probe_valid": true,
+        "boundary_ok": false,
+        "known_boundary_violation": true
+      },
+      "ondil_module": "inversegaussian",
+      "ondil_support": {
+        "lower": 5e-324,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "IGAMMA",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma"
+      ],
+      "estimable": [
+        "mu",
+        "sigma"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": 0.0,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5
+        ],
+        "points": [
+          0.001,
+          0.0,
+          -0.001
+        ],
+        "logpdf": [
+          -2463.587820146821,
+          -1.1258999068426058e+16,
+          -1.1258999068426058e+16
+        ],
+        "probe_valid": true,
+        "boundary_ok": false,
+        "known_boundary_violation": true
+      },
+      "ondil_module": "inversegamma",
+      "ondil_support": {
+        "lower": 0.0,
+        "upper": null,
+        "lower_closed": true,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "JSUo",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma",
+        "nu",
+        "tau"
+      ],
+      "estimable": [
+        "mu",
+        "sigma",
+        "nu",
+        "tau"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma",
+        "2": "nu",
+        "3": "tau"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "nu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "tau": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "nu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "tau": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5,
+          3.0,
+          2.0
+        ],
+        "points": [
+          0.5,
+          -10.0,
+          -1000.0
+        ],
+        "logpdf": [
+          -4.032644172084782,
+          -12.59770016744553,
+          -99.46585455596187
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "johnsonsu",
+      "ondil_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "LO",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma"
+      ],
+      "estimable": [
+        "mu",
+        "sigma"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5
+        ],
+        "points": [
+          0.5,
+          -10.0,
+          -1000.0
+        ],
+        "logpdf": [
+          -0.6931471805599453,
+          -20.306852820956568,
+          -2000.30685281944
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "logistic",
+      "ondil_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "LOGNO",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma"
+      ],
+      "estimable": [
+        "mu",
+        "sigma"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": 0.0,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5
+        ],
+        "points": [
+          0.001,
+          0.0,
+          -0.001
+        ],
+        "logpdf": [
+          -103.06771262023801,
+          NaN,
+          NaN
+        ],
+        "probe_valid": true,
+        "boundary_ok": false,
+        "known_boundary_violation": true
+      },
+      "ondil_module": "lognormal",
+      "ondil_support": {
+        "lower": 0.0,
+        "upper": null,
+        "lower_closed": true,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "LOGNO2",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma"
+      ],
+      "estimable": [
+        "mu",
+        "sigma"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": 0.0,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5
+        ],
+        "points": [
+          0.001,
+          0.0,
+          -0.001
+        ],
+        "logpdf": [
+          -70.56074370761196,
+          -2463.4987163660107,
+          -2463.4987163660107
+        ],
+        "probe_valid": true,
+        "boundary_ok": false,
+        "known_boundary_violation": true
+      },
+      "ondil_module": "lognormalmedian",
+      "ondil_support": {
+        "lower": 0.0,
+        "upper": null,
+        "lower_closed": true,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "NO",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma"
+      ],
+      "estimable": [
+        "mu",
+        "sigma"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5
+        ],
+        "points": [
+          0.5,
+          -10.0,
+          -1000.0
+        ],
+        "logpdf": [
+          -0.2257913526447274,
+          -220.72579135264473,
+          -2002000.7257913526
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "normal",
+      "ondil_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "NO2",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma"
+      ],
+      "estimable": [
+        "mu",
+        "sigma"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5
+        ],
+        "points": [
+          0.5,
+          -10.0,
+          -1000.0
+        ],
+        "logpdf": [
+          -0.5723649429247,
+          -110.82236494292468,
+          -1001000.8223649428
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "normal",
+      "ondil_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "PE",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma",
+        "nu"
+      ],
+      "estimable": [
+        "mu",
+        "sigma",
+        "nu"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma",
+        "2": "nu"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "nu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "nu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5,
+          3.0
+        ],
+        "points": [
+          0.5,
+          -10.0,
+          -1000.0
+        ],
+        "logpdf": [
+          -0.3795186817235433,
+          -2112.4760349626076,
+          -1827246514.0533814
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "powerexponential",
+      "ondil_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "PO",
+      "type": "Discrete",
+      "parameters": [
+        "mu"
+      ],
+      "estimable": [
+        "mu"
+      ],
+      "theta_order": {
+        "0": "mu"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": 0.0,
+        "upper": null,
+        "lower_closed": true,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "unsupported (discrete: use logpmf)",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "n/a (single parameter)",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "supported",
+        "pmf": "supported"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": true,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5
+        ],
+        "points": [
+          1.0,
+          0.0,
+          -1.0
+        ],
+        "logpdf": [
+          -1.1931471805599454,
+          -0.5,
+          -Infinity
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "poisson",
+      "ondil_support": {
+        "lower": 0.0,
+        "upper": null,
+        "lower_closed": true,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "RG",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma"
+      ],
+      "estimable": [
+        "mu",
+        "sigma"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5
+        ],
+        "points": [
+          0.5,
+          -10.0,
+          -1000.0
+        ],
+        "logpdf": [
+          -0.3068528194400547,
+          -1318815712.7900677,
+          -Infinity
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "reversegumbel",
+      "ondil_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "SST",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma",
+        "nu",
+        "tau"
+      ],
+      "estimable": [
+        "mu",
+        "sigma",
+        "nu",
+        "tau"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma",
+        "2": "nu",
+        "3": "tau"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "nu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "tau": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "nu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "tau": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5,
+          3.0,
+          2.0
+        ],
+        "points": [
+          0.5,
+          -10.0,
+          -1000.0
+        ],
+        "logpdf": [
+          34.493106994511244,
+          -82.94809503949507,
+          -96.61873473007599
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "skew_t",
+      "ondil_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "ST3",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma",
+        "nu",
+        "tau"
+      ],
+      "estimable": [
+        "mu",
+        "sigma",
+        "nu",
+        "tau"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma",
+        "2": "nu",
+        "3": "tau"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "nu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "tau": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "nu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "tau": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5,
+          3.0,
+          2.0
+        ],
+        "points": [
+          0.5,
+          -10.0,
+          -1000.0
+        ],
+        "logpdf": [
+          -0.8573992140459631,
+          -12.247838289902921,
+          -25.917722396211634
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "skew_t",
+      "ondil_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "TF",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma",
+        "nu"
+      ],
+      "estimable": [
+        "mu",
+        "sigma",
+        "nu"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma",
+        "2": "nu"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "nu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "nu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5,
+          3.0
+        ],
+        "points": [
+          0.5,
+          -10.0,
+          -1000.0
+        ],
+        "logpdf": [
+          -0.3077416690635647,
+          -10.302166216591795,
+          -28.51612792856284
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "studentt",
+      "ondil_support": {
+        "lower": null,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "WEI",
+      "type": "Continuous",
+      "parameters": [
+        "mu",
+        "sigma"
+      ],
+      "estimable": [
+        "mu",
+        "sigma"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": 0.0,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (continuous)",
+        "pmf": "unsupported (continuous)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5
+        ],
+        "points": [
+          0.001,
+          0.0,
+          -0.001
+        ],
+        "logpdf": [
+          3.0625826896610997,
+          -Infinity,
+          -Infinity
+        ],
+        "probe_valid": true,
+        "boundary_ok": true,
+        "known_boundary_violation": false
+      },
+      "ondil_module": "weibull",
+      "ondil_support": {
+        "lower": 5e-324,
+        "upper": null,
+        "lower_closed": false,
+        "upper_closed": false
+      }
+    },
+    {
+      "family": "ZAGA",
+      "type": "Mixed",
+      "parameters": [
+        "mu",
+        "sigma",
+        "nu"
+      ],
+      "estimable": [
+        "mu",
+        "sigma",
+        "nu"
+      ],
+      "theta_order": {
+        "0": "mu",
+        "1": "sigma",
+        "2": "nu"
+      },
+      "order_matches_ondil": true,
+      "ondil_counterpart": true,
+      "distribution_support": {
+        "lower": 0.0,
+        "upper": null,
+        "lower_closed": true,
+        "upper_closed": false
+      },
+      "parameter_support": {
+        "mu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "sigma": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        },
+        "nu": {
+          "lower": null,
+          "upper": null,
+          "lower_closed": false,
+          "upper_closed": false
+        }
+      },
+      "links": {
+        "mu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "sigma": {
+          "omnilss": "LogLink",
+          "ondil": "Log",
+          "support": {
+            "lower": 0.0,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        },
+        "nu": {
+          "omnilss": "IdentityLink",
+          "ondil": "Identity",
+          "support": {
+            "lower": null,
+            "upper": null,
+            "lower_closed": false,
+            "upper_closed": false
+          }
+        }
+      },
+      "methods": {
+        "logpdf": "supported (atoms in the log-density)",
+        "pdf": "supported",
+        "cdf": "supported",
+        "logcdf": "supported",
+        "ppf": "supported",
+        "dl1_dp1": "supported",
+        "dl2_dp2": "supported",
+        "dl2_dpp": "supported",
+        "initial_values": "supported",
+        "rvs": "unsupported (JAX key, not scipy RNG)",
+        "crps": "unsupported",
+        "logpmf": "unsupported (Mixed)",
+        "pmf": "unsupported (Mixed)"
+      },
+      "mismatches": [],
+      "probe": {
+        "support": {
+          "lower": 0.0,
+          "upper": null,
+          "lower_closed": true,
+          "upper_closed": false
+        },
+        "theta": [
+          0.5,
+          0.5,
+          3.0
+        ],
+        "points": [
+          0.001,
+          0.0,
+          -0.001
+        ],
+        "logpdf": [
+          -50.248912528572276,
+          -2.2204460492503136e-16,
+          -2.2204460492503136e-16
+        ],
+        "probe_valid": true,
+        "boundary_ok": false,
+        "known_boundary_violation": true
+      },
+      "ondil_module": "zeroadjustedgamma",
+      "ondil_support": {
+        "lower": 0.0,
+        "upper": null,
+        "lower_closed": true,
+        "upper_closed": false
+      }
+    }
+  ]
+}

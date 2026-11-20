@@ -796,9 +796,14 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   链函数方向陷阱（`derivative`=dμ/dη ↔ `inverse_derivative`）+ score/hessian 逐观测形状契约 +
   7 条已知缺陷（含 OmniLSS adapter 求和成标量、ondil `logpmf` 守卫调错）+ 22 个重叠族参数序核对
   （全部 1:1）+ 流式 golden 契约草案（7 项判据）+ 6 个未决问题
-- [ ] P5-1b 契约适配层 `omnilss/ondil_contract.py` + `tools/ondil_contract_scan.py` 工件 + 一致性测试
-  （基线 = scipy + 解析导数；ondil 直连对拍为 optional，不许把 skip 当通过；先修 `adapters.score/hessian`
-  的 `jnp.sum` 与只填对角两处契约违反）
+- [x] P5-1b 契约适配层（D2.270）：`omnilss/ondil_contract.py`（theta↔params、`Support` 规范化、
+  `OndilLink` 五方法、`OndilDistributionView` 的 `logpdf/logcdf/pdf/cdf/ppf/dl1_dp1/dl2_dp2/dl2_dpp/
+  initial_values`）+ `tools/ondil_contract_scan.py`（工件 `docs/development/p5-ondil-contract-2026-11-15.json`，
+  **用正则读 vendored ondil 源码交叉核对**：22 族参数序 0 错位、支持集 0 失配（EXP/IGAMMA/LOGNO/LOGNO2
+  按 R 语义豁免并记账））+ `test_ondil_contract.py` 78 例。同时修 `adapters.score/hessian` 的逐观测契约
+  （原实现 `jnp.sum` 后求导返回标量、hessian 只填对角）；修 `dPO(-1, log=True)` 返回 0 而非 -Inf；
+  5 个族的钳位型边界违反（IG/IGAMMA/LOGNO/LOGNO2/ZAGA）按棘轮冻结在 `KNOWN_BOUNDARY_VIOLATIONS`，
+  测试要求集合只减不增。
 - [ ] P5-1c 独立流式 golden（`partial_fit`/`update`/forget、分批不变性、warm start、漂移/缺失/性能内存）
 - [x] P6-1 `log_bessel_kv` JAX 原生实现（D2.267 精度 5.7e-14 达成；CPU 拟合周期
   回退（手记 70× / D2.268 工具实测 39×）→ 归档为 opt-in 实验模块，默认回调不变；

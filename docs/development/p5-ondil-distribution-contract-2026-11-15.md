@@ -110,7 +110,12 @@ OmniLSS LogLink: transform(v)=log v, inverse(η)=exp η,
 3. **支撑集外**：离散族在非整数点返回 0（密度）/ `-inf`（对数），**不返回 NaN**；
    `NaN` 只用于参数非法（如 `sigma<=0`）。两侧必须一致，golden 显式覆盖支撑集外点。
 4. **离散支撑**：`distribution_support` 的下界是**闭**的（`PO` 是 `[0, ∞)`），
-   连续族上下界开。`Mixed`（零膨胀/膨胀）的响应支撑仍是 `[0, ∞)` 或 `[0, 1]`。
+   连续族上下界开——**但 `EXP` 例外**：R 的 `dexp(0) = rate > 0`，所以下界闭（ondil 声明开，
+   `SUPPORT_EXEMPTIONS` 记账）。`Mixed`（零膨胀/膨胀）的响应支撑仍是 `[0, ∞)` 或 `[0, 1]`，
+   边界点上的原子质量走对数密度，不返回 `-inf`。
+5. **钳位 vs 支撑集（D8）**：OmniLSS 有 5 个族用 `maximum(y, eps)` 换取拟合期数值稳定，
+   代价是支撑集外的对数密度不是 `-inf`。这是**已知豁免**，由 §11 的棘轮固定；新族不得
+   再加入该名单。
 5. **dtype**：交换数组一律 `float64`（x64 已 pin）；整数响应保留整数用于 `pmf` 分支判断。
 
 ## 6. 导数约定（最需要修的一处）
@@ -177,6 +182,8 @@ hessian[a][b]      shape (n,)      = ∂²ℓ_i/∂θ_a∂θ_b     （a、b 均�
 | D5 | 两侧 | `Positive` eps vs `nextafter` | 参数下界差 300 个数量级 | 极端参数下"合法/非法"判定不同 | §9：只比规范化开闭性，golden 点避开 eps 邻域 |
 | D6 | OmniLSS | `core/links` | `Link.derivative` 与 ondil `link_derivative` 同名不同向 | 直接把 `link_derivative` 接到 `derivative` 会静默错梯度 | §4 表；命名建议见 §15-Q4 |
 | D7 | ondil | `ondil/pyproject.toml:39` | 硬依赖 `scikit-learn>=1.5` + `numba`，本仓库 venv 都没有 → `import ondil` 直接 `ModuleNotFoundError: sklearn` | **ondil 不能作运行时 oracle**；若把"对 ondil 对拍"写成硬门禁，CI 上永远是 skip 或红 | 契约改为 scipy + 解析导数基线，ondil 直连对拍标 optional（§11、§15-Q6） |
+| D8 | OmniLSS | `dpqr_functions.py` 的 IG/IGAMMA/LOGNO/LOGNO2/ZAGA | 对数密度在支撑集外返回 `nan` 或有限值（`maximum(y, eps)` 钳位），而 R 返回 `-Inf` | 违反 §5 第 3 条；会影响任何按"对数密度 = -inf ⇔ 支撑集外"做的判定 | **棘轮**：`ondil_contract.KNOWN_BOUNDARY_VIOLATIONS` 冻结这 5 个，测试要求集合只减不增；去钳位会动拟合稳定性，另开任务 |
+| D9 | OmniLSS | `dpqr_functions.py:167` `dPO` | `log=True` 时 `x<0` 仍填 `0.0`（概率填进了对数） | `dPO(-1, log=True)` 应为 `-Inf`，实际 0 | **已修**（D2.270）：填充值跟随 `log` |
 
 ## 11. 适配层设计草案（P5-1b，本次不实现）
 
@@ -224,7 +231,7 @@ def as_ondil(family) -> "OndilDistributionView"             # 只读视图，num
 | 项 | 内容 | 判据 | 状态 |
 |---|---|---|---|
 | P5-1a | 本契约文档 | 映射表逐项有源码出处；22 族参数序经脚本核对；缺陷清单可定位 | **本次交付** |
-| P5-1b | 适配层 + 扫描工件 + 一致性测试 | 22 族 `logpdf/logcdf/score/hessian` 对**解析/scipy 基线**达 §6 容差（ondil 直连对拍为 optional）；工件可重生成；D2 修复 | 待做 |
+| P5-1b | 适配层 + 扫描工件 + 一致性测试 | 22 族 `logpdf/logcdf/score/hessian` 对**解析/scipy 基线**达 §6 容差（ondil 直连对拍为 optional）；工件可重生成；D2 修复 | **D2.270 完成**：`omnilss/ondil_contract.py`（theta/支持集/链接/导数视图）+ `tools/ondil_contract_scan.py`（工件 `docs/development/p5-ondil-contract-2026-11-15.json`，ondil 源码正则交叉核对：22 族参数序 0 错位、支持集 0 失配）+ `test_ondil_contract.py` 78 例；adapters 的 score/hessian 改为逐观测（修 D2）；D9 已修，D8 棘轮冻结 5 族 |
 | P5-1c | 流式契约 + 独立 golden | §12 七项判据全部可复跑 | 待做 |
 
 P5-1 的整体勾选条件是 **a+b+c**；只有 a 完成时在 plan 里标 `P5-1a [x]`，不勾总项。

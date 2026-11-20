@@ -185,7 +185,10 @@ def dPO(x, mu=1.0, log=False):
     mu = jnp.asarray(mu, dtype=jnp.float64)
     
     fy = poisson.logpmf(x, mu) if log else poisson.pmf(x, mu)
-    fy = jnp.where(x < 0, 0.0, fy)
+    # R's dpois(-1, log = TRUE) is -Inf, not 0: the out-of-support fill has to
+    # follow the requested scale, otherwise every log-space contract check sees
+    # a probability masquerading as a log probability (P5-1b, D2.270).
+    fy = jnp.where(x < 0, -jnp.inf if log else 0.0, fy)
     
     return fy
 
