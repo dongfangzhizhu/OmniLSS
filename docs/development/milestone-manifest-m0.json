@@ -5,22 +5,22 @@
     "current_counts": {
       "compat_alias": 1,
       "evidence_gap": 44,
-      "extra": 419,
-      "missing": 53,
+      "extra": 422,
+      "missing": 48,
       "placeholder": 0
     },
     "diff_ok": true,
     "provenance": {
       "golden_manifest_sha256": "b4bdaebe5a7a62d687ff42469d6e56ee1297bc5685c4345aec88b956d2700365",
-      "python_surface_sha256": "3abce1b8285fe240add7a9913127e2d660b2b20476606385be8ccb4ba74bf0f3",
+      "python_surface_sha256": "507763ca2369c28a0daeafc5e7786c309c0aa5c21b155c3f22387f51cd031536",
       "r_namespace_sha256": "b51a29f54229ba5860387759ddf95f670613e80c1c86ccd16e2ed564bfbe1c2f",
-      "test_suite_sha256": "25050a9c068dee3f07f60cf3ece35190bc53524ca50c9be6af66da3f88d1cefa"
+      "test_suite_sha256": "00dc11500ec78aaa428466ca9d913e2925859050bc00fca3f29d8030d2eaf894"
     },
     "ratchet_ok": true,
     "stats": {
       "in_scope_exports": 1036,
-      "surface_matched": 1032,
-      "surface_missing": 48
+      "surface_matched": 1035,
+      "surface_missing": 45
     }
   },
   "environment": {
@@ -73,7 +73,7 @@
       "command": "python tools/tiered_collection.py --mode collect --strict-skips --json",
       "ok": true,
       "totals": {
-        "collected": 5843,
+        "collected": 5847,
         "errors": 0,
         "failed": 0,
         "skipped": 0,
@@ -81,7 +81,7 @@
       }
     }
   },
-  "generated_at_utc": "2026-11-21T01:42:51Z",
+  "generated_at_utc": "2026-11-21T01:55:39Z",
   "milestone": "M0",
   "notes": "M0 gate bundle per DEVELOPMENT_PLAN 22.4. Reproducibility is anchored by coverage provenance content hashes (HEAD-independent); source.commit is informational. Regenerate after any symbol/test change.",
   "pinned_expected": {
@@ -125,7 +125,7 @@
   },
   "source": {
     "branch": "main",
-    "commit": "249d0db4d24f97f27faaa480d797114d54ae82c8",
+    "commit": "57a2daccff41d80f89128f38d19f4e899a3b2673",
     "dirty": true
   },
   "tolerances": {

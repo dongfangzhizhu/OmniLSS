@@ -840,7 +840,8 @@ from .plot_smoothers import plotDF, plotLambda, SmootherPlotRow
 from .getZmatrix import getZmatrix
 from .quantSheets import quantSheets, findPower, z_scoresQS, QuantSheetsResult
 from .vis_lo import vis_lo, VisLoResult
-from .lo import lo, LoResult
+from .lo import GamlssLoFit, LoResult, LoSpec, gamlss_lo, lo, lo_control
+from .random_effects import GamlssReFit, ReSpec, gamlss_re, re
 from .quantSheets_control import quantSheets_control, QuantSheetsControl
 from .centileSK import centileSK, CentileSKResult
 from .centileKurt import centileKurt, CentileKurtResult
@@ -1817,8 +1818,16 @@ __all__ = [
     "QuantSheetsResult",
     "vis_lo",
     "lo",
+    "lo_control",
+    "gamlss_lo",
     "VisLoResult",
     "LoResult",
+    "LoSpec",
+    "GamlssLoFit",
+    "re",
+    "gamlss_re",
+    "ReSpec",
+    "GamlssReFit",
     "quantSheets_control",
     "QuantSheetsControl",
     "logSurv0",

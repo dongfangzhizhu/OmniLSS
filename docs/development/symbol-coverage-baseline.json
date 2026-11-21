@@ -18,11 +18,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 48,
+    "missing": 45,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 422
+    "extra": 427
   },
   "symbols": {
     "missing": [
@@ -69,9 +69,6 @@
       "gamlss2::step_gamlss2",
       "gamlss2::stepwise",
       "gamlss::calibration",
-      "gamlss::gamlss.lo",
-      "gamlss::gamlss.re",
-      "gamlss::re",
       "gamlss::stepGAIC.CH",
       "gamlss::stepTGDAll.A"
     ],
@@ -217,6 +214,8 @@
       "GAMLSSVGDResult",
       "GGPlot",
       "GLIMControl",
+      "GamlssLoFit",
+      "GamlssReFit",
       "GammaFamily",
       "GenLikelihoodResult",
       "GeneralisedPoisson",
@@ -240,6 +239,7 @@
       "LRTestResult",
       "LinkGamlss",
       "LoResult",
+      "LoSpec",
       "LogLikResult",
       "LogLogPlotResult",
       "LogLogSurvFit",
@@ -309,6 +309,7 @@
       "RSquaredResult",
       "RandomFit",
       "RandomSpec",
+      "ReSpec",
       "RegressionTree",
       "ResidualACFResult",
       "ResidualIndexData",
@@ -473,6 +474,7 @@
       "kurtosis",
       "likelihood_ratio_test",
       "list_family_capabilities",
+      "lo_control",
       "load_model",
       "load_model_json",
       "load_model_pickle",
