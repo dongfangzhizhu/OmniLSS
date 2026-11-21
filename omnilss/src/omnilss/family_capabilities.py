@@ -232,6 +232,41 @@ _RS_FIT_EVIDENCE = _PRODUCTION_SAFE | frozenset({"ZIP"})
 # dedicated prediction/serialization test.
 _PREDICTION_EVIDENCE = _PRODUCTION_SAFE | frozenset({"ZIP"})
 
+# Live-R CG route parity evidence (D2.281/B2b): strictly the 18 admitted
+# families whose CG cell in docs/development/layered-parity-2026-11-15.json
+# reached code == "pass" against live R (excluding NBI/PE/RG flat_ridge and
+# NBII's R-side CG error, which remain experimental).
+_CG_FIT_EVIDENCE = frozenset(
+    {
+        "BE",
+        "BEINF",
+        "BI",
+        "EXP",
+        "GA",
+        "GEOM",
+        "GU",
+        "IG",
+        "IGAMMA",
+        "LO",
+        "LOGNO",
+        "LOGNO2",
+        "NET",
+        "NO",
+        "NO2",
+        "PO",
+        "WEI",
+        "ZAGA",
+    }
+)
+
+# Live-R dpqr gate evidence for sampling (D2.281/B2b): every admitted family
+# passed the dpqr gate in docs/development/rs-parity-scan-2026-11-15.json.
+_SAMPLING_EVIDENCE = _PRODUCTION_SAFE
+
+# Live-R smooth-term (pb/ps/cs) consistency evidence (D2.281/B2b): families
+# backed by live-R tests in omnilss/tests/test_r_consistency_smooth.py.
+_SMOOTH_TERMS_EVIDENCE = frozenset({"NO", "GA"})
+
 _KNOWN_COMPAT_ALIAS_FAMILIES = frozenset(
     {
         # DBI left this set in D2.23: it was a BI forwarder and now has its own
@@ -568,9 +603,21 @@ def _build_capability(name: str) -> FamilyCapability:
         if key in _PREDICTION_EVIDENCE
         else CapabilityStatus.EXPERIMENTAL
     )
-    features["sampling"] = CapabilityStatus.EXPERIMENTAL
-    features["smooth_terms"] = CapabilityStatus.EXPERIMENTAL
-    features["cg_fit"] = CapabilityStatus.EXPERIMENTAL
+    features["sampling"] = (
+        CapabilityStatus.VALIDATED
+        if key in _SAMPLING_EVIDENCE
+        else CapabilityStatus.EXPERIMENTAL
+    )
+    features["smooth_terms"] = (
+        CapabilityStatus.VALIDATED
+        if key in _SMOOTH_TERMS_EVIDENCE
+        else CapabilityStatus.EXPERIMENTAL
+    )
+    features["cg_fit"] = (
+        CapabilityStatus.VALIDATED
+        if key in _CG_FIT_EVIDENCE
+        else CapabilityStatus.EXPERIMENTAL
+    )
 
     features["rs_jax_fit"] = (
         CapabilityStatus.EXPERIMENTAL

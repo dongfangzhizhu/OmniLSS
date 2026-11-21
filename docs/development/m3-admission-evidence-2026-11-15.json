@@ -1019,6 +1019,101 @@
   "milestone": "M3",
   "registry_audit": {
     "sets": {
+      "_CG_FIT_EVIDENCE": {
+        "declared": [
+          {
+            "backed": true,
+            "family": "BE",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "BEINF",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "BI",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "EXP",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "GA",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "GEOM",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "GU",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "IG",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "IGAMMA",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "LO",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "LOGNO",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "LOGNO2",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "NET",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "NO",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "NO2",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "PO",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "WEI",
+            "requirement": "cg_fit"
+          },
+          {
+            "backed": true,
+            "family": "ZAGA",
+            "requirement": "cg_fit"
+          }
+        ],
+        "requirement": "cg_fit"
+      },
       "_PREDICTION_EVIDENCE": {
         "declared": [
           {
@@ -1373,6 +1468,136 @@
           }
         ],
         "requirement": "rs_fit"
+      },
+      "_SAMPLING_EVIDENCE": {
+        "declared": [
+          {
+            "backed": true,
+            "family": "BE",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "BEINF",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "BI",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "EXP",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "GA",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "GEOM",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "GU",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "IG",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "IGAMMA",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "LO",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "LOGNO",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "LOGNO2",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "NBI",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "NBII",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "NET",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "NO",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "NO2",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "PE",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "PO",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "RG",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "WEI",
+            "requirement": "sampling"
+          },
+          {
+            "backed": true,
+            "family": "ZAGA",
+            "requirement": "sampling"
+          }
+        ],
+        "requirement": "sampling"
+      },
+      "_SMOOTH_TERMS_EVIDENCE": {
+        "declared": [
+          {
+            "backed": true,
+            "family": "GA",
+            "requirement": "smooth_terms"
+          },
+          {
+            "backed": true,
+            "family": "NO",
+            "requirement": "smooth_terms"
+          }
+        ],
+        "requirement": "smooth_terms"
       }
     },
     "violations": []

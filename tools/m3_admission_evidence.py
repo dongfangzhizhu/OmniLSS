@@ -36,10 +36,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "omnilss" / "src"))
 
 from omnilss.family_capabilities import (  # noqa: E402
+    _CG_FIT_EVIDENCE,
     _PREDICTION_EVIDENCE,
     _PRODUCTION_SAFE,
     _R_CONSISTENCY_EVIDENCE,
     _RS_FIT_EVIDENCE,
+    _SAMPLING_EVIDENCE,
+    _SMOOTH_TERMS_EVIDENCE,
     get_family_capability,
 )
 
@@ -169,12 +172,27 @@ def _registry_audit(promoted_rows: dict[str, dict], scan: dict[str, dict]) -> di
                 return True
             extra = EXTRA_EVIDENCE_TESTS.get(name)
             return bool(extra and (ROOT / extra).is_file())
+        if requirement == "cg_fit":
+            return bool(
+                row and row["measured"]["layered_codes"].get("CG") == "pass"
+            )
+        if requirement == "sampling":
+            return _gate_status(scan_row, "dpqr") == "pass"
+        if requirement == "smooth_terms":
+            smooth_test = ROOT / "omnilss" / "tests" / "test_r_consistency_smooth.py"
+            if not smooth_test.is_file():
+                return False
+            text = smooth_test.read_text(encoding="utf-8", errors="replace")
+            return f'family="{name}"' in text or f"family={name}()" in text
         raise KeyError(requirement)
 
     claims = {
         "_PRODUCTION_SAFE": (sorted(_PRODUCTION_SAFE), "production_safe"),
         "_RS_FIT_EVIDENCE": (sorted(_RS_FIT_EVIDENCE), "rs_fit"),
         "_PREDICTION_EVIDENCE": (sorted(_PREDICTION_EVIDENCE), "prediction"),
+        "_CG_FIT_EVIDENCE": (sorted(_CG_FIT_EVIDENCE), "cg_fit"),
+        "_SAMPLING_EVIDENCE": (sorted(_SAMPLING_EVIDENCE), "sampling"),
+        "_SMOOTH_TERMS_EVIDENCE": (sorted(_SMOOTH_TERMS_EVIDENCE), "smooth_terms"),
     }
     audit = {}
     violations: list[dict] = []

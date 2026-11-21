@@ -137,20 +137,30 @@ def test_experimental_family_is_fail_closed_only_on_production_route():
 
 
 def test_admitted_family_still_cannot_use_an_experimental_route():
-    """D2.241: admitting a family must not widen its production surface.
+    """D2.241 + D2.281: admitting a family must not widen unproven production routes.
 
-    GA is production-safe, but cg_fit is still experimental for every family, so
-    the production route must reject CG instead of returning an ok=False report
-    that the service caller ignores.
+    GA is production-safe and its CG route is backed by live-R layered parity
+    (code == 'pass'), so RS and CG are admitted; however, RS_JAX remains
+    experimental for GA, and CG remains experimental for NBII (R-side error in
+    layered parity), so both must fail closed on production routes.
     """
     assert require_production_family_route("GA", "RS", route="service")["ok"] is True
+    assert require_production_family_route("GA", "CG", route="service")["ok"] is True
     with pytest.raises(ProductionFamilyRejectedError) as caught:
-        require_production_family_route("GA", "CG", route="service")
+        require_production_family_route("NBII", "CG", route="service")
     report = caught.value.to_dict()
     assert report["ok"] is False
     assert report["feature"] == "cg_fit"
     assert report["status"] == "experimental"
     assert report["code"] == "experimental_requires_opt_in"
+
+    with pytest.raises(ProductionFamilyRejectedError) as caught_jax:
+        require_production_family_route("GA", "RS_JAX", route="service")
+    report_jax = caught_jax.value.to_dict()
+    assert report_jax["ok"] is False
+    assert report_jax["feature"] == "rs_jax_fit"
+    assert report_jax["status"] == "experimental"
+    assert report_jax["code"] == "experimental_requires_opt_in"
 
 
 def test_benchmark_route_uses_the_shared_gate_before_workload():

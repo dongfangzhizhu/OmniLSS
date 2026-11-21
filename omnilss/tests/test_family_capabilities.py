@@ -290,3 +290,29 @@ def test_require_method_route_uses_family_capability_tiers():
         require_method_route("GB2", "RS_JAX", allow_experimental=True)
     with pytest.raises(KeyError, match="capability routing map"):
         require_method_route("NO", "NOT_A_METHOD")
+
+
+def test_cg_sampling_and_smooth_evidence_tiers_match_artifacts():
+    """D2.281/B2b: validated cg_fit, sampling, and smooth_terms remain evidence-scoped."""
+    cg_validated = sorted(
+        cap.name
+        for cap in list_family_capabilities()
+        if cap.status("cg_fit") is CapabilityStatus.VALIDATED
+    )
+    sampling_validated = sorted(
+        cap.name
+        for cap in list_family_capabilities()
+        if cap.status("sampling") is CapabilityStatus.VALIDATED
+    )
+    smooth_validated = sorted(
+        cap.name
+        for cap in list_family_capabilities()
+        if cap.status("smooth_terms") is CapabilityStatus.VALIDATED
+    )
+    assert len(cg_validated) == 18
+    assert {"NO", "GA", "BE", "PO", "ZAGA"} <= set(cg_validated)
+    # Soft-flagged / R-error CG families stay experimental
+    for unpromoted in ("NBI", "NBII", "PE", "RG"):
+        assert get_family_capability(unpromoted).status("cg_fit") is CapabilityStatus.EXPERIMENTAL
+    assert len(sampling_validated) == 22
+    assert smooth_validated == ["GA", "NO"]
