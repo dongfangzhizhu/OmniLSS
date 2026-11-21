@@ -1,25 +1,25 @@
 {
   "counts": {
     "baseline_golden_validated": 34,
-    "dpqr_golden": 86,
+    "dpqr_golden": 84,
     "dpqr_other": 0,
-    "dpqr_r_consistency": 2,
+    "dpqr_r_consistency": 4,
     "dpqr_symbols": 88,
-    "golden_symbols_in_promoted_families": 86,
-    "golden_validated_total": 86,
-    "growth_ratio": 2.5294,
+    "golden_symbols_in_promoted_families": 84,
+    "golden_validated_total": 84,
+    "growth_ratio": 2.4706,
     "kernel_implemented_families": 22,
     "kernel_layer": {
       "implemented": 110
     },
     "placeholder_in_scope": 0,
     "promoted_families": 22,
-    "r_consistency_symbols_in_promoted_families": 24,
+    "r_consistency_symbols_in_promoted_families": 26,
     "symbols_in_promoted_families": 110
   },
   "criteria": {
     "golden_validated_order_of_magnitude": {
-      "detail": "34 -> 86 (2.53x); the literal 10x target would need ~340 symbols, which the 40-family validated pool cannot supply (18 excluded for documented R-side/flat-ridge reasons)",
+      "detail": "34 -> 84 (2.47x); the literal 10x target would need ~340 symbols, which the 40-family validated pool cannot supply (18 excluded for documented R-side/flat-ridge reasons)",
       "met": false
     },
     "highfreq_dpqr_parity_by_evidence": {
@@ -27,7 +27,7 @@
       "met": true
     },
     "highfreq_dpqr_parity_direct": {
-      "detail": "86/88 dpqr symbols carry golden parity directly; 2 are labelled r_consistency_test because that rule takes precedence over golden in generate_symbol_coverage.py:381",
+      "detail": "84/88 dpqr symbols carry golden parity directly; 4 are labelled r_consistency_test because that rule takes precedence over golden in generate_symbol_coverage.py:381",
       "met": false
     },
     "highfreq_surface_parity": {

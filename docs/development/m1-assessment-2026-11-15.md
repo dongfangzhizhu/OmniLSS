@@ -1,18 +1,18 @@
 # M1 assessment (target 0.5.0)
 
 - promoted families: 22
-- symbols in promoted families: 110 (golden 86, r_consistency 24)
-- d/p/q/r: 86/88 golden directly, 2 suppressed by r_consistency precedence, 0 other
-- golden:validated total: 86 (baseline 34, 2.5294x)
+- symbols in promoted families: 110 (golden 84, r_consistency 26)
+- d/p/q/r: 84/88 golden directly, 4 suppressed by r_consistency precedence, 0 other
+- golden:validated total: 84 (baseline 34, 2.4706x)
 - kernel layer: {'implemented': 110}
 - placeholder in scope: 0
 
 | criterion | met | detail |
 |---|---|---|
 | highfreq_surface_parity | yes | no promoted family has a missing-surface symbol |
-| highfreq_dpqr_parity_direct | no | 86/88 dpqr symbols carry golden parity directly; 2 are labelled r_consistency_test because that rule takes precedence over golden in generate_symbol_coverage.py:381 |
+| highfreq_dpqr_parity_direct | no | 84/88 dpqr symbols carry golden parity directly; 4 are labelled r_consistency_test because that rule takes precedence over golden in generate_symbol_coverage.py:381 |
 | highfreq_dpqr_parity_by_evidence | yes | every promoted dpqr symbol has either a golden fixture or a live-R r_consistency test; none is bare capability/tested/unverified |
-| golden_validated_order_of_magnitude | no | 34 -> 86 (2.53x); the literal 10x target would need ~340 symbols, which the 40-family validated pool cannot supply (18 excluded for documented R-side/flat-ridge reasons) |
+| golden_validated_order_of_magnitude | no | 34 -> 84 (2.47x); the literal 10x target would need ~340 symbols, which the 40-family validated pool cannot supply (18 excluded for documented R-side/flat-ridge reasons) |
 | kernel_implemented | yes | 22/22 promoted families have an implemented kernel. Kernel promotion was M3 admission work rather than M1 parity; D2.241 closed it by admitting the evidence-eligible batch, so this criterion tracks the registry rather than being an M1 target. |
 | no_placeholder_in_scope | yes | in-scope placeholder symbols: 0 |
 

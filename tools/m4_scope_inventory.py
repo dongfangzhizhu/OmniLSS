@@ -238,11 +238,18 @@ def build() -> dict:
                 }
             ),
             "notes": (
-                "This is a scope inventory, not an M4 gate. gamlss.cens and gamlss.tr "
-                "already have full surface plus dedicated evidence modules; gamlss.mx is "
-                "the first package with a surface gap, so it is the recommended next "
-                "batch. Packages without a dedicated test module are flagged rather "
-                "than assumed covered."
+                "This is a scope inventory, not an M4 gate. All surrounding R packages "
+                "with function surfaces are currently surface-complete with dedicated "
+                "evidence modules (0 missing symbols); every package is in hold state "
+                "pending M4 closure."
+                if first_gap is None
+                else (
+                    "This is a scope inventory, not an M4 gate. "
+                    f"{first_gap['package']} is the first package with a surface gap "
+                    f"({len(first_gap['missing_symbols'])} missing), so it is the "
+                    "recommended next batch. Packages without a dedicated test module "
+                    "are flagged rather than assumed covered."
+                )
             ),
         },
     }

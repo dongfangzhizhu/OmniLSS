@@ -62,6 +62,19 @@ jobs:
         run: python tools/highfreq_family_freeze.py --check
       - name: P3-1 contract gate (family / link / formula / prediction)
         run: python tools/contract_freeze.py --check
+      - name: M1 / M2 / M3 / M4 / P2 milestone and layered parity gates
+        env:
+          JAX_PLATFORMS: cpu
+          JAX_ENABLE_X64: "true"
+          PYTHONPATH: omnilss/src
+        run: |
+          python tools/m1_assessment.py --check
+          python tools/m2_assessment.py --check
+          python tools/m3_assessment.py --check
+          python tools/m3_admission_evidence.py --check
+          python tools/m4_scope_inventory.py --check
+          python tools/p2_defect_classification.py --check
+          python tools/layered_parity.py --check
 
       - name: Lint / type gate (ruff, black, mypy)
         run: |
