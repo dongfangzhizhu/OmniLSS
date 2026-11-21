@@ -107,6 +107,14 @@ jobs:
           # Tiers: omnilss, omnilss-server, omnilss-pro, benchmarks.
           # ondil/ and gamlss-python/ are reference projects and are never tiers.
           python tools/tiered_collection.py --mode collect --strict-skips --json | tee tiered-collection.json
+      - name: Run omnilss-pro and omnilss-server test tiers
+        env:
+          MPLBACKEND: Agg
+          JAX_PLATFORMS: cpu
+          JAX_ENABLE_X64: "true"
+          PYTHONPATH: omnilss/src
+        run: |
+          python tools/tiered_collection.py --tier omnilss-pro --tier omnilss-server --mode run
       - name: Upload tiered collection report
         if: always()
         uses: actions/upload-artifact@v4

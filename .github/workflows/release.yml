@@ -54,6 +54,14 @@ jobs:
           PYTHONPATH: omnilss/src
         run: python tools/tiered_collection.py --mode collect --strict-skips --json
 
+      - name: Run omnilss-pro and omnilss-server test tiers
+        env:
+          MPLBACKEND: Agg
+          JAX_PLATFORMS: cpu
+          JAX_ENABLE_X64: "true"
+          PYTHONPATH: omnilss/src
+        run: python tools/tiered_collection.py --tier omnilss-pro --tier omnilss-server --mode run
+
       - name: Shard manifest is deterministic and lossless
         run: python tools/pytest_shards.py --shards 8 --check
       - name: Milestone manifest gate (M0 evidence bundle in sync)
