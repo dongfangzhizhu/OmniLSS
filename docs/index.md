@@ -10,6 +10,8 @@ architecture decisions, and development environment setup.
 
 ## Start here
 
+- [Quickstart Tutorial](tutorials/quickstart.md) walks through installation,
+  fitting, prediction, and the 22 admitted `production_safe` families.
 - [Algorithm API](api/algorithms.md) documents `method="RS"`, `method="RS_JAX"`,
   `method="CG"`, and `method="auto"` routing.
 - [Configuration API](api/config.md) documents device-aware routing thresholds

@@ -1,55 +1,61 @@
-# 模型选择与诊断
+# Model Selection & Diagnostics
 
-分布回归的核心问题：**哪个分布族 + 哪些项**。OmniLSS 提供选择与诊断工具。
+[中文版本](tutorial-model-selection_cn.md)
 
-## 偏差（Deviance）
+Distributional regression requires selecting both the distribution family and
+each parameter's predictor terms. OmniLSS provides R-aligned information
+criteria, hypothesis tests, stepwise selection, and quantile-residual
+diagnostics.
+
+## Deviance, GAIC, and Hypothesis Tests
 
 ```python
-from omnilss.operations import deviance
-deviance(model)   # -2 * logLik（R `deviance.gamlss` 语义）
+from omnilss.operations import deviance, gaic, gaic_scaled, gaic_table
+from omnilss.LR_test_12_06_2013 import LR_test
+from omnilss.Rsq import Rsq
+from omnilss.VuongClarkTest import VC_test
+
+dev = deviance(model)                     # -2 * logLik
+aic = gaic(model, k=2.0)                  # AIC (k=log(n) for BIC/SBC)
+table = gaic_table(m0, m1)                # multi-penalty comparison table
+scaled = gaic_scaled(m0, m1)              # relative AIC weights
+lr = LR_test(m0, m1)                      # nested likelihood-ratio test
+r2 = Rsq(m1, type="both")                 # Cox-Snell and Cragg-Uhler R^2
+vc = VC_test(m_ga, m_logno)               # Vuong & Clarke non-nested tests
 ```
 
-- 嵌套模型比较用偏差差（卡方近似）；不同族之间**不可**直接比偏差。
+## Stepwise & Distribution Selection
 
-## 信息准则
+- `fitDist` / `chooseDist`: compare admissible candidate families over support
+  groups (`_realline`, `_realplus`, `_real0to1`, `_counts`, `_binom`).
+- `stepGAIC`, `stepGAICAll_A`, `stepGAICAll_B`, `stepGAIC_CH`: stepwise term
+  selection across `mu`, `sigma`, `nu`, `tau`.
+- `stepTGD`, `stepTGDAll_A`, `gamlssVGD`, `gamlssCV`: validation global
+  deviance and cross-validation selection.
 
-```python
-from omnilss.operations import ic, gaic
-ic(model)                    # AIC（k=2，R `GAIC()` 语义）
-gaic(model, k=2)             # AIC；k=log(n) → BIC/SBC（R GAIC 同款）
-```
-
-- 族选择（如 `NO` vs `NBI` vs `ZAGA`）用 AIC/SBC 比较。
-
-## 拟合值 / 残差
+## Quantile Residuals & Diagnostics
 
 ```python
-fitted_mu = model.fitted_values["mu"]
+from omnilss import bp, calibration, fittedPlot, get_rqres, rqres_plot
+from omnilss.acfResid import acfResid
 from omnilss.operations import residuals
-resid = residuals(model)             # 分位残差（R residuals.gamlss 语义）
+
+z = residuals(model)                      # normalized quantile residuals
+acf = acfResid(model, max_lag=10)         # ACF of z, z^2, z^3, z^4
+rq_samples = get_rqres(model, howmany=4)  # randomized quantile residual draws
+rq_plot = rqres_plot(model, howmany=4)    # QQ / worm-plot diagnostic payloads
+bucket = bp(model)                        # bucket plot (moment skewness/kurtosis)
 ```
 
-- 分位残差对分布回归更稳健，可做 QQ 图检查族选择。
-
-## 能力矩阵（族 × 方法）
+## Bootstrap Uncertainty
 
 ```python
-from omnilss.family_capabilities import capability_matrix
-capability_matrix()   # 查看哪些族 × 方法可用/实验性/占位
-```
+from omnilss.bootstrap import compute_confidence_intervals, nonparametric_bootstrap
 
-- 自动选择族时先用能力矩阵过滤，避免选到占位族。
-
-## 安全网：bootstrap
-
-```python
-from omnilss.bootstrap import nonparametric_bootstrap, compute_confidence_intervals
 result = nonparametric_bootstrap(model, data, n_bootstrap=200)
-cis = compute_confidence_intervals(result)   # 参数 bootstrap 置信区间
+cis = compute_confidence_intervals(result)
 ```
 
-- 对参数不确定性给出 bootstrap 置信区间（商业层 AutoML 使用同源机制）。
+## Next Steps
 
-## 下一步
-
-- [R 一致性验证与 golden artifact](tutorial-r-consistency.md)
+- [R Consistency & Golden Artifacts](tutorial-r-consistency.md)

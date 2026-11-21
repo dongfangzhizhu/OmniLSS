@@ -1,56 +1,65 @@
-# 预测与 newdata
+# Prediction & Serialization
 
-拟合完成后可对任意 newdata 预测。预测时**重建设计矩阵**（含平滑基），
-因此与训练数据行数无关。
+[中文版本](tutorial-prediction_cn.md)
 
-## 基本预测
+After fitting, OmniLSS rebuilds parameter design matrices (including categorical
+contrasts and smooth bases) for arbitrary `newdata` without requiring the
+response column or matching training row counts.
+
+## Core Prediction Methods
 
 ```python
 import numpy as np
-from omnilss import gamlss
+from omnilss import GA, gamlss
 
-model = gamlss("y ~ x", family="GA", data=train)
-pred = model.predict(newdata=new)   # 返回 mu（条件均值）
+model = gamlss("y ~ x", family=GA(), data=train)
+newdata = {"x": np.linspace(-2.0, 2.0, 5)}
+
+mu_hat = model.predict(newdata=newdata)                            # response scale mu
+eta_mu = model.predict(newdata=newdata, type="link")               # linear predictor
+params = model.predict_params(newdata=newdata)                     # {"mu": ..., "sigma": ...}
+quantiles = model.predict_quantiles(newdata, quantiles=[0.05, 0.5, 0.95])
 ```
 
-## 预测内容
-
-| 方法 | 返回 |
+| Method / Function | Output |
 |---|---|
-| `model.predict(newdata)` | 条件均值 mu |
-| `model.predict(newdata, type="link")` | 线性预测子 η_mu |
-| `model.predict_params(newdata)` | 所有分布参数（mu/sigma/...） |
-| `model.predict_quantiles(newdata, quantiles=[0.05, 0.5, 0.95])` | 条件分位数 |
+| `model.predict(newdata)` | Conditional location parameter `mu` |
+| `model.predict(newdata, type="link")` | Linear predictor `eta_mu` |
+| `model.predict_params(newdata)` | All distribution parameters (`mu`, `sigma`, `nu`, `tau`) |
+| `model.predict_quantiles(newdata, quantiles=...)` | Conditional quantiles via family `q()` |
+| `predictAll(model, newdata=...)` | R `predictAll()` structured multi-parameter output |
+| `centiles_pred(model, xname=..., xvalues=...)` | R `centiles.pred()` centiles, z-scores, and standard centiles |
+| `lpred(model, what="mu", type="terms", se_fit=True)` | Centered term contributions and standard errors |
 
-```python
-pars = model.predict_params(newdata)                      # {"mu": ..., "sigma": ...}
-q90 = model.predict_quantiles(newdata, quantiles=[0.9])["0.9"]
-```
+## Smoothers & Categorical Contrasts
 
-## 平滑项预测
-
-含 `pb`/`ps`/`cs` 的模型预测同样支持——内部保存平滑状态并重建基：
+Models with `pb()`, `ps()`, `cs()`, or categorical contrasts (`contr.treatment`,
+`contr.sum`, `contr.helmert`, `contr.poly`) save their basis and coding state
+so `newdata` prediction matches training semantics across `RS`, `CG`, and
+`MIXED`:
 
 ```python
 model = gamlss("y ~ pb(x)", family="NO", data=train)
-pred = model.predict(newdata={"y": y_new, "x": x_new})  # x_new 任意长度
+pred = model.predict(newdata={"x": x_new})
 ```
 
-## 序列化与再预测
+## JSON Serialization & Round-Trip Verification
+
+All 22 admitted families are verified for `<= 1e-10` prediction drift across
+JSON save/load round-trips (`docs/development/m2-assessment-2026-11-15.json`):
 
 ```python
-from omnilss.serialization import save_model_json, load_model_json
+from omnilss import load_model_json, save_model_json
 
-save_model_json(model, "model.json")
-m2 = load_model_json("model.json")
-pred2 = m2.predict(newdata=new)   # 等价于原模型
+save_model_json(model, "model.omnilss.json")
+restored = load_model_json("model.omnilss.json")
+assert np.allclose(
+    model.predict_params(newdata)["mu"],
+    restored.predict_params(newdata)["mu"],
+    atol=1e-10,
+)
 ```
 
-## 注意
+## Next Steps
 
-- `newdata` 必须包含公式引用的所有变量；缺失 → `PredictionSchemaError`。
-- 分布参数外推（如 sigma）遵循链接函数约束，极端外推可能触发 eta 裁剪。
-
-## 下一步
-
-- [模型选择与诊断](tutorial-model-selection.md)
+- [Model Selection & Diagnostics](tutorial-model-selection.md)

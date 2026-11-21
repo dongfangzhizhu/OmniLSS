@@ -1,59 +1,85 @@
-# 分布族与参数
+# Distribution Families & Capability Gates
 
-OmniLSS 实现了 R `gamlss.dist` 的分布族。每个族有若干**分布参数**
-（如 `NO` 有 `mu`/`sigma`），每个参数可以有自己的线性预测子。
+[中文版本](tutorial-families_cn.md)
 
-## 八核心族（R 一致性已验证）
+OmniLSS ports the `gamlss.dist` family system. Each family defines one to four
+distribution parameters (`mu`, `sigma`, `nu`, `tau`) with default link
+functions, analytic or automatic-differentiation score/Hessian slots, and
+`d`/`p`/`q`/`r` kernels.
 
-| 族 | 参数 | 典型用途 |
+## 22 Production-Safe Admitted Families
+
+Every family below passed all nine hard admission gates in
+`docs/development/m3-admission-evidence-2026-11-15.json` (live-R derivative,
+DPQR, and RS deviance parity; validated R-consistency tests; golden fit
+fixture; live `newdata` predictions within `2e-4`; JSON round-trip drift
+`<= 1e-10`; converged refit; and zero OmniLSS-side layered route mismatches):
+
+| Support | Production-Safe Families | Typical Use |
 |---|---|---|
-| `NO` | mu, sigma | 正态 |
-| `GA` | mu, sigma | Gamma（正偏斜） |
-| `PO` | mu | Poisson 计数 |
-| `BI` | mu | 二项（0/1） |
-| `NBI` | mu, sigma | 负二项（过离散计数） |
-| `BE` | mu, sigma | Beta（(0,1) 比例） |
-| `ZAGA` | mu, sigma, nu | 零膨胀 Gamma |
-| `GU` | mu, sigma | Gumbel（极值） |
+| Real line `(-inf, inf)` | `NO`, `NO2`, `GU`, `RG`, `LO`, `PE`, `NET` | Symmetric, heavy-tailed, or skewed continuous responses |
+| Positive `(0, inf)` | `EXP`, `GA`, `IG`, `IGAMMA`, `LOGNO`, `LOGNO2`, `WEI` | Positive continuous / duration / claim-severity data |
+| Unit interval `(0, 1)` / `[0, 1]` | `BE`, `BEINF` | Proportions, rates, and 0/1-inflated proportions |
+| Zero-adjusted `[0, inf)` | `ZAGA` | Positive continuous responses with point mass at 0 |
+| Counts `{0, 1, ...}` / Binomial | `PO`, `GEOM`, `NBI`, `NBII`, `BI` | Count data, overdispersed counts, and binomial trials |
 
-## 参数建模
+An additional 104 registered families are available at `experimental` tier, and
+20 `gen.Family` skeleton constructors remain explicitly marked `compat_alias`
+(0 `placeholder` families remain).
 
-每个分布参数可单独建模（与 R 相同）：
+## Modeling Multiple Parameters
 
 ```python
-from omnilss import gamlss
 import numpy as np
+from omnilss import NO, gamlss
 
 rng = np.random.default_rng(0)
-n = 100
-x = rng.normal(size=n)
-y = rng.normal(loc=1.0 + 0.3 * x, scale=0.5)
+x = rng.normal(size=120)
+y = rng.normal(loc=1.0 + 0.5 * x, scale=np.exp(-0.4 + 0.25 * x))
 
-model = gamlss("y ~ x", sigma_formula="~1", family="NO", data={"y": y, "x": x})
+model = gamlss(
+    "y ~ x",
+    sigma_formula="~ x",
+    family=NO(),
+    data={"y": y, "x": x},
+)
 ```
 
-- `mu_formula` / `sigma_formula` / `nu_formula` / `tau_formula`：各参数公式
-- `family` 可传字符串（如 `"GA"`）或族对象（如 `GA()`）
+Use `parameter_formulas={"nu": "~ x", "tau": "~ 1"}` for 3- and 4-parameter
+families, or pass `sigma_fix=True, sigma_start=0.5` to hold a parameter fixed.
 
-## 族的能力门禁
+## Fail-Closed Capability Gates
+
+Registration is intentionally separated from validation. Inspect capability
+tiers or enforce fail-closed production routing via `omnilss.family_capabilities`:
 
 ```python
-from omnilss.family_capabilities import capability_matrix, check_capability
-capability_matrix()          # 全族 × 方法能力矩阵
-check_capability("ZAGA", "rs_fit")
+from omnilss.family_capabilities import (
+    capability_matrix,
+    get_family_capability,
+    method_route_capability_report,
+    require_production_family_route,
+)
+
+cap = get_family_capability("ZAGA")
+print(cap.implementation_status, cap.status("rs_fit"), cap.status("cg_fit"))
+
+# Raises ProductionFamilyRejectedError for experimental or compat_alias routes
+require_production_family_route("GA", "RS", route="service")
+report = method_route_capability_report("GA", "CG", strict=True)
+matrix = capability_matrix()
 ```
 
-未实现/占位的族在 `rs_fit` 等路径上会被**拒绝**（`FamilyCapabilityError`），
-避免静默错误结果。
+Passing `strict_capabilities=True` to `gamlss(...)` rejects any experimental
+family/route rather than silently fitting unvalidated kernels.
 
-## 参数与链接
+## Transformed, Censored, and Truncated Families
 
-| 参数 | 默认链接 |
-|---|---|
-| mu | log（计数/正支持）或 identity |
-| sigma | log |
-| nu / tau | logit |
+- `gen_Family("NO", type="log")` / `Family("NO", "logit")` build log- and
+  logit-transformed families with wrapped response derivatives.
+- `omnilss.cens` (`gen_cens`, `cens`) and `omnilss.tr` (`gen_trun`, `trun`)
+  wrap base families for censored and truncated responses.
 
-## 下一步
+## Next Steps
 
-- [拟合算法 RS/CG/MIXED](tutorial-fitting-algorithms.md)
+- [Fitting Algorithms (RS / CG / MIXED / HYBRID)](tutorial-fitting-algorithms.md)

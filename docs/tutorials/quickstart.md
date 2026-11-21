@@ -1,51 +1,76 @@
-# 快速上手（Quickstart）
+# Quickstart
 
-`OmniLSS` 是 R `gamlss` 生态的 Python/JAX 实现：分布回归（对均值、尺度、
-形状等参数同时建模）。
+[中文版本](quickstart_cn.md)
 
-## 安装
+OmniLSS is a Python/JAX implementation of R's `gamlss` ecosystem for
+Generalized Additive Models for Location, Scale, and Shape (GAMLSS): every
+parameter of a probability distribution (`mu`, `sigma`, `nu`, `tau`) can be
+modeled simultaneously with linear terms, smoothers, and random effects.
+
+## Installation & Environments
+
+OmniLSS uses `uv` to manage virtual environments (`.venv` on Windows CPU,
+`debianjaxgpu` on WSL Debian GPU):
 
 ```bash
-pip install omnilss
-# 可选：JAX GPU 后端（Phase 7 性能专项后支持）
+# Install editable core package
+uv pip install -e omnilss
+
+# Optional extras: gRPC / FastAPI serving
+uv pip install -e "omnilss[server]"
 ```
 
-## 最小示例
+Always enable 64-bit floating point (`JAX_ENABLE_X64=true`) when matching R
+`gamlss` numerically.
+
+## Minimal Example
 
 ```python
 import numpy as np
-from omnilss import gamlss
+from omnilss import GA, gamlss
 
 rng = np.random.default_rng(0)
 n = 120
 x = rng.normal(size=n)
-# 模拟：mu = exp(1.0 + 0.5x)，sigma = 0.3
-y = rng.gamma(shape=1 / 0.09, scale=np.exp(1.0 + 0.5 * x) * 0.09)
+# Simulate mu = exp(1.0 + 0.5 * x), sigma = 0.3
+mu_true = np.exp(1.0 + 0.5 * x)
+y = rng.gamma(shape=1.0 / 0.09, scale=mu_true * 0.09)
 
-data = {"y": y, "x": x}
-model = gamlss("y ~ x", family="GA", data=data)
-print(model.summary())
-print("mu 系数:", model.coefficients["mu"])   # 期望接近 [1.0, 0.5]
-print("sigma:", np.exp(model.coefficients["sigma"]))  # 期望接近 0.3
+model = gamlss("y ~ x", family=GA(), data={"y": y, "x": x})
+print("converged:", model.converged, "deviance:", float(model.g_dev))
+print("mu coef:", model.coefficients["mu"])
+print("sigma:", float(np.exp(model.coefficients["sigma"][0])))
 ```
 
-## 预测
+## Prediction & Quantiles
 
 ```python
-newdata = {"y": np.zeros(5), "x": np.linspace(-2, 2, 5)}
-pred = model.predict(newdata=newdata)   # 返回 mu
-pred_all = model.predict(newdata=newdata, type="response")
+newdata = {"x": np.linspace(-2.0, 2.0, 5)}
+mu_hat = model.predict(newdata=newdata)
+params = model.predict_params(newdata=newdata)          # {"mu": ..., "sigma": ...}
+quantiles = model.predict_quantiles(newdata=newdata, quantiles=[0.1, 0.5, 0.9])
 ```
 
-## 三件事
+## Current Scope & Highlights
 
-1. **分布族**：`NO`/`GA`/`PO`/`BI`/`NBI`/`BE`/`ZAGA`/`GU`（八核心，
-   R 一致性已验证）及其余约 20 个族。
-2. **算法**：`method="RS"`（默认）/ `"CG"` / `"MIXED"`。
-3. **平滑**：`ps(x)` / `cs(x)` / `pb(x)` 加入公式即用。
+1. **Distribution families**: 146 registered families (0 placeholders); 22
+   admitted `production_safe` families backed by live-R golden fixtures,
+   prediction round-trips, and layered route parity (`BE`, `BEINF`, `BI`,
+   `EXP`, `GA`, `GEOM`, `GU`, `IG`, `IGAMMA`, `LO`, `LOGNO`, `LOGNO2`,
+   `NBI`, `NBII`, `NET`, `NO`, `NO2`, `PE`, `PO`, `RG`, `WEI`, `ZAGA`).
+2. **Algorithms**: `method="RS"` (default), `"CG"` (18 live-R validated
+   families), `"MIXED"` (R `mixed(n1, n2)` two-stage RS -> CG), `"HYBRID"`,
+   and experimental `"RS_JAX"`.
+3. **Smoothers & Random Effects**: `pb(x)`, `ps(x)`, `cs(x)`, `cy(x)`,
+   `lo(x)`, `re(random=...)`, and `random(g)` directly inside formulas.
+4. **In-scope R API coverage**: 100% of the 1,036 in-scope R symbols across 11
+   packages (`gamlss`, `gamlss.dist`, `gamlss.cens`, `gamlss.tr`, `gamlss.mx`,
+   `gamlss.add`, `gamlss.spatial`, `gamlss.foreach`, `gamlss.prepdata`,
+   `gamlss.ggplots`, `gamlss.data`) with zero unverified symbols. `gamlss2` is
+   explicitly out of scope.
 
-## 下一步
+## Next Steps
 
-- [分布族与参数](tutorial-families.md)
-- [拟合算法 RS/CG/MIXED](tutorial-fitting-algorithms.md)
-- [平滑器 pb/ps/cs](tutorial-smoothers.md)
+- [Distribution Families & Capability Gates](tutorial-families.md)
+- [Fitting Algorithms (RS / CG / MIXED / HYBRID)](tutorial-fitting-algorithms.md)
+- [Smoothers & Random Effects](tutorial-smoothers.md)

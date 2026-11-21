@@ -1,48 +1,58 @@
-# gRPC 托管服务（L3）
+# gRPC & HTTP Serving
 
-商业层（omnilss-pro）通过 gRPC 暴露模型生命周期；开源核心提供
-`omnilss.api.grpc` 的契约与实现。
+[中文版本](tutorial-grpc-serving_cn.md)
 
-## 服务与端点
+OmniLSS exposes both a gRPC serving layer (`omnilss.api.grpc` + `omnilss-pro`
+client) and a FastAPI HTTP server (`omnilss-server/main.py`) protected by the
+same fail-closed family capability gate.
 
-| Service | RPC | 用途 |
+## gRPC Services & Endpoints
+
+| Service | RPCs | Purpose |
 |---|---|---|
-| `FitService` | `Fit` / `BatchFit` | 拟合/批量拟合 |
-| `PredictService` | `Predict` | 预测 |
-| `SampleService` | `Sample` | 采样 |
-| `CapabilityService` | `CapabilityMatrix` / `RouteCapability` / `Version` / `Health` | 能力矩阵 / 路由能力 / 版本 / 健康 |
+| `FitService` | `Fit`, `BatchFit` | Single and batch model fitting |
+| `PredictService` | `Predict` | Out-of-sample parameter / quantile prediction |
+| `SampleService` | `Sample` | Predictive distribution sampling |
+| `CapabilityService` | `CapabilityMatrix`, `RouteCapability`, `Version`, `Health` | Runtime capability matrix, route check, version, health |
 
-## 启动服务
+Start the gRPC server:
 
 ```bash
 python -m omnilss.api.grpc.server --help
 ```
 
-服务加载已保存模型（JSON 工件 + 能力快照回放），支持运行时注册新模型。
-
-## 客户端（omnilss_pro.client）
+Python client (`omnilss_pro.client`):
 
 ```python
 from omnilss_pro.client import OmniLSSClient
 
 client = OmniLSSClient("localhost:50051")
-m = client.fit(data, "y ~ x", family="GA")     # 拟合（远端）
-pred = client.predict(m.model_id, newdata)      # 预测
-client.health()                                  # 健康探针
-client.version()                                 # 版本（__version__ + x64）
+fit = client.fit(data, "y ~ x", family="GA")
+pred = client.predict(fit.model_id, newdata)
+client.health()
+client.version()
 ```
 
-## 安全基线（托管层）
+## FastAPI HTTP Service (`omnilss-server`)
 
-- 认证 / 请求 DoS 上限 / 输入脱敏（服务层）
-- 序列化安全：加载工件时重放能力快照，防止不一致模型进入服务
-- TLS 配置入口就绪（生产部署必须启用）
+`omnilss-server/main.py` provides `/health`, `/fit`, `/predict`,
+`/distributions`, `/distributions/select`, `/models`, and `/models/{id}` with:
 
-## 契约冻结
+- Optional Bearer-token auth (`OMNILSS_API_TOKEN`) and per-IP sliding-window
+  rate limiting (with bounded client table pruning).
+- Fail-closed `require_production_family_route` enforcement on `/fit` and
+  `/distributions/select` (unproven `experimental` / `compat_alias` families
+  return HTTP `400`).
+- Input DoS guards (`MAX_ROWS`, `MAX_COLS`, `max_iter` bounded to `1..1000`).
 
-`omnilss/src/omnilss/api/grpc/proto/*.proto` 为冻结契约；`*_pb2.py`
-由 `tools/generate_grpc_stubs.py` 生成（CI 执行，需 `grpcio-tools`）。
+## Security & Contract Freeze
 
-## 下一步
+- Enable TLS (`OMNILSS_GRPC_TLS_CERT` / `OMNILSS_GRPC_TLS_KEY`) before exposing
+  gRPC endpoints outside localhost; verify certificates via
+  `tools/tls_readiness.py`.
+- Protobuf contracts in `omnilss/src/omnilss/api/grpc/proto/*.proto` are frozen;
+  stubs are regenerated with `tools/generate_grpc_stubs.py`.
 
-- [README 概览](../../README.md)
+## Next Steps
+
+- [OmniLSS Documentation Home](../index.md)

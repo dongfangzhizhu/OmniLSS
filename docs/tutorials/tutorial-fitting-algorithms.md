@@ -1,32 +1,43 @@
-# 拟合算法：RS / CG / MIXED / HYBRID
+# Fitting Algorithms: RS / CG / MIXED / HYBRID / RS_JAX
 
-OmniLSS 实现 R `gamlss` 的三种拟合算法，通过 `method=` 选择。
+[中文版本](tutorial-fitting-algorithms_cn.md)
 
-## RS（Rigby & Stasinopoulos，默认）
+OmniLSS implements R `gamlss`'s core estimation algorithms plus an experimental
+JAX-compiled RS backend, selected via `method=...`.
 
-- 对每个分布参数**轮流**迭代，固定其余参数，用修改后的 IRLS 更新。
-- 数值地基：显式 NumPy 后端（CPU 恒走 NumPy，GPU/大样本经路由到 JAX）。
-- 用法：
+## RS (Rigby & Stasinopoulos, Default)
+
+- Alternates over distribution parameters, updating each parameter via modified
+  IRLS with R `glim.fit` inner-loop semantics while holding other parameters
+  fixed.
+- Validated (`rs_fit=validated`) for all 22 `production_safe` families plus
+  `ZIP`.
 
 ```python
-model = gamlss("y ~ x", family="GA", data=data)                    # 默认 RS
+model = gamlss("y ~ x", family="GA", data=data)              # default RS
 model = gamlss("y ~ x", family="GA", data=data, method="RS")
 ```
 
-## CG（Cole & Green）
+## CG (Cole & Green)
 
-- 对各参数的得分向量与期望信息矩阵联合处理（完整牛顿型）。
-- 对参数相关性强的模型（如 `BE` 的 mu/sigma）通常收敛更稳。
+- Joint Newton-type updates using cross-parameter expected information blocks.
+- Validated (`cg_fit=validated`) for 18 admitted families whose CG cell passes
+  directly against live R in `docs/development/layered-parity-2026-11-15.json`
+  (`BE`, `BEINF`, `BI`, `EXP`, `GA`, `GEOM`, `GU`, `IG`, `IGAMMA`, `LO`,
+  `LOGNO`, `LOGNO2`, `NET`, `NO`, `NO2`, `PO`, `WEI`, `ZAGA`).
 
 ```python
 model = gamlss("y ~ x", family="BE", data=data, method="CG")
 ```
 
-## MIXED（R 兼容两阶段算法）
+## MIXED (R `mixed(n1, n2)` Two-Stage Algorithm)
 
-- 严格执行 R `mixed(n1, n2)` 的顺序：先运行 RS，再把全部可估参数状态作为 CG 的 warm start。
-- 默认 `mixed_n1=1`、`mixed_n2=20`；最终 `iter` 和 `converged` 采用 CG 阶段语义，两个阶段的记录保存在 `model.additional_slots`。
-- CG 尚不能保留惩罚平滑状态，因此含平滑项时会明确拒绝；此时使用 RS 或 HYBRID。
+- Runs `mixed_n1` RS cycles followed by `mixed_n2` CG cycles warm-started from
+  the full RS parameter state.
+- Final `iter` and `converged` follow CG semantics; both stages are recorded in
+  `model.additional_slots`.
+- Smooth terms are rejected explicitly on CG/MIXED; use `RS` or `HYBRID` when
+  fitting penalized smoothers.
 
 ```python
 model = gamlss(
@@ -39,33 +50,33 @@ model = gamlss(
 )
 ```
 
-## HYBRID（自动单后端调度）
+## HYBRID & Experimental RS_JAX
 
-HYBRID 保留原有的自动策略：根据样本量、family 和平滑项，在一次拟合中选择 RS 或 L-BFGS。它不是 R `mixed()`。
+- `method="HYBRID"` automatically chooses between `RS` and `L-BFGS` according to
+  sample size, family, and smoother presence (not R's `mixed()`).
+- `method="RS_JAX"` compiles the RS loop with XLA for 6 core families (`NO`,
+  `GA`, `PO`, `BI`, `WEI`, `TF`; currently `experimental` tier).
 
 ```python
-model = gamlss("y ~ pb(x)", family="NO", data=data, method="HYBRID")
+model_h = gamlss("y ~ pb(x)", family="NO", data=data, method="HYBRID")
+model_j = gamlss("y ~ x", family="NO", data=data, method="RS_JAX")
 ```
 
-## 收敛控制
+## Convergence Controls & Numerical Safeguards
 
 ```python
 from omnilss.controls import gamlss_control
 
-control = gamlss_control(n_cyc=100, ccrit=1e-3, trace=True)
+control = gamlss_control(n_cyc=100, c_crit=1e-3, trace=False)
 model = gamlss("y ~ x", family="GA", data=data, control=control)
 ```
 
-- `n_cyc`：最大迭代轮数；`ccrit`：收敛判据（全局偏差相对变化）。
-- 未收敛会给出 `ConvergenceWarning`，请检查 `model.converged`。
+- All parameter-fixing flags (`mu_fix`, `sigma_fix`, `nu_fix`, `tau_fix`) and
+  categorical contrasts (`contr.treatment`, `contr.sum`, `contr.helmert`,
+  `contr.poly`) work across `RS`, `CG`, and `MIXED`.
+- Numerical safeguards (linear predictor clipping, Hessian ridge stabilization)
+  are logged in `model.additional_slots["safeguard_events"]` for auditability.
 
-## 数值守卫
+## Next Steps
 
-- **eta 裁剪**（`[-15, 15]`）：防止对数/逻辑链接发散。
-- **Hessian 稳定**：奇异 Gram 自动加 ridge，记录到 safeguard 事件。
-- 所有守卫触发均记录在 `model.additional_slots["safeguard_events"]`，
-  可审计。
-
-## 下一步
-
-- [平滑器 pb/ps/cs](tutorial-smoothers.md)
+- [Smoothers & Random Effects](tutorial-smoothers.md)

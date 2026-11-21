@@ -71,6 +71,15 @@ extra_javascript:
 
 nav:
   - Home: index.md
+  - Tutorials:
+      - Quickstart: tutorials/quickstart.md
+      - Distribution Families & Capability Gates: tutorials/tutorial-families.md
+      - Fitting Algorithms: tutorials/tutorial-fitting-algorithms.md
+      - Smoothers & Random Effects: tutorials/tutorial-smoothers.md
+      - Prediction & Serialization: tutorials/tutorial-prediction.md
+      - Model Selection & Diagnostics: tutorials/tutorial-model-selection.md
+      - R Consistency & Golden Artifacts: tutorials/tutorial-r-consistency.md
+      - gRPC & HTTP Serving: tutorials/tutorial-grpc-serving.md
   - API Reference:
       - Algorithms: api/algorithms.md
       - Configuration: api/config.md

@@ -1,47 +1,61 @@
-# 平滑器：pb / ps / cs
+# Smoothers & Random Effects
 
-平滑项通过公式语法加入（与 R `gamlss` 相同），在 IRLS 内部求解。
+[中文版本](tutorial-smoothers_cn.md)
 
-## pb（P-spline，惩罚 B 样条）
+Nonparametric smooth terms and random effects are specified directly inside
+model formulas using R `gamlss` syntax and solved inside the RS backfitting
+loop.
 
-```python
-model = gamlss("y ~ pb(x)", family="NO", data=data)
-```
-
-- `pb(x, df=...)`：按有效自由度选择；`pb(x, lambda=...)`：固定惩罚。
-
-## ps（P-spline，R `ps()` 语义）
+## Penalized B-Splines (`pb`, `ps`, `cy`)
 
 ```python
-model = gamlss("y ~ ps(x)", family="NO", data=data)
-model = gamlss("y ~ ps(x, df=5)", family="NO", data=data)
+model_pb = gamlss("y ~ pb(x)", family="NO", data=data)
+model_ps = gamlss("y ~ ps(x, df=5)", family="NO", data=data)
+model_cy = gamlss("y ~ cy(x, df=4)", family="NO", data=data)
 ```
 
-- 与 R `ps()` 对齐：等间距基 + 差分惩罚；`df`/`lambda` 两种选择方式。
+- `pb(x)` selects the smoothing parameter automatically (ML / GAIC / GCV) or
+  targets a fixed `df` / `lambda`.
+- `ps(x)` aligns with R's equidistant B-spline basis + difference penalty.
+- `cy(x)` enforces periodic (cyclic) boundary conditions.
+- Live-R consistency for `pb()` is validated on `NO` and `GA`
+  (`smooth_terms=validated`).
 
-## cs（三次样条）
+## Cubic Splines (`cs`) and Local Regression (`lo`)
 
 ```python
-model = gamlss("y ~ cs(x)", family="NO", data=data)
+from omnilss import gamlss, gamlss_lo, lo, lo_control
+
+model_cs = gamlss("y ~ cs(x, df=4)", family="NO", data=data)
+lo_fit = gamlss_lo(x, y, w=np.ones_like(y), span=0.5, degree=1)
 ```
 
-- `cs()` 在 R 中返回拟合值向量（单列表示），OmniLSS 采用相同语义，
-  预测时基于保存的样条状态重建。
+- `cs(x)` stores spline state so `newdata` prediction rebuilds the exact curve.
+- `lo()` / `gamlss_lo()` implement exact weighted local polynomial regression
+  (degree 0/1/2, tricube weights, biweight robustness, and exact hat-matrix
+  `trace_hat` / `nl_df`), verified to `1e-10` against `stats::loess`.
 
-## 参数级平滑
-
-每个分布参数可用不同公式：
+## Random Effects (`re`, `random`)
 
 ```python
-model = gamlss("y ~ pb(x)", sigma_formula="~ pb(x)", family="NO", data=data)
+from omnilss import gamlss_re, re
+
+re_fit = gamlss_re(x_design, y, w=weights, groups=group_ids, method="REML")
 ```
 
-## 数值注意
+- `re()` / `gamlss_re()` solve exact marginal ML/REML weighted linear mixed
+  models (random intercepts and random slopes) via Woodbury + Cholesky,
+  supporting both population (`level=0`) and group-specific (`level=1`)
+  predictions.
 
-- 平滑基是"隐式"的（设计矩阵内部扩展），`model.design_matrices`
-  中可见实际列。
-- 奇异惩罚 Gram 自动稳定（Hessian ridge），记录 safeguard 事件。
+## Parameter-Specific Smoothers
 
-## 下一步
+Every distribution parameter can carry its own smooth terms:
 
-- [预测与 newdata](tutorial-prediction.md)
+```python
+model = gamlss("y ~ pb(x)", sigma_formula="~ pb(x, df=4)", family="NO", data=data)
+```
+
+## Next Steps
+
+- [Prediction & Serialization](tutorial-prediction.md)
