@@ -1,0 +1,75 @@
+{
+  "checks": {
+    "reference_import_violations": [],
+    "service_boundaries": {
+      "ok": true,
+      "pro_tls_tests_present": true,
+      "server_production_gate_wired": true,
+      "server_rate_limit_bounded": true,
+      "server_tests_present": true
+    },
+    "tutorials": {
+      "localization_errors": [],
+      "missing_chinese_counterparts": [],
+      "missing_from_mkdocs_nav": [],
+      "ok": true,
+      "tutorials_expected": 8
+    }
+  },
+  "counts": {
+    "admitted_families": 22,
+    "criteria": 7,
+    "in_scope_missing": 0,
+    "in_scope_symbols": 1036,
+    "in_scope_unverified": 0,
+    "met": 7
+  },
+  "criteria": {
+    "capability_admission_backed": {
+      "detail": "admitted=22/22, audit_violations=0, matrix_artifact_synced=True",
+      "met": true
+    },
+    "docs_localization_and_tutorials": {
+      "detail": "tutorials=8, missing_nav=0, missing_cn=0, localization_errors=0",
+      "met": true
+    },
+    "in_scope_r_surface_complete": {
+      "detail": "in-scope matched=1036/1036, missing=0, placeholder=0, unverified=0",
+      "met": true
+    },
+    "no_reference_repo_imports": {
+      "detail": "forbidden reference imports=0",
+      "met": true
+    },
+    "prior_milestones_intact": {
+      "detail": "M0=True, M1=True, M2=True, M3=True",
+      "met": true
+    },
+    "service_boundaries_hardened": {
+      "detail": "prod_gate=True, rate_limit_bounded=True, server_tests=True, pro_tls_tests=True",
+      "met": true
+    },
+    "surrounding_packages_complete": {
+      "detail": "packages=9, surface_complete=8, gaps=0, missing=0",
+      "met": true
+    }
+  },
+  "decision": "D2.283",
+  "milestone": "M4",
+  "schema_version": 1,
+  "sources": {
+    "capability_matrix": "docs/development/family-capability-matrix-2026-05-18.json",
+    "coverage": "docs/development/r-symbol-coverage.json",
+    "m0_manifest": "docs/development/milestone-manifest-m0.json",
+    "m1_assessment": "docs/development/m1-assessment-2026-11-15.json",
+    "m2_assessment": "docs/development/m2-assessment-2026-11-15.json",
+    "m3_admission": "docs/development/m3-admission-evidence-2026-11-15.json",
+    "m3_assessment": "docs/development/m3-assessment-2026-11-15.json",
+    "m4_scope": "docs/development/m4-scope-2026-11-15.json"
+  },
+  "target_version": "1.0.0",
+  "verdict": {
+    "m4_gate_met": true,
+    "notes": "M4 (1.0.0) gate aggregates M0..M3 verdicts, 100% in-scope R surface coverage with 0 unverified symbols, surrounding package completeness, fail-closed capability admission, hardened service boundaries, bilingual tutorial/doc compliance, and strict isolation from reference repos (ondil / gamlss-python). Out-of-scope gamlss2, P5 online/multivariate extensions, and P6 GPU kernels are independent tracks."
+  }
+}

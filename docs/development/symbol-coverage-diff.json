@@ -15,7 +15,7 @@
     "missing": 41,
     "placeholder": 0,
     "compat_alias": 1,
-    "evidence_gap": 44,
+    "evidence_gap": 0,
     "extra": 433
   },
   "category_meaning": {
@@ -47,8 +47,8 @@
     "evidence_gap": {
       "new": [],
       "resolved": [],
-      "current_count": 44,
-      "baseline_count": 44
+      "current_count": 0,
+      "baseline_count": 0
     },
     "extra": {
       "new": [],

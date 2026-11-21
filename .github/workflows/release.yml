@@ -81,6 +81,7 @@ jobs:
           python tools/m3_assessment.py --check
           python tools/m3_admission_evidence.py --check
           python tools/m4_scope_inventory.py --check
+          python tools/m4_assessment.py --check
           python tools/p2_defect_classification.py --check
           python tools/layered_parity.py --check
 
