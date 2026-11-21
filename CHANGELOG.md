@@ -7,6 +7,24 @@ All notable changes to Omni GAMLSS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-11-21 (M0–M3 Closed / 100% In-Scope R Surface Coverage)
+
+### Added
+- **100% In-Scope R Symbol Surface Coverage (1,036 / 1,036 across 11 R packages)**:
+  - Completed all 8 surrounding R packages (`gamlss.cens`, `gamlss.tr`, `gamlss.mx`, `gamlss.add`, `gamlss.spatial`, `gamlss.foreach`, `gamlss.prepdata`, `gamlss.ggplots`) with dedicated evidence modules and live-R consistency tests (D2.246–D2.266).
+  - Closed the final 11 core `gamlss` symbols with live-R parity tests: `get_rqres`, `rqres_plot`, `fittedPlot`, `bp`, `gamlssNews` (D2.276), weighted local polynomial `gamlss_lo` and exact marginal ML/REML `re`/`gamlss_re` (D2.277), plus `calibration`, `stepGAIC_CH`, and `stepTGDAll_A` (D2.278).
+- **M0 / M1 / M2 / M3 Milestones & Admission Gates**:
+  - Expanded `production_safe` admission from 1 family (5 symbols) to **22 families (110 symbols)** backed by live-R golden fit, `newdata` prediction, JSON round-trip serialization, and 66-cell RS/CG/MIXED layered parity (D2.227–D2.245).
+  - Implemented `gamlss.family` / `checklink` / `make.link.gamlss` / `as.family` / `gen.Family` with live-R fittable `logNO`/`logitNO`, and extended `*.fix` + categorical prediction reconstruction across RS/CG/MIXED/JOINT/LBFGS.
+- **Distribution Contract & Opt-in Native Bessel**:
+  - Added `omnilss/ondil_contract.py` (22-family parameter/support/link/derivative contract view with per-observation `score`/`hessian` fixes, self-contained with zero external runtime dependency) and opt-in JAX native `omnilss/bessel_native.py` (5.7e-14 accuracy, archived opt-in pending GPU benchmarking).
+
+### Fixed
+- Synchronized drifted M1 assessment and layered-parity artifacts, tightened coverage ratchet baseline (`missing`: 173 → 41, all remaining out-of-scope `gamlss2`), and wired M1/M2/M3/M4/P2/layered-parity gates into CI and Release workflows (D2.272).
+- Fixed `omnilss-pro/tests/test_client_tls.py` failure under real `grpcio` and enabled live execution of `omnilss-pro` and `omnilss-server` test tiers in CI/Release (D2.273).
+- Eliminated internal `_parse_formula` `DeprecationWarning` across 5 core modules, guarded `inf - inf` `RuntimeWarning` in `rs_algorithm.py`, and fixed `JSUo`/`JSUO` case mismatch in `family_capabilities.py` (D2.274).
+- Added fail-closed `require_production_family_route` admission, bounded rate-limit client tracking, and 11-test suite to `omnilss-server/`, and fixed doubled `-q` output suppression in `tools/tiered_collection.py --mode run` (D2.275).
+
 ## [0.4.0] - 2026-08-12 (Release 1)
 
 ### Release 1 能力范围（覆盖范围 = 已验证能力）

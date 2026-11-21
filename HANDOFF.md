@@ -1,188 +1,56 @@
-# OmniLSS 交接文档（2026-10-31）
+# OmniLSS 交接文档（2026-11-21，D2.278 基线）
 
-> 用途：新会话入口。先读本文件，再读 `.workbuddy/memory/2026-10-23.md`（本轮全部实测细节）与
-> `DEVELOPMENT_PLAN.md`（阶段状态）。本文只写结论、命令、待办、坑。
+> 用途：新会话入口。先读本文件，再读 `DEVELOPMENT_PLAN.md` 第二十三节与
+> `docs/development/full-project-audit-2026-11-21.md`。历史 2026-10-31 交接细节已归档于 git 历史与 `.workbuddy/memory/`。
 
-## 0. 环境事实
+## 0. 环境与硬性约束
 
-- 仓库：`d:\AI\my\githubprojs\OmniLSS`，分支 `main`，交接时 HEAD = `6567edf`。
-- R 可用：R 4.6.0 + `gamlss` / `gamlss.dist` / `jsonlite`。vendored R 源码在 `R/gamlss.dist/R/*.R`（124 个文件，
-  **包含未导出的族**，如 LOGSHASH / LOGSHASHo / DELAPORT）。
-- Python：`d:\miniconda3\python.exe`；测试用 `python -m pytest`。
-- **前台命令 2 分钟会被 SIGTERM 杀掉**（表现为"假失败"）；长任务一律日志重定向 + 后台运行。
+- 仓库：`d:\AI\my\githubprojs\OmniLSS`，分支 `main`。
+- **Windows 运行环境**：`.venv/`（Python 3.10.16 / JAX 0.6.2 CPU x64 / NumPy 2.2.6 / SciPy 1.15.3），使用 **`uv`** 管理。
+- **WSL Debian GPU 环境**：`debianjaxgpu/`，使用 **`uv`** 管理（受保护，切勿误删）。
+- **R 环境**：R 4.6.0 + `gamlss` 5.5.0 + `gamlss.dist` 6.1.1 + `jsonlite`；vendored 源码在 `R/`（12 个 R 包）。
+- **参考项目红线**：`gamlss-python/` 与 `ondil/` **仅作设计与算法参考，严禁引入其代码或作为依赖**。
 
-## 1. 当前状态（可交付判定）
+## 1. 当前状态（D2.278 实测）
 
-**结论：可以交付**（依据连续三次一次性跑完的全族复扫；最近一次 D2.129）。
+- **范围内 R 符号覆盖率**：**1,036 / 1,036（100.00%）**——11 个范围内 R 包（`gamlss`、`gamlss.dist`、`gamlss.cens`、`gamlss.tr`、`gamlss.mx`、`gamlss.add`、`gamlss.spatial`、`gamlss.foreach`、`gamlss.prepdata`、`gamlss.ggplots`、`gamlss.data`）全部 0 缺失；剩余 41 个 `surface_missing` 全部属于明确 out-of-scope 的 `gamlss2`。
+- **里程碑状态**：
+  - **M0 / M1 / M2 / M3**：全部达成，对应门禁脚本全部 **PASS** 且已接入 CI / Release。
+  - **Phase 1（Track A：A1–A4）**：全部完成（漂移门禁修复、覆盖棘轮基线收紧至 41、`omnilss-pro` TLS 测试修复、`omnilss-server` 能力门禁与有界限流加固、内部 `_parse_formula` / `inf-inf` 告警清零、`JSUO` 大小写统一）。
+  - **Phase 2（Track B1：B1a/B1b/B1c）**：全部完成（补齐最后 11 个核心符号，全部配活 R 一致性测试）。
+- **运行时能力矩阵（146 族）**：`implemented` 22（`production_safe` 22 族 / 110 符号）、`experimental` 104、`compat_alias` 20、`placeholder` 0；`r_consistency=validated` 40 族。
+- **测试规模**：4 层共 624+ 文件 / 5,840+ 用例；`omnilss-server`(11) + `omnilss-pro`(25) 经 `tools/tiered_collection.py --mode run` 实跑 0 失败。
 
-```
-python tools/rs_family_parity_scan.py --json tmp/scan.json      # 146 族，约 35~60 分钟
-deriv : 145/146 pass, skip=1
-dpqr  : 121/146 pass, skip=25
-rsdev : 82/146 pass, skip=28, warn=36         <- 没有 fail 行
-```
+## 2. 下一阶段待办（按优先级，详见 `DEVELOPMENT_PLAN.md` §23）
 
-- 该结果在 D2.117 / D2.122 / D2.129 三次跑出**逐字节一致**的输出。
-- 功能性覆盖：rqres 146/146、`has_dqr` 146/146、placeholder 族 0。
-- **全库测试真实状态（D2.129 首次分片全量跑）**：491 个测试文件 → 75 failed，
-  其中 71 个先于 D2.129 存在（簇清单见 `DEVELOPMENT_PLAN.md` 第十六节），
-  本轮引入的 4 个已全部修好。
-- 已知限制（建议写进 release note）：
-  - `deriv` 1 skip：GT（探针 >180 s 被杀，Bessel 路径慢）；LOGSHASHO 已在 D2.107 转 pass。
-  - `dpqr` 25 skip：R 侧无对应函数（BINOM_/CONTR_/COUNT_ 系列、BCCGUNTR/BCTUNTR、MULTIN、ZILG 等）。
-  - 36 个 `rsdev` warn：R 未收敛 / R 发散 / R 的 sigma 地板 / R 密度不逐元素 / R 早停，均有可核对原因。
-  - Sichel 三族拟合 ~172 s/周期（见待办 3.2）。
+1. **B2（扩大证据与能力准入）**：压降范围内 `unverified` 符号，打通 `cg_fit`/`smooth_terms`/`sampling` 能力矩阵准入，扩展第二批 `production_safe` 高频族与 `cens`/`tr` golden 语料。
+2. **B3b & B4（M4 / 1.0.0 正式收官）**：统一官方教程到 `docs/tutorials/` 并接入 `mkdocs.yml`，建立 `tools/m4_assessment.py` 门禁，升级版本号并跑 8 分片全量回归与 `release_check.py`。
+3. **Track C（P5 自研在线与多元层）**：纯 JAX/NumPy 实现 `omnilss/online/`（`OnlineGAMLSS` + 7 项独立流式 golden）与多元 `MVN`/`MVT`（Cholesky/LowRank/ModifiedCholesky）。
+4. **Track D（P6 GPU 与内核加速）**：在 WSL `debianjaxgpu` 上实测 GPU/CPU parity、原生 Bessel 与 `RS_JAX` 性能，优化 `SICHEL` 动态步长循环。
 
-## 1.1 2026-11-01 之后新增的用户面能力（D2.131–D2.134）
+## 3. 常用验证命令
 
-`gamlss()` 现在接受 R 的同名参数：`mu_start/sigma_start/nu_start/tau_start`、
-`mu_fix/sigma_fix/nu_fix/tau_fix`、`start_from`、`n_cyc`、`trace`、`contrasts`。
-每条都有活 R golden 对照（`omnilss/tests/fixtures/r_golden/*_2026-11-01.json`）与 parity 测试。
-限制：`*.fix` / `contrasts` 只接 `method='RS'`；分类协变量的预测重建与 RS 以外算法待做（D2.136）。
+```powershell
+$py = ".venv\Scripts\python.exe"
+$env:PYTHONDONTWRITEBYTECODE = "1"
+$env:JAX_PLATFORMS = "cpu"
+$env:JAX_ENABLE_X64 = "true"
+$env:PYTHONPATH = "omnilss/src"
 
-## 2. 已完成（本轮会话，D2.92–D2.126）
-
-### 2.1 把 13 个 rsdev fail 全部定性（D2.94–D2.103）
-
-从"14 个无法解释的 fail"收口到"0 fail"，每个非 pass 都有归属：
-
-| 判定 | 族 | 依据 |
-|---|---|---|
-| R 密度缺陷（不逐元素 / 不是密度） | ZANBI、ZAP | R 的 dNBI / dPO 不回收标量 x |
-| R 发散（扫 n_cyc 见其振荡） | SEP2、SEP3、SEP4、GT | R 的 deviance 随 n_cyc 来回跳 |
-| R 的 sigma 地板（数值不可信） | ZABNB、WARING、ZIBNB | R 的 sigma = 2.220446e-16 |
-| R 早停 / 未收敛 | ZAZIPF、GAF、GP、PARETO2、PE2、ZIPIG、PARETO2O | R 的轨迹一平到底或仍在缓降 |
-
-数值修好：SEP3（inf 到 123.46，补 R 初始值 + rs_fit 历史最优回退）、SEP4（1.3e27 到 119，补 R 初始值）、
-DELAPORT（223.87 到与 R 一致，缺 DEL 的初始值）。
-
-### 2.2 工具与工程
-
-- **D2.105**：扫描器建 job 250 s 到 183 s；同进程重复调用到 0 s（进程内 payload 缓存 + 非上报族提前跳过）。
-- **D2.107**：vendored 源码参考通道（tools/r_parity_batch.R 的 vend_env，包优先）→ LOGSHASH 的 dpqr 从 skip
-  变 pass；新增 ("LOGSHASH","q"): 1e-4 容差及说明（qLOGSHASH 字面就是 exp(qSHASH(...))）。
-- **D2.108/109**：DELAPORT 即 R 的 DEL（d/p/q 逐位一致 ~1e-15），接回别名并补上它缺的 DEL 初始值 → 三闸全绿；
-  新增 test_delaport_is_r_del.py、test_delaport_fits_like_del.py。
-- **D2.111**：IGA 补 IG 的初始值 → IG/IGA 三闸全绿；新增 test_iga_fits_like_ig.py。
-- **D2.120**：BEo 与 GEOMo 补 live R 的初始值 → 三闸全绿；新增 test_beo_geomo_initial_values.py。
-- **D2.121**：LOGSHASHo 共享 LOGSHASH 的 4 条初始值（R 源码逐字相同）；PARETO2o 试过 R 值但我们更差
-  （176.072 到 178.926），已回退并在代码里注释防复发。
-- **D2.117/122**：两次全量复扫确认 0 fail。
-- **D2.125**：修掉 _RSDEV_R_STOPPED_EARLY 里 GAF/GP/PARETO2/PE2 的重复条目（D2.101 追加时引入）。
-- **D2.126**：确认 2 个测试失败先于本轮存在（在旧 commit 851ccf6 上也失败）。
-
-### 2.3 防呆测试（都不需要 R，跑得快）
-
-- omnilss/tests/test_rsdev_registry_keys.py：4 张 rsdev 表不得有重复键；源码条目数等于运行时表长；
-  一族最多落一张表。（D2.125 就是它抓到的）
-- omnilss/tests/test_family_name_branches_are_live.py：_fitting_init.py 不得出现"是注册表键但不是族对象名"
-  的字面量（等于永远不触发的分支）；并钉住 10 组键到名的映射。
-- test_delaport_fits_like_del.py / test_iga_fits_like_ig.py / test_beo_geomo_initial_values.py。
-## 3. 待完成（按优先级）
-
-### 3.1 收 71 个既有失败里的三簇（D2.129 首次全量排队的结果）
-
-见 `DEVELOPMENT_PLAN.md` 第十六节。按"一修回收最多"排序：
-
-- CG/MIXED 路由（约 10 条）：`initial_model linear predictor for 'mu' does not match the CG design matrix`。
-- ZABB/ZIBB 的 `bd` 必填（6 条）：`family 'ZABB' requires fixed parameter 'bd' in data`。
-- `SmoothFitInfo` 签名漂移（6 条）：测试按 6 个位置参数构造，类只剩 3 个。
-- 另有覆盖 ratchet 基线陈旧 1 条、R 侧报错/INSTALL 失败 5 条、能力矩阵断言过期 8 条。
-
-### 3.2 log_bessel_kv 的 JAX 原生实现（唯一挂账的功能项）
-
-- 现状：omnilss/src/omnilss/bessel.py 用 jax.pure_callback 调 scipy（每次求值一次主机往返，并切断 jit 融合）。
-- 已测量的量级（D2.124）：jit 下 n=48、nu=-0.5：primal 1.05 ms、grad 2.18 ms（grad/primal = 2.1）。
-  所以 172 s/周期来自调用次数（每周期十几万次），不是"回调次数多"；减少回调次数收益有限，真正收益来自
-  消除主机往返 + 让循环能在设备侧融合。
-- 验收标准（两条都要）：1. 与 scipy 在 nu 取 -5 到 20、x 取 1e-8 到 1e3 的对数网格上逐点 1e-12 相对误差；
-  2. Sichel 拟合的周期时间下降（不只看 deviance 一致）。
-- 建议单独一轮、预算充足再做：特殊函数最怕"看着对、精度不对"。
-
-### 3.3 按族独立播种 + 一次性重登记证据（工程债）
-
-- 现状：为让子集与全量同流，单族请求也要走完 146 族构建（183 s，D2.105 后）；缓存是进程内的，单独 CLI 调用
-  仍各付一次。
-- 做法：给每族独立播种（不再依赖共享 RNG 顺序），然后一次跑完把所有登记表里的 dev_ours / dev_r 重测一遍
-  （现在表里不少数字是旧样本的，逐族手工重测很慢）。
-- 若改播种，扫描器样本会整体变化，所有登记数字必须同时重测，否则闸会大面积 fail。
-
-### 3.4 跑一次完整测试套件
-
-- python -m pytest omnilss/tests -q（全量超过 1.5 h，分块 + 后台跑）。
-- 本轮用定向子集漏掉了失败，全量跑一次才能知道全库真实状态。
-
-### 3.5 Phase 8 收尾（DEVELOPMENT_PLAN.md 原有项）
-
-- 8.3 用户文档与教程（API 参考 + 迁移对照表 + 8 篇教程校准）。
-- 8.5 gamlss() method 名与行为一致性核对 + 全库 lint/type（CI 目前只有测试，没有 lint/type 步骤）。
-
-### 3.6 可选：继续减少 dpqr 的 26 个 skip
-
-- 真无参考的 22 个不要动；可争取的是有 vendored 源码的族（通道已建好，见 D2.107）。
-
-## 4. 必须遵守的坑（本轮全部踩过）
-
-1. **字典字面量里重复键是静默错误**：后出现的覆盖先出现的。往 _RSDEV_* 表加条目前必须确认该族是否已在表里；
-   若已存在就改它的数字，不要追加（D2.96、D2.125）。test_rsdev_registry_keys.py 会抓这个。
-2. **按族名分支必须用 resolve(key).name，不能用注册表键**。所有"原参数化"别名二者不一致：JSUO 到 JSUo、
-   SHASHO 到 SHASHo、BCCGO 到 BCCGo、GEOMO 到 GEOMo、BEO 到 BEo、PARETO2O 到 PARETO2o、
-   LOGSHASHO 到 LOGSHASHo（DELAPORT、IGA 是一致的）。写注册表键等于死代码（D2.118）；也曾因此把原本
-   生效的分支改死，让闸从 0 fail 变成 1.3e13（D2.113）。
-3. **判断 R 是"早停"还是"发散"必须扫 n_cyc**：早停是单调上升后平掉，发散是来回跳。判错会把真相记歪（D2.94）。
-4. **R 报得越低越可疑**：sigma 撞 2.220446e-16 地板时，R 可能给出偏小的数（ZABNB 202.8 对平台 212.7、
-   WARING 208 对 221.7），也可能给出荒谬大数（SEP2/3/4 的 1e4 到 1e27）。每次都要实测安全 sigma 平台（1e-4 到 1e-10）。
-5. **"我们更差"先检查 R 那个数是在哪里打的分**（D2.98 推翻过一次误判）；也别急着把 R 的初始值搬过来，
-   PARETO2O 搬了反而更差（D2.121）。
-6. **判断"这个失败是不是我引入的"**：git worktree add --detach 临时目录 旧commit，在旧代码上跑，跑完
-   git worktree remove --force（比 git stash 安全，不动当前工作树）（D2.126）。
-7. **测试通过不等于验证有效**：断言"通用默认值恰好满足"的测试是空测试（D2.118 删过一个）。
-8. **改初始值类改动必须跑真实闸验证**，不能靠局部 monkeypatch 探针外推：SHASHO 逐个隔离时每条分支都无害，
-   但源码层面改就炸（D2.113/115）。
-9. **梯度 / 初值类改动用"同数据上两族拟合必须一致"的测试钉住**（模板：test_delaport_fits_like_del.py）。
-
-## 5. 关键文件索引
-
-- tools/rs_family_parity_scan.py：三闸扫描器 + 全部登记表（_RSDEV_R_DIVERGED、_RSDEV_R_STOPPED_EARLY、
-  _RSDEV_R_REFERENCE_INVALID、_RSDEV_R_DENSITY_RECYCLED、_RSDEV_PATH_DIVERGENT、_DPQR_TOLERANCE 及
-  _DPQR_TOLERANCE_NOTE、_R_FAMILY_ALIASES、_R_ARGNAME_MAP）。
-- tools/r_parity_batch.R：单个 R 进程跑全部族；vendored 源码回退（vend_env）；族名解析（精确 + 大小写不敏感）。
-- omnilss/src/omnilss/_fitting_init.py：初始值表（_initial_parameter_value / _initial_mu_target /
-  _initial_mu_beta / _initial_sigma），分支用 family.name。
-- omnilss/src/omnilss/bessel.py：log_bessel_iv / log_bessel_kv（scipy + pure_callback，待原生化）。
-- .workbuddy/memory/2026-10-23.md：本轮全部实测数据（D2.82 到 D2.126）。
-- DEVELOPMENT_PLAN.md：阶段状态表（已含 R 一致性里程碑行）。
-
-## 6. 如何取 R 侧事实（最快的方式）
-
-```r
-# 1) 某族是否已导出
-suppressPackageStartupMessages(library(gamlss.dist))
-"LOGSHASHo" %in% getNamespaceExports(asNamespace("gamlss.dist"))
-
-# 2) 某族的初始值（权威，比读源码可靠）
-fs <- get("BCCGo")(); fs$mu.initial; fs$sigma.initial; fs$nu.initial
-
-# 3) 逐周期轨迹（判断早停 vs 发散）
-for (k in c(2,5,10,14,20,40,60)) cat(k, deviance(gamlss(y ~ x, sigma.formula=~1,
-    data=d, family=ZABNB, n.cyc=k, trace=FALSE)), "\n")
-
-# 4) 安全 sigma 平台（判断 R 的数是否打在地板上）
-for (sg in c(1e-4,1e-6,1e-8,1e-10)) cat(sg, -2*sum(dZABNB(y, mu=mu,
-    sigma=rep(sg,length(y)), nu=rep(nu,length(y)), tau=rep(tau,length(y)), log=TRUE)), "\n")
+& $py tools/generate_symbol_coverage.py --check
+& $py tools/coverage_diff_report.py
+& $py tools/milestone_manifest.py --check
+& $py tools/m1_assessment.py --check
+& $py tools/m2_assessment.py --check
+& $py tools/m3_assessment.py --check
+& $py tools/m4_scope_inventory.py --check
+& $py tools/contract_freeze.py --check
+& $py tools/tiered_collection.py --tier omnilss-server --tier omnilss-pro --mode run
 ```
 
-扫描器样本可以缓存下来反复用（省掉 183 s 的构建）：
+## 4. 关键纪律（防踩坑）
 
-```python
-import sys, json; sys.path.insert(0, "tools"); sys.path.insert(0, "omnilss/src")
-import rs_family_parity_scan as S
-jobs, index = S._build_jobs(["SHASHO", "SHASHO2"], 8)
-json.dump({f: {"fit": jobs[index[f]["fit"]]["data"]} for f in ("SHASHO", "SHASHO2")},
-          open("tmp/shasho_sample.json", "w"))
-```
-
-## 7. 一句话总结
-
-「对齐 R」这条线已全部完成并有闸验证支撑（146 族三闸 0 fail，连续两次一次跑完）。剩下的工作里，只有 3.1 的
-两个既有测试失败可能挡发布；3.2 是唯一挂账的功能项（性能，需单独一轮）；3.3 到 3.5 是工程债与交付收尾。
+1. **改任何 `omnilss/src` 或 `omnilss/tests` 后必须同步工件**：`tools/generate_symbol_coverage.py` + `tools/coverage_diff_report.py` + `tools/milestone_manifest.py --write`，否则 provenance 门禁失败。
+2. **按族名分支用 `resolve(key).name` 或统一 `.upper()`**：注册表键为全大写（如 `JSUO`），R 族名含小写 `o`（如 `JSUo`）。
+3. **`tmp/` 保留 5 个承重 R 参照文件**（`bi_dbi_fixture_r.json`、`bi_dbi_ref.R`、`d223_c_ref.csv`、`d223_full_ref.csv`、`d223_ref.R`），勿删。
+4. **全量测试必须 8 分片运行**（`tools/pytest_shards.py --shards 8`），性能基准单进程单独复核。

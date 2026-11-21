@@ -2,48 +2,43 @@
 
 [中文版本](README_cn.md)
 
-**Differentiable Distributional Regression in JAX** — a Python implementation of GAMLSS (Generalized Additive Models for Location, Scale and Shape) with GPU/TPU acceleration and neural network integration.
+**Differentiable Distributional Regression in JAX** — a Python implementation of GAMLSS (Generalized Additive Models for Location, Scale and Shape) built from scratch on JAX / NumPy / SciPy, with live-R parity verification, automatic differentiation, neural network integration, and serving boundaries.
 
-## Key Features
+## Key Capabilities & Verified Status
 
-- **80+ Distribution Families** — broad R GAMLSS distribution coverage with ongoing d/p/q/r migration tracking
-- **Benchmark validation gate** — consistency with native R `gamlss` is checked before performance comparisons
-- **Transparent performance reporting** — benchmark reports separate cold time, warm time, deviance difference, and Python heap peak memory
-- **Smoothing** — P-splines (`pb`), cubic splines (`ps`, `cs`) with automatic parameter selection (GCV/REML)
-- **Multiple algorithms** — RS, CG v2 (explicit outer-loop with cross-derivative correction), Mixed, Adam, L-BFGS
-- **Neural GAMLSS** — distribution parameters output by neural networks (Flax/Equinox compatible)
-- **scikit-learn compatible** — optional `GAMLSSRegressor` wrapper for Pipeline integration
-- **Probabilistic scoring** — CRPS, log score, DSS, interval score, PIT histogram
+> Status claims below are backed by machine-regenerable artifacts in [`docs/development/`](docs/development/) rather than static estimates. Always inspect the generated JSON artifacts for exact current counts.
 
-## Architecture Freeze and Benchmark Policy
+- **146 Registered Distribution Families (0 Placeholders)**:
+  - **22 production-safe admitted families** (`BE`, `BEINF`, `BI`, `EXP`, `GA`, `GEOM`, `GU`, `IG`, `IGAMMA`, `LO`, `LOGNO`, `LOGNO2`, `NBI`, `NBII`, `NET`, `NO`, `NO2`, `PE`, `PO`, `RG`, `WEI`, `ZAGA`) backed by live-R golden fit + `newdata` prediction + JSON serialization round-trip + RS/CG/MIXED layered parity (`docs/development/m3-admission-evidence-2026-11-15.json`).
+  - **104 experimental families** + **20 compatibility aliases** (guarded fail-closed on production routes until promoted through the admission gate).
+  - Three-gate full-family parity scanner (`tools/rs_family_parity_scan.py`) covering derivatives, `d/p/q/r`, and RS deviance against live R with **0 unclassified failures** (`docs/development/p2-defect-classification-2026-11-15.json`).
+- **100% In-Scope R Surface Coverage (11 R Packages)**:
+  - All **1,036 / 1,036** exported symbols across `gamlss`, `gamlss.dist`, `gamlss.cens`, `gamlss.tr`, `gamlss.mx`, `gamlss.add`, `gamlss.spatial`, `gamlss.foreach`, `gamlss.prepdata`, `gamlss.ggplots`, and `gamlss.data` have Python surfaces (`docs/development/r-symbol-coverage.json`).
+  - `gamlss2` is explicitly **out of scope** for OmniLSS 1.0 (separate specification and evidence track).
+- **Fitting Algorithms**:
+  - **RS** (Rigby–Stasinopoulos, default), **CG** (Cole–Green full-Hessian & experimental `irls_cross` backend), **MIXED** (`RS(n1) -> CG(n2)` matching R `mixed()`), **Joint** (Adam/Optax), **L-BFGS**, and experimental **RS_JAX**.
+  - R-aligned `gamlss()` controls: `mu_start`/`sigma_start`/`nu_start`/`tau_start`, `mu_fix`/`sigma_fix`/`nu_fix`/`tau_fix` across all routes, `start_from`, `contrasts`, `n_cyc`, `trace`.
+- **Full Family/Link & Smoother Suite**:
+  - `gamlss.family` / `as.family` / `checklink` / `show.link` / `make.link.gamlss` / `gen.Family` (`logNO`, `logitNO` fittable with live-R parity).
+  - Smoothers & random effects: `pb`, `ps`, `cs`, `cy`, `pbm`/`pbo`/`pbp`/`pbz`/`pbc`/`pvc`, `fp`/`bfp`, `pp`, `pcat`, `ri`, `random`, `lo`/`gamlss_lo` (weighted local polynomial LOESS), `re`/`gamlss_re` (exact marginal ML/REML mixed effects), `scs`, plus thin-plate (`tps`) and tensor-product splines with GCV/REML/UBRE selection.
+- **Surrounding R Package Capabilities**:
+  - Censoring (`gamlss.cens`), truncation (`gamlss.tr`), finite mixtures & NPML (`gamlss.mx`), additive learners (`gamlss.add`), spatial MRF/GMRF (`gamlss.spatial`), bootstrap/rolling/QR (`gamlss.foreach`), data diagnostics (`gamlss.prepdata`), and ggplot-style diagnostic data layers (`gamlss.ggplots`).
+- **ML & Production Extensions**:
+  - Neural GAMLSS (`omnilss.deep`), scikit-learn `GAMLSSRegressor`, probabilistic scoring (`CRPS`, `log_score`, `DSS`, `interval_score`, PIT), JSON/pickle model persistence, and REST (`omnilss-server/`) + gRPC (`omnilss.api.grpc`) serving boundaries with fail-closed capability admission.
 
-OmniLSS is currently in a 30-day architecture stabilization phase. The active
-priority is to reduce complexity, stabilize protocol boundaries, and improve
-long-term maintainability rather than adding new distributions, optimizers,
-formula syntax, wrappers, or smoothing methods.
+## Installation & Development Environments
 
-Current status and documentation-maintenance tasks are tracked in
-[`docs/maintenance/30-day-refactor-status.md`](docs/maintenance/30-day-refactor-status.md).
+OmniLSS uses [`uv`](https://docs.astral.sh/uv/) for virtual environment management:
 
-Benchmark claims must be generated from the validation gate in `benchmarks/`:
-
-```bash
-python benchmarks/run_local_validation.py --quick
-```
-
-That command requires native R `gamlss` and runs numerical consistency before
-performance. In environments without R, `--allow-python-only` is a smoke check
-only and must not be used to claim R equivalence.
-
-## Installation
+- **Windows CPU environment**: `.venv/` (managed by `uv`)
+- **WSL Debian GPU environment**: `debianjaxgpu/` (managed by `uv`)
 
 ```bash
-# From source (recommended)
-cd omnilss
-pip install -e .
+# Editable install from source using uv
+uv pip install -e "./omnilss[dev]"
 
-# Using uv
-uv sync --active --project ./omnilss
+# Or with server/gRPC extras
+uv pip install -e "./omnilss[server,dev]"
 ```
 
 ## Quick Start
@@ -52,343 +47,111 @@ uv sync --active --project ./omnilss
 import numpy as np
 from omnilss import gamlss, NO
 
-np.random.seed(42)
+rng = np.random.default_rng(42)
 n = 500
-x = np.random.randn(n)
-y = 2 + 3*x + np.random.randn(n)
+x = rng.normal(size=n)
+y = 2.0 + 3.0 * x + rng.normal(size=n)
 data = {"y": y, "x": x}
 
-# Fit model
+# Fit model (RS default; CG / MIXED / joint / lbfgs also supported)
 model = gamlss("y ~ x", family=NO(), data=data)
-print(f"Deviance: {model.g_dev:.2f}")
-print(f"AIC: {model.additional_slots['aic']:.2f}")
+print(f"Deviance: {model.g_dev:.4f}")
 
-# Predict
+# Predict distribution parameters and quantiles on newdata
 newdata = {"x": np.array([0.0, 1.0, 2.0])}
 params = model.predict_params(newdata)
-print(params["mu"])    # predicted mean
-print(params["sigma"]) # predicted std dev
-
-# Quantile prediction
 q = model.predict_quantiles(newdata, quantiles=[0.05, 0.5, 0.95])
-print(q[0.5])  # median
 ```
 
-## Smoothing
+## Smoothing & Diagnostics
 
 ```python
+from omnilss import gamlss, NO, get_rqres, rqres_plot, calibration, fittedPlot
+
 # P-spline with automatic lambda selection (GCV/REML)
 model = gamlss("y ~ pb(x)", family=NO(), data=data)
 
-# Explicit method
-model = gamlss("y ~ pb(x, lambda_method='REML')", family=NO(), data=data)
-
-# Centile curves
-curves = model.centiles(xvar="x", cent=[5, 50, 95])
+# Randomized quantile residuals, worm-plot bands, and centile calibration
+rq = get_rqres(model, howmany=6, order=True, seed=0)
+wp = rqres_plot(model, howmany=6, plot_type="all", type="wp", seed=0)
+cal = calibration(model, xvar="x")
+fp = fittedPlot(model, x="x")
 ```
 
-## Multiple Algorithms
+## Testing & Verification Gates
 
-```python
-# RS algorithm (default, most stable)
-model = gamlss("y ~ x", family=NO(), data=data, method="RS")
-
-# Joint optimizer path (historical method="CG" route)
-model = gamlss("y ~ x", family=NO(), data=data, method="CG")
-
-# Joint optimization with Adam
-model = gamlss("y ~ x", family=NO(), data=data, method="joint",
-               optimizer="adam", learning_rate=0.01)
-
-# L-BFGS quasi-Newton
-model = gamlss("y ~ x", family=NO(), data=data, method="lbfgs")
-```
-
-## Neural GAMLSS
-
-```python
-from omnilss.deep import fit_deep_gamlss
-from omnilss import NO
-import jax.numpy as jnp
-
-# Neural network outputs distribution parameters
-model, params, history = fit_deep_gamlss(
-    jnp.array(X), jnp.array(y),
-    family=NO(),
-    hidden_dims=(64, 32),
-    n_epochs=100,
-)
-```
-
-## scikit-learn Integration
-
-```python
-from omnilss.sklearn_compat import GAMLSSRegressor
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-
-pipe = Pipeline([
-    ("scaler", StandardScaler()),
-    ("gamlss", GAMLSSRegressor(family="NO")),
-])
-pipe.fit(X_train, y_train)
-predictions = pipe.predict(X_test)
-```
-
-## Probabilistic Scoring
-
-```python
-from omnilss.scoring import crps, log_score, scoring_summary
-
-# Evaluate probabilistic forecasts
-summary = scoring_summary(model, newdata, y_test)
-print(f"CRPS:      {summary['crps']:.4f}")
-print(f"Log score: {summary['log_score']:.4f}")
-print(f"Coverage:  {summary['coverage_90']:.1%}")
-```
-
-## Experimental JIT RS Core
-
-- Added `fitting_jit.create_jit_rs_no_core()` as an isolated experiment for TASK-01-C.
-- It uses `jax.lax.while_loop` (outer loop) and `jax.lax.fori_loop` (inner IRLS) for NO family core updates without changing the production RS path.
-
-## Benchmarks
-
-Run the validation gate from the repository root. It fails fast when R is
-required but unavailable, runs consistency first, and only then runs performance.
+OmniLSS enforces fail-closed tiered collection and milestone artifact checks:
 
 ```bash
-python benchmarks/run_local_validation.py --quick
-python benchmarks/run_local_validation.py --quick --allow-python-only --no-fit --no-smooth  # smoke only
-```
+# 1. Fail-closed 4-tier test collection (omnilss, omnilss-server, omnilss-pro, benchmarks)
+python tools/tiered_collection.py --mode collect --strict-skips --json
 
-See [`benchmarks/README.md`](benchmarks/README.md) for methodology and reporting rules.
+# 2. Run subproject tiers directly
+python tools/tiered_collection.py --tier omnilss-server --tier omnilss-pro --mode run
 
-- Run release packaging checks with `cd omnilss && python tools/release_check.py` (requires `build` and `twine`).
+# 3. Milestone, contract, and symbol-coverage gates
+python tools/generate_symbol_coverage.py --check
+python tools/coverage_diff_report.py
+python tools/milestone_manifest.py --check
+python tools/highfreq_family_freeze.py --check
+python tools/contract_freeze.py --check
+python tools/m1_assessment.py --check
+python tools/m2_assessment.py --check
+python tools/m3_assessment.py --check
+python tools/m4_scope_inventory.py --check
 
-## Testing
-
-```bash
-# Architecture-contract smoke tests
-PYTHONPATH=omnilss/src python -m pytest omnilss/tests/test_core_architecture_contracts.py -q
-
-# Full package tests from the package directory
-cd omnilss
-python -m pytest tests -q
-```
-
-The repository's own test surface is collected through a fail-closed tiered gate:
-
-```bash
-python tools/tiered_collection.py            # all four tiers, --mode collect (default)
-python tools/tiered_collection.py --list     # tier inventory
-python tools/tiered_collection.py --tier omnilss --mode run --timeout 3600
-python tools/tiered_collection.py --json > tiered-collection.json   # machine-readable report
+# 4. Full-suite 8-shard deterministic execution (matches release.yml)
+python tools/pytest_shards.py --shards 8 --check
 ```
 
 | Tier | Directory | Scope |
 |------|-----------|-------|
-| `omnilss` | `omnilss/tests` | main suite (`omnilss/pyproject.toml` pytest config) |
-| `omnilss-server` | `omnilss-server` | L3 FastAPI service tests |
-| `omnilss-pro` | `omnilss-pro` | commercial prototype (src layout) |
-| `benchmarks` | `benchmarks` | benchmark/diagnostic scripts (5 data-dependent scripts excluded explicitly) |
+| `omnilss` | `omnilss/tests` | Main suite (604 test files, 5,800+ cases) |
+| `omnilss-server` | `omnilss-server` | FastAPI REST boundary, auth, DoS, capability admission |
+| `omnilss-pro` | `omnilss-pro` | Commercial gRPC client & AutoML prototype |
+| `benchmarks` | `benchmarks` | Benchmark/diagnostic harnesses |
 
-Exit code 0 requires zero collection errors **and** at least one collected test
-per selected tier; `--mode run` additionally requires no failures. `ondil/` and
-`gamlss-python/` are reference projects and are never tiers.
+## Reference Projects Policy (Not Dependencies)
 
-R-backed consistency tests remain required for release and benchmark claims, but
-they skip in Python-only environments when native R, `gamlss`, or `gamlss.dist`
-are unavailable. Use the benchmark validation gate before publishing equivalence
-or speed claims.
+The local directories `R/`, `ondil/`, and `gamlss-python/` are gitignored upstream reference checkouts kept strictly for **design reference and R parity verification**. OmniLSS **never imports, copies, or depends on** `gamlss-python` or `ondil` code; all OmniLSS implementations are self-contained on JAX / NumPy / SciPy and verified against live R (`gamlss` / `gamlss.dist`) or independent analytical/DGP goldens.
 
-## Project Status
+## Benchmarks & Performance Policy
 
-| Area | Current policy |
-|--------|-------|
-| Architecture mode | 30-day stabilization: Architecture > Features |
-| Distribution families | 80+ legacy families, with protocol migration in progress |
-| Canonical protocols | Distribution, optimizer, parameter, link, and constraint boundaries exist |
-| Benchmark claims | Must cite generated validation artifacts with hardware/backend/R availability |
-| R equivalence | Requires native R `gamlss` validation; Python-only smoke checks are not proof |
-| License | GPL-3.0-or-later |
-
-## Comparison with Similar Tools
-
-| Tool | Backend | GPU | Differentiable | GAMLSS structure | Online learning |
-|------|---------|-----|---------------|-----------------|----------------|
-| **OmniLSS** | **JAX** | **✅** | **✅** | **✅** | ✗ |
-| R gamlss | R | ✗ | ✗ | ✅ | ✗ |
-| ondil | NumPy+Numba | ✗ | ✗ | ✅ | ✅ |
-| NumPyro | JAX | ✅ | ✅ | ✗ | ✗ |
-| pyGAM | NumPy | ✗ | ✗ | ✗ (mean only) | ✗ |
-
-**vs R gamlss**: R gamlss is the gold standard for statistical modeling. OmniLSS is for when you need Python, GPU, or ML pipeline integration.
-
-**vs ondil**: ondil is designed for online/incremental learning on streaming data (scikit-learn API). OmniLSS is for batch differentiable modeling with hardware acceleration.
-
-### Vendored reference projects (compared, not gated)
-
-Two upstream projects live in this repository root purely as **reference
-implementations for comparison**. They are not part of this project's test
-surface, CI matrix, or dependency graph:
-
-| Reference project | Version | Scope | Why it is not a test tier |
-|-------------------|---------|-------|---------------------------|
-| [`ondil/`](ondil/) | 0.4.8 | online/incremental distributional regression (NumPy + Numba, sklearn-style API) | separate upstream package with its own suite and Python/Numba version caps |
-| [`gamlss-python/`](gamlss-python/) | 0.2.0 (PyPI `gamlss`) | Python port of R `gamlss` (numpy/scipy/pandas/patsy families and smoothers) | upstream port kept to compare API and parameterisation choices |
-
-The tiered collection gate (`tools/tiered_collection.py`) collects only the four
-self-owned tiers — `omnilss`, `omnilss-server`, `omnilss-pro`, `benchmarks` —
-and a regression test asserts that `ondil` and `gamlss-python` can never become
-tiers. Optional comparison harnesses may import them when installed (for example
-`benchmarks/three_way_comparison.py --no-ondil` skips that leg), but their suites
-are never silently treated as evidence for this project.
-
-## R GAMLSS Parity
-
-OmniLSS targets feature parity with the upstream R `gamlss` and `gamlss.dist`
-packages bundled under [`R/gamlss/`](R/gamlss/) and
-[`R/gamlss.dist/`](R/gamlss.dist/). The current state — what is implemented,
-what is partial, what is missing, and the phased plan to close the gaps — is
-tracked in
-[`docs/development/r-gamlss-coverage-and-plan-2026-05-22.md`](docs/development/r-gamlss-coverage-and-plan-2026-05-22.md).
-
-Highlights from that audit:
-
-- ≈105 distribution families are registered through
-  `omnilss.distribution_registry`. Around 31 currently carry a
-  `r_consistency = validated` evidence tier in the capability matrix; the rest
-  are `experimental`.
-- Several `gamlss.dist` exports are not yet wrapped (e.g. `ST1`–`ST4`, `TF2`,
-  `DBI`, `DBURR12`, untruncated Box-Cox variants, the `gen.Family` skeletons,
-  and the `distributions3` interface).
-- Core `gamlss` functions are largely ported; the missing routines are
-  `find.hyper`, `prof.dev`, `prof.term`, `par.plot`, `dtop`, `lms`, `z.scores`,
-  `quantSheets`, `histSmo*`, `gen.likelihood`, `Formulae2data`, `loglogSurv`,
-  `logSurv`, `getSmo`, `edfAll`, `rvcov`, `get.K`, `getZmatrix`, `vis.lo`,
-  `pcat`, `plotDF`, `plotLambda`, and `ECDF`/`loglogplot`.
-- Smoothers `pb`, `ps`, `cs` are implemented; `bp`, `pbm`, `pbo`, `pbz`, `pbc`,
-  `pbp`, `pvc`, `cy`, `fp`, `bfp`, `re`, `pp`, `lo`, `random`, `ri`, `pcat`
-  are not.
-
-Any equivalence claim must be backed by an artifact from the validation gate:
+Performance claims must be generated from reproducible benchmark runs after passing numerical parity gates, separating cold (JIT compile) and warm (steady-state) timings and never extrapolating CPU measurements to GPU:
 
 ```bash
 python benchmarks/run_local_validation.py --quick
-```
-
-In environments without R, `--allow-python-only` can run the smoke checks but
-must not be cited as proof of equivalence with native `gamlss`.
-
-## Offline Dev + R Validation Container
-
-The repository ships an offline-capable devcontainer for Codex Cloud and local
-development. A single CPU container can develop OmniLSS in Python, regenerate
-gRPC stubs, build docs/package artifacts, and validate against native R
-`gamlss` / `gamlss.dist` without further network access. It is the recommended
-setup for running the validation gate end to end.
-
-```bash
-# Build once with network access. This is the only phase allowed to fetch apt,
-# PyPI, and CRAN artifacts.
-devcontainer build --workspace-folder .
-devcontainer up --workspace-folder .
-
-# Inside the container, refresh editable installs and confirm health from the
-# cached Python/R artifacts baked into the image.
-bash .codex/setup.sh
-
-# Run the consistency-then-performance gate against native R gamlss.
-python benchmarks/run_local_validation.py --quick
-```
-
-The image bakes in:
-
-- R 4.4.1 (from `rocker/r-ver`) with `gamlss`, `gamlss.dist`, `jsonlite`,
-  `renv`, and `languageserver`, plus the C/C++/Fortran toolchain needed to
-  rebuild `gamlss` from source.
-- A local CRAN source repository at `/opt/omnilss-r-cache/`, including
-  recursive dependencies for the R validation stack, so a fresh offline R
-  package install is possible without network access.
-- A snapshot of the bundled `R/gamlss/` and `R/gamlss.dist/` source trees at
-  `/opt/omnilss-r-source/`, which `R CMD INSTALL` can reuse if a future R
-  package upgrade breaks an offline workflow.
-- A Python `/opt/omnilss-venv` and `/opt/omnilss-wheelhouse` with `jax`,
-  `jaxlib`, `flax`, `optax`, `scikit-learn`, `scoringrules`, `grpcio`,
-  `grpcio-tools`, `protobuf`, `mkdocs-material`, `build`, `twine`, and the
-  full dev/test toolchain.
-
-The image build step fails fast if any required Python module or R package is
-missing, so an offline reuse cannot silently regress on dependencies.
-
-The default `.devcontainer/devcontainer.json` is the CPU profile Codex Cloud
-should use. It sets `OMNILSS_OFFLINE=1`, so `.codex/setup.sh` consumes the
-prebuilt wheelhouse and local R package repository instead of trying PyPI or
-CRAN during the cloud session. To refresh caches intentionally in a connected
-maintenance session, run:
-
-```bash
-OMNILSS_OFFLINE=0 bash .codex/setup.sh
-```
-
-The optional `.devcontainer/devcontainer.gpu.json` profile is for self-hosted
-GPU machines and may need network access to install CUDA-enabled JAX wheels.
-
-If you only need a Python development environment without R, the same
-Dockerfile works — the R-backed tests will skip cleanly. Detailed runbooks
-live in
-[`docs/development/offline-dev-bootstrap-2026-05-17.md`](docs/development/offline-dev-bootstrap-2026-05-17.md)
-and
-[`docs/development/r-environment-setup.md`](docs/development/r-environment-setup.md).
-
-## Resources
-
-- [Tutorials](docs/tutorials/) — quickstart + 8 topic guides (families, algorithms, smoothers, prediction, model selection, R consistency, gRPC serving)
-- [Benchmarks](benchmarks/) — performance and consistency scripts
-- [R consistency coverage](docs/testing/r-consistency-coverage.md) — current R-backed d/p/q coverage map
-- [R GAMLSS coverage and plan](docs/development/r-gamlss-coverage-and-plan-2026-05-22.md) — gap audit and phased implementation plan
-- [Offline dev bootstrap](docs/development/offline-dev-bootstrap-2026-05-17.md) — devcontainer build/reuse rules
-- [R environment setup](docs/development/r-environment-setup.md) — R install/test guide
-- [Benchmark methodology](benchmarks/README.md) — benchmark scripts and reporting rules
-- [Delivery plan](docs/development/deliverable-plan-2026-09-26.md) — current delivery scope, milestones and acceptance gates
-- [Full GAMLSS migration roadmap](docs/development/full-gamlss-migration-audit-and-roadmap-2026-09-11.md) — phased migration WBS (P0–P5)
-- [Architecture freeze](docs/architecture/30-day-feature-freeze.md) — current stabilization policy
-- [Maintenance status](docs/maintenance/30-day-refactor-status.md) — active refactor tasks and audit links
-- [R GAMLSS](http://www.gamlss.org/) — original R implementation
-- [JAX Documentation](https://jax.readthedocs.io/)
-
-## License
-
-GNU General Public License v3 or later (GPL-3.0+)
-
-
-## CG Algorithm（Cole-Green）
-
-- ✅ **默认后端 `CG_FULL_HESSIAN`**：`method="CG"` 使用完整观测信息矩阵（`jax.hessian`），保留跨参数 Hessian 块。
-- ✅ 模型诊断会记录 `cg_backend`、`cg_cross_derivatives`、`cg_line_search_steps`、`cg_condition_number`，避免静默退化为 RS。
-- ✅ **实验后端 `CG_IRLS_CROSS`**：可通过 `gamlss(..., method="CG", cg_backend="irls_cross")` 使用 eta 尺度交叉导数修正的 IRLS 外循环。
-- ✅ 适用于参数高度相关、RS 收敛困难或需要审计 cross-derivative 更新的场景。
-- ⚠️ 默认 full-Hessian 后端比 RS 更慢（每次迭代需计算完整 Hessian）；大规模数据集应先评估 RS 或实验性 IRLS-cross 后端。
-
-## 性能说明
-
-性能数字必须从 `benchmarks/comprehensive_performance_test.py` 或生成的
-`benchmarks/results/` 报告中引用，不能手写静态宣传值。当前基准方法：
-
-- Python warm time 使用 JAX warm-up 后的多次运行中位数，排除 JIT 编译时间。
-- Python cold time 单独报告首次调用延迟（包含可能的 JIT 编译开销）。
-- R 对比只在安装了 R、`gamlss` 和 `jsonlite` 的环境中启用；否则报告必须标注 skipped。
-- GPU 数字只在检测到 GPU backend 时生成；CPU-only 结果不能外推为 GPU 结果。
-
-本地复现示例：
-
-```bash
 python benchmarks/comprehensive_performance_test.py --quick --no-r --n-repeats 10
 ```
 
+See [`benchmarks/README.md`](benchmarks/README.md) for methodology.
 
 ## Service APIs
-- REST scaffold: `omnilss-server/` (FastAPI) with `/fit`, `/predict`, `/diagnostics/{model_id}`, `/distributions/select`.
-- gRPC boundary: protobuf files under `omnilss/src/omnilss/api/grpc/proto/` and runtime server wiring in `omnilss.api.grpc.serve`.
-- Generate gRPC stubs locally with `cd omnilss && python tools/generate_grpc_stubs.py` (requires `omnilss[grpc]`).
+
+- **REST (`omnilss-server/`)**: FastAPI server sharing the persistent SQLite/artifact registry with gRPC (`/fit`, `/predict`, `/diagnostics/{model_id}`, `/models`, `/distributions/select`), enforcing Bearer token auth (`OMNILSS_API_TOKEN`), bounded sliding-window rate limiting, body size limits, and fail-closed production family admission.
+- **gRPC (`omnilss.api.grpc`)**: Protobuf definitions under `omnilss/src/omnilss/api/grpc/proto/`. Regenerate stubs with `cd omnilss && python tools/generate_grpc_stubs.py`.
+
+## Offline Dev + R Validation Container
+
+An offline-capable devcontainer is provided under `.devcontainer/` (with `.codex/setup.sh` for post-create bootstrap):
+
+```bash
+devcontainer build --workspace-folder .
+devcontainer up --workspace-folder .
+bash .codex/setup.sh
+```
+
+See [`docs/development/offline-dev-bootstrap-2026-05-17.md`](docs/development/offline-dev-bootstrap-2026-05-17.md) and [`docs/development/r-environment-setup.md`](docs/development/r-environment-setup.md).
+
+## Key Documents
+
+- [Comprehensive Audit (2026-11-21, D2.270+)](docs/development/full-project-audit-2026-11-21.md)
+- [Master Development Plan](DEVELOPMENT_PLAN.md)
+- [Symbol Coverage Matrix](docs/development/r-symbol-coverage.md)
+- [M0 Manifest](docs/development/milestone-manifest-m0.md) | [M1](docs/development/m1-assessment-2026-11-15.md) | [M2](docs/development/m2-assessment-2026-11-15.md) | [M3](docs/development/m3-assessment-2026-11-15.md) | [M4 Scope](docs/development/m4-scope-2026-11-15.md)
+- [Tutorials](docs/tutorials/) & [Benchmarks](benchmarks/)
+- [Changelog](CHANGELOG.md)
+
+## License
+
+GNU General Public License v3 or later (`GPL-3.0-or-later`).
