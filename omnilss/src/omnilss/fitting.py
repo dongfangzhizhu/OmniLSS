@@ -861,7 +861,7 @@ def gamlss_ml(
     control = gamlss_control() if control is None else control
     i_control = glim_control() if i_control is None else i_control
 
-    response_name, _ = _parse_formula(formula)
+    response_name = _parse_formula_core(formula).response
     resolved_formulas = _resolve_parameter_formulas(
         response=response_name,
         family=family,
@@ -1393,7 +1393,7 @@ def gamlss(
     # `if (!family$y.valid(y)) stop("response variable out of range")`).
     # Checked here so every method route (RS / CG / MIXED / RS_JAX / joint)
     # rejects the data identically instead of only the NumPy RS path.
-    _response_column, _ = _parse_formula(formula)
+    _response_column = _parse_formula_core(formula).response
     validate_response(getattr(family, "name", str(family)), data[_response_column])
 
     # R: gamlss(mu.start=..., sigma.start=..., nu.start=..., tau.start=...).
@@ -1517,7 +1517,7 @@ def gamlss(
 
         requested_method = method_name
         try:
-            _resp, _ = _parse_formula(formula)
+            _resp = _parse_formula_core(formula).response
             _n_obs = len(data[_resp])
         except Exception:
             _n_obs = 0
@@ -1709,7 +1709,7 @@ def gamlss(
             print(f"{'='*70}")
 
         # Prepare design matrices
-        response_name, _ = _parse_formula(formula)
+        response_name = _parse_formula_core(formula).response
         resolved_formulas = _resolve_parameter_formulas(
             response=response_name,
             family=family,
@@ -1932,7 +1932,7 @@ def gamlss(
     else:
         monitor = None
 
-    response_name, _ = _parse_formula(formula)
+    response_name = _parse_formula_core(formula).response
     resolved_formulas = _resolve_parameter_formulas(
         response=response_name,
         family=family,

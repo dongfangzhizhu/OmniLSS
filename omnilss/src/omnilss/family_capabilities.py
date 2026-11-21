@@ -174,6 +174,12 @@ _R_CONSISTENCY_EVIDENCE = frozenset(
     }
 )
 
+# Registry keys in _DEFAULT_CAPABILITIES are uppercased (e.g. "JSUO"), while
+# R family names in _R_CONSISTENCY_EVIDENCE preserve R's original spelling
+# ("JSUo").  Normalize for matrix lookups without mutating the public evidence
+# set (consumed by highfreq_family_freeze.py).
+_R_CONSISTENCY_EVIDENCE_UPPER = frozenset(name.upper() for name in _R_CONSISTENCY_EVIDENCE)
+
 # JAX RS support is intentionally narrower than normal RS support.  The fitting
 # documentation describes this route as available for these core families but not
 # yet a universal production default.
@@ -573,7 +579,7 @@ def _build_capability(name: str) -> FamilyCapability:
     )
     features["r_consistency"] = (
         CapabilityStatus.VALIDATED
-        if key in _R_CONSISTENCY_EVIDENCE
+        if key in _R_CONSISTENCY_EVIDENCE_UPPER
         else CapabilityStatus.UNSUPPORTED
     )
     features["ad_hessian"] = (
@@ -608,7 +614,7 @@ def _build_capability(name: str) -> FamilyCapability:
         notes.append(
             "public surface contains placeholder numerical behavior and requires replacement"
         )
-    elif key in _R_CONSISTENCY_EVIDENCE:
+    elif key in _R_CONSISTENCY_EVIDENCE_UPPER:
         notes.append(
             "has repository R-consistency test coverage; still requires feature-specific gates"
         )

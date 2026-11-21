@@ -613,11 +613,11 @@ def quick_distribution_search(
     ...     verbose=True
     ... )
     """
-    from .fitting import _parse_formula
-    
+    from .formula_parser import parse_formula
+
     # 自动检测数据类型
     if data_type == "auto":
-        response_name, _ = _parse_formula(formula)
+        response_name = parse_formula(formula).response
         y = np.asarray(data[response_name])
         
         # 检测数据类型

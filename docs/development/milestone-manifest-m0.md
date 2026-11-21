@@ -1,7 +1,7 @@
 # Milestone M0 manifest (v0.4.0)
 
-- generated: 2026-11-20T23:54:47Z
-- source commit: fea8d031224a44174ea23c81256f79dc3d66d7c4 (branch main)
+- generated: 2026-11-21T01:15:01Z
+- source commit: dae13fcef8501ca3389fc2d586c286ff470b0b9d (branch main)
 - environment pinned: True
 - python 3.10.16 / jax 0.6.2 (x64=True) / numpy 2.2.6 / scipy 1.15.3
 - R: R version 4.6.0 (2026-04-24 ucrt) / gamlss 5.5.0 / gamlss.dist 6.1.1
@@ -12,7 +12,7 @@
 | gate | result | mode |
 |---|---|---|
 | p0_clear | PASS |  |
-| coverage_regenerable | PASS | diff flags (pass --verify-coverage to run the gate) |
+| coverage_regenerable | PASS | --check executed |
 | tiered_collection | PASS |  |
 | devcontainer | PASS | static + fresh-clone simulation (no docker in CI env) |
 | golden_manifest_gate | PASS | --require-r |

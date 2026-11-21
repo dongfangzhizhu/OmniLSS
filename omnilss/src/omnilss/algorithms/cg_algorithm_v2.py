@@ -29,7 +29,6 @@ from ..fitting import (
     _build_rqres_callable,
     _compute_residuals,
     _fixed_parameter_term,
-    _parse_formula,
     _resolve_fixed_parameter_values,
 )
 from ..smooth_fitting import compute_smooth_edf
@@ -288,7 +287,7 @@ def cg_fit_v2(
     ``mixed()`` fitting.
     """
     family = resolve_family(family)
-    response_name, _ = _parse_formula(formula)
+    response_name = _parse_full_formula(formula).response
     resolved_formulas = _resolve_parameter_formulas(
         response_name, family, formula, sigma_formula, parameter_formulas
     )

@@ -698,8 +698,12 @@ def rs_step(
         if verbose:
             print(f"  Inner iteration {iteration + 1}: deviance = {deviance:.6f}")
 
-        # Check convergence
-        if abs(old_deviance - deviance) < tol:
+        # Check convergence (guard against inf - inf -> nan RuntimeWarning)
+        if (
+            np.isfinite(old_deviance)
+            and np.isfinite(deviance)
+            and abs(old_deviance - deviance) < tol
+        ):
             converged = True
             break
 
@@ -995,7 +999,7 @@ def rs_fit(
         _initial_sigma,
         _initial_sigma_fitted,
         _is_intercept_only_formula,
-        _parse_formula,
+        _parse_formula_core,
         _resolve_fixed_parameter_values,
         _resolve_parameter_formulas,
         _resolve_start_values,
@@ -1032,7 +1036,7 @@ def rs_fit(
         print("=" * 70)
 
     # Parse formulas
-    response_name, _ = _parse_formula(formula)
+    response_name = _parse_formula_core(formula).response
     resolved_formulas = _resolve_parameter_formulas(
         response=response_name,
         family=family,

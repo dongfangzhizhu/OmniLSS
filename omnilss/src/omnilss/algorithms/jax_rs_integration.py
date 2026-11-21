@@ -133,14 +133,14 @@ def gamlss_rs_jax(
         _initial_parameter_value,
         _initial_sigma,
         _normalize_parameter_formula,
-        _parse_formula,
+        _parse_formula_core,
         _resolve_fixed_parameter_values,
         _resolve_parameter_formulas,
         _has_smooth_terms,
     )
 
     # ── Parse formula ────────────────────────────────────────────────────────
-    response_name, _ = _parse_formula(formula)
+    response_name = _parse_formula_core(formula).response
     resolved_formulas = _resolve_parameter_formulas(
         response=response_name,
         family=family,

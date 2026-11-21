@@ -12,9 +12,9 @@
     "diff_ok": true,
     "provenance": {
       "golden_manifest_sha256": "b4bdaebe5a7a62d687ff42469d6e56ee1297bc5685c4345aec88b956d2700365",
-      "python_surface_sha256": "3fff445629f2419f0dad72c9a4e9c8ec1a39a45f31b7d7b00c852a04f4ac3c76",
+      "python_surface_sha256": "6aff57f824be9ed43d6d56c1808867f3349e34d5505fceb765446f12c7afe1ac",
       "r_namespace_sha256": "b51a29f54229ba5860387759ddf95f670613e80c1c86ccd16e2ed564bfbe1c2f",
-      "test_suite_sha256": "20e9b791097e1035f0f3e87bcb10e66cb3469fa3abf82fd4d9531a2681d180a6"
+      "test_suite_sha256": "9daff50151c291d344a2fa7387c73ab74664c75aa32670fbab1360e786cebefe"
     },
     "ratchet_ok": true,
     "stats": {
@@ -35,7 +35,7 @@
   "gates": {
     "coverage_regenerable": {
       "command": "python tools/generate_symbol_coverage.py --check",
-      "mode": "diff flags (pass --verify-coverage to run the gate)",
+      "mode": "--check executed",
       "ok": true
     },
     "devcontainer": {
@@ -73,7 +73,7 @@
       "command": "python tools/tiered_collection.py --mode collect --strict-skips --json",
       "ok": true,
       "totals": {
-        "collected": 5822,
+        "collected": 5827,
         "errors": 0,
         "failed": 0,
         "skipped": 0,
@@ -81,7 +81,7 @@
       }
     }
   },
-  "generated_at_utc": "2026-11-20T23:54:47Z",
+  "generated_at_utc": "2026-11-21T01:15:01Z",
   "milestone": "M0",
   "notes": "M0 gate bundle per DEVELOPMENT_PLAN 22.4. Reproducibility is anchored by coverage provenance content hashes (HEAD-independent); source.commit is informational. Regenerate after any symbol/test change.",
   "pinned_expected": {
@@ -125,7 +125,7 @@
   },
   "source": {
     "branch": "main",
-    "commit": "fea8d031224a44174ea23c81256f79dc3d66d7c4",
+    "commit": "dae13fcef8501ca3389fc2d586c286ff470b0b9d",
     "dirty": true
   },
   "tolerances": {
