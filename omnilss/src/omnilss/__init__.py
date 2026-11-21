@@ -823,18 +823,37 @@ IC = ic
 from .predict_gamlss_23_12_21 import predict as predict_gamlss_exact
 from .print import print as print_gamlss_exact
 from .stepGAIC_03_10_13 import extractAIC, stepGAIC
-from .stepwise_vr import StepwisePathResult, StepwisePathRow, stepGAIC_VR, step_gaic_vr
+from .stepwise_vr import (
+    StepGAICCHResult,
+    StepGAICCHRow,
+    StepwisePathResult,
+    StepwisePathRow,
+    stepGAIC_CH,
+    stepGAIC_VR,
+    step_gaic_ch,
+    step_gaic_vr,
+)
 from .stepwise_all import add1All, drop1All
 from .stepGAICAll_A_parallel import stepGAICAll_A
 from .stepGAICAll_B_Parallel import addtermAllP, droptermAllP, stepGAICAll_B
-from .stepTGD import add1TGD, add1TGDP, drop1TGD, drop1TGDP, extractTGD, stepTGD
+from .stepTGD import (
+    StepTGDAllAResult,
+    add1TGD,
+    add1TGDP,
+    drop1TGD,
+    drop1TGDP,
+    extractTGD,
+    stepTGD,
+    stepTGDAll_A,
+    step_tgd_all_a,
+)
 from .update import update
 from .worm_plot import MultiPanelWormPlotData, WormPlotData, wp, wp_data, wp_interactive
 
 # ── New Phase-A diagnostic / helper imports ───────────────────────────────────
 from .par_plot import par_plot, ParPlotResult, ParPlotSeries
 from .prof_dev import prof_dev, prof_term, ProfDevResult
-from .lms import lms, z_scores, LMSResult
+from .lms import CalibrationResult, LMSResult, calibration, lms, z_scores
 from .getSmo import getSmo, edfAll, SmootherInfo
 from .plot_smoothers import plotDF, plotLambda, SmootherPlotRow
 from .getZmatrix import getZmatrix
@@ -1249,10 +1268,17 @@ __all__ = [
     "stepGAICAll_A",
     "stepGAICAll_B",
     "stepTGD",
+    "stepTGDAll_A",
+    "step_tgd_all_a",
+    "StepTGDAllAResult",
     # ── gamlss drop1All / add1All single-term tables ──
     "drop1All",
     "add1All",
-    # ── gamlss stepGAIC.VR path selection ──
+    # ── gamlss stepGAIC.VR / stepGAIC.CH path selection ──
+    "stepGAIC_CH",
+    "step_gaic_ch",
+    "StepGAICCHResult",
+    "StepGAICCHRow",
     "stepGAIC_VR",
     "step_gaic_vr",
     "StepwisePathResult",
@@ -1796,6 +1822,8 @@ __all__ = [
     "prof_term",
     "ProfDevResult",
     "lms",
+    "calibration",
+    "CalibrationResult",
     "z_scores",
     "LMSResult",
     "getSmo",

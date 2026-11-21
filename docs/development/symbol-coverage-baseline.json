@@ -18,11 +18,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 45,
+    "missing": 41,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 427
+    "extra": 433
   },
   "symbols": {
     "missing": [
@@ -36,7 +36,6 @@
       "gamlss2::RS",
       "gamlss2::available_families",
       "gamlss2::bamlss2",
-      "gamlss2::calibration",
       "gamlss2::cv_gamlss2",
       "gamlss2::discretize",
       "gamlss2::elm",
@@ -67,10 +66,7 @@
       "gamlss2::special_predict",
       "gamlss2::specials",
       "gamlss2::step_gamlss2",
-      "gamlss2::stepwise",
-      "gamlss::calibration",
-      "gamlss::stepGAIC.CH",
-      "gamlss::stepTGDAll.A"
+      "gamlss2::stepwise"
     ],
     "placeholder": [],
     "compat_alias": [
@@ -142,6 +138,7 @@
       "CVComparisonResult",
       "CVComparisonRow",
       "CYSpline",
+      "CalibrationResult",
       "CapabilityStatus",
       "CensoredFamily",
       "CentileCurveEntry",
@@ -323,8 +320,11 @@
       "SpatialFit",
       "StepGAICAllResult",
       "StepGAICAllStep",
+      "StepGAICCHResult",
+      "StepGAICCHRow",
       "StepGAICResult",
       "StepGAICStep",
+      "StepTGDAllAResult",
       "StepTGDAllResult",
       "StepTGDAllStep",
       "StepTGDResult",
@@ -530,9 +530,11 @@
       "smooth_term_edf",
       "step_gaic",
       "step_gaic_all",
+      "step_gaic_ch",
       "step_gaic_vr",
       "step_tgd",
       "step_tgd_all",
+      "step_tgd_all_a",
       "stepwise_distribution_selection",
       "summary",
       "support",

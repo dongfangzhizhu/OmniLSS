@@ -638,6 +638,120 @@ def step_tgd_all(
     current.additional_slots["step_tgd_all_path"] = tuple(path)
     return StepTGDAllResult(model=current, parameters=tuple(requested_parameters), direction=direction_name, steps=tuple(path))
 
+
+@dataclass(frozen=True)
+class StepTGDAllAResult:
+    """Structured return payload for R ``gamlss::stepTGDAll.A`` (Strategy A)."""
+
+    model: GAMLSSModel
+    anova_all: dict[str, tuple[StepTGDStep, ...]]
+    failed_stage: str | None = None
+
+
+def stepTGDAll_A(
+    object: GAMLSSModel,
+    scope: Any | None = None,
+    newdata: Mapping[str, Any] | None = None,
+    steps: int = 1000,
+    sigma_scope: Any | None = None,
+    nu_scope: Any | None = None,
+    tau_scope: Any | None = None,
+    mu_try: bool = True,
+    sigma_try: bool = True,
+    nu_try: bool = True,
+    tau_try: bool = True,
+) -> StepTGDAllAResult:
+    """R reference: ``gamlss/R/stepTGDAll-A-parallel.R::stepTGDAll.A``.
+
+    Strategy A multi-parameter test-global-deviance stepwise selection:
+    1. Forward pass: ``mu`` -> ``sigma`` -> ``nu`` -> ``tau`` (``tau`` uses
+       ``direction="both"``; others use ``direction="forward"``).
+    2. Backward pass: ``nu`` -> ``sigma`` -> ``mu`` (skipping whichever
+       parameter was last fitted in the forward pass, mirroring R's
+       ``current.par != param`` guard).
+    """
+    _require_gamlss_method(object)
+    if newdata is None:
+        raise ValueError("stepTGDAll_A requires newdata for test global deviance evaluation")
+
+    eff_scopes = {
+        "mu": scope,
+        "sigma": scope if sigma_scope is None else sigma_scope,
+        "nu": scope if nu_scope is None else nu_scope,
+        "tau": scope if tau_scope is None else tau_scope,
+    }
+    try_flags = {
+        "mu": bool(mu_try),
+        "sigma": bool(sigma_try),
+        "nu": bool(nu_try),
+        "tau": bool(tau_try),
+    }
+
+    current = object
+    anova_all: dict[str, tuple[StepTGDStep, ...]] = {}
+    current_par: str | None = None
+
+    forward_plan = (
+        ("mu", "forward", "mu.anova.for"),
+        ("sigma", "forward", "sigma.anova.for"),
+        ("nu", "forward", "nu.anova.for"),
+        ("tau", "both", "tau.anova.for"),
+    )
+    for param, direction, key in forward_plan:
+        if param in current.par and try_flags[param]:
+            current_par = param
+            try:
+                res = step_tgd(
+                    current,
+                    newdata=newdata,
+                    scope=eff_scopes[param],
+                    what=param,
+                    direction=direction,
+                    steps=steps,
+                )
+            except Exception:
+                current.additional_slots["anovaAll"] = dict(anova_all)
+                return StepTGDAllAResult(
+                    model=current,
+                    anova_all=dict(anova_all),
+                    failed_stage=f"{param}:{direction}",
+                )
+            current = res.model
+            anova_all[key] = res.steps
+
+    backward_plan = (
+        ("nu", "backward", "nu.anova.back"),
+        ("sigma", "backward", "sigma.anova.back"),
+        ("mu", "backward", "mu.anova.back"),
+    )
+    for param, direction, key in backward_plan:
+        if param in current.par and try_flags[param] and current_par != param:
+            current_par = param
+            try:
+                res = step_tgd(
+                    current,
+                    newdata=newdata,
+                    scope=eff_scopes[param],
+                    what=param,
+                    direction=direction,
+                    steps=steps,
+                )
+            except Exception:
+                current.additional_slots["anovaAll"] = dict(anova_all)
+                return StepTGDAllAResult(
+                    model=current,
+                    anova_all=dict(anova_all),
+                    failed_stage=f"{param}:{direction}",
+                )
+            current = res.model
+            anova_all[key] = res.steps
+
+    current.additional_slots["anovaAll"] = dict(anova_all)
+    return StepTGDAllAResult(model=current, anova_all=dict(anova_all), failed_stage=None)
+
+
+step_tgd_all_a = stepTGDAll_A
+
 extractTGD = extract_tgd
 drop1TGD = drop1_tgd
 add1TGD = add1_tgd
@@ -649,6 +763,7 @@ __all__ = [
     "ExtractTGDResult",
     "MultiParameterTGDScopeResult",
     "MultiParameterTGDScopeRow",
+    "StepTGDAllAResult",
     "StepTGDAllResult",
     "StepTGDAllStep",
     "StepTGDResult",
@@ -669,6 +784,8 @@ __all__ = [
     "extract_tgd",
     "extract_tgd_data",
     "stepTGD",
+    "stepTGDAll_A",
     "step_tgd",
     "step_tgd_all",
+    "step_tgd_all_a",
 ]
