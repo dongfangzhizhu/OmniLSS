@@ -100,9 +100,9 @@ _SUMMARY_RE = re.compile(r"(\d+) (passed|skipped|failed|errors?|xfailed|xpassed)
 
 def build_command(tier: Tier, *, mode: str = "collect", python: str | None = None) -> list[str]:
     """Build the pytest command for one tier (runs in ``tier.root``)."""
-    command = [python or sys.executable, "-m", "pytest", "--no-header", "-q", "-p", "no:cacheprovider"]
+    command = [python or sys.executable, "-m", "pytest", "--no-header", "-p", "no:cacheprovider"]
     if mode == "collect":
-        command.append("--collect-only")
+        command.extend(["-q", "--collect-only"])
     for path in tier.ignore:
         command.append(f"--ignore={path}")
     command.extend(tier.args)

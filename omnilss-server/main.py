@@ -8,32 +8,83 @@ SQLite index lives at ``OMNILSS_MODEL_DB_PATH``.
 
 from __future__ import annotations
 
+import math
 import os
+import time
 from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from pydantic import BaseModel
 
 from omnilss import gamlss
-from omnilss.formula_parser import has_smooth_terms
 from omnilss.api.grpc.server import REGISTRY
+from omnilss.family_capabilities import (
+    ProductionFamilyRejectedError,
+    require_production_family_route,
+)
+from omnilss.formula_parser import has_smooth_terms
 from omnilss.prediction import PredictionSchemaError
 
 app = FastAPI(title="omnilss-server")
 
-# Phase 5.3: DoS limits for the REST boundary.
+# Phase 5.3 / A4: DoS limits for the REST boundary.
 MAX_JSON_BODY_BYTES = 1_000_000  # 1 MiB
 RATE_LIMIT_WINDOW_SECONDS = 60
 RATE_LIMIT_MAX_REQUESTS = 300
+RATE_LIMIT_MAX_CLIENTS = 10_000
+
+_RATE_LIMIT_STATE: dict[str, list[float]] = {}
+
+
+def _prune_rate_limit_state(now: float) -> None:
+    """Drop expired client buckets and enforce an upper bound on tracked IPs."""
+    stale_clients = [
+        key
+        for key, timestamps in _RATE_LIMIT_STATE.items()
+        if not timestamps or (now - timestamps[-1]) >= RATE_LIMIT_WINDOW_SECONDS
+    ]
+    for key in stale_clients:
+        _RATE_LIMIT_STATE.pop(key, None)
+
+    if len(_RATE_LIMIT_STATE) > RATE_LIMIT_MAX_CLIENTS:
+        overflow = len(_RATE_LIMIT_STATE) - RATE_LIMIT_MAX_CLIENTS
+        oldest = sorted(
+            _RATE_LIMIT_STATE.items(),
+            key=lambda item: item[1][-1] if item[1] else -1.0,
+        )[:overflow]
+        for key, _ in oldest:
+            _RATE_LIMIT_STATE.pop(key, None)
+
+
+def _check_rate_limit(client: str, now: float | None = None) -> bool:
+    """Return True when the request is allowed, False when rate-limited."""
+    ts = time.monotonic() if now is None else float(now)
+    if len(_RATE_LIMIT_STATE) >= RATE_LIMIT_MAX_CLIENTS and client not in _RATE_LIMIT_STATE:
+        _prune_rate_limit_state(ts)
+
+    window = [t for t in _RATE_LIMIT_STATE.get(client, []) if ts - t < RATE_LIMIT_WINDOW_SECONDS]
+    if len(window) >= RATE_LIMIT_MAX_REQUESTS:
+        _RATE_LIMIT_STATE[client] = window
+        return False
+    window.append(ts)
+    _RATE_LIMIT_STATE[client] = window
+
+    if len(_RATE_LIMIT_STATE) > RATE_LIMIT_MAX_CLIENTS:
+        _prune_rate_limit_state(ts)
+    return True
+
+
+def _check_content_length(content_length: str | None) -> bool:
+    """Return False when Content-Length exceeds MAX_JSON_BODY_BYTES."""
+    if content_length and content_length.isdigit():
+        return int(content_length) <= MAX_JSON_BODY_BYTES
+    return True
 
 
 @app.middleware("http")
 async def _dos_guard(request, call_next):
     """Reject oversized bodies and cap requests per client per window."""
-    # Body size guard (FastAPI reads the body on demand; Content-Length is a
-    # cheap pre-check for the common case).
-    content_length = request.headers.get("content-length")
-    if content_length and content_length.isdigit() and int(content_length) > MAX_JSON_BODY_BYTES:
+    if not _check_content_length(request.headers.get("content-length")):
         from fastapi.responses import JSONResponse
 
         return JSONResponse(
@@ -41,29 +92,20 @@ async def _dos_guard(request, call_next):
             content={"error": "request body too large"},
         )
 
-    # Simple in-memory sliding-window rate limit per client IP.
-    import time
-
     client = request.client.host if request.client else "unknown"
-    now = time.monotonic()
-    window = _RATE_LIMIT_STATE.setdefault(client, [])
-    window[:] = [t for t in window if now - t < RATE_LIMIT_WINDOW_SECONDS]
-    if len(window) >= RATE_LIMIT_MAX_REQUESTS:
+    if not _check_rate_limit(client):
         from fastapi.responses import JSONResponse
 
         return JSONResponse(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             content={"error": "rate limit exceeded"},
         )
-    window.append(now)
 
     return await call_next(request)
 
 
-_RATE_LIMIT_STATE: dict[str, list[float]] = {}
-
 # Phase 5.1: token authentication on every endpoint (same policy as
-# omnilss.api.http.fastapi_server._check_auth).  Production deployments must
+# omnilss.api.http.fastapi_server._check_auth). Production deployments must
 # set OMNILSS_API_TOKEN (docker-compose does); with no token configured the
 # API is open for local development only.
 def _check_auth(authorization: str = Header(default="")) -> None:
@@ -141,6 +183,22 @@ def _reject_unsupported_smooth_method(req: FitRequest | DistributionSelectReques
         )
 
 
+def _enforce_route_capability(family: str, method: str) -> None:
+    """Apply the same fail-closed production route gate used by gRPC/FastAPI."""
+    try:
+        require_production_family_route(family, method, route="http")
+    except ProductionFamilyRejectedError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "type": "production_family_rejected",
+                "family": family,
+                "method": method,
+                "message": str(exc),
+            },
+        ) from exc
+
+
 def _model_summary(model_id: str, model: Any) -> dict[str, Any]:
     slots = dict(getattr(model, "additional_slots", {}) or {})
     converged = slots.get("rs_converged", slots.get("cg_converged", True))
@@ -162,7 +220,13 @@ def _load_or_404(model_id: str) -> Any:
 @app.post("/fit")
 def fit(req: FitRequest, _: None = Depends(_check_auth)):
     _reject_unsupported_smooth_method(req)
-    model = gamlss(**_model_kwargs(req))
+    _enforce_route_capability(req.family, req.method)
+    if req.max_iter is not None and not (1 <= int(req.max_iter) <= 1000):
+        raise HTTPException(status_code=400, detail="max_iter must be between 1 and 1000")
+    try:
+        model = gamlss(**_model_kwargs(req))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     model_id = REGISTRY.save(model)
     return _model_summary(model_id, model)
 
@@ -216,6 +280,7 @@ def distributions_select(
     rows: list[dict[str, Any]] = []
     for family in req.candidate_families:
         try:
+            require_production_family_route(family, req.method, route="http")
             model = gamlss(**_model_kwargs(req, family=family))
             deviance = float(model.g_dev)
             parameter_count = sum(
@@ -226,13 +291,14 @@ def distributions_select(
                     "family": family,
                     "deviance": deviance,
                     "aic": deviance + 2.0 * parameter_count,
-                    "bic": deviance
-                    + __import__("math").log(max(n_obs, 2)) * parameter_count,
+                    "bic": deviance + math.log(max(n_obs, 2)) * parameter_count,
                     "gaic": deviance + float(req.gaic_k) * parameter_count,
                     "parameter_count": parameter_count,
                     "iterations": int(model.iter),
                 }
             )
+        except ProductionFamilyRejectedError:
+            rows.append({"family": family, "error": "family_not_admitted"})
         except Exception:
             # Phase 5.4: never leak raw exception text to clients.
             rows.append({"family": family, "error": "fit_failed"})
