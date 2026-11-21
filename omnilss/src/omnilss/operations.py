@@ -345,20 +345,101 @@ def lpred(
         return callback(obj, selected, se_fit=se_fit, terms=terms)
 
     terms_info = _get_object_mapping_slot(obj, "terms", obj.terms, selected)
-    predictor = jnp.asarray(terms_info.get("predictor_matrix"), dtype=FLOAT_DTYPE)
-    column_names = list(terms_info.get("column_names", []))
+    raw_predictor = terms_info.get("predictor_matrix")
+    if raw_predictor is not None:
+        predictor = jnp.asarray(raw_predictor, dtype=FLOAT_DTYPE)
+        column_names = list(terms_info.get("column_names", []))
+        constant_value = terms_info.get("constant", 0.0)
+        raw_se = terms_info.get("se_matrix")
+    else:
+        design = obj.design_matrices.get(selected)
+        beta = obj.coefficients.get(selected)
+        if design is None or beta is None:
+            raise ValueError(
+                f"lpred(type='terms') requires stored predictor_matrix or design_matrices/coefficients for {selected!r}"
+            )
+        X = np.asarray(design, dtype=np.float64)
+        beta_vec = np.asarray(beta, dtype=np.float64).ravel()
+        has_intercept = bool(terms_info.get("intercept", True))
+        start_col = 1 if has_intercept else 0
+        term_labels = [str(label) for label in terms_info.get("term_labels", [])]
+        n_obs = X.shape[0]
+        n_non_intercept = X.shape[1] - start_col
+        if term_labels and len(term_labels) == n_non_intercept:
+            term_slices = [
+                (label, slice(start_col + i, start_col + i + 1))
+                for i, label in enumerate(term_labels)
+            ]
+        elif term_labels and isinstance(terms_info.get("term_slices"), dict):
+            term_slices = [
+                (label, terms_info["term_slices"][label])
+                for label in term_labels
+                if label in terms_info["term_slices"]
+            ]
+        else:
+            term_slices = [
+                (
+                    term_labels[i] if i < len(term_labels) else f"term_{i + 1}",
+                    slice(start_col + i, start_col + i + 1),
+                )
+                for i in range(max(n_non_intercept, 0))
+            ]
+        column_names = [label for label, _ in term_slices]
+        centered_blocks: list[np.ndarray] = []
+        term_cols: list[np.ndarray] = []
+        for _, col_slice in term_slices:
+            X_t = X[:, col_slice]
+            X_tc = X_t - np.mean(X_t, axis=0, keepdims=True)
+            centered_blocks.append(X_tc)
+            term_cols.append(X_tc @ beta_vec[col_slice])
+        predictor_np = (
+            np.column_stack(term_cols)
+            if term_cols
+            else np.zeros((n_obs, 0), dtype=np.float64)
+        )
+        predictor = jnp.asarray(predictor_np, dtype=FLOAT_DTYPE)
+        constant_value = float(np.mean(X @ beta_vec)) if X.size else 0.0
+        raw_se = terms_info.get("se_matrix")
+        if se_fit and raw_se is None:
+            from .vcov_gamlss import _flatten_coefficients, vcov
+
+            _, layout = _flatten_coefficients(obj)
+            full_cov = np.asarray(vcov(obj, type="vcov"), dtype=np.float64)
+            param_offset = 0
+            param_cov = None
+            for pname, psize in layout:
+                if pname == selected:
+                    param_cov = full_cov[
+                        param_offset : param_offset + psize,
+                        param_offset : param_offset + psize,
+                    ]
+                    break
+                param_offset += psize
+            se_cols: list[np.ndarray] = []
+            for X_tc, (_, col_slice) in zip(centered_blocks, term_slices):
+                if param_cov is None or not np.isfinite(param_cov[col_slice, col_slice]).all():
+                    se_cols.append(np.full(n_obs, np.nan, dtype=np.float64))
+                else:
+                    cov_tt = param_cov[col_slice, col_slice]
+                    var_t = np.sum((X_tc @ cov_tt) * X_tc, axis=1)
+                    se_cols.append(np.sqrt(np.maximum(var_t, 0.0)))
+            raw_se = (
+                np.column_stack(se_cols)
+                if se_cols
+                else np.zeros((n_obs, 0), dtype=np.float64)
+            )
     if terms is not None:
         indices = [column_names.index(term_name) for term_name in terms]
         predictor = predictor[:, indices]
         column_names = [column_names[index] for index in indices]
     if se_fit:
-        se_matrix = jnp.asarray(terms_info.get("se_matrix"), dtype=FLOAT_DTYPE)
+        se_matrix = jnp.asarray(raw_se, dtype=FLOAT_DTYPE)
         if terms is not None:
             se_matrix = se_matrix[:, indices]
         return {
             "fit": predictor,
             "se.fit": se_matrix,
-            "constant": terms_info.get("constant", 0.0),
+            "constant": constant_value,
             "column_names": column_names,
         }
     return predictor

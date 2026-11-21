@@ -5,16 +5,16 @@
     "current_counts": {
       "compat_alias": 1,
       "evidence_gap": 44,
-      "extra": 427,
-      "missing": 45,
+      "extra": 433,
+      "missing": 41,
       "placeholder": 0
     },
     "diff_ok": true,
     "provenance": {
       "golden_manifest_sha256": "b4bdaebe5a7a62d687ff42469d6e56ee1297bc5685c4345aec88b956d2700365",
-      "python_surface_sha256": "261d0f4c2910a772308a3c3b04f1b51a020a777bb0dc46fbbf9e432a29c1c9d9",
+      "python_surface_sha256": "61b90e26f1ffb94515d8fb7987bc27f9f37061931a324ee7b64a6bcf18f2d60e",
       "r_namespace_sha256": "b51a29f54229ba5860387759ddf95f670613e80c1c86ccd16e2ed564bfbe1c2f",
-      "test_suite_sha256": "e094fd11ca4f8a5fdcd81d068962888d682d34245b4a28bea55d78e75b15897a"
+      "test_suite_sha256": "a1b8aecddd5d225960861eac9846abb1fbac5130d7312844c54e004c466c754e"
     },
     "ratchet_ok": true,
     "stats": {
@@ -73,7 +73,7 @@
       "command": "python tools/tiered_collection.py --mode collect --strict-skips --json",
       "ok": true,
       "totals": {
-        "collected": 5850,
+        "collected": 5871,
         "errors": 0,
         "failed": 0,
         "skipped": 0,
@@ -81,7 +81,7 @@
       }
     }
   },
-  "generated_at_utc": "2026-11-21T02:04:35Z",
+  "generated_at_utc": "2026-11-21T02:30:02Z",
   "milestone": "M0",
   "notes": "M0 gate bundle per DEVELOPMENT_PLAN 22.4. Reproducibility is anchored by coverage provenance content hashes (HEAD-independent); source.commit is informational. Regenerate after any symbol/test change.",
   "pinned_expected": {
@@ -125,7 +125,7 @@
   },
   "source": {
     "branch": "main",
-    "commit": "7a1c4ba34777b899a5ddac4dd67b44135bd6ced9",
+    "commit": "074389edf8dd609fa9a5186eba53fd1d9edb41c0",
     "dirty": true
   },
   "tolerances": {

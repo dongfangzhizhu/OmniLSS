@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-19T00:11:06.564755+00:00",
+  "generated_at": "2026-11-21T02:30:39.827389+00:00",
   "source_repo_root": "D:\\AI\\my\\githubprojs\\OmniLSS",
   "scope": {
     "out_of_scope_packages": [
@@ -605,7 +605,7 @@
       "has_dqr": true,
       "has_fitting": true,
       "has_smoothing": true,
-      "evidence_tier_dpqr": "UNSUPPORTED",
+      "evidence_tier_dpqr": "VALIDATED",
       "evidence_tier_fitting": "EXPERIMENTAL"
     },
     "LG": {

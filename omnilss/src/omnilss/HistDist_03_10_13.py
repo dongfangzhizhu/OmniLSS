@@ -53,7 +53,7 @@ def hist_dist_data(
       continuous path.
     """
 
-    from .fitting import gamlss_ml
+    from .fitting import gamlss, gamlss_ml
 
     resolved_family = resolve_family(family)
     distribution_type = str(getattr(resolved_family, "type", "Continuous"))
@@ -64,12 +64,20 @@ def hist_dist_data(
     if weights is not None and weights.size != y_array.size:
         raise ValueError("freq must have the same length as y")
 
-    fit = gamlss_ml(
-        formula="y ~ 1",
-        family=resolved_family,
-        data={"y": y_array},
-        weights=weights,
-    )
+    try:
+        fit = gamlss(
+            formula="y ~ 1",
+            family=resolved_family,
+            data={"y": y_array},
+            weights=weights,
+        )
+    except Exception:
+        fit = gamlss_ml(
+            formula="y ~ 1",
+            family=resolved_family,
+            data={"y": y_array},
+            weights=weights,
+        )
     parameter_values = {
         parameter: float(np.asarray(fitted(fit, parameter), dtype=np.float64).ravel()[0])
         for parameter in fit.par
