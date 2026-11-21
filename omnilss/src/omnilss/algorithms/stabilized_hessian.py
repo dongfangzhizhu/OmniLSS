@@ -13,6 +13,11 @@ class HessianStabilizationResult:
     lambda_value: float
     condition_number: float
     was_regularized: bool
+    # False means the input matrix contained NaN/Inf. Callers must treat this
+    # as a failed linear solve instead of trusting matrix: silently replacing
+    # non-finite entries (the old nan_to_num behaviour) invented a different,
+    # finite Hessian and hid numerical divergence.
+    is_finite: bool = True
 
 
 def stabilize_hessian(
@@ -30,7 +35,16 @@ def stabilize_hessian(
         raise ValueError("hessian must be a square matrix")
 
     if not np.all(np.isfinite(H)):
-        H = np.nan_to_num(H, nan=0.0, posinf=1e12, neginf=-1e12)
+        # Fail-closed: report the failure instead of masking it. The caller
+        # propagates this into the RS termination report (non_finite_deviance /
+        # step halving) where it can never be counted as convergence.
+        return HessianStabilizationResult(
+            matrix=H,
+            lambda_value=0.0,
+            condition_number=float("inf"),
+            was_regularized=False,
+            is_finite=False,
+        )
 
     n = H.shape[0]
     identity = np.eye(n, dtype=np.float64)

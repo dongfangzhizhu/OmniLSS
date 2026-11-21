@@ -163,10 +163,16 @@ class BoxCoxPowerExponentialFamily(FamilyDefinition):
 def NO() -> NormalFamily:
     """R reference: `gamlss/R/gamlss-5.R` default family `NO()`."""
 
+    def _sigma_floor(sigma: jnp.ndarray) -> jnp.ndarray:
+        # sigma == 0 is outside the family's support; clamping keeps the
+        # first/second derivatives finite (fail-closed at the deviance level)
+        # instead of producing inf - inf -> NaN inside the IRLS step.
+        return jnp.maximum(sigma, jnp.finfo(jnp.float64).eps)
+
     def g_dev_inc(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp.ndarray:
         y = jnp.asarray(y, dtype=jnp.float64)
         mu = jnp.asarray(mu, dtype=jnp.float64)
-        sigma = jnp.asarray(sigma, dtype=jnp.float64)
+        sigma = _sigma_floor(jnp.asarray(sigma, dtype=jnp.float64))
         log_density = (
             -0.5 * jnp.log(2.0 * math.pi)
             - jnp.log(sigma)
@@ -177,22 +183,22 @@ def NO() -> NormalFamily:
     def dldm(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp.ndarray:
         y = jnp.asarray(y, dtype=jnp.float64)
         mu = jnp.asarray(mu, dtype=jnp.float64)
-        sigma = jnp.asarray(sigma, dtype=jnp.float64)
+        sigma = _sigma_floor(jnp.asarray(sigma, dtype=jnp.float64))
         return (y - mu) / jnp.square(sigma)
 
     def d2ldm2(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp.ndarray:
-        sigma = jnp.asarray(sigma, dtype=jnp.float64)
+        sigma = _sigma_floor(jnp.asarray(sigma, dtype=jnp.float64))
         return -1.0 / jnp.square(sigma)
 
     def dldd(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp.ndarray:
         y = jnp.asarray(y, dtype=jnp.float64)
         mu = jnp.asarray(mu, dtype=jnp.float64)
-        sigma = jnp.asarray(sigma, dtype=jnp.float64)
+        sigma = _sigma_floor(jnp.asarray(sigma, dtype=jnp.float64))
         return -1.0 / sigma + jnp.square(y - mu) / jnp.power(sigma, 3)
 
     def d2ldd2(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp.ndarray:
         """Expected Hessian wrt sigma (Fisher information), aligned with R gamlss."""
-        sigma = jnp.asarray(sigma, dtype=jnp.float64)
+        sigma = _sigma_floor(jnp.asarray(sigma, dtype=jnp.float64))
         return -2.0 / jnp.square(sigma)
 
     return NormalFamily(
@@ -897,14 +903,10 @@ def _be_log_pdf_single(y_i: float, mu_i: float, sigma_i: float) -> float:
     return (a - 1.0) * jnp.log(y_i) + (b - 1.0) * jnp.log(1.0 - y_i) - betaln(a, b)
 
 
-# Vectorize for all observations
+# Vectorize for all observations. Defining the jitted/vmapped callable is
+# cheap; compilation is left to the first real call so importing omnilss does
+# not pay a BE-specific XLA compile (and does not require x64 at import time).
 _be_log_pdf_vectorized = jit(vmap(_be_log_pdf_single, in_axes=(0, 0, 0)))
-
-# Pre-compile with dummy data to avoid first-call overhead
-_dummy_y = jnp.array([0.5], dtype=jnp.float64)
-_dummy_mu = jnp.array([0.5], dtype=jnp.float64)
-_dummy_sigma = jnp.array([0.1], dtype=jnp.float64)
-_ = _be_log_pdf_vectorized(_dummy_y, _dummy_mu, _dummy_sigma)  # Warm-up compilation
 
 
 def _be_log_pdf(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp.ndarray:

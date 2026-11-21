@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 
@@ -361,7 +362,49 @@ class GAMLSSModel:
         """
         from .prediction import predict_quantiles
         return predict_quantiles(self, newdata, quantiles)
-    
+
+    def predict_mean(self, newdata: dict[str, Any]) -> Any:
+        """Predict the conditional mean for new data."""
+        from .prediction_runtime import predict_mean
+
+        return predict_mean(self, newdata)
+
+    def predict_distribution(self, newdata: dict[str, Any]) -> dict[str, Any]:
+        """Return the predicted distribution parameters for new data."""
+        from .prediction_runtime import predict_distribution
+
+        return predict_distribution(self, newdata)
+
+    def save(self, path: str | Path, *, include_training_data: bool = False) -> None:
+        """Persist the fitted model using the safe ZIP+JSON artifact format.
+
+        This never uses pickle: the artifact contains a JSON header plus an
+        allow_pickle=False npz array payload, so loading cannot execute code.
+        """
+        from .serialization import save_model_json
+
+        save_model_json(self, path, include_training_data=include_training_data)
+
+    @classmethod
+    def load(cls, path: str | Path) -> "GAMLSSModel":
+        """Load a model previously written by :meth:save (no pickle involved)."""
+        from .serialization import load_model_json
+
+        model = load_model_json(path)
+        if not isinstance(model, cls):
+            raise TypeError(f"artifact did not contain a {cls.__name__}")
+        return model
+
+    def summary(self, type: str = "vcov") -> Any:
+        """Return a structured fit summary (R summary.gamlss analogue).
+
+        The payload exposes coefficients with standard errors, global deviance,
+        AIC, effective degrees of freedom, convergence and warnings.
+        """
+        from .SUMMARY import summary as _summary
+
+        return _summary(self, type=type)
+
     def centiles(
         self,
         xvar: str,

@@ -7,6 +7,7 @@ R source reference:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from statistics import NormalDist
 from typing import Any
@@ -51,6 +52,10 @@ class SummaryResult:
     converged: bool
     cycles: int
     coefficients: dict[str, dict[str, Any]]
+    # Effective degrees of freedom (df_fit) and the fit's own warning strings.
+    # Both were previously only reachable by reaching into additional_slots.
+    edf: float = 0.0
+    warnings: tuple[str, ...] = ()
 
 
 def summary(
@@ -103,6 +108,11 @@ def summary(
         }
         cursor += count
 
+    convergence_status = object.convergence_status()
+    slots = object.additional_slots if isinstance(object.additional_slots, Mapping) else {}
+    warnings: list[str] = [str(item) for item in slots.get("warnings", ()) or ()]
+    warnings.extend(str(item) for item in slots.get("lambda_update_warnings", ()) or ())
+
     return SummaryResult(
         family=family_name,
         method=method_name,
@@ -113,9 +123,11 @@ def summary(
         global_deviance=float(object.additional_slots.get("G.deviance", object.g_dev)),
         aic=aic,
         sbc=sbc,
-        converged=bool(object.additional_slots.get("converged", True)),
+        converged=bool(convergence_status) if convergence_status is not None else bool(slots.get("converged", True)),
         cycles=int(object.additional_slots.get("cycles", object.iter)),
         coefficients=coefficients,
+        edf=float(object.df_fit),
+        warnings=tuple(warnings),
     )
 
 

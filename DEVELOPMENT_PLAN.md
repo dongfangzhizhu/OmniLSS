@@ -925,3 +925,21 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
 | **Phase 2（M4 / 1.0 收官）** | B1 → B2 → B3 → B4 | **`1.0.0`** | 范围内 R 符号 1036/1036 (100%)、官方文档/教程/README 全面同步、8 分片全量通过、`m4_assessment` PASS |
 | **Phase 3（独立轨道并行）** | C1 → C2（P5 在线/多元）<br>D1 → D2（P6 GPU/内核） | `1.1.0` / `1.2.0` | P5 流式 7 项 golden + MVN/MVT 独立验收；P6 先过 GPU/CPU parity 再发性能基线 |
 | **Phase 4（架构瘦身）** | D3 | `1.x` | 零破坏性变更下拆分超大文件、收敛双轨协议、优化导入耗时 |
+
+### 23.4 D2.288（2026-11-22）v0.1.0 产品发布面推进
+
+> 依据根目录 `omnilss_v0_1_execution_plan.md`。该计划面向"产品可用 v0.1.0"，
+> 与 23.2 的 1.0.0 技术收官并行；本轮只做经代码核实仍缺失、且不破坏既有证据的项。
+> 详细日志见 `.workbuddy/memory/2026-11-22.md`。
+
+- [x] **E02 数值阻塞（3/5）**：Link 溢出（LogLink.inverse / SoftplusLink）、NO 的
+  `sigma=0` 导数地板、Hessian 非有限矩阵 fail-closed（`is_finite=False`，不再
+  `nan_to_num`）、BE 导入期 JIT 预热移除。新增 `test_e02_release_blockers.py` 5 例。
+- [x] **E06 摘要/预测 API**：`GAMLSSModel.summary()`、`predict_mean()`、
+  `predict_distribution()`；`SummaryResult` 增 `edf` / `warnings`，`converged`
+  改走 `convergence_status()`。新增 `test_v01_public_api.py` 3 例。
+- [x] **E09 安全持久化入口**：`GAMLSSModel.save/load`（ZIP+JSON+`allow_pickle=False` npz）。
+- [x] **E01 发布文档**：`docs/release/v0.1-{scope,acceptance,supported-features}.md`。
+- [ ] **E02 剩余**：REML 的 `-log|λS|_+`（需活 R 对照后再改目标函数）；Hessian 的
+  Cholesky-first（会改动 cond>1e10 的既有数值，需 A/B）。
+- [ ] **E10/E11/E12/E13**：Windows CI、三篇发布教程、CPU 基线、发版仍未开始。

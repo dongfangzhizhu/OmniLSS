@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
+import jax
 import jax.numpy as jnp
 
 ArrayLike = object
@@ -55,7 +56,11 @@ class LogLink:
         return jnp.log(jnp.maximum(jnp.asarray(value), self.eps))
 
     def inverse(self, eta: ArrayLike) -> jnp.ndarray:
-        return jnp.maximum(jnp.exp(jnp.asarray(eta)), self.eps)
+        eta = jnp.asarray(eta)
+        # Clip before exp: exp(710) overflows to inf, which would leak a
+        # non-finite parameter into the deviance instead of a saturated value.
+        max_eta = jnp.log(jnp.finfo(jnp.float64).max)
+        return jnp.maximum(jnp.exp(jnp.minimum(eta, max_eta)), self.eps)
 
     def derivative(self, eta: ArrayLike) -> jnp.ndarray:
         return self.inverse(eta)
@@ -88,14 +93,17 @@ class SoftplusLink:
 
     def transform(self, value: ArrayLike) -> jnp.ndarray:
         value = jnp.maximum(jnp.asarray(value), self.eps)
-        return jnp.log(jnp.expm1(value))
+        # log(expm1(v)) == v + log(1 - exp(-v)); the right-hand form has no
+        # overflow for large v (expm1(v) alone overflows around v > 709).
+        return value + jnp.log(-jnp.expm1(-value))
 
     def inverse(self, eta: ArrayLike) -> jnp.ndarray:
         return jnp.logaddexp(jnp.asarray(eta), 0.0) + self.eps
 
     def derivative(self, eta: ArrayLike) -> jnp.ndarray:
-        eta = jnp.asarray(eta)
-        return 1.0 / (1.0 + jnp.exp(-eta))
+        # jax.nn.sigmoid is stable at both tails; 1 / (1 + exp(-eta)) raises
+        # an overflow warning for large negative eta.
+        return jax.nn.sigmoid(jnp.asarray(eta))
 
 
 __all__ = ["IdentityLink", "Link", "LogLink", "LogitLink", "SoftplusLink"]
