@@ -1,8 +1,9 @@
 # OmniLSS 全项目开发计划（总纲）
 
 > 单一执行计划与阶段状态台账。会话开始时应先在本文件定位当前阶段/任务，再读
-> `.workbuddy/memory/` 的日志与纪律条目。全面审核结论与后续完整计划见第二十二节
-> 及 `docs/development/full-project-audit-2026-11-05.md`。
+> `.workbuddy/memory/` 的日志与纪律条目。**最新全面审核结论与 D2.270+ 后续完整开发计划见第二十三节
+> 及 `docs/development/full-project-audit-2026-11-21.md`**（历史 D2.167 审核见第二十二节与
+> `docs/development/full-project-audit-2026-11-05.md`）。
 
 ### D2.150 —— PIG 的 pmf 上限与 ps 的默认值口径（2 条转绿）
 
@@ -850,3 +851,77 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   `gamlss` 核心 15（`gamlss.lo/re`、`stepGAIC.CH`、`stepTGDAll.A`、`TGD`、诊断绘图）、
   `gamlss.add` 15、`gamlss.foreach` 11（`pcr/pc/fitPCR`）、`gamlss.spatial` 9、`gamlss.mx` 8（拟合引擎）、
   `gamlss.dist/tr` 6（绘图/尾部）。
+
+---
+
+## 二十三、2026-11-21 全面审核结论与 D2.270+ 后续完整开发计划
+
+> **生效基线**：HEAD = `7aedafc`（D2.270），实测日期 2026-11-21。详细实测审核报告与清理台账见
+> `docs/development/full-project-audit-2026-11-21.md`。
+> 本节承接并更新第二十二节（M0–M3 与 P4 表面/证据已达成，P5-1a/b 与 P6-1 已交付），聚焦从当前
+> D2.270 状态推进到 **M4（1.0.0 正式发布）** 及 **独立轨道 P5（在线/多元）/ P6（GPU/内核性能）** 的完整 WBS。
+
+### 23.1 当前基线快照与硬性边界（2026-11-21 实测）
+
+- **参考项目边界（硬约束）**：`gamlss-python/` 与 `ondil/` **只作设计与算法参考，严禁在 OmniLSS 中引入、拷贝或依赖其代码**（包括可选运行时导入）；OmniLSS 全部功能基于自身 JAX / NumPy / SciPy 架构独立实现与独立验收。
+- **环境管理约定**：
+  - `.venv/`：Windows 下运行当前项目的虚拟环境，统一使用 **`uv`** 管理；
+  - `debianjaxgpu/`：WSL Debian 下运行当前项目的 GPU 虚拟环境，统一使用 **`uv`** 管理。
+- **符号覆盖**：范围内 1,025 / 1,036（**98.94%**），仅 `gamlss` 核心包缺 **11** 个符号；10 个包 100% 完整；`gamlss2`（44 符号）维持 out-of-scope。
+- **证据成熟度**：`kernel=implemented` 606、`production_safe` **22 族 / 110 符号**、`experimental` **104 族**、`compat_alias` 20、`placeholder` 0；范围内 `unverified` 54（`gamlss` 36 + `gamlss.dist` 18），`blocked` 421。
+- **里程碑与门禁**：M0/M1/M2/M3 已闭环，但实测 **2 项门禁产物漂移**（`m1_assessment`、`layered_parity`），`omnilss-pro` 在真 `grpc` 下 **2 项测试失败**，`.venv` 当前未同步 `ruff`/`black`/`mypy`，文档/版本号停留在 0.4.0 阶段。
+- **测试规模**：4 层共收集 **5,822** 用例（`omnilss` 5786 / `omnilss-pro` 25 / `benchmarks` 10 / `omnilss-server` 1），0 collection error / 0 strict skip。
+
+---
+
+### 23.2 分阶段后续开发计划（WBS）
+
+#### Track A（P7 / 立即止血，阻塞一切后续里程碑）：门禁止漂移 + 工程卫生收口
+
+| 编号 | 任务内容 | 具体落点与动作 | 验收标准 |
+|---|---|---|---|
+| **A1** | 修复两项漂移的里程碑产物并入 CI | 1. 重新生成 `m1-assessment-2026-11-15.json/.md` 与 `layered-parity-2026-11-15.json/.md`；<br>2. 将 `m1/m2/m3_assessment`、`m4_scope_inventory`、`p2_defect_classification`、`ondil_contract_scan` 接入 `ci.yml`/`release.yml`；<br>3. 更新 `m4_scope_inventory.py` 过时的 `verdict.notes` 文案（已无 `gamlss.mx` 缺口）；<br>4. 推进 `symbol-coverage-baseline.json` 棘轮基线（`missing` 173→53），收紧回归防线。 | 全部 14 道 `tools/* --check` 100% PASS；CI 新增门禁全绿 |
+| **A2** | 修复 `omnilss-pro` 真实 gRPC 下的 2 处测试失败并接入 CI 运行 | 修复 `omnilss-pro/tests/test_client_tls.py`（使用 `monkeypatch` 显式替换 `grpc.insecure_channel`/`secure_channel` 而非仅在 `ImportError` 时 stub）；在 `ci.yml` 与 `release.yml` 增加 `omnilss-pro` 与 `omnilss-server` 的 `--mode run` 执行步骤（不再仅 `--mode collect`）。 | `pytest omnilss-pro/tests` 在安装 `grpcio` 环境下全绿；CI 实际执行 4 层测试 |
+| **A3** | 消除内部运行时告警与能力矩阵口径差 | 1. 替换 `fitting.py:1396,1520` 与 `algorithms/rs_algorithm.py:1035` 对废弃 `_parse_formula` 的内部调用，消除 `DeprecationWarning`；<br>2. 修 `rs_algorithm.py:702` 在 `inf - inf` 处的 `RuntimeWarning`；<br>3. 核查并统一 `_R_CONSISTENCY_EVIDENCE`(40) 与运行时 `capability_matrix()` `r_consistency=validated`(39) 的 1 族偏差（`JSUo` 大小写键名不匹配 `JSUO`）；<br>4. 通过 `uv` 在 `.venv` 补齐 `ruff`/`black`/`mypy` 开发工具链，推进核心模块 `mypy` 分目录转严。 | `tiered_collection` 与核心测试零内部自触发 `DeprecationWarning`/`RuntimeWarning`；`ruff`+`black` 本地与 CI 一致通过 |
+| **A4** | 夯实 `omnilss-server` 服务层测试与边界安全 | 为 `omnilss-server` 补充鉴权（`OMNILSS_API_TOKEN` 401/200）、DoS 包体上限（413）与滑窗限流（429 + 过期 IP 清理防内存泄漏）、非 `production_safe` 族拒绝、`CG` 平滑拒绝、独立 `OMNILSS_MODEL_DB_PATH` 隔离测试。 | `omnilss-server` 测试用例 ≥10 项全绿；限流状态有界 |
+
+---
+
+#### Track B（M4 收官 → `v1.0.0` 发布准备）：补齐最后 11 符号、扩大准入、重构文档体系
+
+| 编号 | 任务内容 | 具体落点与动作 | 验收标准 |
+|---|---|---|---|
+| **B1** | 补齐核心 `gamlss` 包最后 11 个缺失符号（范围内 1036/1036 = 100%） | 分三批按价值交付：<br>- **B1a（平滑/随机效应）**：`gamlss.lo`（对接 `lo` 规格与加权局部多项式回归）、`re`/`gamlss.re`（明确 LME/混合效应后端或显式契约范围，带活 R 对照）；<br>- **B1b（诊断/选择）**：`get.rqres`、`rqres.plot`、`bp`（复用 `moment_bucket` 核）、`calibration`、`stepGAIC.CH`、`stepTGDAll.A`；<br>- **B1c（辅助）**：`fittedPlot`、`gamlssNews`。 | `r-symbol-coverage.json` 范围内 `surface_missing`: **11 → 0**（100%）；每批附活 R 一致性测试与覆盖工件同步 |
+| **B2** | 扩大 `production_safe` 与多维度能力准入 | 1. 清理 54 个范围内 `unverified` 符号（`gamlss` 36 + `gamlss.dist` 18 骨架族分类登记），消除空白；<br>2. 在 `family_capabilities.py` 中基于已通过的 `layered-parity`（66 cell）与平滑测试，为验证通过的族晋级 `cg_fit` / `sampling` / `smooth_terms` feature 证据状态（打破当前全 0 现状）；<br>3. 从剩余 104 个 `experimental` 族中按业务高频度筛选第二批候选族（补齐活 R golden fit/predict/serialize 后准入）；<br>4. 为 `gamlss.cens` / `gamlss.tr` 扩展 `generate_golden.R` 删失/截断拟合 golden 语料；逐项推进 `gamlss.mx` 未移植分支（`pi.formula` 协变量先验、`zero.component`）或正式冻结为 1.0 已知边界。 | 范围内 `unverified` 显著压降；`cg_fit`/`smooth_terms`/`sampling` 出现首批 `validated` 族；M4 准入清单无未归类项 |
+| **B3** | 文档、教程与对外口径全面刷新（1.0 硬门槛） | 1. 重写 `README.md` / `README_cn.md`（移除过时的「80+族 / 30天冻结 / 缺 ST/DBI/平滑器」描述，改为引用权威覆盖与准入工件）；<br>2. 刷新或归档 `HANDOFF.md`；补全 `CHANGELOG.md`（汇总 0.5.0 / 0.6.0 / 0.9.0 → 1.0.0 演进）；<br>3. 合并治理两套割裂教程：以 `docs/tutorials/` 为唯一官方教程体系并接入 `mkdocs.yml` 导航，补齐 8 篇核心实战指南（含 R→OmniLSS 迁移对照表、22 个生产准入族速查、平滑/删失/混合/服务部署），清理或归档根目录 `tutorials/` 中大量空提纲与 320B 占位 `_cn.md`；<br>4. 归档 `docs/development/` 中 2026-05~09 已过时的历史审计草稿至 `docs/archive/`；<br>5. 建立 `tools/m4_assessment.py` 作为 **M4 (1.0.0) 正式可校验门禁**。 | `mkdocs build --strict` 通过；文档零过时数字声明；`m4_assessment.py --check` PASS |
+| **B4** | 1.0.0 发布打包与全量验证 | 1. 统一版本号 `_version.py` / `omnilss/pyproject.toml` / `omnilss-pro/pyproject.toml`（按 0.9.0 → 1.0.0-rc1 → 1.0.0 节奏）；<br>2. 完整运行 8 分片全量测试套件（600 文件）+ 单进程 `test_performance_benchmarks.py` + `omnilss/tools/release_check.py`（wheel/sdist 构建 + `twine check` + 洁净环境安装验证）+ 具备 Rtools/make 的 Linux/Docker 环境中执行 `run_release1_r_golden.py` 端到端验证。 | 8 分片全绿、release_check PASS、wheel 安装 smoke 通过、M4 manifest 冻结 |
+
+---
+
+#### Track C（独立轨道 P5 — 参考 `ondil` 设计的自研在线与多元层，严禁引入外部代码，不阻塞 1.0）
+
+| 编号 | 任务内容 | 具体落点与动作 | 验收标准 |
+|---|---|---|---|
+| **C1 (P5-1c)** | 自研在线/流式 GAMLSS 估计器与独立流式 Golden | 参考 `ondil` 架构设计（**不引入其代码/依赖**），基于已完成并通过 78 例测试的 `omnilss/ondil_contract.py` 实现独立模块 `omnilss/online/`：<br>1. `OnlineGAMLSS`（`partial_fit`/`update`/`predict_params`，支持遗忘因子 `forget ∈ [0,1)`、递推加权 Gram 矩阵 `O(p²)` 更新、`sample_weights`、warm start）；<br>2. 落地 `p5-ondil-distribution-contract-2026-11-15.md` §12 规定的 **7 项可复跑流式 golden 判据**（分批不变性 ≤1e-10、遗忘漂移追赶半衰期、warm-start 等价 ≤1e-8、0/5/20% 缺失鲁棒性、每观测耗时与 N 无关的斜率检验、O(p²) 内存）；<br>3. 逐步消解 `KNOWN_BOUNDARY_VIOLATIONS` 棘轮中的 5 个族（IG/IGAMMA/LOGNO/LOGNO2/ZAGA 支撑集外返回 `-inf` 而不破坏拟合稳定性）。 | 独立工具 `tools/p5_streaming_golden.py --check` PASS；7 项流式判据全绿 |
+| **C2 (P5-2)** | 自研在线正则化路径与多元分布 | 参考 `ondil` 数学接口（**纯 JAX/NumPy 独立实现，不导入 `ondil`**）：<br>1. 实现在线坐标下降 / LASSO / Ridge / Elastic-Net 路径；<br>2. 实现多元分布族与矩阵链接：`MVN` / `MVT`（Cholesky、LowRank、ModifiedCholesky 三种协方差/精度参数化），支持对数似然、score/hessian 与 JAX 自动微分；<br>3. 全部数值验收以解析闭式解、`jax.grad`/`jax.hessian` 与固定 seed 合成 DGP golden 为权威基准。 | 多元分布 logpdf/score/hessian 对解析解与 `jax.grad` ≤1e-10；在线正则路径单调性与收敛测试通过 |
+
+---
+
+#### Track D（独立轨道 P6 — JAX 加速与架构演进）：WSL GPU (`debianjaxgpu`) 实测、JIT 扩面与代码瘦身
+
+| 编号 | 任务内容 | 具体落点与动作 | 验收标准 |
+|---|---|---|---|
+| **D1 (P6-2)** | WSL Debian GPU (`debianjaxgpu`, `uv` 管理) 一致性与性能基线 | 在 WSL Debian 的 `debianjaxgpu` 环境中实测：<br>1. 22 个 `production_safe` 族的 **GPU vs CPU 数值 parity**（x64 下偏差 ≤1e-10）；<br>2. 在 GPU 上复测 `bessel_native.py`（`tools/bessel_native_scan.py`）与 `RS_JAX`，确认原生 Bessel 是否在 GPU 批处理下逆转 CPU 的 39× 回退；<br>3. 产出带硬件/冷启动/热启动/显存记录的真实跨界阈值报告（`cross-over N`）。 | GPU/CPU parity 工件归档；性能报告严格区分 cold/warm，绝不把 CPU 数据外推 GPU |
+| **D2 (P6-3)** | `RS_JAX` 扩面与重尾离散族循环优化 | 1. 将 `SICHEL` / `ZISICHEL` / `ZASICHEL` 的固定 100,000 步 `lax.scan` 改为数据驱动动态上界或 `lax.while_loop`（参照 D2.150 `pig.logpmf` 的成功模式），降低每周期耗时；<br>2. 将 `rs_jax_fit` 与 `ad_hessian` 从 6 个实验族稳步扩展到 22 个 `production_safe` 族，并在活 R 精度门禁通过后将 `rs_jax_fit` 升至 `validated`；<br>3. 探索为 `BCT` 的 `betainc` 对形状参数提供 `custom_jvp`，关闭 D2.152 记录的 `test_bct_tau_cross_block_is_a_known_ad_gap`。 | Sichel 周期耗时显著下降且三闸保持 0 fail；`rs_jax_fit` 首批族通过一致性门禁并准入 |
+| **D3 (架构债)** | 大文件拆分与双轨协议收敛（1.x 维护期） | 1. 按支撑域拆分 `dpqr_functions.py`（9,156 行 → 连续实数/正实数/有界/离散/混合/零膨胀子模块，保留顶层重导出兼容）；<br>2. 拆分 `ggplots.py`（3,452 行）与 `fitting.py`（2,623 行），收缩 `__init__.py`（2,065 行，必要时引入 PEP 562 `__getattr__` 延迟导入降冷启动时间）；<br>3. 统一 `FamilyDefinition` 与 `core.distributions.DistributionProtocol`，减少 adapter 桥接维护成本。 | 公开 API 100% 向后兼容；`import omnilss` 冷启动时间下降；单文件上限控制在 ~1,500 行内 |
+
+---
+
+### 23.3 推荐执行顺序与里程碑门槛
+
+| 阶段 | 包含任务 | 目标版本 | 硬门槛 |
+|---|---|---|---|
+| **Phase 1（工程止血）** | A1 → A2 → A3 → A4 | `0.9.1` | 14/14 门禁绿、`omnilss-pro`/`omnilss-server` 实跑全绿、零内部自触发警告 |
+| **Phase 2（M4 / 1.0 收官）** | B1 → B2 → B3 → B4 | **`1.0.0`** | 范围内 R 符号 1036/1036 (100%)、官方文档/教程/README 全面同步、8 分片全量通过、`m4_assessment` PASS |
+| **Phase 3（独立轨道并行）** | C1 → C2（P5 在线/多元）<br>D1 → D2（P6 GPU/内核） | `1.1.0` / `1.2.0` | P5 流式 7 项 golden + MVN/MVT 独立验收；P6 先过 GPU/CPU parity 再发性能基线 |
+| **Phase 4（架构瘦身）** | D3 | `1.x` | 零破坏性变更下拆分超大文件、收敛双轨协议、优化导入耗时 |
