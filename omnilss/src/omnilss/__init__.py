@@ -541,11 +541,13 @@ from .FitTail import (
     loglogSurv2,
     loglogSurv3,
 )
-from .fitted_plot import fitted_plot
+from .bucket_plot import bp
+from .fitted_plot import FittedPlotComparisonResult, fittedPlot, fitted_plot
 from .flexDist import FlexDistResult, flexDist
 from .find_hyper import find_hyper, FindHyperResult
 from .fitting import gamlss, gamlss_ml
-from .gamlss_5 import gamlss_control_exact, glim_control_exact
+from .gamlss_5 import gamlssNews, gamlss_control_exact, gamlss_news, glim_control_exact
+from .plot import RQResPlotResult, get_rqres, rqres_plot
 from .gamlssML import gamlssML
 from .gamlssVGD_23_12_21 import CV, VGD, gamlssCV, gamlssVGD, getTGD
 from .gen_likelihood import gen_likelihood, GenLikelihoodResult
@@ -1175,11 +1177,19 @@ __all__ = [
     "gamlss_ml_pred_data",
     "gamlss_cv",
     "gamlss_cv_data",
+    "bp",
+    "FittedPlotComparisonResult",
+    "fittedPlot",
     "fitted_plot",
     "fitted_plot_data",
     "pdf_plot_data",
+    "RQResPlotResult",
+    "get_rqres",
     "get_rqres_samples",
+    "rqres_plot",
     "gamlss",
+    "gamlssNews",
+    "gamlss_news",
     "gamlss_control",
     "gamlss_control_exact",
     "gamlss_ml",

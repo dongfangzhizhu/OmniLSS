@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from statistics import NormalDist
+from typing import Any
 
 import numpy as np
 
@@ -141,9 +142,116 @@ def fitted_plot_data(
 
 fitted_plot = fitted_plot_data
 
+
+@dataclass(frozen=True)
+class FittedPlotComparisonResult:
+    """Structured result for R ``gamlss::fittedPlot`` (single or multi-model)."""
+
+    x: np.ndarray
+    xlab: str
+    parameters: dict[str, np.ndarray]
+    model_count: int
+    figure: Any = None
+
+
+def fittedPlot(
+    object: GAMLSSModel,
+    *others: GAMLSSModel,
+    x: Any = None,
+    color: bool = True,
+    line_type: bool = False,
+    xlab: str | None = None,
+    plot: bool = False,
+) -> FittedPlotComparisonResult:
+    """R reference: ``gamlss/R/fitted-plot.R::fittedPlot``.
+
+    Sorts fitted distribution parameters (``mu``, ``sigma``, ``nu``, ``tau``)
+    by ``x`` for one or more fitted ``GAMLSSModel`` objects, snapping
+    near-constant curves (``|v - v[0]| < 1e-4``) identically to R.
+    """
+    from .operations import fitted, is_gamlss
+
+    models = (object, *others)
+    if not all(is_gamlss(m) for m in models):
+        raise TypeError("all objects passed to fittedPlot must be GAMLSSModel instances")
+    if x is None:
+        raise ValueError("The x-variable argument is not specified")
+
+    if isinstance(x, str):
+        call_data = None if object.call is None else object.call.get("data")
+        if call_data is None or x not in call_data:
+            raise KeyError(f"x column {x!r} not found in object.call['data']")
+        x_arr = np.asarray(call_data[x], dtype=np.float64).ravel()
+        label = x if xlab is None else str(xlab)
+    else:
+        x_arr = np.asarray(x, dtype=np.float64).ravel()
+        label = "x" if xlab is None else str(xlab)
+
+    order = np.argsort(x_arr, kind="mergesort")
+    x_sorted = x_arr[order]
+
+    param_columns: dict[str, list[np.ndarray]] = {}
+    for model in models:
+        active = tuple(model.parameters or model.par)
+        for pname in ("mu", "sigma", "nu", "tau"):
+            if pname not in active:
+                continue
+            vals = np.asarray(fitted(model, pname), dtype=np.float64).ravel()
+            if vals.size == 1 and x_arr.size > 1:
+                vals = np.full(x_arr.shape, vals.item(), dtype=np.float64)
+            if vals.size != x_arr.size:
+                raise ValueError(
+                    f"fitted {pname!r} length ({vals.size}) does not match x length ({x_arr.size})"
+                )
+            ordered = vals[order]
+            # R fitted-plot.R:18-19 / 156-157 constant snapping
+            if ordered.size > 0 and np.all(np.abs(ordered - ordered[0]) < 1e-4):
+                ordered = np.full(ordered.shape, ordered[0], dtype=np.float64)
+            param_columns.setdefault(pname, []).append(ordered)
+
+    matrices: dict[str, np.ndarray] = {
+        pname: np.column_stack(cols) for pname, cols in param_columns.items()
+    }
+
+    figure = None
+    if plot and matrices:
+        try:
+            import matplotlib.pyplot as plt
+
+            names = list(matrices.keys())
+            layout = {1: (1, 1), 2: (2, 1), 3: (3, 1)}.get(len(names), (2, 2))
+            fig, axes = plt.subplots(*layout, squeeze=False)
+            panel_labels = ("(a)", "(b)", "(c)", "(d)")
+            for idx, pname in enumerate(names):
+                ax = axes[idx // layout[1]][idx % layout[1]]
+                mat = matrices[pname]
+                for col in range(mat.shape[1]):
+                    linestyle = "--" if (line_type and col % 2 == 1) else "-"
+                    plot_kwargs = {"linestyle": linestyle}
+                    if not color:
+                        plot_kwargs["color"] = "black"
+                    ax.plot(x_sorted, mat[:, col], **plot_kwargs)
+                ax.set_xlabel(label)
+                ax.set_ylabel(pname)
+                ax.set_title(panel_labels[idx] if idx < len(panel_labels) else pname)
+            figure = fig
+        except ImportError:
+            figure = None
+
+    return FittedPlotComparisonResult(
+        x=x_sorted,
+        xlab=label,
+        parameters=matrices,
+        model_count=len(models),
+        figure=figure,
+    )
+
+
 __all__ = [
+    "FittedPlotComparisonResult",
     "FittedPlotEntry",
     "FittedPlotResult",
+    "fittedPlot",
     "fitted_plot",
     "fitted_plot_data",
 ]

@@ -18,11 +18,11 @@
     "extra": "Python 独有的公开导出（omnilss.__all__ 中无 R 对应项），仅报告"
   },
   "counts": {
-    "missing": 53,
+    "missing": 48,
     "placeholder": 0,
     "compat_alias": 1,
     "evidence_gap": 44,
-    "extra": 419
+    "extra": 422
   },
   "symbols": {
     "missing": [
@@ -68,15 +68,10 @@
       "gamlss2::specials",
       "gamlss2::step_gamlss2",
       "gamlss2::stepwise",
-      "gamlss::bp",
       "gamlss::calibration",
-      "gamlss::fittedPlot",
       "gamlss::gamlss.lo",
       "gamlss::gamlss.re",
-      "gamlss::gamlssNews",
-      "gamlss::get.rqres",
       "gamlss::re",
-      "gamlss::rqres.plot",
       "gamlss::stepGAIC.CH",
       "gamlss::stepTGDAll.A"
     ],
@@ -201,6 +196,7 @@
       "FitDistPredRow",
       "FitDistResult",
       "FitDistRow",
+      "FittedPlotComparisonResult",
       "FittedPlotEntry",
       "FittedPlotResult",
       "FixedKnotFit",
@@ -308,6 +304,7 @@
       "REAL_PLUS",
       "RIFit",
       "RISpec",
+      "RQResPlotResult",
       "RQResSamplesResult",
       "RSquaredResult",
       "RandomFit",
@@ -444,6 +441,7 @@
       "gamlss_ml",
       "gamlss_ml_pred",
       "gamlss_ml_pred_data",
+      "gamlss_news",
       "gamlss_vgd",
       "gamlss_vgd_data",
       "get_family_capability",

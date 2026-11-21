@@ -52,6 +52,24 @@ class WormPlotResult:
 
 
 @dataclass(frozen=True)
+class RQResPlotResult:
+    """Structured result for R `gamlss::rqres.plot` (QQ or worm plot)."""
+
+    samples: np.ndarray
+    rmedian: np.ndarray
+    theoretical: np.ndarray
+    sample_deviations: np.ndarray
+    median_deviation: np.ndarray
+    band_z: np.ndarray
+    band_low: np.ndarray
+    band_high: np.ndarray
+    plot_type: str
+    type: str
+    howmany: int
+    figure: Any = None
+
+
+@dataclass(frozen=True)
 class PlotDiagnosticsResult:
     """Structured data bundle matching the main `plot.gamlss` panels."""
 
@@ -175,6 +193,239 @@ def get_rqres_samples(
     return RQResSamplesResult(samples=samples, ordered=bool(order), howmany=int(howmany))
 
 
+def _r_ppoints(n: int) -> np.ndarray:
+    """R's ``stats::ppoints(n)``: ``(1:n - a) / (n + 1 - 2*a)``."""
+    a = 3.0 / 8.0 if n <= 10 else 0.5
+    return (np.arange(1, n + 1, dtype=np.float64) - a) / (n + 1.0 - 2.0 * a)
+
+
+def _expand_rqres_inputs(obj: GAMLSSModel) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+    """Expand response and fitted parameter vectors for integer frequency weights.
+
+    Mirrors ``R/gamlss/R/rqresplot_new.R::get.rqres`` lines 12-30.
+    """
+    weights = obj.weights
+    if weights is None:
+        weights = np.ones(obj.n, dtype=np.float64)
+    weights = np.asarray(weights, dtype=np.float64).ravel()
+    y = np.asarray(obj.y, dtype=np.float64).ravel()
+    active_parameters = obj.parameters or obj.par
+
+    is_freq = bool(weights.size == y.size and np.all(np.trunc(weights) == weights) and np.all(weights >= 0))
+    rep_counts = weights.astype(int) if is_freq else None
+
+    y_out = np.repeat(y, rep_counts) if rep_counts is not None else y
+    params: dict[str, np.ndarray] = {}
+    for parameter in active_parameters:
+        vals = np.asarray(fitted(obj, parameter), dtype=np.float64).ravel()
+        if vals.size == 1 and y.size > 1:
+            vals = np.full(y.shape, vals.item(), dtype=np.float64)
+        params[parameter] = np.repeat(vals, rep_counts) if rep_counts is not None else vals
+
+    # Binomial / fixed parameter (bd) if present in call data
+    fixed_names = tuple(getattr(obj.family, "fixed_parameters", ()) or ())
+    call_data = None if obj.call is None else obj.call.get("data")
+    if call_data is not None:
+        for fname in fixed_names:
+            if fname in call_data and fname not in params:
+                fvals = np.asarray(call_data[fname], dtype=np.float64).ravel()
+                if fvals.size == 1 and y.size > 1:
+                    fvals = np.full(y.shape, fvals.item(), dtype=np.float64)
+                params[fname] = np.repeat(fvals, rep_counts) if rep_counts is not None else fvals
+    return y_out, params
+
+
+def _draw_one_rqres(
+    obj: GAMLSSModel,
+    y: np.ndarray,
+    params: dict[str, np.ndarray],
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """Draw one realization of (randomized) quantile residuals."""
+    family = obj.family
+    fam_type = str(getattr(family, "type", "")).lower()
+    cdf_fn = getattr(family, "p", None)
+
+    if fam_type == "discrete" and callable(cdf_fn):
+        cdf_hi = np.asarray(cdf_fn(y, **params), dtype=np.float64)
+        y_prev = y - 1.0
+        cdf_lo = np.where(
+            y > 0.0,
+            np.asarray(cdf_fn(np.maximum(y_prev, 0.0), **params), dtype=np.float64),
+            0.0,
+        )
+        cdf_lo = np.clip(cdf_lo, 0.0, 1.0)
+        cdf_hi = np.clip(np.maximum(cdf_hi, cdf_lo), 0.0, 1.0)
+        u = rng.uniform(cdf_lo, cdf_hi)
+        eps = 1e-12
+        u = np.clip(u, eps, 1.0 - eps)
+        norm = NormalDist()
+        return np.array([norm.inv_cdf(float(p)) for p in u], dtype=np.float64)
+
+    if fam_type == "mixed" and callable(cdf_fn):
+        cdf_hi = np.asarray(cdf_fn(y, **params), dtype=np.float64)
+        at_zero = np.isclose(y, 0.0)
+        u = np.where(at_zero, rng.uniform(0.0, np.clip(cdf_hi, 0.0, 1.0)), cdf_hi)
+        eps = 1e-12
+        u = np.clip(u, eps, 1.0 - eps)
+        norm = NormalDist()
+        return np.array([norm.inv_cdf(float(p)) for p in u], dtype=np.float64)
+
+    if obj.rqres is not None:
+        return np.asarray(obj.rqres(y=y, **params), dtype=np.float64).ravel()
+
+    if callable(cdf_fn):
+        u = np.clip(np.asarray(cdf_fn(y, **params), dtype=np.float64), 1e-12, 1.0 - 1e-12)
+        norm = NormalDist()
+        return np.array([norm.inv_cdf(float(p)) for p in u], dtype=np.float64)
+
+    raise ValueError("object does not provide rqres or family.p for quantile residuals")
+
+
+def get_rqres(
+    obj: GAMLSSModel,
+    howmany: int = 10,
+    order: bool = False,
+    seed: int | None = None,
+) -> np.ndarray:
+    """R reference: ``gamlss/R/rqresplot_new.R::get.rqres``.
+
+    Returns an ``(n_eff, howmany)`` matrix of randomized quantile residuals,
+    expanding integer frequency weights as R does.
+    """
+    _require_gamlss(obj)
+    howmany_int = int(howmany)
+    if howmany_int < 1:
+        raise ValueError("howmany must be at least 1")
+
+    y, params = _expand_rqres_inputs(obj)
+    rng = np.random.default_rng(seed)
+    rs = np.empty((y.size, howmany_int), dtype=np.float64)
+    for col in range(howmany_int):
+        draw = _draw_one_rqres(obj, y, params, rng)
+        rs[:, col] = np.sort(draw) if order else draw
+    return rs
+
+
+def rqres_plot(
+    obj: GAMLSSModel,
+    howmany: int = 6,
+    plot_type: str = "few",
+    type: str = "wp",
+    xlim: tuple[float, float] | None = None,
+    ylim: tuple[float, float] | None = None,
+    seed: int | None = None,
+    plot: bool = False,
+) -> RQResPlotResult:
+    """R reference: ``gamlss/R/rqresplot_new.R::rqres.plot``.
+
+    Computes multiple realizations of randomized quantile residuals and builds
+    QQ or worm-plot diagnostic data (with optional matplotlib rendering).
+    """
+    _require_gamlss(obj)
+    mode = str(plot_type)
+    if mode not in {"few", "all"}:
+        raise ValueError("plot_type must be 'few' or 'all'")
+    kind = str(type)
+    if kind not in {"wp", "QQ"}:
+        raise ValueError("type must be 'wp' or 'QQ'")
+    howmany_int = int(howmany)
+    if howmany_int < 1:
+        raise ValueError("howmany must be at least 1")
+    if mode == "few" and howmany_int > 8:
+        raise ValueError("howmany for 'few' should be less than or equal to 8")
+
+    rs = get_rqres(obj, howmany=howmany_int, order=True, seed=seed)
+    n = rs.shape[0]
+    if n == 0:
+        raise ValueError("need at least one observation for rqres_plot")
+
+    rmedian = np.median(rs, axis=1)
+    norm = NormalDist()
+    theoretical = np.array([norm.inv_cdf(float(p)) for p in _r_ppoints(n)], dtype=np.float64)
+    sample_deviations = rs - theoretical[:, None]
+    median_deviation = rmedian - theoretical
+
+    # R lines 113-118: 95% confidence band on grid z = seq(-5, 5, 0.25).
+    # Use cdf * sf to avoid 1 - p cancellation in the extreme tails (z = +/-5).
+    from scipy.stats import norm as scipy_norm
+
+    band_z = np.arange(-5.0, 5.0 + 1e-9, 0.25, dtype=np.float64)
+    p_band = scipy_norm.cdf(band_z)
+    q_band = scipy_norm.sf(band_z)
+    d_band = scipy_norm.pdf(band_z)
+    se_band = (1.0 / np.maximum(d_band, np.finfo(np.float64).eps)) * np.sqrt(
+        p_band * q_band / float(n)
+    )
+    z_crit = float(scipy_norm.ppf(0.025))
+    band_low = z_crit * se_band
+    band_high = -band_low
+
+    figure = None
+    if plot:
+        try:
+            import matplotlib.pyplot as plt
+
+            if mode == "all":
+                fig, ax = plt.subplots()
+                if kind == "QQ":
+                    for col in range(howmany_int):
+                        ax.scatter(theoretical, rs[:, col], color="lightgray", s=10)
+                    ax.scatter(theoretical, rmedian, color="black", s=12)
+                    ax.plot(rmedian, rmedian, color="red", linewidth=0.8)
+                    ax.set_xlabel("Theoretical Quantiles")
+                    ax.set_ylabel("Sample Quantiles")
+                else:
+                    for col in range(howmany_int):
+                        ax.scatter(theoretical, sample_deviations[:, col], color="lightgray", s=10)
+                    ax.scatter(theoretical, median_deviation, color="black", s=12)
+                    ax.plot(band_z, band_low, linestyle="--", color="black")
+                    ax.plot(band_z, band_high, linestyle="--", color="black")
+                    ax.axhline(0.0, linestyle="--", color="gray")
+                    ax.set_xlabel("Unit normal quantile")
+                    ax.set_ylabel("Deviation")
+                if xlim is not None:
+                    ax.set_xlim(xlim)
+                if ylim is not None:
+                    ax.set_ylim(ylim)
+                figure = fig
+            else:
+                nrows = int(np.ceil(howmany_int / 2.0))
+                fig, axes = plt.subplots(nrows, 2, squeeze=False)
+                for col in range(howmany_int):
+                    ax = axes[col // 2][col % 2]
+                    if kind == "QQ":
+                        ax.scatter(theoretical, rs[:, col], color="darkgreen", s=10)
+                        ax.plot(rs[:, col], rs[:, col], color="red", linewidth=0.8)
+                    else:
+                        ax.scatter(theoretical, sample_deviations[:, col], color="darkgreen", s=10)
+                        ax.plot(band_z, band_low, linestyle="--", color="black")
+                        ax.plot(band_z, band_high, linestyle="--", color="black")
+                        ax.axhline(0.0, linestyle="--", color="gray")
+                    if xlim is not None:
+                        ax.set_xlim(xlim)
+                    if ylim is not None:
+                        ax.set_ylim(ylim)
+                figure = fig
+        except ImportError:
+            figure = None
+
+    return RQResPlotResult(
+        samples=rs,
+        rmedian=rmedian,
+        theoretical=theoretical,
+        sample_deviations=sample_deviations,
+        median_deviation=median_deviation,
+        band_z=band_z,
+        band_low=band_low,
+        band_high=band_high,
+        plot_type=mode,
+        type=kind,
+        howmany=howmany_int,
+        figure=figure,
+    )
+
+
 def worm_plot_data(
     object: GAMLSSModel,
     howmany: int = 6,
@@ -277,11 +528,14 @@ plot_gamlss = plot_diagnostics
 __all__ = [
     "PlotDiagnosticsResult",
     "QQStatsResult",
+    "RQResPlotResult",
     "RQResSamplesResult",
     "WormPlotResult",
+    "get_rqres",
     "get_rqres_samples",
     "plot_diagnostics",
     "plot_gamlss",
     "qq_stats",
+    "rqres_plot",
     "worm_plot_data",
 ]
