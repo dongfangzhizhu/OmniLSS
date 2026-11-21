@@ -9,8 +9,16 @@ from __future__ import annotations
 
 from .estimator import OnlineGAMLSS
 from .gram import OnlineGram
+from .regularized import (
+    OnlineRegularizedPath,
+    RegularizedPathResult,
+    online_coordinate_descent,
+)
 
 __all__ = [
     "OnlineGAMLSS",
     "OnlineGram",
+    "OnlineRegularizedPath",
+    "RegularizedPathResult",
+    "online_coordinate_descent",
 ]
