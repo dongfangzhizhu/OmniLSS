@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-11-20T23:40:51Z",
-  "commit": "7ebaca1",
+  "generated_at_utc": "2026-11-21T03:43:26Z",
+  "commit": "9df81c9",
   "contract": "docs/development/p5-ondil-distribution-contract-2026-11-15.md",
   "ondil_available": false,
   "ondil_source": {
@@ -18,20 +18,8 @@
       "LOGNO",
       "LOGNO2"
     ],
-    "boundary_violations": [
-      "IG",
-      "IGAMMA",
-      "LOGNO",
-      "LOGNO2",
-      "ZAGA"
-    ],
-    "known_boundary_violations": [
-      "IG",
-      "IGAMMA",
-      "LOGNO",
-      "LOGNO2",
-      "ZAGA"
-    ]
+    "boundary_violations": [],
+    "known_boundary_violations": []
   },
   "order_mismatches": [],
   "support_mismatches": [],
@@ -817,12 +805,12 @@
         ],
         "logpdf": [
           -1981.8721584341715,
-          NaN,
-          NaN
+          -Infinity,
+          -Infinity
         ],
         "probe_valid": true,
-        "boundary_ok": false,
-        "known_boundary_violation": true
+        "boundary_ok": true,
+        "known_boundary_violation": false
       },
       "ondil_module": "inversegaussian",
       "ondil_support": {
@@ -925,12 +913,12 @@
         ],
         "logpdf": [
           -2463.587820146821,
-          -1.1258999068426058e+16,
-          -1.1258999068426058e+16
+          -Infinity,
+          -Infinity
         ],
         "probe_valid": true,
-        "boundary_ok": false,
-        "known_boundary_violation": true
+        "boundary_ok": true,
+        "known_boundary_violation": false
       },
       "ondil_module": "inversegamma",
       "ondil_support": {
@@ -1289,12 +1277,12 @@
         ],
         "logpdf": [
           -103.06771262023801,
-          NaN,
-          NaN
+          -Infinity,
+          -Infinity
         ],
         "probe_valid": true,
-        "boundary_ok": false,
-        "known_boundary_violation": true
+        "boundary_ok": true,
+        "known_boundary_violation": false
       },
       "ondil_module": "lognormal",
       "ondil_support": {
@@ -1397,12 +1385,12 @@
         ],
         "logpdf": [
           -70.56074370761196,
-          -2463.4987163660107,
-          -2463.4987163660107
+          -Infinity,
+          -Infinity
         ],
         "probe_valid": true,
-        "boundary_ok": false,
-        "known_boundary_violation": true
+        "boundary_ok": true,
+        "known_boundary_violation": false
       },
       "ondil_module": "lognormalmedian",
       "ondil_support": {
@@ -2598,11 +2586,11 @@
         "logpdf": [
           -50.248912528572276,
           -2.2204460492503136e-16,
-          -2.2204460492503136e-16
+          -Infinity
         ],
         "probe_valid": true,
-        "boundary_ok": false,
-        "known_boundary_violation": true
+        "boundary_ok": true,
+        "known_boundary_violation": false
       },
       "ondil_module": "zeroadjustedgamma",
       "ondil_support": {

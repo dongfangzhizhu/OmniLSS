@@ -83,12 +83,13 @@ class LogNormal2Family(FamilyDefinition):
 
 def _logno2_log_pdf(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp.ndarray:
     eps = jnp.finfo(jnp.float64).eps
-    y = jnp.maximum(y, eps)
+    in_support = y > 0.0
+    safe_y = jnp.where(in_support, y, 1.0)
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
-    log_y = jnp.log(y)
+    log_y = jnp.log(safe_y)
     log_mu = jnp.log(mu)
-    return norm.logpdf(log_y, loc=log_mu, scale=sigma) - log_y
+    return jnp.where(in_support, norm.logpdf(log_y, loc=log_mu, scale=sigma) - log_y, -jnp.inf)
 
 
 def LOGNO2() -> LogNormal2Family:

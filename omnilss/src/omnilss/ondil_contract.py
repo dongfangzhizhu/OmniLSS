@@ -182,18 +182,11 @@ def _call_dpqr(
 
 
 #: Families whose log-density does not follow the section 5 boundary rule yet.
-#: They clamp the response with maximum(y, eps) so optimisers never see -inf;
-#: the price is a finite (or nan) log-density *outside* the support, where R
-#: returns -Inf.  Fixing them means replacing a load-bearing clamp, so the
-#: contract ratchets instead: the set may only shrink (test_ondil_contract.py
-#: fails on any family that is not listed here).
-KNOWN_BOUNDARY_VIOLATIONS: dict[str, str] = {
-    "IG": "nan at y=0 (0 * inf from the clamped 1.5*log(y) term)",
-    "IGAMMA": "-1.1e16 instead of -inf (y clamped to eps)",
-    "LOGNO": "nan at y=0 (log(y) of the clamp times 0)",
-    "LOGNO2": "-2463 instead of -inf (y clamped to eps)",
-    "ZAGA": "0.0 instead of -inf below 0 (rule applied on the density scale)",
-}
+#: D2.285/C1b cleared all five historical boundary violations (IG, IGAMMA,
+#: LOGNO, LOGNO2, ZAGA) using support-masked safe_x guards that preserve exact
+#: interior gradients while returning -inf outside the support.  The ratchet
+#: remains frozen at the empty set so no future regression can re-introduce one.
+KNOWN_BOUNDARY_VIOLATIONS: dict[str, str] = {}
 
 
 class OndilLink:

@@ -157,17 +157,19 @@ class InverseGammaFamily(FamilyDefinition):
 
 def _igamma_log_pdf(y: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray) -> jnp.ndarray:
     eps = jnp.finfo(jnp.float64).eps
-    y = jnp.maximum(y, eps)
+    in_support = y > 0.0
+    safe_y = jnp.where(in_support, y, 1.0)
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
     alpha = 1.0 / jnp.square(sigma)
-    return (
+    log_val = (
         alpha * jnp.log(mu)
         + alpha * jnp.log(alpha + 1.0)
         - gammaln(alpha)
-        - (alpha + 1.0) * jnp.log(y)
-        - (mu * (alpha + 1.0)) / y
+        - (alpha + 1.0) * jnp.log(safe_y)
+        - (mu * (alpha + 1.0)) / safe_y
     )
+    return jnp.where(in_support, log_val, -jnp.inf)
 
 
 def IGAMMA() -> InverseGammaFamily:

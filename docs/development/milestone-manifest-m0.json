@@ -12,7 +12,7 @@
     "diff_ok": true,
     "provenance": {
       "golden_manifest_sha256": "b4bdaebe5a7a62d687ff42469d6e56ee1297bc5685c4345aec88b956d2700365",
-      "python_surface_sha256": "739a2ed9d14f7c7f710448f6a12d2d8b65e171d43a6a03df8f96eb17d6fcfa20",
+      "python_surface_sha256": "7aca8bf45a5eb915c5d2431f6594aa1fd337beb08be3bed20ee4df2f5c4eaea0",
       "r_namespace_sha256": "b51a29f54229ba5860387759ddf95f670613e80c1c86ccd16e2ed564bfbe1c2f",
       "test_suite_sha256": "04fd2047e8bf87e4a700fa2b6950231394ee3dec8996f07cf7e4e411ed3f2ee6"
     },
@@ -81,7 +81,7 @@
       }
     }
   },
-  "generated_at_utc": "2026-11-21T03:34:45Z",
+  "generated_at_utc": "2026-11-21T03:46:43Z",
   "milestone": "M0",
   "notes": "M0 gate bundle per DEVELOPMENT_PLAN 22.4. Reproducibility is anchored by coverage provenance content hashes (HEAD-independent); source.commit is informational. Regenerate after any symbol/test change.",
   "pinned_expected": {
@@ -125,7 +125,7 @@
   },
   "source": {
     "branch": "main",
-    "commit": "1e3c163b62529a7dbb6d09d869cd00b873505d40",
+    "commit": "9df81c9d6024d505c3dd417fa4718792c8ec3b81",
     "dirty": true
   },
   "tolerances": {

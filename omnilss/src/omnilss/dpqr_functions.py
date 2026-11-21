@@ -666,8 +666,11 @@ def dLOGNO(x, mu=0.0, sigma=1.0, log=False):
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     
     # R: dlnorm(x, meanlog = mu, sdlog = sigma) -- mu IS the log-scale mean.
-    log_fy = -(jnp.log(x) + jnp.log(sigma) + 0.5 * jnp.log(2.0 * jnp.pi) +
-               0.5 * jnp.square((jnp.log(x) - mu) / sigma))
+    in_support = x > 0.0
+    safe_x = jnp.where(in_support, x, 1.0)
+    log_fy = -(jnp.log(safe_x) + jnp.log(sigma) + 0.5 * jnp.log(2.0 * jnp.pi) +
+               0.5 * jnp.square((jnp.log(safe_x) - mu) / sigma))
+    log_fy = jnp.where(in_support, log_fy, -jnp.inf)
     
     return log_fy if log else jnp.exp(log_fy)
 
@@ -1338,8 +1341,11 @@ def dIG(x, mu=1.0, sigma=1.0, log=False):
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     
-    log_fy = (-0.5 * jnp.log(2.0 * jnp.pi) - jnp.log(sigma) - 1.5 * jnp.log(x) -
-              jnp.square(x - mu) / (2.0 * jnp.square(sigma) * jnp.square(mu) * x))
+    in_support = x > 0.0
+    safe_x = jnp.where(in_support, x, 1.0)
+    log_fy = (-0.5 * jnp.log(2.0 * jnp.pi) - jnp.log(sigma) - 1.5 * jnp.log(safe_x) -
+              jnp.square(safe_x - mu) / (2.0 * jnp.square(sigma) * jnp.square(mu) * safe_x))
+    log_fy = jnp.where(in_support, log_fy, -jnp.inf)
     
     return log_fy if log else jnp.exp(log_fy)
 
@@ -3004,10 +3010,11 @@ def _zaga_logpdf(x: jnp.ndarray, mu: jnp.ndarray, sigma: jnp.ndarray, nu: jnp.nd
     sigma = jnp.maximum(sigma, eps)
     nu = jnp.clip(nu, eps, 1.0 - eps)
     shape, scale = _zaga_gamma_params(mu, sigma)
-    log_ga = gamma.logpdf(x, a=shape, scale=scale)
+    safe_x = jnp.where(x > eps, x, 1.0)
+    log_ga = gamma.logpdf(safe_x, a=shape, scale=scale)
     log_at_zero = jnp.log(nu)
     log_positive = jnp.log1p(-nu) + log_ga
-    return jnp.where(x <= eps, log_at_zero, log_positive)
+    return jnp.where(x < 0.0, -jnp.inf, jnp.where(x <= eps, log_at_zero, log_positive))
 
 
 @jax.jit
