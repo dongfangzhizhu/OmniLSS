@@ -84,6 +84,7 @@ jobs:
           python tools/m4_assessment.py --check
           python tools/p2_defect_classification.py --check
           python tools/layered_parity.py --check
+          python tools/p5_streaming_golden.py --check
 
       - name: Lint / type gate (ruff, black, mypy)
         run: |

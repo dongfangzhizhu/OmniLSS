@@ -1,0 +1,92 @@
+{
+  "contract": "docs/development/p5-ondil-distribution-contract-2026-11-15.md#section-12",
+  "counts": {
+    "criteria": 7,
+    "met": 7
+  },
+  "criteria": {
+    "batch_invariance": {
+      "cases": {
+        "forget=0.0": {
+          "mu_diff": 4.440892098500626e-16,
+          "sigma_diff": 4.218847493575595e-15
+        },
+        "forget=0.02": {
+          "mu_diff": 4.440892098500626e-16,
+          "sigma_diff": 5.329070518200751e-15
+        }
+      },
+      "max_coef_diff": 5.329070518200751e-15,
+      "met": true,
+      "tolerance": 1e-10
+    },
+    "drift_order_sensitivity": {
+      "final_intercept_forget": 6.034622,
+      "final_intercept_static": 3.981032,
+      "halflife_batches": 2,
+      "max_halflife_batches": 15,
+      "met": true
+    },
+    "forgetting_factor_decay": {
+      "forget": 0.05,
+      "max_stat_diff": 3.552713678800501e-15,
+      "met": true,
+      "tolerance": 1e-12
+    },
+    "memory_and_scaling": {
+      "cold_ms": 0.446,
+      "late_to_early_ratio": 1.013,
+      "memory_constant_across_N": true,
+      "met": true,
+      "n_features": 8,
+      "state_memory_bytes": 880,
+      "total_obs": 10100,
+      "warm_early_us_per_obs": 1.21,
+      "warm_late_us_per_obs": 1.226
+    },
+    "missingness_robustness": {
+      "max_abs_bias": 0.020593,
+      "met": true,
+      "rates": {
+        "0pct": {
+          "max_abs_bias": 0.01125,
+          "valid_obs": 1200
+        },
+        "20pct": {
+          "max_abs_bias": 0.020593,
+          "valid_obs": 973
+        },
+        "5pct": {
+          "max_abs_bias": 0.011493,
+          "valid_obs": 1132
+        }
+      },
+      "tolerance": 0.2
+    },
+    "partial_fit_contract": {
+      "max_coef_diff": 0.0,
+      "met": true,
+      "tolerance": 1e-12
+    },
+    "warm_start_equivalence": {
+      "cases": {
+        "GA_k1": 0.0,
+        "GA_k5": 0.0,
+        "NO_k1": 0.0,
+        "NO_k5": 0.0,
+        "PO_k1": 0.0,
+        "PO_k5": 0.0
+      },
+      "max_coef_diff": 0.0,
+      "met": true,
+      "tolerance": 1e-08
+    }
+  },
+  "decision": "D2.284",
+  "schema_version": 1,
+  "task": "P5-1c",
+  "verdict": {
+    "notes": "All 7 streaming golden criteria from P5-1a section 12 evaluated on OmniLSS's self-contained omnilss.online estimator with zero external reference-repo imports.",
+    "streaming_golden_met": true
+  }
+}

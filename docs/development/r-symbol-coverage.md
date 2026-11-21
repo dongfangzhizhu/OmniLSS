@@ -290,9 +290,9 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | Family.p | gamlss.dist | Family_p | public_api | implemented | tested | exported_api | 1 |
 | Family.q | gamlss.dist | Family_q | public_api | implemented | tested | exported_api | 1 |
 | Family.r | gamlss.dist | Family_r | public_api | implemented | r_consistency_test | exported_api | 1 |
-| GA | gamlss.dist | GA | public_api | implemented | r_consistency_test | production_safe | 61 |
+| GA | gamlss.dist | GA | public_api | implemented | r_consistency_test | production_safe | 62 |
 | GAF | gamlss.dist | GAF | public_api | experimental | r_consistency_test | blocked | 7 |
-| GAMLSS | gamlss.dist | GAMLSS | public_api | implemented | r_consistency_test | exported_api | 37 |
+| GAMLSS | gamlss.dist | GAMLSS | public_api | implemented | r_consistency_test | exported_api | 38 |
 | GB1 | gamlss.dist | GB1 | public_api | experimental | r_consistency_test | blocked | 5 |
 | GB2 | gamlss.dist | GB2 | public_api | experimental | r_consistency_test | blocked | 12 |
 | GEOM | gamlss.dist | GEOM | public_api | implemented | r_consistency_test | production_safe | 6 |
@@ -312,7 +312,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | LNO | gamlss.dist | LNO | public_api | experimental | r_consistency_test | blocked | 8 |
 | LO | gamlss.dist | LO | public_api | implemented | r_consistency_test | production_safe | 8 |
 | LOGITNO | gamlss.dist | LOGITNO | public_api | experimental | r_consistency_test | blocked | 5 |
-| LOGNO | gamlss.dist | LOGNO | public_api | implemented | r_consistency_test | production_safe | 17 |
+| LOGNO | gamlss.dist | LOGNO | public_api | implemented | r_consistency_test | production_safe | 18 |
 | LOGNO2 | gamlss.dist | LOGNO2 | public_api | implemented | r_consistency_test | production_safe | 8 |
 | LOGSHASH | gamlss.dist | LOGSHASH | public_api | experimental | r_consistency_test | blocked | 9 |
 | LQNO | gamlss.dist | LQNO | public_api | experimental | r_consistency_test | blocked | 4 |
@@ -324,7 +324,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | NBI | gamlss.dist | NBI | public_api | implemented | r_consistency_test | production_safe | 20 |
 | NBII | gamlss.dist | NBII | public_api | implemented | r_consistency_test | production_safe | 13 |
 | NET | gamlss.dist | NET | public_api | implemented | r_consistency_test | production_safe | 15 |
-| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 180 |
+| NO | gamlss.dist | NO | public_api | implemented | r_consistency_test | production_safe | 181 |
 | NO2 | gamlss.dist | NO2 | public_api | implemented | r_consistency_test | production_safe | 9 |
 | NOF | gamlss.dist | NOF | public_api | experimental | r_consistency_test | blocked | 5 |
 | PARETO | gamlss.dist | PARETO | public_api | experimental | r_consistency_test | blocked | 7 |
@@ -336,7 +336,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | PE2 | gamlss.dist | PE2 | public_api | experimental | r_consistency_test | blocked | 11 |
 | PIG | gamlss.dist | PIG | public_api | experimental | r_consistency_test | blocked | 15 |
 | PIG2 | gamlss.dist | PIG2 | public_api | experimental | r_consistency_test | blocked | 5 |
-| PO | gamlss.dist | PO | public_api | implemented | r_consistency_test | production_safe | 39 |
+| PO | gamlss.dist | PO | public_api | implemented | r_consistency_test | production_safe | 40 |
 | RG | gamlss.dist | RG | public_api | implemented | r_consistency_test | production_safe | 8 |
 | RGE | gamlss.dist | RGE | public_api | experimental | r_consistency_test | blocked | 7 |
 | SEP | gamlss.dist | SEP | public_api | experimental | r_consistency_test | blocked | 6 |
@@ -363,7 +363,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | TF2 | gamlss.dist | TF2 | public_api | experimental | r_consistency_test | blocked | 7 |
 | VSICHEL | gamlss.dist | VSICHEL | module_def | implemented | tested | internal | 1 |
 | WARING | gamlss.dist | WARING | public_api | experimental | r_consistency_test | blocked | 7 |
-| WEI | gamlss.dist | WEI | public_api | implemented | r_consistency_test | production_safe | 14 |
+| WEI | gamlss.dist | WEI | public_api | implemented | r_consistency_test | production_safe | 15 |
 | WEI2 | gamlss.dist | WEI2 | public_api | experimental | r_consistency_test | blocked | 11 |
 | WEI3 | gamlss.dist | WEI3 | public_api | experimental | r_consistency_test | blocked | 9 |
 | YULE | gamlss.dist | YULE | public_api | experimental | r_consistency_test | blocked | 7 |

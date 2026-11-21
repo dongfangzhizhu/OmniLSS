@@ -12,9 +12,9 @@
     "diff_ok": true,
     "provenance": {
       "golden_manifest_sha256": "b4bdaebe5a7a62d687ff42469d6e56ee1297bc5685c4345aec88b956d2700365",
-      "python_surface_sha256": "ebe7bfddf412b2af3cb8ff16aee23f47906fcb12f54be743e9845cbd00c68f6a",
+      "python_surface_sha256": "739a2ed9d14f7c7f710448f6a12d2d8b65e171d43a6a03df8f96eb17d6fcfa20",
       "r_namespace_sha256": "b51a29f54229ba5860387759ddf95f670613e80c1c86ccd16e2ed564bfbe1c2f",
-      "test_suite_sha256": "985904b2f3cd2eedd9bd91d39d4f98e24f98a332d051f0c011d9eb39933793bd"
+      "test_suite_sha256": "04fd2047e8bf87e4a700fa2b6950231394ee3dec8996f07cf7e4e411ed3f2ee6"
     },
     "ratchet_ok": true,
     "stats": {
@@ -73,7 +73,7 @@
       "command": "python tools/tiered_collection.py --mode collect --strict-skips --json",
       "ok": true,
       "totals": {
-        "collected": 5876,
+        "collected": 5884,
         "errors": 0,
         "failed": 0,
         "skipped": 0,
@@ -81,7 +81,7 @@
       }
     }
   },
-  "generated_at_utc": "2026-11-21T03:20:36Z",
+  "generated_at_utc": "2026-11-21T03:34:45Z",
   "milestone": "M0",
   "notes": "M0 gate bundle per DEVELOPMENT_PLAN 22.4. Reproducibility is anchored by coverage provenance content hashes (HEAD-independent); source.commit is informational. Regenerate after any symbol/test change.",
   "pinned_expected": {
@@ -125,7 +125,7 @@
   },
   "source": {
     "branch": "main",
-    "commit": "5f32d4d2195cda467587cda7367f43922217ac20",
+    "commit": "1e3c163b62529a7dbb6d09d869cd00b873505d40",
     "dirty": true
   },
   "tolerances": {

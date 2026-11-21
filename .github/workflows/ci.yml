@@ -142,6 +142,7 @@ jobs:
           python tools/m4_scope_inventory.py --check
           python tools/m4_assessment.py --check
           python tools/p2_defect_classification.py --check
+          python tools/p5_streaming_golden.py --check
       - name: P5-1b ondil contract artifact gate (when reference repo present)
         if: hashFiles('ondil/src/ondil/distributions/normal.py') != ''
         env:
