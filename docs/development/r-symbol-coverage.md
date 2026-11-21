@@ -348,7 +348,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | SHASHo | gamlss.dist | SHASHo | public_api | implemented | r_consistency_test | exported_api | 15 |
 | SHASHo2 | gamlss.dist | SHASHo2 | public_api | implemented | r_consistency_test | exported_api | 6 |
 | SI | gamlss.dist | SI | public_api | experimental | r_consistency_test | blocked | 10 |
-| SICHEL | gamlss.dist | SICHEL | public_api | experimental | r_consistency_test | blocked | 19 |
+| SICHEL | gamlss.dist | SICHEL | public_api | experimental | r_consistency_test | blocked | 20 |
 | SIMPLEX | gamlss.dist | SIMPLEX | public_api | experimental | r_consistency_test | blocked | 7 |
 | SN1 | gamlss.dist | SN1 | public_api | experimental | r_consistency_test | blocked | 8 |
 | SN2 | gamlss.dist | SN2 | public_api | experimental | r_consistency_test | blocked | 7 |
@@ -376,7 +376,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | ZANBI | gamlss.dist | ZANBI | public_api | experimental | capability:unsupported | blocked | 9 |
 | ZAP | gamlss.dist | ZAP | public_api | experimental | r_consistency_test | blocked | 13 |
 | ZAPIG | gamlss.dist | ZAPIG | public_api | experimental | r_consistency_test | blocked | 8 |
-| ZASICHEL | gamlss.dist | ZASICHEL | public_api | experimental | r_consistency_test | blocked | 12 |
+| ZASICHEL | gamlss.dist | ZASICHEL | public_api | experimental | r_consistency_test | blocked | 13 |
 | ZAZIPF | gamlss.dist | ZAZIPF | public_api | experimental | r_consistency_test | blocked | 8 |
 | ZIBB | gamlss.dist | ZIBB | public_api | experimental | r_consistency_test | blocked | 9 |
 | ZIBI | gamlss.dist | ZIBI | public_api | experimental | capability:validated | blocked | 13 |
@@ -387,7 +387,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | ZIP2 | gamlss.dist | ZIP2 | public_api | experimental | r_consistency_test | blocked | 10 |
 | ZIPF | gamlss.dist | ZIPF | public_api | experimental | r_consistency_test | blocked | 9 |
 | ZIPIG | gamlss.dist | ZIPIG | public_api | experimental | r_consistency_test | blocked | 9 |
-| ZISICHEL | gamlss.dist | ZISICHEL | public_api | experimental | r_consistency_test | blocked | 11 |
+| ZISICHEL | gamlss.dist | ZISICHEL | public_api | experimental | r_consistency_test | blocked | 12 |
 | as.family | gamlss.dist | as_family | public_api | implemented | tested | exported_api | 1 |
 | as.gamlss.family | gamlss.dist | as_gamlss_family | public_api | implemented | tested | exported_api | 2 |
 | binom_1_31 | gamlss.dist | binom_1_31 | module_def | implemented | tested | internal | 1 |
@@ -492,7 +492,7 @@ R packages are vendored (git-ignored) sources, so provenance is the upstream ver
 | dSHASHo | gamlss.dist | dSHASHo | public_api | implemented | r_consistency_test | exported_api | 3 |
 | dSHASHo2 | gamlss.dist | dSHASHo2 | module_def | implemented | tested | internal | 1 |
 | dSI | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 1 |
-| dSICHEL | gamlss.dist | dSICHEL | module_def | experimental | r_consistency_test | blocked | 5 |
+| dSICHEL | gamlss.dist | dSICHEL | module_def | experimental | r_consistency_test | blocked | 6 |
 | dSIMPLEX | gamlss.dist | dSIMPLEX | module_def | experimental | capability:validated | blocked | 0 |
 | dSN1 | gamlss.dist | - | registry | experimental | capability:validated | blocked | 0 |
 | dSN2 | gamlss.dist | - | registry | experimental | capability:unsupported | blocked | 0 |

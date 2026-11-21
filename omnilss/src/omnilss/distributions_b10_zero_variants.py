@@ -361,14 +361,17 @@ def _binomial_log_pdf(y, mu):
     mu = jnp.clip(mu, eps, 1.0 - eps)
     return y * jnp.log(mu) + (1.0 - y) * jnp.log1p(-mu)
 
-def _zero_sichel_log_pdf(x, mu, sigma, nu, tau, *, altered):
+def _zero_sichel_log_pdf(x, mu, sigma, nu, tau, *, altered, max_steps=None):
     """Shared scalar PMF kernel for density and family likelihoods."""
+    from .distributions_b6 import SICHEL_DENSITY_MAX_COUNT, _sichel_log_pdf_at_zero
+
+    steps = SICHEL_DENSITY_MAX_COUNT if max_steps is None else int(max_steps)
     x, mu, sigma, nu, tau = map(jnp.asarray, (x, mu, sigma, nu, tau))
     valid = ((mu > 0) & (sigma > 0) & jnp.isfinite(mu)
              & jnp.isfinite(sigma) & jnp.isfinite(nu)
              & (tau >= 0) & (tau <= 1))
-    log_base = _sichel_log_pdf(x, mu, sigma, nu)
-    log_f0 = _sichel_log_pdf(0., mu, sigma, nu)
+    log_base = _sichel_log_pdf(x, mu, sigma, nu, max_steps=steps)
+    log_f0 = _sichel_log_pdf_at_zero(mu, sigma, nu)
     positive = jnp.log1p(-tau) + log_base
     if altered:
         positive = positive - jnp.log(-jnp.expm1(log_f0))
@@ -380,18 +383,21 @@ def _zero_sichel_log_pdf(x, mu, sigma, nu, tau, *, altered):
     value = jnp.where(support, value, -jnp.inf)
     # The point mass needs no base-density approximation or support cutoff.
     value = jnp.where(tau == 1, jnp.where(x == 0, 0., -jnp.inf), value)
-    from .distributions_b6 import SICHEL_DENSITY_MAX_COUNT
     undefined = (jnp.isnan(x) | (support & (x > SICHEL_DENSITY_MAX_COUNT)
                                  & (tau != 1)))
     return jnp.where(valid & ~undefined, value, jnp.nan)
 
 
 def _zero_sichel_density(x, mu, sigma, nu, tau, *, altered, log):
+    from .distributions_b6 import _sichel_scan_steps
+
     args = jnp.broadcast_arrays(*[
         jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu, tau)
     ])
-    values = jax.vmap(lambda *v: _zero_sichel_log_pdf(*v, altered=altered))(
-        *(v.ravel() for v in args)).reshape(args[0].shape)
+    steps = _sichel_scan_steps(args[0])
+    values = jax.vmap(
+        lambda *v: _zero_sichel_log_pdf(*v, altered=altered, max_steps=steps)
+    )(*(v.ravel() for v in args)).reshape(args[0].shape)
     return values if log else jnp.exp(values)
 
 
@@ -529,13 +535,14 @@ def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
 # gamlss's numeric.deriv is a *forward* difference (see b6._sichel_dldv).
 # ------------------------------------------------------------------
 
-_sichel_log_pdf_v = jax.vmap(_sichel_log_pdf)
 _R_NUMERIC_DERIV_DELTA = 0.001
 
 
 def _zero_sichel_f0(mu, sigma, nu):
-    """``dSICHEL(0, mu, sigma, nu)`` -- the base density at zero."""
-    return jnp.exp(_sichel_log_pdf_v(jnp.zeros_like(mu), mu, sigma, nu))
+    """``dSICHEL(0, mu, sigma, nu)`` -- exact closed-form density at zero (0 scan steps)."""
+    from .distributions_b6 import _sichel_log_pdf_at_zero
+
+    return jnp.exp(jax.vmap(_sichel_log_pdf_at_zero)(mu, sigma, nu))
 
 
 def _neg_info(score_fn):
@@ -570,9 +577,12 @@ def _zisichel_dldd(y, mu, sigma, nu, tau):
 
 
 def _zisichel_dldv(y, mu, sigma, nu, tau):
+    from .distributions_b6 import _sichel_scan_steps
+
     (y, mu, sigma, nu, tau), scalar = _prepare_jax_args((y, mu, sigma, nu, tau))
     delta = _R_NUMERIC_DERIV_DELTA
-    f = jax.vmap(lambda a, b, c, d, e: _zero_sichel_log_pdf(a, b, c, d, e, altered=False))
+    steps = _sichel_scan_steps(y)
+    f = jax.vmap(lambda a, b, c, d, e: _zero_sichel_log_pdf(a, b, c, d, e, altered=False, max_steps=steps))
     out = (f(y, mu, sigma, nu + delta, tau) - f(y, mu, sigma, nu, tau)) / delta
     return out[0] if scalar else out
 
@@ -608,9 +618,12 @@ def _zasichel_dldd(y, mu, sigma, nu, tau):
 
 
 def _zasichel_dldv(y, mu, sigma, nu, tau):
+    from .distributions_b6 import _sichel_scan_steps
+
     (y, mu, sigma, nu, tau), scalar = _prepare_jax_args((y, mu, sigma, nu, tau))
     delta = _R_NUMERIC_DERIV_DELTA
-    f = jax.vmap(lambda a, b, c, d, e: _zero_sichel_log_pdf(a, b, c, d, e, altered=True))
+    steps = _sichel_scan_steps(y)
+    f = jax.vmap(lambda a, b, c, d, e: _zero_sichel_log_pdf(a, b, c, d, e, altered=True, max_steps=steps))
     out = (f(y, mu, sigma, nu + delta, tau) - f(y, mu, sigma, nu, tau)) / delta
     return out[0] if scalar else out
 
@@ -679,7 +692,9 @@ def ZASICHEL():
         return q(jax.random.uniform(key, (n,) + mu.shape), mu, sigma, nu, tau)
     def d(x, mu=1., sigma=1., nu=-.5, tau=.5, log=False):
         return _zero_sichel_density(x, mu, sigma, nu, tau, altered=True, log=log)
-    return replace(family, d=d, p=p, q=q, r=r)
+    def g_dev_inc(y, mu, sigma, nu, tau):
+        return -2.0 * _zero_sichel_density(y, mu, sigma, nu, tau, altered=True, log=True)
+    return replace(family, d=d, p=p, q=q, r=r, g_dev_inc=g_dev_inc)
 
 # ZISICHEL - Zero-Inflated Sichel
 def ZISICHEL():
@@ -705,7 +720,9 @@ def ZISICHEL():
         return q(jax.random.uniform(key, (n,) + mu.shape), mu, sigma, nu, tau)
     def d(x, mu=1., sigma=1., nu=-.5, tau=.5, log=False):
         return _zero_sichel_density(x, mu, sigma, nu, tau, altered=False, log=log)
-    return replace(family, d=d, p=p, q=q, r=r)
+    def g_dev_inc(y, mu, sigma, nu, tau):
+        return -2.0 * _zero_sichel_density(y, mu, sigma, nu, tau, altered=False, log=True)
+    return replace(family, d=d, p=p, q=q, r=r, g_dev_inc=g_dev_inc)
 
 # ZAPIG - Zero-Altered Poisson Inverse Gaussian
 def ZAPIG():

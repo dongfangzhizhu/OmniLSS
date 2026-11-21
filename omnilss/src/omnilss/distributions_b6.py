@@ -23,6 +23,7 @@ import math
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 from jax.scipy.special import gammaln, betaln, logsumexp
 from jax.scipy.special import i0e, i1e  # Modified Bessel functions
 
@@ -93,6 +94,44 @@ SICHEL_DENSITY_MAX_COUNT = 100000
 SICHEL_PROBABILITY_MAX_COUNT = SICHEL_DENSITY_MAX_COUNT
 
 
+def _sichel_scan_steps(y) -> int:
+    """Data-driven scan bound for concrete count arrays (D2.287/D2a).
+
+    When ``y`` is concrete at Python dispatch time (all direct calls, RS fits,
+    and ``jax.grad`` wrt parameters at fixed ``y``), the recursion only needs
+    ``ceil(max(y))`` steps instead of the full 100,000 budget.  Traced ``y``
+    inside ``jax.jit`` safely falls back to ``SICHEL_DENSITY_MAX_COUNT``.
+    """
+    try:
+        concrete = np.asarray(y, dtype=np.float64)
+        finite = concrete[np.isfinite(concrete) & (concrete >= 0.0)]
+        if finite.size == 0:
+            return 0
+        return int(min(SICHEL_DENSITY_MAX_COUNT, max(0, int(np.ceil(float(finite.max()))))))
+    except Exception:  # pragma: no cover - traced y under jax.jit
+        return SICHEL_DENSITY_MAX_COUNT
+
+
+def _sichel_log_pdf_at_zero(mu, sigma, nu):
+    """Exact closed-form ``log dSICHEL(0, mu, sigma, nu)`` with zero scan steps."""
+    from .bessel import log_bessel_kv
+
+    mu = jnp.asarray(mu, dtype=jnp.float64)
+    sigma = jnp.asarray(sigma, dtype=jnp.float64)
+    nu = jnp.asarray(nu, dtype=jnp.float64)
+    valid = (mu > 0) & (sigma > 0) & jnp.isfinite(mu) & jnp.isfinite(sigma) & jnp.isfinite(nu)
+    mu_s = jnp.where(valid, mu, 1.0)
+    sigma_s = jnp.where(valid, sigma, 1.0)
+    nu_s = jnp.where(valid, nu, -0.5)
+    inv_sigma = 1.0 / sigma_s
+    log_k_nu = log_bessel_kv(nu_s, inv_sigma)
+    c = jnp.exp(log_bessel_kv(nu_s + 1.0, inv_sigma) - log_k_nu)
+    alpha = jnp.sqrt(1.0 + 2.0 * sigma_s * mu_s / c) / sigma_s
+    log_k_alpha_nu = log_bessel_kv(nu_s, alpha)
+    log0 = -nu_s * jnp.log(sigma_s * alpha) + log_k_alpha_nu - log_k_nu
+    return jnp.where(valid, log0, jnp.nan)
+
+
 def _sichel_log_pmf_sequence(mu, sigma, nu, max_count):
     """Return log PMFs for counts 0..max_count using one static scan."""
     from .bessel import log_bessel_kv
@@ -121,7 +160,7 @@ def _sichel_log_pmf_sequence(mu, sigma, nu, max_count):
     return jnp.concatenate((jnp.reshape(log0, (1,)), tail))
 
 
-def _sichel_log_pdf(y, mu, sigma, nu):
+def _sichel_log_pdf(y, mu, sigma, nu, *, max_steps: int = SICHEL_DENSITY_MAX_COUNT):
     """Sichel distribution log-pdf.
     
     The Sichel distribution is a three-parameter generalization of PIG.
@@ -203,9 +242,12 @@ def _sichel_log_pdf(y, mu, sigma, nu):
     # Initial state: (tofY[0], sumlty=0)
     init_state = (tofy_0, jnp.asarray(0.0, dtype=jnp.float64))
     
-    # Run scan with a static bound; terms after y are masked out.
-    j_seq = jnp.arange(1, SICHEL_DENSITY_MAX_COUNT + 1)
-    (_, sumlty), _ = jax.lax.scan(scan_fun_masked, init_state, j_seq)
+    # Run scan with a static bound (data-driven when concrete, full budget if traced).
+    if max_steps <= 0:
+        sumlty = jnp.asarray(0.0, dtype=jnp.float64)
+    else:
+        j_seq = jnp.arange(1, int(max_steps) + 1)
+        (_, sumlty), _ = jax.lax.scan(scan_fun_masked, init_state, j_seq)
     
     # For y=0, sumlty should be 0
     sumlty = jnp.where(y < 0.5, 0.0, sumlty)
@@ -304,7 +346,8 @@ def _sichel_dldv(y, mu, sigma, nu):
     """
     (y, mu, sigma, nu), scalar = _prepare_jax_args((y, mu, sigma, nu))
     delta = _R_NUMERIC_DERIV_DELTA
-    log_pdf = jax.vmap(_sichel_log_pdf)
+    steps = _sichel_scan_steps(y)
+    log_pdf = jax.vmap(lambda a, b, c, d: _sichel_log_pdf(a, b, c, d, max_steps=steps))
     out = (log_pdf(y, mu, sigma, nu + delta) - log_pdf(y, mu, sigma, nu)) / delta
     return out[0] if scalar else out
 
@@ -318,8 +361,10 @@ _SICHEL_HESSIANS = {
 
 
 def SICHEL() -> SichelFamily:
-    from .dpqr_functions import pSICHEL, qSICHEL, rSICHEL
-    return build_ad_family(
+    from dataclasses import replace as _replace
+    from .dpqr_functions import dSICHEL, pSICHEL, qSICHEL, rSICHEL
+
+    fam = build_ad_family(
         family_class=SichelFamily,
         name="SICHEL",
         parameters=("mu", "sigma", "nu"),
@@ -331,10 +376,22 @@ def SICHEL() -> SichelFamily:
         link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": identity_derivative},
         score_overrides=_SICHEL_SCORES,
         hessian_overrides=_SICHEL_HESSIANS,
+        d=dSICHEL,
         p=pSICHEL,
         q=qSICHEL,
         r=rSICHEL,
     )
+
+    def _sichel_g_dev_inc(y, mu, sigma, nu):
+        (y_a, mu_a, sigma_a, nu_a), scalar = _prepare_jax_args((y, mu, sigma, nu))
+        steps = _sichel_scan_steps(y_a)
+        lp = jax.vmap(lambda a, b, c, d: _sichel_log_pdf(a, b, c, d, max_steps=steps))(
+            y_a, mu_a, sigma_a, nu_a
+        )
+        dev = -2.0 * lp
+        return dev[0] if scalar else dev
+
+    return _replace(fam, g_dev_inc=_sichel_g_dev_inc)
 
 
 # ------------------------------------------------------------------

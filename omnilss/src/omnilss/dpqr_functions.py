@@ -7896,13 +7896,15 @@ def dSICHEL(x, mu=1.0, sigma=1.0, nu=-0.5, log=False):
     suited to represent long-tailed frequency data. In Proceedings of the
     Third Symposium on Mathematical Statistics (pp. 51-97).
     """
-    from .distributions_b6 import _sichel_log_pdf
+    from .distributions_b6 import _sichel_log_pdf, _sichel_scan_steps
 
     x, mu, sigma, nu = jnp.broadcast_arrays(*[
         jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu)
     ])
-    flat_log = jax.vmap(_sichel_log_pdf)(x.ravel(), mu.ravel(),
-                                         sigma.ravel(), nu.ravel())
+    steps = _sichel_scan_steps(x)
+    flat_log = jax.vmap(
+        lambda a, b, c, d: _sichel_log_pdf(a, b, c, d, max_steps=steps)
+    )(x.ravel(), mu.ravel(), sigma.ravel(), nu.ravel())
     log_value = flat_log.reshape(x.shape)
     return log_value if log else jnp.exp(log_value)
 
