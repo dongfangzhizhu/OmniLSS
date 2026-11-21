@@ -940,6 +940,9 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   改走 `convergence_status()`。新增 `test_v01_public_api.py` 3 例。
 - [x] **E09 安全持久化入口**：`GAMLSSModel.save/load`（ZIP+JSON+`allow_pickle=False` npz）。
 - [x] **E01 发布文档**：`docs/release/v0.1-{scope,acceptance,supported-features}.md`。
+- [x] **E10 Windows CPU CI**：`ci.yml` 新增 `windows-cpu` job（`windows-latest` × py3.10/3.11/3.12，
+  bash shell），安装 `.[dev]` + optax，运行 10 个核心文件（E02/公共 API/golden NO,GA,PO,BE,NBI,ZAGA/
+  serialization），并对 `SKIPPED` fail-closed。Windows 本机按同一命令实跑 52 例 0 skip 通过。
 - [ ] **E02 剩余**：REML 的 `-log|λS|_+`（需活 R 对照后再改目标函数）；Hessian 的
   Cholesky-first（会改动 cond>1e10 的既有数值，需 A/B）。
-- [ ] **E10/E11/E12/E13**：Windows CI、三篇发布教程、CPU 基线、发版仍未开始。
+- [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。

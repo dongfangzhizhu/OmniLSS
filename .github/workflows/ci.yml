@@ -79,6 +79,65 @@ jobs:
           # check (required on main).
           fail_ci_if_error: true
 
+  windows-cpu:
+    name: "Windows CPU / py${{ matrix.python-version }}"
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    env:
+      MPLBACKEND: Agg
+      JAX_PLATFORMS: cpu
+      JAX_ENABLE_X64: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        run: pip install uv
+      - name: Install package (core + optax for link tests)
+        run: |
+          cd omnilss
+          uv pip install --system -e ".[dev]" optax
+      - name: Verify JAX is CPU-only
+        run: |
+          python -c "import jax; devices = jax.devices(); print(devices); assert all(d.platform == 'cpu' for d in devices)"
+      - name: Core CPU test subset (no R, no network)
+        run: |
+          set -o pipefail
+          cd omnilss
+          python -m pytest \
+            tests/test_e02_release_blockers.py \
+            tests/test_v01_public_api.py \
+            tests/test_week2_numerical_stability.py \
+            tests/test_serialization_json.py \
+            tests/test_r_golden_fixture_no.py \
+            tests/test_r_golden_fixture_ga.py \
+            tests/test_r_golden_fixture_po.py \
+            tests/test_r_golden_fixture_be.py \
+            tests/test_r_golden_fixture_nbi.py \
+            tests/test_r_golden_fixture_zaga.py \
+            -q -rs | tee windows-cpu-tests.log
+      - name: Fail closed if any Windows core test was skipped
+        run: |
+          if grep -qE "SKIPPED" omnilss/windows-cpu-tests.log; then
+            echo "::error::Windows core tests were skipped; the subset must run fully"
+            exit 1
+          fi
+          echo "OK: Windows core subset ran with zero skips"
+      - name: Upload Windows test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-cpu-tests-py${{ matrix.python-version }}
+          path: omnilss/windows-cpu-tests.log
+          if-no-files-found: warn
+
   collection-gate:
     name: Tiered Collection Gate (D0.3)
     runs-on: ubuntu-latest
