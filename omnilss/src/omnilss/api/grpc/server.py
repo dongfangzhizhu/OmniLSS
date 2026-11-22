@@ -136,7 +136,12 @@ class _ModelRegistry:
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._paths: dict[str, tuple[Path, float]] = {}
-        self._db = sqlite3.connect(MODEL_DB, check_same_thread=False)
+        # Several pytest-xdist workers import this module at collection time and
+        # all run the schema DDL against the same file.  Without a busy timeout
+        # SQLite raises "database is locked" within milliseconds (observed in
+        # CI); 30s lets the competing writer finish instead of failing a test.
+        self._db = sqlite3.connect(MODEL_DB, check_same_thread=False, timeout=30.0)
+        self._db.execute("PRAGMA busy_timeout = 30000")
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute("PRAGMA synchronous=NORMAL")
         self._ensure_schema()

@@ -299,12 +299,16 @@ def test_grpc_metrics_service_direct(monkeypatch):
     # asserting absolute values made this test depend on execution order (CI
     # ran it before anything incremented audit_requests_total -> 0). Reset and
     # drive both endpoints explicitly instead.
-    monkeypatch.setattr(grpc_server, "_SERVICE_METRICS", {
-        "audit_requests_total": 0,
-        "metrics_requests_total": 0,
-        "cleanup_requests_total": 0,
-        "cleanup_deleted_models_total": 0,
-    })
+    monkeypatch.setattr(
+        grpc_server,
+        "_SERVICE_METRICS",
+        {
+            "audit_requests_total": 0,
+            "metrics_requests_total": 0,
+            "cleanup_requests_total": 0,
+            "cleanup_deleted_models_total": 0,
+        },
+    )
     service, *_ = grpc_server.create_service()
     audit_response = service.AuditModels(capability_pb2.AuditModelsRequest(), None)
     assert audit_response.success is True
@@ -389,6 +393,7 @@ def test_grpc_capability_matrix_request() -> None:
     finally:
         server.stop(grace=0)
 
+
 @pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
 def test_grpc_route_capability_response_matches_runtime_report() -> None:
     """Capability RPC should expose method-route preflight decisions."""
@@ -446,7 +451,9 @@ def test_model_registry_list_and_delete(tmp_path, monkeypatch) -> None:
         grpc_server, "MODEL_DB", tmp_path / "models" / "registry.sqlite3"
     )
 
-    monkeypatch.setattr(grpc_server, "save_model_json", lambda model, path: path.write_text("{}"))
+    monkeypatch.setattr(
+        grpc_server, "save_model_json", lambda model, path: path.write_text("{}")
+    )
     registry = grpc_server._ModelRegistry()
 
     class Dummy:
@@ -472,7 +479,9 @@ def test_model_registry_recovers_index_from_sqlite(tmp_path, monkeypatch) -> Non
     class Dummy:
         g_dev = 1.0
 
-    monkeypatch.setattr(grpc_server, "save_model_json", lambda model, path: path.write_text("{}"))
+    monkeypatch.setattr(
+        grpc_server, "save_model_json", lambda model, path: path.write_text("{}")
+    )
     first = grpc_server._ModelRegistry()
     model_id = first.save(Dummy())
 
@@ -540,17 +549,26 @@ def test_legacy_registry_backfills_artifact_hash(tmp_path, monkeypatch):
     model_dir.mkdir()
     db_path = model_dir / "registry.sqlite3"
     artifact = model_dir / "legacy.omnilss"
-    model = gamlss("y ~ 1", family="NO", data={"y": np.array([1., 2., 3.])}, max_iter=2)
+    model = gamlss(
+        "y ~ 1", family="NO", data={"y": np.array([1.0, 2.0, 3.0])}, max_iter=2
+    )
     save_model_json(model, artifact)
     with sqlite3.connect(db_path) as db:
-        db.execute("CREATE TABLE models (id TEXT PRIMARY KEY, path TEXT NOT NULL, created_at REAL NOT NULL)")
-        db.execute("INSERT INTO models VALUES (?, ?, ?)", ("legacy", str(artifact), time.time()))
+        db.execute(
+            "CREATE TABLE models (id TEXT PRIMARY KEY, path TEXT NOT NULL, created_at REAL NOT NULL)"
+        )
+        db.execute(
+            "INSERT INTO models VALUES (?, ?, ?)",
+            ("legacy", str(artifact), time.time()),
+        )
         db.commit()
     monkeypatch.setattr(grpc_server, "MODEL_STORE", model_dir)
     monkeypatch.setattr(grpc_server, "MODEL_DB", db_path)
     registry = grpc_server._ModelRegistry()
     with sqlite3.connect(db_path) as db:
-        stored_hash = db.execute("SELECT artifact_hash FROM models WHERE id = 'legacy'").fetchone()[0]
+        stored_hash = db.execute(
+            "SELECT artifact_hash FROM models WHERE id = 'legacy'"
+        ).fetchone()[0]
     assert len(stored_hash) == 64
     audit = registry.audit()[0]
     assert audit["integrity_ok"] is True
@@ -568,8 +586,13 @@ def test_corrupt_legacy_artifact_is_retained_for_audit(tmp_path, monkeypatch):
     artifact = model_dir / "broken.omnilss"
     artifact.write_bytes(b"not-a-zip")
     with sqlite3.connect(db_path) as db:
-        db.execute("CREATE TABLE models (id TEXT PRIMARY KEY, path TEXT NOT NULL, created_at REAL NOT NULL)")
-        db.execute("INSERT INTO models VALUES (?, ?, ?)", ("broken", str(artifact), time.time()))
+        db.execute(
+            "CREATE TABLE models (id TEXT PRIMARY KEY, path TEXT NOT NULL, created_at REAL NOT NULL)"
+        )
+        db.execute(
+            "INSERT INTO models VALUES (?, ?, ?)",
+            ("broken", str(artifact), time.time()),
+        )
         db.commit()
     monkeypatch.setattr(grpc_server, "MODEL_STORE", model_dir)
     monkeypatch.setattr(grpc_server, "MODEL_DB", db_path)
@@ -650,15 +673,25 @@ def test_model_registry_rejects_capability_drift_on_load(tmp_path, monkeypatch):
     db_path = model_dir / "registry.sqlite3"
     monkeypatch.setattr(grpc_server, "MODEL_STORE", model_dir)
     monkeypatch.setattr(grpc_server, "MODEL_DB", db_path)
-    model = gamlss("y ~ x", family="NO", data={"y": np.array([1., 2., 3.]), "x": np.array([0., 1., 2.])}, max_iter=2)
+    model = gamlss(
+        "y ~ x",
+        family="NO",
+        data={"y": np.array([1.0, 2.0, 3.0]), "x": np.array([0.0, 1.0, 2.0])},
+        max_iter=2,
+    )
     registry = grpc_server._ModelRegistry()
     model_id = registry.save(model)
     artifact = model_dir / f"{model_id}.omnilss"
     with sqlite3.connect(db_path) as db:
-        row = db.execute("SELECT capability_json FROM models WHERE id = ?", (model_id,)).fetchone()
+        row = db.execute(
+            "SELECT capability_json FROM models WHERE id = ?", (model_id,)
+        ).fetchone()
         capability = json.loads(row[0])
         capability["features"]["prediction"] = "experimental"
-        db.execute("UPDATE models SET capability_json = ? WHERE id = ?", (json.dumps(capability), model_id))
+        db.execute(
+            "UPDATE models SET capability_json = ? WHERE id = ?",
+            (json.dumps(capability), model_id),
+        )
         db.commit()
     # The artifact is authoritative for replay; mutate its saved capability too.
     with zipfile.ZipFile(artifact, "r") as zf:
@@ -673,7 +706,9 @@ def test_model_registry_rejects_capability_drift_on_load(tmp_path, monkeypatch):
     assert exc_info.value.to_dict()["code"] == "artifact_hash_mismatch"
 
 
-def test_model_registry_records_hash_and_rejects_truncated_artifact(tmp_path, monkeypatch):
+def test_model_registry_records_hash_and_rejects_truncated_artifact(
+    tmp_path, monkeypatch
+):
     import sqlite3
     import numpy as np
     from omnilss import gamlss
@@ -684,12 +719,16 @@ def test_model_registry_records_hash_and_rejects_truncated_artifact(tmp_path, mo
     db_path = model_dir / "registry.sqlite3"
     monkeypatch.setattr(grpc_server, "MODEL_STORE", model_dir)
     monkeypatch.setattr(grpc_server, "MODEL_DB", db_path)
-    model = gamlss("y ~ 1", family="NO", data={"y": np.array([1., 2., 3.])}, max_iter=2)
+    model = gamlss(
+        "y ~ 1", family="NO", data={"y": np.array([1.0, 2.0, 3.0])}, max_iter=2
+    )
     registry = grpc_server._ModelRegistry()
     model_id = registry.save(model)
     artifact = model_dir / f"{model_id}.omnilss"
     with sqlite3.connect(db_path) as db:
-        stored_hash = db.execute("SELECT artifact_hash FROM models WHERE id = ?", (model_id,)).fetchone()[0]
+        stored_hash = db.execute(
+            "SELECT artifact_hash FROM models WHERE id = ?", (model_id,)
+        ).fetchone()[0]
     assert len(stored_hash) == 64
     artifact.write_bytes(artifact.read_bytes()[:20])
     with pytest.raises(grpc_server.ArtifactIntegrityError):
@@ -730,9 +769,7 @@ def test_grpc_list_models_and_delete_model_service_direct(monkeypatch) -> None:
     assert deleted.success is True
     assert deleted.deleted is True
 
-    missing = service.DeleteModel(
-        fit_pb2.DeleteModelRequest(model_id="missing"), None
-    )
+    missing = service.DeleteModel(fit_pb2.DeleteModelRequest(model_id="missing"), None)
     assert missing.success is True
     assert missing.deleted is False
 
@@ -874,7 +911,6 @@ def test_grpc_batch_fit_rejects_non_production_family(monkeypatch) -> None:
     assert "capability" in response.responses[1].error.lower()
     # The rejection must happen before the fitting call, not after.
     assert [call["family"] for call in calls] == ["NO"]
-
 
 
 def test_grpc_batch_fit_reports_partial_failures(monkeypatch) -> None:
@@ -1042,7 +1078,9 @@ def test_grpc_predict_supports_column_vectors(monkeypatch) -> None:
 
 
 @pytest.mark.skipif(not GRPC_AVAILABLE, reason="grpcio not installed")
-def test_grpc_predict_is_restart_safe_with_persistent_registry(tmp_path, monkeypatch) -> None:
+def test_grpc_predict_is_restart_safe_with_persistent_registry(
+    tmp_path, monkeypatch
+) -> None:
     """A model fitted before restart should remain predictable after restart."""
     import importlib
     import json
@@ -1058,7 +1096,12 @@ def test_grpc_predict_is_restart_safe_with_persistent_registry(tmp_path, monkeyp
     grpc_server = importlib.reload(grpc_server)
 
     try:
-        from omnilss.api.grpc.generated import fit_pb2, fit_pb2_grpc, predict_pb2, predict_pb2_grpc
+        from omnilss.api.grpc.generated import (
+            fit_pb2,
+            fit_pb2_grpc,
+            predict_pb2,
+            predict_pb2_grpc,
+        )
     except Exception as exc:
         pytest.skip(f"Generated protobuf stubs unavailable: {exc}")
 
@@ -1234,3 +1277,11 @@ def test_registry_rejects_oversized_legacy_artifact_before_decompression(
 
     with pytest.raises(grpc_server.ArtifactCapabilityRejectedError):
         registry.load("oversized")
+
+
+def test_registry_sets_sqlite_busy_timeout():
+    """Concurrent xdist workers must wait for the schema writer, not fail."""
+    from omnilss.api.grpc import server as grpc_server
+
+    timeout_ms = grpc_server.REGISTRY._db.execute("PRAGMA busy_timeout").fetchone()[0]
+    assert timeout_ms >= 30000
