@@ -973,4 +973,8 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
 - [x] **Group C sqlite 锁（D2.299）**：`_ModelRegistry` 连接加 `timeout=30` +
   `PRAGMA busy_timeout=30000`，修 xdist 并发建表导致的 `database is locked`；
   新增 pragma 断言测试。
+- [x] **Code Quality / ruff E741+E722+F822+F821（D2.300/D2.301）**：9 + 34 → 0。
+  F821 暴露 3 个真 bug：SEP4 工厂未绑定 `family`、`pTF_fixed` 用了未定义的 `t`、
+  `_beo_r` 的 `_scipy_beta` 只在别的函数内导入。至此
+  `ruff check --select E,W,F --ignore E501` **全库 0**，Code Quality 的 ruff 步骤应转绿。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。
