@@ -951,6 +951,6 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   60s 启动窗口 + terminate→kill；`test_grpc_metrics_service_direct` 去掉对模块级计数器
   绝对值的顺序依赖；`gamlss_cs` 的 df 求解从 `trace(solve())` 改为
   `W^-1/2 K W^-1/2` 特征分解的闭式 `Σ1/(1+λμ)`（消除 LAPACK 差异导致的 edf 5.0/7.33 漂移）。
-  CI 复跑：TLS 转绿；Group C 修完 google/metrics 后只剩上述 cs 漂移，已修待再验。
-  基线归因见 `.workbuddy/memory/2026-11-22.md`。
+  CI 复跑：TLS 转绿；Group C 测试 310 passed / 0 failed，仅剩 Codecov 无 token 上传失败，
+  已改为「有 secret 才上传」。基线归因见 `.workbuddy/memory/2026-11-22.md`。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。
