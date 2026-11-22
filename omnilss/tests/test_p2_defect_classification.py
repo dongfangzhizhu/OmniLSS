@@ -36,6 +36,14 @@ def test_artifact_identifies_its_source_scan(artifact):
     assert artifact["source"]["families"] > 0
 
 
+def test_scan_hash_is_line_ending_independent(tmp_path):
+    lf = tmp_path / "lf.json"
+    crlf = tmp_path / "crlf.json"
+    lf.write_bytes(b'{"a": 1}\n')
+    crlf.write_bytes(b'{"a": 1}\r\n')
+    assert p2._sha256(lf) == p2._sha256(crlf)
+
+
 def test_entries_cover_every_family_and_gate(artifact):
     families = artifact["source"]["families"]
     assert len(artifact["entries"]) == families * len(p2.GATES)

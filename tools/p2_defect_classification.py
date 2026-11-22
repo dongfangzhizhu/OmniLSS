@@ -61,7 +61,10 @@ _REGISTER_TABLES = (
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    # Hash the logical content, not the checkout's line endings: Windows
+    # working trees use CRLF while CI's git checkout is LF, which made the
+    # committed scan hash drift on every platform switch.
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def _registered_table(family: str) -> tuple[str, str] | None:

@@ -3234,7 +3234,7 @@
       "rsdev"
     ],
     "scan": "docs/development/rs-parity-scan-2026-11-15.json",
-    "scan_sha256": "e973b0e806d346e0dc7d760ac740eeeb8f5849e50bccaa95b7dfbc12b62080f8"
+    "scan_sha256": "91f7b97e53e6dba4a56ee05ee70c55bde3ad051e15b2b3a115bbc7f63d5b379b"
   },
   "unclassified": [],
   "verdict": {
