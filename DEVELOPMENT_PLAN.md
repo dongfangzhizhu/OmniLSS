@@ -948,5 +948,7 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   Cholesky-first（会改动 cond>1e10 的既有数值，需 A/B）。
 - [x] **Linux CI 止血（D2.290）**：Group 安装改 `.[server,dev]`（修 Group C 的
   `No module named google`）；R-consistency 第 9 步去掉 glob 引号；TLS 用例改临时端口 +
-  60s 启动窗口 + terminate→kill。基线归因见 `.workbuddy/memory/2026-11-22.md`。
+  60s 启动窗口 + terminate→kill；`test_grpc_metrics_service_direct` 去掉对模块级计数器
+  绝对值的顺序依赖。CI 复跑：TLS 转绿、Group C 从 7 失败降到 0（待新提交确认）。
+  基线归因见 `.workbuddy/memory/2026-11-22.md`。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。

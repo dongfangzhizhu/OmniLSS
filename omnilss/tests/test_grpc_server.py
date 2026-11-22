@@ -291,8 +291,27 @@ def test_grpc_metrics_service_direct(monkeypatch):
                 {"model_id": "broken", "integrity_ok": False, "capability_ok": True},
             ]
 
+        def delete(self, model_id):
+            return model_id == "broken"
+
     monkeypatch.setattr(grpc_server, "REGISTRY", DummyRegistry())
+    # The counters are module globals shared by every test in this process, so
+    # asserting absolute values made this test depend on execution order (CI
+    # ran it before anything incremented audit_requests_total -> 0). Reset and
+    # drive both endpoints explicitly instead.
+    monkeypatch.setattr(grpc_server, "_SERVICE_METRICS", {
+        "audit_requests_total": 0,
+        "metrics_requests_total": 0,
+        "cleanup_requests_total": 0,
+        "cleanup_deleted_models_total": 0,
+    })
     service, *_ = grpc_server.create_service()
+    audit_response = service.AuditModels(capability_pb2.AuditModelsRequest(), None)
+    assert audit_response.success is True
+    cleanup_response = service.CleanupUnhealthyModels(
+        capability_pb2.CleanupUnhealthyModelsRequest(), None
+    )
+    assert cleanup_response.success is True
     response = service.Metrics(capability_pb2.MetricsRequest(), None)
     assert response.success is True
     assert json.loads(response.metrics_json) == {
