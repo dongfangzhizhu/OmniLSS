@@ -986,6 +986,9 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   `JAX_ENABLE_X64=true`）。Group C 的 sqlite 锁定位到 `PRAGMA journal_mode=WAL`，
   竞争时跳过（WAL 已持久化）。
 - [x] **P2 行尾哈希（D2.304）**：Tiered Step 13 的 `source scan sha256` 因 Windows
-  CRLF / CI LF 漂移；`_sha256` 先归一化 `\r\n → \n`，重生成分类工件，新增行尾
+  CRLF / CI LF 漂移；  `_sha256` 先归一化 `\r\n → \n`，重生成分类工件，新增行尾
   无关性测试。
+- [x] **P5 streaming golden 跨平台浮点（D2.305）**：`_stable()` 精确比较浮点导致
+  Windows 生成 / Linux 复算的 1e-15 抖动被判 drift；比较前 `round(x, 8)`，
+  新增三例测试。Tiered Step 13 的全部子门禁本机通过。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。
