@@ -142,7 +142,13 @@ class _ModelRegistry:
         # CI); 30s lets the competing writer finish instead of failing a test.
         self._db = sqlite3.connect(MODEL_DB, check_same_thread=False, timeout=30.0)
         self._db.execute("PRAGMA busy_timeout = 30000")
-        self._db.execute("PRAGMA journal_mode=WAL")
+        # journal_mode=WAL takes an exclusive lock and can return SQLITE_BUSY
+        # immediately (busy_timeout does not cover it).  WAL is persistent in
+        # the file, so a worker that loses this race can safely skip it.
+        try:
+            self._db.execute("PRAGMA journal_mode=WAL")
+        except sqlite3.OperationalError:
+            pass
         self._db.execute("PRAGMA synchronous=NORMAL")
         self._ensure_schema()
         self._db.commit()
