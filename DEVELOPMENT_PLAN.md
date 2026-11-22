@@ -967,4 +967,7 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
 - [x] **Code Quality / ruff E402+F841（D2.297）**：E402 80→0、F841 30→0（docstring 归位、
   循环延迟导入显式 noqa、死局部变量删除且保留 `stable_cholesky` 校验副作用）。
   剩余 **66**：F821 34、F541 16、F811 7、E722 6、F822 2、E741 1。
+- [x] **Code Quality / ruff F541+F811（D2.298）**：F541 16→0、F811 7→0。F811 发现
+  `smooth_selection.py` 的旧 `reml_score` 覆盖了 D2.146 的修复（此前从未生效），
+  已删除旧定义。剩余 **43**：F821 34、E722 6、F822 2、E741 1。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。
