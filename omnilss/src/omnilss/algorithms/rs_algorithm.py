@@ -24,11 +24,9 @@ import jax.numpy as jnp
 import jax
 import numpy as np
 
-from ..distributions import resolve_family
 from ..families import FamilyDefinition
 from ..model import GAMLSSModel
 from ..numerical_stability import sanitize_gradient, step_halving
-from ..tensor_protocol import validate_design_matrix, validate_vector
 from ..diagnostic_warnings import evaluate_numerical_warnings
 from ..family_validation import ensure_valid_likelihood_inputs
 from ..controls import GLIMControl, glim_control
@@ -1002,14 +1000,12 @@ def rs_fit(
     from ..distributions import resolve_family
     from ..fitting import (
         _build_design_matrix_with_smooths,
-        _fixed_parameter_formula,
         _fixed_parameter_term,
         _initial_mu_beta,
         _initial_mu_target,
         _initial_parameter_value,
         _initial_sigma,
         _initial_sigma_fitted,
-        _is_intercept_only_formula,
         _parse_formula_core,
         _resolve_fixed_parameter_values,
         _resolve_parameter_formulas,

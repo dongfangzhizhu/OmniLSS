@@ -19,9 +19,8 @@ import numpy as np
 from scipy import linalg
 from scipy.optimize import minimize_scalar
 
-from omnilss.smoothers.bsplines import bspline_basis, bspline_design_matrix
+from omnilss.smoothers.bsplines import bspline_basis
 from omnilss.smoothers.penalties import (
-    difference_penalty,
     effective_df,
     find_lambda_for_df,
     penalty_matrix,

@@ -6,7 +6,6 @@ R reference: `gamlss/R/gen-Likelihood.R::gen.likelihood`.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 import jax.numpy as jnp
 import numpy as np

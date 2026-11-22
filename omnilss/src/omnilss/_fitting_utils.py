@@ -4,11 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 import ast
-import math
 from statistics import NormalDist
 from typing import Any
 
-import jax.numpy as jnp
 import numpy as np
 
 from .families import FamilyDefinition

@@ -10,7 +10,7 @@ from typing import Tuple
 
 import jax.numpy as jnp
 from jax import Array
-from jax.scipy.special import gammaln as jsp_gammaln, ndtr
+from jax.scipy.special import ndtr
 
 from .ad import build_ad_family
 from .families import FamilyDefinition

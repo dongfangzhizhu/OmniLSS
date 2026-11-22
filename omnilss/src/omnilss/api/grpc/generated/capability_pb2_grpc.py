@@ -2,7 +2,6 @@
 """Client and server classes corresponding to protobuf-defined services."""
 
 import grpc
-import warnings
 
 from . import capability_pb2 as capability__pb2
 

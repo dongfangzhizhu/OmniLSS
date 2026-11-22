@@ -21,9 +21,7 @@ from scipy import linalg as sp_linalg
 
 from omnilss.smoothers.bsplines import bspline_design_matrix
 from omnilss.smoothers.penalties import (
-    _edf_numpy,
     difference_penalty,
-    effective_df,
     find_lambda_for_df,
     penalty_matrix,
 )

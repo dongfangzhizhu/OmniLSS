@@ -15,7 +15,7 @@ evaluation via ``xeval``.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping
 
 import numpy as np
 from scipy.optimize import brentq

@@ -6,7 +6,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
 import jax.numpy as jnp
-import jax.random as jrandom
 from jax.scipy.special import gammaln, betaln, betainc
 
 from .ad import build_ad_family

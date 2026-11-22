@@ -20,7 +20,6 @@ Supported families (Phase 1):
 
 from __future__ import annotations
 
-import functools
 import math
 from typing import Callable, NamedTuple
 

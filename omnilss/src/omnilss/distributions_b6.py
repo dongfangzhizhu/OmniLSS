@@ -19,13 +19,11 @@ from __future__ import annotations
 # Enable float64 precision for numerical accuracy
 
 from dataclasses import dataclass
-import math
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 from jax.scipy.special import gammaln, betaln, logsumexp
-from jax.scipy.special import i0e, i1e  # Modified Bessel functions
 
 from .ad import build_ad_family, _prepare_jax_args
 from .families import FamilyDefinition
@@ -40,7 +38,6 @@ from .links import (
     logit_inverse,
     logit_link,
 )
-from .bessel import log_bessel_iv
 
 # ------------------------------------------------------------------
 # 1. PIG — Poisson Inverse Gaussian

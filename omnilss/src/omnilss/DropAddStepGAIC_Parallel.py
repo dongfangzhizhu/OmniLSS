@@ -13,7 +13,6 @@ from typing import Any
 from .model import GAMLSSModel
 from .operations import formula, is_gamlss, terms
 from .stepGAIC_03_10_13 import (
-    ExtractAICResult,
     StepGAICResult,
     StepGAICStep,
     extract_aic,

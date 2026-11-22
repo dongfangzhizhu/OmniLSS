@@ -15,7 +15,6 @@ from __future__ import annotations
 from typing import Any, Callable, Optional
 
 import jax
-import jax.numpy as jnp
 import numpy as np
 from scipy import linalg as scipy_linalg
 

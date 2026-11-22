@@ -5,7 +5,6 @@ from __future__ import annotations
 # Enable float64 precision for numerical accuracy
 from dataclasses import dataclass
 import jax.numpy as jnp
-from jax.scipy.special import gammaln
 
 from .ad import build_ad_family
 from .families import FamilyDefinition

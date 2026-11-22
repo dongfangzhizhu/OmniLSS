@@ -5,7 +5,6 @@ from __future__ import annotations
 """Batch 14: Skew distribution variants and SHASH variants."""
 from dataclasses import dataclass
 import jax.numpy as jnp
-from jax.scipy.special import gammaln
 
 from .ad import build_ad_family
 from .dpqr_functions import pJSUo, qJSUo, rJSUo, pSHASHo2, qSHASHo2, rSHASHo2
@@ -362,7 +361,7 @@ def _st5_log_pdf(y, mu, sigma, nu, tau):
                - (a+b-1)log(2) - .5log(a+b) - lbeta(a,b) - log(sigma)
     """
     import jax.numpy as jnp
-    from jax.scipy.special import gammaln as _gl, betaln as _bl
+    from jax.scipy.special import betaln as _bl
 
     eps = jnp.finfo(jnp.float64).eps
     sigma = jnp.maximum(sigma, eps)

@@ -11,7 +11,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-import numpy as np
 
 from .gamlssVGD_23_12_21 import get_tgd_data
 from .model import GAMLSSModel

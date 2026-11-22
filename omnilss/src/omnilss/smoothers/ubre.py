@@ -303,7 +303,6 @@ def ubre_vs_gcv(
     >>> print(f"UBRE optimal λ: {results['best_lambda_ubre']:.4e}")
     >>> print(f"GCV optimal λ: {results['best_lambda_gcv']:.4e}")
     """
-    from .gcv import compute_gcv_score
 
     if lambda_grid is None:
         lambda_grid = jnp.logspace(-6, 6, 100)

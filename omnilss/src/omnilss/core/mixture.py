@@ -19,7 +19,6 @@ from typing import Optional
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 
 # ──────────────────────────────────────────────────────────────
 # 零膨胀分布（Zero-Inflated）
@@ -477,7 +476,6 @@ def censored(
     使用此族时，需要在数据中提供 "event" 变量（0/1 删失指示）。
     """
     from ..families import FamilyDefinition
-    from ..links import LINK_REGISTRY
 
     fname = name or f"Censored{base_family.name}"
     base_params = list(base_family.parameters)

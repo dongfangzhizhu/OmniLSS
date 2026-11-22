@@ -22,7 +22,7 @@ bootstrap means near the original fit), not bit-for-bit.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
 import numpy as np

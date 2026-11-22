@@ -12,11 +12,9 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Optional, Any, Tuple
-import warnings
+from typing import List, Dict, Optional, Any
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
-import os
 
 
 def _fit_single_distribution(
@@ -245,7 +243,6 @@ def _compare_distributions_serial(
     **kwargs,
 ) -> List[Dict[str, Any]]:
     """串行比较分布（原始实现）"""
-    from .fitting import gamlss
 
     results = []
 

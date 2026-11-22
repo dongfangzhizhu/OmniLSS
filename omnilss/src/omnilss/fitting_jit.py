@@ -11,7 +11,6 @@ from typing import Any, Callable
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 
 
 def create_jit_iwls_step(

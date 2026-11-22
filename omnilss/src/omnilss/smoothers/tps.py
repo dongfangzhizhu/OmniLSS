@@ -31,12 +31,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Optional, Tuple
 
-import jax.numpy as jnp
 import numpy as np
 from scipy import linalg
 from scipy.optimize import minimize_scalar
-
-from omnilss.smoothers.penalties import effective_df
 
 
 @dataclass

@@ -34,12 +34,10 @@ This implementation uses:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Optional, Tuple, Callable
+from typing import Literal, Optional, Tuple
 
-import jax
 import jax.numpy as jnp
 import numpy as np
-from scipy.optimize import minimize_scalar
 
 
 @dataclass

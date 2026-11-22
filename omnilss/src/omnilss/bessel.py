@@ -13,7 +13,8 @@ import math
 
 # Try to import scipy for exact Bessel functions
 try:
-    from scipy.special import iv, kv, ivp, kvp
+    # ivp/kvp are not called here: importing them is the availability probe.
+    from scipy.special import iv, kv, ivp, kvp  # noqa: F401
 
     SCIPY_AVAILABLE = True
 except ImportError:

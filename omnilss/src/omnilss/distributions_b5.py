@@ -31,9 +31,6 @@ from jax import jit, vmap
 from .ad import build_ad_family
 from .families import FamilyDefinition
 from .links import (
-    identity_derivative,
-    identity_inverse,
-    identity_link,
     log_derivative,
     log_inverse,
     log_link,

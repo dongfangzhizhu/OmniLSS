@@ -66,10 +66,6 @@ from .dpqr_functions import (
     pWEI,
     qWEI,
     rWEI,
-    dIG,
-    pIG,
-    qIG,
-    rIG,
     dLO,
     pLO,
     qLO,
@@ -86,22 +82,6 @@ from .dpqr_functions import (
     pNBI,
     qNBI,
     rNBI,
-    dNBII,
-    pNBII,
-    qNBII,
-    rNBII,
-    dZAGA,
-    pZAGA,
-    qZAGA,
-    rZAGA,
-    dZAIG,
-    pZAIG,
-    qZAIG,
-    rZAIG,
-    dBEINF,
-    pBEINF,
-    qBEINF,
-    rBEINF,
     dBCT,
     pBCT,
     qBCT,
@@ -128,7 +108,7 @@ from .dpqr_functions import (
 # path used to omit the standardization constant entirely, so g_dev_inc and
 # dpqr_functions.dBCPE described different densities -- importing the same
 # helpers the d/p/q/r functions use is what keeps them one density.
-from .dpqr_functions import _bcpe_c, _bcpe_ftrunc, _bcpe_ftrunc_log
+from .dpqr_functions import _bcpe_c, _bcpe_ftrunc_log
 
 
 @dataclass(frozen=True)

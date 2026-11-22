@@ -33,7 +33,7 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 import pandas as pd
 
-from .pcr import SVDResult, getSVD
+from .pcr import SVDResult
 
 _LOG_2PI = float(np.log(2.0 * np.pi))
 

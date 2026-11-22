@@ -8,7 +8,6 @@ R source reference:
 from __future__ import annotations
 
 from statistics import NormalDist
-from typing import Any
 
 import numpy as np
 

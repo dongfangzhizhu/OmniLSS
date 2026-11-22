@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import jax
 import jax.numpy as jnp
 from jax.scipy.special import gammaln
 
@@ -32,14 +31,6 @@ from .links import (
     log_link,
 )
 from .dpqr_functions import (
-    dGU,
-    pGU,
-    qGU,
-    rGU,
-    dRG,
-    pRG,
-    qRG,
-    rRG,
     dPARETO2,
     pPARETO2,
     qPARETO2,
@@ -71,11 +62,6 @@ def GU() -> GumbelFamily:
         pGU,
         qGU,
         rGU,
-        dPARETO2,
-        pPARETO2,
-        qPARETO2,
-        pIGAMMA,
-        qIGAMMA,
     )
 
     base_family = build_ad_family(

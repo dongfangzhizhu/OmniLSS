@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import jax
 import jax.numpy as jnp
 import jax.random as jrandom
-from jax.scipy.special import gammainc, gammaln, betaln
+from jax.scipy.special import gammainc, gammaln
 from scipy.stats import nbinom as _nbinom
 from scipy.stats import poisson as _poisson
 from jax.scipy.stats import t as _jst, norm as _jnorm
@@ -591,7 +591,7 @@ def _sep3_q(p, mu=0.0, sigma=1.0, nu=2.0, tau=2.0, lower_tail=True, log_p=False)
     """SEP3 quantile matching R SEP3.R qSEP3."""
     import numpy as np
     import jax.numpy as jnp
-    from scipy.special import gammaincinv, gammainccinv
+    from scipy.special import gammaincinv
 
     p_arr = np.atleast_1d(np.asarray(p, dtype=np.float64))
     if log_p:
@@ -1106,8 +1106,7 @@ def _sst_log_pdf(y, mu, sigma, nu, tau):
       fy = dST3(y, mu1, sigma1, nu, tau)
     """
     import jax.numpy as jnp
-    from jax.scipy.special import betaln, gammaln as _gl
-    from jax.scipy.stats import t as _jt
+    from jax.scipy.special import betaln
 
     eps = jnp.finfo(jnp.float64).eps
     sigma = jnp.maximum(sigma, eps)

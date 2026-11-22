@@ -13,7 +13,6 @@ Functions follow the R naming convention:
 from __future__ import annotations
 
 import numpy as np
-from .gb1 import dGB1, pGB1, qGB1, rGB1
 import jax
 import jax.numpy as jnp
 import jax.random as jrandom
@@ -8344,7 +8343,6 @@ def qSICHEL(
         & jnp.isfinite(sigma)
         & jnp.isfinite(nu)
     )
-    from .distributions_b6 import _sichel_log_pdf
 
     # A search cap must not truncate the tail used to test a candidate.
     support = jnp.arange(

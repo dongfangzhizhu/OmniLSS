@@ -20,15 +20,11 @@ from scipy.integrate import quad
 
 import jax.numpy as jnp
 import jax.random as jrandom
-from jax.scipy.special import gammaln
 from jax.scipy.special import zeta
 
 from .ad import build_ad_family
 from .families import FamilyDefinition
 from .links import (
-    identity_derivative,
-    identity_inverse,
-    identity_link,
     log_derivative,
     log_inverse,
     log_link,

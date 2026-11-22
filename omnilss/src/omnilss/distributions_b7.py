@@ -17,7 +17,6 @@ from __future__ import annotations
 # Enable float64 precision for numerical accuracy
 
 from dataclasses import dataclass
-import math
 
 import jax.numpy as jnp
 from jax.scipy.special import gammaln

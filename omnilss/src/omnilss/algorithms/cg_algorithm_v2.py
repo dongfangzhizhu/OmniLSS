@@ -20,7 +20,7 @@ from .._fitting_init import (
     _initial_sigma,
     _resolve_start_values,
 )
-from .._fitting_utils import _is_intercept_only_formula, _resolve_parameter_formulas
+from .._fitting_utils import _resolve_parameter_formulas
 from ..formula_parser import parse_formula as _parse_full_formula
 from ..cg_derivatives import EtaDerivativeBundle, eta_score_hessian
 from ..distributions import resolve_family
@@ -31,7 +31,6 @@ from ..fitting import (
     _fixed_parameter_term,
     _resolve_fixed_parameter_values,
 )
-from ..smooth_fitting import compute_smooth_edf
 from ..model import GAMLSSModel
 from ._model_metrics import df_fit_with_smooth_edf
 

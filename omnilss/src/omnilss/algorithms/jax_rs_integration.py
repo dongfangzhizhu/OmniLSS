@@ -30,7 +30,6 @@ import numpy as np
 
 from ..controls import GAMLSSControl, GLIMControl, gamlss_control, glim_control
 from ..distributions import resolve_family
-from ..families import FamilyDefinition
 from ..model import GAMLSSModel
 from .jax_family_specs import get_jax_spec, supported_families
 from .jax_rs_core import jax_rs_fit_core
@@ -132,7 +131,6 @@ def gamlss_rs_jax(
         _initial_mu_beta,
         _initial_parameter_value,
         _initial_sigma,
-        _normalize_parameter_formula,
         _parse_formula_core,
         _resolve_fixed_parameter_values,
         _resolve_parameter_formulas,

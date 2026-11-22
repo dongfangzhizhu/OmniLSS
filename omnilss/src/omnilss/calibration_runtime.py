@@ -29,7 +29,7 @@ def calibration_curve(pit: np.ndarray, bins: int = 10) -> tuple[np.ndarray, np.n
 
 def crps_gaussian(y: np.ndarray, mu: np.ndarray, sigma: np.ndarray) -> float:
     """Closed-form CRPS for Gaussian predictive distributions."""
-    from math import erf, sqrt, pi
+    from math import erf
 
     yv = np.asarray(y, dtype=np.float64)
     m = np.asarray(mu, dtype=np.float64)

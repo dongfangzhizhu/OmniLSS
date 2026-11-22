@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import chi2
 
-from .DropAddStepGAIC_Parallel import addterm, dropterm
+from .DropAddStepGAIC_Parallel import dropterm
 from .operations import formula
 
 _TESTS = ("Chisq", "none")

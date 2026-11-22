@@ -16,9 +16,6 @@ import numpy as np
 
 from .formula_parser import build_design_matrix, parse_formula
 from .smoother_admission import (
-    ADMITTED_SMOOTHERS,
-    RELEASE1_CAPABILITIES,
-    UnsupportedSmootherError,
     check_smoother_admission,
 )
 from .smoothers.pb import fit_pspline

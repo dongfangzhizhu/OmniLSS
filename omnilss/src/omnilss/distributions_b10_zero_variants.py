@@ -381,8 +381,7 @@ from .distributions_b6 import _sichel_log_pdf, _pig_log_pdf
 from .distributions_b6 import _sichel_dldm as _sichel_base_dldm
 from .distributions_b6 import _sichel_dldd as _sichel_base_dldd
 from .distributions_b6 import _r_negative_information
-from .distributions_b7 import _bb_log_pdf
-from .distributions_b9 import _lg_log_pdf, _zipf_log_pdf
+from .distributions_b9 import _zipf_log_pdf
 
 
 # Define binomial log-PDF (not exported from distributions.py)

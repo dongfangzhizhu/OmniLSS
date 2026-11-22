@@ -112,6 +112,14 @@ omnilss = [
   "py.typed",
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# Re-export layers: these modules exist to expose names (or dispatch them
+# dynamically), so an "unused" import is public surface, not dead code.
+"src/omnilss/__init__.py" = ["F401"]
+"src/omnilss/core/__init__.py" = ["F401"]
+"src/omnilss/automl/__init__.py" = ["F401"]
+"src/omnilss/methods.py" = ["F401"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

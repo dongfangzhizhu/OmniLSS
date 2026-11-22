@@ -33,7 +33,7 @@ from .links import (
     log_inverse,
     log_link,
 )
-from .dpqr_functions import dSHASH, pSHASH, qSHASH, rSHASH, dGT, pGT, qGT, rGT
+from .dpqr_functions import dSHASH, pSHASH, qSHASH, rSHASH, dGT, rGT
 
 
 def _broadcast_jax_args(args):

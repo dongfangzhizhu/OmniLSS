@@ -39,12 +39,11 @@ Examples:
 
 from __future__ import annotations
 
-from typing import Callable, Dict, Any, Tuple, Optional
+from typing import Callable, Dict, Any, Tuple
 import warnings
 
-import jax
 import jax.numpy as jnp
-from jax import grad, hessian, jacfwd, jacrev
+from jax import grad, hessian
 
 # Type aliases
 Params = Dict[str, jnp.ndarray]

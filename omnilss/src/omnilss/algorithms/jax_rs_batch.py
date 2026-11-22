@@ -17,7 +17,6 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 
 from .jax_family_specs import FamilyJAXSpec
 from .jax_rs_core import (

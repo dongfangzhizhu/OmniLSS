@@ -15,7 +15,7 @@ References:
 from __future__ import annotations
 
 import numpy as np
-from typing import Tuple, Optional
+from typing import Tuple
 from scipy.optimize import minimize_scalar
 import warnings
 

@@ -45,12 +45,10 @@ Multiple panel worm plot:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Tuple, Literal
+from typing import Any, Optional, Tuple
 import warnings
 
 import numpy as np
-import jax.numpy as jnp
-from scipy import stats
 from scipy.stats import norm as scipy_norm
 
 from .model import GAMLSSModel

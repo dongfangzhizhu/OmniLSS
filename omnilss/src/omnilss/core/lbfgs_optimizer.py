@@ -37,15 +37,14 @@ References:
 
 from __future__ import annotations
 
-from typing import Callable, Dict, Any, Tuple, Optional
-from dataclasses import dataclass
+from typing import Any, Optional
 import warnings
 
 import jax
 import jax.numpy as jnp
 import optax
 
-from .optimizer import Optimizer, OptimizationResult, Params, LossFn
+from .optimizer import OptimizationResult, Params, LossFn
 
 
 class LBFGSOptimizer:

@@ -6,7 +6,6 @@ R reference: `gamlss.dist/R/momentSK.R::checkMomentSK`.
 from __future__ import annotations
 
 from dataclasses import dataclass
-import numpy as np
 
 from .momentSK import momentSK
 

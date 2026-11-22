@@ -30,16 +30,13 @@ Examples:
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import Any
 
-import jax
 import jax.numpy as jnp
 import numpy as np
 
 from .optimizer import JointOptimizer, OptimizationResult
 from .lbfgs_optimizer import LBFGSOptimizer
-from ..distributions import resolve_family
 from ..families import FamilyDefinition
 from ..model import GAMLSSModel
 

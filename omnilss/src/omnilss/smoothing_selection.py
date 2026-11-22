@@ -24,12 +24,12 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
-from typing import Callable, Literal, Optional, Tuple
+from typing import Literal, Optional
 
 import jax.numpy as jnp
 import numpy as np
 from scipy.linalg import cho_factor, cho_solve, eigh, svd
-from scipy.optimize import minimize, minimize_scalar
+from scipy.optimize import minimize_scalar
 
 # Type aliases
 Array = np.ndarray | jnp.ndarray

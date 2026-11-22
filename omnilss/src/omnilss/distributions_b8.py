@@ -20,8 +20,7 @@ from dataclasses import dataclass
 import math
 
 import jax.numpy as jnp
-from jax.scipy.special import gammaln, betaln
-from jax.scipy.stats import norm
+from jax.scipy.special import gammaln
 
 from .ad import build_ad_family
 from .families import FamilyDefinition

@@ -25,7 +25,7 @@ from dataclasses import dataclass
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jax import vmap, jit
+from jax import vmap
 
 
 class _BootstrapShapeError(ValueError):

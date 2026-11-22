@@ -21,12 +21,10 @@ References
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal, Optional
+from typing import Optional
 import warnings
 
 import numpy as np
-import jax.numpy as jnp
-from scipy import stats
 from scipy.stats import norm as scipy_norm
 
 from .model import GAMLSSModel
