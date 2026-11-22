@@ -970,4 +970,7 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
 - [x] **Code Quality / ruff F541+F811（D2.298）**：F541 16→0、F811 7→0。F811 发现
   `smooth_selection.py` 的旧 `reml_score` 覆盖了 D2.146 的修复（此前从未生效），
   已删除旧定义。剩余 **43**：F821 34、E722 6、F822 2、E741 1。
+- [x] **Group C sqlite 锁（D2.299）**：`_ModelRegistry` 连接加 `timeout=30` +
+  `PRAGMA busy_timeout=30000`，修 xdist 并发建表导致的 `database is locked`；
+  新增 pragma 断言测试。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。
