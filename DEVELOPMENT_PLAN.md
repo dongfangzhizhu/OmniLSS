@@ -958,5 +958,8 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   CG 与 RS 均 536.9561（差 3e-12）。测试改为对 RS 比 deviance，并保留「CG ≤ ML」基线。
 - [x] **Code Quality / black（D2.295）**：`black==26.10.1` 全量格式化
   `omnilss/src/omnilss/`（225 files reformatted，`--check` 全绿），并在 `pyproject.toml`
-  与 `ci.yml` 钉死版本。Code Quality 下一阻塞是 ruff：595 errors / 364 fixable，未处理。
+  与 `ci.yml` 钉死版本。
+- [x] **Code Quality / ruff F401（D2.296）**：402 → **0**（自动清 155 + bessel 探针 noqa +
+  4 个再导出层 per-file-ignores）。全模块导入与相对导入校验通过，关键测试全绿。
+  剩余 E/W/F 176（E402 80、F821 34、F841 30、F541 16、F811 7、E722 6、F822 2、E741 1）。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。
