@@ -359,7 +359,12 @@ def test_live_r_returns_the_raw_sum_just_above_bd():
         "bd = 10), error = function(e) 'STOP')",
         "cat(r, '\\n')",
     ]).strip().splitlines()
-    assert out[0] == "0.99999999999999967", out
+    # R's accumulated sum differs by ~1 ULP across builds (the CI build
+    # measured 0.99999999999999944, the local one ...967).  Pin the semantics
+    # -- still strictly below 1.0, no cdf[q > bd] <- 1 clamp -- not the bits.
+    raw = float(out[0])
+    assert raw == pytest.approx(1.0, abs=1e-14), out
+    assert raw < 1.0, out
     assert out[1] == "STOP", out
 
 
