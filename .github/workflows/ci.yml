@@ -38,10 +38,10 @@ jobs:
         run: |
           Rscript -e 'install.packages(c("gamlss", "gamlss.dist", "jsonlite"), repos = "https://cloud.r-project.org")'
       - run: pip install uv
-      - name: Install dependencies
+      - name: Install dependencies (server extras for Group C grpc tests)
         run: |
           cd omnilss
-          uv pip install --system -e ".[dev]"
+          uv pip install --system -e ".[server,dev]"
       - name: Run grouped tests in parallel
         env:
           MPLBACKEND: Agg
@@ -57,7 +57,8 @@ jobs:
           # Phase 4.1: the R-consistency group must ACTUALLY run against R —
           # re-run the whole R-consistency suite fail-closed: any skip fails the
           # CI, and the executed assertion count must reach the required floor.
-          python -m pytest "tests/test_*r_consistency*.py" -rs -q 2>&1 | tee /tmp/rcons.log
+          # No quotes: pytest does not expand globs, the shell must do it.
+          python -m pytest tests/test_*r_consistency*.py -rs -q 2>&1 | tee /tmp/rcons.log
           if grep -qE "skipped|SKIPPED" /tmp/rcons.log; then
             echo "::error::R-consistency tests were skipped (R not usable in CI)"
             exit 1

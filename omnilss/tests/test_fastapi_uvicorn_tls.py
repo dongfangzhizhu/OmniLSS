@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import shutil
+import socket
 import ssl
 import subprocess
 import sys
@@ -29,6 +30,33 @@ def _run_openssl(args: list[str]) -> None:
     subprocess.run([executable, *args], check=True, capture_output=True, env=env)
 
 
+def _free_port() -> int:
+    """Return an ephemeral localhost port instead of a fixed one.
+
+    A hard-coded 59100 can fall inside a Windows/Hyper-V excluded range or be
+    taken by another process, which makes uvicorn exit before binding.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+def _stop_process(process: subprocess.Popen[str]) -> tuple[str, str]:
+    """Terminate (then kill) uvicorn and always collect its output.
+
+    A fixed 5s communicate() timeout used to turn a slow CI start into a
+    TimeoutExpired instead of the real "server did not start" assertion.
+    """
+    if process.poll() is None:
+        process.terminate()
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=10)
+    return process.communicate(timeout=10)
+
+
 def test_uvicorn_https_requires_ca_and_token(tmp_path):
     root = Path(__file__).resolve().parents[2]
     server_root = root / "omnilss-server"
@@ -42,7 +70,7 @@ def test_uvicorn_https_requires_ca_and_token(tmp_path):
     ext.write_text("subjectAltName=DNS:localhost,IP:127.0.0.1\n", encoding="utf-8")
     _run_openssl(["x509", "-req", "-in", str(csr), "-CA", str(ca_cert), "-CAkey", str(ca_key), "-CAcreateserial", "-out", str(cert), "-days", "1", "-sha256", "-extfile", str(ext)])
 
-    port = 59100
+    port = _free_port()
     env = dict(os.environ, PYTHONPATH=str(root / "omnilss" / "src"), OMNILSS_API_TOKEN="uvicorn-token")
     process = subprocess.Popen([
         sys.executable, "-m", "uvicorn", "main:app",
@@ -51,7 +79,9 @@ def test_uvicorn_https_requires_ca_and_token(tmp_path):
     context = ssl.create_default_context(cafile=str(ca_cert))
     insecure_context = ssl._create_unverified_context()
     try:
-        deadline = time.time() + 15
+        # CI runners can spend tens of seconds importing JAX before uvicorn
+        # binds; 15s was below the observed cold start.
+        deadline = time.time() + 60
         while time.time() < deadline:
             try:
                 try:
@@ -63,8 +93,7 @@ def test_uvicorn_https_requires_ca_and_token(tmp_path):
             except Exception:
                 time.sleep(0.2)
         else:
-            process.terminate()
-            stdout, stderr = process.communicate(timeout=5)
+            stdout, stderr = _stop_process(process)
             raise AssertionError(f"Uvicorn HTTPS server did not start: {stdout}\n{stderr}")
         request = Request(f"https://localhost:{port}/models", headers={"Authorization": "Bearer uvicorn-token"})
         with urlopen(request, context=context, timeout=5) as response:
@@ -75,5 +104,4 @@ def test_uvicorn_https_requires_ca_and_token(tmp_path):
         with pytest.raises(Exception):
             urlopen(f"http://localhost:{port}/health", timeout=2)
     finally:
-        process.terminate()
-        process.wait(timeout=10)
+        _stop_process(process)

@@ -946,4 +946,7 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   2026-11-22 推送后在 GitHub Actions 实跑 **py3.10 / 3.11 / 3.12 三个矩阵全绿**。
 - [ ] **E02 剩余**：REML 的 `-log|λS|_+`（需活 R 对照后再改目标函数）；Hessian 的
   Cholesky-first（会改动 cond>1e10 的既有数值，需 A/B）。
+- [x] **Linux CI 止血（D2.290）**：Group 安装改 `.[server,dev]`（修 Group C 的
+  `No module named google`）；R-consistency 第 9 步去掉 glob 引号；TLS 用例改临时端口 +
+  60s 启动窗口 + terminate→kill。基线归因见 `.workbuddy/memory/2026-11-22.md`。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。
