@@ -985,4 +985,7 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   Step 10 的 M0 `coverage provenance drift` 通过重生成 manifest 修复（需
   `JAX_ENABLE_X64=true`）。Group C 的 sqlite 锁定位到 `PRAGMA journal_mode=WAL`，
   竞争时跳过（WAL 已持久化）。
+- [x] **P2 行尾哈希（D2.304）**：Tiered Step 13 的 `source scan sha256` 因 Windows
+  CRLF / CI LF 漂移；`_sha256` 先归一化 `\r\n → \n`，重生成分类工件，新增行尾
+  无关性测试。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。
