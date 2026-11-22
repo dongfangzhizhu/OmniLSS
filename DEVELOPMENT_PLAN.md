@@ -961,5 +961,7 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   与 `ci.yml` 钉死版本。
 - [x] **Code Quality / ruff F401（D2.296）**：402 → **0**（自动清 155 + bessel 探针 noqa +
   4 个再导出层 per-file-ignores）。全模块导入与相对导入校验通过，关键测试全绿。
+  期间 CI 抓到 `smooth_fitting` 的 `ADMITTED_SMOOTHERS` 等三个兼容再导出被误删，
+  已恢复并逐行 noqa。
   剩余 E/W/F 176（E402 80、F821 34、F841 30、F541 16、F811 7、E722 6、F822 2、E741 1）。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。
