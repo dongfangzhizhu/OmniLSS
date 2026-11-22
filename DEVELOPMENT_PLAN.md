@@ -996,4 +996,7 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   （DBI 19、ZISICHEL 8、GU 5、DBURR12 5、PARETO1o 1、SHASHo 1）。CI 改为安装
   CRAN Archive 的钉死源码包。剩余 1 个 `test_pb_in_mu_normal` 是用单趟
   `gamlss_ml` 对 R 迭代 `gamlss`，已改为 `gamlss`（RS）；本机 6 例全绿。
+- [x] **DBI raw-sum ULP（D2.307）**：钉版后 Group B 仅剩 1 例，测试把 R 累加和
+  钉成精确字符串；CI R 构建末位差 1 ULP。改为数值容差 `abs=1e-14` + `raw < 1.0` +
+  `STOP` 语义断言。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。
