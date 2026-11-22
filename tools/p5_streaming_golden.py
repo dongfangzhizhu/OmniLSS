@@ -274,6 +274,18 @@ def build() -> dict:
     }
 
 
+def _rounded(value):
+    """Round deterministic floats so cross-platform BLAS/JAX jitter (1e-15)
+    does not read as artifact drift, while real numeric changes still do."""
+    if isinstance(value, float):
+        return round(value, 8)
+    if isinstance(value, dict):
+        return {key: _rounded(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_rounded(item) for item in value]
+    return value
+
+
 def _stable(artifact: dict) -> dict:
     # Exclude wall-clock microsecond timings from determinism diff while keeping
     # every pass/fail verdict and deterministic numeric metric checked.
@@ -288,7 +300,7 @@ def _stable(artifact: dict) -> dict:
                 "memory_constant_across_N": item["memory_constant_across_N"],
             }
         else:
-            stable_criteria[name] = item
+            stable_criteria[name] = _rounded(item)
     return {
         "schema_version": artifact["schema_version"],
         "task": artifact["task"],
