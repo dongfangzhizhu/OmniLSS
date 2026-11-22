@@ -10,7 +10,6 @@ import jax.numpy as jnp
 import jax
 import jax.random as jrandom
 import numpy as np
-import numpy as np
 
 from .ad import build_ad_family, _prepare_jax_args
 from .families import FamilyDefinition

@@ -518,7 +518,7 @@ def fit_with_lbfgs(
 
     # Optimize
     if verbose:
-        print(f"\nRefining with L-BFGS optimizer")
+        print("\nRefining with L-BFGS optimizer")
         print(f"Initial deviance: {initial_model.g_dev:.6f}")
 
     result = opt.optimize(

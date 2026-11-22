@@ -208,7 +208,7 @@ class LBFGSOptimizer:
             return params, opt_state, loss, grads
 
         if verbose:
-            print(f"Starting L-BFGS optimization")
+            print("Starting L-BFGS optimization")
             print(f"History size: {self.history_size}")
             print(f"Max iterations: {self.max_iter}")
             print(f"Tolerance: {self.tol}")

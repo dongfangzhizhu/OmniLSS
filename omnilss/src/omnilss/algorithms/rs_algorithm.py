@@ -1572,7 +1572,7 @@ def rs_fit(
         # Check for increasing deviance
         if g_dev > g_dev_old + 1e-6 and iteration > 1:
             if verbose:
-                print(f"  WARNING: Global deviance increased!")
+                print("  WARNING: Global deviance increased!")
 
     # Check convergence (absolute criterion, R's `abs(G.dev.old-G.dev) < c.crit`
     # at gamlss-5.R:708)

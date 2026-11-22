@@ -514,7 +514,7 @@ def stepwise_distribution_selection(
 
     if verbose:
         print(f"\n{'='*70}")
-        print(f"逐步分布选择")
+        print("逐步分布选择")
         print(f"{'='*70}\n")
         print(f"第 1 步: 比较 {len(family_groups)} 个分布族组")
 
@@ -555,7 +555,7 @@ def stepwise_distribution_selection(
     group_comparison = pd.DataFrame(group_results).sort_values(criterion)
 
     if verbose:
-        print(f"\n第 2 步: 选择最佳组")
+        print("\n第 2 步: 选择最佳组")
         print(group_comparison)
 
     # 第 2 步：在最佳组中详细比较

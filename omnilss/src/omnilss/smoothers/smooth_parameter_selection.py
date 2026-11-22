@@ -240,18 +240,18 @@ def gamlss_with_automatic_smoothing(
     """
     if verbose:
         print(f"\n{'='*70}")
-        print(f"GAMLSS with Automatic Smoothing Parameter Selection")
+        print("GAMLSS with Automatic Smoothing Parameter Selection")
         print(f"{'='*70}")
         print(f"Method: {lambda_method}")
         print(f"Max outer iterations: {max_outer_iter}")
         print(f"Convergence tolerance: {outer_tol}")
-        print(f"\n⚠ NOTE: This is a PROTOTYPE implementation")
-        print(f"The outer loop structure is in place but not fully active.")
+        print("\n⚠ NOTE: This is a PROTOTYPE implementation")
+        print("The outer loop structure is in place but not fully active.")
 
     # Initial fit with default λ values
     if verbose:
         print(f"\n{'='*70}")
-        print(f"Initial fit (iteration 0)")
+        print("Initial fit (iteration 0)")
         print(f"{'='*70}")
 
     model = fit_function(
@@ -279,7 +279,7 @@ def gamlss_with_automatic_smoothing(
 
     # Display smooth term information
     if verbose:
-        print(f"\nSmooth terms in model:")
+        print("\nSmooth terms in model:")
         for param, smooth_list in smooth_fits.items():
             if len(smooth_list) > 0:
                 print(f"  {param}: {len(smooth_list)} smooth term(s)")
@@ -298,13 +298,13 @@ def gamlss_with_automatic_smoothing(
 
     if verbose:
         print(f"\n{'='*70}")
-        print(f"Final model (prototype - no outer loop iterations)")
+        print("Final model (prototype - no outer loop iterations)")
         print(f"{'='*70}")
         print(f"Deviance: {model.g_dev:.6f}")
         print(f"AIC: {model.additional_slots.get('aic', np.nan):.6f}")
         print(f"Effective df: {model.df_fit:.2f}")
-        print(f"\nTo enable full outer loop optimization, the smooth fitting")
-        print(f"code needs to be modified to accept external λ values.")
+        print("\nTo enable full outer loop optimization, the smooth fitting")
+        print("code needs to be modified to accept external λ values.")
 
     return model
 

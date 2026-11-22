@@ -187,7 +187,6 @@ from .ggplots_diag import (
     resid_index,
     resid_symmetry,
     y_acf,
-    y_dots,
     y_epdf,
     y_epit,
     y_pacf,
@@ -645,10 +644,7 @@ from .loglogSurv import logSurv0
 from .loglogplot import loglogplot, LogLogPlotResult
 from .plotCentileSK import PlotCentileSKResult, plotCentileSK
 from .pdfplot import (
-    PDFPlotEntry,
-    PDFPlotResult,
     pdf_plot,
-    pdf_plot_data,
     plotBEINF,
     plotBEINF0,
     plotBEINF1,

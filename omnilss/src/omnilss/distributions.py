@@ -1536,8 +1536,6 @@ def TF() -> StudentTFamily:
             - ((nu_s + 1.0) / 2.0) * jnp.log1p(jnp.square(z) / nu_s)
         )
 
-    import jax
-
     # Vectorised score via vmap of grad
     _grad_mu = jax.vmap(jax.grad(_log_density_scalar, argnums=0))
     _grad_sigma = jax.vmap(jax.grad(_log_density_scalar, argnums=1))

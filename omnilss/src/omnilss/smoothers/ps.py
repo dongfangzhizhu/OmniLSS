@@ -397,7 +397,7 @@ def fit_pspline_smooth(
                 import warnings
 
                 warnings.warn(
-                    f"smoothing_selection module not available, falling back to legacy GCV",
+                    "smoothing_selection module not available, falling back to legacy GCV",
                     UserWarning,
                 )
                 lam = _lambda_gcv(X, y, w, P)

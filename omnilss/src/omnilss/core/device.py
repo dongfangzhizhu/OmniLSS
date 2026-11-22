@@ -558,7 +558,7 @@ def print_device_info() -> None:
     print(f"Device Count: {info.device_count}")
 
     # All devices
-    print(f"\nAvailable Devices:")
+    print("\nAvailable Devices:")
     devices = list_devices()
     for device_type, device_list in devices.items():
         print(f"  {device_type}: {len(device_list)} device(s)")
