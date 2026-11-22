@@ -949,6 +949,8 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
 - [x] **Linux CI 止血（D2.290）**：Group 安装改 `.[server,dev]`（修 Group C 的
   `No module named google`）；R-consistency 第 9 步去掉 glob 引号；TLS 用例改临时端口 +
   60s 启动窗口 + terminate→kill；`test_grpc_metrics_service_direct` 去掉对模块级计数器
-  绝对值的顺序依赖。CI 复跑：TLS 转绿、Group C 从 7 失败降到 0（待新提交确认）。
+  绝对值的顺序依赖；`gamlss_cs` 的 df 求解从 `trace(solve())` 改为
+  `W^-1/2 K W^-1/2` 特征分解的闭式 `Σ1/(1+λμ)`（消除 LAPACK 差异导致的 edf 5.0/7.33 漂移）。
+  CI 复跑：TLS 转绿；Group C 修完 google/metrics 后只剩上述 cs 漂移，已修待再验。
   基线归因见 `.workbuddy/memory/2026-11-22.md`。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。

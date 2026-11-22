@@ -443,17 +443,21 @@ def gamlss_cs(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any):
 
     target = float(x.df) + 2.0
     k = _roughness_matrix(unique_x)
-    wd = np.diag(w_agg)
 
-    # Effective df = trace((W + lambda K)^-1 W); solve for the lambda that
-    # reaches the target df in log space, mirroring R's smooth.spline search.
+    # Effective df = trace((W + lambda K)^-1 W).  Evaluate it through the
+    # symmetric whitened matrix M = W^-1/2 K W^-1/2:
+    #     edf(lambda) = sum_i 1 / (1 + lambda * mu_i)
+    # where mu_i are the eigenvalues of M.  The previous trace(solve(...))
+    # form was ill-conditioned enough that LAPACK/BLAS differences on CI
+    # produced a different root (edf 7.33 instead of 5.0) for identical data.
+    sqrt_w = np.sqrt(w_agg)
+    inv_sqrt_w = 1.0 / sqrt_w
+    whitened = (k * inv_sqrt_w[:, None]) * inv_sqrt_w[None, :]
+    mu, vectors = np.linalg.eigh(whitened)
+    mu = np.maximum(mu, 0.0)
+
     def edf_at(lam: float) -> float:
-        augmented = wd + lam * k
-        try:
-            a_inv_w = np.linalg.solve(augmented, wd)
-        except np.linalg.LinAlgError:  # pragma: no cover - defensive
-            a_inv_w = np.linalg.pinv(augmented) @ wd
-        return float(np.trace(a_inv_w))
+        return float(np.sum(1.0 / (1.0 + lam * mu)))
 
     def edf_gap(log_lambda: float) -> float:
         return edf_at(float(np.exp(log_lambda))) - target
@@ -466,9 +470,12 @@ def gamlss_cs(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any):
     else:
         log_lambda = brentq(edf_gap, lo, hi)
     lam = float(np.exp(log_lambda))
-    a_inv_w = np.linalg.solve(wd + lam * k, wd)
-    fitted_unique = a_inv_w @ y_agg
-    leverage_unique = np.diag(a_inv_w)
+    shrink = 1.0 / (1.0 + lam * mu)
+    fitted_unique = inv_sqrt_w * (
+        vectors @ (shrink * (vectors.T @ (sqrt_w * y_agg)))
+    )
+    # Leverage of the whitened smoother, diag(V diag(shrink) V').
+    leverage_unique = np.sum((vectors * vectors) * shrink[None, :], axis=1)
 
     fitted = fitted_unique[inverse]
     edf = float(np.sum(leverage_unique))
