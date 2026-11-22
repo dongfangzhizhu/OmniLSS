@@ -74,7 +74,6 @@ def _gg_log_pdf(y, mu, sigma, nu):
 
     # For |nu| > 1e-6, use Gamma distribution on z
     # theta = 1/(sigma^2 * nu^2)
-    theta = 1.0 / (sigma * sigma * nu * nu)
 
     # Gamma log-pdf: log p(z) = (theta-1)*log(z) - z*theta - log(Gamma(theta)) - theta*log(theta)
     # But we need dGA(z, mu=1, sigma=sigma*|nu|)

@@ -63,12 +63,6 @@ def _eigen_decompose(
     W_sqrt = np.sqrt(weights)
     XW = X * W_sqrt[:, None]  # (n, p)
     XtWX = XW.T @ XW  # (p, p)
-    Xty = XW.T @ (W_sqrt * (X * W_sqrt[:, None]).T).T  # recompute below
-    Xty = X.T @ (weights * (X @ np.ones(p)))  # placeholder
-
-    # Correct Xty
-    Xty = X.T @ (weights * X @ np.ones(p))  # still wrong, fix:
-    yW = np.ones(n) * weights  # dummy y=1 for structure
     # We only need the eigendecomposition, not the actual fit
     # Compute Cholesky of X'WX
     try:
@@ -130,7 +124,6 @@ def _fast_gcv(
     def gcv_fast(log_lam: float) -> float:
         lam = float(np.exp(log_lam))
         # Eigenvalue-based EDF and RSS
-        denom = d + lam  # (p,)
         # beta_tilde = z / denom  (in rotated space)
         # RSS = yty - z' diag(d/denom) z  (weighted)
         # EDF = sum(d / denom)  ... wait, correct formula:
@@ -160,7 +153,6 @@ def _fast_gcv(
 
     # Final fit at optimal lambda
     inv_denom = 1.0 / (1.0 + lambda_opt * d)
-    rss_w = max(yty - float(np.sum(z**2 * inv_denom)), 1e-15)
     edf = float(np.sum(inv_denom))
 
     return SmoothingResult(

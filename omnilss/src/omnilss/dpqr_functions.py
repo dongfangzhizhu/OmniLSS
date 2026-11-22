@@ -26,6 +26,8 @@ from scipy.stats import t as _t_dist
 from scipy.stats import betabinom as _betabinom_dist, binom as _binom_dist
 from scipy.stats import norm as _norm_dist
 
+from .pig import dPIG, pPIG, qPIG, rPIG
+
 # =============================================================================
 # Normal Distribution (NO)
 # =============================================================================
@@ -2364,9 +2366,6 @@ def generic_r_not_implemented(key, n, *params):
 # Using JAX-compatible numerical methods
 # =============================================================================
 
-from jax.scipy.special import ndtri as norm_ppf
-from jax.scipy.stats import norm as jax_norm
-
 
 def numerical_cdf_continuous(d_func, q, params, lower=-10.0, upper=None, n_points=1000):
     """Numerical CDF using trapezoidal integration.
@@ -2441,10 +2440,9 @@ def numerical_quantile_bisection(
 
     # Bisection search
     # This is a simplified version - proper implementation would use JAX's optimization
-    mid = (lower + upper) / 2.0
 
     # For now, use normal approximation as fallback
-    return norm_ppf(p)
+    return ndtri(p)
 
 
 # =============================================================================
@@ -2462,11 +2460,7 @@ def dNO2(x, mu=0.0, sigma=1.0, log=False):
     # sigma is variance, so std = sqrt(sigma)
     std = jnp.sqrt(sigma)
 
-    return (
-        jax_norm.logpdf(x, loc=mu, scale=std)
-        if log
-        else jax_norm.pdf(x, loc=mu, scale=std)
-    )
+    return norm.logpdf(x, loc=mu, scale=std) if log else norm.pdf(x, loc=mu, scale=std)
 
 
 def pNO2(q, mu=0.0, sigma=1.0, lower_tail=True, log_p=False):
@@ -2476,7 +2470,7 @@ def pNO2(q, mu=0.0, sigma=1.0, lower_tail=True, log_p=False):
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
 
     std = jnp.sqrt(sigma)
-    cdf = jax_norm.cdf(q, loc=mu, scale=std)
+    cdf = norm.cdf(q, loc=mu, scale=std)
 
     if not lower_tail:
         cdf = 1.0 - cdf
@@ -2500,7 +2494,7 @@ def qNO2(p, mu=0.0, sigma=1.0, lower_tail=True, log_p=False):
         p = 1.0 - p
 
     std = jnp.sqrt(sigma)
-    q = mu + std * norm_ppf(p)
+    q = mu + std * ndtri(p)
 
     return q
 
@@ -4482,8 +4476,6 @@ def qBCPE(p, mu=1.0, sigma=1.0, nu=1.0, tau=2.0, lower_tail=True, log_p=False):
     p_np = np.asarray(p, dtype=np.float64)
     tau_np = np.asarray(tau, dtype=np.float64)
     nu_np = np.asarray(nu, dtype=np.float64)
-    sigma_np = np.asarray(sigma, dtype=np.float64)
-    mu_np = np.asarray(mu, dtype=np.float64)
     ftrunc = np.asarray(
         _bcpe_ftrunc(1.0 / (sigma * jnp.abs(nu)), tau), dtype=np.float64
     )
@@ -7419,10 +7411,6 @@ def qexGAUS(p, mu=0.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
     nu = jnp.maximum(nu, eps)
 
     # Use scipy for quantile (simpler and more reliable)
-    from scipy.stats import norm as sp_norm
-
-    # Approximate initial guess using normal quantile
-    q_normal = sp_norm.ppf(p, loc=float(mu), scale=float(sigma))
 
     # Use scipy's root finding
     from scipy.optimize import brentq
@@ -8093,8 +8081,6 @@ def rBNB(key, n, mu=1.0, sigma=1.0, nu=1.0):
 # ------------------------------------------------------------------------------
 # PIG (Poisson-Inverse Gaussian) - 2 parameters
 # ------------------------------------------------------------------------------
-
-from .pig import dPIG, pPIG, qPIG, rPIG
 
 
 def _pig2_alpha(mu, sigma):

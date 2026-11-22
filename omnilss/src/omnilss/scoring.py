@@ -190,7 +190,6 @@ def crps(
     >>> score = crps(model, {"x": x_test}, y_test, n_quantiles=999)
     """
     y_obs = np.asarray(y_obs, dtype=np.float64)
-    n_obs = len(y_obs)
 
     if method == "quantile":
         return _crps_quantile(model, newdata, y_obs, n_quantiles)
@@ -243,14 +242,12 @@ def _crps_sample(
     Uses the identity:
     CRPS(F, y) = E_F[|X - y|] - 0.5 * E_F[|X - X'|]
     """
-    import jax
 
     params = _get_predicted_params(model, newdata)
     jax_params = {k: jnp.array(v) for k, v in params.items()}
     n_obs = len(y_obs)
 
     # Draw samples from the predictive distribution
-    key = jax.random.PRNGKey(0)
     # Expand params to (n_samples, n_obs) shape
     expanded_params = {}
     for k, v in jax_params.items():

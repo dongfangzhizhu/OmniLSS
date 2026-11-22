@@ -428,7 +428,6 @@ def family_summary(family: Any) -> str:
     links = dict(fam.links or {})
     for parameter in fam.parameters:
         if parameter in links:
-            label = f"{parameter:<5}"
             lines.append(f"Link function for {parameter:<5}: {links[parameter]}")
     return "\n".join(lines)
 

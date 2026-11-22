@@ -339,7 +339,6 @@ def _centile_matrix(
     xvalues: np.ndarray,
     cent: np.ndarray,
 ) -> np.ndarray:
-    covariates = [name for name in model.family.estimable_parameters]
     formula = (model.call or {}).get("formula", "")
     terms = [part.strip() for part in formula.split("~", 1)[-1].split("+")]
     linear = [term for term in terms if term not in ("1", "-1", "")]

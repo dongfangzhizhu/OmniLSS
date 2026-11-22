@@ -322,7 +322,6 @@ class DeviceManager:
         >>> info = dm.info
         >>> print(info)
         """
-        all_devices = jax.devices()
         device_count = len(jax.devices(self.device_type))
         available = self._get_available_devices()
 

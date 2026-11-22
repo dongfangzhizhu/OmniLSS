@@ -807,9 +807,6 @@ def gamlssNP(
         .T
     )
     residuals = _normal_quantile(cdf_expanded @ proportions)
-    posterior_residuals = _normal_quantile(
-        np.sum(ww.reshape(K, N).T * cdf_expanded, axis=1)
-    )
 
     fitted_values: dict[str, Any] = {}
     for name in fam.parameters:

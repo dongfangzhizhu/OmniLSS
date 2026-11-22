@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import asdict, replace
+import re as _re
 import warnings
 from numbers import Integral
 import math
@@ -99,8 +100,6 @@ def _parse_formula_core(formula: str):
 def _eval_linear_term(term: str, data: Mapping[str, Any], n: int) -> np.ndarray:
     return _eval_linear_term_shared(term, data, n)
 
-
-import re as _re
 
 _FACTOR_TERM_RE = _re.compile(r"factor\((\w+)\)")
 

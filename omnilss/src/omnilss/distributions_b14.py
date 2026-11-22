@@ -1,8 +1,8 @@
+"""Batch 14: Skew distribution variants and SHASH variants."""
+
 from __future__ import annotations
 
 # Enable float64 precision for numerical accuracy
-
-"""Batch 14: Skew distribution variants and SHASH variants."""
 from dataclasses import dataclass
 import jax.numpy as jnp
 

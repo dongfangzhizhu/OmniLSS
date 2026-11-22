@@ -235,7 +235,6 @@ def ps(
     xmin = xl - 0.01 * (xr - xl)
     dx = (xmax - xmin) / ps_intervals
 
-    sorder = degree + 1
     if (ps_intervals - 1) < 1:
         import warnings
 

@@ -357,7 +357,7 @@ def laplace_posterior_variance(
 
     # H 的逆 = 近似后验协方差
     try:
-        L = stable_cholesky(H)
+        stable_cholesky(H)
         cov = np.linalg.inv(H)
     except Exception:
         # Fallback：pseudo-inverse

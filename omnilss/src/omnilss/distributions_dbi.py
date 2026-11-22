@@ -162,7 +162,6 @@ def _dbi_log_c(mu, sigma, bd):
     sm1 = inv - 1.0
     s_1 = 1.0 - inv
     mu_col = mu[..., None]
-    bd_col = bd[..., None]
 
     n = jnp.maximum(jnp.round(bd), 1.0)
     n_max = int(jnp.max(n))

@@ -27,6 +27,7 @@ from jax.scipy.special import gammaln, betaln, logsumexp
 
 from .ad import build_ad_family, _prepare_jax_args
 from .families import FamilyDefinition
+from .pig import logpmf as _pig_log_pdf
 from .links import (
     identity_derivative,
     identity_inverse,
@@ -49,9 +50,6 @@ from .links import (
 @dataclass(frozen=True)
 class PoissonInverseGaussianFamily(FamilyDefinition):
     """Poisson Inverse Gaussian distribution (`PIG`)."""
-
-
-from .pig import logpmf as _pig_log_pdf
 
 
 def PIG() -> PoissonInverseGaussianFamily:
@@ -556,7 +554,6 @@ def _si_q(
     )
     prob = jnp.exp(p) if log_p else p
     prob = jnp.where(lower_tail, prob, 1.0 - prob)
-    support = jnp.arange(max_value + 1, dtype=jnp.float64)
 
     def one(pi, mui, sigmai, nui):
         _, log_mass = _si_log_pmf_grid(mui, sigmai, nui)

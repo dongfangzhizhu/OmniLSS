@@ -260,8 +260,6 @@ def _tps_basis_matrix(
         Basis matrix, shape (n, k + M)
         where M is the number of polynomial terms
     """
-    n = X.shape[0]
-    k = knots.shape[0]
 
     # Radial basis part
     distances = _euclidean_distance(X, knots)  # (n, k)

@@ -2521,7 +2521,6 @@ def moment_bucket_wrap(
     bootstrap = pd.DataFrame(bootstrap_rows, columns=["X", "Y", "Model", "Col", "Z"])
     points = pd.DataFrame(point_rows, columns=["X", "Y", "Model", "Z"])
     band = pd.DataFrame(band_rows, columns=["X", "Y", "Z"])
-    text = "moment buckets by covariate interval"
     figure, axes = _figure()
     if axes is not None:
         axes.scatter(points["X"], points["Y"], color="red")
@@ -3337,7 +3336,6 @@ def fit_PB(
     )
     nb = basis.shape[1]
     penalty = np.diff(np.eye(nb), n=int(order), axis=0)
-    n = x_values.size
     root_w = np.sqrt(w)
     n_obs = float(np.sum(w != 0))
 
@@ -3389,7 +3387,6 @@ def fit_PB(
     lower = fitted - 2.0 * np.sqrt(variance_fitted)
     upper = fitted + 2.0 * np.sqrt(variance_fitted)
     sigma = float(np.sqrt(max(sigma2, 0.0)))
-    from scipy.interpolate import CubicSpline
 
     grid = np.linspace(float(x_values.min()), float(x_values.max()), 500)
     basis_grid, _ = _bbase(
@@ -3397,7 +3394,6 @@ def fit_PB(
     )
     smooth = basis_grid @ beta
     # R: splinefun(x1, z, method = "natural")
-    spline = CubicSpline(grid, smooth, bc_type="natural")
     log_density = (
         -0.5 * np.log(2.0 * np.pi * sigma**2)
         - 0.5 * (y_values - fitted) ** 2 / sigma**2
@@ -3582,7 +3578,7 @@ def histSmo_plot(
         curve_y = density
     if discrete:
         frequency = counts / float(np.sum(counts)) if np.sum(counts) else counts
-        bars_x, curve_x, curve_y = mids, mids, density
+        curve_x, curve_y = mids, density
     else:
         frequency = density
     text = title or f"smooth histogram of {xname}"

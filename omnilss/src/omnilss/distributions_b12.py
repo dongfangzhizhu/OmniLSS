@@ -1,8 +1,8 @@
+"""Batch 12: Alternative parameterizations and type variants."""
+
 from __future__ import annotations
 
 # Enable float64 precision for numerical accuracy
-
-"""Batch 12: Alternative parameterizations and type variants."""
 from dataclasses import dataclass
 import numpy as np
 import jax.numpy as jnp

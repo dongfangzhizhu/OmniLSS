@@ -363,7 +363,6 @@ def _fit_penalized_ls(
     X_np = np.asarray(X, dtype=np.float64)
     y_np = np.asarray(y, dtype=np.float64)
     w_np = np.asarray(w, dtype=np.float64)
-    D_np = np.asarray(D, dtype=np.float64)
     P_np = np.asarray(P, dtype=np.float64)
 
     Xw = X_np * w_np[:, None]

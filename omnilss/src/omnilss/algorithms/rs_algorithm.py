@@ -1231,7 +1231,6 @@ def rs_fit(
         # off the R initialisation (e.g. ZAGA: nu=1.0 -> logit(1.0)~36, and
         # sigma=y_sd vs R's sigma=1), which corrupted the first RS step.
         # warm_start_result is intentionally not consulted here; see NOTE above.
-        warm_param = None
 
         # D2.38: the initial *fitted values* handed to rs_step are the
         # per-observation response-scale start vector -- R's ``sigma.initial``

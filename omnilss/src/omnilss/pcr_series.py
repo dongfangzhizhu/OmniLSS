@@ -728,7 +728,6 @@ def gamlss_pcr(
     weights = np.asarray(w, dtype=float)
 
     gamma = None
-    newbeta = None
     if spec.df is not None:
         fit = fit_pcr(
             matrix,
@@ -776,7 +775,6 @@ def gamlss_pcr(
         result = get_sig_terms(fit, matrix)
         fitted = result["fitted_values"]
         gamma = result["gamma"]
-        newbeta = result["coefficients"]
         edf = float(np.sum(gamma != 0))
         residuals = response - fitted
     else:

@@ -377,11 +377,13 @@ def make_zero_inflated_family(
 # Now create the variants using existing distributions
 
 # Import base distributions
-from .distributions_b6 import _sichel_log_pdf, _pig_log_pdf
-from .distributions_b6 import _sichel_dldm as _sichel_base_dldm
-from .distributions_b6 import _sichel_dldd as _sichel_base_dldd
-from .distributions_b6 import _r_negative_information
-from .distributions_b9 import _zipf_log_pdf
+# Late imports: b6/b9 import this module's families at module scope, so these
+# helpers are imported after the factories are defined to avoid a cycle.
+from .distributions_b6 import _sichel_log_pdf, _pig_log_pdf  # noqa: E402
+from .distributions_b6 import _sichel_dldm as _sichel_base_dldm  # noqa: E402
+from .distributions_b6 import _sichel_dldd as _sichel_base_dldd  # noqa: E402
+from .distributions_b6 import _r_negative_information  # noqa: E402
+from .distributions_b9 import _zipf_log_pdf  # noqa: E402
 
 
 # Define binomial log-PDF (not exported from distributions.py)
@@ -1421,7 +1423,7 @@ def ZAZIPF():
 # ============================================================================
 
 # Import additional base distributions
-from .distributions_b7 import _bnb_log_pdf
+from .distributions_b7 import _bnb_log_pdf  # noqa: E402 - avoids b7 import cycle
 
 
 # Helper to create NBI log-PDF wrapper

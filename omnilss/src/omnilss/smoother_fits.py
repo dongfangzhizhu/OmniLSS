@@ -325,7 +325,6 @@ def gamlss_ps(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any):
         )
 
     n = y.shape[0]
-    N = float(np.sum(w != 0))
     df = x.df
     lam = x.lambda_
     if lam is None:

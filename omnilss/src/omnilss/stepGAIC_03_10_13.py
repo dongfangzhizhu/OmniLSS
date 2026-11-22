@@ -66,7 +66,9 @@ def extract_aic(
     return ExtractAICResult(edf=edf, aic=aic)
 
 
-from .DropAddStepGAIC_Parallel import step_gaic
+from .DropAddStepGAIC_Parallel import (  # noqa: E402 - re-exported after aliases
+    step_gaic,
+)
 
 extractAIC = extract_aic
 stepGAIC = step_gaic

@@ -1,8 +1,8 @@
+"""Batch 15: Final distributions - SEP, SST, EGB2, GB2, LQNO, etc."""
+
 from __future__ import annotations
 
 # Enable float64 precision for numerical accuracy
-
-"""Batch 15: Final distributions - SEP, SST, EGB2, GB2, LQNO, etc."""
 from dataclasses import dataclass
 import jax
 import jax.numpy as jnp

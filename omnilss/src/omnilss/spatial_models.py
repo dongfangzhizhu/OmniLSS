@@ -352,7 +352,6 @@ def MRFA(
     response = np.asarray(y, dtype=np.float64).ravel()
     levels = _levels_of(x, area)
     codes = _codes(x, levels)
-    nfv = len(levels)
     N = response.size
     weights = (
         np.ones(N)
