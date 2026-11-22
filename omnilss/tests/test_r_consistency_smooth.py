@@ -114,7 +114,7 @@ class TestRConsistencySmooth(unittest.TestCase):
         data = {"y": y, "x": self.x}
         
         # Fit in Python
-        py_model = gamlss_ml(
+        py_model = gamlss(
             formula="y ~ pb(x, df=5)",
             family=NO(),
             data=data
@@ -149,7 +149,7 @@ class TestRConsistencySmooth(unittest.TestCase):
         data = {"y": y, "x": self.x}
         
         # Fit in Python
-        py_model = gamlss_ml(
+        py_model = gamlss(
             formula="y ~ pb(x, df=6)",
             family=GA(),
             data=data
@@ -212,7 +212,7 @@ class TestRConsistencySmooth(unittest.TestCase):
         data = {"y": y, "x1": x1, "x2": x2}
         
         # Fit in Python
-        py_model = gamlss_ml(
+        py_model = gamlss(
             formula="y ~ x1 + pb(x2, df=5)",
             family=NO(),
             data=data
@@ -248,7 +248,7 @@ class TestRConsistencySmooth(unittest.TestCase):
         data = {"y": y, "x1": x1, "x2": x2}
         
         # Fit in Python
-        py_model = gamlss_ml(
+        py_model = gamlss(
             formula="y ~ pb(x1, df=4) + pb(x2, df=4)",
             family=NO(),
             data=data

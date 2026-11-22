@@ -38,10 +38,20 @@ jobs:
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: '4.5.0'
-      - name: Install R packages for R-consistency group
+      - name: Install R packages for R-consistency group (pinned reference)
         if: contains(matrix.group.name, 'R Consistency')
         run: |
-          Rscript -e 'install.packages(c("gamlss", "gamlss.dist", "jsonlite"), repos = "https://cloud.r-project.org")'
+          # The parity tests pin gamlss 5.5-0 / gamlss.dist 6.1-1 (the local
+          # reference).  CRAN's latest (5.5-5 / 6.1-11) changed DBI, DBURR12,
+          # ZISICHEL, GU and boundary behaviour, which made 39 of 40 Group B
+          # failures pure reference-version drift.  Install the archived
+          # tarballs so CI and the tests agree on the reference.
+          Rscript -e 'install.packages("jsonlite", repos = "https://cloud.r-project.org")'
+          Rscript -e 'install.packages(c(
+            "https://cran.r-project.org/src/contrib/Archive/gamlss.data/gamlss.data_6.0-6.tar.gz",
+            "https://cran.r-project.org/src/contrib/Archive/gamlss.dist/gamlss.dist_6.1-1.tar.gz",
+            "https://cran.r-project.org/src/contrib/Archive/gamlss/gamlss_5.5-0.tar.gz"
+          ), repos = NULL, type = "source")'
       - run: pip install uv
       - name: Install dependencies (server extras for Group C grpc tests)
         run: |
