@@ -85,6 +85,7 @@ class ResponseDomainError(ValueError):
 # Domain predicates.  Each mirrors one R `y.valid` body verbatim.
 # ---------------------------------------------------------------------------
 
+
 def _all_positive(y: np.ndarray) -> np.ndarray:
     """R: `all(y > 0)`"""
     return y > 0.0
@@ -155,13 +156,13 @@ _RESPONSE_DOMAINS: dict[str, ResponseDomain] = {
     # --- all(y > 0) ---
     "BCCG": _all_positive,
     "BCCGo": _all_positive,
-    "BCCGUNTR": _all_positive,   # R: BCCGuntr
+    "BCCGUNTR": _all_positive,  # R: BCCGuntr
     "BCPE": _all_positive,
     "BCPEo": _all_positive,
-    "BCPEUNTR": _all_positive,   # R: BCPEuntr
+    "BCPEUNTR": _all_positive,  # R: BCPEuntr
     "BCT": _all_positive,
     "BCTo": _all_positive,
-    "BCTUNTR": _all_positive,    # R: BCTuntr
+    "BCTUNTR": _all_positive,  # R: BCTuntr
     "EXP": _all_positive,
     "GA": _all_positive,
     "GAF": _all_positive,
@@ -169,7 +170,7 @@ _RESPONSE_DOMAINS: dict[str, ResponseDomain] = {
     "GIG": _all_positive,
     "GP": _all_positive,
     "IG": _all_positive,
-    "IGA": _all_positive,        # R kernel: IG
+    "IGA": _all_positive,  # R kernel: IG
     "LG": _all_positive,
     "LNO": _all_positive,
     "LOGNO": _all_positive,
@@ -185,9 +186,9 @@ _RESPONSE_DOMAINS: dict[str, ResponseDomain] = {
     "DBI": _all_non_negative,
     "DBURR12": _all_non_negative,
     "DEL": _all_non_negative,
-    "DELAPORT": _all_non_negative,            # R kernel: DEL
+    "DELAPORT": _all_non_negative,  # R kernel: DEL
     "DPO": _all_non_negative,
-    "DPO1": _all_non_negative,                # R kernel: DPO
+    "DPO1": _all_non_negative,  # R kernel: DPO
     "GENERALISEDPOISSON": _all_non_negative,  # R kernel: GPO
     "GEOM": _all_non_negative,
     "GEOMo": _all_non_negative,
@@ -229,16 +230,16 @@ _RESPONSE_DOMAINS: dict[str, ResponseDomain] = {
     "LOGITNO": _in_open_unit,
     "SIMPLEX": _in_open_unit,
     # --- unit-interval supports (endpoints differ per family) ---
-    "BEINF": _in_closed_unit,      # all(y >= 0 & y <= 1)
+    "BEINF": _in_closed_unit,  # all(y >= 0 & y <= 1)
     "BEINF0": _in_unit_excl_zero,  # all(y >= 0 & y < 1)
-    "BEINF1": _in_unit_excl_one,   # all(y > 0 & y <= 1)
-    "BEOI": _in_unit_excl_one,     # all(y > 0 & y <= 1)  -- one-inflated
-    "BEZI": _in_unit_excl_zero,    # all(y >= 0 & y < 1)  -- zero-inflated
+    "BEINF1": _in_unit_excl_one,  # all(y > 0 & y <= 1)
+    "BEOI": _in_unit_excl_one,  # all(y > 0 & y <= 1)  -- one-inflated
+    "BEZI": _in_unit_excl_zero,  # all(y >= 0 & y < 1)  -- zero-inflated
     # --- shifted / truncated supports ---
-    "MN4": _in_closed_1_4,         # all(y >= 1 & y <= 4)
-    "MN5": _in_closed_1_5,         # all(y >= 1 & y <= 5)
-    "PARETO": _above_one,          # all(y > 1)
-    "ZIPF": _at_least_one,         # all(y >= 1)
+    "MN4": _in_closed_1_4,  # all(y >= 1 & y <= 4)
+    "MN5": _in_closed_1_5,  # all(y >= 1 & y <= 5)
+    "PARETO": _above_one,  # all(y > 1)
+    "ZIPF": _at_least_one,  # all(y >= 1)
 }
 
 #: Case-insensitive index over the table.  `gamlss()` passes `family.name`,

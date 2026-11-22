@@ -261,7 +261,7 @@ def build_smooth_design(
             cs_method = (
                 fit_method if fit_method in ["GCV", "REML", "AIC", "auto"] else "GCV"
             )
-            
+
             # R's cs() default is df=3, which becomes df=5 after adding 2 internally
             # If no df is specified, use R's default
             cs_df = smooth_term.df if smooth_term.df is not None else 3
@@ -273,18 +273,19 @@ def build_smooth_design(
                 df=cs_df,
                 method=cs_method,
             )
-            
+
             # For cs(), we use the fitted values directly as the "basis"
             # This is different from pb/ps which use B-spline basis functions
             cs_fitted = cs_result.fitted_values.reshape(-1, 1)
-            
+
             # Replace the placeholder basis with actual fitted values
             X = np.hstack([X, cs_fitted])
-            
+
             # Create a dummy penalty matrix (cs uses internal smoothing)
             from omnilss.smoothers.penalties import penalty_matrix
+
             dummy_P = penalty_matrix(1, order=2)
-            
+
             smooth_fits.append(
                 SmoothFitInfo(
                     term_index=i,
@@ -311,7 +312,9 @@ def build_smooth_design(
                         # UnivariateSpline._data = (t, c, w, xb, xe, k, s, ...)
                         "degree": int(
                             getattr(
-                                getattr(cs_result, "spline", None), "_data", [0, 0, 0, 0, 0, 3]
+                                getattr(cs_result, "spline", None),
+                                "_data",
+                                [0, 0, 0, 0, 0, 3],
                             )[5]
                             if getattr(cs_result, "spline", None) is not None
                             else 3
@@ -403,9 +406,9 @@ def build_smooth_design(
                 lambda_origin=(
                     "user_fixed"
                     if smooth_term.lambda_ is not None
-                    else "df_target"
-                    if smooth_term.df is not None
-                    else "method_selected"
+                    else (
+                        "df_target" if smooth_term.df is not None else "method_selected"
+                    )
                 ),
             )
         )

@@ -1,8 +1,19 @@
 """Runtime-layer configuration and backend contracts."""
 
 from .backend import RuntimeBackend
-from .errors import ConvergenceError, DistributionError, NumericalError, OmniLSSError, RuntimeExecutionError
-from .config import DeterministicPolicy, DTypePolicy, RuntimeTolerancePolicy, SeedManager
+from .errors import (
+    ConvergenceError,
+    DistributionError,
+    NumericalError,
+    OmniLSSError,
+    RuntimeExecutionError,
+)
+from .config import (
+    DeterministicPolicy,
+    DTypePolicy,
+    RuntimeTolerancePolicy,
+    SeedManager,
+)
 from .optimizer import (
     ConvergenceMonitor,
     ConvergenceStatus,
@@ -42,6 +53,11 @@ __all__ = [
     "build_runtime_event",
 ]
 
-from .profiling import ProfileEvent, RuntimeProfiler, to_collapsed_stacks, write_collapsed_stacks
+from .profiling import (
+    ProfileEvent,
+    RuntimeProfiler,
+    to_collapsed_stacks,
+    write_collapsed_stacks,
+)
 
 from .observability import RuntimeLogEvent, StructuredRuntimeLogger, build_runtime_event

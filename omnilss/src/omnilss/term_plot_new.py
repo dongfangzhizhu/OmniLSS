@@ -59,12 +59,18 @@ def term_plot_data(
     if not 0 < level < 1:
         raise ValueError("level must be between 0 and 1")
 
-    term_info = terms if terms is not None else list(object.terms.get(selected, {}).get("term_labels", []))
+    term_info = (
+        terms
+        if terms is not None
+        else list(object.terms.get(selected, {}).get("term_labels", []))
+    )
     requested_terms = [str(term).strip() for term in term_info if str(term).strip()]
     if not requested_terms:
         raise ValueError("no terms available for term plot data")
 
-    lpred_result = lpred(object, what=selected, type="terms", terms=requested_terms, se_fit=se)
+    lpred_result = lpred(
+        object, what=selected, type="terms", terms=requested_terms, se_fit=se
+    )
     if isinstance(lpred_result, dict):
         fit_matrix = np.asarray(lpred_result["fit"], dtype=np.float64)
         se_matrix = np.asarray(lpred_result["se.fit"], dtype=np.float64)

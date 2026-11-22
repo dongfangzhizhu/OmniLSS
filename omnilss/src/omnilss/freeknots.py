@@ -18,6 +18,7 @@ standalone callback (gamlss_fk) and refused inside gamlss() with a clear error.
 Not ported: base="Bbase" (B-spline design matrix), lambda-penalised variants,
 and the R methods (print/summary/vcov).  Each is rejected explicitly.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -87,7 +88,9 @@ def fk(x: Any = None, start: Any = None, control: Any = None, **kwargs: Any) -> 
     return FkTerm(x=values, start=start, control=settings)
 
 
-def _design(x: np.ndarray, knots: np.ndarray, degree: int, fixed: tuple[float, ...]) -> np.ndarray:
+def _design(
+    x: np.ndarray, knots: np.ndarray, degree: int, fixed: tuple[float, ...]
+) -> np.ndarray:
     columns = [np.ones_like(x)]
     for power in range(1, degree + 1):
         columns.append(x**power)
@@ -117,7 +120,9 @@ class FixedKnotFit:
 def _gaussian_deviance(y: np.ndarray, fitted: np.ndarray, sigma: float) -> float:
     n = y.size
     rss = float(np.sum((y - fitted) ** 2))
-    return float(n * np.log(2.0 * np.pi) + 2.0 * n * np.log(sigma) + rss / (sigma * sigma))
+    return float(
+        n * np.log(2.0 * np.pi) + 2.0 * n * np.log(sigma) + rss / (sigma * sigma)
+    )
 
 
 def fitFixedKnots(
@@ -203,18 +208,25 @@ def fitFreeKnots(
     if knots is None or np.asarray(knots).size == 0:
         raise ValueError("fitFreeKnots needs at least one starting knot")
     start = np.asarray(knots, dtype=np.float64).ravel()
-    lower = float(covariate.min()) + np.finfo(np.float64).eps**0.25
-    upper = float(covariate.max()) - np.finfo(np.float64).eps**0.25
+    lower = float(covariate.min()) + np.finfo(np.float64).eps ** 0.25
+    upper = float(covariate.max()) - np.finfo(np.float64).eps ** 0.25
 
     scale = max(upper - lower, np.finfo(np.float64).eps)
 
     def loss(candidate: Any) -> float:
-        values = np.sort(lower + np.atleast_1d(np.asarray(candidate, dtype=np.float64)) * scale)
+        values = np.sort(
+            lower + np.atleast_1d(np.asarray(candidate, dtype=np.float64)) * scale
+        )
         if np.unique(values).size < values.size:
             return 1e12
         return fitFixedKnots(
-            y=response, x=covariate, weights=weights, knots=values,
-            degree=degree, fixed=fixed, base=base,
+            y=response,
+            x=covariate,
+            weights=weights,
+            knots=values,
+            degree=degree,
+            fixed=fixed,
+            base=base,
         ).rss
 
     from scipy.optimize import minimize, minimize_scalar
@@ -238,7 +250,9 @@ def fitFreeKnots(
         best_point = None
         for candidate in candidates:
             result = minimize(
-                loss, candidate, method="L-BFGS-B",
+                loss,
+                candidate,
+                method="L-BFGS-B",
                 bounds=[(1e-3, 1.0 - 1e-3)] * start.size,
                 options={"eps": 5e-4, "ftol": 1e-14, "maxiter": 200},
             )
@@ -248,8 +262,13 @@ def fitFreeKnots(
         optimised = np.sort(lower + best_point * scale)
     optimised = np.sort(optimised)
     fit = fitFixedKnots(
-        y=response, x=covariate, weights=weights, knots=optimised,
-        degree=degree, fixed=fixed, base=base,
+        y=response,
+        x=covariate,
+        weights=weights,
+        knots=optimised,
+        degree=degree,
+        fixed=fixed,
+        base=base,
     )
     return FreeKnotFit(
         fitted_values=fit.fitted_values,
@@ -298,7 +317,9 @@ def gamlss_fk(
     if y is None:
         raise ValueError("y is required")
     if xeval is not None:
-        raise NotImplementedError("the xeval (prediction) branch of gamlss.fk is not ported")
+        raise NotImplementedError(
+            "the xeval (prediction) branch of gamlss.fk is not ported"
+        )
     yv = np.asarray(y, dtype=np.float64).ravel()
     if yv.size != x.x.size:
         raise ValueError("the fk term and y must have the same length")
@@ -306,13 +327,23 @@ def gamlss_fk(
     start = x.start if x.start is not None else np.array([float(np.median(x.x))])
     if control.all_fixed or first_iter:
         fit = fitFixedKnots(
-            y=yv, x=x.x, weights=w, knots=start,
-            degree=control.degree, fixed=control.fixed, base=control.base,
+            y=yv,
+            x=x.x,
+            weights=w,
+            knots=start,
+            degree=control.degree,
+            fixed=control.fixed,
+            base=control.base,
         )
     else:
         fit = fitFreeKnots(
-            y=yv, x=x.x, weights=w, knots=start,
-            degree=control.degree, fixed=control.fixed, base=control.base,
+            y=yv,
+            x=x.x,
+            weights=w,
+            knots=start,
+            degree=control.degree,
+            fixed=control.fixed,
+            base=control.base,
         )
     return FkFit(
         fitted_values=fit.fitted_values,
@@ -379,7 +410,9 @@ def centilesTwo(
     params = predict_params(object, newdata)
     fam = object.family
     args = [np.asarray(params[name], dtype=np.float64) for name in fam.parameters]
-    values = np.asarray(fam.q(float(cent), *args), dtype=np.float64).reshape(mesh[0].shape)
+    values = np.asarray(fam.q(float(cent), *args), dtype=np.float64).reshape(
+        mesh[0].shape
+    )
 
     observed1 = np.asarray(data[x1_name], dtype=np.float64)
     observed2 = np.asarray(data[x2_name], dtype=np.float64)
@@ -406,7 +439,9 @@ def centilesTwo(
         axes = figure.add_subplot(111)
         if image:
             axes.imshow(
-                values, origin="lower", aspect="auto",
+                values,
+                origin="lower",
+                aspect="auto",
                 extent=[g1.min(), g1.max(), g2.min(), g2.max()],
             )
         else:

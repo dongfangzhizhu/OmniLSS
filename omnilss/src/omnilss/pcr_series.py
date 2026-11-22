@@ -24,6 +24,7 @@ Documented deviations:
   vector when exactly one covariate survives -- and fitPCR(supervised = TRUE)
   then fails on dim(X)[2].  Python always returns a one-column DataFrame.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -53,9 +54,11 @@ def weighted_sd(values: Any, weights: Any) -> np.ndarray | float:
     matrix = np.asarray(values, dtype=float)
     w = np.asarray(weights, dtype=float)
     sum_w = float(w.sum())
-    sum_w2 = float((w ** 2).sum())
+    sum_w2 = float((w**2).sum())
     if matrix.ndim == 1:
-        numerator = float((w * matrix**2).sum()) * sum_w - float((w * matrix).sum()) ** 2
+        numerator = (
+            float((w * matrix**2).sum()) * sum_w - float((w * matrix).sum()) ** 2
+        )
         return float(np.sqrt(numerator / (sum_w**2 - sum_w2)))
     numerator = (w[:, None] * matrix**2).sum(axis=0) * sum_w - (
         (w[:, None] * matrix).sum(axis=0)
@@ -158,7 +161,9 @@ class PCRFit:
         if matrix.ndim == 1:
             matrix = matrix[None, :]
         if matrix.shape[1] != self.dim_x[1]:
-            raise ValueError("the dimensions of the new data is not the same with the old")
+            raise ValueError(
+                "the dimensions of the new data is not the same with the old"
+            )
         scaled = (matrix - self.center) / self.scale
         return np.asarray(scaled @ self.coef(pc=pc), dtype=float) + self.mean_y
 
@@ -186,7 +191,10 @@ def which_yX_Corr(
         )
     names = [str(name) for name in names]
     correlations = np.array(
-        [np.corrcoef(response, matrix[:, index])[0, 1] for index in range(matrix.shape[1])]
+        [
+            np.corrcoef(response, matrix[:, index])[0, 1]
+            for index in range(matrix.shape[1])
+        ]
     )
     correlations = np.round(correlations, digits)
     selected = [name for name, value in zip(names, correlations) if abs(value) > r]
@@ -236,9 +244,14 @@ def fit_pcr(
     if n < p and maximum > n:
         maximum = n
 
-    column_names = list(names) if names is not None else [
-        str(value) for value in getattr(x, "columns", [f"X{index + 1}" for index in range(p)])
-    ]
+    column_names = (
+        list(names)
+        if names is not None
+        else [
+            str(value)
+            for value in getattr(x, "columns", [f"X{index + 1}" for index in range(p)])
+        ]
+    )
     if len(column_names) != p:
         column_names = [f"X{index + 1}" for index in range(p)]
 
@@ -285,7 +298,8 @@ def fit_pcr(
                     * np.sum(
                         -0.5 * _LOG_2PI
                         - np.log(sigma[m - 1])
-                        - (response - fitted[:, m - 1]) ** 2 / (2.0 * sigma[m - 1] ** 2),
+                        - (response - fitted[:, m - 1]) ** 2
+                        / (2.0 * sigma[m - 1] ** 2),
                     )
                     + k * (m + 2)
                 )
@@ -396,7 +410,7 @@ def pc(
     """R pc(): principal-component smoother specification."""
 
     if method not in ("t-values", "GAIC", "k-fold"):
-        raise ValueError("'arg' should be one of [\'t-values\', \'GAIC\', \'k-fold\']")
+        raise ValueError("'arg' should be one of ['t-values', 'GAIC', 'k-fold']")
 
     supplied = sum(item is not None for item in (x_vars, x, x_svd))
     if supplied == 0:
@@ -419,8 +433,14 @@ def pc(
         names = [str(name) for name in x_vars]
         n, p = scaled.shape
         u, d, vt = np.linalg.svd(scaled, full_matrices=False)
-        components = {"d": d, "u": u, "vt": vt, "X": scaled,
-                      "center": center_values, "scale": spread}
+        components = {
+            "d": d,
+            "u": u,
+            "vt": vt,
+            "X": scaled,
+            "center": center_values,
+            "scale": spread,
+        }
     elif x is not None:
         matrix = np.asarray(x, dtype=float)
         if matrix.ndim != 2:
@@ -441,25 +461,55 @@ def pc(
             center_values = None
             spread = None
             scaled = matrix.copy()
-        names = [str(name) for name in getattr(x, "columns", [f"X{index + 1}" for index in range(scaled.shape[1])])]
+        names = [
+            str(name)
+            for name in getattr(
+                x, "columns", [f"X{index + 1}" for index in range(scaled.shape[1])]
+            )
+        ]
         n, p = scaled.shape
         u, d, vt = np.linalg.svd(scaled, full_matrices=False)
-        components = {"d": d, "u": u, "vt": vt, "X": scaled,
-                      "center": center_values, "scale": spread}
+        components = {
+            "d": d,
+            "u": u,
+            "vt": vt,
+            "X": scaled,
+            "center": center_values,
+            "scale": spread,
+        }
     else:
         if isinstance(x_svd, SVDResult):
-            components = {"d": np.asarray(x_svd.d, float), "u": np.asarray(x_svd.u, float),
-                          "vt": np.asarray(x_svd.vt, float), "X": np.asarray(x_svd.X, float),
-                          "center": np.asarray(x_svd.center, float),
-                          "scale": np.asarray(x_svd.scale, float)}
-        elif isinstance(x_svd, Mapping) and {"d", "u", "vt", "X", "center", "scale"} <= set(x_svd):
-            components = {key: np.asarray(x_svd[key], float) for key in ("d", "u", "vt", "X", "center", "scale")}
+            components = {
+                "d": np.asarray(x_svd.d, float),
+                "u": np.asarray(x_svd.u, float),
+                "vt": np.asarray(x_svd.vt, float),
+                "X": np.asarray(x_svd.X, float),
+                "center": np.asarray(x_svd.center, float),
+                "scale": np.asarray(x_svd.scale, float),
+            }
+        elif isinstance(x_svd, Mapping) and {
+            "d",
+            "u",
+            "vt",
+            "X",
+            "center",
+            "scale",
+        } <= set(x_svd):
+            components = {
+                key: np.asarray(x_svd[key], float)
+                for key in ("d", "u", "vt", "X", "center", "scale")
+            }
         else:
             raise ValueError("x.svd should be a list of 6, created by GetSVD()")
         n = components["u"].shape[0]
         # R reads p from nrow(vt), which is max.number when the SVD was trimmed.
         p = components["vt"].shape[0]
-        names = [str(name) for name in getattr(components["X"], "columns", [f"X{index + 1}" for index in range(p)])]
+        names = [
+            str(name)
+            for name in getattr(
+                components["X"], "columns", [f"X{index + 1}" for index in range(p)]
+            )
+        ]
         if len(names) != components["vt"].shape[1]:
             names = [f"X{index + 1}" for index in range(components["vt"].shape[1])]
 
@@ -551,7 +601,9 @@ def gamlss_pc(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any) -> PCFit
             beta = rotation[:, :cap] @ expanded
             aic = _lm_aic(residuals, weights, max(edf, 1), spec.k)
         else:
-            raise NotImplementedError("pc(method = 'k-fold') is not implemented in R either")
+            raise NotImplementedError(
+                "pc(method = 'k-fold') is not implemented in R either"
+            )
     else:
         count = int(edf)
         design = scores[:, :count]
@@ -616,7 +668,7 @@ def pcr(
     """R pcr(): principal-component regression smoother specification."""
 
     if method not in ("GAIC", "t-values", "SPCR"):
-        raise ValueError("'arg' should be one of [\'GAIC\', \'t-values\', \'SPCR\']")
+        raise ValueError("'arg' should be one of ['GAIC', 't-values', 'SPCR']")
     if x_vars is not None and x is not None:
         raise ValueError("use only one of the arguments x or x.vars")
     if x_vars is None and x is None:
@@ -630,7 +682,12 @@ def pcr(
         names = [str(name) for name in x_vars]
     else:
         matrix = np.asarray(x, dtype=float)
-        names = [str(name) for name in getattr(x, "columns", [f"X{index + 1}" for index in range(matrix.shape[1])])]
+        names = [
+            str(name)
+            for name in getattr(
+                x, "columns", [f"X{index + 1}" for index in range(matrix.shape[1])]
+            )
+        ]
 
     n, p = matrix.shape
     if df is not None and df > min(n, p):
@@ -652,7 +709,9 @@ def pcr(
     )
 
 
-def gamlss_pcr(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any) -> PCRSmootherFit:
+def gamlss_pcr(
+    x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any
+) -> PCRSmootherFit:
     """R gamlss.pcr: one PCR backfitting step."""
 
     spec = x
@@ -671,14 +730,24 @@ def gamlss_pcr(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any) -> PCRS
     gamma = None
     newbeta = None
     if spec.df is not None:
-        fit = fit_pcr(matrix, response, weights, M=spec.M, df=spec.df, k=spec.k,
-                      r=spec.r, names=spec.names)
+        fit = fit_pcr(
+            matrix,
+            response,
+            weights,
+            M=spec.M,
+            df=spec.df,
+            k=spec.k,
+            r=spec.r,
+            names=spec.names,
+        )
         fitted = fit.fitted(pc=int(spec.df))
         edf = float(fit.pc)
         residuals = fit.residuals_at(pc=int(spec.df))
     elif spec.method == "GAIC":
         previous = float(spec.state.get("lambda", 0))
-        fit = fit_pcr(matrix, response, weights, M=spec.M, k=spec.k, r=spec.r, names=spec.names)
+        fit = fit_pcr(
+            matrix, response, weights, M=spec.M, k=spec.k, r=spec.r, names=spec.names
+        )
         target = float(fit.pc)
         tolerance = float(np.ceil(spec.M / 10.0))
         if previous != 0.0 and abs(previous - target) > tolerance:
@@ -694,8 +763,16 @@ def gamlss_pcr(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any) -> PCRS
             spec.state["lambda"] = target
     elif spec.method == "t-values":
         edf = float(spec.M)
-        fit = fit_pcr(matrix, response, weights, M=spec.M, df=spec.M, k=spec.k,
-                      r=spec.r, names=spec.names)
+        fit = fit_pcr(
+            matrix,
+            response,
+            weights,
+            M=spec.M,
+            df=spec.M,
+            k=spec.k,
+            r=spec.r,
+            names=spec.names,
+        )
         result = get_sig_terms(fit, matrix)
         fitted = result["fitted_values"]
         gamma = result["gamma"]
@@ -703,8 +780,17 @@ def gamlss_pcr(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any) -> PCRS
         edf = float(np.sum(gamma != 0))
         residuals = response - fitted
     else:
-        fit = fit_pcr(matrix, response, weights, M=spec.M, df=None, supervised=True,
-                      k=spec.k, r=spec.r, names=spec.names)
+        fit = fit_pcr(
+            matrix,
+            response,
+            weights,
+            M=spec.M,
+            df=None,
+            supervised=True,
+            k=spec.k,
+            r=spec.r,
+            names=spec.names,
+        )
         fitted = fit.fitted()
         edf = float(fit.pc)
         residuals = fit.residuals_at()

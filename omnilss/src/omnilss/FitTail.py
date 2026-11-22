@@ -17,6 +17,7 @@ coefficients, residual sum of squares and fitted line.
 R prints the coefficients and the error sum of squares and then draws the plot;
 printing is reproduced (print=True) and the plot is not ported.
 """
+
 from __future__ import annotations
 
 import builtins
@@ -107,7 +108,9 @@ def _tail_setup(y: Any, prob: float):
     return values, threshold, tail, new_y
 
 
-def _fit_loglog(y: Any, prob: float, kind: int, print: bool, title, lcol, ltype, plot: bool):
+def _fit_loglog(
+    y: Any, prob: float, kind: int, print: bool, title, lcol, ltype, plot: bool
+):
     _values, threshold, tail, new_y = _tail_setup(y, prob)
     if kind == 1:
         x = np.log(np.log(tail))
@@ -147,19 +150,46 @@ def _fit_loglog(y: Any, prob: float, kind: int, print: bool, title, lcol, ltype,
     )
 
 
-def loglogSurv1(y: Any, prob: float = 0.9, print: bool = True, title=None, lcol=None, ltype=1, plot: bool = False, **kwargs: Any):
+def loglogSurv1(
+    y: Any,
+    prob: float = 0.9,
+    print: bool = True,
+    title=None,
+    lcol=None,
+    ltype=1,
+    plot: bool = False,
+    **kwargs: Any,
+):
     """R loglogSurv1: type I (log-Weibull) tail check, x = log(log(y))."""
 
     return _fit_loglog(y, prob, 1, print, title, lcol, ltype, plot)
 
 
-def loglogSurv2(y: Any, prob: float = 0.9, print: bool = True, title=None, lcol=None, ltype=1, plot: bool = False, **kwargs: Any):
+def loglogSurv2(
+    y: Any,
+    prob: float = 0.9,
+    print: bool = True,
+    title=None,
+    lcol=None,
+    ltype=1,
+    plot: bool = False,
+    **kwargs: Any,
+):
     """R loglogSurv2: type II (Weibull) tail check, x = log(y)."""
 
     return _fit_loglog(y, prob, 2, print, title, lcol, ltype, plot)
 
 
-def loglogSurv3(y: Any, prob: float = 0.9, print: bool = True, title=None, lcol=None, ltype=1, plot: bool = False, **kwargs: Any):
+def loglogSurv3(
+    y: Any,
+    prob: float = 0.9,
+    print: bool = True,
+    title=None,
+    lcol=None,
+    ltype=1,
+    plot: bool = False,
+    **kwargs: Any,
+):
     """R loglogSurv3: type III (Gumbel) tail check, x = y."""
 
     return _fit_loglog(y, prob, 3, print, title, lcol, ltype, plot)

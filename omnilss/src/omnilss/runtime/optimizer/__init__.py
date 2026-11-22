@@ -14,11 +14,16 @@ class RSOptimizer:
     def optimize(self, context):
         model = context["runner"]("RS")
         state = self.adapter.step({"model": model}, self.adapter.initialize({}))
-        return type("OptimizerResult", (), {
-            "converged": state.converged,
-            "iterations": state.iteration,
-            "diagnostics": state.diagnostics,
-        })()
+        return type(
+            "OptimizerResult",
+            (),
+            {
+                "converged": state.converged,
+                "iterations": state.iteration,
+                "diagnostics": state.diagnostics,
+            },
+        )()
+
 
 __all__ = [
     "ConvergenceMonitor",

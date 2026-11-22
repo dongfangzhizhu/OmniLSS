@@ -125,7 +125,9 @@ def _rhs_terms(formula_text: str) -> list[str]:
     rhs = normalized.split("~", 1)[1].strip()
     if rhs in {"", "1"}:
         return []
-    return [term.strip() for term in rhs.split("+") if term.strip() and term.strip() != "1"]
+    return [
+        term.strip() for term in rhs.split("+") if term.strip() and term.strip() != "1"
+    ]
 
 
 def _response_name_from_formula(formula_text: str) -> str:
@@ -156,21 +158,31 @@ def _fit_with_updated_formula(
     if object.call is None or "data" not in object.call:
         raise ValueError("object must contain stored call data")
 
-    mu_formula = formula_updates.get("mu", _normalize_formula_text(object.formulas.get("mu", "")))
-    sigma_formula = formula_updates.get("sigma", _normalize_formula_text(object.formulas.get("sigma", "~1")))
+    mu_formula = formula_updates.get(
+        "mu", _normalize_formula_text(object.formulas.get("mu", ""))
+    )
+    sigma_formula = formula_updates.get(
+        "sigma", _normalize_formula_text(object.formulas.get("sigma", "~1"))
+    )
     family = object.family
     data = object.call["data"]
     weights = object.weights
     control = object.control
     method_name = str(object.additional_slots.get("method", "RS")).upper()
-    parameter_formulas = {parameter: _normalize_formula_text(value) for parameter, value in object.formulas.items()}
+    parameter_formulas = {
+        parameter: _normalize_formula_text(value)
+        for parameter, value in object.formulas.items()
+    }
     parameter_formulas.update(formula_updates)
 
     if method_name == "ML":
         return gamlss_ml(
             formula=mu_formula,
             sigma_formula=_formula_rhs_spec(sigma_formula),
-            parameter_formulas={parameter: _formula_rhs_spec(value) for parameter, value in parameter_formulas.items()},
+            parameter_formulas={
+                parameter: _formula_rhs_spec(value)
+                for parameter, value in parameter_formulas.items()
+            },
             family=family,
             data=data,
             weights=weights,
@@ -178,7 +190,10 @@ def _fit_with_updated_formula(
     return gamlss(
         formula=mu_formula,
         sigma_formula=_formula_rhs_spec(sigma_formula),
-        parameter_formulas={parameter: _formula_rhs_spec(value) for parameter, value in parameter_formulas.items()},
+        parameter_formulas={
+            parameter: _formula_rhs_spec(value)
+            for parameter, value in parameter_formulas.items()
+        },
         family=family,
         data=data,
         weights=weights,
@@ -196,10 +211,14 @@ def _scope_terms(object: GAMLSSModel, what: str, scope: Any | None) -> list[str]
         if normalized.startswith("~"):
             candidate_terms = _rhs_terms(f"response {normalized}")
         else:
-            candidate_terms = [term.strip() for term in normalized.split("+") if term.strip()]
+            candidate_terms = [
+                term.strip() for term in normalized.split("+") if term.strip()
+            ]
     else:
         candidate_terms = [str(term).strip() for term in scope if str(term).strip()]
-    return [term for term in candidate_terms if term in available_terms or scope is not None]
+    return [
+        term for term in candidate_terms if term in available_terms or scope is not None
+    ]
 
 
 def _updated_formulas_for_parameter(
@@ -207,7 +226,10 @@ def _updated_formulas_for_parameter(
     what: str,
     updated_formula: str,
 ) -> dict[str, str]:
-    formulas = {parameter: _normalize_formula_text(value) for parameter, value in object.formulas.items()}
+    formulas = {
+        parameter: _normalize_formula_text(value)
+        for parameter, value in object.formulas.items()
+    }
     formulas[what] = updated_formula
     return formulas
 
@@ -218,11 +240,23 @@ def _parse_scope_spec(scope: Any | None) -> tuple[list[str], list[str]]:
     if isinstance(scope, dict):
         lower_raw = scope.get("lower")
         upper_raw = scope.get("upper")
-        lower = _rhs_terms(f"response {lower_raw}") if isinstance(lower_raw, str) and str(lower_raw).strip().startswith("~") else (
-            [str(term).strip() for term in lower_raw if str(term).strip()] if lower_raw is not None else []
+        lower = (
+            _rhs_terms(f"response {lower_raw}")
+            if isinstance(lower_raw, str) and str(lower_raw).strip().startswith("~")
+            else (
+                [str(term).strip() for term in lower_raw if str(term).strip()]
+                if lower_raw is not None
+                else []
+            )
         )
-        upper = _rhs_terms(f"response {upper_raw}") if isinstance(upper_raw, str) and str(upper_raw).strip().startswith("~") else (
-            [str(term).strip() for term in upper_raw if str(term).strip()] if upper_raw is not None else []
+        upper = (
+            _rhs_terms(f"response {upper_raw}")
+            if isinstance(upper_raw, str) and str(upper_raw).strip().startswith("~")
+            else (
+                [str(term).strip() for term in upper_raw if str(term).strip()]
+                if upper_raw is not None
+                else []
+            )
         )
         return lower, upper
     if isinstance(scope, str) and scope.strip().startswith("~"):
@@ -278,14 +312,21 @@ def drop1_tgd(
 
     baseline = extract_tgd_data(object, newdata=newdata)
     rows = [
-        TGDScopeRow(term="<none>", df_fit=float(object.df_fit), tgd=float(baseline.tgd), delta_df=None)
+        TGDScopeRow(
+            term="<none>",
+            df_fit=float(object.df_fit),
+            tgd=float(baseline.tgd),
+            delta_df=None,
+        )
     ]
     for term_name in candidate_terms:
         if term_name not in base_terms:
             continue
         new_terms = [term for term in base_terms if term != term_name]
         updated_formula = _compose_formula(response, new_terms)
-        fitted_model = _fit_with_updated_formula(object, _updated_formulas_for_parameter(object, selected, updated_formula))
+        fitted_model = _fit_with_updated_formula(
+            object, _updated_formulas_for_parameter(object, selected, updated_formula)
+        )
         result = extract_tgd_data(fitted_model, newdata=newdata)
         rows.append(
             TGDScopeRow(
@@ -298,7 +339,9 @@ def drop1_tgd(
 
     if sorted:
         baseline_row = rows[0]
-        other_rows = list(__builtins__["sorted"](rows[1:], key=lambda row: (row.tgd, row.term)))
+        other_rows = list(
+            __builtins__["sorted"](rows[1:], key=lambda row: (row.tgd, row.term))
+        )
         rows = [baseline_row, *other_rows]
 
     return TGDScopeResult(what=selected, direction="drop", rows=tuple(rows))
@@ -325,7 +368,11 @@ def add1_tgd(
     candidate_terms = [term for term in raw_scope if term not in base_terms]
     if not candidate_terms:
         if isinstance(scope, str) and scope.strip().startswith("~"):
-            candidate_terms = [term for term in _rhs_terms(f"response {scope}") if term not in base_terms]
+            candidate_terms = [
+                term
+                for term in _rhs_terms(f"response {scope}")
+                if term not in base_terms
+            ]
         elif not raw_scope:
             candidate_terms = [str(term).strip() for term in scope if str(term).strip()]
         if not candidate_terms:
@@ -333,13 +380,20 @@ def add1_tgd(
 
     baseline = extract_tgd_data(object, newdata=newdata)
     rows = [
-        TGDScopeRow(term="<none>", df_fit=float(object.df_fit), tgd=float(baseline.tgd), delta_df=None)
+        TGDScopeRow(
+            term="<none>",
+            df_fit=float(object.df_fit),
+            tgd=float(baseline.tgd),
+            delta_df=None,
+        )
     ]
     for term_name in candidate_terms:
         if term_name in base_terms:
             continue
         updated_formula = _compose_formula(response, [*base_terms, term_name])
-        fitted_model = _fit_with_updated_formula(object, _updated_formulas_for_parameter(object, selected, updated_formula))
+        fitted_model = _fit_with_updated_formula(
+            object, _updated_formulas_for_parameter(object, selected, updated_formula)
+        )
         result = extract_tgd_data(fitted_model, newdata=newdata)
         rows.append(
             TGDScopeRow(
@@ -352,7 +406,9 @@ def add1_tgd(
 
     if sorted:
         baseline_row = rows[0]
-        other_rows = list(__builtins__["sorted"](rows[1:], key=lambda row: (row.tgd, row.term)))
+        other_rows = list(
+            __builtins__["sorted"](rows[1:], key=lambda row: (row.tgd, row.term))
+        )
         rows = [baseline_row, *other_rows]
 
     return TGDScopeResult(what=selected, direction="add", rows=tuple(rows))
@@ -385,7 +441,14 @@ def step_tgd(
     lower_scope, upper_scope = _parse_scope_spec(scope)
 
     path: list[StepTGDStep] = [
-        StepTGDStep(step=0, formula=current_formula, tgd=float(current_tgd), change="", df_fit=float(current.df_fit), deviance=float(current.g_dev))
+        StepTGDStep(
+            step=0,
+            formula=current_formula,
+            tgd=float(current_tgd),
+            change="",
+            df_fit=float(current.df_fit),
+            deviance=float(current.g_dev),
+        )
     ]
 
     backward = direction_name in {"backward", "both"}
@@ -398,8 +461,16 @@ def step_tgd(
         current_terms = _rhs_terms(current_formula)
         current_tgd = extract_tgd_data(current, newdata=newdata).tgd
 
-        candidate_drop_terms = [term for term in current_terms if term not in lower_scope] if backward else []
-        candidate_add_terms = [term for term in upper_scope if term not in current_terms] if forward else []
+        candidate_drop_terms = (
+            [term for term in current_terms if term not in lower_scope]
+            if backward
+            else []
+        )
+        candidate_add_terms = (
+            [term for term in upper_scope if term not in current_terms]
+            if forward
+            else []
+        )
 
         best_change = ""
         best_tgd = float(current_tgd)
@@ -408,8 +479,13 @@ def step_tgd(
 
         for term_name in candidate_drop_terms:
             new_terms = [term for term in current_terms if term != term_name]
-            updated_formula = _compose_formula(_response_name_from_formula(current_formula), new_terms)
-            fitted_model = _fit_with_updated_formula(current, _updated_formulas_for_parameter(current, selected, updated_formula))
+            updated_formula = _compose_formula(
+                _response_name_from_formula(current_formula), new_terms
+            )
+            fitted_model = _fit_with_updated_formula(
+                current,
+                _updated_formulas_for_parameter(current, selected, updated_formula),
+            )
             result = extract_tgd_data(fitted_model, newdata=newdata)
             if result.tgd < best_tgd - 1e-7:
                 best_tgd = float(result.tgd)
@@ -418,8 +494,14 @@ def step_tgd(
                 best_model = fitted_model
 
         for term_name in candidate_add_terms:
-            updated_formula = _compose_formula(_response_name_from_formula(current_formula), [*current_terms, term_name])
-            fitted_model = _fit_with_updated_formula(current, _updated_formulas_for_parameter(current, selected, updated_formula))
+            updated_formula = _compose_formula(
+                _response_name_from_formula(current_formula),
+                [*current_terms, term_name],
+            )
+            fitted_model = _fit_with_updated_formula(
+                current,
+                _updated_formulas_for_parameter(current, selected, updated_formula),
+            )
             result = extract_tgd_data(fitted_model, newdata=newdata)
             if result.tgd < best_tgd - 1e-7:
                 best_tgd = float(result.tgd)
@@ -442,7 +524,9 @@ def step_tgd(
             )
         )
 
-    return StepTGDResult(model=current, what=selected, direction=direction_name, steps=tuple(path))
+    return StepTGDResult(
+        model=current, what=selected, direction=direction_name, steps=tuple(path)
+    )
 
 
 def drop1_tgd_all(
@@ -454,20 +538,32 @@ def drop1_tgd_all(
     """Staged multi-parameter aggregation of `drop1_tgd()`."""
 
     _require_gamlss_method(object)
-    requested_parameters = [parameter for parameter in object.par] if parameters is None else [str(parameter).strip().lower() for parameter in parameters]
+    requested_parameters = (
+        [parameter for parameter in object.par]
+        if parameters is None
+        else [str(parameter).strip().lower() for parameter in parameters]
+    )
     if not requested_parameters:
         raise ValueError("at least one parameter is required")
 
     baseline = extract_tgd_data(object, newdata=newdata)
     rows: list[MultiParameterTGDScopeRow] = [
-        MultiParameterTGDScopeRow(parameter="", term="<none>", df_fit=float(object.df_fit), tgd=float(baseline.tgd), delta_df=None)
+        MultiParameterTGDScopeRow(
+            parameter="",
+            term="<none>",
+            df_fit=float(object.df_fit),
+            tgd=float(baseline.tgd),
+            delta_df=None,
+        )
     ]
     for parameter in requested_parameters:
         parameter_scope = None if scope is None else scope.get(parameter)
         if isinstance(parameter_scope, dict):
             parameter_scope = parameter_scope.get("lower")
         try:
-            result = drop1_tgd(object, newdata=newdata, scope=parameter_scope, what=parameter)
+            result = drop1_tgd(
+                object, newdata=newdata, scope=parameter_scope, what=parameter
+            )
         except ValueError as exc:
             if "no terms in scope" in str(exc):
                 continue
@@ -494,13 +590,23 @@ def add1_tgd_all(
     """Staged multi-parameter aggregation of `add1_tgd()`."""
 
     _require_gamlss_method(object)
-    requested_parameters = [parameter for parameter in object.par] if parameters is None else [str(parameter).strip().lower() for parameter in parameters]
+    requested_parameters = (
+        [parameter for parameter in object.par]
+        if parameters is None
+        else [str(parameter).strip().lower() for parameter in parameters]
+    )
     if not requested_parameters:
         raise ValueError("at least one parameter is required")
 
     baseline = extract_tgd_data(object, newdata=newdata)
     rows: list[MultiParameterTGDScopeRow] = [
-        MultiParameterTGDScopeRow(parameter="", term="<none>", df_fit=float(object.df_fit), tgd=float(baseline.tgd), delta_df=None)
+        MultiParameterTGDScopeRow(
+            parameter="",
+            term="<none>",
+            df_fit=float(object.df_fit),
+            tgd=float(baseline.tgd),
+            delta_df=None,
+        )
     ]
     for parameter in requested_parameters:
         parameter_scope = None if scope is None else scope.get(parameter)
@@ -509,7 +615,9 @@ def add1_tgd_all(
         if parameter_scope is None:
             continue
         try:
-            result = add1_tgd(object, newdata=newdata, scope=parameter_scope, what=parameter)
+            result = add1_tgd(
+                object, newdata=newdata, scope=parameter_scope, what=parameter
+            )
         except ValueError as exc:
             if "no terms in scope" in str(exc):
                 continue
@@ -535,7 +643,9 @@ def drop1_tgdp(
 ) -> MultiParameterTGDScopeResult:
     """R reference: `gamlss/R/stepTGD.R::drop1TGDP`."""
 
-    return drop1_tgd_all(object=object, newdata=newdata, scope=scope, parameters=parameters)
+    return drop1_tgd_all(
+        object=object, newdata=newdata, scope=scope, parameters=parameters
+    )
 
 
 def add1_tgdp(
@@ -546,7 +656,9 @@ def add1_tgdp(
 ) -> MultiParameterTGDScopeResult:
     """R reference: `gamlss/R/stepTGD.R::add1TGDP`."""
 
-    return add1_tgd_all(object=object, newdata=newdata, scope=scope, parameters=parameters)
+    return add1_tgd_all(
+        object=object, newdata=newdata, scope=scope, parameters=parameters
+    )
 
 
 def step_tgd_all(
@@ -569,10 +681,14 @@ def step_tgd_all(
     if parameters is None:
         requested_parameters = [parameter for parameter in object.par]
     else:
-        requested_parameters = [str(parameter).strip().lower() for parameter in parameters]
+        requested_parameters = [
+            str(parameter).strip().lower() for parameter in parameters
+        ]
     if not requested_parameters:
         raise ValueError("at least one parameter is required")
-    missing = [parameter for parameter in requested_parameters if parameter not in object.par]
+    missing = [
+        parameter for parameter in requested_parameters if parameter not in object.par
+    ]
     if missing:
         raise ValueError(f"parameters not present in object: {missing}")
 
@@ -582,7 +698,10 @@ def step_tgd_all(
         StepTGDAllStep(
             step=0,
             parameter="",
-            formula=" | ".join(f"{parameter}: {_normalize_formula_text(formula(current, what=parameter))}" for parameter in requested_parameters),
+            formula=" | ".join(
+                f"{parameter}: {_normalize_formula_text(formula(current, what=parameter))}"
+                for parameter in requested_parameters
+            ),
             tgd=current_tgd,
             change="",
             df_fit=float(current.df_fit),
@@ -590,9 +709,21 @@ def step_tgd_all(
         )
     ]
 
-    parameter_scopes = {parameter: (scope or {}).get(parameter) for parameter in requested_parameters}
-    current.additional_slots["drop1_tgd_all"] = drop1_tgd_all(current, newdata=newdata, scope=parameter_scopes, parameters=tuple(requested_parameters))
-    current.additional_slots["add1_tgd_all"] = add1_tgd_all(current, newdata=newdata, scope=parameter_scopes, parameters=tuple(requested_parameters))
+    parameter_scopes = {
+        parameter: (scope or {}).get(parameter) for parameter in requested_parameters
+    }
+    current.additional_slots["drop1_tgd_all"] = drop1_tgd_all(
+        current,
+        newdata=newdata,
+        scope=parameter_scopes,
+        parameters=tuple(requested_parameters),
+    )
+    current.additional_slots["add1_tgd_all"] = add1_tgd_all(
+        current,
+        newdata=newdata,
+        scope=parameter_scopes,
+        parameters=tuple(requested_parameters),
+    )
 
     for step_index in range(1, steps + 1):
         best_parameter = ""
@@ -602,7 +733,14 @@ def step_tgd_all(
         best_tgd = current_tgd
 
         for parameter in requested_parameters:
-            result = step_tgd(current, newdata=newdata, scope=parameter_scopes.get(parameter), what=parameter, direction=direction_name, steps=1)
+            result = step_tgd(
+                current,
+                newdata=newdata,
+                scope=parameter_scopes.get(parameter),
+                what=parameter,
+                direction=direction_name,
+                steps=1,
+            )
             if len(result.steps) <= 1:
                 continue
             candidate_model = result.model
@@ -621,8 +759,18 @@ def step_tgd_all(
         current = best_model
         current_tgd = best_tgd
         current.additional_slots["step_tgd_all_path"] = tuple(path)
-        current.additional_slots["drop1_tgd_all"] = drop1_tgd_all(current, newdata=newdata, scope=parameter_scopes, parameters=tuple(requested_parameters))
-        current.additional_slots["add1_tgd_all"] = add1_tgd_all(current, newdata=newdata, scope=parameter_scopes, parameters=tuple(requested_parameters))
+        current.additional_slots["drop1_tgd_all"] = drop1_tgd_all(
+            current,
+            newdata=newdata,
+            scope=parameter_scopes,
+            parameters=tuple(requested_parameters),
+        )
+        current.additional_slots["add1_tgd_all"] = add1_tgd_all(
+            current,
+            newdata=newdata,
+            scope=parameter_scopes,
+            parameters=tuple(requested_parameters),
+        )
         path.append(
             StepTGDAllStep(
                 step=step_index,
@@ -636,7 +784,12 @@ def step_tgd_all(
         )
 
     current.additional_slots["step_tgd_all_path"] = tuple(path)
-    return StepTGDAllResult(model=current, parameters=tuple(requested_parameters), direction=direction_name, steps=tuple(path))
+    return StepTGDAllResult(
+        model=current,
+        parameters=tuple(requested_parameters),
+        direction=direction_name,
+        steps=tuple(path),
+    )
 
 
 @dataclass(frozen=True)
@@ -672,7 +825,9 @@ def stepTGDAll_A(
     """
     _require_gamlss_method(object)
     if newdata is None:
-        raise ValueError("stepTGDAll_A requires newdata for test global deviance evaluation")
+        raise ValueError(
+            "stepTGDAll_A requires newdata for test global deviance evaluation"
+        )
 
     eff_scopes = {
         "mu": scope,
@@ -747,7 +902,9 @@ def stepTGDAll_A(
             anova_all[key] = res.steps
 
     current.additional_slots["anovaAll"] = dict(anova_all)
-    return StepTGDAllAResult(model=current, anova_all=dict(anova_all), failed_stage=None)
+    return StepTGDAllAResult(
+        model=current, anova_all=dict(anova_all), failed_stage=None
+    )
 
 
 step_tgd_all_a = stepTGDAll_A

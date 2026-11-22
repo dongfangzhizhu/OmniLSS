@@ -16,6 +16,7 @@ with a ridge term P0 = 1e-6 * I appended to keep the system full rank.  Lp = 0
 Compared with live R for a fixed lambda, a df target (both the Lp = 2 eigen
 shortcut and the Lp != 2 regpen path) and the ML lambda iteration.
 """
+
 from __future__ import annotations
 
 import warnings
@@ -25,7 +26,7 @@ from typing import Any
 import numpy as np
 from scipy.optimize import brentq, minimize
 
-_RANK_TOL = np.finfo(float).eps**0.8
+_RANK_TOL = np.finfo(float).eps ** 0.8
 
 
 @dataclass(frozen=True)
@@ -118,7 +119,9 @@ def pcat(
 
     if lambda_ is not None and lambda_ < 0:
         lambda_ = 1.0
-        warnings.warn(f"lambda was negative; have used  {lambda_}", UserWarning, stacklevel=2)
+        warnings.warn(
+            f"lambda was negative; have used  {lambda_}", UserWarning, stacklevel=2
+        )
 
     if df is not None:
         if df > size:

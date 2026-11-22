@@ -18,6 +18,7 @@ Documented limits:
   paths are documented as approximate.  The fixed-lambda path (R's case 1) is
   exact and verified against live R for all six smoothers.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
@@ -63,7 +64,9 @@ class PSplineVariant:
     by: Any = None
 
 
-def _inter_rules(values: np.ndarray, control: dict[str, Any], *, distinct: bool, short_at: int = 99) -> int:
+def _inter_rules(
+    values: np.ndarray, control: dict[str, Any], *, distinct: bool, short_at: int = 99
+) -> int:
     """R's inter bookkeeping: short samples -> 10, then optionally distinct."""
 
     inter = int(control.get("inter", 20))
@@ -76,8 +79,15 @@ def _inter_rules(values: np.ndarray, control: dict[str, Any], *, distinct: bool,
     return inter
 
 
-def _pb_basis(values: np.ndarray, control: dict[str, Any], *, distinct: bool, short_at: int = 99,
-              expand: bool = True, cyclic: bool = False):
+def _pb_basis(
+    values: np.ndarray,
+    control: dict[str, Any],
+    *,
+    distinct: bool,
+    short_at: int = 99,
+    expand: bool = True,
+    cyclic: bool = False,
+):
     inter = _inter_rules(values, control, distinct=distinct, short_at=short_at)
     control = {**control, "inter": inter}
     xl = float(np.min(values))
@@ -122,8 +132,15 @@ def _as_values(x: Any) -> np.ndarray:
     return values
 
 
-def pbm(x: Any, df: float | None = None, lambda_: float | None = None, mono: str = "up",
-        control: dict[str, Any] | None = None, name: str | None = None, **kwargs: Any) -> PSplineVariant:
+def pbm(
+    x: Any,
+    df: float | None = None,
+    lambda_: float | None = None,
+    mono: str = "up",
+    control: dict[str, Any] | None = None,
+    name: str | None = None,
+    **kwargs: Any,
+) -> PSplineVariant:
     """R pbm(): monotone P-spline spec (asymmetric penalty applied at fit time)."""
 
     values = _as_values(x)
@@ -134,15 +151,30 @@ def pbm(x: Any, df: float | None = None, lambda_: float | None = None, mono: str
         settings[key] = value
     design, penalty, settings, knots = _pb_basis(values, settings, distinct=True)
     return PSplineVariant(
-        name="pbm", X=design, D=penalty, D1=None, control=settings,
-        df=_df_plus_two(df, design.shape[1]), lambda_=lambda_,
-        max_df=float(design.shape[1]), values=values, knots=knots,
-        zero_covariate=True, nl_df_offset=1.0, mono=mono,
+        name="pbm",
+        X=design,
+        D=penalty,
+        D1=None,
+        control=settings,
+        df=_df_plus_two(df, design.shape[1]),
+        lambda_=lambda_,
+        max_df=float(design.shape[1]),
+        values=values,
+        knots=knots,
+        zero_covariate=True,
+        nl_df_offset=1.0,
+        mono=mono,
     )
 
 
-def pbo(x: Any, df: float | None = None, lambda_: float | None = None,
-        control: dict[str, Any] | None = None, name: str | None = None, **kwargs: Any) -> PSplineVariant:
+def pbo(
+    x: Any,
+    df: float | None = None,
+    lambda_: float | None = None,
+    control: dict[str, Any] | None = None,
+    name: str | None = None,
+    **kwargs: Any,
+) -> PSplineVariant:
     """R pbo(): original P-spline spec (no distinct-value inter reduction)."""
 
     values = _as_values(x)
@@ -151,15 +183,28 @@ def pbo(x: Any, df: float | None = None, lambda_: float | None = None,
         settings[key] = value
     design, penalty, settings, knots = _pb_basis(values, settings, distinct=False)
     return PSplineVariant(
-        name="pbo", X=design, D=penalty, D1=None, control=settings,
-        df=_df_plus_two(df, design.shape[1]), lambda_=lambda_,
-        max_df=float(design.shape[1]), values=values, knots=knots,
+        name="pbo",
+        X=design,
+        D=penalty,
+        D1=None,
+        control=settings,
+        df=_df_plus_two(df, design.shape[1]),
+        lambda_=lambda_,
+        max_df=float(design.shape[1]),
+        values=values,
+        knots=knots,
         zero_covariate=False,
     )
 
 
-def pbp(x: Any, df: float | None = None, lambda_: float | None = None,
-        control: dict[str, Any] | None = None, name: str | None = None, **kwargs: Any) -> PSplineVariant:
+def pbp(
+    x: Any,
+    df: float | None = None,
+    lambda_: float | None = None,
+    control: dict[str, Any] | None = None,
+    name: str | None = None,
+    **kwargs: Any,
+) -> PSplineVariant:
     """R pbp(): P-spline spec with positivity constraint metadata."""
 
     values = _as_values(x)
@@ -168,15 +213,28 @@ def pbp(x: Any, df: float | None = None, lambda_: float | None = None,
         settings[key] = value
     design, penalty, settings, knots = _pb_basis(values, settings, distinct=True)
     return PSplineVariant(
-        name="pbp", X=design, D=penalty, D1=None, control=settings,
-        df=_df_plus_two(df, design.shape[1]), lambda_=lambda_,
-        max_df=float(design.shape[1]), values=values, knots=knots,
+        name="pbp",
+        X=design,
+        D=penalty,
+        D1=None,
+        control=settings,
+        df=_df_plus_two(df, design.shape[1]),
+        lambda_=lambda_,
+        max_df=float(design.shape[1]),
+        values=values,
+        knots=knots,
         zero_covariate=False,
     )
 
 
-def pbz(x: Any, df: float | None = None, lambda_: float | None = None,
-        control: dict[str, Any] | None = None, name: str | None = None, **kwargs: Any) -> PSplineVariant:
+def pbz(
+    x: Any,
+    df: float | None = None,
+    lambda_: float | None = None,
+    control: dict[str, Any] | None = None,
+    name: str | None = None,
+    **kwargs: Any,
+) -> PSplineVariant:
     """R pbz(): P-spline spec with an extra first-difference penalty D1."""
 
     values = _as_values(x)
@@ -186,10 +244,18 @@ def pbz(x: Any, df: float | None = None, lambda_: float | None = None,
     design, penalty, settings, knots = _pb_basis(values, settings, distinct=True)
     d1 = difference_matrix(design.shape[1], 1)
     return PSplineVariant(
-        name="pbz", X=design, D=penalty, D1=d1, control=settings,
-        df=_df_plus_two(df, design.shape[1]), lambda_=lambda_,
-        max_df=float(design.shape[1]), values=values, knots=knots,
-        zero_covariate=True, nl_df_offset=1.0,
+        name="pbz",
+        X=design,
+        D=penalty,
+        D1=d1,
+        control=settings,
+        df=_df_plus_two(df, design.shape[1]),
+        lambda_=lambda_,
+        max_df=float(design.shape[1]),
+        values=values,
+        knots=knots,
+        zero_covariate=True,
+        nl_df_offset=1.0,
     )
 
 
@@ -214,8 +280,15 @@ def _Cdiff(n: int, order: int = 2, sin: bool = True) -> np.ndarray:
     return d
 
 
-def pbc(x: Any, df: float | None = None, lambda_: float | None = None, max_df: float | None = None,
-        control: dict[str, Any] | None = None, name: str | None = None, **kwargs: Any) -> PSplineVariant:
+def pbc(
+    x: Any,
+    df: float | None = None,
+    lambda_: float | None = None,
+    max_df: float | None = None,
+    control: dict[str, Any] | None = None,
+    name: str | None = None,
+    **kwargs: Any,
+) -> PSplineVariant:
     """R pbc(): cyclic P-spline spec with a sine-aware cyclic penalty."""
 
     values = _as_values(x)
@@ -234,7 +307,8 @@ def pbc(x: Any, df: float | None = None, lambda_: float | None = None, max_df: f
 
             warnings.warn(
                 "The df's exceed the number of columns of the design matrix\n   they are set to 3",
-                UserWarning, stacklevel=3,
+                UserWarning,
+                stacklevel=3,
             )
             df = 3
         stored_df = 1.0 if df < 1 else float(df) + 1.0
@@ -244,22 +318,43 @@ def pbc(x: Any, df: float | None = None, lambda_: float | None = None, max_df: f
     if max_df > columns - 2:
         import warnings
 
-        warnings.warn(f"The max.df's are set to {columns - 2}\n", UserWarning, stacklevel=3)
+        warnings.warn(
+            f"The max.df's are set to {columns - 2}\n", UserWarning, stacklevel=3
+        )
         max_df = float(columns - 2)
     return PSplineVariant(
-        name="pbc", X=design, D=penalty, D1=None, control=settings,
-        df=stored_df, lambda_=lambda_, max_df=float(max_df), values=values,
-        knots=knots, zero_covariate=True, subtract_linear_hat=False, nl_df_offset=1.0,
+        name="pbc",
+        X=design,
+        D=penalty,
+        D1=None,
+        control=settings,
+        df=stored_df,
+        lambda_=lambda_,
+        max_df=float(max_df),
+        values=values,
+        knots=knots,
+        zero_covariate=True,
+        subtract_linear_hat=False,
+        nl_df_offset=1.0,
     )
 
 
-def pvc(x: Any, df: float | None = None, lambda_: float | None = None, by: Any = None,
-        control: dict[str, Any] | None = None, name: str | None = None, **kwargs: Any) -> PSplineVariant:
+def pvc(
+    x: Any,
+    df: float | None = None,
+    lambda_: float | None = None,
+    by: Any = None,
+    control: dict[str, Any] | None = None,
+    name: str | None = None,
+    **kwargs: Any,
+) -> PSplineVariant:
     """R pvc(): varying-coefficient P-spline spec (by=None path)."""
 
     values = _as_values(x)
     if by is not None:
-        raise NotImplementedError("pvc(by=...) varying-coefficient interaction is not ported")
+        raise NotImplementedError(
+            "pvc(by=...) varying-coefficient interaction is not ported"
+        )
     settings = dict(control) if control is not None else pvc_control(**kwargs)
     for key, value in kwargs.items():
         settings[key] = value
@@ -271,19 +366,31 @@ def pvc(x: Any, df: float | None = None, lambda_: float | None = None, by: Any =
 
             warnings.warn(
                 "The df's exceed the number of columns of the design matrix\n   they are set to 3",
-                UserWarning, stacklevel=3,
+                UserWarning,
+                stacklevel=3,
             )
             df = 3
         stored_df = 1.0 if df < 1 else float(df)
     return PSplineVariant(
-        name="pvc", X=design, D=penalty, D1=None, control=settings,
-        df=stored_df, lambda_=lambda_, max_df=float(design.shape[1]),
-        values=values, knots=knots, zero_covariate=False,
-        subtract_linear_hat=False, by=by,
+        name="pvc",
+        X=design,
+        D=penalty,
+        D1=None,
+        control=settings,
+        df=stored_df,
+        lambda_=lambda_,
+        max_df=float(design.shape[1]),
+        values=values,
+        knots=knots,
+        zero_covariate=False,
+        subtract_linear_hat=False,
+        by=by,
     )
 
 
-def _to_pb_spec(spec: PSplineVariant, lambda_: float | None = None, df: float | None = None) -> PBSpline:
+def _to_pb_spec(
+    spec: PSplineVariant, lambda_: float | None = None, df: float | None = None
+) -> PBSpline:
     """Wrap a variant's X/D as a PBSpline so gamlss_pb can run estimation paths."""
 
     return PBSpline(
@@ -299,8 +406,14 @@ def _to_pb_spec(spec: PSplineVariant, lambda_: float | None = None, df: float | 
     )
 
 
-def _fit_variant(spec: PSplineVariant, y: Any, w: Any, xeval: Any = None,
-                 lambda_: float | None = None, df: float | None = None):
+def _fit_variant(
+    spec: PSplineVariant,
+    y: Any,
+    w: Any,
+    xeval: Any = None,
+    lambda_: float | None = None,
+    df: float | None = None,
+):
     """One P-spline variant backfitting step.
 
     The fixed-lambda path is computed here with the variant's own regpen; all
@@ -356,21 +469,39 @@ def _fit_variant(spec: PSplineVariant, y: Any, w: Any, xeval: Any = None,
     waug = np.concatenate([w, np.ones(D.shape[0])])
     xaug = np.vstack([X, np.sqrt(lam) * D])
     weighted = xaug * np.sqrt(waug)[:, None]
-    leverage = np.sum((weighted @ np.linalg.pinv(weighted.T @ weighted)) * weighted, axis=1)[:n]
+    leverage = np.sum(
+        (weighted @ np.linalg.pinv(weighted.T @ weighted)) * weighted, axis=1
+    )[:n]
     covariate = np.zeros_like(values) if spec.zero_covariate else values
     if spec.subtract_linear_hat:
         leverage = leverage - _hat_WX(w, covariate)
     var = leverage / w
 
     return SmootherFit(
-        fitted_values=fv, residuals=y - fv, var=var,
-        nl_df=edf - spec.nl_df_offset, lambda_=lam, coef=np.asarray(beta, dtype=float),
-        edf=edf, sigb2=None, sige2=None, method="fixed", name=spec.name,
-        knots=spec.knots if spec.knots.size else None, spline=spline,
+        fitted_values=fv,
+        residuals=y - fv,
+        var=var,
+        nl_df=edf - spec.nl_df_offset,
+        lambda_=lam,
+        coef=np.asarray(beta, dtype=float),
+        edf=edf,
+        sigb2=None,
+        sige2=None,
+        method="fixed",
+        name=spec.name,
+        knots=spec.knots if spec.knots.size else None,
+        spline=spline,
     )
 
 
-def _regpen_pbm(r: np.ndarray, Qy: np.ndarray, D: np.ndarray, lam: float, p: int, spec: PSplineVariant):
+def _regpen_pbm(
+    r: np.ndarray,
+    Qy: np.ndarray,
+    D: np.ndarray,
+    lam: float,
+    p: int,
+    spec: PSplineVariant,
+):
     """R gamlss.pbm's regpen: iteratively add sqrt(kappa)*(w2*D2) rows."""
 
     kappa = float(spec.control.get("kappa", 1e10))
@@ -378,15 +509,21 @@ def _regpen_pbm(r: np.ndarray, Qy: np.ndarray, D: np.ndarray, lam: float, p: int
     w2 = np.zeros(D.shape[1] - 1)
     beta = edf = None
     for _ in range(20):
-        augmented = np.vstack([r, np.sqrt(lam) * D, np.sqrt(kappa) * (w2[:, None] * d2)])
+        augmented = np.vstack(
+            [r, np.sqrt(lam) * D, np.sqrt(kappa) * (w2[:, None] * d2)]
+        )
         u, d, vt = np.linalg.svd(augmented, full_matrices=False)
-        rank = int(np.sum(d > d.max() * np.finfo(float).eps**0.8))
+        rank = int(np.sum(d > d.max() * np.finfo(float).eps ** 0.8))
         u1 = u[:p, :rank]
         y1 = u1.T @ Qy
         beta = vt[:rank].T @ (y1 / d[:rank])
         edf = float(np.sum(u1**2))
         slope = d2 @ beta
-        w2new = (slope < 0).astype(float) if spec.mono == "up" else (slope > 0).astype(float)
+        w2new = (
+            (slope < 0).astype(float)
+            if spec.mono == "up"
+            else (slope > 0).astype(float)
+        )
         if np.array_equal(w2new, w2):
             w2 = w2new
             break
@@ -394,8 +531,15 @@ def _regpen_pbm(r: np.ndarray, Qy: np.ndarray, D: np.ndarray, lam: float, p: int
     return beta, edf
 
 
-def _regpen_pbz(r: np.ndarray, Qy: np.ndarray, D: np.ndarray, D1: np.ndarray | None,
-                lam: float, p: int, spec: PSplineVariant):
+def _regpen_pbz(
+    r: np.ndarray,
+    Qy: np.ndarray,
+    D: np.ndarray,
+    D1: np.ndarray | None,
+    lam: float,
+    p: int,
+    spec: PSplineVariant,
+):
     """R gamlss.pbz's regpen: add the first-difference penalty when edf <= lim."""
 
     lim = float(spec.control.get("lim", 3))
@@ -405,7 +549,7 @@ def _regpen_pbz(r: np.ndarray, Qy: np.ndarray, D: np.ndarray, D1: np.ndarray | N
     if edf <= lim and D1 is not None:
         augmented = np.vstack([r, np.sqrt(lam) * D, np.sqrt(lam2) * D1])
         u, d, vt = np.linalg.svd(augmented, full_matrices=False)
-        rank = int(np.sum(d > d.max() * np.finfo(float).eps**0.8))
+        rank = int(np.sum(d > d.max() * np.finfo(float).eps ** 0.8))
         u1 = u[:p, :rank]
         y1 = u1.T @ Qy
         beta = vt[:rank].T @ (y1 / d[:rank])
@@ -460,6 +604,16 @@ def _require(x: Any, name: str) -> PSplineVariant:
 
 __all__ = [
     "PSplineVariant",
-    "gamlss_pbc", "gamlss_pbm", "gamlss_pbo", "gamlss_pbp", "gamlss_pbz", "gamlss_pvc",
-    "pbc", "pbm", "pbo", "pbp", "pbz", "pvc",
+    "gamlss_pbc",
+    "gamlss_pbm",
+    "gamlss_pbo",
+    "gamlss_pbp",
+    "gamlss_pbz",
+    "gamlss_pvc",
+    "pbc",
+    "pbm",
+    "pbo",
+    "pbp",
+    "pbz",
+    "pvc",
 ]

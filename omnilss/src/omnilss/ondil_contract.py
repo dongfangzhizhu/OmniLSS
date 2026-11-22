@@ -18,6 +18,7 @@ Conventions (contract doc sections 4 and 6):
  * ondil's link_derivative is d eta / d mu, while OmniLSS Link.derivative is
   d mu / d eta: inverse_derivative is the matching counterpart.
 """
+
 from __future__ import annotations
 
 import inspect
@@ -315,9 +316,14 @@ class OndilDistributionView:
     def initial_values(self, y: np.ndarray) -> np.ndarray:
         initial = self._adapter.init_params(y)
         rows = int(np.size(y))
-        return np.column_stack([
-            [np.broadcast_to(self._numpy(initial[name]), (rows,)) for name in self.estimable]
-        ])
+        return np.column_stack(
+            [
+                [
+                    np.broadcast_to(self._numpy(initial[name]), (rows,))
+                    for name in self.estimable
+                ]
+            ]
+        )
 
 
 def _constraint_support(constraint: Any) -> Support:
@@ -351,7 +357,11 @@ def theta_from_params(
     for name in view.estimable:
         value = np.asarray(params[name], dtype=float)
         if value.ndim == 0:
-            value = np.asarray([float(value)]) if count is None else np.full(count, float(value))
+            value = (
+                np.asarray([float(value)])
+                if count is None
+                else np.full(count, float(value))
+            )
         if count is None:
             count = int(value.shape[0])
         columns.append(np.broadcast_to(value, (count,)))
@@ -406,7 +416,9 @@ def probe_support(family: FamilyDefinition | str) -> dict[str, Any]:
     }
 
 
-def _boundary_ok(view: OndilDistributionView, support: Support, logpdf: np.ndarray) -> bool:
+def _boundary_ok(
+    view: OndilDistributionView, support: Support, logpdf: np.ndarray
+) -> bool:
     """Check the section 5 rule: finite inside, -inf at open / below the support."""
     inside, at_lower, below = (float(value) for value in logpdf)
     if not np.isfinite(inside):
@@ -466,8 +478,11 @@ def contract_report(family: FamilyDefinition | str) -> dict[str, Any]:
         "type": view.family.type,
         "parameters": list(view.family.parameters),
         "estimable": list(view.estimable),
-        "theta_order": {str(index): name for index, name in view.parameter_names.items()},
-        "order_matches_ondil": expected is None or tuple(expected) == tuple(view.estimable),
+        "theta_order": {
+            str(index): name for index, name in view.parameter_names.items()
+        },
+        "order_matches_ondil": expected is None
+        or tuple(expected) == tuple(view.estimable),
         "ondil_counterpart": expected is not None,
         "distribution_support": view.distribution_support.normalized(),
         "parameter_support": {

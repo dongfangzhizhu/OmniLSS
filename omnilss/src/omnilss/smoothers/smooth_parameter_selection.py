@@ -35,13 +35,13 @@ def optimize_smoothing_parameters(
     lambda_init: Optional[Dict[str, List[float]]] = None,
     max_iter: int = 10,
     tol: float = 1e-4,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> Dict[str, List[float]]:
     """Optimize smoothing parameters for all smooth terms.
-    
+
     This function optimizes λ values for all smooth terms across all
     distribution parameters using coordinate descent.
-    
+
     Parameters
     ----------
     y : np.ndarray
@@ -63,18 +63,18 @@ def optimize_smoothing_parameters(
         Convergence tolerance
     verbose : bool, default=False
         Print progress
-        
+
     Returns
     -------
     lambdas : dict
         Optimized λ values for each parameter
         Format: {parameter: [lambda1, lambda2, ...]}
-        
+
     Notes
     -----
     This uses coordinate descent: optimize λ for each smooth term
     one at a time, holding others fixed.
-    
+
     For production use, this should be integrated into the main
     GAMLSS fitting loop (outer loop strategy).
     """
@@ -85,7 +85,7 @@ def optimize_smoothing_parameters(
             lambdas[param] = [1.0] * len(penalties)
     else:
         lambdas = {k: list(v) for k, v in lambda_init.items()}
-    
+
     # Select optimization function
     if method.upper() == "GCV":
         optimize_func = optimize_lambda_gcv
@@ -93,7 +93,7 @@ def optimize_smoothing_parameters(
         optimize_func = optimize_lambda_reml
     else:
         raise ValueError(f"method must be 'GCV' or 'REML', got {method}")
-    
+
     if verbose:
         print(f"\n{'='*70}")
         print(f"Optimizing smoothing parameters using {method}")
@@ -101,33 +101,35 @@ def optimize_smoothing_parameters(
         print(f"Parameters with smooths: {list(penalty_matrices.keys())}")
         total_smooths = sum(len(v) for v in penalty_matrices.values())
         print(f"Total smooth terms: {total_smooths}")
-    
+
     # Outer loop: iterate until convergence
     for iteration in range(max_iter):
         lambdas_old = {k: list(v) for k, v in lambdas.items()}
-        
+
         # Optimize λ for each parameter
         for param in penalty_matrices.keys():
             if param not in design_matrices:
                 continue
-            
+
             X = design_matrices[param]
             penalties = penalty_matrices[param]
-            
+
             # Optimize each smooth term's λ
             for i, S in enumerate(penalties):
                 if verbose:
-                    print(f"\nIteration {iteration+1}, {param}, smooth {i+1}/{len(penalties)}")
-                
+                    print(
+                        f"\nIteration {iteration+1}, {param}, smooth {i+1}/{len(penalties)}"
+                    )
+
                 # Optimize this λ
                 lambda_opt, score_opt = optimize_func(y, X, S, lambda_range=(1e-6, 1e6))
-                
+
                 if verbose:
                     print(f"  λ: {lambdas[param][i]:.4e} → {lambda_opt:.4e}")
                     print(f"  {method} score: {score_opt:.4f}")
-                
+
                 lambdas[param][i] = lambda_opt
-        
+
         # Check convergence
         max_change = 0.0
         for param in lambdas.keys():
@@ -136,10 +138,10 @@ def optimize_smoothing_parameters(
                 new_val = lambdas[param][i]
                 change = abs(new_val - old_val) / (old_val + 1e-8)
                 max_change = max(max_change, change)
-        
+
         if verbose:
             print(f"\nMax relative change: {max_change:.6f}")
-        
+
         if max_change < tol:
             if verbose:
                 print(f"✓ Converged after {iteration+1} iterations")
@@ -147,7 +149,7 @@ def optimize_smoothing_parameters(
     else:
         if verbose:
             print(f"⚠ Did not converge after {max_iter} iterations")
-    
+
     return lambdas
 
 
@@ -162,15 +164,15 @@ def gamlss_with_automatic_smoothing(
     max_outer_iter: int = 5,
     outer_tol: float = 1e-3,
     verbose: bool = False,
-    **kwargs
+    **kwargs,
 ) -> Any:
     """Fit GAMLSS with automatic smoothing parameter selection.
-    
+
     This implements the outer loop strategy:
     1. Fit model with current λ values (inner loop)
     2. Optimize λ values given current fit (outer loop)
     3. Repeat until convergence
-    
+
     Parameters
     ----------
     fit_function : callable
@@ -195,38 +197,38 @@ def gamlss_with_automatic_smoothing(
         Print progress
     **kwargs
         Additional arguments passed to fit_function
-        
+
     Returns
     -------
     model : GAMLSSModel
         Fitted model with optimized λ values
-        
+
     Notes
     -----
     **PROTOTYPE IMPLEMENTATION**
-    
+
     This is a prototype implementation that demonstrates the outer loop
     structure for automatic smoothing parameter selection. The algorithm
     alternates between:
-    
+
     1. Inner loop: Fix λ, optimize distribution parameters (μ, σ, ν, τ)
     2. Outer loop: Fix parameters, optimize λ using GCV or REML
-    
+
     Currently, the outer loop is a placeholder that returns the initial fit.
     Full implementation requires:
     - Extracting penalty matrices from smooth_fits
     - Optimizing λ using GCV/REML
     - Passing new λ values back to the fitting function
     - Modifying smooth fitting code to accept external λ values
-    
+
     The outer loop can be expensive, so we limit iterations to 5 by default.
     In practice, convergence usually happens in 2-3 iterations.
-    
+
     Examples
     --------
     >>> from omnilss.fitting import gamlss_ml
     >>> from omnilss.smoothers.smooth_parameter_selection import gamlss_with_automatic_smoothing
-    >>> 
+    >>>
     >>> model = gamlss_with_automatic_smoothing(
     ...     fit_function=gamlss_ml,
     ...     formula="y ~ s(x1) + s(x2)",
@@ -246,36 +248,36 @@ def gamlss_with_automatic_smoothing(
         print(f"Convergence tolerance: {outer_tol}")
         print(f"\n⚠ NOTE: This is a PROTOTYPE implementation")
         print(f"The outer loop structure is in place but not fully active.")
-    
+
     # Initial fit with default λ values
     if verbose:
         print(f"\n{'='*70}")
         print(f"Initial fit (iteration 0)")
         print(f"{'='*70}")
-    
+
     model = fit_function(
         formula=formula,
         sigma_formula=sigma_formula,
         parameter_formulas=parameter_formulas,
         family=family,
         data=data,
-        **kwargs
+        **kwargs,
     )
-    
+
     old_deviance = float(model.g_dev)
-    
+
     if verbose:
         print(f"Initial deviance: {old_deviance:.6f}")
-    
+
     # Check if model has smooth terms
     smooth_fits = model.additional_slots.get("smooth_fits", {})
     has_smooths = any(len(fits) > 0 for fits in smooth_fits.values())
-    
+
     if not has_smooths:
         if verbose:
             print("\n⚠ No smooth terms found, returning initial fit")
         return model
-    
+
     # Display smooth term information
     if verbose:
         print(f"\nSmooth terms in model:")
@@ -283,8 +285,10 @@ def gamlss_with_automatic_smoothing(
             if len(smooth_list) > 0:
                 print(f"  {param}: {len(smooth_list)} smooth term(s)")
                 for i, smooth_fit in enumerate(smooth_list):
-                    print(f"    - {smooth_fit.variable}: λ={smooth_fit.lambda_:.4e}, edf={smooth_fit.edf:.2f}")
-    
+                    print(
+                        f"    - {smooth_fit.variable}: λ={smooth_fit.lambda_:.4e}, edf={smooth_fit.edf:.2f}"
+                    )
+
     # NOTE: Full outer loop implementation would go here
     # For now, we return the initial fit
     # Future implementation will:
@@ -292,7 +296,7 @@ def gamlss_with_automatic_smoothing(
     # 2. Optimize λ values using optimize_smoothing_parameters()
     # 3. Refit model with new λ values
     # 4. Repeat until convergence
-    
+
     if verbose:
         print(f"\n{'='*70}")
         print(f"Final model (prototype - no outer loop iterations)")
@@ -302,7 +306,7 @@ def gamlss_with_automatic_smoothing(
         print(f"Effective df: {model.df_fit:.2f}")
         print(f"\nTo enable full outer loop optimization, the smooth fitting")
         print(f"code needs to be modified to accept external λ values.")
-    
+
     return model
 
 
@@ -315,13 +319,13 @@ def auto_smooth(
     parameter_formulas: Optional[Dict[str, str]] = None,
     method: str = "REML",
     verbose: bool = False,
-    **kwargs
+    **kwargs,
 ) -> Any:
     """Fit GAMLSS with automatic smoothing parameter selection.
-    
+
     This is a convenience wrapper around gamlss_with_automatic_smoothing
     that uses gamlss_ml as the base fitting function.
-    
+
     Parameters
     ----------
     formula : str
@@ -340,26 +344,26 @@ def auto_smooth(
         Print progress
     **kwargs
         Additional arguments
-        
+
     Returns
     -------
     model : GAMLSSModel
         Fitted model with optimized λ values
-        
+
     Notes
     -----
     **PROTOTYPE IMPLEMENTATION**
-    
+
     This is currently a prototype that demonstrates the API for automatic
     smoothing parameter selection. The model is fitted with default λ values.
-    
+
     Full outer loop optimization will be enabled in future versions once the
     smooth fitting code is modified to accept external λ values.
-        
+
     Examples
     --------
     >>> from omnilss.smoothers.smooth_parameter_selection import auto_smooth
-    >>> 
+    >>>
     >>> # Automatic λ selection with REML (recommended)
     >>> model = auto_smooth(
     ...     "y ~ s(x1) + s(x2)",
@@ -368,7 +372,7 @@ def auto_smooth(
     ...     method="REML",
     ...     verbose=True
     ... )
-    >>> 
+    >>>
     >>> # With GCV
     >>> model = auto_smooth(
     ...     "y ~ s(x1) + s(x2)",
@@ -380,7 +384,7 @@ def auto_smooth(
     ... )
     """
     from ..fitting import gamlss_ml
-    
+
     return gamlss_with_automatic_smoothing(
         fit_function=gamlss_ml,
         formula=formula,
@@ -390,5 +394,5 @@ def auto_smooth(
         data=data,
         lambda_method=method,
         verbose=verbose,
-        **kwargs
+        **kwargs,
     )

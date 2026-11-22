@@ -178,7 +178,9 @@ _R_CONSISTENCY_EVIDENCE = frozenset(
 # R family names in _R_CONSISTENCY_EVIDENCE preserve R's original spelling
 # ("JSUo").  Normalize for matrix lookups without mutating the public evidence
 # set (consumed by highfreq_family_freeze.py).
-_R_CONSISTENCY_EVIDENCE_UPPER = frozenset(name.upper() for name in _R_CONSISTENCY_EVIDENCE)
+_R_CONSISTENCY_EVIDENCE_UPPER = frozenset(
+    name.upper() for name in _R_CONSISTENCY_EVIDENCE
+)
 
 # JAX RS support is intentionally narrower than normal RS support.  The fitting
 # documentation describes this route as available for these core families but not
@@ -356,9 +358,7 @@ def _module_function_defs(module_name: str) -> dict[str, ast.FunctionDef]:
     if module is None:
         return {}
     return {
-        node.name: node
-        for node in module.body
-        if isinstance(node, ast.FunctionDef)
+        node.name: node for node in module.body if isinstance(node, ast.FunctionDef)
     }
 
 
@@ -781,9 +781,7 @@ def validate_capability_matrix_payload(
         )
 
     implementation_statuses = payload.get("implementation_statuses")
-    expected_implementation_statuses = [
-        status.value for status in ImplementationStatus
-    ]
+    expected_implementation_statuses = [status.value for status in ImplementationStatus]
     if implementation_statuses != expected_implementation_statuses:
         issues.append(
             _capability_matrix_issue(
@@ -985,7 +983,8 @@ def method_route_capability_report(
         from .formula_parser import has_smooth_terms
 
         smooth_parameters = [
-            parameter for parameter, formula in formulas.items()
+            parameter
+            for parameter, formula in formulas.items()
             if has_smooth_terms(formula)
         ]
         if smooth_parameters:
@@ -1036,8 +1035,7 @@ def method_route_capability_report(
             "allow_experimental": allow_experimental,
             "code": "unknown_family",
             "message": (
-                f"family {family_name!r} is not present in the capability "
-                "registry"
+                f"family {family_name!r} is not present in the capability " "registry"
             ),
         }
 

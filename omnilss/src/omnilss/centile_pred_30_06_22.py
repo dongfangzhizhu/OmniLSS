@@ -75,24 +75,36 @@ def centile_pred_data(
         raise ValueError("xvalues argument is required")
     selected_type = str(type).strip().lower()
     if selected_type not in {"centiles", "z-scores", "standard-centiles"}:
-        raise ValueError("type must be one of 'centiles', 'z-scores', or 'standard-centiles'")
+        raise ValueError(
+            "type must be one of 'centiles', 'z-scores', or 'standard-centiles'"
+        )
 
     x_output = np.asarray(xvalues, dtype=np.float64).ravel()
-    x_input = np.asarray(np.power(x_output, power), dtype=np.float64) if power is not None else x_output.copy()
-    predicted, chosen_fixed = _predict_parameter_frame(object, str(xname), x_input, fixed_at=fixed_at)
+    x_input = (
+        np.asarray(np.power(x_output, power), dtype=np.float64)
+        if power is not None
+        else x_output.copy()
+    )
+    predicted, chosen_fixed = _predict_parameter_frame(
+        object, str(xname), x_input, fixed_at=fixed_at
+    )
     family_name = getattr(object.family, "name", str(object.family))
     approximation = "family-aware staged quantile approximation"
     normal = NormalDist()
 
     if selected_type == "centiles":
-        cent_values = np.asarray(tuple(float(value) for value in cent), dtype=np.float64)
+        cent_values = np.asarray(
+            tuple(float(value) for value in cent), dtype=np.float64
+        )
         if cent_values.size == 0:
             raise ValueError("cent must contain at least one centile")
         if np.any((cent_values <= 0.0) | (cent_values >= 100.0)):
             raise ValueError("cent must lie strictly between 0 and 100")
         if calibration:
             z = np.quantile(_ordered_residuals(object), cent_values / 100.0)
-            cent_values = np.array([100.0 * normal.cdf(float(value)) for value in z], dtype=np.float64)
+            cent_values = np.array(
+                [100.0 * normal.cdf(float(value)) for value in z], dtype=np.float64
+            )
             eps_pct = 100.0 * np.finfo(np.float64).eps
             cent_values = np.clip(cent_values, eps_pct, 100.0 - eps_pct)
         probs = tuple(float(value / 100.0) for value in cent_values)
@@ -138,7 +150,9 @@ def centile_pred_data(
         )
         entries = tuple(
             CentilePredEntry(
-                label=str(int(value)) if float(value).is_integer() else str(float(value)),
+                label=(
+                    str(int(value)) if float(value).is_integer() else str(float(value))
+                ),
                 values=np.asarray(values, dtype=np.float64).ravel(),
                 probability=float(probability),
             )
@@ -162,7 +176,9 @@ def centile_pred_data(
     y_values = np.asarray(yval, dtype=np.float64).ravel()
     if y_values.shape != x_output.shape:
         raise ValueError("length of xvalues and yval is not the same")
-    probability_grid = np.linspace(1e-3, 1.0 - 1e-3, int(probability_grid_size), dtype=np.float64)
+    probability_grid = np.linspace(
+        1e-3, 1.0 - 1e-3, int(probability_grid_size), dtype=np.float64
+    )
     quantile_grid = _family_quantile_values(
         family_name,
         object.par,
@@ -172,14 +188,22 @@ def centile_pred_data(
         predicted["tau"],
         tuple(float(value) for value in probability_grid),
     )
-    quantile_matrix = np.column_stack([np.asarray(values, dtype=np.float64).ravel() for values in quantile_grid])
+    quantile_matrix = np.column_stack(
+        [np.asarray(values, dtype=np.float64).ravel() for values in quantile_grid]
+    )
     z_scores = np.empty_like(y_values, dtype=np.float64)
     for idx in range(y_values.size):
         curve = np.asarray(quantile_matrix[idx], dtype=np.float64)
         order = np.argsort(curve)
         sorted_curve = curve[order]
         sorted_probs = probability_grid[order]
-        clipped_prob = np.interp(float(y_values[idx]), sorted_curve, sorted_probs, left=float(sorted_probs[0]), right=float(sorted_probs[-1]))
+        clipped_prob = np.interp(
+            float(y_values[idx]),
+            sorted_curve,
+            sorted_probs,
+            left=float(sorted_probs[0]),
+            right=float(sorted_probs[-1]),
+        )
         clipped_prob = float(np.clip(clipped_prob, 1e-6, 1.0 - 1e-6))
         z_scores[idx] = normal.inv_cdf(clipped_prob)
     return CentilePredResult(

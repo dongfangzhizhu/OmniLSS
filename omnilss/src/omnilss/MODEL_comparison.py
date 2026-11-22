@@ -82,7 +82,11 @@ def compare_models(*models: GAMLSSModel) -> ModelComparisonResult:
         df_fit = float(model.df_fit)
         dev = float(model.g_dev)
         aic = float(model.additional_slots.get("aic", gaic(model, k=2.0)))
-        sbc = float(model.additional_slots.get("sbc", gaic(model, k=float(np.log(max(model.n, 1))))))
+        sbc = float(
+            model.additional_slots.get(
+                "sbc", gaic(model, k=float(np.log(max(model.n, 1))))
+            )
+        )
 
         delta_df: float | None = None
         delta_dev: float | None = None
@@ -130,7 +134,9 @@ def gaic_weights(
     weights = raw / denom if denom > 0.0 else np.full_like(raw, np.nan)
 
     rows: list[GAICWeightRow] = []
-    for index, (model, criterion, d_value, weight) in enumerate(zip(models, criteria, delta, weights, strict=False), start=1):
+    for index, (model, criterion, d_value, weight) in enumerate(
+        zip(models, criteria, delta, weights, strict=False), start=1
+    ):
         family_name = getattr(model.family, "name", str(model.family))
         rows.append(
             GAICWeightRow(

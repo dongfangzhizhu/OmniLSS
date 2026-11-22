@@ -13,6 +13,7 @@ The smoothers themselves are documented in omnislss.smoother_admission: only
 pb, ps and cs are admitted to the fitting routes, and these control objects are
 the settings layer for all of them.
 """
+
 from __future__ import annotations
 
 import warnings
@@ -42,7 +43,9 @@ def _base_defaults(
     min_order: int = 0,
 ) -> tuple[int, int, int, float]:
     if inter <= 0:
-        _warn("the value of inter supplied is less than 0, the value of 10 was used instead")
+        _warn(
+            "the value of inter supplied is less than 0, the value of 10 was used instead"
+        )
         inter = 10
     if degree <= 0:
         _warn(

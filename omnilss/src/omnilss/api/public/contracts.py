@@ -8,14 +8,11 @@ from .results import FitResult, PredictResult, ScoreResult
 
 
 class PublicGAMLSSAPI(Protocol):
-    def fit(self, *args: Any, **kwargs: Any) -> FitResult:
-        ...
+    def fit(self, *args: Any, **kwargs: Any) -> FitResult: ...
 
-    def predict(self, *args: Any, **kwargs: Any) -> PredictResult:
-        ...
+    def predict(self, *args: Any, **kwargs: Any) -> PredictResult: ...
 
-    def score(self, *args: Any, **kwargs: Any) -> ScoreResult:
-        ...
+    def score(self, *args: Any, **kwargs: Any) -> ScoreResult: ...
 
 
 def freeze_fit_result(
@@ -39,8 +36,12 @@ def freeze_fit_result(
     )
 
 
-def freeze_predict_result(*, family: str, parameter_predictions: dict[str, Any]) -> PredictResult:
-    return PredictResult(family=family, parameter_predictions=dict(parameter_predictions))
+def freeze_predict_result(
+    *, family: str, parameter_predictions: dict[str, Any]
+) -> PredictResult:
+    return PredictResult(
+        family=family, parameter_predictions=dict(parameter_predictions)
+    )
 
 
 def freeze_score_result(*, family: str, metric: str, value: float) -> ScoreResult:

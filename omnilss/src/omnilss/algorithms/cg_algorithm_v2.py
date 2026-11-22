@@ -116,9 +116,13 @@ def _initial_state_from_model(
                 f"initial_model is missing the linear predictor for {parameter!r}"
             )
         if parameter not in initial_model.fitted_values:
-            raise ValueError(f"initial_model is missing fitted values for {parameter!r}")
+            raise ValueError(
+                f"initial_model is missing fitted values for {parameter!r}"
+            )
 
-        beta = np.asarray(initial_model.coefficients[parameter], dtype=np.float64).copy()
+        beta = np.asarray(
+            initial_model.coefficients[parameter], dtype=np.float64
+        ).copy()
         eta = np.asarray(
             initial_model.linear_predictors[parameter], dtype=np.float64
         ).copy()
@@ -166,7 +170,11 @@ def _initial_state_from_model(
             rescaled_eta = expected_eta.copy()
             rescaled_eta[clipped] = eta[clipped]
             scale = max(1.0, float(np.max(np.abs(rescaled_eta))))
-            deviation = float(np.max(np.abs(eta[free] - rescaled_eta[free]))) if free.any() else 0.0
+            deviation = (
+                float(np.max(np.abs(eta[free] - rescaled_eta[free])))
+                if free.any()
+                else 0.0
+            )
             if deviation <= 1e-4 * scale:
                 eta = rescaled_eta
                 fitted = np.asarray(
@@ -313,8 +321,11 @@ def cg_fit_v2(
         if parameter in fixed_parameter_values:
             continue
         _, X, labels, smooth = _build_design_matrix_with_smooths(
-            resolved_formulas[parameter], data, weights=weights,
-            contrasts=contrasts, factor_spec=factor_spec,
+            resolved_formulas[parameter],
+            data,
+            weights=weights,
+            contrasts=contrasts,
+            factor_spec=factor_spec,
         )
         design_matrices[parameter] = np.asarray(X, dtype=np.float64)
         predictor_labels[parameter] = labels
@@ -353,9 +364,7 @@ def cg_fit_v2(
                 ),
                 dtype=np.float64,
             )
-            beta_mu, *_ = np.linalg.lstsq(
-                mu_X, eta_start - offsets["mu"], rcond=None
-            )
+            beta_mu, *_ = np.linalg.lstsq(mu_X, eta_start - offsets["mu"], rcond=None)
         else:
             beta_mu = _initial_mu_beta(
                 family, mu_X, y, w, fixed_parameter_values=fixed_parameter_values
@@ -397,9 +406,7 @@ def cg_fit_v2(
                 )
             beta, *_ = np.linalg.lstsq(X, eta_init - offsets[p], rcond=None)
             eta = X @ beta + offsets[p]
-            pv = np.asarray(
-                family.link_inverses[p](jnp.asarray(eta)), dtype=np.float64
-            )
+            pv = np.asarray(family.link_inverses[p](jnp.asarray(eta)), dtype=np.float64)
             params[p], coefs[p], etas[p] = pv, beta, eta
 
     for p, v in fixed_parameter_values.items():
@@ -504,7 +511,9 @@ def cg_fit_v2(
                 # rebuilt prediction with 3 columns while the fit had 4 and
                 # MIXED prediction raised a schema error.  Fixed parameters
                 # keep their dedicated term above.
-                "intercept": bool(_parse_full_formula(resolved_formulas[p]).has_intercept),
+                "intercept": bool(
+                    _parse_full_formula(resolved_formulas[p]).has_intercept
+                ),
                 "formula": resolved_formulas[p],
             }
         )

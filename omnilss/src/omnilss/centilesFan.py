@@ -44,7 +44,17 @@ class CentilesFanResult:
 def centiles_fan_data(
     object: GAMLSSModel,
     xvar: str,
-    cent: list[float] | tuple[float, ...] = (0.4, 2.0, 10.0, 25.0, 50.0, 75.0, 90.0, 98.0, 99.6),
+    cent: list[float] | tuple[float, ...] = (
+        0.4,
+        2.0,
+        10.0,
+        25.0,
+        50.0,
+        75.0,
+        90.0,
+        98.0,
+        99.6,
+    ),
     n_points: int = 100,
     how: str = "median",
     fixed_at: dict[str, float] | None = None,

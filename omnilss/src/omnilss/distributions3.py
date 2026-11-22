@@ -13,14 +13,19 @@ import numpy as np
 
 from .families import FamilyDefinition
 
-
-_ANALYTIC_MEAN_FAMILIES = frozenset({"NO", "NO2", "TF", "TF2", "GA", "LOGNO", "PO", "EXP", "BI"})
-_ANALYTIC_VARIANCE_FAMILIES = frozenset({"NO", "NO2", "TF", "TF2", "GA", "LOGNO", "EXP", "PO", "BI"})
+_ANALYTIC_MEAN_FAMILIES = frozenset(
+    {"NO", "NO2", "TF", "TF2", "GA", "LOGNO", "PO", "EXP", "BI"}
+)
+_ANALYTIC_VARIANCE_FAMILIES = frozenset(
+    {"NO", "NO2", "TF", "TF2", "GA", "LOGNO", "EXP", "PO", "BI"}
+)
 _ANALYTIC_SKEWNESS_FAMILIES = frozenset({"NO", "NO2", "GA", "LOGNO", "EXP", "PO", "BI"})
 _ANALYTIC_KURTOSIS_FAMILIES = frozenset({"NO", "NO2", "GA", "LOGNO", "EXP", "PO", "BI"})
 
 
-def pdf(family: FamilyDefinition, x: Any, *params: Any, log: bool = False) -> np.ndarray:
+def pdf(
+    family: FamilyDefinition, x: Any, *params: Any, log: bool = False
+) -> np.ndarray:
     vals = np.asarray(family.pdf(jnp.asarray(x), *[jnp.asarray(p) for p in params]))
     if log:
         return np.log(np.clip(vals, 1e-300, None))
@@ -33,19 +38,25 @@ def log_pdf(family: FamilyDefinition, x: Any, *params: Any) -> np.ndarray:
 
 def cdf(family: FamilyDefinition, q: Any, *params: Any) -> np.ndarray:
     if family.p is None:
-        raise NotImplementedError(f"Family {family.name!r} does not define a CDF function")
+        raise NotImplementedError(
+            f"Family {family.name!r} does not define a CDF function"
+        )
     return np.asarray(family.p(jnp.asarray(q), *[jnp.asarray(p) for p in params]))
 
 
 def quantile(family: FamilyDefinition, p: Any, *params: Any) -> np.ndarray:
     if family.q is None:
-        raise NotImplementedError(f"Family {family.name!r} does not define a quantile function")
+        raise NotImplementedError(
+            f"Family {family.name!r} does not define a quantile function"
+        )
     return np.asarray(family.q(jnp.asarray(p), *[jnp.asarray(pv) for pv in params]))
 
 
 def random(family: FamilyDefinition, key: Any, n: int, *params: Any) -> np.ndarray:
     if family.r is None:
-        raise NotImplementedError(f"Family {family.name!r} does not define a random generator")
+        raise NotImplementedError(
+            f"Family {family.name!r} does not define a random generator"
+        )
     return np.asarray(family.r(key, int(n), *[jnp.asarray(p) for p in params]))
 
 
@@ -63,7 +74,18 @@ def support(family: FamilyDefinition) -> str:
         return "integers"
     if family.name in {"BE", "BEINF", "SIMPLEX", "GB1", "BEO", "BEOI", "BEZI"}:
         return "(0,1)"
-    if family.name in {"GA", "IG", "WEI", "GG", "LOGNO", "EXP", "GIG", "PO", "NBI", "ZIP"}:
+    if family.name in {
+        "GA",
+        "IG",
+        "WEI",
+        "GG",
+        "LOGNO",
+        "EXP",
+        "GIG",
+        "PO",
+        "NBI",
+        "ZIP",
+    }:
         return "(0,∞)"
     return "(-∞,∞)"
 
@@ -94,7 +116,13 @@ def moment_availability(family: FamilyDefinition) -> dict[str, str]:
     return tiers
 
 
-def mean(family: FamilyDefinition, *params: Any, fallback: str = "analytic", n: int = 20000, seed: int = 12345) -> float:
+def mean(
+    family: FamilyDefinition,
+    *params: Any,
+    fallback: str = "analytic",
+    n: int = 20000,
+    seed: int = 12345,
+) -> float:
     if params and fallback == "analytic":
         if family.name == "LOGNO" and len(params) >= 2:
             mu = np.asarray(params[0], dtype=float)
@@ -105,9 +133,18 @@ def mean(family: FamilyDefinition, *params: Any, fallback: str = "analytic", n: 
             return mu
     if params and fallback == "sample":
         return _sample_moments(family, *params, n=n, seed=seed)[0]
-    raise NotImplementedError(f"Mean is not available for family {family.name!r}; set fallback='sample' when random generation exists")
+    raise NotImplementedError(
+        f"Mean is not available for family {family.name!r}; set fallback='sample' when random generation exists"
+    )
 
-def variance(family: FamilyDefinition, *params: Any, fallback: str = "analytic", n: int = 20000, seed: int = 12345) -> float:
+
+def variance(
+    family: FamilyDefinition,
+    *params: Any,
+    fallback: str = "analytic",
+    n: int = 20000,
+    seed: int = 12345,
+) -> float:
     if family.name in {"NO", "NO2"} and len(params) >= 2:
         sigma = np.asarray(params[1], dtype=float)
         return float(np.mean(np.square(sigma)))
@@ -137,9 +174,18 @@ def variance(family: FamilyDefinition, *params: Any, fallback: str = "analytic",
         return float(np.mean(mu * (1.0 - mu)))
     if fallback == "sample":
         return _sample_moments(family, *params, n=n, seed=seed)[1]
-    raise NotImplementedError(f"Variance helper is not implemented analytically for family {family.name!r}")
+    raise NotImplementedError(
+        f"Variance helper is not implemented analytically for family {family.name!r}"
+    )
 
-def skewness(family: FamilyDefinition, *params: Any, fallback: str = "analytic", n: int = 20000, seed: int = 12345) -> float:
+
+def skewness(
+    family: FamilyDefinition,
+    *params: Any,
+    fallback: str = "analytic",
+    n: int = 20000,
+    seed: int = 12345,
+) -> float:
     if family.name in {"NO", "NO2"}:
         return 0.0
     if family.name == "GA" and len(params) >= 2:
@@ -150,7 +196,9 @@ def skewness(family: FamilyDefinition, *params: Any, fallback: str = "analytic",
     if family.name == "LOGNO" and len(params) >= 2:
         sigma = np.asarray(params[1], dtype=float)
         s2 = np.square(sigma)
-        return float(np.mean((np.exp(s2) + 2.0) * np.sqrt(np.maximum(np.exp(s2) - 1.0, 1e-12))))
+        return float(
+            np.mean((np.exp(s2) + 2.0) * np.sqrt(np.maximum(np.exp(s2) - 1.0, 1e-12)))
+        )
     if family.name == "EXP":
         return 2.0
     if family.name == "PO" and len(params) >= 1:
@@ -161,9 +209,18 @@ def skewness(family: FamilyDefinition, *params: Any, fallback: str = "analytic",
         return float((1.0 - 2.0 * p) / np.sqrt(max(p * (1.0 - p), 1e-12)))
     if fallback == "sample":
         return _sample_moments(family, *params, n=n, seed=seed)[2]
-    raise NotImplementedError(f"Skewness helper is not implemented analytically for family {family.name!r}")
+    raise NotImplementedError(
+        f"Skewness helper is not implemented analytically for family {family.name!r}"
+    )
 
-def kurtosis(family: FamilyDefinition, *params: Any, fallback: str = "analytic", n: int = 20000, seed: int = 12345) -> float:
+
+def kurtosis(
+    family: FamilyDefinition,
+    *params: Any,
+    fallback: str = "analytic",
+    n: int = 20000,
+    seed: int = 12345,
+) -> float:
     if family.name in {"NO", "NO2"}:
         return 3.0
     if family.name == "GA" and len(params) >= 2:
@@ -173,7 +230,9 @@ def kurtosis(family: FamilyDefinition, *params: Any, fallback: str = "analytic",
     if family.name == "LOGNO" and len(params) >= 2:
         sigma = np.asarray(params[1], dtype=float)
         s2 = np.square(sigma)
-        return float(np.mean(np.exp(4.0 * s2) + 2.0 * np.exp(3.0 * s2) + 3.0 * np.exp(2.0 * s2)))
+        return float(
+            np.mean(np.exp(4.0 * s2) + 2.0 * np.exp(3.0 * s2) + 3.0 * np.exp(2.0 * s2))
+        )
     if family.name == "EXP":
         return 9.0
     if family.name == "PO" and len(params) >= 1:
@@ -185,12 +244,19 @@ def kurtosis(family: FamilyDefinition, *params: Any, fallback: str = "analytic",
         return float(3.0 + (1.0 - 6.0 * var) / var)
     if fallback == "sample":
         return _sample_moments(family, *params, n=n, seed=seed)[3]
-    raise NotImplementedError(f"Kurtosis helper is not implemented analytically for family {family.name!r}")
+    raise NotImplementedError(
+        f"Kurtosis helper is not implemented analytically for family {family.name!r}"
+    )
 
-def _sample_moments(family: FamilyDefinition, *params: Any, n: int = 20000, seed: int = 12345) -> tuple[float, float, float, float]:
+
+def _sample_moments(
+    family: FamilyDefinition, *params: Any, n: int = 20000, seed: int = 12345
+) -> tuple[float, float, float, float]:
     """Monte-Carlo fallback moments using family random generator when available."""
     if family.r is None:
-        raise NotImplementedError(f"Family {family.name!r} does not define random generation for fallback moments")
+        raise NotImplementedError(
+            f"Family {family.name!r} does not define random generation for fallback moments"
+        )
     from jax import random as jrandom
 
     key = jrandom.PRNGKey(seed)
@@ -202,10 +268,12 @@ def _sample_moments(family: FamilyDefinition, *params: Any, n: int = 20000, seed
         scalar_params.append(arr)
     draws = np.asarray(family.r(key, int(n), *scalar_params), dtype=float).ravel()
     if draws.size == 0:
-        raise NotImplementedError(f"Family {family.name!r} produced no draws for fallback moments")
+        raise NotImplementedError(
+            f"Family {family.name!r} produced no draws for fallback moments"
+        )
     mu = float(np.mean(draws))
     centered = draws - mu
-    var = float(np.mean(centered ** 2))
+    var = float(np.mean(centered**2))
     if var <= 0:
         return mu, var, 0.0, 0.0
     sd = float(np.sqrt(var))

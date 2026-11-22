@@ -33,6 +33,7 @@ tests pin both R's default value (loose tolerance, recorded as R stopping
 early) and R's ``reltol=1e-14`` value (tight agreement), and check that the
 port's objective value is no worse than R's default.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -48,9 +49,7 @@ def _as_pair(x: Any, y: Any) -> tuple[np.ndarray, np.ndarray]:
     if y is None:
         arr = np.asarray(x, dtype=np.float64)
         if arr.ndim != 2 or arr.shape[1] < 2:
-            raise ValueError(
-                "Provide either (x, y) or a 2-column matrix/data.frame"
-            )
+            raise ValueError("Provide either (x, y) or a 2-column matrix/data.frame")
         return arr[:, 0], arr[:, 1]
     return (
         np.asarray(x, dtype=np.float64).ravel(),
@@ -105,9 +104,7 @@ def xy_median(x: Any, y: Any = None, method: str = "cw") -> np.ndarray:
     return median_pc(x, y)
 
 
-def ECDF_2D(
-    value_x: Any, value_y: Any, data_x: Any, data_y: Any
-) -> float:
+def ECDF_2D(value_x: Any, value_y: Any, data_x: Any, data_y: Any) -> float:
     """R ECDF_2D: ``mean(data.x <= value.x & data.y <= value.y)``."""
 
     dx = np.asarray(data_x, dtype=np.float64).ravel()

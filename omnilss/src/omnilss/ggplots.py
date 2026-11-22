@@ -14,6 +14,7 @@ contract is the data layer and the outlier/diagnostic rules, which match R:
     qq plots          qnorm(ppoints(n)) against sorted residuals, qqline through
                       the quartiles
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -72,7 +73,9 @@ def _quantile_line(values: np.ndarray) -> tuple[float, float]:
     return slope, intercept
 
 
-def y_hist(y: Any = None, value: float = 3.0, bins: int | None = None, plot: bool = True) -> GGPlot:
+def y_hist(
+    y: Any = None, value: float = 3.0, bins: int | None = None, plot: bool = True
+) -> GGPlot:
     """R y_hist: histogram with median and median +/- value * mad lines."""
 
     values = np.asarray(y, dtype=np.float64)
@@ -90,7 +93,9 @@ def y_hist(y: Any = None, value: float = 3.0, bins: int | None = None, plot: boo
     if axes is not None:
         axes.hist(values, bins=bins, color="white", edgecolor="black")
         for line, style in ((median, "-"), (low, ":"), (high, ":")):
-            axes.axvline(line, color="red" if line == median else "black", linestyle=style)
+            axes.axvline(
+                line, color="red" if line == median else "black", linestyle=style
+            )
     return GGPlot(
         "hist",
         {
@@ -158,14 +163,25 @@ def fitted_pdf(
         args = []
         for name in model.family.parameters:
             if name in model.fitted_values:
-                args.append(np.full(grid.size, np.asarray(model.fitted_values[name], float)[observations[index]]))
+                args.append(
+                    np.full(
+                        grid.size,
+                        np.asarray(model.fitted_values[name], float)[
+                            observations[index]
+                        ],
+                    )
+                )
         curves.append(np.asarray(model.family.d(grid, *args), dtype=np.float64))
         density[str(observations[index] + 1)] = curves[-1]
     figure, axes = _figure() if plot else (None, None)
     if axes is not None:
         for curve in curves:
             axes.plot(grid, curve)
-    return GGPlot("fitted_pdf", {"grid": grid, "density": density, "obs": observations + 1}, figure)
+    return GGPlot(
+        "fitted_pdf",
+        {"grid": grid, "density": density, "obs": observations + 1},
+        figure,
+    )
 
 
 def fitted_pdf_data(
@@ -210,13 +226,24 @@ def fitted_cdf(
         args = []
         for name in model.family.parameters:
             if name in model.fitted_values:
-                args.append(np.full(grid.size, np.asarray(model.fitted_values[name], float)[observations[index]]))
-        curves[str(observations[index] + 1)] = np.asarray(model.family.p(grid, *args), dtype=np.float64)
+                args.append(
+                    np.full(
+                        grid.size,
+                        np.asarray(model.fitted_values[name], float)[
+                            observations[index]
+                        ],
+                    )
+                )
+        curves[str(observations[index] + 1)] = np.asarray(
+            model.family.p(grid, *args), dtype=np.float64
+        )
     figure, axes = _figure() if plot else (None, None)
     if axes is not None:
         for curve in curves.values():
             axes.plot(grid, curve)
-    return GGPlot("fitted_cdf", {"grid": grid, "cdf": curves, "obs": observations + 1}, figure)
+    return GGPlot(
+        "fitted_cdf", {"grid": grid, "cdf": curves, "obs": observations + 1}, figure
+    )
 
 
 def fitted_cdf_data(
@@ -290,16 +317,23 @@ def resid_qqplot(obj: Any = None, value: float = 3.0, plot: bool = True) -> GGPl
     figure, axes = _figure() if plot else (None, None)
     if axes is not None:
         axes.scatter(data["theoretical"], data["sample"], s=8, color="steelblue")
-        axes.plot(data["theoretical"], data["intercept"] + data["slope"] * data["theoretical"], color="darkgray")
+        axes.plot(
+            data["theoretical"],
+            data["intercept"] + data["slope"] * data["theoretical"],
+            color="darkgray",
+        )
         axes.scatter(
             np.asarray(data["theoretical"])[data["outlier"]],
             np.asarray(data["sample"])[data["outlier"]],
-            s=14, color="sienna",
+            s=14,
+            color="sienna",
         )
     return GGPlot("resid_qqplot", data, figure)
 
 
-def add_resid_qqplot(gg: Any = None, obj: Any = None, value: float = 3.0, plot: bool = True) -> GGPlot:
+def add_resid_qqplot(
+    gg: Any = None, obj: Any = None, value: float = 3.0, plot: bool = True
+) -> GGPlot:
     """R add_resid_qqplot: the QQ layer data for an existing plot."""
 
     base = resid_qqplot(obj, value=value, plot=plot)
@@ -338,11 +372,19 @@ def resid_density(obj: Any = None, plot: bool = True) -> GGPlot:
     if sample.size < 3:
         raise ValueError("resid_density needs at least three residuals")
     grid = np.linspace(float(sample.min()), float(sample.max()), 256)
-    density = stats.gaussian_kde(sample)(grid) if float(np.var(sample)) > 0 else np.zeros_like(grid)
+    density = (
+        stats.gaussian_kde(sample)(grid)
+        if float(np.var(sample)) > 0
+        else np.zeros_like(grid)
+    )
     figure, axes = _figure() if plot else (None, None)
     if axes is not None:
         axes.plot(grid, density)
-        axes.plot(grid, stats.norm.pdf(grid, sample.mean(), sample.std(ddof=1)), linestyle="--")
+        axes.plot(
+            grid,
+            stats.norm.pdf(grid, sample.mean(), sample.std(ddof=1)),
+            linestyle="--",
+        )
     return GGPlot("resid_density", {"grid": grid, "density": density}, figure)
 
 
@@ -429,7 +471,9 @@ def moment_bucket(
         for row in rows:
             axes.scatter(row["trans_skew"], row["trans_kurt"], color="red")
             axes.fill(row["polygon"]["X"], row["polygon"]["Y"], alpha=0.2, color="gray")
-    return GGPlot("moment_bucket", {"rows": rows, "no_bootstrap": int(no_bootstrap)}, figure)
+    return GGPlot(
+        "moment_bucket", {"rows": rows, "no_bootstrap": int(no_bootstrap)}, figure
+    )
 
 
 def _bucket_band(skew: float, n: int) -> tuple[tuple[float, float], ...]:
@@ -438,12 +482,12 @@ def _bucket_band(skew: float, n: int) -> tuple[tuple[float, float], ...]:
     xi = np.linspace(0.0, abs(skew) if skew else 0.999, 50)
     gamma1 = xi / np.clip(1.0 - xi, 1e-12, None)
     gamma2 = np.sqrt(
-        np.clip((24.0 / n) * (stats.chi2.ppf(0.95, 2) - (n / 6.0) * gamma1**2), 0.0, None)
+        np.clip(
+            (24.0 / n) * (stats.chi2.ppf(0.95, 2) - (n / 6.0) * gamma1**2), 0.0, None
+        )
     )
     gamma2 = gamma2 / (1.0 + np.abs(gamma2))
     return tuple((float(a), float(b)) for a, b in zip(xi, gamma2))
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -549,7 +593,9 @@ def pe_1_parameter(
         link = obj.family.link_functions[parameter]
         import jax.numpy as jnp
 
-        raw = np.asarray(link(jnp.asarray(predicted, dtype=jnp.float64)), dtype=np.float64)
+        raw = np.asarray(
+            link(jnp.asarray(predicted, dtype=jnp.float64)), dtype=np.float64
+        )
     else:
         raw = predicted
     center = _center_value(grid, raw, str(centered_from))
@@ -593,9 +639,7 @@ def pe_2_parameter(obj: Any = None, terms: Any = None, **kwargs: Any) -> dict:
     if terms is None:
         raise ValueError("pe_2_parameter needs the terms")
     terms = [terms] if isinstance(terms, str) else list(terms)
-    return {
-        str(term): pe_1_parameter(obj, str(term), **kwargs) for term in terms
-    }
+    return {str(term): pe_1_parameter(obj, str(term), **kwargs) for term in terms}
 
 
 def pe_param_grid(obj: Any = None, terms: Any = None, **kwargs: Any) -> dict:
@@ -649,15 +693,19 @@ def pe_pdf(
     formula = (obj.call or {}).get("formula", "")
     response_name = formula.split("~")[0].strip() if "~" in formula else list(values)[0]
     response = np.asarray(values[response_name], dtype=np.float64)
-    density_grid = np.linspace(float(response.min()), float(response.max()), int(no_points))
+    density_grid = np.linspace(
+        float(response.min()), float(response.max()), int(no_points)
+    )
     curves = {}
     for index, pick in enumerate(picks):
         args = [
-            np.full(density_grid.size, np.asarray(params[name], dtype=np.float64)[index])
+            np.full(
+                density_grid.size, np.asarray(params[name], dtype=np.float64)[index]
+            )
             for name in obj.family.parameters
         ]
-        curves[str(float(grid[pick]) if grid.dtype.kind in "iuf" else grid[pick])] = np.asarray(
-            obj.family.d(density_grid, *args), dtype=np.float64
+        curves[str(float(grid[pick]) if grid.dtype.kind in "iuf" else grid[pick])] = (
+            np.asarray(obj.family.d(density_grid, *args), dtype=np.float64)
         )
     figure, axes = _figure() if plot else (None, None)
     if axes is not None:
@@ -679,7 +727,9 @@ def pe_pdf_grid(obj: Any = None, terms: Any = None, **kwargs: Any) -> dict:
     return {str(term): pe_pdf(obj, str(term), **kwargs) for term in terms}
 
 
-def pe_terms(obj: Any = None, terms: Any = None, data: Any = None, **kwargs: Any) -> dict:
+def pe_terms(
+    obj: Any = None, terms: Any = None, data: Any = None, **kwargs: Any
+) -> dict:
     """R pe_terms: partial effects for the model's terms (or a given subset)."""
 
     _require_model(obj, "pe_terms")
@@ -688,15 +738,17 @@ def pe_terms(obj: Any = None, terms: Any = None, data: Any = None, **kwargs: Any
         formula = (obj.call or {}).get("formula", "")
         rhs = formula.split("~", 1)[-1] if "~" in formula else ""
         terms = [
-            part.strip() for part in rhs.split("+")
+            part.strip()
+            for part in rhs.split("+")
             if part.strip() not in {"", "1", "-1"} and part.strip() in values
         ]
     terms = [terms] if isinstance(terms, str) else list(terms)
     if not terms:
         raise ValueError("pe_terms found no covariates to vary")
-    return {str(term): pe_1_parameter(obj, str(term), data=values, **kwargs) for term in terms}
-
-
+    return {
+        str(term): pe_1_parameter(obj, str(term), data=values, **kwargs)
+        for term in terms
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -768,7 +820,11 @@ def _comparison_plot(
         axes.set_title(title)
     return GGPlot(
         kind,
-        {"table": table, "scale": scale, "column": "scaled" if scale == "[0,1]" else "delta"},
+        {
+            "table": table,
+            "scale": scale,
+            "column": "scaled" if scale == "[0,1]" else "delta",
+        },
         figure,
     )
 
@@ -801,7 +857,9 @@ def model_GAIC(
     if all(is_model):
         if len(models) == 1:
             return _gaic_value(models[0], k, c)
-        values = np.asarray([_gaic_value(model, k, c) for model in models], dtype=np.float64)
+        values = np.asarray(
+            [_gaic_value(model, k, c) for model in models], dtype=np.float64
+        )
         labels = _model_names(len(models), names)
         table = _scaled_table(values, labels, diff_dev, column_name="AIC")
         df_by_label = {
@@ -819,9 +877,12 @@ def model_GAIC(
         raise ValueError("which is outside the matrix columns")
     selected = matrix[:, column]
     finite = ~np.isnan(selected)
-    labels = [str(value) for value in np.asarray(
-        getattr(object, "index", np.arange(matrix.shape[0]))
-    )[finite]]
+    labels = [
+        str(value)
+        for value in np.asarray(getattr(object, "index", np.arange(matrix.shape[0])))[
+            finite
+        ]
+    ]
     table = _scaled_table(selected[finite], labels, diff_dev, column_name="GAIC")
     text = title or f"GAIC's ordered from {scale}"
     return _comparison_plot("model_GAIC", table, scale, col, horiz, text, plot)
@@ -862,10 +923,15 @@ def model_TD(
         if not (hasattr(model, "family") and hasattr(model, "df_fit")):
             raise ValueError("some of the objects are not gamlss")
     values = np.asarray(
-        [float(get_tgd(model, newdata=dict(newdata)).test_global_deviance) for model in models],
+        [
+            float(get_tgd(model, newdata=dict(newdata)).test_global_deviance)
+            for model in models
+        ],
         dtype=np.float64,
     )
-    table = _scaled_table(values, _model_names(len(models), names), diff_TD, column_name="TD")
+    table = _scaled_table(
+        values, _model_names(len(models), names), diff_TD, column_name="TD"
+    )
     text = title or f"Test Deviance's ordered from {scale}"
     return _comparison_plot("model_TD", table, scale, col, horiz, text, plot)
 
@@ -895,9 +961,7 @@ def _covariate_names(model: Any) -> list[str]:
         return []
     rhs = str(formula).split("~", 1)[-1]
     return [
-        part.strip()
-        for part in rhs.split("+")
-        if part.strip() not in {"", "1", "-1"}
+        part.strip() for part in rhs.split("+") if part.strip() not in {"", "1", "-1"}
     ]
 
 
@@ -948,10 +1012,16 @@ def model_centiles(
             args = [params[name] for name in model.family.parameters if name in params]
             frame = pd.DataFrame(
                 {
-                    "c": np.asarray(model.family.q(percentage / 100.0, *args), dtype=np.float64),
+                    "c": np.asarray(
+                        model.family.q(percentage / 100.0, *args), dtype=np.float64
+                    ),
                     "x": x_values[order],
                     "y": np.asarray(values[response], dtype=np.float64)[order],
-                    "centiles": str(int(percentage)) if float(percentage).is_integer() else str(percentage),
+                    "centiles": (
+                        str(int(percentage))
+                        if float(percentage).is_integer()
+                        else str(percentage)
+                    ),
                     "Y": label,
                 }
             )
@@ -1057,7 +1127,9 @@ def model_wp_wrap(
     if column.size == 0:
         raise ValueError("xvar must not be empty")
     if column.dtype.kind in "iuf":
-        bins = pd.qcut(np.asarray(column, dtype=np.float64), int(n_inter), duplicates="drop")
+        bins = pd.qcut(
+            np.asarray(column, dtype=np.float64), int(n_inter), duplicates="drop"
+        )
         groups = np.asarray(bins.astype(str))
     else:
         groups = np.asarray(column).astype(str)
@@ -1076,13 +1148,17 @@ def model_wp_wrap(
                 keep = np.asarray(weights, dtype=np.float64)[mask] != 0
             residuals = residuals[keep]
             residuals = residuals[np.isfinite(residuals)]
-            x = stats.norm.ppf(_ppoints(residuals.size))[np.argsort(np.argsort(residuals))]
+            x = stats.norm.ppf(_ppoints(residuals.size))[
+                np.argsort(np.argsort(residuals))
+            ]
             frames.append(
                 pd.DataFrame(
                     {"rqres": residuals - x, "x": x, "model": label, "Z": level_value}
                 )
             )
-        band = _worm_band(float(np.max(np.abs(frames[-1]["x"]))) + 0.5, subset_size, level)
+        band = _worm_band(
+            float(np.max(np.abs(frames[-1]["x"]))) + 0.5, subset_size, level
+        )
         band["Z"] = level_value
         frames.append(band.assign(kind="band"))
     data = pd.concat([frame for frame in frames if "model" in frame], ignore_index=True)
@@ -1099,8 +1175,13 @@ def model_wp_wrap(
     return GGPlot("model_wp_wrap", {"data": data, "band": bands}, figure)
 
 
-def model_pca(obj: Any = None, *others: Any, scale: bool = True, plot: bool = True,
-              names: Any = None) -> Any:
+def model_pca(
+    obj: Any = None,
+    *others: Any,
+    scale: bool = True,
+    plot: bool = True,
+    names: Any = None,
+) -> Any:
     """R model_pca: principal components of the residual matrix of several models."""
 
     models = [obj, *others]
@@ -1142,8 +1223,15 @@ def model_pca(obj: Any = None, *others: Any, scale: bool = True, plot: bool = Tr
         axes.axhline(0.0, linewidth=0.25)
         axes.axvline(0.0, linewidth=0.25)
         for row in arrows.itertuples(index=False):
-            axes.arrow(0.0, 0.0, row.PC1, row.PC2, length_includes_head=True,
-                       head_width=0.02, color="steelblue")
+            axes.arrow(
+                0.0,
+                0.0,
+                row.PC1,
+                row.PC2,
+                length_includes_head=True,
+                head_width=0.02,
+                color="steelblue",
+            )
             axes.annotate(row.label, (row.PC1, row.PC2))
         axes.set_title("Residuals PCA")
     return GGPlot(
@@ -1173,12 +1261,20 @@ def model_devianceIncr_diff(
     difference = first - second
     is_outlier = np.abs(difference) >= float(tol)
     index = np.arange(1, first.size + 1)
-    values = dict(data) if data is not None else (
-        dict((model1.call or {}).get("data") or {}) if (model1.call or {}).get("data") else None
+    values = (
+        dict(data)
+        if data is not None
+        else (
+            dict((model1.call or {}).get("data") or {})
+            if (model1.call or {}).get("data")
+            else None
+        )
     )
     if values is None:
         raise ValueError("The data argument is needed in obj")
-    frame = pd.DataFrame({key: np.asarray(value)[: first.size] for key, value in values.items()})
+    frame = pd.DataFrame(
+        {key: np.asarray(value)[: first.size] for key, value in values.items()}
+    )
     frame["diff"] = difference
     frame["col"] = np.where(is_outlier, "outlier", "normal")
     frame["index"] = index
@@ -1204,8 +1300,6 @@ def model_mom_bucket(*args: Any, **kwargs: Any) -> Any:
 
     result = moment_bucket(*args, **kwargs)
     return GGPlot("model_mom_bucket", result.data, result.figure)
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -1247,8 +1341,11 @@ def _fitted_quantile(model: Any, quantile: float, newdata: Any = None) -> np.nda
         }
     else:
         params = predict_params(model, dict(newdata))
-    args = [np.asarray(params[name], dtype=np.float64) for name in model.family.parameters
-            if name in params]
+    args = [
+        np.asarray(params[name], dtype=np.float64)
+        for name in model.family.parameters
+        if name in params
+    ]
     return np.asarray(model.family.q(float(quantile), *args), dtype=np.float64)
 
 
@@ -1256,8 +1353,9 @@ def _response_vector(model: Any) -> np.ndarray:
     return np.asarray(model.y, dtype=np.float64)
 
 
-def _outlier_frame(observations: np.ndarray, values: np.ndarray, value: float,
-                   x: np.ndarray) -> pd.DataFrame:
+def _outlier_frame(
+    observations: np.ndarray, values: np.ndarray, value: float, x: np.ndarray
+) -> pd.DataFrame:
     flagged = (values >= value) | (values <= -value)
     return pd.DataFrame(
         {
@@ -1293,7 +1391,9 @@ def _residual_diagnostic(
     figure, axes = _figure()
     if axes is not None:
         axes.vlines(frame["fv"], 0.0, frame["sdres"], color="steelblue")
-        axes.scatter(frame["fv"], frame["sdres"], facecolors="none", edgecolors="steelblue")
+        axes.scatter(
+            frame["fv"], frame["sdres"], facecolors="none", edgecolors="steelblue"
+        )
         axes.axhline(0.0, color="gray")
         for line in (value, -value):
             axes.axhline(line, color="red")
@@ -1321,8 +1421,14 @@ def resid_mu(
         raise ValueError("A GAMLSS fitted object should be used")
     _require_model(obj, "resid_mu")
     return _residual_diagnostic(
-        "resid_mu", obj, np.asarray(obj.residuals, float),
-        _fitted_parameter(obj, "mu"), value, plot, title, "mu fitted values",
+        "resid_mu",
+        obj,
+        np.asarray(obj.residuals, float),
+        _fitted_parameter(obj, "mu"),
+        value,
+        plot,
+        title,
+        "mu fitted values",
     )
 
 
@@ -1340,8 +1446,14 @@ def resid_median(
         raise ValueError("A GAMLSS fitted object should be used")
     _require_model(obj, "resid_median")
     return _residual_diagnostic(
-        "resid_median", obj, np.asarray(obj.residuals, float),
-        _fitted_quantile(obj, 0.5), value, plot, title, "mu fitted values",
+        "resid_median",
+        obj,
+        np.asarray(obj.residuals, float),
+        _fitted_quantile(obj, 0.5),
+        value,
+        plot,
+        title,
+        "mu fitted values",
     )
 
 
@@ -1370,7 +1482,9 @@ def resid_param(
         axes.set_ylabel("residuals")
         axes.set_title(text)
     return GGPlot(
-        "resid_param", {"data": frame, "correlation": correlation, "param": param}, figure
+        "resid_param",
+        {"data": frame, "correlation": correlation, "param": param},
+        figure,
     )
 
 
@@ -1431,7 +1545,9 @@ def resid_xvar(
     observations, residuals = _masked_residuals(obj)
     keep = _weight_mask(obj)
     column = column[keep]
-    frame = _outlier_frame(observations, residuals, value, _fitted_parameter(obj, "mu")[keep])
+    frame = _outlier_frame(
+        observations, residuals, value, _fitted_parameter(obj, "mu")[keep]
+    )
     frame[xname] = column
     is_factor = column.dtype.kind not in "iuf"
     outliers = frame.loc[frame["color"] == "outlier", ["obs", "sdres"]].rename(
@@ -1439,8 +1555,13 @@ def resid_xvar(
     )
     text = title or f"Residuals against {xname}"
     if not plot:
-        return {"data": frame, "outliers": outliers, "threshold": float(value),
-                "xname": xname, "is_factor": bool(is_factor)}
+        return {
+            "data": frame,
+            "outliers": outliers,
+            "threshold": float(value),
+            "xname": xname,
+            "is_factor": bool(is_factor),
+        }
     figure, axes = _figure()
     if axes is not None:
         if is_factor:
@@ -1459,8 +1580,13 @@ def resid_xvar(
         axes.set_title(text)
     return GGPlot(
         "resid_xvar",
-        {"data": frame, "outliers": outliers, "threshold": float(value),
-         "xname": xname, "is_factor": bool(is_factor)},
+        {
+            "data": frame,
+            "outliers": outliers,
+            "threshold": float(value),
+            "xname": xname,
+            "is_factor": bool(is_factor),
+        },
         figure,
     )
 
@@ -1551,7 +1677,9 @@ def resid_wp_wrap(
         raise ValueError("xvar and the residuals must have the same length")
     if column.dtype.kind in "iuf":
         groups = np.asarray(
-            pd.qcut(np.asarray(column, float), int(n_inter), duplicates="drop").astype(str)
+            pd.qcut(np.asarray(column, float), int(n_inter), duplicates="drop").astype(
+                str
+            )
         )
     else:
         groups = np.asarray(column).astype(str)
@@ -1589,7 +1717,9 @@ def resid_wp_wrap(
         axes.axhline(0.0, color="gray")
         axes.axvline(0.0, color="gray")
         axes.set_title(text)
-    return GGPlot("resid_wp_wrap", {"data": data, "band": band, "n_inter": int(n_inter)}, figure)
+    return GGPlot(
+        "resid_wp_wrap", {"data": data, "band": band, "n_inter": int(n_inter)}, figure
+    )
 
 
 def _np_bands(values: np.ndarray, kind: str, conf_level: str) -> pd.DataFrame:
@@ -1668,7 +1798,9 @@ def resid_dtop(
             "rqres": residuals[order],
             "dzscores": deviation[order],
             "color": np.where(np.abs(residuals[order]) >= value, "outlier", "normal"),
-            "txt": np.where(np.abs(residuals[order]) >= value, observations[order], np.nan),
+            "txt": np.where(
+                np.abs(residuals[order]) >= value, observations[order], np.nan
+            ),
         }
     )
     band = _np_bands(residuals, str(type), str(conf_level))
@@ -1708,7 +1840,10 @@ def _response_scatter(
     if axes is not None:
         axes.scatter(frame["fv"], frame["y"], s=12, color="steelblue")
         if diagonal:
-            limits = [float(np.min(frame[["y", "fv"]].min())), float(np.max(frame[["y", "fv"]].max()))]
+            limits = [
+                float(np.min(frame[["y", "fv"]].min())),
+                float(np.max(frame[["y", "fv"]].max())),
+            ]
             axes.plot(limits, limits, color="darkred")
         axes.set_xlabel(xlab)
         axes.set_ylabel("response")
@@ -1725,8 +1860,9 @@ def resp_mu(obj: Any = None, title: str | None = None, **kwargs: Any) -> GGPlot:
     )
 
 
-def resp_param(obj: Any = None, param: str = "mu", title: str | None = None,
-               **kwargs: Any) -> GGPlot:
+def resp_param(
+    obj: Any = None, param: str = "mu", title: str | None = None, **kwargs: Any
+) -> GGPlot:
     """R resp_param: response against one fitted parameter."""
 
     _require_model(obj, "resp_param")
@@ -1806,7 +1942,9 @@ def fitted_leverage(
     figure, axes = _figure()
     if axes is not None:
         axes.vlines(frame["obs"], 0.0, frame["hat"], color=line_col)
-        axes.scatter(frame["obs"], frame["hat"], facecolors="none", edgecolors=point_col)
+        axes.scatter(
+            frame["obs"], frame["hat"], facecolors="none", edgecolors=point_col
+        )
         axes.set_xlabel("Observation number")
         axes.set_ylabel("linear leverage")
         axes.set_title(text)
@@ -1856,8 +1994,11 @@ def fitted_devianceIncr(
     frame["txt"] = np.where(frame["color"] == "outlier", frame["obs"], np.nan)
     text = title or "Deviance increment of model"
     if not plot:
-        return {"data": frame, "threshold": threshold,
-                "outliers": frame.loc[frame["color"] == "outlier", ["obs", "DIncr"]]}
+        return {
+            "data": frame,
+            "threshold": threshold,
+            "outliers": frame.loc[frame["color"] == "outlier", ["obs", "DIncr"]],
+        }
     figure, axes = _figure()
     if axes is not None:
         axes.vlines(frame["obs"], 0.0, frame["DIncr"], color=line_col)
@@ -1867,8 +2008,11 @@ def fitted_devianceIncr(
         axes.set_title(text)
     return GGPlot(
         "fitted_devianceIncr",
-        {"data": frame, "threshold": threshold,
-         "outliers": frame.loc[frame["color"] == "outlier", ["obs", "DIncr"]]},
+        {
+            "data": frame,
+            "threshold": threshold,
+            "outliers": frame.loc[frame["color"] == "outlier", ["obs", "DIncr"]],
+        },
         figure,
     )
 
@@ -1891,14 +2035,17 @@ def fitted_survival(
     observations = np.atleast_1d(np.asarray(obs, dtype=int)) - 1
     if np.any(observations < 0):
         raise ValueError("obs must be 1-based observation indices")
-    fixed = [name for name in model.family.parameters if name not in model.fitted_values]
+    fixed = [
+        name for name in model.family.parameters if name not in model.fitted_values
+    ]
     if fixed:
         raise NotImplementedError(
             "fitted_survival's binomial branch (fixed bd) is not ported"
         )
-    discrete = str(
-        getattr(model.family, "type", getattr(model.family, "type_", ""))
-    ).lower() == "discrete"
+    discrete = (
+        str(getattr(model.family, "type", getattr(model.family, "type_", ""))).lower()
+        == "discrete"
+    )
     grid = (
         np.arange(float(from_), float(to) + 1.0, 1.0)
         if discrete
@@ -1907,15 +2054,21 @@ def fitted_survival(
     curves = {}
     for index in observations:
         args = [
-            np.full(grid.size, float(np.asarray(model.fitted_values[name], float)[index]))
+            np.full(
+                grid.size, float(np.asarray(model.fitted_values[name], float)[index])
+            )
             for name in model.family.parameters
         ]
         cdf = np.asarray(model.family.p(grid, *args), dtype=np.float64)
         curves[str(index + 1)] = 1.0 - cdf if lower_tail else cdf
     text = title or "Fitted survival functions from model"
     if not plot:
-        return {"grid": grid, "survival": curves, "obs": observations + 1,
-                "discrete": bool(discrete)}
+        return {
+            "grid": grid,
+            "survival": curves,
+            "obs": observations + 1,
+            "discrete": bool(discrete),
+        }
     figure, axes = _figure()
     if axes is not None:
         for curve in curves.values():
@@ -1928,8 +2081,12 @@ def fitted_survival(
         axes.set_title(text)
     return GGPlot(
         "fitted_survival",
-        {"grid": grid, "survival": curves, "obs": observations + 1,
-         "discrete": bool(discrete)},
+        {
+            "grid": grid,
+            "survival": curves,
+            "obs": observations + 1,
+            "discrete": bool(discrete),
+        },
         figure,
     )
 
@@ -1974,13 +2131,20 @@ def _centile_frame(
 ) -> pd.DataFrame:
     frames = []
     for percentage in percentages:
-        args = [np.asarray(params[name], dtype=np.float64)
-                for name in model.family.parameters if name in params]
-        label = str(int(percentage)) if float(percentage).is_integer() else str(percentage)
+        args = [
+            np.asarray(params[name], dtype=np.float64)
+            for name in model.family.parameters
+            if name in params
+        ]
+        label = (
+            str(int(percentage)) if float(percentage).is_integer() else str(percentage)
+        )
         frames.append(
             pd.DataFrame(
                 {
-                    "c": np.asarray(model.family.q(percentage / 100.0, *args), dtype=np.float64),
+                    "c": np.asarray(
+                        model.family.q(percentage / 100.0, *args), dtype=np.float64
+                    ),
                     "x": x_values,
                     "y": y_values,
                     "centiles": label,
@@ -2025,7 +2189,10 @@ def fitted_centiles(
         if name in obj.fitted_values
     }
     data = _centile_frame(
-        obj, x_values[order], percentages, params,
+        obj,
+        x_values[order],
+        percentages,
+        params,
         _response_vector(obj)[order],
     )
     text = title or f"Centile curves using {obj.family.name}"
@@ -2119,13 +2286,13 @@ def fitted_terms(
 
     chosen = parameter or (what if isinstance(what, str) else "mu")
     kwargs.pop("type", None)
-    result = pe_terms(object, terms=terms, data=data, parameter=chosen, plot=plot, **kwargs)
+    result = pe_terms(
+        object, terms=terms, data=data, parameter=chosen, plot=plot, **kwargs
+    )
     return {
         name: GGPlot("fitted_terms", chart.data, chart.figure)
         for name, chart in result.items()
     }
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -2140,9 +2307,7 @@ def _ci95_polygon(n: int) -> pd.DataFrame:
 
     def ci95(values: np.ndarray) -> np.ndarray:
         gamma1 = values / (1.0 - values)
-        gamma2 = np.sqrt(
-            (24.0 / n) * (stats.chi2.ppf(0.95, 2) - (n / 6.0) * gamma1**2)
-        )
+        gamma2 = np.sqrt((24.0 / n) * (stats.chi2.ppf(0.95, 2) - (n / 6.0) * gamma1**2))
         return gamma2 / (1.0 + np.abs(gamma2))
 
     y1 = ci95(xx)
@@ -2161,9 +2326,7 @@ def _moment_boundary() -> pd.DataFrame:
     skew = t / (1.0 - t)
     kurt = 1.0 + skew**2
     excess = kurt - 3.0
-    return pd.DataFrame(
-        {"tskew": t, "tkurt": excess / (1.0 + np.abs(excess))}
-    )
+    return pd.DataFrame({"tskew": t, "tkurt": excess / (1.0 + np.abs(excess))})
 
 
 @dataclass(frozen=True)
@@ -2186,8 +2349,9 @@ class BucketSpec:
     note: str = ""
 
 
-def _bucket_spec(kind: str, variant: str, legend: bool, line_width: float,
-                 type: str | None = None) -> BucketSpec:
+def _bucket_spec(
+    kind: str, variant: str, legend: bool, line_width: float, type: str | None = None
+) -> BucketSpec:
     if kind == "moment":
         return BucketSpec(
             kind=kind,
@@ -2266,7 +2430,9 @@ def centile_gray_both(
     return _bucket_spec("centile", "gray_both", legend, line_width, type)
 
 
-def _bucket_series(objects: Sequence[Any], text_to_show: Any) -> tuple[list[str], list[np.ndarray]]:
+def _bucket_series(
+    objects: Sequence[Any], text_to_show: Any
+) -> tuple[list[str], list[np.ndarray]]:
     if not objects:
         raise ValueError("at least one numeric vector or model is required")
     names = (
@@ -2295,7 +2461,9 @@ def _bucket_groups(xvar: Any, n_inter: int) -> np.ndarray:
     column = np.asarray(xvar)
     if column.dtype.kind in "iuf":
         return np.asarray(
-            pd.qcut(np.asarray(column, dtype=np.float64), int(n_inter), duplicates="drop").astype(str)
+            pd.qcut(
+                np.asarray(column, dtype=np.float64), int(n_inter), duplicates="drop"
+            ).astype(str)
         )
     return column.astype(str)
 
@@ -2346,15 +2514,11 @@ def moment_bucket_wrap(
                     (boot.trans_skew, boot.trans_kurt, label, colours[index], level)
                 )
             point = momentSK(values)
-            point_rows.append(
-                (point.trans_skew, point.trans_kurt, label, level)
-            )
+            point_rows.append((point.trans_skew, point.trans_kurt, label, level))
         polygon = _ci95_polygon(subset)
         for row in polygon.itertuples(index=False):
             band_rows.append((row.X, row.Y, level))
-    bootstrap = pd.DataFrame(
-        bootstrap_rows, columns=["X", "Y", "Model", "Col", "Z"]
-    )
+    bootstrap = pd.DataFrame(bootstrap_rows, columns=["X", "Y", "Model", "Col", "Z"])
     points = pd.DataFrame(point_rows, columns=["X", "Y", "Model", "Z"])
     band = pd.DataFrame(band_rows, columns=["X", "Y", "Z"])
     text = "moment buckets by covariate interval"
@@ -2384,7 +2548,13 @@ def _centile_simulation(n: int, n_sim: int = 1000, seed: int = 1234) -> pd.DataF
     for _ in range(int(n_sim)):
         stats_ = centileSK(rng.normal(size=int(n)))
         rows.append(
-            (stats_.s025, stats_.s001, stats_.k001, stats_.excess_k001, stats_.trans_k001)
+            (
+                stats_.s025,
+                stats_.s001,
+                stats_.k001,
+                stats_.excess_k001,
+                stats_.trans_k001,
+            )
         )
     return pd.DataFrame(rows, columns=["Sc", "St", "K", "Ke", "Kt"])
 
@@ -2428,7 +2598,9 @@ def _centile_bucket_frame(
     simulation_rows = []
     categories = [None] if groups is None else sorted(set(groups.tolist()))
     for level in categories:
-        mask = np.ones(samples[0].size, dtype=bool) if level is None else (groups == level)
+        mask = (
+            np.ones(samples[0].size, dtype=bool) if level is None else (groups == level)
+        )
         subset = int(mask.sum())
         if subset < 4:
             continue
@@ -2438,12 +2610,17 @@ def _centile_bucket_frame(
                 draw = values[rng.integers(0, subset, size=subset)]
                 boot = centileSK(draw)
                 bootstrap_rows.append(
-                    (boot.s025, boot.s001, boot.trans_k001, label, colours[index], level)
+                    (
+                        boot.s025,
+                        boot.s001,
+                        boot.trans_k001,
+                        label,
+                        colours[index],
+                        level,
+                    )
                 )
             point = centileSK(values)
-            point_rows.append(
-                (point.s025, point.s001, point.trans_k001, label, level)
-            )
+            point_rows.append((point.s025, point.s001, point.trans_k001, label, level))
         if sim_test:
             simulation = _centile_simulation(subset, no_sim_test, seed_test)
             column = "Sc" if str(type) == "central" else "St"
@@ -2490,8 +2667,15 @@ def centile_bucket(
         raise ValueError('type must be "tail" or "central"')
     names, samples = _bucket_series((x, *others), text_to_show)
     data = _centile_bucket_frame(
-        names, samples, None, type, no_bootstrap, seed, sim_test,
-        no_sim_test, seed_test,
+        names,
+        samples,
+        None,
+        type,
+        no_bootstrap,
+        seed,
+        sim_test,
+        no_sim_test,
+        seed_test,
     )
     x_column = "S0.25" if str(type) == "central" else "S0.01"
     figure, axes = _figure() if plot else (None, None)
@@ -2542,8 +2726,15 @@ def centile_bucket_wrap(
     if groups.size != samples[0].size:
         raise ValueError("xvar and the data must have the same length")
     data = _centile_bucket_frame(
-        names, samples, groups, type, no_bootstrap, seed, sim_test,
-        no_sim_test, seed_test,
+        names,
+        samples,
+        groups,
+        type,
+        no_bootstrap,
+        seed,
+        sim_test,
+        no_sim_test,
+        seed_test,
     )
     x_column = "S0.25" if str(type) == "central" else "S0.01"
     figure, axes = _figure() if plot else (None, None)
@@ -2567,8 +2758,6 @@ def centile_bucket_wrap(
     )
 
 
-
-
 # ---------------------------------------------------------------------------
 # predict_pdf / predict_cdf / quantile_gamlss (D2.260)
 # ---------------------------------------------------------------------------
@@ -2580,13 +2769,19 @@ def _newdata_parameters(model: Any, newdata: Any, name: str) -> dict[str, np.nda
     from .prediction import predict_params
 
     params = predict_params(model, dict(newdata))
-    return {key: np.asarray(value, dtype=np.float64).ravel() for key, value in params.items()}
+    return {
+        key: np.asarray(value, dtype=np.float64).ravel()
+        for key, value in params.items()
+    }
 
 
-def _prediction_grid(model: Any, from_: float, to: float, no_points: int) -> tuple[np.ndarray, bool]:
-    discrete = str(
-        getattr(model.family, "type", getattr(model.family, "type_", ""))
-    ).lower() == "discrete"
+def _prediction_grid(
+    model: Any, from_: float, to: float, no_points: int
+) -> tuple[np.ndarray, bool]:
+    discrete = (
+        str(getattr(model.family, "type", getattr(model.family, "type_", ""))).lower()
+        == "discrete"
+    )
     grid = (
         np.arange(float(from_), float(to) + 1.0, 1.0)
         if discrete
@@ -2642,8 +2837,12 @@ def predict_pdf(
     grid, discrete = _prediction_grid(model, from_, to, no_points)
     curves = _density_at_rows(model, params, grid, "predict_pdf")
     text = title or "Fitted pdf's from model"
-    data = {"grid": grid, "density": curves, "discrete": bool(discrete),
-            "rows": len(curves)}
+    data = {
+        "grid": grid,
+        "density": curves,
+        "discrete": bool(discrete),
+        "rows": len(curves),
+    }
     if not plot:
         return data
     figure, axes = _figure()
@@ -2680,8 +2879,13 @@ def predict_cdf(
     if not lower_tail:
         curves = {key: 1.0 - value for key, value in curves.items()}
     text = title or "Predicted cdf's from model"
-    data = {"grid": grid, "cdf": curves, "discrete": bool(discrete),
-            "rows": len(curves), "lower_tail": bool(lower_tail)}
+    data = {
+        "grid": grid,
+        "cdf": curves,
+        "discrete": bool(discrete),
+        "rows": len(curves),
+        "lower_tail": bool(lower_tail),
+    }
     if not plot:
         return data
     figure, axes = _figure()
@@ -2697,15 +2901,15 @@ def predict_cdf(
     return GGPlot("predict_cdf", data, figure)
 
 
-def quantile_gamlss(obj: Any = None, quantile: float = 0.5, newdata: Any = None) -> np.ndarray:
+def quantile_gamlss(
+    obj: Any = None, quantile: float = 0.5, newdata: Any = None
+) -> np.ndarray:
     """R quantile_gamlss: one fitted quantile per observation (or newdata row)."""
 
     _require_model(obj, "quantile_gamlss")
     if not 0.0 < float(quantile) < 1.0:
         raise ValueError("quantile should be between 0 and 1")
     return np.asarray(_fitted_quantile(obj, float(quantile), newdata), dtype=np.float64)
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -2723,8 +2927,13 @@ def _bivar_grid(
     return xs, ys, frame
 
 
-def _evaluate_bivariate(function: Any, xs: np.ndarray, ys: np.ndarray,
-                        vectorised: bool, kwargs: Mapping[str, Any]) -> np.ndarray:
+def _evaluate_bivariate(
+    function: Any,
+    xs: np.ndarray,
+    ys: np.ndarray,
+    vectorised: bool,
+    kwargs: Mapping[str, Any],
+) -> np.ndarray:
     if vectorised:
         try:
             values = np.asarray(function(xs, ys, **kwargs), dtype=np.float64).ravel()
@@ -2771,8 +2980,9 @@ def bivar_fun(
     if fun is None or not callable(fun):
         raise ValueError("bivar_fun needs a bivariate function")
     xs, ys, frame = _bivar_grid(xlim, ylim, n)
-    values = _evaluate_bivariate(fun, frame["x"].to_numpy(), frame["y"].to_numpy(),
-                                 True, kwargs)
+    values = _evaluate_bivariate(
+        fun, frame["x"].to_numpy(), frame["y"].to_numpy(), True, kwargs
+    )
     frame["z"] = values
     z = values.reshape(int(n), int(n)).T
     figure = None
@@ -2803,8 +3013,9 @@ def bivar_fun_plotly(
     if f is None or not callable(f):
         raise ValueError("bivar_fun_plotly needs a bivariate function")
     xs, ys, frame = _bivar_grid(xlim, ylim, n)
-    values = _evaluate_bivariate(f, frame["x"].to_numpy(), frame["y"].to_numpy(),
-                                 True, kwargs)
+    values = _evaluate_bivariate(
+        f, frame["x"].to_numpy(), frame["y"].to_numpy(), True, kwargs
+    )
     frame["z"] = values
     z = values.reshape(int(n), int(n)).T
     figure = None
@@ -2845,8 +3056,9 @@ def bivar_pdf(
     if pdf is None or not callable(pdf):
         raise ValueError("bivar_pdf needs a bivariate density function")
     xs, ys, frame = _bivar_grid(xlim, ylim, n)
-    values = _evaluate_bivariate(pdf, frame["x"].to_numpy(), frame["y"].to_numpy(),
-                                 False, kwargs)
+    values = _evaluate_bivariate(
+        pdf, frame["x"].to_numpy(), frame["y"].to_numpy(), False, kwargs
+    )
     frame["z"] = values
     z = values.reshape(int(n), int(n)).T
     dx = float(xs[1] - xs[0]) if xs.size > 1 else 1.0
@@ -2872,8 +3084,6 @@ def bivar_pdf(
     return BivarSurface(
         x=xs, y=ys, z=z, frame=frame, level=level, mass=mass, figure=figure
     )
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -2908,8 +3118,9 @@ def _bootstrap_plot_data(
     }
 
 
-def _bootstrap_figure(data: Mapping[str, Any], alpha: float, dens_fill: str,
-                      line_col: str) -> Any:
+def _bootstrap_figure(
+    data: Mapping[str, Any], alpha: float, dens_fill: str, line_col: str
+) -> Any:
     figure, axes = _figure()
     if axes is None:
         return None
@@ -2917,11 +3128,13 @@ def _bootstrap_figure(data: Mapping[str, Any], alpha: float, dens_fill: str,
     if values.size >= 3 and float(np.var(values)) > 0.0:
         grid = np.linspace(float(values.min()), float(values.max()), 256)
         axes.plot(grid, stats.gaussian_kde(values)(grid), color=dens_fill)
-        axes.fill_between(grid, 0.0, stats.gaussian_kde(values)(grid),
-                          alpha=alpha, color=dens_fill)
+        axes.fill_between(
+            grid, 0.0, stats.gaussian_kde(values)(grid), alpha=alpha, color=dens_fill
+        )
     else:
-        axes.hist(values, bins=min(20, max(3, values.size)), alpha=alpha,
-                  color=dens_fill)
+        axes.hist(
+            values, bins=min(20, max(3, values.size)), alpha=alpha, color=dens_fill
+        )
     axes.axvline(data["orig"], color="black")
     for value in np.asarray(data["quantiles"]):
         axes.axvline(float(value), color=line_col)
@@ -2998,8 +3211,6 @@ def boot_coef(
     return charts
 
 
-
-
 # ---------------------------------------------------------------------------
 # P-spline helper, PCR paths and smoothed histograms (D2.263)
 # ---------------------------------------------------------------------------
@@ -3009,7 +3220,9 @@ def _tpower(x: np.ndarray, knots: np.ndarray, power: int) -> np.ndarray:
     return np.power(np.maximum(x[:, None] - knots[None, :], 0.0), power)
 
 
-def _bbase(x: np.ndarray, xl: float, xr: float, ndx: int, deg: int) -> tuple[np.ndarray, np.ndarray]:
+def _bbase(
+    x: np.ndarray, xl: float, xr: float, ndx: int, deg: int
+) -> tuple[np.ndarray, np.ndarray]:
     """R fit_PB::bbase: truncated-power B-spline basis."""
 
     dx = (xr - xl) / ndx
@@ -3028,8 +3241,11 @@ def _gamma(value: int) -> float:
 
 
 def _regpen(
-    response: np.ndarray, root_w: np.ndarray, design: np.ndarray,
-    penalty: np.ndarray, lambda_: float,
+    response: np.ndarray,
+    root_w: np.ndarray,
+    design: np.ndarray,
+    penalty: np.ndarray,
+    lambda_: float,
 ) -> dict[str, Any]:
     """R fit_PB::regpen via SVD of rbind(R, sqrt(lambda) * D)."""
 
@@ -3038,7 +3254,7 @@ def _regpen(
     qy = q.T @ (root_w * response)
     stacked = np.vstack([r, np.sqrt(lambda_) * penalty])
     u, d, vt = np.linalg.svd(stacked, full_matrices=False)
-    threshold = d.max() * np.finfo(np.float64).eps**0.8 if d.size else 0.0
+    threshold = d.max() * np.finfo(np.float64).eps ** 0.8 if d.size else 0.0
     rank = int(np.sum(d > threshold))
     u1 = u[:coefficients, :rank]
     y1 = u1.T @ qy
@@ -3116,7 +3332,9 @@ def fit_PB(
     )
     if w.size != y_values.size:
         raise ValueError("response and weights should be the same length")
-    basis, knots = _bbase(x_values, float(x_values.min()), float(x_values.max()), int(nseg), int(degree))
+    basis, knots = _bbase(
+        x_values, float(x_values.min()), float(x_values.max()), int(nseg), int(degree)
+    )
     nb = basis.shape[1]
     penalty = np.diff(np.eye(nb), n=int(order), axis=0)
     n = x_values.size
@@ -3131,7 +3349,9 @@ def fit_PB(
     for _ in range(50):
         fitted = basis @ fit["beta"]
         gamma_diff = penalty @ np.asarray(fit["beta"]).ravel()
-        sigma2 = float(np.sum(w * (y_values - fitted) ** 2) / max(n_obs - fit["edf"], 1e-12))
+        sigma2 = float(
+            np.sum(w * (y_values - fitted) ** 2) / max(n_obs - fit["edf"], 1e-12)
+        )
         tau2 = float(np.sum(gamma_diff**2) / max(fit["edf"] - int(order), 1e-12))
         if tau2 < 1e-7:
             tau2 = 1e-7
@@ -3143,8 +3363,11 @@ def fit_PB(
         fit = _regpen(y_values, root_w, basis, penalty, lambda_value)
 
     if fit["edf"] >= float(max_df):
+
         def edf_gap(log_lambda: float) -> float:
-            return _regpen(y_values, root_w, basis, penalty, float(np.exp(log_lambda)))["edf"] - float(max_df)
+            return _regpen(y_values, root_w, basis, penalty, float(np.exp(log_lambda)))[
+                "edf"
+            ] - float(max_df)
 
         from scipy.optimize import brentq
 
@@ -3159,7 +3382,9 @@ def fit_PB(
     beta = np.asarray(fit["beta"], dtype=np.float64).ravel()
     fitted = basis @ beta
     variance_fitted = (
-        np.asarray(fit["leverage"], dtype=np.float64) / np.where(w == 0, 1.0, w) * sigma2
+        np.asarray(fit["leverage"], dtype=np.float64)
+        / np.where(w == 0, 1.0, w)
+        * sigma2
     )
     lower = fitted - 2.0 * np.sqrt(variance_fitted)
     upper = fitted + 2.0 * np.sqrt(variance_fitted)
@@ -3167,11 +3392,16 @@ def fit_PB(
     from scipy.interpolate import CubicSpline
 
     grid = np.linspace(float(x_values.min()), float(x_values.max()), 500)
-    basis_grid, _ = _bbase(grid, float(x_values.min()), float(x_values.max()), int(nseg), int(degree))
+    basis_grid, _ = _bbase(
+        grid, float(x_values.min()), float(x_values.max()), int(nseg), int(degree)
+    )
     smooth = basis_grid @ beta
     # R: splinefun(x1, z, method = "natural")
     spline = CubicSpline(grid, smooth, bc_type="natural")
-    log_density = -0.5 * np.log(2.0 * np.pi * sigma**2) - 0.5 * (y_values - fitted) ** 2 / sigma**2
+    log_density = (
+        -0.5 * np.log(2.0 * np.pi * sigma**2)
+        - 0.5 * (y_values - fitted) ** 2 / sigma**2
+    )
     deviance_increment = -2.0 * log_density
     graph = penalty.T @ penalty
     figure = None
@@ -3181,8 +3411,13 @@ def fit_PB(
             axes.scatter(x_values, y_values, s=4, color="black")
             axes.plot(x_values, fitted, color="blue")
             order_idx = np.argsort(x_values)
-            axes.fill_between(x_values[order_idx], lower[order_idx], upper[order_idx],
-                              alpha=0.5, color=col_ribbon)
+            axes.fill_between(
+                x_values[order_idx],
+                lower[order_idx],
+                upper[order_idx],
+                alpha=0.5,
+                color=col_ribbon,
+            )
             axes.set_xlabel(xname)
             axes.set_ylabel(yname)
     return PSplineFit(
@@ -3208,8 +3443,6 @@ def fit_PB(
         yname=yname,
         figure=figure,
     )
-
-
 
 
 def pcr_coef_path(x: Any = None, legend: bool = False, plot: bool = True) -> Any:
@@ -3321,7 +3554,10 @@ def histSmo_plot(
     if x is None:
         raise ValueError("this function is designated for histSmo objects")
     discrete = bool(_field(x, "discrete", False))
-    if "hist" in (x.keys() if isinstance(x, Mapping) else dir(x)) and _field(x, "hist") is not None:
+    if (
+        "hist" in (x.keys() if isinstance(x, Mapping) else dir(x))
+        and _field(x, "hist") is not None
+    ):
         hist = _field(x, "hist")
         counts = np.asarray(_field(hist, "counts"), dtype=np.float64)
         mids = np.asarray(_field(hist, "mids"), dtype=np.float64)
@@ -3352,7 +3588,9 @@ def histSmo_plot(
     text = title or f"smooth histogram of {xname}"
     data = {
         "bars": pd.DataFrame({"x": mids, "freq": frequency}),
-        "curve": pd.DataFrame({"x": np.asarray(curve_x), "density": np.asarray(curve_y)}),
+        "curve": pd.DataFrame(
+            {"x": np.asarray(curve_x), "density": np.asarray(curve_y)}
+        ),
         "discrete": discrete,
         "xname": xname,
         "title": text,
@@ -3363,7 +3601,12 @@ def histSmo_plot(
     if axes is not None:
         width = float(mids[1] - mids[0]) * 0.9 if mids.size > 1 else 0.5
         axes.bar(mids, frequency, width=width, color=col_fill_bar, edgecolor=col_bar)
-        axes.plot(np.asarray(curve_x), np.asarray(curve_y), color=col_line, linewidth=width_line)
+        axes.plot(
+            np.asarray(curve_x),
+            np.asarray(curve_y),
+            color=col_line,
+            linewidth=width_line,
+        )
         axes.set_ylabel("Frequency" if discrete else "density")
         axes.set_xlabel(xlabel if xlabel is not None else ("" if discrete else xname))
         axes.set_title(text)

@@ -47,7 +47,9 @@ def prodist_data(
         output="list",
         use_weights=use_weights,
     )
-    values = predicted.values if isinstance(predicted, PredictAllResult) else dict(predicted)
+    values = (
+        predicted.values if isinstance(predicted, PredictAllResult) else dict(predicted)
+    )
     parameters = {key: value for key, value in values.items() if key != "y"}
     normalized: dict[str, np.ndarray | dict[str, np.ndarray]] = {}
     for key, value in parameters.items():
@@ -64,6 +66,7 @@ def prodist_data(
         output="list",
         type=str(type).strip().lower(),
     )
+
 
 prodist = prodist_data
 

@@ -5,8 +5,8 @@
 or L-BFGS backend.
 
 References:
-    Rigby, R. A., & Stasinopoulos, D. M. (2005). Generalized additive models 
-    for location, scale and shape. Journal of the Royal Statistical Society: 
+    Rigby, R. A., & Stasinopoulos, D. M. (2005). Generalized additive models
+    for location, scale and shape. Journal of the Royal Statistical Society:
     Series C, 54(3), 507-554.
 """
 
@@ -67,7 +67,7 @@ def hybrid_fit(
     1. Automatically select RS or L-BFGS from data characteristics
     2. Force RS for comparison or smooth-term support
     3. Force the L-BFGS compatibility backend for experiments
-    
+
     Args:
         formula: Formula for mu parameter
         sigma_formula: Formula for sigma parameter
@@ -85,29 +85,29 @@ def hybrid_fit(
         max_iter: Maximum iterations
         tol: Convergence tolerance
         verbose: Whether to print iteration info
-        
+
     Returns:
         Fitted GAMLSSModel
-        
+
     Example:
         >>> data = {"y": y, "x": x}
         >>> # Automatic selection (uses RS)
         >>> model = hybrid_fit("y ~ x", "~ x", family="NO", data=data)
-        >>> 
+        >>>
         >>> # Explicit RS
         >>> model = hybrid_fit("y ~ x", "~ x", family="NO", data=data, algorithm="rs")
-        >>> 
+        >>>
         >>> # Explicit CG
         >>> model = mixed_fit("y ~ x", "~ x", family="NO", data=data, algorithm="cg")
     """
     if data is None:
         raise ValueError("data must be provided")
-    
+
     if verbose:
         print("=" * 70)
         print("Hybrid Dispatcher")
         print("=" * 70)
-    
+
     formulas = dict(parameter_formulas or {})
     if nu_formula is not None:
         formulas.setdefault("nu", nu_formula)
@@ -123,7 +123,9 @@ def hybrid_fit(
         selected_algorithm = _auto_select_algorithm(family_name, n, has_smooth)
         if verbose:
             reason = "smooth terms" if has_smooth else f"n={n}, family={family}"
-            print(f"Auto-selection: Using {selected_algorithm.upper()} algorithm ({reason})")
+            print(
+                f"Auto-selection: Using {selected_algorithm.upper()} algorithm ({reason})"
+            )
     else:
         algo_key = str(algorithm).lower()
         aliases = {
@@ -142,7 +144,7 @@ def hybrid_fit(
             )
         if verbose:
             print(f"Using {selected_algorithm.upper()} algorithm")
-    
+
     if selected_algorithm == "lbfgs" and has_smooth:
         raise ValueError(
             "The HYBRID lbfgs compatibility backend does not support penalized "
@@ -161,14 +163,14 @@ def hybrid_fit(
             max_iter=max_iter,
             tol=tol,
             rtol=rtol,
-            verbose=verbose
+            verbose=verbose,
         )
         # Retain the old mixed_* keys for callers of the historical dispatcher.
         model.additional_slots["hybrid_algorithm_used"] = "rs"
         model.additional_slots["hybrid_auto_selected"] = algorithm == "auto"
         model.additional_slots["mixed_algorithm_used"] = "rs"
         model.additional_slots["mixed_auto_selected"] = algorithm == "auto"
-        
+
     elif selected_algorithm == "lbfgs":
         model = cg_fit(
             formula=formula,
@@ -181,21 +183,23 @@ def hybrid_fit(
             data=data,
             max_outer_iter=max_iter,
             outer_tol=tol,
-            verbose=verbose
+            verbose=verbose,
         )
         model.additional_slots["hybrid_algorithm_used"] = "lbfgs"
         model.additional_slots["hybrid_auto_selected"] = algorithm == "auto"
         model.additional_slots["mixed_algorithm_used"] = "lbfgs"
         model.additional_slots["mixed_auto_selected"] = algorithm == "auto"
-    
+
     else:
-        raise ValueError(f"Unknown algorithm: {algorithm}. Use 'auto', 'rs', or 'lbfgs'.")
-    
+        raise ValueError(
+            f"Unknown algorithm: {algorithm}. Use 'auto', 'rs', or 'lbfgs'."
+        )
+
     if verbose:
         print("=" * 70)
         print(f"Hybrid dispatcher completed using {selected_algorithm.upper()}")
         print("=" * 70)
-    
+
     return model
 
 
@@ -354,7 +358,9 @@ def mixed_fit(
     cg_model.converged = mixed_converged
     if cg_model.termination_reason is None:
         cg_model.termination_reason = (
-            "relative_deviance_converged" if mixed_converged else "cg_stage_not_converged"
+            "relative_deviance_converged"
+            if mixed_converged
+            else "cg_stage_not_converged"
         )
     cg_model.call = {
         **dict(cg_model.call or {}),
@@ -377,10 +383,10 @@ def compare_algorithms(
     tau_formula: Optional[str] = None,
     family: str = "NO",
     data: Optional[Dict[str, np.ndarray]] = None,
-    verbose: bool = True
+    verbose: bool = True,
 ) -> Dict[str, object]:
     """Compare RS and CG algorithms on the same data.
-    
+
     Args:
         formula: Formula for mu parameter
         sigma_formula: Formula for sigma parameter
@@ -389,10 +395,10 @@ def compare_algorithms(
         family: Distribution family name
         data: Dictionary of data arrays
         verbose: Whether to print comparison results
-        
+
     Returns:
         Dictionary with fitted models plus metrics: {"rs": model_rs, "cg": model_cg, "metrics": {...}}
-        
+
     Example:
         >>> data = {"y": y, "x": x}
         >>> models = compare_algorithms("y ~ x", "~ x", family="NO", data=data)
@@ -401,23 +407,23 @@ def compare_algorithms(
     """
     if data is None:
         raise ValueError("data must be provided")
-    
+
     if verbose:
         print("\n" + "=" * 70)
         print("Algorithm Comparison")
         print("=" * 70)
-    
+
     # Fit with RS
     if verbose:
         print("\nFitting with RS algorithm...")
-    
+
     # Build parameter_formulas for nu and tau
     parameter_formulas_rs = {}
     if nu_formula is not None:
         parameter_formulas_rs["nu"] = nu_formula
     if tau_formula is not None:
         parameter_formulas_rs["tau"] = tau_formula
-    
+
     rs_start = time.perf_counter()
     model_rs = rs_fit(
         formula=formula,
@@ -425,7 +431,7 @@ def compare_algorithms(
         parameter_formulas=parameter_formulas_rs if parameter_formulas_rs else None,
         family=family,
         data=data,
-        verbose=False
+        verbose=False,
     )
     rs_runtime = time.perf_counter() - rs_start
 
@@ -440,7 +446,7 @@ def compare_algorithms(
         tau_formula=tau_formula,
         family=family,
         data=data,
-        verbose=False
+        verbose=False,
     )
     cg_runtime = time.perf_counter() - cg_start
 
@@ -458,7 +464,7 @@ def compare_algorithms(
             "converged": bool(model_cg.convergence_status()),
         },
     }
-    
+
     # Print comparison
     if verbose:
         print("\n" + "-" * 70)
@@ -466,19 +472,23 @@ def compare_algorithms(
         print("-" * 70)
         print(f"{'Algorithm':<15} {'Deviance':<15} {'Iterations':<15} {'Status':<15}")
         print("-" * 70)
-        
+
         rs_iters = model_rs.additional_slots.get("rs_iterations", "-")
         rs_conv = bool(model_rs.convergence_status())
-        print(f"{'RS':<15} {model_rs.g_dev:<15.4f} {rs_iters:<15} "
-              f"{'Converged' if rs_conv else 'Not converged':<15}")
-        
+        print(
+            f"{'RS':<15} {model_rs.g_dev:<15.4f} {rs_iters:<15} "
+            f"{'Converged' if rs_conv else 'Not converged':<15}"
+        )
+
         cg_iters = model_cg.additional_slots.get("cg_iterations", "-")
         cg_conv = bool(model_cg.convergence_status())
-        print(f"{'CG':<15} {model_cg.g_dev:<15.4f} {cg_iters:<15} "
-              f"{'Converged' if cg_conv else 'Not converged':<15}")
-        
+        print(
+            f"{'CG':<15} {model_cg.g_dev:<15.4f} {cg_iters:<15} "
+            f"{'Converged' if cg_conv else 'Not converged':<15}"
+        )
+
         print("-" * 70)
         print(f"Deviance difference (RS - CG): {model_rs.g_dev - model_cg.g_dev:+.4f}")
         print("=" * 70)
-    
+
     return {"rs": model_rs, "cg": model_cg, "metrics": metrics}

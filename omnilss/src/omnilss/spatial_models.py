@@ -25,6 +25,7 @@ installed here): as.spam/diag.spam/spam are identity wrappers, and the R code
 only uses them for storage.  draw.polys returns the polygon geometry and colour
 values; pixel parity with R graphics is out of scope (DEVELOPMENT_PLAN P4).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -51,7 +52,9 @@ def _levels_of(x: Any, area: Any = None) -> list[str]:
 
 def _codes(x: Any, levels: Sequence[str]) -> np.ndarray:
     position = {level: index for index, level in enumerate(levels)}
-    return np.array([position[str(value)] for value in np.asarray(x).ravel()], dtype=int)
+    return np.array(
+        [position[str(value)] for value in np.asarray(x).ravel()], dtype=int
+    )
 
 
 def _indicator(codes: np.ndarray, levels: Sequence[str]) -> np.ndarray:
@@ -61,7 +64,11 @@ def _indicator(codes: np.ndarray, levels: Sequence[str]) -> np.ndarray:
 
 
 def _precision_from_neighbour(neighbour: Any, levels: Sequence[str]) -> np.ndarray:
-    mapping = neighbour["nb"] if isinstance(neighbour, Mapping) and "nb" in neighbour else neighbour
+    mapping = (
+        neighbour["nb"]
+        if isinstance(neighbour, Mapping) and "nb" in neighbour
+        else neighbour
+    )
     names = [str(name) for name in mapping]
     if sorted(names) != sorted(levels):
         raise ValueError(
@@ -98,14 +105,23 @@ def _as_precision(
         return _precision_from_neighbour(neighbour, levels)
     if polys is not None:
         nb = polys2nb(polys)
-        return _precision_from_neighbour({"nb": dict(zip(nb.region_id, nb.neighbours))}, levels)
-    raise ValueError("precision matrix, boundary polygons and/or neighbours list must be supplied")
+        return _precision_from_neighbour(
+            {"nb": dict(zip(nb.region_id, nb.neighbours))}, levels
+        )
+    raise ValueError(
+        "precision matrix, boundary polygons and/or neighbours list must be supplied"
+    )
 
 
-def _gaussian_deviance(y: np.ndarray, fitted: np.ndarray, weights: np.ndarray, sigma: float) -> float:
+def _gaussian_deviance(
+    y: np.ndarray, fitted: np.ndarray, weights: np.ndarray, sigma: float
+) -> float:
     residual = y - fitted
     return float(
-        np.sum(weights * (np.log(2.0 * np.pi) + 2.0 * np.log(sigma) + residual**2 / sigma**2))
+        np.sum(
+            weights
+            * (np.log(2.0 * np.pi) + 2.0 * np.log(sigma) + residual**2 / sigma**2)
+        )
     )
 
 
@@ -182,7 +198,9 @@ def MRF(
     nfv = len(levels)
     N = response.size
     weights = (
-        np.ones(N) if weights is None else np.nan_to_num(np.asarray(weights, dtype=np.float64).ravel())
+        np.ones(N)
+        if weights is None
+        else np.nan_to_num(np.asarray(weights, dtype=np.float64).ravel())
     )
     nobs = int(np.sum(weights != 0))
     G = _as_precision(precision, neighbour, polys, levels)
@@ -230,11 +248,18 @@ def MRF(
     from scipy.optimize import minimize
 
     def _bounded(fun, x0, bounds):
-        return minimize(fun, x0, method="L-BFGS-B", bounds=bounds, options={"maxiter": 500})
+        return minimize(
+            fun, x0, method="L-BFGS-B", bounds=bounds, options={"maxiter": 500}
+        )
 
     def _one_dim(fun, x0):
-        return minimize(fun, np.atleast_1d(x0), method="L-BFGS-B", bounds=[(-20.0, 20.0)],
-                        options={"maxiter": 500})
+        return minimize(
+            fun,
+            np.atleast_1d(x0),
+            method="L-BFGS-B",
+            bounds=[(-20.0, 20.0)],
+            options={"maxiter": 500},
+        )
 
     if sig2e_fix and sig2b_fix:
         par = np.array([log_sig2e, log_sig2b])
@@ -242,14 +267,18 @@ def MRF(
         se = np.array([np.nan, np.nan])
     elif sig2e_fix:
         result = _one_dim(lambda value: qf(np.array([log_sig2e, value[0]])), start[1])
-        hessian = _numerical_hessian(lambda value: qf(np.array([log_sig2e, value[0]])), result.x)
+        hessian = _numerical_hessian(
+            lambda value: qf(np.array([log_sig2e, value[0]])), result.x
+        )
         se1 = float(np.sqrt(1.0 / hessian[0, 0])) if hessian[0, 0] > 0 else np.nan
         par = np.array([log_sig2e, float(result.x[0])])
         value = -float(result.fun)
         se = np.array([np.nan, se1])
     elif sig2b_fix:
         result = _one_dim(lambda value: qf(np.array([value[0], log_sig2b])), start[0])
-        hessian = _numerical_hessian(lambda value: qf(np.array([value[0], log_sig2b])), result.x)
+        hessian = _numerical_hessian(
+            lambda value: qf(np.array([value[0], log_sig2b])), result.x
+        )
         se1 = float(np.sqrt(1.0 / hessian[0, 0])) if hessian[0, 0] > 0 else np.nan
         par = np.array([float(result.x[0]), log_sig2b])
         value = -float(result.fun)
@@ -326,7 +355,9 @@ def MRFA(
     nfv = len(levels)
     N = response.size
     weights = (
-        np.ones(N) if weights is None else np.nan_to_num(np.asarray(weights, dtype=np.float64).ravel())
+        np.ones(N)
+        if weights is None
+        else np.nan_to_num(np.asarray(weights, dtype=np.float64).ravel())
     )
     nobs = int(np.sum(weights != 0))
     G = _as_precision(precision, neighbour, polys, levels)
@@ -348,7 +379,9 @@ def MRFA(
         lam = float(start)
         beta, fitted, edf, var = regpen(lam)
         for _ in range(200):
-            sig2e_iter = float(np.sum(weights * (response - fitted) ** 2)) / max(nobs - edf, 1e-12)
+            sig2e_iter = float(np.sum(weights * (response - fitted) ** 2)) / max(
+                nobs - edf, 1e-12
+            )
             sig2b_iter = float(beta @ G @ beta) / max(edf, 1e-12)
             new_lam = sig2e_iter / sig2b_iter if sig2b_iter > 0 else 1e7
             new_lam = min(max(new_lam, 1e-7), 1e7)
@@ -369,10 +402,16 @@ def MRFA(
 
         low_gap = edf_gap(0.0)
         high_gap = edf_gap(1e5)
-        lam = 1e5 if np.sign(low_gap) == np.sign(high_gap) else float(brentq(edf_gap, 0.0, 1e5))
+        lam = (
+            1e5
+            if np.sign(low_gap) == np.sign(high_gap)
+            else float(brentq(edf_gap, 0.0, 1e5))
+        )
         beta, fitted, edf, var = regpen(lam)
 
-    sig2e_value = float(np.sum(weights * (response - fitted) ** 2)) / max(nobs - edf, 1e-12)
+    sig2e_value = float(np.sum(weights * (response - fitted) ** 2)) / max(
+        nobs - edf, 1e-12
+    )
     sig2b_value = float(beta @ G @ beta) / max(edf, 1e-12)
     sige = float(np.sqrt(sig2e_value))
     sigb = float(np.sqrt(sig2b_value))
@@ -482,7 +521,9 @@ def gmrf(
         raise ValueError('setting degrees of freedom works only with method="A"')
     levels = _levels_of(x, area)
     matrix = _as_precision(precision, neighbour, polys, levels)
-    settings = control if isinstance(control, GmrfControl) else gmrf_control(**dict(kwargs))
+    settings = (
+        control if isinstance(control, GmrfControl) else gmrf_control(**dict(kwargs))
+    )
     return GmrfTerm(
         x=np.asarray(x),
         area=area,
@@ -526,7 +567,9 @@ def gamlss_gmrf(
     if y is None:
         raise ValueError("y is required")
     if xeval is not None:
-        raise NotImplementedError("the xeval (prediction) branch of gamlss.gmrf is not ported")
+        raise NotImplementedError(
+            "the xeval (prediction) branch of gamlss.gmrf is not ported"
+        )
     response = np.asarray(y, dtype=np.float64).ravel()
     weights = (
         np.ones(response.size) if w is None else np.asarray(w, dtype=np.float64).ravel()
@@ -534,34 +577,60 @@ def gamlss_gmrf(
     control = x.control
     if x.method == "Q":
         fit = MRF(
-            y=response, x=x.x, area=x.area, precision=x.precision, weights=weights,
-            sig2e=control.sig2e, sig2b=control.sig2b,
-            sig2e_fix=control.sig2e_fix, sig2b_fix=control.sig2b_fix,
-            penalty=control.penalty, delta=control.delta, shift=control.shift,
+            y=response,
+            x=x.x,
+            area=x.area,
+            precision=x.precision,
+            weights=weights,
+            sig2e=control.sig2e,
+            sig2b=control.sig2b,
+            sig2e_fix=control.sig2e_fix,
+            sig2b_fix=control.sig2b_fix,
+            penalty=control.penalty,
+            delta=control.delta,
+            shift=control.shift,
         )
         used_adjustment = False
         if np.any(np.abs(fit.beta) >= 20):
             fit = MRF(
-                y=response, x=x.x, area=x.area, precision=x.precision,
+                y=response,
+                x=x.x,
+                area=x.area,
+                precision=x.precision,
                 weights=weights * x.adj_weight,
-                sig2e=control.sig2e, sig2b=control.sig2b,
-                sig2e_fix=control.sig2e_fix, sig2b_fix=control.sig2b_fix,
-                penalty=control.penalty, delta=control.delta, shift=control.shift,
+                sig2e=control.sig2e,
+                sig2b=control.sig2b,
+                sig2e_fix=control.sig2e_fix,
+                sig2b_fix=control.sig2b_fix,
+                penalty=control.penalty,
+                delta=control.delta,
+                shift=control.shift,
             )
             used_adjustment = True
         new_state = (fit.sig2e, fit.sig2b, used_adjustment)
     else:
         start = float(state[0]) if state else x.start
         fit = MRFA(
-            y=response, x=x.x, area=x.area, precision=x.precision, weights=weights,
-            lambda_=x.lam, df=x.df, start=start,
+            y=response,
+            x=x.x,
+            area=x.area,
+            precision=x.precision,
+            weights=weights,
+            lambda_=x.lam,
+            df=x.df,
+            start=start,
         )
         used_adjustment = False
         if np.any(fit.beta < 1e-8):
             fit = MRFA(
-                y=response, x=x.x, area=x.area, precision=x.precision,
+                y=response,
+                x=x.x,
+                area=x.area,
+                precision=x.precision,
                 weights=weights * x.adj_weight,
-                lambda_=x.lam, df=x.df, start=start,
+                lambda_=x.lam,
+                df=x.df,
+                start=start,
             )
             used_adjustment = True
         new_state = (fit.lam, used_adjustment)
@@ -604,7 +673,10 @@ def polys2polys(object: Any = None, region_id: Any = None) -> dict[str, np.ndarr
         return output
     sequence = list(object)
     if region_id is None:
-        return {str(index + 1): np.asarray(value, dtype=np.float64) for index, value in enumerate(sequence)}
+        return {
+            str(index + 1): np.asarray(value, dtype=np.float64)
+            for index, value in enumerate(sequence)
+        }
     if len(region_id) != len(sequence):
         raise ValueError("region_id and the polygon list have different lengths")
     return {
@@ -623,7 +695,9 @@ class PolygonPlot:
     figure: Any = None
 
 
-def _colour_map(values: Mapping[str, float], swap: bool) -> dict[str, tuple[float, float, float]]:
+def _colour_map(
+    values: Mapping[str, float], swap: bool
+) -> dict[str, tuple[float, float, float]]:
     if not values:
         return {}
     low = min(values.values())
@@ -664,9 +738,8 @@ def draw_polys(
     if object is not None:
         if isinstance(object, SpatialFit):
             values = {
-                str(level): float(value) for level, value in zip(
-                    _levels_of(object.x), object.beta
-                )
+                str(level): float(value)
+                for level, value in zip(_levels_of(object.x), object.beta)
             }
         elif isinstance(object, Mapping):
             values = {str(name): float(value) for name, value in object.items()}
@@ -695,7 +768,9 @@ def draw_polys(
         for name, points in polys.items():
             array = np.asarray(points, dtype=np.float64)
             colour = colours.get(name) if colours else None
-            axes.fill(array[:, 0], array[:, 1], color=colour, edgecolor="black", linewidth=0.5)
+            axes.fill(
+                array[:, 0], array[:, 1], color=colour, edgecolor="black", linewidth=0.5
+            )
         axes.set_xlim(min(bounds_x), max(bounds_x))
         axes.set_ylim(min(bounds_y), max(bounds_y))
         axes.set_aspect("equal")
@@ -704,7 +779,10 @@ def draw_polys(
     return PolygonPlot(
         xlim=(float(min(bounds_x)), float(max(bounds_x))),
         ylim=(float(min(bounds_y)), float(max(bounds_y))),
-        polygons={str(name): np.asarray(value, dtype=np.float64) for name, value in polys.items()},
+        polygons={
+            str(name): np.asarray(value, dtype=np.float64)
+            for name, value in polys.items()
+        },
         values=values,
         colours=colours,
         figure=figure,

@@ -8,11 +8,11 @@ For 2D data, the TPS minimizes:
 
 References
 ----------
-- Wood, S. N. (2003). Thin plate regression splines. Journal of the Royal 
+- Wood, S. N. (2003). Thin plate regression splines. Journal of the Royal
   Statistical Society: Series B, 65(1), 95-114.
-- Duchon, J. (1977). Splines minimizing rotation-invariant semi-norms in 
+- Duchon, J. (1977). Splines minimizing rotation-invariant semi-norms in
   Sobolev spaces. In Constructive theory of functions of several variables.
-- Green, P. J., & Silverman, B. W. (1993). Nonparametric regression and 
+- Green, P. J., & Silverman, B. W. (1993). Nonparametric regression and
   generalized linear models: a roughness penalty approach. CRC Press.
 
 Implementation Notes
@@ -42,7 +42,7 @@ from omnilss.smoothers.penalties import effective_df
 @dataclass
 class TPSResult:
     """Result from thin plate spline fitting.
-    
+
     Attributes
     ----------
     coefficients : np.ndarray
@@ -70,6 +70,7 @@ class TPSResult:
     penalty_matrix : np.ndarray
         Penalty matrix (only penalizes radial terms)
     """
+
     coefficients: np.ndarray
     fitted_values: np.ndarray
     lambda_: float
@@ -82,15 +83,15 @@ class TPSResult:
     criterion_value: Optional[float] = None
     basis_matrix: Optional[np.ndarray] = None
     penalty_matrix: Optional[np.ndarray] = None
-    
+
     def predict(self, X_new: np.ndarray) -> np.ndarray:
         """Predict at new locations.
-        
+
         Parameters
         ----------
         X_new : np.ndarray
             New predictor locations, shape (n_new, n_dims)
-            
+
         Returns
         -------
         np.ndarray
@@ -99,26 +100,26 @@ class TPSResult:
         X_new = np.asarray(X_new)
         if X_new.ndim == 1:
             X_new = X_new.reshape(-1, 1)
-        
+
         if X_new.shape[1] != self.n_dims:
             raise ValueError(
                 f"X_new must have {self.n_dims} columns, got {X_new.shape[1]}"
             )
-        
+
         # Build basis matrix at new locations
         basis_new = _tps_basis_matrix(X_new, self.knots, self.n_dims, self.m)
-        
+
         # Predict
         return basis_new @ self.coefficients
 
 
 def _tps_radial_basis(r: np.ndarray, n_dims: int, m: int = 2) -> np.ndarray:
     """Thin plate spline radial basis function.
-    
+
     For 2D (d=2), m=2: φ(r) = r² log(r)
     For 3D (d=3), m=2: φ(r) = r
     General form depends on dimension d and derivative order m.
-    
+
     Parameters
     ----------
     r : np.ndarray
@@ -127,34 +128,34 @@ def _tps_radial_basis(r: np.ndarray, n_dims: int, m: int = 2) -> np.ndarray:
         Number of dimensions
     m : int
         Order of derivative in penalty (typically 2)
-        
+
     Returns
     -------
     np.ndarray
         Radial basis function values
-        
+
     Notes
     -----
     The radial basis function is chosen such that the penalty
     corresponds to the desired derivative order m.
-    
+
     For even dimensions d and m=2:
         φ(r) = r^(2m-d) log(r)  if 2m > d
         φ(r) = log(r)           if 2m = d
-        
+
     For odd dimensions d and m=2:
         φ(r) = r^(2m-d)         if 2m > d
     """
     r = np.asarray(r)
     eps = 1e-10  # Avoid log(0)
     r = np.maximum(r, eps)
-    
+
     if n_dims == 1:
         # 1D: cubic spline
-        return r ** 3
+        return r**3
     elif n_dims == 2:
         # 2D: r² log(r)
-        return r ** 2 * np.log(r)
+        return r**2 * np.log(r)
     elif n_dims == 3:
         # 3D: r (for m=2)
         return r
@@ -164,55 +165,55 @@ def _tps_radial_basis(r: np.ndarray, n_dims: int, m: int = 2) -> np.ndarray:
         if n_dims % 2 == 0:
             # Even dimension
             if power > 0:
-                return r ** power * np.log(r)
+                return r**power * np.log(r)
             else:
                 return np.log(r)
         else:
             # Odd dimension
-            return r ** power
+            return r**power
 
 
 def _euclidean_distance(X1: np.ndarray, X2: np.ndarray) -> np.ndarray:
     """Compute pairwise Euclidean distances.
-    
+
     Parameters
     ----------
     X1 : np.ndarray
         First set of points, shape (n1, d)
     X2 : np.ndarray
         Second set of points, shape (n2, d)
-        
+
     Returns
     -------
     np.ndarray
         Distance matrix, shape (n1, n2)
     """
     # Efficient computation: ||x - y||² = ||x||² + ||y||² - 2x·y
-    X1_sq = np.sum(X1 ** 2, axis=1, keepdims=True)  # (n1, 1)
-    X2_sq = np.sum(X2 ** 2, axis=1, keepdims=True).T  # (1, n2)
+    X1_sq = np.sum(X1**2, axis=1, keepdims=True)  # (n1, 1)
+    X2_sq = np.sum(X2**2, axis=1, keepdims=True).T  # (1, n2)
     cross = X1 @ X2.T  # (n1, n2)
-    
+
     dist_sq = X1_sq + X2_sq - 2 * cross
     dist_sq = np.maximum(dist_sq, 0.0)  # Numerical safety
-    
+
     return np.sqrt(dist_sq)
 
 
 def _polynomial_basis(X: np.ndarray, m: int = 2) -> np.ndarray:
     """Construct polynomial basis for unpenalized space.
-    
+
     For m=2 (second derivative penalty):
     - 1D: [1, x]
     - 2D: [1, x, y]
     - 3D: [1, x, y, z]
-    
+
     Parameters
     ----------
     X : np.ndarray
         Predictor matrix, shape (n, d)
     m : int
         Order of derivative (determines polynomial degree = m-1)
-        
+
     Returns
     -------
     np.ndarray
@@ -220,7 +221,7 @@ def _polynomial_basis(X: np.ndarray, m: int = 2) -> np.ndarray:
         where M = (d + m - 1)! / (d! * (m-1)!)
     """
     n, d = X.shape
-    
+
     if m == 2:
         # Linear polynomial: [1, x1, x2, ..., xd]
         return np.column_stack([np.ones(n), X])
@@ -240,11 +241,11 @@ def _tps_basis_matrix(
     m: int = 2,
 ) -> np.ndarray:
     """Construct full TPS basis matrix.
-    
+
     The basis consists of:
     1. Radial basis functions φ(||x - knot_i||) for each knot
     2. Polynomial terms for the null space
-    
+
     Parameters
     ----------
     X : np.ndarray
@@ -255,7 +256,7 @@ def _tps_basis_matrix(
         Number of dimensions
     m : int
         Derivative order
-        
+
     Returns
     -------
     np.ndarray
@@ -264,31 +265,31 @@ def _tps_basis_matrix(
     """
     n = X.shape[0]
     k = knots.shape[0]
-    
+
     # Radial basis part
     distances = _euclidean_distance(X, knots)  # (n, k)
     radial = _tps_radial_basis(distances, n_dims, m)  # (n, k)
-    
+
     # Polynomial part
     poly = _polynomial_basis(X, m)  # (n, M)
-    
+
     # Combine: [radial | polynomial]
     return np.column_stack([radial, poly])
 
 
 def _tps_penalty_matrix(n_knots: int, n_poly: int) -> np.ndarray:
     """Construct TPS penalty matrix.
-    
+
     The penalty only applies to the radial basis coefficients,
     not to the polynomial coefficients (null space).
-    
+
     Parameters
     ----------
     n_knots : int
         Number of knots (radial basis functions)
     n_poly : int
         Number of polynomial terms
-        
+
     Returns
     -------
     np.ndarray
@@ -307,7 +308,7 @@ def _select_knots(
     method: Literal["uniform", "kmeans", "all"] = "uniform",
 ) -> np.ndarray:
     """Select knot locations for TPS.
-    
+
     Parameters
     ----------
     X : np.ndarray
@@ -319,27 +320,28 @@ def _select_knots(
         - "uniform": Uniform random sampling
         - "kmeans": K-means clustering
         - "all": Use all data points as knots
-        
+
     Returns
     -------
     np.ndarray
         Selected knot locations, shape (k, d)
     """
     n, d = X.shape
-    
+
     if method == "all" or k is None or k >= n:
         return X.copy()
-    
+
     if method == "uniform":
         # Random uniform sampling
         rng = np.random.RandomState(42)
         indices = rng.choice(n, size=k, replace=False)
         return X[indices]
-    
+
     elif method == "kmeans":
         # K-means clustering
         try:
             from sklearn.cluster import KMeans
+
             kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
             kmeans.fit(X)
             return kmeans.cluster_centers_
@@ -348,7 +350,7 @@ def _select_knots(
             rng = np.random.RandomState(42)
             indices = rng.choice(n, size=k, replace=False)
             return X[indices]
-    
+
     else:
         raise ValueError(f"Unknown knot selection method: {method}")
 
@@ -361,9 +363,9 @@ def _penalized_ls_tps(
     lambda_: float,
 ) -> Tuple[np.ndarray, np.ndarray, float]:
     """Penalized weighted least squares for TPS.
-    
+
     Solves: (B^T W B + λ P) β = B^T W y
-    
+
     Parameters
     ----------
     basis : np.ndarray
@@ -376,7 +378,7 @@ def _penalized_ls_tps(
         Penalty matrix
     lambda_ : float
         Smoothing parameter
-        
+
     Returns
     -------
     coefficients : np.ndarray
@@ -390,24 +392,24 @@ def _penalized_ls_tps(
     W_sqrt = np.sqrt(w)
     B_w = basis * W_sqrt[:, np.newaxis]
     y_w = y * W_sqrt
-    
+
     # Penalized normal equations
     BtWB = B_w.T @ B_w
     BtWy = B_w.T @ y_w
-    
+
     # Add penalty
     A = BtWB + lambda_ * penalty
-    
+
     # Solve
     try:
-        coefficients = linalg.solve(A, BtWy, assume_a='pos')
+        coefficients = linalg.solve(A, BtWy, assume_a="pos")
     except linalg.LinAlgError:
         # Fallback to lstsq if not positive definite
         coefficients = linalg.lstsq(A, BtWy)[0]
-    
+
     # Fitted values
     fitted = basis @ coefficients
-    
+
     # Effective degrees of freedom
     # edf = tr(B (B^T W B + λ P)^-1 B^T W)
     try:
@@ -417,7 +419,7 @@ def _penalized_ls_tps(
     except linalg.LinAlgError:
         # Fallback: use simple approximation
         edf = np.sum(np.diag(BtWB) / (np.diag(BtWB) + lambda_ * np.diag(penalty)))
-    
+
     return coefficients, fitted, float(edf)
 
 
@@ -429,9 +431,9 @@ def _gcv_score_tps(
     lambda_: float,
 ) -> float:
     """Compute GCV score for TPS.
-    
+
     GCV = (n * RSS) / (n - edf)²
-    
+
     Parameters
     ----------
     basis : np.ndarray
@@ -444,7 +446,7 @@ def _gcv_score_tps(
         Penalty matrix
     lambda_ : float
         Smoothing parameter
-        
+
     Returns
     -------
     float
@@ -452,16 +454,16 @@ def _gcv_score_tps(
     """
     if lambda_ < 0:
         return np.inf
-    
+
     coefficients, fitted, edf = _penalized_ls_tps(basis, y, w, penalty, lambda_)
-    
+
     residuals = y - fitted
-    rss = np.sum(w * residuals ** 2)
+    rss = np.sum(w * residuals**2)
     n = len(y)
-    
+
     if edf >= n:
         return np.inf
-    
+
     gcv = (n * rss) / (n - edf) ** 2
     return gcv
 
@@ -477,7 +479,7 @@ def fit_tps(
     knot_method: Literal["uniform", "kmeans", "all"] = "uniform",
 ) -> TPSResult:
     """Fit thin plate spline smoother.
-    
+
     Parameters
     ----------
     X : np.ndarray
@@ -504,49 +506,49 @@ def fit_tps(
         - "uniform": Random uniform sampling
         - "kmeans": K-means clustering
         - "all": Use all data points (can be slow for large n)
-        
+
     Returns
     -------
     TPSResult
         Fitted TPS model
-        
+
     Examples
     --------
     >>> import numpy as np
     >>> from omnilss.smoothers.tps import fit_tps
-    >>> 
+    >>>
     >>> # 2D example
     >>> n = 100
     >>> x1 = np.random.uniform(0, 1, n)
     >>> x2 = np.random.uniform(0, 1, n)
     >>> X = np.column_stack([x1, x2])
     >>> y = np.sin(2 * np.pi * x1) * np.cos(2 * np.pi * x2) + np.random.normal(0, 0.1, n)
-    >>> 
+    >>>
     >>> # Fit TPS
     >>> result = fit_tps(X, y, k=20, method="GCV")
     >>> print(f"Lambda: {result.lambda_:.4e}")
     >>> print(f"EDF: {result.edf:.2f}")
-    >>> 
+    >>>
     >>> # Predict at new locations
     >>> X_new = np.column_stack([
     ...     np.linspace(0, 1, 50),
     ...     np.linspace(0, 1, 50)
     ... ])
     >>> y_pred = result.predict(X_new)
-    
+
     Notes
     -----
     Thin plate splines are particularly useful for:
     - Spatial smoothing (2D geographic data)
     - Image smoothing
     - Multi-dimensional response surfaces
-    
+
     For large datasets (n > 1000), consider using fewer knots (k < 100)
     to speed up computation. The knot selection method can affect results:
     - "uniform": Fast, random
     - "kmeans": Better coverage, slower
     - "all": Most accurate, slowest
-    
+
     References
     ----------
     Wood, S. N. (2003). Thin plate regression splines. JRSS-B, 65(1), 95-114.
@@ -554,36 +556,36 @@ def fit_tps(
     # Input validation
     X = np.asarray(X)
     y = np.asarray(y)
-    
+
     if X.ndim == 1:
         X = X.reshape(-1, 1)
-    
+
     n, n_dims = X.shape
-    
+
     if len(y) != n:
         raise ValueError(f"X and y must have same length, got {n} and {len(y)}")
-    
+
     if w is None:
         w = np.ones(n)
     else:
         w = np.asarray(w)
         if len(w) != n:
             raise ValueError(f"w must have length {n}, got {len(w)}")
-    
+
     # Select knots
     if k is None:
         k = min(n, 100)
-    
+
     knots = _select_knots(X, k, knot_method)
     n_knots = knots.shape[0]
-    
+
     # Build basis matrix
     basis = _tps_basis_matrix(X, knots, n_dims, m)
-    
+
     # Build penalty matrix
     n_poly = n_dims + 1  # For m=2: 1 + d terms
     penalty = _tps_penalty_matrix(n_knots, n_poly)
-    
+
     # Select or use provided lambda
     if method == "fixed":
         if lambda_ is None:
@@ -594,11 +596,11 @@ def fit_tps(
         # Optimize lambda using GCV
         def objective(log_lambda):
             return _gcv_score_tps(basis, y, w, penalty, np.exp(log_lambda))
-        
+
         result_opt = minimize_scalar(
             objective,
             bounds=(-10, 10),
-            method='bounded',
+            method="bounded",
         )
         selected_lambda = np.exp(result_opt.x)
         criterion_value = result_opt.fun
@@ -606,12 +608,10 @@ def fit_tps(
         raise NotImplementedError(f"Method {method} not yet implemented for TPS")
     else:
         raise ValueError(f"Unknown method: {method}")
-    
+
     # Fit with selected lambda
-    coefficients, fitted, edf = _penalized_ls_tps(
-        basis, y, w, penalty, selected_lambda
-    )
-    
+    coefficients, fitted, edf = _penalized_ls_tps(basis, y, w, penalty, selected_lambda)
+
     return TPSResult(
         coefficients=coefficients,
         fitted_values=fitted,
@@ -636,10 +636,10 @@ def tps(
     knot_method: Literal["uniform", "kmeans", "all"] = "uniform",
 ) -> dict:
     """Thin plate spline smooth term for use in GAMLSS formulas.
-    
+
     This function creates a specification for a TPS smooth term
     that can be used in GAMLSS model formulas.
-    
+
     Parameters
     ----------
     *variables : str
@@ -652,21 +652,21 @@ def tps(
         Smoothing parameter selection method
     knot_method : str
         Knot selection method
-        
+
     Returns
     -------
     dict
         TPS specification dictionary
-        
+
     Examples
     --------
     >>> # In a GAMLSS formula (future integration)
     >>> # model = gamlss("y ~ tps(x1, x2)", family=NO(), data=data)
-    >>> 
+    >>>
     >>> # Current usage: direct fitting
     >>> from omnilss.smoothers.tps import fit_tps
     >>> result = fit_tps(X, y, k=20)
-    
+
     Notes
     -----
     This function is a placeholder for future integration with
@@ -674,7 +674,7 @@ def tps(
     """
     if len(variables) < 2:
         raise ValueError("TPS requires at least 2 variables")
-    
+
     return {
         "type": "tps",
         "variables": variables,

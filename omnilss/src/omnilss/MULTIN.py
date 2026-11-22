@@ -25,9 +25,7 @@ def _clone_with_name(base: FamilyDefinition, name: str) -> FamilyDefinition:
     family it wraps the moment either field mattered (D2.142).
     """
     payload = {
-        field.name: getattr(base, field.name)
-        for field in fields(base)
-        if field.init
+        field.name: getattr(base, field.name) for field in fields(base) if field.init
     }
     payload["name"] = name
     return MULTINFamily(**payload)
@@ -49,6 +47,5 @@ def MULTIN(n_categories: int = 3) -> FamilyDefinition:
     if n_categories == 5:
         return _clone_with_name(MN5(), "MULTIN")
     raise ValueError(
-        "MULTIN currently supports n_categories in {3, 4, 5}; "
-        f"got {n_categories}."
+        "MULTIN currently supports n_categories in {3, 4, 5}; " f"got {n_categories}."
     )

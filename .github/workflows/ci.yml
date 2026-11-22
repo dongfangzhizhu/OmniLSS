@@ -257,7 +257,7 @@ jobs:
       - run: |
           cd omnilss
           uv pip install --system -e ".[dev]"
-          uv pip install --system ruff black mypy
+          uv pip install --system ruff black==26.10.1 mypy
       - run: |
           cd omnilss
           black --check src/omnilss/

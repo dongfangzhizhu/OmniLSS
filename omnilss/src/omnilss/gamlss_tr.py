@@ -7,6 +7,7 @@ base family with density d and CDF p, the truncated distribution keeps only the
 mass inside the truncation interval and renormalises.  The varying-truncation
 mode is not ported yet and raises NotImplementedError.
 """
+
 from __future__ import annotations
 
 import builtins
@@ -40,7 +41,9 @@ def _pv(fam: FamilyDefinition, params: dict[str, Any]) -> list[Any]:
     try:
         return [params[name] for name in fam.parameters]
     except KeyError as exc:  # pragma: no cover - defensive
-        raise KeyError(f"missing family parameter {exc.args[0]!r} for {fam.name}") from exc
+        raise KeyError(
+            f"missing family parameter {exc.args[0]!r} for {fam.name}"
+        ) from exc
 
 
 def _check_par(par: Any, trunc_type: str) -> tuple[float, ...]:
@@ -59,7 +62,9 @@ def _unsupported(varying: bool) -> None:
         raise NotImplementedError("varying truncation is not ported yet")
 
 
-def trun_d(par: Any, family: Any = "NO", type: str = "left", varying: bool = False) -> Callable[..., Any]:
+def trun_d(
+    par: Any, family: Any = "NO", type: str = "left", varying: bool = False
+) -> Callable[..., Any]:
     """R trun.d: truncated density closure fun(x, log=False, **params)."""
 
     _unsupported(varying)
@@ -95,7 +100,9 @@ def trun_d(par: Any, family: Any = "NO", type: str = "left", varying: bool = Fal
     return fun
 
 
-def trun_p(par: Any, family: Any = "NO", type: str = "left", varying: bool = False) -> Callable[..., Any]:
+def trun_p(
+    par: Any, family: Any = "NO", type: str = "left", varying: bool = False
+) -> Callable[..., Any]:
     """R trun.p: truncated CDF closure fun(q, lower_tail=True, log_p=False, **params)."""
 
     _unsupported(varying)
@@ -117,10 +124,14 @@ def trun_p(par: Any, family: Any = "NO", type: str = "left", varying: bool = Fal
             outside = (qs >= p0) if discrete else (qs > p0)
         else:
             if discrete:
-                cof = (fam.p(qs, *pv) - fam.p(p0, *pv)) / (fam.p(p1 - 1, *pv) - fam.p(p0, *pv))
+                cof = (fam.p(qs, *pv) - fam.p(p0, *pv)) / (
+                    fam.p(p1 - 1, *pv) - fam.p(p0, *pv)
+                )
                 outside = (qs <= p0) | (qs >= p1)
             else:
-                cof = (fam.p(qs, *pv) - fam.p(p0, *pv)) / (fam.p(p1, *pv) - fam.p(p0, *pv))
+                cof = (fam.p(qs, *pv) - fam.p(p0, *pv)) / (
+                    fam.p(p1, *pv) - fam.p(p0, *pv)
+                )
                 outside = (qs < p0) | (qs > p1)
         cof = cof if lower_tail else 1.0 - cof
         if log_p:
@@ -130,7 +141,9 @@ def trun_p(par: Any, family: Any = "NO", type: str = "left", varying: bool = Fal
     return fun
 
 
-def trun_q(par: Any, family: Any = "NO", type: str = "left", varying: bool = False) -> Callable[..., Any]:
+def trun_q(
+    par: Any, family: Any = "NO", type: str = "left", varying: bool = False
+) -> Callable[..., Any]:
     """R trun.q: truncated quantile closure fun(p, lower_tail=True, log_p=False, **params)."""
 
     _unsupported(varying)
@@ -140,7 +153,9 @@ def trun_q(par: Any, family: Any = "NO", type: str = "left", varying: bool = Fal
     p0 = par_values[0]
     p1 = par_values[1] if len(par_values) == 2 else None
 
-    def fun(prob: Any, lower_tail: bool = True, log_p: bool = False, **params: Any) -> Any:
+    def fun(
+        prob: Any, lower_tail: bool = True, log_p: bool = False, **params: Any
+    ) -> Any:
         prob = jnp.asarray(prob, dtype=jnp.float64)
         if log_p:
             prob = jnp.exp(prob)
@@ -161,7 +176,9 @@ def trun_q(par: Any, family: Any = "NO", type: str = "left", varying: bool = Fal
     return fun
 
 
-def trun_r(par: Any, family: Any = "NO", type: str = "left", varying: bool = False) -> Callable[..., Any]:
+def trun_r(
+    par: Any, family: Any = "NO", type: str = "left", varying: bool = False
+) -> Callable[..., Any]:
     """R trun.r: truncated random-generation closure fun(n, **params).
 
     R draws runif(n); exact stream parity is impossible, so this returns a
@@ -334,7 +351,9 @@ def gen_trun(
     Python returns a mapping carrying both those names and the generic keys.
     """
 
-    generated = trun(par=par, family=family, type=type, extra_name=extra_name, local=False)
+    generated = trun(
+        par=par, family=family, type=type, extra_name=extra_name, local=False
+    )
     base = generated.base_name
     suffix = generated.extra_name
     d_name, p_name, q_name, r_name = (
@@ -493,8 +512,7 @@ def _fit_tail_ml(
     initial = gamlss_ml("y ~ 1", family=truncated, data={"y": selected})
 
     current = {
-        name: _as_scalar(initial.fitted_values[name])
-        for name in truncated.parameters
+        name: _as_scalar(initial.fitted_values[name]) for name in truncated.parameters
     }
     for name, value in start_values.items():
         if name in current:
@@ -502,9 +520,7 @@ def _fit_tail_ml(
 
     estimable = tuple(truncated.estimable_parameters)
     fixed = {
-        name: current[name]
-        for name in truncated.parameters
-        if name not in estimable
+        name: current[name] for name in truncated.parameters if name not in estimable
     }
     x0 = np.array(
         [
@@ -543,9 +559,7 @@ def _fit_tail_ml(
             dparam_deta = _as_scalar(
                 truncated.link_derivatives[name](np.asarray([value]))
             )
-            gradient.append(
-                -2.0 * float(np.sum(score * multiplier)) * dparam_deta
-            )
+            gradient.append(-2.0 * float(np.sum(score * multiplier)) * dparam_deta)
         return total, np.asarray(gradient, dtype=np.float64)
 
     result = minimize(
@@ -610,8 +624,7 @@ def fitTail(
 
     names = tuple(base.parameters)
     fitted_vectors = {
-        name: np.full(selected.shape, fitted[name], dtype=np.float64)
-        for name in names
+        name: np.full(selected.shape, fitted[name], dtype=np.float64) for name in names
     }
     return TailFit(
         family_name=base.name,
@@ -666,9 +679,7 @@ def fitTailAll(
     pers = list(range(count, npar + start, -1))
     for index, per in enumerate(pers):
         try:
-            fit = fitTail(
-                y, family=family, howmany=per, type=side, **kwargs
-            )
+            fit = fitTail(y, family=family, howmany=per, type=side, **kwargs)
             row = [fit.parameters.get(name, np.nan) for name in names]
         except Exception:
             row = [np.nan] * npar

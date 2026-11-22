@@ -19,6 +19,7 @@ does not depend on mgcv.
 R source: R/gamlss.add/R/ga_new.R (ga) and R/gamlss.add/R/ba.R (ba, which uses
 mgcv::bam -- "big additive models", not backfitting).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -55,7 +56,9 @@ class AdditiveFit:
     iterations: int = 1
 
 
-def _term(kind: str, formula: Any, control: Any, kwargs: Mapping[str, Any]) -> AdditiveTerm:
+def _term(
+    kind: str, formula: Any, control: Any, kwargs: Mapping[str, Any]
+) -> AdditiveTerm:
     if not isinstance(formula, str) or not formula.strip().startswith("~"):
         raise ValueError(
             f"formula argument in {kind}() needs a formula starting with ~"
@@ -67,7 +70,9 @@ def _term(kind: str, formula: Any, control: Any, kwargs: Mapping[str, Any]) -> A
     else:
         settings = control
     parsed = parse_formula(f"{_TERM_RESPONSE} {formula.strip()}")
-    return AdditiveTerm(kind=kind, formula=formula.strip(), parsed=parsed, control=settings)
+    return AdditiveTerm(
+        kind=kind, formula=formula.strip(), parsed=parsed, control=settings
+    )
 
 
 def ga(formula: Any = None, control: Any = None, **kwargs: Any) -> AdditiveTerm:
@@ -101,7 +106,9 @@ def _fit_additive(
             f"formula argument in {kind}() needs a formula starting with ~"
         )
     working = np.asarray(z, dtype=np.float64).ravel()
-    weights = np.ones(working.size) if w is None else np.asarray(w, dtype=np.float64).ravel()
+    weights = (
+        np.ones(working.size) if w is None else np.asarray(w, dtype=np.float64).ravel()
+    )
     if weights.size != working.size:
         raise ValueError("z and w must have the same length")
     parsed = parse_formula(f"{_TERM_RESPONSE} {formula.strip()}")
@@ -110,7 +117,9 @@ def _fit_additive(
     design, smooth_info = build_design_matrix(parsed, augmented, fit_smooths=True)
     design = np.asarray(design, dtype=np.float64)
     root_w = np.sqrt(weights)
-    coefficients, *_ = np.linalg.lstsq(design * root_w[:, None], working * root_w, rcond=None)
+    coefficients, *_ = np.linalg.lstsq(
+        design * root_w[:, None], working * root_w, rcond=None
+    )
     fitted = design @ coefficients
     return AdditiveFit(
         kind=kind,
@@ -147,8 +156,6 @@ def gamlss_ba(
     """R gamlss.ba: weighted refit of a ba() basis for the working response z."""
 
     return _fit_additive("ba", data, z, w, formula)
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -221,7 +228,9 @@ class RegressionTree:
     def fit(self, data: Mapping[str, Any], y: Any, w: Any = None) -> "RegressionTree":
         response = np.asarray(y, dtype=np.float64).ravel()
         weights = (
-            np.ones(response.size) if w is None else np.asarray(w, dtype=np.float64).ravel()
+            np.ones(response.size)
+            if w is None
+            else np.asarray(w, dtype=np.float64).ravel()
         )
         if weights.size != response.size:
             raise ValueError("y and w must have the same length")
@@ -282,7 +291,8 @@ class RegressionTree:
             if boundary.size == 0:
                 continue
             valid = boundary[
-                (boundary + 1 >= control.minbucket) & (n - boundary - 1 >= control.minbucket)
+                (boundary + 1 >= control.minbucket)
+                & (n - boundary - 1 >= control.minbucket)
             ]
             if valid.size == 0:
                 continue
@@ -404,7 +414,9 @@ def gamlss_tr(
     if data is None:
         raise ValueError("the data argument is needed")
     if xeval is not None:
-        raise NotImplementedError("the xeval (prediction) branch of gamlss.tr is not ported")
+        raise NotImplementedError(
+            "the xeval (prediction) branch of gamlss.tr is not ported"
+        )
     inner = parse_formula(f"{_TERM_RESPONSE} {x.formula}")
     columns = {name: np.asarray(data[name]) for name in _formula_variables(inner)}
     tree = RegressionTree(x.control).fit(columns, y, w)

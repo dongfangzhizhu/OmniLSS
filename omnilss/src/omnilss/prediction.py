@@ -419,9 +419,7 @@ def _build_design_matrix_for_prediction(
             # D2.136: a plain categorical column is a factor term too -- the fit
             # records its levels, so prediction must not fall through to the
             # numeric evaluator (which would raise "could not convert string").
-            predicted_var = (
-                factor_match.group(1).strip() if factor_match else term_str
-            )
+            predicted_var = factor_match.group(1).strip() if factor_match else term_str
             factor_levels = design_schema.get("factor_levels", {}).get(predicted_var)
             if factor_levels or factor_match:
                 var_name = predicted_var
@@ -462,10 +460,8 @@ def _build_design_matrix_for_prediction(
                 # Same coding the fit used (treatment by default).
                 from .fitting import _factor_columns
 
-                scheme = (
-                    design_schema.get("factor_contrasts", {}).get(
-                        var_name, "contr.treatment"
-                    )
+                scheme = design_schema.get("factor_contrasts", {}).get(
+                    var_name, "contr.treatment"
                 )
                 block, _ = _factor_columns(
                     values, scheme, var_name, levels=factor_levels
@@ -826,7 +822,9 @@ def add_prediction_methods(model_class):
     ):
         return centiles(self, xvar, xvalues, cent, n_points, **fixed_vars)
 
-    def _predict(self, newdata=None, type="response", what="mu", se_fit=False, terms=None):
+    def _predict(
+        self, newdata=None, type="response", what="mu", se_fit=False, terms=None
+    ):
         # Preserve the historical mu-response surface for the common call
         # signature, and extend it with what/se_fit/terms (and no-newdata
         # fitted-value prediction) via the richer R-aligned predict.

@@ -10,6 +10,7 @@ newton sub-lists); overrides are merged on top, exactly as gam.control does.
 R bug kept on purpose: nn.control's size guard assigns to "order" instead of
 "size", so a negative size warns but the value is returned unchanged.
 """
+
 from __future__ import annotations
 
 import warnings

@@ -168,9 +168,7 @@ def _penalized_ls(
 
     # edf = tr(H) where H = X (A)^{-1} X^T W
     # Use jax arrays for effective_df (it expects jnp arrays)
-    edf_val = effective_df(
-        jnp.array(X), jnp.array(P), lambda_, jnp.array(w)
-    )
+    edf_val = effective_df(jnp.array(X), jnp.array(P), lambda_, jnp.array(w))
 
     return beta, fitted, float(edf_val)
 
@@ -185,6 +183,7 @@ def _lambda_ml(
 ) -> float:
     """Estimate lambda via fast eigendecomposition (replaces iterative ML loop)."""
     from omnilss.smoothing_selection import _fast_gcv
+
     result = _fast_gcv(X, y, P, w)
     return result.lambda_opt
 
@@ -280,7 +279,7 @@ def fit_pspline_smooth(
         Fitted P-spline result with additional attributes:
         - selection_method: Method used for lambda selection
         - criterion_value: Value of the optimization criterion
-        
+
     Examples
     --------
     >>> # Automatic lambda selection (recommended)
@@ -288,13 +287,13 @@ def fit_pspline_smooth(
     >>> y = np.sin(2 * np.pi * x) + np.random.normal(0, 0.1, 100)
     >>> result = fit_pspline_smooth(x, y, method="auto")
     >>> print(f"Selected lambda: {result.lambda_:.4f}, EDF: {result.edf:.2f}")
-    
+
     >>> # Use REML for lambda selection
     >>> result = fit_pspline_smooth(x, y, method="REML")
-    
+
     >>> # Manual df specification
     >>> result = fit_pspline_smooth(x, y, df=5)
-    
+
     References
     ----------
     - Wood, S. N. (2011). Fast stable restricted maximum likelihood and marginal
@@ -319,7 +318,7 @@ def fit_pspline_smooth(
             # Use R's default: df=3 (which R internally converts to df=5 by adding 2)
             df = 3
         # else: method is specified, so use automatic lambda selection
-    
+
     # R's ps() adds 2 to df (for intercept + linear term)
     # Match this behavior
     if df is not None:
@@ -328,6 +327,7 @@ def fit_pspline_smooth(
     # Negative lambda: warn and clamp
     if lambda_ is not None and lambda_ < 0:
         import warnings
+
         warnings.warn("lambda_ was negative; using 0.0", UserWarning, stacklevel=2)
         lambda_ = 0.0
 
@@ -358,9 +358,7 @@ def fit_pspline_smooth(
     elif df is not None:
         # find_lambda_for_df expects jnp arrays
         lam = float(
-            find_lambda_for_df(
-                jnp.array(X), jnp.array(P), float(df), jnp.array(w)
-            )
+            find_lambda_for_df(jnp.array(X), jnp.array(P), float(df), jnp.array(w))
         )
         selection_info = {"method": "fixed_df", "criterion_value": None}
     else:
@@ -368,44 +366,45 @@ def fit_pspline_smooth(
         if method in ["auto", "REML", "AIC"]:
             try:
                 from omnilss.smoothing_selection import select_smoothing_parameter
-                
+
                 # Map "auto" to "GCV"
                 selection_method = "GCV" if method == "auto" else method
-                
+
                 # Use the new smoothing_selection module
                 selection_result = select_smoothing_parameter(
                     X=X,
                     y=y,
                     S=P,
                     weights=w if weights is not None else None,
-                    method=selection_method
+                    method=selection_method,
                 )
-                
+
                 lam = selection_result.lambda_opt
                 edf_selected = selection_result.edf
-                
+
                 # Store selection info
                 selection_info = {
                     "method": selection_method,
                     "criterion_value": selection_result.criterion_value,
                     "converged": selection_result.converged,
-                    "n_iterations": selection_result.n_iterations
+                    "n_iterations": selection_result.n_iterations,
                 }
-                
+
                 # Use the selected lambda for final fit
                 beta, fitted, edf = _penalized_ls(X, y, w, P, lam)
-                
+
             except ImportError:
                 # Fallback to GCV if smoothing_selection not available
                 import warnings
+
                 warnings.warn(
                     f"smoothing_selection module not available, falling back to legacy GCV",
-                    UserWarning
+                    UserWarning,
                 )
                 lam = _lambda_gcv(X, y, w, P)
                 beta, fitted, edf = _penalized_ls(X, y, w, P, lam)
                 selection_info = {"method": "GCV (legacy)", "criterion_value": None}
-        
+
         # Use legacy methods
         elif method == "ML":
             lam = _lambda_ml(X, y, w, P)
@@ -421,7 +420,7 @@ def fit_pspline_smooth(
             selection_info = {"method": "GCV (legacy)", "criterion_value": None}
         else:
             raise ValueError(f"Unknown method: {method!r}")
-    
+
     # Final fit (if not already done in auto/REML/AIC branch)
     if lambda_ is not None or df is not None:
         beta, fitted, edf = _penalized_ls(X, y, w, P, lam)
@@ -436,8 +435,14 @@ def fit_pspline_smooth(
         knots=knots,
         degree=degree,
         order=order,
-        selection_method=selection_info.get("method") if 'selection_info' in locals() else None,
-        criterion_value=selection_info.get("criterion_value") if 'selection_info' in locals() else None,
+        selection_method=(
+            selection_info.get("method") if "selection_info" in locals() else None
+        ),
+        criterion_value=(
+            selection_info.get("criterion_value")
+            if "selection_info" in locals()
+            else None
+        ),
     )
     result.ps_intervals = ps_intervals
 

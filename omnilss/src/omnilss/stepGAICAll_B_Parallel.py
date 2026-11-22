@@ -114,7 +114,11 @@ def dropterm_all(
                     df_fit=float(row.df_fit),
                     criterion=float(row.criterion),
                     delta_df=None if row.delta_df is None else float(row.delta_df),
-                    delta_criterion=None if row.delta_criterion is None else float(row.delta_criterion),
+                    delta_criterion=(
+                        None
+                        if row.delta_criterion is None
+                        else float(row.delta_criterion)
+                    ),
                 )
             )
 
@@ -174,7 +178,11 @@ def addterm_all(
                     df_fit=float(row.df_fit),
                     criterion=float(row.criterion),
                     delta_df=None if row.delta_df is None else float(row.delta_df),
-                    delta_criterion=None if row.delta_criterion is None else float(row.delta_criterion),
+                    delta_criterion=(
+                        None
+                        if row.delta_criterion is None
+                        else float(row.delta_criterion)
+                    ),
                 )
             )
 
@@ -213,11 +221,15 @@ def step_gaic_all(
     if parameters is None:
         requested_parameters = [parameter for parameter in object.par]
     else:
-        requested_parameters = [str(parameter).strip().lower() for parameter in parameters]
+        requested_parameters = [
+            str(parameter).strip().lower() for parameter in parameters
+        ]
 
     if not requested_parameters:
         raise ValueError("at least one parameter is required")
-    missing = [parameter for parameter in requested_parameters if parameter not in object.par]
+    missing = [
+        parameter for parameter in requested_parameters if parameter not in object.par
+    ]
     if missing:
         raise ValueError(f"parameters not present in object: {missing}")
 
@@ -228,7 +240,8 @@ def step_gaic_all(
             step=0,
             parameter="",
             formula=" | ".join(
-                f"{parameter}: {_normalize_formula_text(formula(current, what=parameter))}" for parameter in requested_parameters
+                f"{parameter}: {_normalize_formula_text(formula(current, what=parameter))}"
+                for parameter in requested_parameters
             ),
             criterion=current_aic,
             change="",
@@ -237,7 +250,9 @@ def step_gaic_all(
         )
     ]
 
-    parameter_scopes = {parameter: (scope or {}).get(parameter) for parameter in requested_parameters}
+    parameter_scopes = {
+        parameter: (scope or {}).get(parameter) for parameter in requested_parameters
+    }
     current.additional_slots["dropterm_all"] = dropterm_all(
         current,
         scope=parameter_scopes,

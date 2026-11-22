@@ -79,7 +79,13 @@ def centiles_comparison_data(
     response_name = base.terms.get("mu", {}).get("response")
     observed_x: np.ndarray | None = None
     observed_y: np.ndarray | None = None
-    if include_observed and call_data is not None and response_name is not None and xvar in call_data and response_name in call_data:
+    if (
+        include_observed
+        and call_data is not None
+        and response_name is not None
+        and xvar in call_data
+        and response_name in call_data
+    ):
         raw_x = np.asarray(call_data[xvar], dtype=np.float64).ravel()
         raw_y = np.asarray(call_data[response_name], dtype=np.float64).ravel()
         order = np.argsort(raw_x)
@@ -101,15 +107,24 @@ def centiles_comparison_data(
         current_call_data = None if current.call is None else current.call.get("data")
         current_response = current.terms.get("mu", {}).get("response")
         percent_below: dict[float, float] = {}
-        if current_call_data is not None and current_response is not None and xvar in current_call_data and current_response in current_call_data:
+        if (
+            current_call_data is not None
+            and current_response is not None
+            and xvar in current_call_data
+            and current_response in current_call_data
+        ):
             current_x = np.asarray(current_call_data[xvar], dtype=np.float64).ravel()
-            current_y = np.asarray(current_call_data[current_response], dtype=np.float64).ravel()
+            current_y = np.asarray(
+                current_call_data[current_response], dtype=np.float64
+            ).ravel()
             order = np.argsort(current_x)
             sorted_x = current_x[order]
             sorted_y = current_y[order]
             for entry in result.entries:
                 curve = np.interp(sorted_x, entry.x, entry.y)
-                percent_below[float(entry.centile)] = float(100.0 * np.mean(sorted_y <= curve))
+                percent_below[float(entry.centile)] = float(
+                    100.0 * np.mean(sorted_y <= curve)
+                )
         models.append(
             CentilesComparisonModel(
                 index=index,
@@ -155,12 +170,16 @@ def centiles_comparison_coverage_data(
         fixed_at=fixed_at,
         include_observed=False,
     )
-    matrix = np.full((len(comparison.models), len(comparison.centiles)), np.nan, dtype=np.float64)
+    matrix = np.full(
+        (len(comparison.models), len(comparison.centiles)), np.nan, dtype=np.float64
+    )
     families: list[str] = []
     for row_index, model in enumerate(comparison.models):
         families.append(model.family)
         for column_index, centile in enumerate(comparison.centiles):
-            matrix[row_index, column_index] = model.percent_below.get(float(centile), np.nan)
+            matrix[row_index, column_index] = model.percent_below.get(
+                float(centile), np.nan
+            )
     return CentilesComparisonCoverageResult(
         xvar=comparison.xvar,
         centiles=comparison.centiles,

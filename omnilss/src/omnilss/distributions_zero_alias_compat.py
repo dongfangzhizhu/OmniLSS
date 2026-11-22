@@ -4,7 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .distributions_b10_zero_variants import ZABB as _ZABB, ZABNB as _ZABNB, ZABI as _ZABI, ZANBI as _ZANBI, ZAZIPF as _ZAZIPF, ZIBB as _ZIBB, ZIBI as _ZIBI, ZIBNB as _ZIBNB
+from .distributions_b10_zero_variants import (
+    ZABB as _ZABB,
+    ZABNB as _ZABNB,
+    ZABI as _ZABI,
+    ZANBI as _ZANBI,
+    ZAZIPF as _ZAZIPF,
+    ZIBB as _ZIBB,
+    ZIBI as _ZIBI,
+    ZIBNB as _ZIBNB,
+)
 from .distributions_b5 import ZINBI as _ZINBI
 from .families import FamilyDefinition
 
@@ -81,8 +90,6 @@ class ZINBIFamily(FamilyDefinition):
     """Compatibility shell for ZINBI family."""
 
 
-
-
 def ZABB(bd=10) -> FamilyDefinition:
     return _clone(_ZABB(bd=bd), "ZABB", ZABBFamily)
 
@@ -101,6 +108,7 @@ def ZABNB() -> FamilyDefinition:
 
 def ZIBNB() -> FamilyDefinition:
     return _clone(_ZIBNB(), "ZIBNB", ZIBNBFamily)
+
 
 def ZABI() -> FamilyDefinition:
     return _clone(_ZABI(), "ZABI", ZABIFamily)

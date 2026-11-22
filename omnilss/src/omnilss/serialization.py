@@ -204,14 +204,20 @@ def _family_constructor_issue(meta: dict[str, Any]) -> dict[str, str] | None:
     path = "meta.family_constructor_parameters"
     options = meta.get("family_constructor_parameters", {})
     if not isinstance(options, dict):
-        return _artifact_issue("invalid_family_constructor_parameters", path,
-                               "family_constructor_parameters must be an object")
+        return _artifact_issue(
+            "invalid_family_constructor_parameters",
+            path,
+            "family_constructor_parameters must be an object",
+        )
     if not options:
         return None  # Legacy artifacts and families using default constructors.
     family = meta.get("family")
     if family not in ("ZABB", "ZIBB") or set(options) != {"bd"}:
-        return _artifact_issue("unsupported_family_constructor_parameters", path,
-                               "Unsupported family constructor parameters")
+        return _artifact_issue(
+            "unsupported_family_constructor_parameters",
+            path,
+            "Unsupported family constructor parameters",
+        )
     bd = options["bd"]
     valid = False
     if family == "ZABB":
@@ -227,14 +233,21 @@ def _family_constructor_issue(meta: dict[str, Any]) -> dict[str, str] | None:
         if numeric_leaves(bd):
             try:
                 values = np.asarray(bd)
-                valid = (values.dtype.kind in "iuf" and values.size > 0
-                         and np.all(np.isfinite(values)) and np.all(values >= 0)
-                         and np.all(values == np.floor(values)))
+                valid = (
+                    values.dtype.kind in "iuf"
+                    and values.size > 0
+                    and np.all(np.isfinite(values))
+                    and np.all(values >= 0)
+                    and np.all(values == np.floor(values))
+                )
             except (TypeError, ValueError, OverflowError):
                 valid = False
     if not valid:
-        return _artifact_issue("invalid_family_denominator", path + ".bd",
-                               "Saved bd must be a valid integer denominator")
+        return _artifact_issue(
+            "invalid_family_denominator",
+            path + ".bd",
+            "Saved bd must be a valid integer denominator",
+        )
     return None
 
 
@@ -254,7 +267,6 @@ def _artifact_report(
         "errors": errors,
         "warnings": warnings,
     }
-
 
 
 def artifact_schema_policy() -> dict[str, Any]:
@@ -727,6 +739,7 @@ def compare_model_capability_snapshot(model_or_path: Any) -> dict[str, Any]:
         "changes": changes,
     }
 
+
 def save_model_pickle(model: Any, path: str | Path) -> None:
     try:
         import cloudpickle  # type: ignore
@@ -811,7 +824,9 @@ def save_model_json(
             "iter": int(model.iter),
             "converged": None if model.converged is None else bool(model.converged),
             "termination_reason": (
-                None if model.termination_reason is None else str(model.termination_reason)
+                None
+                if model.termination_reason is None
+                else str(model.termination_reason)
             ),
             "type": str(model.type),
             "call": _model_call_metadata(model, include_training_data),
@@ -897,6 +912,7 @@ def load_model_json(path: str | Path):
         # Only explicitly supported declarative options are reconstructed.
         # Never silently discard options and fall back to a default family.
         from .distributions_zero_alias_compat import ZABB, ZIBB
+
         factories = {"ZABB": ZABB, "ZIBB": ZIBB}
         factory = factories[meta["family"]]
         bd = options["bd"]

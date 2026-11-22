@@ -95,8 +95,12 @@ def _dburr12_parameters(mu, sigma, nu):
         jnp.asarray(nu, dtype=jnp.float64),
     )
     valid = (
-        (mu > 0) & (sigma > 0) & (nu > 0)
-        & jnp.isfinite(mu) & jnp.isfinite(sigma) & jnp.isfinite(nu)
+        (mu > 0)
+        & (sigma > 0)
+        & (nu > 0)
+        & jnp.isfinite(mu)
+        & jnp.isfinite(sigma)
+        & jnp.isfinite(nu)
     )
     mu_s = jnp.where(valid, mu, 1.0)
     sigma_s = jnp.where(valid, sigma, 1.0)
@@ -163,8 +167,7 @@ def _dburr12_quantile_scalar(p, mu, sigma, nu):
     w = mu_s * jnp.power(jnp.expm1(-jnp.log1p(-p_s) / nu_s), 1.0 / sigma_s)
     q = jnp.round(w - 1.0)
     q = jnp.where(q < 0.0, 0.0, q)
-    return jnp.where(valid & jnp.isfinite(p) & (p >= 0.0) & (p <= 1.0),
-                     q, jnp.nan)
+    return jnp.where(valid & jnp.isfinite(p) & (p >= 0.0) & (p <= 1.0), q, jnp.nan)
 
 
 # ---------------------------------------------------------------------------
@@ -179,17 +182,19 @@ def dDBURR12(x, mu=DEFAULT_MU, sigma=DEFAULT_SIGMA, nu=DEFAULT_NU, log=False):
     log scale); see the module docstring for why R's continuous value is not
     reproduced there.
     """
-    x, mu, sigma, nu = jnp.broadcast_arrays(*[
-        jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu)
-    ])
-    flat_log = jax.vmap(_dburr12_log_pdf)(x.ravel(), mu.ravel(),
-                                          sigma.ravel(), nu.ravel())
+    x, mu, sigma, nu = jnp.broadcast_arrays(
+        *[jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu)]
+    )
+    flat_log = jax.vmap(_dburr12_log_pdf)(
+        x.ravel(), mu.ravel(), sigma.ravel(), nu.ravel()
+    )
     log_value = flat_log.reshape(x.shape)
     return log_value if log else jnp.exp(log_value)
 
 
-def pDBURR12(q, mu=DEFAULT_MU, sigma=DEFAULT_SIGMA, nu=DEFAULT_NU,
-             lower_tail=True, log_p=False):
+def pDBURR12(
+    q, mu=DEFAULT_MU, sigma=DEFAULT_SIGMA, nu=DEFAULT_NU, lower_tail=True, log_p=False
+):
     """CDF of the discretised Burr XII (R ``pDBURR12``).
 
     ``lower_tail``/``log_p`` are honoured.  R applies its ``q < 0`` /
@@ -197,11 +202,12 @@ def pDBURR12(q, mu=DEFAULT_MU, sigma=DEFAULT_SIGMA, nu=DEFAULT_NU,
     ``q < 0`` is ``0`` (a probability of one) rather than ``-inf``; that
     quirk is pinned in the tests, not copied here.
     """
-    q, mu, sigma, nu = jnp.broadcast_arrays(*[
-        jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma, nu)
-    ])
-    cdf = jax.vmap(_dburr12_cdf_scalar)(q.ravel(), mu.ravel(),
-                                        sigma.ravel(), nu.ravel()).reshape(q.shape)
+    q, mu, sigma, nu = jnp.broadcast_arrays(
+        *[jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma, nu)]
+    )
+    cdf = jax.vmap(_dburr12_cdf_scalar)(
+        q.ravel(), mu.ravel(), sigma.ravel(), nu.ravel()
+    ).reshape(q.shape)
     if not lower_tail:
         cdf = 1.0 - cdf
     if log_p:
@@ -209,8 +215,9 @@ def pDBURR12(q, mu=DEFAULT_MU, sigma=DEFAULT_SIGMA, nu=DEFAULT_NU,
     return cdf
 
 
-def qDBURR12(p, mu=DEFAULT_MU, sigma=DEFAULT_SIGMA, nu=DEFAULT_NU,
-             lower_tail=True, log_p=False):
+def qDBURR12(
+    p, mu=DEFAULT_MU, sigma=DEFAULT_SIGMA, nu=DEFAULT_NU, lower_tail=True, log_p=False
+):
     """Quantile of the discretised Burr XII (R ``qDBURR12``).
 
     Body: the installed R's ``round(w - 1)`` with its negative clamp (module
@@ -220,17 +227,23 @@ def qDBURR12(p, mu=DEFAULT_MU, sigma=DEFAULT_SIGMA, nu=DEFAULT_NU,
     all four cases (``p must be between 0 and 1``); the stop is pinned in the
     tests.
     """
-    p, mu, sigma, nu = jnp.broadcast_arrays(*[
-        jnp.asarray(v, dtype=jnp.float64) for v in (p, mu, sigma, nu)
-    ])
+    p, mu, sigma, nu = jnp.broadcast_arrays(
+        *[jnp.asarray(v, dtype=jnp.float64) for v in (p, mu, sigma, nu)]
+    )
     target = jnp.exp(p) if log_p else p
     if not lower_tail:
         target = 1.0 - target
     q = jax.vmap(_dburr12_quantile_scalar)(
         target.ravel(), mu.ravel(), sigma.ravel(), nu.ravel()
     ).reshape(p.shape)
-    params_ok = ((mu > 0) & (sigma > 0) & (nu > 0)
-                 & jnp.isfinite(mu) & jnp.isfinite(sigma) & jnp.isfinite(nu))
+    params_ok = (
+        (mu > 0)
+        & (sigma > 0)
+        & (nu > 0)
+        & jnp.isfinite(mu)
+        & jnp.isfinite(sigma)
+        & jnp.isfinite(nu)
+    )
     q = jnp.where(params_ok & (target <= 0.0), 0.0, q)
     q = jnp.where(params_ok & (target >= 1.0), jnp.inf, q)
     outside = (target < 0.0) | (target > 1.0) | jnp.isnan(target)
@@ -241,9 +254,9 @@ def rDBURR12(key, n, mu=DEFAULT_MU, sigma=DEFAULT_SIGMA, nu=DEFAULT_NU):
     """Random draws (R ``rDBURR12``: ``q(runif(n))``, same construction)."""
     if not isinstance(n, int) or n < 0:
         raise ValueError("n must be a nonnegative integer")
-    mu, sigma, nu = jnp.broadcast_arrays(*[
-        jnp.asarray(v, dtype=jnp.float64) for v in (mu, sigma, nu)
-    ])
+    mu, sigma, nu = jnp.broadcast_arrays(
+        *[jnp.asarray(v, dtype=jnp.float64) for v in (mu, sigma, nu)]
+    )
     uniform = jax.random.uniform(key, (n,) + mu.shape, dtype=jnp.float64)
     return qDBURR12(uniform, mu, sigma, nu)
 
@@ -256,6 +269,7 @@ def rDBURR12(key, n, mu=DEFAULT_MU, sigma=DEFAULT_SIGMA, nu=DEFAULT_NU):
 # with the numerator zero at y < 1 (R's ifelse guard), and every d2ldX2 is
 # the plain -score^2 -- no -1e-15 clamp here, unlike the Sichel cluster.
 # ---------------------------------------------------------------------------
+
 
 def _dburr12_sur_difference(y, mu, sigma, nu):
     """``Sur(y) - Sur(y+1)`` -- R's denominator, same order of operations."""
@@ -363,10 +377,12 @@ def DBURR12() -> FamilyDefinition:
         type_="Discrete",
         links={"mu": "log", "sigma": "log", "nu": "log"},
         link_functions={"mu": log_link, "sigma": log_link, "nu": log_link},
-        link_inverses={"mu": log_inverse, "sigma": log_inverse,
-                       "nu": log_inverse},
-        link_derivatives={"mu": log_derivative, "sigma": log_derivative,
-                          "nu": log_derivative},
+        link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": log_inverse},
+        link_derivatives={
+            "mu": log_derivative,
+            "sigma": log_derivative,
+            "nu": log_derivative,
+        },
         score_overrides=_DBURR12_SCORES,
         hessian_overrides=_DBURR12_HESSIANS,
         d=dDBURR12,

@@ -28,6 +28,7 @@ R quirks reproduced (do NOT "fix" these):
 * ``R table(x)`` gives distinct values ascending with their counts; ``x`` of
   the band is those distinct values.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -35,7 +36,6 @@ from typing import Any
 
 import numpy as np
 from scipy.stats import beta
-
 
 __all__ = ["EcdfBand", "EcdfData", "y_ecdf"]
 
@@ -95,15 +95,16 @@ def _nonparam_bands(y: np.ndarray, conf_level: str, band_type: str) -> EcdfBand:
                 5.6392 + 0.4018 * log_nn - 0.0183 * log_nn**2,
             )
     with np.errstate(invalid="ignore"):
-        lam = np.sqrt(2.0 * lam)         # NaN for negative lambda (99%-Owen)
+        lam = np.sqrt(2.0 * lam)  # NaN for negative lambda (99%-Owen)
         phi = beta.cdf(p, 1.0 / 3.0, 1.0 / 3.0)
         se = 1.0 / (5.3 * np.sqrt(nn * (p * (1.0 - p)) ** (1.0 / 3.0)))
         phiu = np.clip(phi + lam * se, 0.0, 1.0)
         phil = np.clip(phi - lam * se, 0.0, 1.0)
     lower = beta.ppf(phil, 1.0 / 3.0, 1.0 / 3.0)
     upper = beta.ppf(phiu, 1.0 / 3.0, 1.0 / 3.0)
-    return EcdfBand(x=vals, lower=lower, upper=upper,
-                    conf_level=conf_level, band_type=band_type)
+    return EcdfBand(
+        x=vals, lower=lower, upper=upper, conf_level=conf_level, band_type=band_type
+    )
 
 
 def _prep_data(y: np.ndarray, value: float) -> EcdfData:
@@ -117,8 +118,7 @@ def _prep_data(y: np.ndarray, value: float) -> EcdfData:
     lo, hi = med - iqr * value, med + iqr * value
     # gamlss::ECDF uses denominator n+1
     n = vals.size
-    scores = np.array([np.sum(vals <= v) / (n + 1.0) for v in vals],
-                      dtype=np.float64)
+    scores = np.array([np.sum(vals <= v) / (n + 1.0) for v in vals], dtype=np.float64)
     outlier = (vals >= hi) | (vals <= lo)
     color = np.where(outlier, "outlier", "normal")
     txt = np.where(outlier, obs.astype(np.int64).astype(object), None)

@@ -78,11 +78,15 @@ def fit_dist_pred_data(
     selected_type = str(type).strip()
     key = selected_type.lower()
     if key not in available:
-        raise ValueError("type must be one of 'realAll', 'realline', 'realplus', 'real0to1', 'counts', or 'binom'")
+        raise ValueError(
+            "type must be one of 'realAll', 'realline', 'realplus', 'real0to1', 'counts', or 'binom'"
+        )
 
     family_names = list(available[key])
     if extra is not None:
-        family_names.extend(str(name).strip().upper() for name in extra if str(name).strip())
+        family_names.extend(
+            str(name).strip().upper() for name in extra if str(name).strip()
+        )
     family_names = list(dict.fromkeys(family_names))
 
     y_array = np.asarray(y, dtype=np.float64).ravel()
@@ -101,7 +105,9 @@ def fit_dist_pred_data(
         train_mask = split == 1
         valid_mask = split == 2
         if not np.any(train_mask) or not np.any(valid_mask):
-            raise ValueError("rand must contain both training (1) and validation (2) rows")
+            raise ValueError(
+                "rand must contain both training (1) and validation (2) rows"
+            )
         train_y = y_array[train_mask]
         train_w = None if w is None else w[train_mask]
         validation_y = y_array[valid_mask]
@@ -134,11 +140,21 @@ def fit_dist_pred_data(
                 output="list",
                 se_fit=False,
             )
-            values = predicted.values if isinstance(predicted, PredictAllResult) else dict(predicted)
-            deviance_kwargs: dict[str, Any] = {"y": np.asarray(validation_y, dtype=np.float64)}
+            values = (
+                predicted.values
+                if isinstance(predicted, PredictAllResult)
+                else dict(predicted)
+            )
+            deviance_kwargs: dict[str, Any] = {
+                "y": np.asarray(validation_y, dtype=np.float64)
+            }
             for parameter in fit.par:
-                deviance_kwargs[parameter] = np.asarray(values[parameter], dtype=np.float64)
-            deviance_increment = np.asarray(fit.family.g_dev_inc(**deviance_kwargs), dtype=np.float64)
+                deviance_kwargs[parameter] = np.asarray(
+                    values[parameter], dtype=np.float64
+                )
+            deviance_increment = np.asarray(
+                fit.family.g_dev_inc(**deviance_kwargs), dtype=np.float64
+            )
             validation_global_deviance = float(np.sum(deviance_increment))
             prediction_error = float(validation_global_deviance / validation_y.size)
         except Exception:
@@ -158,7 +174,9 @@ def fit_dist_pred_data(
     if best_model is None:
         raise ValueError("no candidate family could be fitted")
 
-    ordered_rows = tuple(sorted(rows, key=lambda row: (row.validation_global_deviance, row.family)))
+    ordered_rows = tuple(
+        sorted(rows, key=lambda row: (row.validation_global_deviance, row.family))
+    )
     return FitDistPredResult(
         type=selected_type,
         best_family=str(getattr(best_model.family, "name", best_model.family)),
@@ -225,7 +243,9 @@ def gamlss_ml_pred_data(
         train_mask = split == 1
         valid_mask = split == 2
         if not np.any(train_mask) or not np.any(valid_mask):
-            raise ValueError("rand must contain both training (1) and validation (2) rows")
+            raise ValueError(
+                "rand must contain both training (1) and validation (2) rows"
+            )
         train_y = y_array[train_mask]
         train_w = None if w is None else w[train_mask]
         validation_y = y_array[valid_mask]
@@ -251,11 +271,15 @@ def gamlss_ml_pred_data(
         output="list",
         se_fit=False,
     )
-    values = predicted.values if isinstance(predicted, PredictAllResult) else dict(predicted)
+    values = (
+        predicted.values if isinstance(predicted, PredictAllResult) else dict(predicted)
+    )
     deviance_kwargs: dict[str, Any] = {"y": validation_y}
     for parameter in fit.par:
         deviance_kwargs[parameter] = np.asarray(values[parameter], dtype=np.float64)
-    validation_increment = np.asarray(fit.family.g_dev_inc(**deviance_kwargs), dtype=np.float64)
+    validation_increment = np.asarray(
+        fit.family.g_dev_inc(**deviance_kwargs), dtype=np.float64
+    )
     validation_global_deviance = float(np.sum(validation_increment))
     prediction_error = float(validation_global_deviance / validation_y.size)
 
@@ -265,7 +289,9 @@ def gamlss_ml_pred_data(
         for parameter in fit.par:
             rqres_kwargs[parameter] = np.asarray(values[parameter], dtype=np.float64)
         try:
-            validation_residuals = np.asarray(fit.rqres(**rqres_kwargs), dtype=np.float64)
+            validation_residuals = np.asarray(
+                fit.rqres(**rqres_kwargs), dtype=np.float64
+            )
         except Exception:
             validation_residuals = None
 
@@ -289,6 +315,7 @@ def gamlss_ml_pred(
     """R reference: `gamlss/R/fitDistPred.R::gamlssMLpred`."""
 
     return gamlss_ml_pred_data(y=y, family=family, rand=rand, newdata=newdata)
+
 
 fitDistPred = fit_dist_pred
 gamlssMLpred = gamlss_ml_pred

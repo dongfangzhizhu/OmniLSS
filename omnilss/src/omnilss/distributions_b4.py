@@ -59,6 +59,7 @@ def _beinf_ab(mu, sigma):
 #    We implement via soft masks using jnp.where (no grad through discontinuity).
 # ------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class BetaInflatedFamily(FamilyDefinition):
     """Beta-inflated at 0 and 1 (`BEINF`)."""
@@ -92,9 +93,24 @@ def BEINF() -> BetaInflatedFamily:
         log_pdf_func=_beinf_log_pdf,
         type_="Mixed",
         links={"mu": "logit", "sigma": "logit", "nu": "log", "tau": "log"},
-        link_functions={"mu": logit_link, "sigma": logit_link, "nu": log_link, "tau": log_link},
-        link_inverses={"mu": logit_inverse, "sigma": logit_inverse, "nu": log_inverse, "tau": log_inverse},
-        link_derivatives={"mu": logit_derivative, "sigma": logit_derivative, "nu": log_derivative, "tau": log_derivative},
+        link_functions={
+            "mu": logit_link,
+            "sigma": logit_link,
+            "nu": log_link,
+            "tau": log_link,
+        },
+        link_inverses={
+            "mu": logit_inverse,
+            "sigma": logit_inverse,
+            "nu": log_inverse,
+            "tau": log_inverse,
+        },
+        link_derivatives={
+            "mu": logit_derivative,
+            "sigma": logit_derivative,
+            "nu": log_derivative,
+            "tau": log_derivative,
+        },
         d=dBEINF,
         p=pBEINF,
         q=qBEINF,
@@ -107,6 +123,7 @@ def BEINF() -> BetaInflatedFamily:
 #    R: logfy[x>0] = dbeta(x,a,b,log=TRUE) - log(1+nu)
 #       logfy[x=0] = log(nu) - log(1+nu)
 # ------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class BetaInflated0Family(FamilyDefinition):
@@ -217,7 +234,11 @@ def BEINF0() -> BetaInflated0Family:
         links={"mu": "logit", "sigma": "logit", "nu": "log"},
         link_functions={"mu": logit_link, "sigma": logit_link, "nu": log_link},
         link_inverses={"mu": logit_inverse, "sigma": logit_inverse, "nu": log_inverse},
-        link_derivatives={"mu": logit_derivative, "sigma": logit_derivative, "nu": log_derivative},
+        link_derivatives={
+            "mu": logit_derivative,
+            "sigma": logit_derivative,
+            "nu": log_derivative,
+        },
     )
 
 
@@ -226,6 +247,7 @@ def BEINF0() -> BetaInflated0Family:
 #    R: logfy[x<1] = dbeta(x,a,b,log=TRUE) - log(1+nu)
 #       logfy[x=1] = log(nu) - log(1+nu)
 # ------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class BetaInflated1Family(FamilyDefinition):
@@ -335,7 +357,11 @@ def BEINF1() -> BetaInflated1Family:
         links={"mu": "logit", "sigma": "logit", "nu": "log"},
         link_functions={"mu": logit_link, "sigma": logit_link, "nu": log_link},
         link_inverses={"mu": logit_inverse, "sigma": logit_inverse, "nu": log_inverse},
-        link_derivatives={"mu": logit_derivative, "sigma": logit_derivative, "nu": log_derivative},
+        link_derivatives={
+            "mu": logit_derivative,
+            "sigma": logit_derivative,
+            "nu": log_derivative,
+        },
     )
 
 
@@ -345,6 +371,7 @@ def BEINF1() -> BetaInflated1Family:
 #    a = mu * sigma, b = (1-mu) * sigma
 #    logfy[x=0] = log(nu), logfy[0<x<1] = log(1-nu) + dbeta(x,a,b)
 # ------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class BetaZeroInflatedFamily(FamilyDefinition):
@@ -458,7 +485,11 @@ def BEZI() -> BetaZeroInflatedFamily:
         links={"mu": "logit", "sigma": "log", "nu": "logit"},
         link_functions={"mu": logit_link, "sigma": log_link, "nu": logit_link},
         link_inverses={"mu": logit_inverse, "sigma": log_inverse, "nu": logit_inverse},
-        link_derivatives={"mu": logit_derivative, "sigma": log_derivative, "nu": logit_derivative},
+        link_derivatives={
+            "mu": logit_derivative,
+            "sigma": log_derivative,
+            "nu": logit_derivative,
+        },
     )
 
 
@@ -467,6 +498,7 @@ def BEZI() -> BetaZeroInflatedFamily:
 #    R: a = mu*sigma, b = (1-mu)*sigma
 #       logfy[x=1] = log(nu), logfy[0<x<1] = log(1-nu) + dbeta(x,a,b)
 # ------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class BetaOneInflatedFamily(FamilyDefinition):
@@ -576,5 +608,9 @@ def BEOI() -> BetaOneInflatedFamily:
         links={"mu": "logit", "sigma": "log", "nu": "logit"},
         link_functions={"mu": logit_link, "sigma": log_link, "nu": logit_link},
         link_inverses={"mu": logit_inverse, "sigma": log_inverse, "nu": logit_inverse},
-        link_derivatives={"mu": logit_derivative, "sigma": log_derivative, "nu": logit_derivative},
+        link_derivatives={
+            "mu": logit_derivative,
+            "sigma": log_derivative,
+            "nu": logit_derivative,
+        },
     )

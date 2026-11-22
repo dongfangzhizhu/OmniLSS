@@ -5,6 +5,7 @@ Built strictly on OmniLSS's own distribution contract
 (:mod:`omnilss.ondil_contract`) with zero external dependencies on reference
 repositories.
 """
+
 from __future__ import annotations
 
 from .estimator import OnlineGAMLSS

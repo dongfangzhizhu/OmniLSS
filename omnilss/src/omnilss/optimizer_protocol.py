@@ -19,14 +19,13 @@ class OptimizerState:
 
 @runtime_checkable
 class Phase0OptimizerProtocol(Protocol):
-    def initialize(self, context: dict[str, Any]) -> OptimizerState:
-        ...
+    def initialize(self, context: dict[str, Any]) -> OptimizerState: ...
 
-    def step(self, context: dict[str, Any], state: OptimizerState) -> OptimizerState:
-        ...
+    def step(
+        self, context: dict[str, Any], state: OptimizerState
+    ) -> OptimizerState: ...
 
-    def converged(self, state: OptimizerState) -> bool:
-        ...
+    def converged(self, state: OptimizerState) -> bool: ...
 
 
 class RSOptimizerAdapter:

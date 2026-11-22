@@ -115,7 +115,8 @@ class FamilyDistributionAdapter:
         count = int(rows.shape[0])
         row_params = {
             name: jnp.broadcast_to(
-                jnp.asarray(params[name]), (count,) + jnp.asarray(params[name]).shape[1:]
+                jnp.asarray(params[name]),
+                (count,) + jnp.asarray(params[name]).shape[1:],
             )
             for name in names
         }
@@ -181,7 +182,9 @@ class FamilyDistributionAdapter:
         for name, fn in (self.family.hessian_functions or {}).items():
             if name in result:
                 analytic = jnp.asarray(fn(y=y, **dict(params)))
-                result[name][name] = jnp.broadcast_to(analytic, result[name][name].shape)
+                result[name][name] = jnp.broadcast_to(
+                    analytic, result[name][name].shape
+                )
         return result
 
     def init_params(self, y: Any) -> Mapping[str, jnp.ndarray]:

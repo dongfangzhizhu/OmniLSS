@@ -21,7 +21,11 @@ def create_app():
         ) from exc
 
     from ... import gamlss
-    from ...family_capabilities import capability_matrix, method_route_capability_report, require_production_family_route
+    from ...family_capabilities import (
+        capability_matrix,
+        method_route_capability_report,
+        require_production_family_route,
+    )
     from ..grpc import server as grpc_server
 
     def _error_detail(exc: Exception) -> dict[str, Any] | str:
@@ -54,7 +58,9 @@ def create_app():
     @app.get("/health")
     def health() -> dict[str, Any]:
         audit = grpc_server.REGISTRY.audit()
-        unhealthy = sum(1 for item in audit if not item["integrity_ok"] or not item["capability_ok"])
+        unhealthy = sum(
+            1 for item in audit if not item["integrity_ok"] or not item["capability_ok"]
+        )
         return {
             "status": "degraded" if unhealthy else "ok",
             "service": "omnilss-fastapi",
@@ -69,11 +75,20 @@ def create_app():
     @app.get("/models/audit")
     def audit_models(_: None = Depends(_check_auth)) -> dict[str, Any]:
         entries = grpc_server.REGISTRY.audit()
-        unhealthy = [item for item in entries if not item["integrity_ok"] or not item["capability_ok"]]
+        unhealthy = [
+            item
+            for item in entries
+            if not item["integrity_ok"] or not item["capability_ok"]
+        ]
         metrics = grpc_server._audit_metrics(entries)
         audit_metrics["audit_requests_total"] += 1
         audit_metrics["unhealthy_models"] = len(unhealthy)
-        return {"status": "degraded" if unhealthy else "ok", "models": entries, "unhealthy_model_count": len(unhealthy), "metrics": metrics}
+        return {
+            "status": "degraded" if unhealthy else "ok",
+            "models": entries,
+            "unhealthy_model_count": len(unhealthy),
+            "metrics": metrics,
+        }
 
     @app.get("/models/audit/metrics")
     def audit_metrics_endpoint(_: None = Depends(_check_auth)) -> dict[str, int]:
@@ -104,7 +119,10 @@ def create_app():
             f"omnilss_registry_capability_failures {values['capability_failures']}",
         ]
         from fastapi.responses import PlainTextResponse
-        return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
+
+        return PlainTextResponse(
+            "\n".join(lines) + "\n", media_type="text/plain; version=0.0.4"
+        )
 
     @app.post("/models/audit/cleanup")
     def cleanup_audit(_: None = Depends(_check_auth)) -> dict[str, Any]:
@@ -116,7 +134,11 @@ def create_app():
                 if grpc_server.REGISTRY.delete(item["model_id"]):
                     removed.append(item["model_id"])
         audit_metrics["cleanup_deleted_models_total"] += len(removed)
-        return {"deleted_model_ids": removed, "deleted_count": len(removed), "reason": "unhealthy_artifact"}
+        return {
+            "deleted_model_ids": removed,
+            "deleted_count": len(removed),
+            "reason": "unhealthy_artifact",
+        }
 
     @app.get("/capabilities")
     def capabilities(_: None = Depends(_check_auth)) -> dict[str, Any]:
@@ -134,11 +156,18 @@ def create_app():
         _: None = Depends(_check_auth),
     ) -> dict[str, Any]:
         formulas = {
-            key: value for key, value in {
-                "mu": formula, "sigma": sigma_formula, "nu": nu_formula, "tau": tau_formula,
-            }.items() if value
+            key: value
+            for key, value in {
+                "mu": formula,
+                "sigma": sigma_formula,
+                "nu": nu_formula,
+                "tau": tau_formula,
+            }.items()
+            if value
         }
-        return method_route_capability_report(family, method, strict=strict, formulas=formulas)
+        return method_route_capability_report(
+            family, method, strict=strict, formulas=formulas
+        )
 
     @app.delete("/models/{model_id}")
     def delete_model(model_id: str, _: None = Depends(_check_auth)) -> dict[str, Any]:
@@ -148,7 +177,9 @@ def create_app():
         return {"deleted": True, "model_id": model_id}
 
     @app.post("/fit")
-    async def fit(request: _FastAPIRequest, _: None = Depends(_check_auth)) -> dict[str, Any]:
+    async def fit(
+        request: _FastAPIRequest, _: None = Depends(_check_auth)
+    ) -> dict[str, Any]:
         """Fit a model through the same production admission as gRPC."""
         try:
             payload = await request.json()
@@ -187,13 +218,17 @@ def create_app():
                 "model_id": model_id,
                 "deviance": float(model.g_dev),
                 "iterations": int(model.iter),
-                "converged": bool(getattr(model, "additional_slots", {}).get("converged", True)),
+                "converged": bool(
+                    getattr(model, "additional_slots", {}).get("converged", True)
+                ),
             }
         except Exception as exc:
             raise HTTPException(status_code=400, detail=_error_detail(exc)) from exc
 
     @app.post("/models/{model_id}/predict")
-    async def predict(model_id: str, request: _FastAPIRequest, _: None = Depends(_check_auth)) -> dict[str, Any]:
+    async def predict(
+        model_id: str, request: _FastAPIRequest, _: None = Depends(_check_auth)
+    ) -> dict[str, Any]:
         try:
             payload = await request.json()
             if not isinstance(payload, dict):
@@ -203,7 +238,11 @@ def create_app():
                 raise ValueError("predict requires newdata as a JSON object")
             model = grpc_server.REGISTRY.load(model_id)
             params = model.predict_params(newdata)
-            return {"success": True, "model_id": model_id, "params": {k: list(map(float, v)) for k, v in params.items()}}
+            return {
+                "success": True,
+                "model_id": model_id,
+                "params": {k: list(map(float, v)) for k, v in params.items()},
+            }
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="model_id not found") from exc
         except Exception as exc:

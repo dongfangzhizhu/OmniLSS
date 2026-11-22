@@ -64,9 +64,7 @@ def _resolve_start_values(
                     f"got shape {values.shape}"
                 )
         if not np.all(np.isfinite(values)):
-            raise ValueError(
-                f"start value for {name!r} contains non-finite entries"
-            )
+            raise ValueError(f"start value for {name!r} contains non-finite entries")
         resolved[name] = values
     return resolved
 
@@ -372,8 +370,6 @@ def _initial_parameter_value(
     return 1.0
 
 
-
-
 def _initial_mu_target(
     family: FamilyDefinition,
     y: np.ndarray,
@@ -458,7 +454,9 @@ def _initial_mu_target(
         bd = np.asarray(options.get("bd", 10), dtype=np.float64)
         bd = np.broadcast_to(bd, y.shape)
         if np.any(~np.isfinite(bd) | (bd < 1) | (bd != np.floor(bd))):
-            raise ValueError("Zero-BB fitting requires positive integer bd per observation")
+            raise ValueError(
+                "Zero-BB fitting requires positive integer bd per observation"
+            )
         if np.any(~np.isfinite(y) | (y < 0) | (y > bd) | (y != np.floor(y))):
             raise ValueError("Zero-BB response must be an integer in [0, bd]")
         # Half-count adjustment avoids logit infinities at zero and bd.
@@ -484,8 +482,17 @@ def _initial_mu_target(
     elif family.name == "WEI":
         target = np.log(np.maximum(y, np.finfo(np.float64).eps))
     elif family.name in (
-        "BCCG", "BCT", "BCPE", "PE", "ST2",
-        "SN1", "SST", "ST3", "ST3C", "ST4", "TF",
+        "BCCG",
+        "BCT",
+        "BCPE",
+        "PE",
+        "ST2",
+        "SN1",
+        "SST",
+        "ST3",
+        "ST3C",
+        "ST4",
+        "TF",
     ):
         # R mu.initial (live R, D2.35/D2.38):
         #     mu <- (y + mean(y))/2
@@ -775,8 +782,6 @@ def _initial_mu_beta(
     return beta_mu
 
 
-
-
 def _initial_sigma(
     family: FamilyDefinition,
     y: np.ndarray,
@@ -898,7 +903,9 @@ def _initial_sigma(
         mean_component = np.maximum(mu, eps)
         variance_component = np.sum(w * np.square(y - mu)) / np.sum(w)
         mean_level = np.sum(w * mean_component) / np.sum(w)
-        sigma = np.maximum((variance_component - mean_level) / np.maximum(mean_level**2, eps), eps)
+        sigma = np.maximum(
+            (variance_component - mean_level) / np.maximum(mean_level**2, eps), eps
+        )
     elif family.name in ("IG", "IGA"):
         # R IG()$sigma.initial: sigma <- sd(y)/mean(y)^1.5.
         centered = (y - mu) / np.maximum(np.power(mu, 1.5), eps)
@@ -934,11 +941,17 @@ def _initial_sigma(
             if family.name == "ZAGA":
                 # For gamma: sigma = sqrt(Var(Y)/mu^2)
                 centered = (y_nonzero - mu_nonzero) / np.maximum(mu_nonzero, eps)
-                sigma = np.sqrt(np.sum(w_nonzero * np.square(centered)) / np.sum(w_nonzero))
+                sigma = np.sqrt(
+                    np.sum(w_nonzero * np.square(centered)) / np.sum(w_nonzero)
+                )
             else:  # ZAIG
                 # For IG: similar to gamma
-                centered = (y_nonzero - mu_nonzero) / np.maximum(np.power(mu_nonzero, 1.5), eps)
-                sigma = np.sqrt(np.sum(w_nonzero * np.square(centered)) / np.sum(w_nonzero))
+                centered = (y_nonzero - mu_nonzero) / np.maximum(
+                    np.power(mu_nonzero, 1.5), eps
+                )
+                sigma = np.sqrt(
+                    np.sum(w_nonzero * np.square(centered)) / np.sum(w_nonzero)
+                )
         else:
             sigma = 0.5  # Fallback if all zeros
     elif family.name in ("ZIP2", "ZINBI", "ZAP"):
@@ -1020,7 +1033,10 @@ def _initial_sigma(
         sigma = 0.5
     elif family.name == "PE":
         mean_y = np.sum(w * y) / np.sum(w)
-        sigma = (np.sum(w * np.abs(y - mean_y)) / np.sum(w) + np.sqrt(np.sum(w * np.square(y - mean_y)) / np.sum(w))) / 2.0
+        sigma = (
+            np.sum(w * np.abs(y - mean_y)) / np.sum(w)
+            + np.sqrt(np.sum(w * np.square(y - mean_y)) / np.sum(w))
+        ) / 2.0
     elif family.name in ("ST2", "JSU", "ST4", "SN1"):
         # R sigma.initial (live R, D2.38): sigma <- rep(sd(y)/4, ...) for
         # ST2 (D2.38), JSU (D2.34), ST4 and SN1 (both D2.38), with R's sd()
@@ -1162,8 +1178,6 @@ def _initial_sigma(
     return max(float(sigma), eps)
 
 
-
-
 def _initial_sigma_fitted(
     family: FamilyDefinition,
     y: np.ndarray,
@@ -1195,8 +1209,6 @@ def _initial_sigma_fitted(
             dtype=np.float64,
         )
     return np.maximum(sigma_vec, 1e-6)
-
-
 
 
 __all__ = [

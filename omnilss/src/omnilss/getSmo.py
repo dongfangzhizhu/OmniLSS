@@ -24,7 +24,9 @@ class SmootherInfo:
     index: int
 
 
-def getSmo(object: GAMLSSModel, parameter: str = "mu", require_finite: bool = True) -> tuple[SmootherInfo, ...]:
+def getSmo(
+    object: GAMLSSModel, parameter: str = "mu", require_finite: bool = True
+) -> tuple[SmootherInfo, ...]:
     """Extract smoother metadata for a parameter from fitted model slots."""
     if not is_gamlss(object):
         raise TypeError("this is not a gamlss object")
@@ -38,7 +40,9 @@ def getSmo(object: GAMLSSModel, parameter: str = "mu", require_finite: bool = Tr
         if require_finite:
             for name, value in (("edf", edf), ("lambda_", lam)):
                 if value is not None and not np.isfinite(value):
-                    raise ValueError(f"{name} for smoother #{idx} in parameter {parameter!r} must be finite")
+                    raise ValueError(
+                        f"{name} for smoother #{idx} in parameter {parameter!r} must be finite"
+                    )
 
         infos.append(
             SmootherInfo(
@@ -59,7 +63,11 @@ def edfAll(object: GAMLSSModel, require_finite: bool = True) -> dict[str, float]
         raise TypeError("this is not a gamlss object")
     out: dict[str, float] = {}
     for parameter in object.par:
-        vals = [s.edf for s in getSmo(object, parameter=parameter, require_finite=require_finite) if s.edf is not None]
+        vals = [
+            s.edf
+            for s in getSmo(object, parameter=parameter, require_finite=require_finite)
+            if s.edf is not None
+        ]
         out[parameter] = float(np.sum(vals)) if vals else 0.0
     return out
 

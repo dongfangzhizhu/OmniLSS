@@ -18,7 +18,6 @@ from typing import Any, Optional
 import jax.numpy as jnp
 import numpy as np
 
-
 _SMOOTH_CALL_PATTERN = re.compile(
     r"\b(pb|ps|cs|s|random|re|ri|lo|pcat|fp|bfp|cy|te|ti|"
     r"pvc|pbm|pbz|pbo|pbc|pbp|scs|ga|ba|fk|tr|nn|gmrf)\s*\("
@@ -40,7 +39,7 @@ def has_smooth_terms(formula: str | None) -> bool:
 @dataclass
 class SmoothTerm:
     """Represents a smooth term in a formula.
-    
+
     Attributes
     ----------
     smoother : str
@@ -53,18 +52,19 @@ class SmoothTerm:
         Smoothing parameter
     kwargs : dict
         Additional smoother-specific arguments
-        
+
     Notes
     -----
     `random`/`re`/`ri`/`pcat`/`fp`/`bfp`/`cy`/`pvc`/`pbm`/`pbz`/`pbo`/`pbc` and `lo` can be parsed as smooth-like terms for staged API
     compatibility; full fitting parity remains pending.
     """
+
     smoother: str
     variable: str
     df: Optional[float] = None
     lambda_: Optional[float] = None
     kwargs: dict = None
-    
+
     def __post_init__(self):
         if self.kwargs is None:
             self.kwargs = {}
@@ -73,7 +73,7 @@ class SmoothTerm:
 @dataclass
 class TensorProductTerm:
     """Represents a tensor product smooth term in a formula.
-    
+
     Attributes
     ----------
     smoother : str
@@ -91,6 +91,7 @@ class TensorProductTerm:
     kwargs : dict
         Additional arguments
     """
+
     smoother: str
     variables: list[str]
     k: Optional[int] = None
@@ -98,30 +99,33 @@ class TensorProductTerm:
     bs: str = "ps"
     lambda_: Optional[float] = None
     kwargs: dict = None
-    
+
     def __post_init__(self):
         if self.kwargs is None:
             self.kwargs = {}
         if len(self.variables) < 2:
-            raise ValueError(f"Tensor product {self.smoother}() requires at least 2 variables")
+            raise ValueError(
+                f"Tensor product {self.smoother}() requires at least 2 variables"
+            )
 
 
 @dataclass
 class LinearTerm:
     """Represents a linear term in a formula.
-    
+
     Attributes
     ----------
     variable : str
         Variable name
     """
+
     variable: str
 
 
 @dataclass
 class ParsedFormula:
     """Parsed formula with linear and smooth terms.
-    
+
     Attributes
     ----------
     response : str
@@ -135,6 +139,7 @@ class ParsedFormula:
     has_intercept : bool
         Whether formula includes intercept
     """
+
     response: str
     linear_terms: list[LinearTerm]
     smooth_terms: list[SmoothTerm]
@@ -144,7 +149,7 @@ class ParsedFormula:
 
 def parse_formula(formula: str) -> ParsedFormula:
     """Parse a GAMLSS formula with smooth terms.
-    
+
     Supports formulas like:
     - "y ~ x1 + x2"  (linear terms only)
     - "y ~ pb(x1) + x2"  (smooth + linear)
@@ -154,17 +159,17 @@ def parse_formula(formula: str) -> ParsedFormula:
     - "y ~ te(x1, x2)"  (tensor product smooth)
     - "y ~ ti(x1) + ti(x2) + ti(x1, x2)"  (tensor product interaction)
     - "y ~ x1 + x2 - 1"  (no intercept)
-    
+
     Parameters
     ----------
     formula : str
         Formula string
-    
+
     Returns
     -------
     parsed : ParsedFormula
         Parsed formula object
-    
+
     Examples
     --------
     >>> parsed = parse_formula("y ~ x1 + pb(x2, df=5)")
@@ -174,7 +179,7 @@ def parse_formula(formula: str) -> ParsedFormula:
     1
     >>> len(parsed.smooth_terms)
     1
-    
+
     >>> # Using s() function
     >>> parsed = parse_formula("y ~ s(x1) + s(x2, method='REML')")
     >>> len(parsed.smooth_terms)
@@ -183,7 +188,7 @@ def parse_formula(formula: str) -> ParsedFormula:
     'auto'
     >>> parsed.smooth_terms[1].method
     'REML'
-    
+
     >>> # Using te() function
     >>> parsed = parse_formula("y ~ te(x1, x2)")
     >>> len(parsed.tensor_terms)
@@ -193,37 +198,37 @@ def parse_formula(formula: str) -> ParsedFormula:
     """
     if "~" not in formula:
         raise ValueError("Formula must contain '~'")
-    
+
     left, right = formula.split("~", 1)
     response = left.strip()
-    
+
     if not response:
         raise ValueError("Formula must have a response variable")
-    
+
     # Parse right-hand side
     rhs = right.strip()
-    
+
     # Check for intercept removal
     has_intercept = True
     if "- 1" in rhs or "-1" in rhs:
         has_intercept = False
         rhs = rhs.replace("- 1", "").replace("-1", "")
-    
+
     # Expand shorthand operators (* and :) before splitting by +
     rhs = _expand_formula_operators(rhs)
 
     # Split by + but not inside parentheses
     terms = _split_formula_terms(rhs)
-    
+
     linear_terms = []
     smooth_terms = []
     tensor_terms = []
-    
+
     for term in terms:
         term = term.strip()
         if not term or term == "1":
             continue
-        
+
         # Check if it's a smooth term (pb, ps, cs, s, lo, random, re, ri, pcat, fp, bfp, cy, pvc, pbm, pbz, pbo, pbc, te, ti)
         #
         # ``\s*`` before the paren is required for parity with
@@ -233,13 +238,13 @@ def parse_formula(formula: str) -> ParsedFormula:
         # parsing silently fell through to a linear term named ``"pb (x)"``,
         # so the CG route emitted a confusing "variable 'pb' is missing from
         # data" instead of the intended smooth-terms rejection.
-        smooth_match = re.match(r'(\w+)\s*\((.*)\)', term)
+        smooth_match = re.match(r"(\w+)\s*\((.*)\)", term)
         if smooth_match:
             smoother = smooth_match.group(1)
             args_str = smooth_match.group(2)
-            
+
             # Check if it's a tensor product term
-            if smoother in ('te', 'ti'):
+            if smoother in ("te", "ti"):
                 # Parse tensor product term
                 tensor = _parse_tensor_term(smoother, args_str)
                 tensor_terms.append(tensor)
@@ -247,22 +252,22 @@ def parse_formula(formula: str) -> ParsedFormula:
             # This package fits every term jointly from one design matrix, so
             # the tree cannot be represented as fixed columns; refuse clearly
             # instead of treating tr(~ x) as a linear variable.
-            elif smoother == 'gmrf':
+            elif smoother == "gmrf":
                 raise NotImplementedError(
                     "gmrf() spatial terms are not supported inside gamlss()/gamlss_ml(); "
                     "fit the field with gamlss_gmrf(gmrf(x), y, w) instead"
                 )
-            elif smoother == 'nn':
+            elif smoother == "nn":
                 raise NotImplementedError(
                     "nn() network terms are not supported inside gamlss()/gamlss_ml(); "
                     "fit the network with gamlss_nn(nn(~ x), y, w, data=...) instead"
                 )
-            elif smoother == 'fk':
+            elif smoother == "fk":
                 raise NotImplementedError(
                     "fk() free-knot terms are not supported inside gamlss()/gamlss_ml(); "
                     "fit the basis with gamlss_fk(fk(x), y, w) or fitFreeKnots() directly"
                 )
-            elif smoother == 'tr':
+            elif smoother == "tr":
                 raise NotImplementedError(
                     "tr() tree terms are not supported inside gamlss()/gamlss_ml(); "
                     "fit the tree with gamlss_tr(tr(...), y, w, data=...) instead"
@@ -270,18 +275,36 @@ def parse_formula(formula: str) -> ParsedFormula:
             # gamlss.add terms: ga(~ pb(x)) / ba(~ pb(x)) delegate their inner
             # formula to the same smooth machinery, so the outer formula parses
             # to exactly the terms the inner formula names.
-            elif smoother in ('ga', 'ba'):
+            elif smoother in ("ga", "ba"):
                 inner_text = args_str.strip()
-                if not inner_text.startswith('~'):
+                if not inner_text.startswith("~"):
                     raise ValueError(
                         f"{smoother}() needs an inner formula starting with ~, got {inner_text!r}"
                     )
-                inner = parse_formula(f'{_ADDITIVE_RESPONSE} {inner_text}')
+                inner = parse_formula(f"{_ADDITIVE_RESPONSE} {inner_text}")
                 linear_terms.extend(inner.linear_terms)
                 smooth_terms.extend(inner.smooth_terms)
                 tensor_terms.extend(inner.tensor_terms)
             # Check if it's a recognized smooth term
-            elif smoother in ('pb', 'ps', 'cs', 's', 'lo', 'random', 're', 'ri', 'pcat', 'fp', 'bfp', 'cy', 'pvc', 'pbm', 'pbz', 'pbo', 'pbc'):
+            elif smoother in (
+                "pb",
+                "ps",
+                "cs",
+                "s",
+                "lo",
+                "random",
+                "re",
+                "ri",
+                "pcat",
+                "fp",
+                "bfp",
+                "cy",
+                "pvc",
+                "pbm",
+                "pbz",
+                "pbo",
+                "pbc",
+            ):
                 # Parse smooth term
                 smooth = _parse_smooth_term(smoother, args_str)
                 smooth_terms.append(smooth)
@@ -291,7 +314,7 @@ def parse_formula(formula: str) -> ParsedFormula:
         else:
             # Linear term
             linear_terms.append(LinearTerm(variable=term))
-    
+
     return ParsedFormula(
         response=response,
         linear_terms=linear_terms,
@@ -404,8 +427,8 @@ def _expand_formula_operators(rhs: str) -> str:
         if not term:
             continue
 
-        if '*' in term and '(' not in term:
-            parts = [p.strip() for p in term.split('*') if p.strip()]
+        if "*" in term and "(" not in term:
+            parts = [p.strip() for p in term.split("*") if p.strip()]
             if len(parts) == 2:
                 a, b = parts
                 expanded_terms.extend([a, b, f"{a}:{b}"])
@@ -415,11 +438,12 @@ def _expand_formula_operators(rhs: str) -> str:
 
     # de-duplicate preserving order
     unique_terms = list(dict.fromkeys(expanded_terms))
-    return ' + '.join(unique_terms)
+    return " + ".join(unique_terms)
+
 
 def _parse_smooth_term(smoother: str, args_str: str) -> SmoothTerm:
     """Parse smooth term arguments.
-    
+
     Examples:
     - "x" -> variable="x"
     - "x, df=5" -> variable="x", df=5
@@ -431,33 +455,33 @@ def _parse_smooth_term(smoother: str, args_str: str) -> SmoothTerm:
 
     if not args or not args[0]:
         raise ValueError(f"Smooth term {smoother}() must have a variable")
-    
+
     variable = args[0]
     df = None
     lambda_ = None
     method = None
     actual_smoother = smoother  # Default to the function name
     kwargs = {}
-    
+
     # Parse keyword arguments
     for arg in args[1:]:
-        if '=' not in arg:
+        if "=" not in arg:
             continue
-        
-        key, value = arg.split('=', 1)
+
+        key, value = arg.split("=", 1)
         key = key.strip()
         value = value.strip()
-        
+
         unquoted_value = _strip_quotes(value)
 
         # Handle special keys
-        if key == 'method':
+        if key == "method":
             method = unquoted_value
-        elif key == 'smoother':
+        elif key == "smoother":
             actual_smoother = unquoted_value
-        elif key == 'df':
+        elif key == "df":
             df = _parse_numeric(value, "df")
-        elif key in ('lambda', 'lambda_'):
+        elif key in ("lambda", "lambda_"):
             lambda_ = _parse_numeric(value, "lambda")
         else:
             # Try to parse as number
@@ -466,7 +490,7 @@ def _parse_smooth_term(smoother: str, args_str: str) -> SmoothTerm:
             except ValueError:
                 # Keep as string
                 kwargs[key] = unquoted_value
-    
+
     # Create SmoothTerm
     term = SmoothTerm(
         smoother=actual_smoother,
@@ -475,14 +499,14 @@ def _parse_smooth_term(smoother: str, args_str: str) -> SmoothTerm:
         lambda_=lambda_,
         kwargs=kwargs,
     )
-    
+
     # Add method attribute if specified (for s() function)
     # If smoother is 's' and no method specified, default to 'auto'
     if method is not None:
         term.method = method
-    elif smoother == 's':
-        term.method = 'auto'
-    
+    elif smoother == "s":
+        term.method = "auto"
+
     return term
 
 
@@ -510,27 +534,27 @@ def _parse_tensor_term(smoother: str, args_str: str) -> TensorProductTerm:
     kwargs = {}
 
     for arg in args:
-        if '=' not in arg:
+        if "=" not in arg:
             # Variable name
             variables.append(arg.strip())
         else:
             # Keyword argument
-            key, value = arg.split('=', 1)
+            key, value = arg.split("=", 1)
             key = key.strip()
             value = value.strip()
             unquoted_value = _strip_quotes(value)
 
             # Handle special keys
-            if key == 'k':
+            if key == "k":
                 try:
                     k = int(value)
                 except ValueError as exc:
                     raise ValueError(f"k must be an integer, got {value!r}") from exc
-            elif key == 'k_list':
+            elif key == "k_list":
                 k_list = _parse_int_list(value, "k_list")
-            elif key == 'bs':
+            elif key == "bs":
                 bs = unquoted_value
-            elif key in ('lambda', 'lambda_'):
+            elif key in ("lambda", "lambda_"):
                 lambda_ = _parse_numeric(value, "lambda")
             else:
                 # Try to parse as number
@@ -560,7 +584,7 @@ def build_design_matrix(
     fit_smooths: bool = True,
 ) -> tuple[np.ndarray, dict[str, Any]]:
     """Build design matrix from parsed formula.
-    
+
     Parameters
     ----------
     parsed : ParsedFormula
@@ -569,14 +593,14 @@ def build_design_matrix(
         Data dictionary with variable names as keys
     fit_smooths : bool, default=True
         If True, fit smooth terms. If False, only build linear part.
-    
+
     Returns
     -------
     X : np.ndarray
         Design matrix, shape (n, p)
     smooth_info : dict
         Information about fitted smooth terms
-    
+
     Notes
     -----
     The design matrix includes:
@@ -584,89 +608,89 @@ def build_design_matrix(
     - Linear term columns
     - Smooth term columns (basis functions)
     - Tensor product term columns (tensor basis functions)
-    
+
     smooth_info contains fitted smooth objects for prediction.
     """
     # Get response to determine sample size
     y = np.asarray(data[parsed.response])
     n = len(y)
-    
+
     columns = []
     column_names = []
     smooth_info = {}
-    
+
     # Add intercept
     if parsed.has_intercept:
         columns.append(np.ones(n))
         column_names.append("(Intercept)")
-    
+
     # Add linear terms
     for term in parsed.linear_terms:
         term_matrix, term_names = _resolve_linear_term_columns(term.variable, data, n)
         for j, name in enumerate(term_names):
             columns.append(term_matrix[:, j])
             column_names.append(name)
-    
+
     # Add smooth terms
     if fit_smooths:
         for i, term in enumerate(parsed.smooth_terms):
             if term.variable not in data:
                 raise ValueError(f"Variable '{term.variable}' not found in data")
-            
+
             x = np.asarray(data[term.variable])
             if len(x) != n:
                 raise ValueError(f"Variable '{term.variable}' has wrong length")
-            
+
             # Build smooth basis
             smooth_result = _build_smooth_basis(term, x)
-            
+
             # Add basis columns
-            for j in range(smooth_result['basis'].shape[1]):
-                columns.append(smooth_result['basis'][:, j])
+            for j in range(smooth_result["basis"].shape[1]):
+                columns.append(smooth_result["basis"][:, j])
                 column_names.append(f"{term.smoother}({term.variable})_{j}")
-            
+
             # Store smooth info for prediction
             smooth_info[f"smooth_{i}"] = smooth_result
-        
+
         # Add tensor product terms
         for i, term in enumerate(parsed.tensor_terms):
             # Check all variables exist
             for var in term.variables:
                 if var not in data:
                     raise ValueError(f"Variable '{var}' not found in data")
-            
+
             # Extract variable data
             X_vars = [np.asarray(data[var]) for var in term.variables]
-            
+
             # Check lengths
             for var, x in zip(term.variables, X_vars):
                 if len(x) != n:
                     raise ValueError(f"Variable '{var}' has wrong length")
-            
+
             # Build tensor product basis
             tensor_result = _build_tensor_basis(term, X_vars)
-            
+
             # Add basis columns
-            for j in range(tensor_result['basis'].shape[1]):
-                columns.append(tensor_result['basis'][:, j])
-                var_str = ','.join(term.variables)
+            for j in range(tensor_result["basis"].shape[1]):
+                columns.append(tensor_result["basis"][:, j])
+                var_str = ",".join(term.variables)
                 column_names.append(f"{term.smoother}({var_str})_{j}")
-            
+
             # Store tensor info for prediction
             smooth_info[f"tensor_{i}"] = tensor_result
-    
+
     # Stack columns
     if not columns:
         raise ValueError("No terms in formula")
-    
+
     X = np.column_stack(columns)
-    
+
     return X, smooth_info
 
 
-
-
-def _resolve_linear_term_columns(variable: str, data: dict[str, Any], n: int) -> tuple[np.ndarray, list[str]]:
+def _resolve_linear_term_columns(
+    variable: str, data: dict[str, Any], n: int
+) -> tuple[np.ndarray, list[str]]:
     """Resolve a linear term into one or more numeric columns and names."""
     factor_match = re.fullmatch(r"factor\(([^)]+)\)", variable)
     if factor_match:
@@ -680,21 +704,24 @@ def _resolve_linear_term_columns(variable: str, data: dict[str, Any], n: int) ->
         # treatment coding: drop first level as baseline
         if len(levels) <= 1:
             return np.zeros((n, 0), dtype=float), []
-        cols=[]
-        names=[]
+        cols = []
+        names = []
         for lvl in levels[1:]:
             cols.append((x == lvl).astype(float))
             names.append(f"factor({base_var})[{lvl}]")
         return np.column_stack(cols), names
 
-    arr = _resolve_linear_term_array(variable, data, n).reshape(-1,1)
+    arr = _resolve_linear_term_array(variable, data, n).reshape(-1, 1)
     return arr, [variable]
 
-def _resolve_linear_term_array(variable: str, data: dict[str, Any], n: int) -> np.ndarray:
+
+def _resolve_linear_term_array(
+    variable: str, data: dict[str, Any], n: int
+) -> np.ndarray:
     """Resolve linear, interaction, and factor() terms into a numeric column."""
     # Interaction term: x1:x2
-    if ':' in variable and '(' not in variable:
-        parts = [p.strip() for p in variable.split(':') if p.strip()]
+    if ":" in variable and "(" not in variable:
+        parts = [p.strip() for p in variable.split(":") if p.strip()]
         if len(parts) != 2:
             raise ValueError(f"Unsupported interaction term '{variable}'")
         left = _resolve_linear_term_array(parts[0], data, n)
@@ -721,9 +748,10 @@ def _resolve_linear_term_array(variable: str, data: dict[str, Any], n: int) -> n
         raise ValueError(f"Variable '{variable}' has wrong length")
     return x
 
+
 def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
     """Build basis matrix for a smooth term.
-    
+
     Returns a dictionary with:
     - basis: basis matrix
     - knots: knot sequence (for prediction)
@@ -734,48 +762,48 @@ def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
     # For s() function, determine actual smoother to use
     # Default to 'pb' if smoother is 's'
     actual_smoother = term.smoother
-    if actual_smoother == 's':
+    if actual_smoother == "s":
         # Check if smoother was specified in kwargs
-        if 'smoother' in term.kwargs:
-            actual_smoother = term.kwargs['smoother']
-        elif 'bs' in term.kwargs:
-            actual_smoother = term.kwargs['bs']
+        if "smoother" in term.kwargs:
+            actual_smoother = term.kwargs["smoother"]
+        elif "bs" in term.kwargs:
+            actual_smoother = term.kwargs["bs"]
         else:
-            actual_smoother = 'pb'  # Default to pb
-    
+            actual_smoother = "pb"  # Default to pb
+
     if actual_smoother == "pb":
         from omnilss.smoothers.bsplines import bspline_design_matrix
-        
+
         # Extract parameters
-        n_knots = term.kwargs.get('inter', None)
-        degree = int(term.kwargs.get('degree', 3))
-        
+        n_knots = term.kwargs.get("inter", None)
+        degree = int(term.kwargs.get("degree", 3))
+
         # Build basis
         basis, knots = bspline_design_matrix(
             x,
             n_knots=n_knots,
             degree=degree,
         )
-        
+
         return {
-            'basis': np.array(basis),
-            'knots': knots,
-            'degree': degree,
-            'smoother': 'pb',
-            'variable': term.variable,
-            'df': term.df,
-            'lambda_': term.lambda_,
-            'staged_compat': False,
+            "basis": np.array(basis),
+            "knots": knots,
+            "degree": degree,
+            "smoother": "pb",
+            "variable": term.variable,
+            "df": term.df,
+            "lambda_": term.lambda_,
+            "staged_compat": False,
         }
-    
+
     elif actual_smoother == "ps":
         # P-splines smooth with interval-based knot placement
         from omnilss.smoothers.ps import _create_ps_knots
         from omnilss.smoothers.bsplines import bspline_basis
         import jax.numpy as jnp
 
-        ps_intervals = int(term.kwargs.get('ps_intervals', 20))
-        degree = int(term.kwargs.get('degree', 3))
+        ps_intervals = int(term.kwargs.get("ps_intervals", 20))
+        degree = int(term.kwargs.get("degree", 3))
 
         knots = _create_ps_knots(x, ps_intervals=ps_intervals, degree=degree)
         # Vectorised basis construction
@@ -788,15 +816,15 @@ def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
         )
 
         return {
-            'basis': basis,
-            'knots': knots,
-            'degree': degree,
-            'ps_intervals': ps_intervals,
-            'smoother': 'ps',
-            'variable': term.variable,
-            'df': term.df,
-            'lambda_': term.lambda_,
-            'staged_compat': False,
+            "basis": basis,
+            "knots": knots,
+            "degree": degree,
+            "ps_intervals": ps_intervals,
+            "smoother": "ps",
+            "variable": term.variable,
+            "df": term.df,
+            "lambda_": term.lambda_,
+            "staged_compat": False,
         }
 
     elif actual_smoother == "cs":
@@ -808,13 +836,13 @@ def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
         # For cs(), we store the spline object and use it directly at fit time
         # The "basis" is a single column of ones (intercept-like placeholder)
         return {
-            'basis': np.ones((len(x), 1)),  # placeholder
-            'smoother': 'cs',
-            'variable': term.variable,
-            'df': term.df,
-            'lambda_': term.lambda_,
-            'cs_x': x.copy(),  # store x for re-fitting
-            'staged_compat': False,
+            "basis": np.ones((len(x), 1)),  # placeholder
+            "smoother": "cs",
+            "variable": term.variable,
+            "df": term.df,
+            "lambda_": term.lambda_,
+            "cs_x": x.copy(),  # store x for re-fitting
+            "staged_compat": False,
         }
     elif actual_smoother in {"random", "re", "ri", "pcat"}:
         # Random-effects staged basis: treatment-coded group indicators.
@@ -842,7 +870,7 @@ def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
         # Uses centered x and x^2 to keep a non-linear data path available.
         x_float = np.asarray(x, dtype=np.float64)
         centered = x_float - float(np.mean(x_float))
-        basis = np.column_stack([centered, centered ** 2])
+        basis = np.column_stack([centered, centered**2])
         return {
             "basis": basis,
             "smoother": "lo",
@@ -856,7 +884,9 @@ def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
         # Fractional-polynomial staged compatibility basis (degree-2 subset).
         x_float = np.asarray(x, dtype=np.float64)
         shifted = x_float + 1e-6
-        basis = np.column_stack([np.log(np.maximum(shifted, 1e-12)), np.sqrt(np.maximum(shifted, 1e-12))])
+        basis = np.column_stack(
+            [np.log(np.maximum(shifted, 1e-12)), np.sqrt(np.maximum(shifted, 1e-12))]
+        )
         return {
             "basis": basis,
             "smoother": actual_smoother,
@@ -885,7 +915,7 @@ def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
         # Varying-coefficient staged basis: center x and add cubic trend column.
         x_float = np.asarray(x, dtype=np.float64)
         centered = x_float - float(np.mean(x_float))
-        basis = np.column_stack([centered, centered ** 3])
+        basis = np.column_stack([centered, centered**3])
         return {
             "basis": basis,
             "smoother": "pvc",
@@ -899,11 +929,13 @@ def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
         x_float = np.asarray(x, dtype=np.float64)
         centered = x_float - float(np.mean(x_float))
         if actual_smoother == "pbm":
-            basis = np.column_stack([centered, centered ** 2])
+            basis = np.column_stack([centered, centered**2])
         elif actual_smoother == "pbz":
             basis = np.column_stack([centered, np.maximum(centered, 0.0)])
         elif actual_smoother == "pbo":
-            basis = np.column_stack([centered, np.sign(centered) * np.sqrt(np.abs(centered) + 1e-12)])
+            basis = np.column_stack(
+                [centered, np.sign(centered) * np.sqrt(np.abs(centered) + 1e-12)]
+            )
         else:  # pbc
             basis = np.column_stack([np.cos(centered), np.sin(centered)])
         return {
@@ -914,7 +946,7 @@ def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
             "lambda_": term.lambda_,
             "staged_compat": True,
         }
-    
+
     else:
         # Phase 3.7: fail closed with the admission error (smoother name +
         # missing capabilities) instead of a bare NotImplementedError.
@@ -924,16 +956,18 @@ def _build_smooth_basis(term: SmoothTerm, x: np.ndarray) -> dict[str, Any]:
         raise NotImplementedError(f"Smoother '{actual_smoother}' not yet implemented")
 
 
-def _build_tensor_basis(term: TensorProductTerm, X_vars: list[np.ndarray]) -> dict[str, Any]:
+def _build_tensor_basis(
+    term: TensorProductTerm, X_vars: list[np.ndarray]
+) -> dict[str, Any]:
     """Build tensor product basis matrix.
-    
+
     Parameters
     ----------
     term : TensorProductTerm
         Tensor product term specification
     X_vars : list[np.ndarray]
         List of variable arrays
-    
+
     Returns
     -------
     result : dict
@@ -947,28 +981,23 @@ def _build_tensor_basis(term: TensorProductTerm, X_vars: list[np.ndarray]) -> di
         - bs: basis type
     """
     from omnilss.smoothers.tensor_smooth import create_tensor_basis
-    
+
     # Determine k values
     k = term.k if term.k is not None else 10  # Default k=10
     k_list = term.k_list
-    
+
     # Create tensor product basis
-    basis, penalty = create_tensor_basis(
-        *X_vars,
-        k=k,
-        k_list=k_list,
-        bs=term.bs
-    )
-    
+    basis, penalty = create_tensor_basis(*X_vars, k=k, k_list=k_list, bs=term.bs)
+
     return {
-        'basis': basis,
-        'penalty': penalty,
-        'smoother': term.smoother,
-        'variables': term.variables,
-        'k': k,
-        'k_list': k_list,
-        'bs': term.bs,
-        'lambda_': term.lambda_,
+        "basis": basis,
+        "penalty": penalty,
+        "smoother": term.smoother,
+        "variables": term.variables,
+        "k": k,
+        "k_list": k_list,
+        "bs": term.bs,
+        "lambda_": term.lambda_,
     }
 
 
@@ -978,7 +1007,7 @@ def predict_smooth(
     coefficients: np.ndarray,
 ) -> np.ndarray:
     """Predict smooth term at new x values.
-    
+
     Parameters
     ----------
     smooth_info : dict
@@ -987,24 +1016,26 @@ def predict_smooth(
         New x values
     coefficients : np.ndarray
         Fitted coefficients for this smooth term
-    
+
     Returns
     -------
     predictions : np.ndarray
         Predicted smooth values
     """
-    if smooth_info['smoother'] in ('pb', 'ps', 'cs'):
+    if smooth_info["smoother"] in ("pb", "ps", "cs"):
         from omnilss.smoothers.bsplines import bspline_basis
-        
+
         # Build basis at new points
         basis_new = bspline_basis(
             jnp.array(x_new),
-            jnp.array(smooth_info['knots']),
-            degree=smooth_info['degree'],
+            jnp.array(smooth_info["knots"]),
+            degree=smooth_info["degree"],
         )
-        
+
         # Predict
         return np.array(basis_new @ jnp.array(coefficients))
-    
+
     else:
-        raise NotImplementedError(f"Prediction for '{smooth_info['smoother']}' not implemented")
+        raise NotImplementedError(
+            f"Prediction for '{smooth_info['smoother']}' not implemented"
+        )

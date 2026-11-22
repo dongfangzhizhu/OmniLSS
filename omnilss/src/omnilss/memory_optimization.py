@@ -15,10 +15,10 @@ import numpy as np
 
 class ArrayCache:
     """Cache for array conversions to minimize numpy ↔ JAX conversions.
-    
+
     This class maintains both numpy and JAX versions of arrays,
     converting only when necessary.
-    
+
     Examples
     --------
     >>> cache = ArrayCache()
@@ -26,17 +26,17 @@ class ArrayCache:
     >>> y_jax = cache.get_jax("y")  # Converts to JAX
     >>> y_jax2 = cache.get_jax("y")  # Returns cached version
     """
-    
+
     def __init__(self):
         self._numpy_cache: Dict[str, np.ndarray] = {}
         self._jax_cache: Dict[str, jnp.ndarray] = {}
         # Phase 7.5: the global cache singleton is shared across threads; all
         # cache mutations are serialized through this lock.
         self._lock = threading.Lock()
-    
+
     def set_numpy(self, key: str, array: np.ndarray):
         """Store a numpy array.
-        
+
         Parameters
         ----------
         key : str
@@ -49,10 +49,10 @@ class ArrayCache:
             # Invalidate JAX cache for this key
             if key in self._jax_cache:
                 del self._jax_cache[key]
-    
+
     def set_jax(self, key: str, array: jnp.ndarray):
         """Store a JAX array.
-        
+
         Parameters
         ----------
         key : str
@@ -65,15 +65,15 @@ class ArrayCache:
             # Invalidate numpy cache for this key
             if key in self._numpy_cache:
                 del self._numpy_cache[key]
-    
+
     def get_numpy(self, key: str) -> np.ndarray:
         """Get a numpy array, converting from JAX if necessary.
-        
+
         Parameters
         ----------
         key : str
             Key of the array to retrieve
-            
+
         Returns
         -------
         np.ndarray
@@ -88,15 +88,15 @@ class ArrayCache:
             return array
         else:
             raise KeyError(f"Array '{key}' not found in cache")
-    
+
     def get_jax(self, key: str) -> jnp.ndarray:
         """Get a JAX array, converting from numpy if necessary.
-        
+
         Parameters
         ----------
         key : str
             Key of the array to retrieve
-            
+
         Returns
         -------
         jnp.ndarray
@@ -111,31 +111,31 @@ class ArrayCache:
             return array
         else:
             raise KeyError(f"Array '{key}' not found in cache")
-    
+
     def has(self, key: str) -> bool:
         """Check if an array is in the cache.
-        
+
         Parameters
         ----------
         key : str
             Key to check
-            
+
         Returns
         -------
         bool
             True if the key exists in either cache
         """
         return key in self._numpy_cache or key in self._jax_cache
-    
+
     def clear(self):
         """Clear all cached arrays."""
         with self._lock:
             self._numpy_cache.clear()
             self._jax_cache.clear()
-    
+
     def memory_usage(self) -> Dict[str, int]:
         """Get memory usage statistics.
-        
+
         Returns
         -------
         dict
@@ -143,7 +143,7 @@ class ArrayCache:
         """
         numpy_bytes = sum(arr.nbytes for arr in self._numpy_cache.values())
         jax_bytes = sum(arr.nbytes for arr in self._jax_cache.values())
-        
+
         return {
             "numpy_arrays": len(self._numpy_cache),
             "jax_arrays": len(self._jax_cache),
@@ -158,14 +158,14 @@ def convert_data_to_jax(
     keys: list[str] | None = None,
 ) -> Dict[str, jnp.ndarray]:
     """Convert data dictionary to JAX arrays.
-    
+
     Parameters
     ----------
     data : Mapping[str, Any]
         Input data dictionary
     keys : list[str], optional
         Keys to convert. If None, convert all keys.
-        
+
     Returns
     -------
     dict
@@ -173,7 +173,7 @@ def convert_data_to_jax(
     """
     if keys is None:
         keys = list(data.keys())
-    
+
     jax_data = {}
     for key in keys:
         if key in data:
@@ -182,7 +182,7 @@ def convert_data_to_jax(
                 jax_data[key] = jnp.asarray(value, dtype=jnp.float64)
             else:
                 jax_data[key] = value
-    
+
     return jax_data
 
 
@@ -191,37 +191,31 @@ def minimize_conversions(
     use_jax: bool = True,
 ) -> Dict[str, np.ndarray | jnp.ndarray]:
     """Minimize array conversions by converting once at the start.
-    
+
     Parameters
     ----------
     arrays : dict
         Dictionary of numpy arrays
     use_jax : bool, default True
         If True, convert to JAX arrays. Otherwise, keep as numpy.
-        
+
     Returns
     -------
     dict
         Dictionary of arrays (JAX if use_jax=True, numpy otherwise)
     """
     if use_jax:
-        return {
-            key: jnp.asarray(arr, dtype=jnp.float64)
-            for key, arr in arrays.items()
-        }
+        return {key: jnp.asarray(arr, dtype=jnp.float64) for key, arr in arrays.items()}
     else:
-        return {
-            key: np.asarray(arr, dtype=np.float64)
-            for key, arr in arrays.items()
-        }
+        return {key: np.asarray(arr, dtype=np.float64) for key, arr in arrays.items()}
 
 
 class MemoryOptimizer:
     """Memory optimizer for GAMLSS fitting.
-    
+
     This class tracks memory usage and provides recommendations
     for optimization.
-    
+
     Attributes
     ----------
     conversions : int
@@ -231,16 +225,16 @@ class MemoryOptimizer:
     jax_to_numpy : int
         Number of JAX → numpy conversions
     """
-    
+
     def __init__(self):
         self.conversions = 0
         self.numpy_to_jax = 0
         self.jax_to_numpy = 0
         self._conversion_log = []
-    
+
     def log_conversion(self, from_type: str, to_type: str, size: int):
         """Log an array conversion.
-        
+
         Parameters
         ----------
         from_type : str
@@ -251,40 +245,42 @@ class MemoryOptimizer:
             Size of the array in bytes
         """
         self.conversions += 1
-        
-        if from_type == 'numpy' and to_type == 'jax':
+
+        if from_type == "numpy" and to_type == "jax":
             self.numpy_to_jax += 1
-        elif from_type == 'jax' and to_type == 'numpy':
+        elif from_type == "jax" and to_type == "numpy":
             self.jax_to_numpy += 1
-        
-        self._conversion_log.append({
-            'from': from_type,
-            'to': to_type,
-            'size': size,
-        })
-    
+
+        self._conversion_log.append(
+            {
+                "from": from_type,
+                "to": to_type,
+                "size": size,
+            }
+        )
+
     def summary(self) -> Dict[str, Any]:
         """Get conversion summary.
-        
+
         Returns
         -------
         dict
             Summary statistics
         """
-        total_bytes = sum(log['size'] for log in self._conversion_log)
-        
+        total_bytes = sum(log["size"] for log in self._conversion_log)
+
         return {
-            'total_conversions': self.conversions,
-            'numpy_to_jax': self.numpy_to_jax,
-            'jax_to_numpy': self.jax_to_numpy,
-            'total_bytes_converted': total_bytes,
-            'avg_bytes_per_conversion': total_bytes / max(self.conversions, 1),
+            "total_conversions": self.conversions,
+            "numpy_to_jax": self.numpy_to_jax,
+            "jax_to_numpy": self.jax_to_numpy,
+            "total_bytes_converted": total_bytes,
+            "avg_bytes_per_conversion": total_bytes / max(self.conversions, 1),
         }
-    
+
     def print_summary(self):
         """Print conversion summary."""
         summary = self.summary()
-        
+
         print("\n" + "=" * 60)
         print("Memory Optimization Summary")
         print("=" * 60)
@@ -293,13 +289,13 @@ class MemoryOptimizer:
         print(f"  JAX → numpy: {summary['jax_to_numpy']}")
         print(f"Total Bytes Converted: {summary['total_bytes_converted']:,}")
         print(f"Avg Bytes/Conversion: {summary['avg_bytes_per_conversion']:,.0f}")
-        
+
         if self.conversions > 10:
             print("\n⚠ Warning: High number of conversions detected!")
             print("  Consider using ArrayCache or converting arrays once at the start.")
-        
+
         print("=" * 60)
-    
+
     def reset(self):
         """Reset all counters."""
         self.conversions = 0
@@ -314,7 +310,7 @@ _memory_optimizer = MemoryOptimizer()
 
 def get_memory_optimizer() -> MemoryOptimizer:
     """Get the global memory optimizer instance.
-    
+
     Returns
     -------
     MemoryOptimizer

@@ -7,7 +7,6 @@ from typing import Callable, Mapping
 
 import jax.numpy as jnp
 
-
 Array = jnp.ndarray
 
 
@@ -110,7 +109,9 @@ def cg_outer_step(
     """Run one line-searched CG outer step."""
 
     base_eta = {k: jnp.asarray(v) for k, v in eta.items()}
-    deltas = solve_joint_system(scores=scores, hessian_blocks=hessian_blocks, ridge=ridge)
+    deltas = solve_joint_system(
+        scores=scores, hessian_blocks=hessian_blocks, ridge=ridge
+    )
 
     old_dev = float(global_deviance_fn(base_eta))
     alpha = float(step_size)
@@ -140,7 +141,9 @@ def cg_outer_step(
 
 def run_cg_outer_loop(
     eta0: Mapping[str, Array],
-    build_scores_hessian_fn: Callable[[Mapping[str, Array]], tuple[dict[str, Array], dict[tuple[str, str], Array]]],
+    build_scores_hessian_fn: Callable[
+        [Mapping[str, Array]], tuple[dict[str, Array], dict[tuple[str, str], Array]]
+    ],
     global_deviance_fn: Callable[[Mapping[str, Array]], float],
     max_outer: int = 50,
     c_crit: float = 1e-6,
@@ -190,7 +193,6 @@ def run_cg_outer_loop(
                 step_sizes=tuple(step_hist),
                 termination_reason="no_progress_step_rejected",
             )
-
 
     return CGRunResult(
         eta=eta,

@@ -25,7 +25,10 @@ def auto_select_family(
         failed = set()
         families = None
         with ProcessPoolExecutor(max_workers=max_workers) as ex:
-            futs = {ex.submit(choose_dist_data, model, (k,), type, extra): k for k in criteria}
+            futs = {
+                ex.submit(choose_dist_data, model, (k,), type, extra): k
+                for k in criteria
+            }
             for fut in as_completed(futs):
                 k = futs[fut]
                 res = fut.result()
@@ -34,10 +37,22 @@ def auto_select_family(
                 families = res.families
         ordered = [matrices[k] for k in criteria]
         import numpy as np
+
         matrix = np.column_stack(ordered)
-        minima = {float(k): families[int(np.nanargmin(matrix[:, i]))] for i, k in enumerate(criteria)}
+        minima = {
+            float(k): families[int(np.nanargmin(matrix[:, i]))]
+            for i, k in enumerate(criteria)
+        }
         from ..chooseDistParallel import ChooseDistResult
-        result = ChooseDistResult(type=type, penalties=tuple(float(k) for k in criteria), families=tuple(families), matrix=matrix, minima=minima, failed=tuple(sorted(failed)))
+
+        result = ChooseDistResult(
+            type=type,
+            penalties=tuple(float(k) for k in criteria),
+            families=tuple(families),
+            matrix=matrix,
+            minima=minima,
+            failed=tuple(sorted(failed)),
+        )
 
     ranking = {}
     for i, k in enumerate(result.penalties):

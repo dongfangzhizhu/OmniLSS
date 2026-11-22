@@ -45,21 +45,22 @@ from .links import (
 #    PMF: P(X=x) = mu^x / (x * (-log(1-mu)))
 # ------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class LogarithmicFamily(FamilyDefinition):
     """Logarithmic distribution (`LG`).
-    
+
     Support: {1, 2, 3, ...}
     Parameter: mu ∈ (0, 1)
-    
+
     The logarithmic distribution is a discrete probability distribution
     derived from the Maclaurin series expansion of -log(1-mu).
-    
+
     PMF: P(X=x) = mu^x / (x * (-log(1-mu)))
-    
+
     Mean: -mu / ((1-mu) * log(1-mu))
     Variance: -mu * (1 + mu/(-log(1-mu))) / ((1-mu)^2 * log(1-mu))
-    
+
     Common uses:
     - Species abundance models
     - Accident counts
@@ -70,28 +71,29 @@ class LogarithmicFamily(FamilyDefinition):
 
 def _lg_log_pdf(y, mu):
     """Log-PDF of logarithmic distribution.
-    
+
     Args:
         y: Response variable (positive integers)
         mu: Parameter in (0, 1)
-    
+
     Returns:
         Log-probability
     """
-    y, mu = jnp.broadcast_arrays(jnp.asarray(y, dtype=jnp.float64),
-                                jnp.asarray(mu, dtype=jnp.float64))
+    y, mu = jnp.broadcast_arrays(
+        jnp.asarray(y, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64)
+    )
     valid = (mu > 0) & (mu < 1)
     mu = jnp.where(valid, mu, 0.5)
     # Evaluate the positive-support formula only at safe finite points.
     y_safe = jnp.where((y >= 1) & jnp.isfinite(y), y, 1.0)
-    
+
     # Log-PDF: log(mu^y / (y * (-log(1-mu))))
     # = y*log(mu) - log(y) - log(-log(1-mu))
     log_pdf = y_safe * jnp.log(mu) - jnp.log(y_safe) - jnp.log(-jnp.log1p(-mu))
-    
+
     # LG starts at one; positive infinity has zero limiting mass.
     log_pdf = jnp.where((y < 1) | jnp.isposinf(y), -jnp.inf, log_pdf)
-    
+
     return jnp.where(valid & ~jnp.isnan(y), log_pdf, jnp.nan)
 
 
@@ -120,29 +122,29 @@ def _lg_r(key, n, mu=0.5):
 
 def LG() -> LogarithmicFamily:
     """Logarithmic distribution.
-    
+
     Support: {1, 2, 3, ...}
     Parameter: mu ∈ (0, 1)
-    
+
     Returns:
         LogarithmicFamily instance
-    
+
     Example:
         >>> from omnilss import gamlss
         >>> from omnilss.distributions import LG
-        >>> 
+        >>>
         >>> # Fit logarithmic distribution
         >>> model = gamlss("y ~ x", family=LG(), data=data)
-    
+
     Notes:
         - Default link for mu is logit
         - mu must be in (0, 1)
         - y must be positive integers
         - Mean: -mu / ((1-mu) * log(1-mu))
         - Variance: -mu * (1 + mu/(-log(1-mu))) / ((1-mu)^2 * log(1-mu))
-    
+
     References:
-        - Johnson, N. L., Kemp, A. W., & Kotz, S. (2005). 
+        - Johnson, N. L., Kemp, A. W., & Kotz, S. (2005).
           Univariate Discrete Distributions (3rd ed.). Wiley.
         - R gamlss.dist::LG
     """
@@ -172,23 +174,24 @@ def LG() -> LogarithmicFamily:
 #    where ζ is the Riemann zeta function
 # ------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class ZipfFamily(FamilyDefinition):
     """Zipf distribution (`ZIPF`).
-    
+
     Support: {1, 2, 3, ...}
     Parameter: mu > 0 (shape parameter)
-    
+
     The Zipf distribution is a discrete power-law probability distribution.
     It's commonly used to model word frequencies, city populations, and
     other phenomena following Zipf's law.
-    
+
     PMF: P(X=x) = x^(-(mu+1)) / ζ(mu+1)
     where ζ is the Riemann zeta function
-    
+
     Mean: ζ(mu) / ζ(mu+1) if mu > 1, else Inf
     Variance: [ζ(mu+1)*ζ(mu-1) - ζ(mu)^2] / ζ(mu+1)^2 if mu > 2, else Inf
-    
+
     Common uses:
     - Word frequency analysis
     - City population distributions
@@ -220,8 +223,16 @@ def _zipf_d(x, mu=1.0, log=False):
 def _zipf_tail(shape, a):
     """R ``pZIPF``'s Euler--Maclaurin tail approximation after ``a``."""
     bernoulli = jnp.asarray(
-        [1.0 / 6.0, -1.0 / 30.0, 1.0 / 42.0, -1.0 / 30.0,
-         5.0 / 66.0, -691.0 / 2730.0, 7.0 / 6.0, -3617.0 / 510.0],
+        [
+            1.0 / 6.0,
+            -1.0 / 30.0,
+            1.0 / 42.0,
+            -1.0 / 30.0,
+            5.0 / 66.0,
+            -691.0 / 2730.0,
+            7.0 / 6.0,
+            -3617.0 / 510.0,
+        ],
         dtype=jnp.float64,
     )
     # R calls this helper with ``a = floor(q) + 1`` and uses ``1 + a``.
@@ -245,7 +256,9 @@ def _zipf_cdf(q, mu):
     )
     shape = mu + 1.0
     k = jnp.arange(1, 12, dtype=jnp.float64)
-    head = jnp.sum(jnp.where(k <= jnp.floor(q)[..., None], k**(-shape[..., None]), 0.0), axis=-1)
+    head = jnp.sum(
+        jnp.where(k <= jnp.floor(q)[..., None], k ** (-shape[..., None]), 0.0), axis=-1
+    )
     qfloor = jnp.floor(q)
     tail = _zipf_tail(shape, qfloor + 1.0)
     cdf = jnp.where(qfloor >= 11.0, zeta(shape, 1.0) - tail, head)
@@ -293,20 +306,20 @@ def _zipf_r(key, n, mu=1.0):
 
 def ZIPF() -> ZipfFamily:
     """Zipf distribution.
-    
+
     Support: {1, 2, 3, ...}
     Parameter: mu > 0 (shape parameter)
-    
+
     Returns:
         ZipfFamily instance
-    
+
     Example:
         >>> from omnilss import gamlss
         >>> from omnilss.distributions import ZIPF
-        >>> 
+        >>>
         >>> # Fit Zipf distribution
         >>> model = gamlss("y ~ x", family=ZIPF(), data=data)
-    
+
     Notes:
         - Default link for mu is log
         - mu must be positive
@@ -315,7 +328,7 @@ def ZIPF() -> ZipfFamily:
         - Variance: [ζ(mu+1)*ζ(mu-1) - ζ(mu)^2] / ζ(mu+1)^2 if mu > 2
         - Current implementation uses approximation for zeta function
         - For production use, consider using scipy.special.zeta
-    
+
     References:
         - Zipf, G. K. (1949). Human Behavior and the Principle of Least Effort.
         - Newman, M. E. J. (2005). Power laws, Pareto distributions and Zipf's law.
@@ -342,21 +355,22 @@ def ZIPF() -> ZipfFamily:
 # Helper function to create zero-altered distributions
 # ------------------------------------------------------------------
 
+
 def create_zero_altered_family(base_family_func, base_name, new_name):
     """Create a zero-altered version of a distribution.
-    
+
     Zero-altered (hurdle) model:
     - Pr(Y=0) = nu
     - Pr(Y=y|y>0) = (1-nu) * f(y) / [1 - f(0)]
-    
+
     Args:
         base_family_func: Function that returns base family
         base_name: Name of base distribution
         new_name: Name of zero-altered distribution
-    
+
     Returns:
         Zero-altered family function
-    
+
     Example:
         >>> ZALG = create_zero_altered_family(LG, "LG", "ZALG")
     """
@@ -370,21 +384,22 @@ def create_zero_altered_family(base_family_func, base_name, new_name):
 # Helper function to create zero-inflated distributions
 # ------------------------------------------------------------------
 
+
 def create_zero_inflated_family(base_family_func, base_name, new_name):
     """Create a zero-inflated version of a distribution.
-    
+
     Zero-inflated model:
     - Pr(Y=0) = nu + (1-nu) * f(0)
     - Pr(Y=y|y>0) = (1-nu) * f(y)
-    
+
     Args:
         base_family_func: Function that returns base family
         base_name: Name of base distribution
         new_name: Name of zero-inflated distribution
-    
+
     Returns:
         Zero-inflated family function
-    
+
     Example:
         >>> ZILG = create_zero_inflated_family(LG, "LG", "ZILG")
     """
@@ -395,6 +410,7 @@ def create_zero_inflated_family(base_family_func, base_name, new_name):
 # Zero-Altered Logarithmic (ZALG)
 # ------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class ZeroAlteredLogarithmicFamily(FamilyDefinition):
     """Zero-Altered Logarithmic distribution (ZALG)."""
@@ -402,8 +418,9 @@ class ZeroAlteredLogarithmicFamily(FamilyDefinition):
 
 def _zalg_log_pdf(y, mu, sigma):
     """Zero-adjusted LG with the same parameter validity as p/q/r."""
-    y, mu, sigma = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64)
-                                        for v in (y, mu, sigma)])
+    y, mu, sigma = jnp.broadcast_arrays(
+        *[jnp.asarray(v, dtype=jnp.float64) for v in (y, mu, sigma)]
+    )
     valid = (mu > 0) & (mu < 1) & (sigma > 0) & (sigma < 1)
     safe_sigma = jnp.where(valid, sigma, 0.5)
     # At the atom, avoid evaluating log(0) in an unselected AD branch.
@@ -431,17 +448,29 @@ def _logarithmic_logsf(q, mu, sigma):
     log_mu = math.log(mu)
     integral, _ = quad(
         lambda u: math.exp(-u) / -math.expm1(log_mu - u / m),
-        0, np.inf, epsabs=1e-11, epsrel=1e-11, limit=200,
+        0,
+        np.inf,
+        epsabs=1e-11,
+        epsrel=1e-11,
+        limit=200,
     )
-    return (math.log1p(-sigma) + m * log_mu - math.log(m)
-            + math.log(integral) - math.log(-math.log1p(-mu)))
+    return (
+        math.log1p(-sigma)
+        + m * log_mu
+        - math.log(m)
+        + math.log(integral)
+        - math.log(-math.log1p(-mu))
+    )
 
 
 def _logarithmic_p(q, mu, sigma, lower_tail=True, log_p=False):
     """CPU CDF/survival with an untruncated logarithmic tail."""
-    q, mu, sigma = np.broadcast_arrays(*[np.asarray(v, dtype=float) for v in (q, mu, sigma)])
-    logs = np.array([_logarithmic_logsf(x, m, s) for x, m, s in
-                     zip(q.flat, mu.flat, sigma.flat)]).reshape(q.shape)
+    q, mu, sigma = np.broadcast_arrays(
+        *[np.asarray(v, dtype=float) for v in (q, mu, sigma)]
+    )
+    logs = np.array(
+        [_logarithmic_logsf(x, m, s) for x, m, s in zip(q.flat, mu.flat, sigma.flat)]
+    ).reshape(q.shape)
     with np.errstate(divide="ignore", invalid="ignore"):
         result = -np.expm1(logs) if lower_tail else np.exp(logs)
         if log_p:
@@ -455,12 +484,16 @@ def _logarithmic_q(p, mu, sigma, lower_tail=True, log_p=False, max_value=None):
     The default searches up to 2**53-1, the exact integer range of float64.
     An explicit max_value must be a nonnegative integer in this range.
     """
-    if max_value is not None and (isinstance(max_value, (bool, np.bool_))
-            or not isinstance(max_value, (int, np.integer))
-            or not 0 <= max_value <= 2**53 - 1):
+    if max_value is not None and (
+        isinstance(max_value, (bool, np.bool_))
+        or not isinstance(max_value, (int, np.integer))
+        or not 0 <= max_value <= 2**53 - 1
+    ):
         raise ValueError("max_value must be an integer in [0, 2**53-1] or None")
     cap = 2**53 - 1 if max_value is None else int(max_value)
-    p, mu, sigma = np.broadcast_arrays(*[np.asarray(v, dtype=float) for v in (p, mu, sigma)])
+    p, mu, sigma = np.broadcast_arrays(
+        *[np.asarray(v, dtype=float) for v in (p, mu, sigma)]
+    )
     out = np.full(p.shape, np.nan)
     for index in np.ndindex(p.shape):
         prob, m, s = p[index], mu[index], sigma[index]
@@ -469,8 +502,11 @@ def _logarithmic_q(p, mu, sigma, lower_tail=True, log_p=False, max_value=None):
         if (log_p and prob > 0) or (not log_p and not 0 <= prob <= 1):
             continue
         with np.errstate(divide="ignore", invalid="ignore"):
-            target = (np.log(-np.expm1(prob)) if lower_tail else prob) if log_p else (
-                np.log1p(-prob) if lower_tail else np.log(prob))
+            target = (
+                (np.log(-np.expm1(prob)) if lower_tail else prob)
+                if log_p
+                else (np.log1p(-prob) if lower_tail else np.log(prob))
+            )
         # LG has no atom at zero: positive probabilities below the floating
         # exponential range still map to its first support point, not zero.
         if s == 0 and log_p and lower_tail and np.isfinite(prob) and target == 0:
@@ -541,6 +577,7 @@ def ZALG() -> ZeroAlteredLogarithmicFamily:
 # Zero-Inflated Logarithmic (ZILG)
 # ------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class ZeroInflatedLogarithmicFamily(FamilyDefinition):
     """Zero-inflated logarithmic distribution (R ``gamlss.dist::ZILG``)."""
@@ -567,13 +604,19 @@ def ZILG() -> ZeroInflatedLogarithmicFamily:
     """Zero-inflated logarithmic distribution with R parameters ``mu, nu``."""
     return build_ad_family(
         family_class=ZeroInflatedLogarithmicFamily,
-        name="ZILG", parameters=("mu", "nu"), log_pdf_func=_zilg_log_pdf,
-        type_="Discrete", p=_zilg_p, q=_zilg_q, r=_zilg_r,
+        name="ZILG",
+        parameters=("mu", "nu"),
+        log_pdf_func=_zilg_log_pdf,
+        type_="Discrete",
+        p=_zilg_p,
+        q=_zilg_q,
+        r=_zilg_r,
         links={"mu": "logit", "nu": "logit"},
         link_functions={"mu": logit_link, "nu": logit_link},
         link_inverses={"mu": logit_inverse, "nu": logit_inverse},
         link_derivatives={"mu": logit_derivative, "nu": logit_derivative},
     )
+
 
 # ------------------------------------------------------------------
 # Additional simple distributions from gamlss.dist

@@ -194,7 +194,9 @@ def _loess_eval_matrix(
         # Solve min ||A beta - sqrt_w y|| via SVD pseudoinverse; row 0 of pinv(A)
         # gives the intercept (fitted value at dx = 0).
         u_svd, s_svd, vt_svd = np.linalg.svd(A, full_matrices=False)
-        tol = max(A.shape) * np.finfo(np.float64).eps * (s_svd[0] if s_svd.size else 1.0)
+        tol = (
+            max(A.shape) * np.finfo(np.float64).eps * (s_svd[0] if s_svd.size else 1.0)
+        )
         s_inv = np.where(s_svd > tol, 1.0 / s_svd, 0.0)
         # e_0^T V Sigma^{-1} U^T diag(sqrt_w)
         e0_v_sinv = vt_svd[:, 0] * s_inv
@@ -218,7 +220,9 @@ def _fit_loess_core(
     """Core weighted local polynomial fit returning (fitted, S, scales, robust_w, X_norm)."""
     n, d = X_raw.shape
     if normalize and d > 1:
-        scales = np.array([_trimmed_sd(X_raw[:, j]) for j in range(d)], dtype=np.float64)
+        scales = np.array(
+            [_trimmed_sd(X_raw[:, j]) for j in range(d)], dtype=np.float64
+        )
         X_norm = X_raw / scales[None, :]
     else:
         scales = np.ones(d, dtype=np.float64)
@@ -261,8 +265,14 @@ def _solve_span_for_enp(
 
     def _trace_diff(sp: float) -> float:
         _, S, _, _, _ = _fit_loess_core(
-            X_raw, y, w, span=sp, degree=degree, normalize=normalize,
-            family="gaussian", iterations=1,
+            X_raw,
+            y,
+            w,
+            span=sp,
+            degree=degree,
+            normalize=normalize,
+            family="gaussian",
+            iterations=1,
         )
         return float(np.trace(S)) - float(enp_target)
 
@@ -345,7 +355,12 @@ def gamlss_lo(
     eff_span = float(merged["span"])
     if target_enp is not None:
         eff_span = _solve_span_for_enp(
-            X_raw, y_arr, w_arr, enp_target=float(target_enp), degree=deg, normalize=norm_flag
+            X_raw,
+            y_arr,
+            w_arr,
+            enp_target=float(target_enp),
+            degree=deg,
+            normalize=norm_flag,
         )
 
     fv, S, scales, robust_w, X_norm = _fit_loess_core(
@@ -375,7 +390,9 @@ def gamlss_lo(
     nl_df = trace_hat - 1.0
     residuals = y_arr - fv
     # Pointwise leverage-based variance proxy: sum_j S_{ij}^2 / max(w_j, eps)
-    inv_w = np.where(w_arr > 0.0, 1.0 / np.maximum(w_arr, np.finfo(np.float64).eps), 0.0)
+    inv_w = np.where(
+        w_arr > 0.0, 1.0 / np.maximum(w_arr, np.finfo(np.float64).eps), 0.0
+    )
     var = np.sum((S**2) * inv_w[None, :], axis=1)
 
     coef_smo = {
@@ -388,7 +405,12 @@ def gamlss_lo(
         "residuals": residuals,
         "trace.hat": trace_hat,
         "enp": trace_hat - 1.0,
-        "pars": {"span": eff_span, "degree": deg, "family": fam, "normalize": norm_flag},
+        "pars": {
+            "span": eff_span,
+            "degree": deg,
+            "family": fam,
+            "normalize": norm_flag,
+        },
     }
     return GamlssLoFit(
         fitted_values=fv,
@@ -431,17 +453,29 @@ def lo(
             if not formula_str.startswith("~"):
                 raise ValueError("lo() formula must start with '~'")
             if data is None:
-                raise ValueError("lo(formula, data=...) requires data when x is a formula")
+                raise ValueError(
+                    "lo(formula, data=...) requires data when x is a formula"
+                )
             rhs = formula_str[1:].strip()
             var_names = tuple(tok.strip() for tok in rhs.split("+") if tok.strip())
             if not var_names:
                 raise ValueError("lo() formula has no predictor variables")
-            cols = [np.asarray(data[name], dtype=np.float64).ravel() for name in var_names]
+            cols = [
+                np.asarray(data[name], dtype=np.float64).ravel() for name in var_names
+            ]
             X_mat = np.column_stack(cols)
-            return LoSpec(x=X_mat, formula=formula_str, control=ctrl, xnames=var_names, data=data)
+            return LoSpec(
+                x=X_mat, formula=formula_str, control=ctrl, xnames=var_names, data=data
+            )
         X_mat = _to_design_2d(x)
         names = tuple(f"x{i + 1}" for i in range(X_mat.shape[1]))
-        return LoSpec(x=X_mat, formula="~" + "+".join(names), control=ctrl, xnames=names, data=data)
+        return LoSpec(
+            x=X_mat,
+            formula="~" + "+".join(names),
+            control=ctrl,
+            xnames=names,
+            data=data,
+        )
 
     x_arr = np.asarray(x, dtype=np.float64).ravel()
     y_arr = np.asarray(y, dtype=np.float64).ravel()

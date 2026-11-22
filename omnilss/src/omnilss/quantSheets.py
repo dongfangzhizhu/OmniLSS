@@ -15,7 +15,9 @@ class QuantSheetsResult:
     quantiles: np.ndarray
 
 
-def quantSheets(y, probs=(0.01, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99), weights=None) -> QuantSheetsResult:
+def quantSheets(
+    y, probs=(0.01, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99), weights=None
+) -> QuantSheetsResult:
     """Return empirical quantile sheet for requested probabilities."""
     arr = np.asarray(y, dtype=np.float64).ravel()
     p = np.asarray(probs, dtype=np.float64).ravel()
@@ -90,7 +92,9 @@ def z_scoresQS(y, mu, sigma, weights=None) -> np.ndarray:
     """Simple z-score utility used by quant-sheet diagnostics."""
     y_arr = np.asarray(y, dtype=np.float64)
     mu_arr = np.asarray(mu, dtype=np.float64)
-    sigma_arr = np.maximum(np.asarray(sigma, dtype=np.float64), np.finfo(np.float64).eps)
+    sigma_arr = np.maximum(
+        np.asarray(sigma, dtype=np.float64), np.finfo(np.float64).eps
+    )
     z = (y_arr - mu_arr) / sigma_arr
     if weights is None:
         return z

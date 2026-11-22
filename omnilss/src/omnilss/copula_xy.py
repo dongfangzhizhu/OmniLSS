@@ -32,6 +32,7 @@ The siblings ``bivar_pdf`` / ``bivar_fun`` / ``bivar_fun_plotly`` (grid/plotly
 stacks) and the point-named ``xy.density.*`` / ``bivar.fun.*`` (base graphics,
 already in :mod:`omnilss.bivar_grid`) are separate and not part of this module.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

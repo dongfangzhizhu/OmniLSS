@@ -32,7 +32,11 @@ def confint(
 
     cov = vcov(object, type="vcov")
     flat_coef = vcov(object, type="coef")
-    se = np.sqrt(np.maximum(np.diag(cov), 0.0)) if cov.size else np.array([], dtype=np.float64)
+    se = (
+        np.sqrt(np.maximum(np.diag(cov), 0.0))
+        if cov.size
+        else np.array([], dtype=np.float64)
+    )
     alpha = (1.0 - level) / 2.0
     z_values = np.array(
         [NormalDist().inv_cdf(alpha), NormalDist().inv_cdf(1.0 - alpha)],

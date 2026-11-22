@@ -18,6 +18,7 @@ The two control constructors reproduce R's guards, including the two that do
 not actually work: MX.control's cc guard warns but leaves cc untouched (it
 assigns to c.crit), and NP.control's EMcc guard does the same.
 """
+
 from __future__ import annotations
 
 import warnings
@@ -162,22 +163,41 @@ def _mixture(
     families = _as_components(family, component_count, "family")
     probabilities = _as_components(pi, component_count, "pi")
     supplied = {"mu": mu, "sigma": sigma, "nu": nu, "tau": tau}
-    resolved = {name: _as_components(value, component_count, name) for name, value in supplied.items()}
+    resolved = {
+        name: _as_components(value, component_count, name)
+        for name, value in supplied.items()
+    }
 
     density = np.ones((values.shape[0], component_count))
     for index in range(component_count):
-        definition = resolve(str(families[index])) if not hasattr(families[index], "pdf") else families[index]
+        definition = (
+            resolve(str(families[index]))
+            if not hasattr(families[index], "pdf")
+            else families[index]
+        )
         parameters = list(definition.parameters)
-        missing = [name for name in parameters if name in _PARAMETER_ORDER and resolved[name][index] is None]
+        missing = [
+            name
+            for name in parameters
+            if name in _PARAMETER_ORDER and resolved[name][index] is None
+        ]
         if missing:
-            raise ValueError(f"{definition.name} needs {missing[0]} for component {index + 1}")
+            raise ValueError(
+                f"{definition.name} needs {missing[0]} for component {index + 1}"
+            )
         ordered = [
             np.asarray(resolved[name][index], dtype=float)
             for name in _PARAMETER_ORDER
             if name in parameters
         ]
-        component = _cdf(definition, values, *ordered) if use_cdf else _pdf(definition, values, *ordered)
-        density[:, index] = float(probabilities[index]) * np.asarray(component, dtype=float)
+        component = (
+            _cdf(definition, values, *ordered)
+            if use_cdf
+            else _pdf(definition, values, *ordered)
+        )
+        density[:, index] = float(probabilities[index]) * np.asarray(
+            component, dtype=float
+        )
     total = density.sum(axis=1)
     return np.log(total) if log else total
 
@@ -252,9 +272,22 @@ NP_control = np_control
 #: R's ``.gamlss.bi.list`` (live R 4.6.0, gamlss namespace).
 _BINOMIAL_FAMILIES = frozenset(
     {
-        "BI", "Binomial", "BB", "Beta Binomial",
-        "ZIBI", "ZIBB", "ZABI", "ZABB", "DBI",
-        "BItr", "BBtr", "ZIBItr", "ZIBBtr", "ZABItr", "ZABBtr", "DBItr",
+        "BI",
+        "Binomial",
+        "BB",
+        "Beta Binomial",
+        "ZIBI",
+        "ZIBB",
+        "ZABI",
+        "ZABB",
+        "DBI",
+        "BItr",
+        "BBtr",
+        "ZIBItr",
+        "ZIBBtr",
+        "ZABItr",
+        "ZABBtr",
+        "DBItr",
     }
 )
 
@@ -301,13 +334,12 @@ def _coerce_fit(object: Any) -> MixtureFit:
         return object
     if isinstance(object, Mapping):
         return MixtureFit(**dict(object))
-    raise TypeError(
-        "object must be a MixtureFit (or a mapping with the same fields)"
-    )
+    raise TypeError("object must be a MixtureFit (or a mapping with the same fields)")
 
 
-def _fitted_at(fit: MixtureFit, name: str, component: int, observation: int,
-               is_np: bool) -> float:
+def _fitted_at(
+    fit: MixtureFit, name: str, component: int, observation: int, is_np: bool
+) -> float:
     values = np.asarray(fit.fitted_values[name], dtype=np.float64)
     if values.ndim == 1:
         if values.size == fit.K * fit.N:
@@ -360,9 +392,7 @@ def _collect_mixture(object: Any, observation: Any, expected_kind: str):
     # R: `if (any(npar==npar[1])) nopar <- npar[1] else stop(...)` -- always
     # true, so differing component parameter counts are silently accepted.
     nopar = len(declared[0])
-    family = (
-        [fit.orig_family] * K if is_np else [str(name) for name in fit.family]
-    )
+    family = [fit.orig_family] * K if is_np else [str(name) for name in fit.family]
     return lists, pi, nopar, family, fit.bd
 
 
@@ -412,10 +442,10 @@ def get_cdfNP(object: Any = None, observation: int = 1):
     return _plotfun(True, lists, pi, nopar, family, bd)
 
 
-
 # ---------------------------------------------------------------------------
 # gamlssMX / gamlssMXfits / plotMP (D2.247, R gamlss.mx)
 # ---------------------------------------------------------------------------
+
 
 def _has_missing(data: Mapping[str, Any]) -> bool:
     for value in data.values():
@@ -511,9 +541,13 @@ def gamlssMX(
     else:
         families = [family] * K
     if len(formulas) != K:
-        raise ValueError("the length of the list for the formula is not equal the number of components")
+        raise ValueError(
+            "the length of the list for the formula is not equal the number of components"
+        )
     if len(families) != K:
-        raise ValueError("the length of the list for the family is not equal the number of components")
+        raise ValueError(
+            "the length of the list for the family is not equal the number of components"
+        )
 
     settings = dict(control) if isinstance(control, Mapping) else mx_control()
     n_cyc = int(settings.get("n.cyc", 200))
@@ -524,7 +558,11 @@ def gamlssMX(
 
     y = _response_values(str(formulas[0]), data)
     N = int(y.size)
-    pweights = np.ones(N, dtype=np.float64) if weights is None else np.asarray(weights, dtype=np.float64)
+    pweights = (
+        np.ones(N, dtype=np.float64)
+        if weights is None
+        else np.asarray(weights, dtype=np.float64)
+    )
     if prob is None:
         proportions = np.full(K, 1.0 / K)
     else:
@@ -580,7 +618,10 @@ def gamlssMX(
     for name in _PARAMETER_ORDER:
         if all(name in names for names in parameter_sets):
             fitted_values[name] = np.vstack(
-                [np.asarray(model.fitted_values[name], dtype=np.float64) for model in models]
+                [
+                    np.asarray(model.fitted_values[name], dtype=np.float64)
+                    for model in models
+                ]
             )
 
     df_fit = float(sum(float(model.df_fit) for model in models)) + (K - 1)
@@ -603,7 +644,9 @@ def gamlssMX(
     )
 
 
-def _np_weights(p: np.ndarray, logf: np.ndarray, weights: np.ndarray) -> tuple[np.ndarray, float]:
+def _np_weights(
+    p: np.ndarray, logf: np.ndarray, weights: np.ndarray
+) -> tuple[np.ndarray, float]:
     """R weightslogl.calc.w: posterior weights and the mixture deviance."""
 
     with np.errstate(divide="ignore"):
@@ -646,7 +689,9 @@ def gamlssNP(
     if _has_missing(data):
         raise ValueError("The data contains NA's, use data = na.omit(mydata)")
     if str(mixture) != "np":
-        raise NotImplementedError('only mixture="np" is ported; "gq" is quadrature-based')
+        raise NotImplementedError(
+            'only mixture="np" is ported; "gq" is quadrature-based'
+        )
     if str(random).replace(" ", "") != "~1":
         raise NotImplementedError("only random=~1 (intercept mass points) is ported")
     if formula is None:
@@ -662,9 +707,15 @@ def gamlssNP(
     fam = resolve(family) if not hasattr(family, "parameters") else family
     y = _response_values(str(formula), data)
     N = int(y.size)
-    pweights = np.ones(N, dtype=np.float64) if weights is None else np.asarray(weights, dtype=np.float64)
+    pweights = (
+        np.ones(N, dtype=np.float64)
+        if weights is None
+        else np.asarray(weights, dtype=np.float64)
+    )
 
-    initial = gamlss(str(formula), family=fam, data=dict(data), weights=pweights, control=g_control)
+    initial = gamlss(
+        str(formula), family=fam, data=dict(data), weights=pweights, control=g_control
+    )
     if K == 1:
         return initial
 
@@ -676,11 +727,15 @@ def gamlssNP(
     z_blocks = np.repeat(-nodes, N)
 
     mu_linear = np.asarray(initial.linear_predictors["mu"], dtype=np.float64)
-    sigma_initial = np.asarray(initial.fitted_values.get("sigma", np.ones(N)), dtype=np.float64)
+    sigma_initial = np.asarray(
+        initial.fitted_values.get("sigma", np.ones(N)), dtype=np.float64
+    )
     if pluginz is None:
         # R recycles the length-N sigma against the length-K*N z vector.
         scale = (
-            np.tile(sigma_initial, K) * z_blocks if "sigma" in fam.parameters else z_blocks
+            np.tile(sigma_initial, K) * z_blocks
+            if "sigma" in fam.parameters
+            else z_blocks
         )
         eta = np.tile(mu_linear, K) + float(tol) * np.asarray(scale, dtype=np.float64)
     else:
@@ -742,11 +797,19 @@ def gamlssNP(
         converged = abs(deviance_history[-1] - previous) < em_tolerance
         iteration += 1
 
-    mu_linear_blocks = np.asarray(model.linear_predictors["mu"], dtype=np.float64).reshape(K, N)
+    mu_linear_blocks = np.asarray(
+        model.linear_predictors["mu"], dtype=np.float64
+    ).reshape(K, N)
     ebp = np.sum(ww.reshape(K, N).T * mu_linear_blocks.T, axis=1)
-    cdf_expanded = np.asarray(_component_cdf(model, np.tile(y, K)), dtype=np.float64).reshape(K, N).T
+    cdf_expanded = (
+        np.asarray(_component_cdf(model, np.tile(y, K)), dtype=np.float64)
+        .reshape(K, N)
+        .T
+    )
     residuals = _normal_quantile(cdf_expanded @ proportions)
-    posterior_residuals = _normal_quantile(np.sum(ww.reshape(K, N).T * cdf_expanded, axis=1))
+    posterior_residuals = _normal_quantile(
+        np.sum(ww.reshape(K, N).T * cdf_expanded, axis=1)
+    )
 
     fitted_values: dict[str, Any] = {}
     for name in fam.parameters:
@@ -762,9 +825,13 @@ def gamlssNP(
     mass_indices = [
         index + 1 for index, label in enumerate(labels) if "MASS" in str(label)
     ]
-    mass_points = np.concatenate(
-        [[coefficients[0]], coefficients[0] + coefficients[mass_indices]]
-    ) if mass_indices else np.full(K, coefficients[0])
+    mass_points = (
+        np.concatenate(
+            [[coefficients[0]], coefficients[0] + coefficients[mass_indices]]
+        )
+        if mass_indices
+        else np.full(K, coefficients[0])
+    )
 
     df_fit = float(model.df_fit) + (K - 1)
     return MixtureFit(
@@ -888,7 +955,9 @@ def plotMP(
         axes.scatter(xs, ys, ps, color="red")
         for start, end in stems:
             axes.plot(
-                [start[0], end[0]], [start[1], end[1]], [start[2], end[2]],
+                [start[0], end[0]],
+                [start[1], end[1]],
+                [start[2], end[2]],
                 color="red",
             )
         axes.set_xlabel(xlab)

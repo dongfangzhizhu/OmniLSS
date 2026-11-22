@@ -17,5 +17,7 @@ def to_collapsed_stacks(profiler: RuntimeProfiler, root: str = "runtime") -> str
     return "\n".join(lines) + ("\n" if lines else "")
 
 
-def write_collapsed_stacks(path: str | Path, profiler: RuntimeProfiler, root: str = "runtime") -> None:
+def write_collapsed_stacks(
+    path: str | Path, profiler: RuntimeProfiler, root: str = "runtime"
+) -> None:
     Path(path).write_text(to_collapsed_stacks(profiler, root=root), encoding="utf-8")

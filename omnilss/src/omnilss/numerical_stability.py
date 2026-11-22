@@ -8,7 +8,9 @@ import jax.numpy as jnp
 
 def sanitize_gradient(grad: jnp.ndarray, *, clip_value: float = 1e6) -> jnp.ndarray:
     """Replace non-finite gradient entries and clip magnitude."""
-    g = jnp.nan_to_num(jnp.asarray(grad), nan=0.0, posinf=clip_value, neginf=-clip_value)
+    g = jnp.nan_to_num(
+        jnp.asarray(grad), nan=0.0, posinf=clip_value, neginf=-clip_value
+    )
     return jnp.clip(g, -clip_value, clip_value)
 
 

@@ -128,7 +128,9 @@ def qLQNO(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     prob = _prob_from_p(p, lower_tail, log_p)
     inside = (prob > 0.0) & (prob < 1.0)
     z = ndtri(jnp.where(inside, prob, 0.5))
-    value = jnp.where(prob <= 0.0, -_INF, jnp.where(prob >= 1.0, _INF, safe_mu + scale * z))
+    value = jnp.where(
+        prob <= 0.0, -_INF, jnp.where(prob >= 1.0, _INF, safe_mu + scale * z)
+    )
     return jnp.where(valid, value, _NAN)
 
 
@@ -289,7 +291,9 @@ def _exgaus_log_density(x, mu, sigma, nu):
         - (z + sigma * sigma / (2.0 * nu)) / nu
         + _safe_log(ndtr(z / sigma))
     )
-    normal = -0.5 * jnp.log(2.0 * jnp.pi) - jnp.log(sigma) - 0.5 * ((x - mu) / sigma) ** 2
+    normal = (
+        -0.5 * jnp.log(2.0 * jnp.pi) - jnp.log(sigma) - 0.5 * ((x - mu) / sigma) ** 2
+    )
     return jnp.where(nu > 0.05 * sigma, emg, normal)
 
 
@@ -522,8 +526,11 @@ def pEGB2(q, mu=0.0, sigma=1.0, nu=1.0, tau=0.5, lower_tail=True, log_p=False):
     w = (safe_tau / safe_nu) * jnp.exp((q - mu) / safe_sigma)
     w = jnp.where(jnp.isfinite(w), w, 1.0)
     cdf = jnp.asarray(
-        _scipy_f.cdf(np.asarray(w, dtype=np.float64), 2.0 * np.asarray(safe_nu, np.float64),
-                     2.0 * np.asarray(safe_tau, np.float64)),
+        _scipy_f.cdf(
+            np.asarray(w, dtype=np.float64),
+            2.0 * np.asarray(safe_nu, np.float64),
+            2.0 * np.asarray(safe_tau, np.float64),
+        ),
         dtype=jnp.float64,
     )
     cdf = jnp.where(jnp.isfinite(w), cdf, jnp.where(q > mu, 1.0, 0.0))
@@ -543,8 +550,11 @@ def qEGB2(p, mu=0.0, sigma=1.0, nu=1.0, tau=0.5, lower_tail=True, log_p=False):
     inside = (prob > 0.0) & (prob < 1.0)
     prob_s = jnp.where(inside, prob, 0.5)
     w = jnp.asarray(
-        _scipy_f.ppf(np.asarray(prob_s, dtype=np.float64), 2.0 * np.asarray(safe_nu, np.float64),
-                     2.0 * np.asarray(safe_tau, np.float64)),
+        _scipy_f.ppf(
+            np.asarray(prob_s, dtype=np.float64),
+            2.0 * np.asarray(safe_nu, np.float64),
+            2.0 * np.asarray(safe_tau, np.float64),
+        ),
         dtype=jnp.float64,
     )
     value = mu + safe_sigma * jnp.log((safe_nu / safe_tau) * w)

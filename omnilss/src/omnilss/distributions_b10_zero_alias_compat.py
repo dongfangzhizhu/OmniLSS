@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .distributions_b10_zero_variants import ZAPIG as _ZAPIG, ZASICHEL as _ZASICHEL, ZISICHEL as _ZISICHEL, ZIPIG as _ZIPIG
+from .distributions_b10_zero_variants import (
+    ZAPIG as _ZAPIG,
+    ZASICHEL as _ZASICHEL,
+    ZISICHEL as _ZISICHEL,
+    ZIPIG as _ZIPIG,
+)
 from .families import FamilyDefinition
 
 

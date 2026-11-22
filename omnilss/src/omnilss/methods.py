@@ -30,7 +30,18 @@ from statistics import NormalDist
 
 from .distributions import resolve_family
 from .model import GAMLSSModel
-from .operations import coef, fitted, formula, gaic, is_gamlss, lp, lpred, refit, residuals, terms
+from .operations import (
+    coef,
+    fitted,
+    formula,
+    gaic,
+    is_gamlss,
+    lp,
+    lpred,
+    refit,
+    residuals,
+    terms,
+)
 
 # Re-export from R-aligned modules
 from .logLik import LogLikResult, log_likelihood, logLik
@@ -51,7 +62,11 @@ from .plot import (
 from .qstats import QStatsResult, q_stats
 from .Rsq import RSquaredResult, rsq
 from .LR_test_12_06_2013 import LRTestResult, likelihood_ratio_test, _chi2_sf
-from .VuongClarkTest import VuongClarkeResult, vuong_clarke_test, _binom_two_sided_p_value
+from .VuongClarkTest import (
+    VuongClarkeResult,
+    vuong_clarke_test,
+    _binom_two_sided_p_value,
+)
 from .MODEL_comparison import (
     GAICWeightRow,
     GAICWeightsResult,
@@ -62,7 +77,12 @@ from .MODEL_comparison import (
 )
 from .pdfplot import PDFPlotEntry, PDFPlotResult, pdf_plot_data, pdf_plot
 from .HistDist_03_10_13 import HistDistResult, hist_dist_data, histDist
-from .getQuantile import QuantileCurveEntry, QuantileCurveResult, get_quantile_data, getQuantile
+from .getQuantile import (
+    QuantileCurveEntry,
+    QuantileCurveResult,
+    get_quantile_data,
+    getQuantile,
+)
 from .centilesPLOT import (
     CentileCurveEntry,
     CentilesResult,
@@ -78,7 +98,12 @@ from .centilesPLOT import (
     centiles,
     centiles_split,
 )
-from .centilesFan import CentileFanBand, CentilesFanResult, centiles_fan_data, centiles_fan
+from .centilesFan import (
+    CentileFanBand,
+    CentilesFanResult,
+    centiles_fan_data,
+    centiles_fan,
+)
 from .centilescom import (
     CentilesComparisonModel,
     CentilesComparisonResult,
@@ -87,9 +112,19 @@ from .centilescom import (
     centiles_comparison_data,
     centiles_comparison_coverage_data,
 )
-from .centile_pred_30_06_22 import CentilePredEntry, CentilePredResult, centiles_pred, centile_pred_data
+from .centile_pred_30_06_22 import (
+    CentilePredEntry,
+    CentilePredResult,
+    centiles_pred,
+    centile_pred_data,
+)
 from .term_plot_new import TermPlotEntry, TermPlotResult, term_plot_data, term_plot
-from .fitted_plot import FittedPlotEntry, FittedPlotResult, fitted_plot_data, fitted_plot
+from .fitted_plot import (
+    FittedPlotEntry,
+    FittedPlotResult,
+    fitted_plot_data,
+    fitted_plot,
+)
 from .getPEF import PartialEffectResult, get_pef_data, getPEF
 from .plot2way import Plot2WayResult, plot2way_data, plot2way
 from .print import print_model
@@ -110,10 +145,6 @@ from .stepGAICAll_B_Parallel import (
     dropterm_all,
     step_gaic_all,
 )
-
-
-
-
 
 
 def _require_gamlss_method(object: GAMLSSModel) -> None:
@@ -164,7 +195,9 @@ def _rhs_terms(formula_text: str) -> list[str]:
     rhs = normalized.split("~", 1)[1].strip()
     if rhs in {"", "1"}:
         return []
-    return [term.strip() for term in rhs.split("+") if term.strip() and term.strip() != "1"]
+    return [
+        term.strip() for term in rhs.split("+") if term.strip() and term.strip() != "1"
+    ]
 
 
 def _response_name_from_formula(formula_text: str) -> str:
@@ -186,7 +219,15 @@ def _formula_rhs_spec(formula_text: str) -> str:
     return f"~ {normalized.split('~', 1)[1].strip()}"
 
 
-def _broadcast_parameter(values: np.ndarray, shape: tuple[int, ...], *, fill_nan: float, fill_posinf: float, fill_neginf: float, lower: float | None = None) -> np.ndarray:
+def _broadcast_parameter(
+    values: np.ndarray,
+    shape: tuple[int, ...],
+    *,
+    fill_nan: float,
+    fill_posinf: float,
+    fill_neginf: float,
+    lower: float | None = None,
+) -> np.ndarray:
     array = np.asarray(values, dtype=np.float64).ravel()
     if array.size == 1 and int(np.prod(shape)) > 1:
         array = np.full(shape, array.item(), dtype=np.float64)
@@ -198,7 +239,9 @@ def _broadcast_parameter(values: np.ndarray, shape: tuple[int, ...], *, fill_nan
     return array
 
 
-def _boxcox_inverse_quantile(mu: np.ndarray, sigma: np.ndarray, nu: np.ndarray, z_score: np.ndarray) -> np.ndarray:
+def _boxcox_inverse_quantile(
+    mu: np.ndarray, sigma: np.ndarray, nu: np.ndarray, z_score: np.ndarray
+) -> np.ndarray:
     safe_mu = np.maximum(mu, np.finfo(np.float64).eps)
     safe_sigma = np.maximum(sigma, np.finfo(np.float64).eps)
     safe_nu = np.where(np.isfinite(nu), nu, 0.0)
@@ -211,7 +254,12 @@ def _boxcox_inverse_quantile(mu: np.ndarray, sigma: np.ndarray, nu: np.ndarray, 
         base = 1.0 + nonzero_nu * safe_sigma[~near_zero] * z_score[~near_zero]
         base = np.maximum(base, np.finfo(np.float64).eps)
         ratio[~near_zero] = np.power(base, 1.0 / nonzero_nu)
-    ratio = np.nan_to_num(ratio, nan=np.finfo(np.float64).eps, posinf=1e12, neginf=np.finfo(np.float64).eps)
+    ratio = np.nan_to_num(
+        ratio,
+        nan=np.finfo(np.float64).eps,
+        posinf=1e12,
+        neginf=np.finfo(np.float64).eps,
+    )
     return safe_mu * ratio
 
 
@@ -225,10 +273,21 @@ def _family_quantile_values(
     probabilities: Sequence[float],
 ) -> list[np.ndarray]:
     normal = NormalDist()
-    positive_support_families = {"GA", "IG", "WEI", "EXP", "LOGNO", "BCCG", "BCT", "BCPE"}
+    positive_support_families = {
+        "GA",
+        "IG",
+        "WEI",
+        "EXP",
+        "LOGNO",
+        "BCCG",
+        "BCT",
+        "BCPE",
+    }
     quantiles: list[np.ndarray] = []
     for probability in probabilities:
-        z_score = np.full(mu.shape, normal.inv_cdf(float(probability)), dtype=np.float64)
+        z_score = np.full(
+            mu.shape, normal.inv_cdf(float(probability)), dtype=np.float64
+        )
         if family_name == "LOGNO":
             log_quantile = np.clip(mu + sigma * z_score, -700.0, 700.0)
             quantile = np.exp(log_quantile)
@@ -265,9 +324,15 @@ def _predict_parameter_frame(
     predictor_names.discard(xname)
     predictor_names.discard(".")
 
-    grid_data: dict[str, np.ndarray] = {xname: np.asarray(xvalues, dtype=np.float64).ravel()}
+    grid_data: dict[str, np.ndarray] = {
+        xname: np.asarray(xvalues, dtype=np.float64).ravel()
+    }
     chosen_fixed: dict[str, float] = {}
-    explicit_fixed = {} if fixed_at is None else {str(key): float(value) for key, value in fixed_at.items()}
+    explicit_fixed = (
+        {}
+        if fixed_at is None
+        else {str(key): float(value) for key, value in fixed_at.items()}
+    )
     for name in sorted(predictor_names):
         if name in explicit_fixed:
             value = explicit_fixed[name]
@@ -277,13 +342,42 @@ def _predict_parameter_frame(
         chosen_fixed[name] = value
         grid_data[name] = np.full(grid_data[xname].shape, value, dtype=np.float64)
 
-    predicted = predict_all(object, newdata=grid_data, type="response", output="data.frame")
+    predicted = predict_all(
+        object, newdata=grid_data, type="response", output="data.frame"
+    )
     shape = grid_data[xname].shape
     parameters = {
-        "mu": _broadcast_parameter(predicted.get("mu", np.zeros(shape, dtype=np.float64)), shape, fill_nan=np.finfo(np.float64).eps, fill_posinf=1e12, fill_neginf=np.finfo(np.float64).eps, lower=np.finfo(np.float64).eps),
-        "sigma": _broadcast_parameter(predicted.get("sigma", np.ones(shape, dtype=np.float64)), shape, fill_nan=1.0, fill_posinf=1e6, fill_neginf=np.finfo(np.float64).eps, lower=np.finfo(np.float64).eps),
-        "nu": _broadcast_parameter(predicted.get("nu", np.zeros(shape, dtype=np.float64)), shape, fill_nan=0.0, fill_posinf=50.0, fill_neginf=-50.0),
-        "tau": _broadcast_parameter(predicted.get("tau", np.ones(shape, dtype=np.float64)), shape, fill_nan=1.0, fill_posinf=1e6, fill_neginf=np.finfo(np.float64).eps, lower=np.finfo(np.float64).eps),
+        "mu": _broadcast_parameter(
+            predicted.get("mu", np.zeros(shape, dtype=np.float64)),
+            shape,
+            fill_nan=np.finfo(np.float64).eps,
+            fill_posinf=1e12,
+            fill_neginf=np.finfo(np.float64).eps,
+            lower=np.finfo(np.float64).eps,
+        ),
+        "sigma": _broadcast_parameter(
+            predicted.get("sigma", np.ones(shape, dtype=np.float64)),
+            shape,
+            fill_nan=1.0,
+            fill_posinf=1e6,
+            fill_neginf=np.finfo(np.float64).eps,
+            lower=np.finfo(np.float64).eps,
+        ),
+        "nu": _broadcast_parameter(
+            predicted.get("nu", np.zeros(shape, dtype=np.float64)),
+            shape,
+            fill_nan=0.0,
+            fill_posinf=50.0,
+            fill_neginf=-50.0,
+        ),
+        "tau": _broadcast_parameter(
+            predicted.get("tau", np.ones(shape, dtype=np.float64)),
+            shape,
+            fill_nan=1.0,
+            fill_posinf=1e6,
+            fill_neginf=np.finfo(np.float64).eps,
+            lower=np.finfo(np.float64).eps,
+        ),
     }
     return parameters, chosen_fixed
 
@@ -297,21 +391,31 @@ def _fit_with_updated_formula(
     if object.call is None or "data" not in object.call:
         raise ValueError("object must contain stored call data")
 
-    mu_formula = formula_updates.get("mu", _normalize_formula_text(object.formulas.get("mu", "")))
-    sigma_formula = formula_updates.get("sigma", _normalize_formula_text(object.formulas.get("sigma", "~1")))
+    mu_formula = formula_updates.get(
+        "mu", _normalize_formula_text(object.formulas.get("mu", ""))
+    )
+    sigma_formula = formula_updates.get(
+        "sigma", _normalize_formula_text(object.formulas.get("sigma", "~1"))
+    )
     family = object.family
     data = object.call["data"]
     weights = object.weights
     control = object.control
     method_name = str(object.additional_slots.get("method", "RS")).upper()
-    parameter_formulas = {parameter: _normalize_formula_text(value) for parameter, value in object.formulas.items()}
+    parameter_formulas = {
+        parameter: _normalize_formula_text(value)
+        for parameter, value in object.formulas.items()
+    }
     parameter_formulas.update(formula_updates)
 
     if method_name == "ML":
         return gamlss_ml(
             formula=mu_formula,
             sigma_formula=_formula_rhs_spec(sigma_formula),
-            parameter_formulas={parameter: _formula_rhs_spec(value) for parameter, value in parameter_formulas.items()},
+            parameter_formulas={
+                parameter: _formula_rhs_spec(value)
+                for parameter, value in parameter_formulas.items()
+            },
             family=family,
             data=data,
             weights=weights,
@@ -319,7 +423,10 @@ def _fit_with_updated_formula(
     return gamlss(
         formula=mu_formula,
         sigma_formula=_formula_rhs_spec(sigma_formula),
-        parameter_formulas={parameter: _formula_rhs_spec(value) for parameter, value in parameter_formulas.items()},
+        parameter_formulas={
+            parameter: _formula_rhs_spec(value)
+            for parameter, value in parameter_formulas.items()
+        },
         family=family,
         data=data,
         weights=weights,
@@ -337,10 +444,14 @@ def _scope_terms(object: GAMLSSModel, what: str, scope: Any | None) -> list[str]
         if normalized.startswith("~"):
             candidate_terms = _rhs_terms(f"response {normalized}")
         else:
-            candidate_terms = [term.strip() for term in normalized.split("+") if term.strip()]
+            candidate_terms = [
+                term.strip() for term in normalized.split("+") if term.strip()
+            ]
     else:
         candidate_terms = [str(term).strip() for term in scope if str(term).strip()]
-    return [term for term in candidate_terms if term in available_terms or scope is not None]
+    return [
+        term for term in candidate_terms if term in available_terms or scope is not None
+    ]
 
 
 def _updated_formulas_for_parameter(
@@ -348,7 +459,10 @@ def _updated_formulas_for_parameter(
     what: str,
     updated_formula: str,
 ) -> dict[str, str]:
-    formulas = {parameter: _normalize_formula_text(value) for parameter, value in object.formulas.items()}
+    formulas = {
+        parameter: _normalize_formula_text(value)
+        for parameter, value in object.formulas.items()
+    }
     formulas[what] = updated_formula
     return formulas
 
@@ -361,11 +475,23 @@ def _parse_scope_spec(scope: Any | None) -> tuple[list[str], list[str]]:
     if isinstance(scope, dict):
         lower_raw = scope.get("lower")
         upper_raw = scope.get("upper")
-        lower = _rhs_terms(f"response {lower_raw}") if isinstance(lower_raw, str) and str(lower_raw).strip().startswith("~") else (
-            [str(term).strip() for term in lower_raw if str(term).strip()] if lower_raw is not None else []
+        lower = (
+            _rhs_terms(f"response {lower_raw}")
+            if isinstance(lower_raw, str) and str(lower_raw).strip().startswith("~")
+            else (
+                [str(term).strip() for term in lower_raw if str(term).strip()]
+                if lower_raw is not None
+                else []
+            )
         )
-        upper = _rhs_terms(f"response {upper_raw}") if isinstance(upper_raw, str) and str(upper_raw).strip().startswith("~") else (
-            [str(term).strip() for term in upper_raw if str(term).strip()] if upper_raw is not None else []
+        upper = (
+            _rhs_terms(f"response {upper_raw}")
+            if isinstance(upper_raw, str) and str(upper_raw).strip().startswith("~")
+            else (
+                [str(term).strip() for term in upper_raw if str(term).strip()]
+                if upper_raw is not None
+                else []
+            )
         )
         return lower, upper
     if isinstance(scope, str) and scope.strip().startswith("~"):
@@ -380,12 +506,6 @@ def _parse_scope_spec(scope: Any | None) -> tuple[list[str], list[str]]:
 # likelihood_ratio_test, vuong_clarke_test, compare_models, gaic_weights
 # have been migrated to their respective R-aligned modules and are re-imported
 # at the top of this file for backward compatibility.
-
-
-
-
-
-
 
 
 from .predictAll_22_08_22 import PredictAllResult, predict_all
@@ -449,14 +569,25 @@ from .stepTGD import (
     step_tgd,
     step_tgd_all,
 )
-from .stepGAIC_03_10_13 import ExtractAICResult, StepGAICResult, StepGAICStep, extract_aic
-from .DropAddStepGAIC_Parallel import ScopeSelectionResult, ScopeSelectionRow, addterm, dropterm, step_gaic
-
+from .stepGAIC_03_10_13 import (
+    ExtractAICResult,
+    StepGAICResult,
+    StepGAICStep,
+    extract_aic,
+)
+from .DropAddStepGAIC_Parallel import (
+    ScopeSelectionResult,
+    ScopeSelectionRow,
+    addterm,
+    dropterm,
+    step_gaic,
+)
 
 
 def _subset_mapping_rows(data, mask):
     """Subset mapping-like data rows with a boolean mask."""
     import numpy as _np
+
     subset = {}
     for key, value in data.items():
         array = _np.asarray(value)

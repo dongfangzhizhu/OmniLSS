@@ -11,6 +11,7 @@ precision parameterizations:
 
 Zero external imports from reference repositories.
 """
+
 from __future__ import annotations
 
 from .distributions import (

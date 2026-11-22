@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Unconstrained matrix links for covariance / precision parameterizations (P5-2)."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -194,9 +195,7 @@ class LowRankCovariance(MatrixLink):
         return logdet, quad
 
 
-def make_matrix_link(
-    parameterization: str, dim: int, *, rank: int = 1
-) -> MatrixLink:
+def make_matrix_link(parameterization: str, dim: int, *, rank: int = 1) -> MatrixLink:
     """Instantiate a covariance/precision matrix link by name."""
     key = parameterization.strip().lower().replace("-", "_")
     if key == "cholesky":

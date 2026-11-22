@@ -46,7 +46,9 @@ def _fit_dist_available_families() -> dict[str, tuple[str, ...]]:
         "counts": ("PO", "GEOM", "NBI", "ZIP"),
         "binom": ("BI",),
     }
-    available["realall"] = tuple(dict.fromkeys(available["realline"] + available["realplus"]))
+    available["realall"] = tuple(
+        dict.fromkeys(available["realline"] + available["realplus"])
+    )
     return available
 
 
@@ -71,11 +73,15 @@ def fit_dist_data(
     selected_type = str(type).strip()
     key = selected_type.lower()
     if key not in available:
-        raise ValueError("type must be one of 'realAll', 'realline', 'realplus', 'real0to1', 'counts', or 'binom'")
+        raise ValueError(
+            "type must be one of 'realAll', 'realline', 'realplus', 'real0to1', 'counts', or 'binom'"
+        )
 
     family_names = list(available[key])
     if extra is not None:
-        family_names.extend(str(name).strip().upper() for name in extra if str(name).strip())
+        family_names.extend(
+            str(name).strip().upper() for name in extra if str(name).strip()
+        )
     family_names = list(dict.fromkeys(family_names))
 
     y_array = np.asarray(y, dtype=np.float64).ravel()
@@ -137,6 +143,7 @@ def fit_dist(
     """R reference: `gamlss/R/fitDist.R::fitDist`."""
 
     return fit_dist_data(y=y, k=k, type=type, extra=extra, weights=weights)
+
 
 fitDist = fit_dist
 

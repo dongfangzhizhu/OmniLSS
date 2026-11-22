@@ -44,10 +44,10 @@ import jax.numpy as jnp
 from .jax_family_specs import FamilyJAXSpec
 from ..links import log_link, logit_link
 
-
 # ---------------------------------------------------------------------------
 # Result type
 # ---------------------------------------------------------------------------
+
 
 class JaxRSResult(NamedTuple):
     """Output of ``jax_rs_fit_core``.
@@ -81,11 +81,23 @@ class JaxRSResult(NamedTuple):
 # Core: one IRLS step for parameter k (pure function, no @jax.jit)
 # ---------------------------------------------------------------------------
 
+
 def _irls_step_inline(
-    y, X_k, eta_k, params, obs_weights,
-    score_fn, hessian_fn, link_fn, link_inv, link_deriv,
-    param_idx, n_params, max_inner,
-    eta_lo=-10.0, eta_hi=10.0,
+    y,
+    X_k,
+    eta_k,
+    params,
+    obs_weights,
+    score_fn,
+    hessian_fn,
+    link_fn,
+    link_inv,
+    link_deriv,
+    param_idx,
+    n_params,
+    max_inner,
+    eta_lo=-10.0,
+    eta_hi=10.0,
     eta_clip_scale=3.0,
 ):
     """Run ``max_inner`` IRLS iterations for parameter ``param_idx``.
@@ -108,11 +120,11 @@ def _irls_step_inline(
         param_list = [params_c[k] for k in range(n_params)]
 
         score = score_fn(y, *param_list)
-        hess  = hessian_fn(y, *param_list)
+        hess = hessian_fn(y, *param_list)
 
         # Numerical safety
         score = jnp.where(jnp.isfinite(score), score, 0.0)
-        hess  = jnp.where(hess < -eps, hess, -eps)
+        hess = jnp.where(hess < -eps, hess, -eps)
 
         # dtheta/deta (inverse link derivative)
         dtheta_deta = link_deriv(eta_c)
@@ -133,8 +145,8 @@ def _irls_step_inline(
         # Weighted least squares: solve (X^T W X) beta = X^T W z
         W = ww * obs_weights
         sqrt_W = jnp.sqrt(jnp.maximum(W, 0.0))
-        X_w = X_k * sqrt_W[:, None]   # [n, p]
-        z_w = z * sqrt_W              # [n]
+        X_w = X_k * sqrt_W[:, None]  # [n, p]
+        z_w = z * sqrt_W  # [n]
 
         beta, _, _, _ = jnp.linalg.lstsq(X_w, z_w, rcond=None)
         beta = jax.lax.cond(
@@ -159,12 +171,8 @@ def _irls_step_inline(
 
         return eta_new, params_new
 
-    eta_final, params_final = jax.lax.fori_loop(
-        0, max_inner, body, (eta_k, params)
-    )
+    eta_final, params_final = jax.lax.fori_loop(0, max_inner, body, (eta_k, params))
     return eta_final, params_final
-
-
 
 
 def _safe_log_value(value):
@@ -192,16 +200,20 @@ def _default_init_etas(y: jnp.ndarray, spec: FamilyJAXSpec) -> jnp.ndarray:
             elif param == "sigma":
                 eta0 = _safe_log_value(y_std)
             else:
-                lo, hi = spec.eta_bounds[k] if k < len(spec.eta_bounds) else (-10.0, 10.0)
+                lo, hi = (
+                    spec.eta_bounds[k] if k < len(spec.eta_bounds) else (-10.0, 10.0)
+                )
                 eta0 = jnp.asarray((lo + hi) / 2.0, dtype=jnp.float64)
         else:
             eta0 = jnp.asarray(configured, dtype=jnp.float64)
         etas.append(jnp.full(y.shape, eta0, dtype=jnp.float64))
     return jnp.stack(etas, axis=0)
 
+
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
 
 def jax_rs_fit_core(
     y: jnp.ndarray,
@@ -297,9 +309,9 @@ def jax_rs_fit_core(
         init_etas = jnp.asarray(init_etas, dtype=jnp.float64)
 
     if init_params is None:
-        init_params = jnp.stack([
-            spec.link_inv_fns[k](init_etas[k]) for k in range(n_params)
-        ])
+        init_params = jnp.stack(
+            [spec.link_inv_fns[k](init_etas[k]) for k in range(n_params)]
+        )
     else:
         init_params = jnp.asarray(init_params, dtype=jnp.float64)
 
@@ -314,13 +326,13 @@ def jax_rs_fit_core(
         )
 
     # Capture spec components as local variables for closure
-    loglik_fn   = spec.loglik_fn
-    score_fns   = spec.score_fns
+    loglik_fn = spec.loglik_fn
+    score_fns = spec.score_fns
     hessian_fns = spec.hessian_fns
-    link_fns       = spec.link_fns
-    link_inv_fns   = spec.link_inv_fns
+    link_fns = spec.link_fns
+    link_inv_fns = spec.link_inv_fns
     link_deriv_fns = spec.link_deriv_fns
-    eta_bounds     = spec.eta_bounds  # tuple of (lo, hi) per parameter
+    eta_bounds = spec.eta_bounds  # tuple of (lo, hi) per parameter
 
     def compute_gdev(params):
         param_list = [params[k] for k in range(n_params)]
@@ -341,7 +353,7 @@ def jax_rs_fit_core(
             init_params,
             init_etas,
             init_gdev,
-            init_gdev + 1.0,   # g_dev_old > g_dev to enter loop
+            init_gdev + 1.0,  # g_dev_old > g_dev to enter loop
             jnp.array(0, dtype=jnp.int32),
             init_failed,
         )
@@ -351,9 +363,7 @@ def jax_rs_fit_core(
             not_converged = jnp.abs(g_dev_old - g_dev) > tol
             not_maxed = it < max_outer
             # NaN/Inf deviance: never treated as convergence; stop immediately.
-            nonfinite = jnp.logical_not(
-                jnp.isfinite(g_dev) & jnp.isfinite(g_dev_old)
-            )
+            nonfinite = jnp.logical_not(jnp.isfinite(g_dev) & jnp.isfinite(g_dev_old))
             return jnp.logical_and(
                 jnp.logical_and(not_converged, not_maxed),
                 jnp.logical_not(nonfinite),
@@ -363,7 +373,7 @@ def jax_rs_fit_core(
             params, etas, g_dev, _, it, _failed = state
 
             new_params = params
-            new_etas   = etas
+            new_etas = etas
 
             # Update each parameter in sequence (Python loop = static unroll)
             for k in range(n_params):
@@ -444,16 +454,19 @@ def jax_rs_fit_core(
             # Step-halving: if deviance increased, average old and new etas
             # This prevents divergence when IRLS overshoots
             def halve_step(_):
-                halved_etas   = (etas + new_etas) / 2.0
-                halved_params = jnp.stack([
-                    link_inv_fns[k](halved_etas[k]) for k in range(n_params)
-                ])
+                halved_etas = (etas + new_etas) / 2.0
+                halved_params = jnp.stack(
+                    [link_inv_fns[k](halved_etas[k]) for k in range(n_params)]
+                )
                 halved_gdev = compute_gdev(halved_params)
+
                 # If halved step is still worse, keep old params (no update)
                 def keep_old(_):
                     return params, etas, g_dev
+
                 def use_halved(_):
                     return halved_params, halved_etas, halved_gdev
+
                 return jax.lax.cond(
                     halved_gdev >= g_dev,
                     keep_old,
@@ -485,7 +498,7 @@ def jax_rs_fit_core(
     # Extract beta vectors from final etas (one WLS solve per parameter)
     betas = []
     for k in range(n_params):
-        X_k   = Xs[k]
+        X_k = Xs[k]
         eta_k = final_etas[k]
         beta_k, _, _, _ = jnp.linalg.lstsq(X_k, eta_k, rcond=None)
         betas.append(beta_k)

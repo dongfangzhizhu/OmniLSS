@@ -38,13 +38,13 @@ plotting stacks.  The underscore-named ``xy_hist`` / ``xy_density`` (and their
 50% HDR grid) while leaving the ggplot2 bin/KDE stat layers to the plotting
 stack.  See that module's tests for the boundary.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Callable
 
 import numpy as np
-
 
 __all__ = [
     "BivarGrid",
@@ -172,6 +172,7 @@ def bivar_fun_persp(
 # MASS::kde2d kernel (used by xy.density.* and xy_hist_kde2d)
 # ---------------------------------------------------------------------------
 
+
 def bandwidth_nrd(a: Any) -> float:
     """R ``MASS::bandwidth.nrd``: Silverman's rule-of-thumb bandwidth.
 
@@ -182,8 +183,9 @@ def bandwidth_nrd(a: Any) -> float:
     arr = np.asarray(a, dtype=np.float64).ravel()
     q25, q75 = np.quantile(arr, [0.25, 0.75], method="linear")
     iqr_scaled = (q75 - q25) / 1.34
-    return float(4 * 1.06 * min(np.sqrt(np.var(arr, ddof=1)), iqr_scaled)
-                 * arr.size ** (-0.2))
+    return float(
+        4 * 1.06 * min(np.sqrt(np.var(arr, ddof=1)), iqr_scaled) * arr.size ** (-0.2)
+    )
 
 
 def kde2d(x: Any, y: Any, n: int = 25) -> BivarGrid:
@@ -206,9 +208,9 @@ def kde2d(x: Any, y: Any, n: int = 25) -> BivarGrid:
     ax = (gx[:, None] - dx[None, :]) / hx
     ay = (gy[:, None] - dy[None, :]) / hy
     inv_sqrt_2pi = 1.0 / np.sqrt(2.0 * np.pi)
-    A = np.exp(-ax**2 / 2.0) * inv_sqrt_2pi   # dnorm(ax), shape (n, N)
-    B = np.exp(-ay**2 / 2.0) * inv_sqrt_2pi   # dnorm(ay), shape (n, N)
-    z = (A @ B.T) / (nx * hx * hy)            # R tcrossprod, shape (n, n)
+    A = np.exp(-(ax**2) / 2.0) * inv_sqrt_2pi  # dnorm(ax), shape (n, N)
+    B = np.exp(-(ay**2) / 2.0) * inv_sqrt_2pi  # dnorm(ay), shape (n, N)
+    z = (A @ B.T) / (nx * hx * hy)  # R tcrossprod, shape (n, n)
     return BivarGrid(x=gx, y=gy, z=z)
 
 

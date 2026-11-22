@@ -6,6 +6,7 @@ functions, working-weight computation and weighted least-squares solver, and
 obtains the censored score/Hessian by automatic differentiation of the censored
 log-likelihood.  Only method=RS is supported.
 """
+
 from __future__ import annotations
 
 from typing import Any, Mapping
@@ -17,7 +18,9 @@ import numpy as np
 from ..gamlss_cens import CensoredFamily, extract_surv_response
 
 
-def _score_hessian(family: CensoredFamily, parameter: str, y_struct: Any, fitted: dict[str, np.ndarray]):
+def _score_hessian(
+    family: CensoredFamily, parameter: str, y_struct: Any, fitted: dict[str, np.ndarray]
+):
     """Elementwise score and diagonal Hessian of the censored log-likelihood.
 
     The censored likelihood is a sum of per-observation terms, so grad(sum)
@@ -136,7 +139,9 @@ def censored_fit(
                 eta=eta,
             )
             last_weights[parameter] = np.asarray(working_weights, dtype=np.float64)
-            last_working_response[parameter] = np.asarray(working_response, dtype=np.float64)
+            last_working_response[parameter] = np.asarray(
+                working_response, dtype=np.float64
+            )
             beta = solve_weighted_least_squares_cholesky(
                 X=design[parameter],
                 z=working_response,
@@ -146,7 +151,9 @@ def censored_fit(
             coefficients[parameter] = np.asarray(beta, dtype=np.float64)
             linear_predictors[parameter] = np.asarray(eta_new, dtype=np.float64)
             fitted[parameter] = np.asarray(
-                family.link_inverses[parameter](jnp.asarray(eta_new, dtype=jnp.float64)),
+                family.link_inverses[parameter](
+                    jnp.asarray(eta_new, dtype=jnp.float64)
+                ),
                 dtype=np.float64,
             )
 
@@ -170,7 +177,9 @@ def censored_fit(
         weights_vector = last_weights.get(parameter)
         if weights_vector is None:
             continue
-        information = design[parameter].T @ (design[parameter] * (weights_vector * w)[:, None])
+        information = design[parameter].T @ (
+            design[parameter] * (weights_vector * w)[:, None]
+        )
         try:
             parameter_covariance[parameter] = np.linalg.inv(information)
         except np.linalg.LinAlgError:
@@ -199,6 +208,7 @@ def censored_fit(
         values = np.asarray(family.p(kwargs["y"], **params), dtype=np.float64)
         values = np.clip(values, eps, 1.0 - eps)
         return jnp.asarray(_normal_quantile(values), dtype=jnp.float64)
+
     fitted_values = {
         parameter: jnp.asarray(fitted[parameter], dtype=jnp.float64)
         for parameter in family.parameters

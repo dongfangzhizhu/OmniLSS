@@ -15,10 +15,10 @@ import jax.numpy as jnp
 import numpy as np
 from scipy import linalg as sp_linalg
 
-
 # ---------------------------------------------------------------------------
 # Core penalty construction (pure numpy, device-agnostic)
 # ---------------------------------------------------------------------------
+
 
 def difference_penalty(n_basis: int, order: int = 2) -> np.ndarray:
     """Difference penalty matrix D of shape (n_basis-order, n_basis).
@@ -42,6 +42,7 @@ def penalty_matrix(n_basis: int, order: int = 2) -> np.ndarray:
 # ---------------------------------------------------------------------------
 # Effective df and lambda search — all numpy/scipy, no JAX device ops
 # ---------------------------------------------------------------------------
+
 
 def _edf_numpy(
     X: np.ndarray,
@@ -119,7 +120,7 @@ def find_lambda_for_df(
         edf_mid = _edf_numpy(X_np, P_np, mid, w_np)
         if abs(edf_mid - target_df) < tol:
             return mid
-        if edf_mid > target_df:   # edf decreases as lambda increases
+        if edf_mid > target_df:  # edf decreases as lambda increases
             lo = mid
         else:
             hi = mid

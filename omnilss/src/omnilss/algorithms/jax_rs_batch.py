@@ -30,12 +30,19 @@ from .jax_rs_core import (
 
 def _is_design_tuple(value: Any) -> bool:
     """Return True when ``value`` looks like one model's design tuple."""
-    return isinstance(value, (tuple, list)) and bool(value) and all(
-        hasattr(item, "shape") and getattr(item, "ndim", None) == 2 for item in value
+    return (
+        isinstance(value, (tuple, list))
+        and bool(value)
+        and all(
+            hasattr(item, "shape") and getattr(item, "ndim", None) == 2
+            for item in value
+        )
     )
 
 
-def _normalize_designs(Xs_per_model: Any, k_models: int) -> list[tuple[jnp.ndarray, ...]]:
+def _normalize_designs(
+    Xs_per_model: Any, k_models: int
+) -> list[tuple[jnp.ndarray, ...]]:
     """Normalize a broadcast or per-model design specification."""
     if _is_design_tuple(Xs_per_model):
         design = tuple(jnp.asarray(x, dtype=jnp.float64) for x in Xs_per_model)
@@ -175,9 +182,7 @@ def _vmap_same_family_group(
             not_converged = jnp.abs(g_dev_old - g_dev) > tol
             not_maxed = it < max_outer
             # NaN/Inf deviance: never treated as convergence; stop immediately.
-            nonfinite = jnp.logical_not(
-                jnp.isfinite(g_dev) & jnp.isfinite(g_dev_old)
-            )
+            nonfinite = jnp.logical_not(jnp.isfinite(g_dev) & jnp.isfinite(g_dev_old))
             return jnp.logical_and(
                 jnp.logical_and(not_converged, not_maxed),
                 jnp.logical_not(nonfinite),
@@ -233,7 +238,12 @@ def _vmap_same_family_group(
                 eta_accept, params_accept, gdev_accept, _ = jax.lax.while_loop(
                     halve_cond,
                     halve_body,
-                    (eta_k_new, candidate_params, candidate_gdev, jnp.array(0, dtype=jnp.int32)),
+                    (
+                        eta_k_new,
+                        candidate_params,
+                        candidate_gdev,
+                        jnp.array(0, dtype=jnp.int32),
+                    ),
                 )
 
                 new_params, new_etas = jax.lax.cond(
@@ -283,9 +293,7 @@ def _vmap_same_family_group(
         for k in range(n_params):
             lo, hi = eta_bounds[k] if k < len(eta_bounds) else (-10.0, 10.0)
             eta_k = final_etas[k]
-            clipped = clipped + jnp.sum(
-                (eta_k <= lo + 1e-12) | (eta_k >= hi - 1e-12)
-            )
+            clipped = clipped + jnp.sum((eta_k <= lo + 1e-12) | (eta_k >= hi - 1e-12))
             total += int(eta_k.size)
         eta_clip_ratio = clipped / total if total > 0 else 0.0
         return (

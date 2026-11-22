@@ -27,10 +27,14 @@ def z_scores(y, mu, sigma, nu) -> np.ndarray:
     """Compute LMS z-scores using Box-Cox transform with log-limit at nu≈0."""
     y_arr = np.asarray(y, dtype=np.float64)
     mu_arr = np.asarray(mu, dtype=np.float64)
-    sigma_arr = np.maximum(np.asarray(sigma, dtype=np.float64), np.finfo(np.float64).eps)
+    sigma_arr = np.maximum(
+        np.asarray(sigma, dtype=np.float64), np.finfo(np.float64).eps
+    )
     nu_arr = np.asarray(nu, dtype=np.float64)
 
-    ratio = np.maximum(y_arr / np.maximum(mu_arr, np.finfo(np.float64).eps), np.finfo(np.float64).eps)
+    ratio = np.maximum(
+        y_arr / np.maximum(mu_arr, np.finfo(np.float64).eps), np.finfo(np.float64).eps
+    )
     use_log = np.abs(nu_arr) < 1e-8
     nu_safe = np.where(use_log, 1.0, nu_arr)
     z_bc = (np.power(ratio, nu_safe) - 1.0) / (nu_safe * sigma_arr)
@@ -55,7 +59,9 @@ def lms(y, mu, sigma, nu, weights=None) -> LMSResult:
         if np.any(w < 0) or not np.isfinite(w).all():
             raise ValueError("weights must be finite and non-negative")
 
-    return LMSResult(z=z, weighted_z=w * z, mu=mu_arr, sigma=sigma_arr, nu=nu_arr, weights=w)
+    return LMSResult(
+        z=z, weighted_z=w * z, mu=mu_arr, sigma=sigma_arr, nu=nu_arr, weights=w
+    )
 
 
 @dataclass(frozen=True)
@@ -111,8 +117,12 @@ def calibration(
     percent_safe = np.clip(percent, 1e-6, 100.0 - 1e-6)
 
     if fan:
-        fan_res = centiles_fan_data(object, xvar=xvar, cent=tuple(percent_safe.tolist()), **kwargs)
-        cov = centiles_coverage_data(object, xvar=xvar, cent=tuple(percent_safe.tolist()))
+        fan_res = centiles_fan_data(
+            object, xvar=xvar, cent=tuple(percent_safe.tolist()), **kwargs
+        )
+        cov = centiles_coverage_data(
+            object, xvar=xvar, cent=tuple(percent_safe.tolist())
+        )
         sample = np.asarray([row.percent_below for row in cov.rows], dtype=np.float64)
         table = pd.DataFrame({"target": target, "calib.": percent, "sample": sample})
         return CalibrationResult(
@@ -123,7 +133,9 @@ def calibration(
             fan_result=fan_res,
         )
 
-    cov = centiles_coverage_data(object, xvar=xvar, cent=tuple(percent_safe.tolist()), **kwargs)
+    cov = centiles_coverage_data(
+        object, xvar=xvar, cent=tuple(percent_safe.tolist()), **kwargs
+    )
     calib_col = np.asarray([row.centile for row in cov.rows], dtype=np.float64)
     sample = np.asarray([row.percent_below for row in cov.rows], dtype=np.float64)
     table = pd.DataFrame({"target": target, "calib.": calib_col, "sample": sample})

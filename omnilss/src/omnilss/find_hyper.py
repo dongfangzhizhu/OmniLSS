@@ -22,7 +22,9 @@ class FindHyperResult:
     rank_order: np.ndarray
 
 
-def find_hyper(values: Iterable[float], scores: Iterable[float], direction: str = "min") -> FindHyperResult:
+def find_hyper(
+    values: Iterable[float], scores: Iterable[float], direction: str = "min"
+) -> FindHyperResult:
     """Return best hyper-parameter candidate from scored grid search results."""
     vals = np.asarray(list(values), dtype=np.float64)
     scr = np.asarray(list(scores), dtype=np.float64)

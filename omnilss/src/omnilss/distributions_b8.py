@@ -40,6 +40,7 @@ from .links import (
 #    A flexible three-parameter distribution that includes Gamma, Weibull, and others as special cases
 # ------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class GeneralizedGammaFamily(FamilyDefinition):
     """Generalized Gamma distribution (`GG`)."""
@@ -47,16 +48,16 @@ class GeneralizedGammaFamily(FamilyDefinition):
 
 def _gg_log_pdf(y, mu, sigma, nu):
     """Generalized Gamma log-pdf.
-    
+
     The Generalized Gamma distribution is a flexible three-parameter family
     that includes Gamma, Weibull, and Exponential as special cases.
-    
+
     Parameters:
     - y: observed value (> 0)
     - mu: location parameter (> 0)
     - sigma: scale parameter (> 0)
     - nu: shape parameter (can be positive or negative)
-    
+
     Parameterization (from R gamlss.dist):
     z = (y/mu)^nu
     For |nu| > 1e-6:
@@ -68,44 +69,49 @@ def _gg_log_pdf(y, mu, sigma, nu):
     y = jnp.maximum(y, eps)
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
-    
+
     # Compute z = (y/mu)^nu
     z = jnp.power(y / mu, nu)
-    
+
     # For |nu| > 1e-6, use Gamma distribution on z
     # theta = 1/(sigma^2 * nu^2)
     theta = 1.0 / (sigma * sigma * nu * nu)
-    
+
     # Gamma log-pdf: log p(z) = (theta-1)*log(z) - z*theta - log(Gamma(theta)) - theta*log(theta)
     # But we need dGA(z, mu=1, sigma=sigma*|nu|)
     # For GA with mu=1: shape = 1/sigma^2, scale = sigma^2
     # So for sigma' = sigma*|nu|: shape = 1/(sigma*|nu|)^2 = theta
     sigma_prime = sigma * jnp.abs(nu)
     shape = 1.0 / (sigma_prime * sigma_prime)  # This equals theta
-    
+
     # Gamma(shape, scale=1/shape) log-pdf
-    log_pdf_z = (shape - 1.0) * jnp.log(z) - z * shape - gammaln(shape) + shape * jnp.log(shape)
-    
+    log_pdf_z = (
+        (shape - 1.0) * jnp.log(z) - z * shape - gammaln(shape) + shape * jnp.log(shape)
+    )
+
     # Jacobian: |nu| * z / y
     log_jacobian = jnp.log(jnp.abs(nu)) + jnp.log(z) - jnp.log(y)
-    
+
     # Total log-pdf
     log_pdf = log_pdf_z + log_jacobian
-    
+
     # For nu ~ 0, use log-normal limit
     log_pdf_lognormal = (
-        -jnp.log(y) - 0.5 * jnp.log(2.0 * jnp.pi) - jnp.log(sigma) -
-        0.5 * jnp.square((jnp.log(y) - jnp.log(mu)) / sigma)
+        -jnp.log(y)
+        - 0.5 * jnp.log(2.0 * jnp.pi)
+        - jnp.log(sigma)
+        - 0.5 * jnp.square((jnp.log(y) - jnp.log(mu)) / sigma)
     )
-    
+
     # Use log-normal when |nu| < 1e-6
     log_pdf = jnp.where(jnp.abs(nu) > 1e-6, log_pdf, log_pdf_lognormal)
-    
+
     return log_pdf
 
 
 def GG() -> GeneralizedGammaFamily:
     from .dpqr_functions import pGG, qGG, rGG
+
     return build_ad_family(
         family_class=GeneralizedGammaFamily,
         name="GG",
@@ -115,7 +121,11 @@ def GG() -> GeneralizedGammaFamily:
         links={"mu": "log", "sigma": "log", "nu": "log"},
         link_functions={"mu": log_link, "sigma": log_link, "nu": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": log_inverse},
-        link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": log_derivative},
+        link_derivatives={
+            "mu": log_derivative,
+            "sigma": log_derivative,
+            "nu": log_derivative,
+        },
         p=pGG,
         q=qGG,
         r=rGG,
@@ -127,6 +137,7 @@ def GG() -> GeneralizedGammaFamily:
 #    R: dGB2(x, mu, sigma, nu, tau)
 #    A four-parameter distribution that includes many distributions as special cases
 # ------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class GeneralizedBeta2Family(FamilyDefinition):
@@ -142,10 +153,11 @@ def _gb2_log_pdf(y, mu, sigma, nu, tau):
 
 def GB2() -> GeneralizedBeta2Family:
     """Generalized Beta Type 2 distribution.
-    
+
     All parameters use log link to ensure positivity.
     """
     from .dpqr_functions import dGB2, pGB2, qGB2, rGB2
+
     return build_ad_family(
         family_class=GeneralizedBeta2Family,
         name="GB2",
@@ -157,9 +169,24 @@ def GB2() -> GeneralizedBeta2Family:
         q=qGB2,
         r=rGB2,
         links={"mu": "log", "sigma": "log", "nu": "log", "tau": "log"},
-        link_functions={"mu": log_link, "sigma": log_link, "nu": log_link, "tau": log_link},
-        link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
-        link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": log_derivative, "tau": log_derivative},
+        link_functions={
+            "mu": log_link,
+            "sigma": log_link,
+            "nu": log_link,
+            "tau": log_link,
+        },
+        link_inverses={
+            "mu": log_inverse,
+            "sigma": log_inverse,
+            "nu": log_inverse,
+            "tau": log_inverse,
+        },
+        link_derivatives={
+            "mu": log_derivative,
+            "sigma": log_derivative,
+            "nu": log_derivative,
+            "tau": log_derivative,
+        },
     )
 
 
@@ -169,6 +196,7 @@ def GB2() -> GeneralizedBeta2Family:
 #    A simple one-parameter power-law distribution
 # ------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class ParetoFamily(FamilyDefinition):
     """Pareto distribution (`PARETO`)."""
@@ -176,20 +204,20 @@ class ParetoFamily(FamilyDefinition):
 
 def _pareto_log_pdf(y, mu):
     """Pareto distribution log-pdf.
-    
+
     The Pareto distribution is a power-law distribution often used for
     modeling wealth, city sizes, and other phenomena.
-    
+
     Parameters:
     - y: observed value (>= 1)
     - mu: shape parameter (> 0)
-    
+
     log p(y) = log(mu) - (mu + 1)*log(y)
     """
     eps = jnp.finfo(jnp.float64).eps
     y = jnp.asarray(y, dtype=jnp.float64)
     mu = jnp.maximum(mu, eps)
-    
+
     log_pdf = jnp.log(mu) - (mu + 1.0) * jnp.log(y)
     return jnp.where(y <= 1.0, -jnp.inf, log_pdf)
 
@@ -221,6 +249,7 @@ def PARETO() -> ParetoFamily:
 #    Note: In R gamlss, nu and tau are typically fixed (not estimated)
 # ------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class NormalExponentialTFamily(FamilyDefinition):
     """Normal-Exponential-t distribution (`NET`)."""
@@ -228,71 +257,70 @@ class NormalExponentialTFamily(FamilyDefinition):
 
 def _net_log_pdf(y, mu, sigma, nu, tau):
     """Normal-Exponential-t log-pdf.
-    
+
     The NET distribution uses a piecewise density function:
     - Normal in the center (|z| <= k1)
     - Exponential in the middle (k1 < |z| <= k2)
     - Power tail beyond (|z| > k2)
-    
+
     Parameters:
     - y: observed value
     - mu: location parameter
     - sigma: scale parameter (> 0)
     - nu: threshold parameter k1 (> 0)
     - tau: threshold parameter k2 (> 0), must be >= nu
-    
+
     From R gamlss.dist source:
     k1 = nu, k2 = tau
     c1 = (1 - 2*pnorm(-k1)) * sqrt(2*pi)
     c2 = (2/k1) * exp(-(k1^2)/2)
     c3 = 2*exp(-k1*k2 + (k1^2)/2) / ((k1*k2 - 1)*k1)
     ct = 1/(c1 + c2 + c3)  # Normalizing constant
-    
+
     tc = (y - mu)/sigma
     d1 = (|tc| <= k1) * (-(tc^2)/2)
     d2 = (k1 < |tc| <= k2) * (-k1*|tc| + (k1^2)/2)
     d3 = (|tc| > k2) * (-k1*k2*log(|tc|/k2) - k1*k2 + (k1^2)/2)
-    
+
     log p(y) = log(ct) - log(sigma) + d1 + d2 + d3
     """
     eps = jnp.finfo(jnp.float64).eps
     sigma = jnp.maximum(sigma, eps)
     nu = jnp.maximum(nu, eps)
     tau = jnp.maximum(tau, nu)  # Ensure tau >= nu
-    
+
     k1 = nu
     k2 = tau
-    
+
     # Normalizing constant components
     from jax.scipy.stats import norm as jax_norm
+
     c1 = (1.0 - 2.0 * jax_norm.cdf(-k1)) * jnp.sqrt(2.0 * jnp.pi)
     c2 = (2.0 / k1) * jnp.exp(-(k1 * k1) / 2.0)
     c3 = 2.0 * jnp.exp(-k1 * k2 + (k1 * k1) / 2.0) / ((k1 * k2 - 1.0) * k1)
     ct = 1.0 / (c1 + c2 + c3)
-    
+
     # Standardized residual
     tc = (y - mu) / sigma
     abs_tc = jnp.abs(tc)
-    
+
     # Piecewise log-density (without normalizing constant and sigma term)
     # Region 1: |tc| <= k1 (Normal)
     d1 = jnp.where(abs_tc <= k1, -(tc * tc) / 2.0, 0.0)
-    
+
     # Region 2: k1 < |tc| <= k2 (Exponential)
     d2 = jnp.where((abs_tc > k1) & (abs_tc <= k2), -k1 * abs_tc + (k1 * k1) / 2.0, 0.0)
-    
+
     # Region 3: |tc| > k2 (Power tail)
     # Handle log(0) case when tc = 0
     log_term = jnp.where(
-        abs_tc > k2,
-        -k1 * k2 * jnp.log(abs_tc / k2) - k1 * k2 + (k1 * k1) / 2.0,
-        0.0
+        abs_tc > k2, -k1 * k2 * jnp.log(abs_tc / k2) - k1 * k2 + (k1 * k1) / 2.0, 0.0
     )
     d3 = log_term
-    
+
     # Total log-pdf
     log_pdf = jnp.log(ct) - jnp.log(sigma) + d1 + d2 + d3
-    
+
     return log_pdf
 
 
@@ -324,8 +352,10 @@ def _net_p(q, mu=0.0, sigma=1.0, nu=1.5, tau=2.0, lower_tail=True, log_p=False):
         ct = 1.0 / (c1 + c2 + c3)
         tc = (qi - mui) / si
         # Fk2: cdf up to -k2
-        Fk2 = (ct * (k2 ** (k1 * k2)) / (k1 * k2 - 1.0)) * _np.exp(-k1 * k2 + (k1 * k1) / 2.0) * (
-            _np.abs(tc) ** (-k1 * k2 + 1.0) if tc != 0.0 else 1.0
+        Fk2 = (
+            (ct * (k2 ** (k1 * k2)) / (k1 * k2 - 1.0))
+            * _np.exp(-k1 * k2 + (k1 * k1) / 2.0)
+            * (_np.abs(tc) ** (-k1 * k2 + 1.0) if tc != 0.0 else 1.0)
         )
         cdf1 = (ct / (k1 * (k1 * k2 - 1.0))) * _np.exp(-k1 * k2 + (k1 * k1) / 2.0)
         Fk1 = cdf1 + (ct / k1) * _np.exp(-k1 * _np.abs(tc) + (k1 * k1) / 2.0)
@@ -386,10 +416,14 @@ def _net_q(p, mu=0.0, sigma=1.0, nu=1.5, tau=2.0, lower_tail=True, log_p=False):
         ct = 1.0 / (c1 + c2 + c3)
         b = (ct / (nu1 * (nu1 * tau1 - 1.0))) * _np.exp(-nu1 * tau1 + (nu1 * nu1) / 2.0)
         p1 = p2
-        z1 = -(b * nu1 * (tau1 ** (nu1 * tau1)) / p1) ** (1.0 / (nu1 * tau1 - 1.0))
+        z1 = -((b * nu1 * (tau1 ** (nu1 * tau1)) / p1) ** (1.0 / (nu1 * tau1 - 1.0)))
         p1 = p1 if p1 >= (nu1 * tau1 * b) else 0.5
         z2 = -(nu1 / 2.0) + (1.0 / nu1) * _np.log((nu1 / ct) * (p1 - b))
-        z3 = _sn.ppf(_sn.cdf(-nu1) + (1.0 / _np.sqrt(2.0 * _np.pi)) * ((p1 - b) / ct - (1.0 / nu1) * _np.exp(-(nu1 * nu1) / 2.0)))
+        z3 = _sn.ppf(
+            _sn.cdf(-nu1)
+            + (1.0 / _np.sqrt(2.0 * _np.pi))
+            * ((p1 - b) / ct - (1.0 / nu1) * _np.exp(-(nu1 * nu1) / 2.0))
+        )
         if p2 <= (nu1 * tau1 * b):
             q1 = z1
         elif p1 <= (b + (ct / nu1) * _np.exp(-(nu1 * nu1) / 2.0)):
@@ -433,9 +467,24 @@ def NET() -> NormalExponentialTFamily:
         fixed_parameters=("nu", "tau"),
         fixed_parameter_defaults={"nu": 1.5, "tau": 2.0},
         links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "identity"},
-        link_functions={"mu": identity_link, "sigma": log_link, "nu": identity_link, "tau": identity_link},
-        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": identity_inverse, "tau": identity_inverse},
-        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": identity_derivative, "tau": identity_derivative},
+        link_functions={
+            "mu": identity_link,
+            "sigma": log_link,
+            "nu": identity_link,
+            "tau": identity_link,
+        },
+        link_inverses={
+            "mu": identity_inverse,
+            "sigma": log_inverse,
+            "nu": identity_inverse,
+            "tau": identity_inverse,
+        },
+        link_derivatives={
+            "mu": identity_derivative,
+            "sigma": log_derivative,
+            "nu": identity_derivative,
+            "tau": identity_derivative,
+        },
     )
 
 
@@ -445,6 +494,7 @@ def NET() -> NormalExponentialTFamily:
 #    In fitting, nu is fixed at 0 by default; density helpers can still evaluate
 #    arbitrary nu values for R consistency checks.
 # ------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class LogNormalLocationFamily(FamilyDefinition):
@@ -459,7 +509,12 @@ def _lno_log_pdf(y, mu, sigma, nu=0.0):
     nu = jnp.asarray(nu, dtype=jnp.float64)
 
     z = jnp.where(jnp.abs(nu) > 1e-12, (jnp.power(y, nu) - 1.0) / nu, jnp.log(y))
-    log_pdf = -0.5 * jnp.log(2.0 * math.pi) - jnp.log(sigma) - 0.5 * jnp.square((z - mu) / sigma) + (nu - 1.0) * jnp.log(y)
+    log_pdf = (
+        -0.5 * jnp.log(2.0 * math.pi)
+        - jnp.log(sigma)
+        - 0.5 * jnp.square((z - mu) / sigma)
+        + (nu - 1.0) * jnp.log(y)
+    )
     return log_pdf
 
 
@@ -484,7 +539,7 @@ def _lno_p(q, mu=1.0, sigma=0.1, nu=0.0, lower_tail=True, log_p=False):
             c = 0.0
         else:
             if abs(nui) > 1e-12:
-                z = (qi ** nui - 1.0) / nui
+                z = (qi**nui - 1.0) / nui
             else:
                 z = _np.log(qi)
             c = _sn.cdf(z, loc=mui, scale=si)

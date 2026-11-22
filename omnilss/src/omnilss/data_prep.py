@@ -14,6 +14,7 @@ Documented deviations:
 * data_distinct counts factor levels including unused ones, matching
   length(table(x)); other columns count distinct non-missing values.
 """
+
 from __future__ import annotations
 
 import builtins
@@ -32,7 +33,9 @@ def _as_frame(data: Any) -> pd.DataFrame:
         return data
     if isinstance(data, Mapping):
         return pd.DataFrame(dict(data))
-    raise TypeError("the data must be a data.frame (pandas DataFrame or mapping of columns)")
+    raise TypeError(
+        "the data must be a data.frame (pandas DataFrame or mapping of columns)"
+    )
 
 
 def _emit(*args: Any, **kwargs: Any) -> None:
@@ -104,7 +107,9 @@ def data_omit(data: Any, print: bool = True) -> pd.DataFrame:
     complete = frame.dropna()
     if print:
         _print_banner(True)
-        _emit(f"the dimensions of the data before omition are: {before[0]} x {before[1]}")
+        _emit(
+            f"the dimensions of the data before omition are: {before[0]} x {before[1]}"
+        )
         _emit(
             "the dimensions of the data saved after omition are: "
             f"{complete.shape[0]} x {complete.shape[1]}"
@@ -130,7 +135,9 @@ def data_na_obs(data: Any, print: bool = True) -> dict[str, list[int]]:
 
     frame = _as_frame(data)
     positions = {
-        str(name): [int(index) for index in np.flatnonzero(frame[name].isna().to_numpy())]
+        str(name): [
+            int(index) for index in np.flatnonzero(frame[name].isna().to_numpy())
+        ]
         for name in frame.columns
     }
     if print:
@@ -181,7 +188,9 @@ def data_rm1val(data: Any, print: bool = True) -> pd.DataFrame:
     return frame.drop(columns=drop)
 
 
-def data_rm(data: Any, vars: str | int | Sequence[str | int], print: bool = True) -> pd.DataFrame:
+def data_rm(
+    data: Any, vars: str | int | Sequence[str | int], print: bool = True
+) -> pd.DataFrame:
     """R data_rm: drop the named (or index-selected) variables."""
 
     frame = _as_frame(data)
@@ -194,7 +203,11 @@ def data_rm(data: Any, vars: str | int | Sequence[str | int], print: bool = True
         if isinstance(item, str):
             names.append(item)
         else:
-            names.append(frame.columns[int(item) - 1] if int(item) >= 1 else frame.columns[int(item)])
+            names.append(
+                frame.columns[int(item) - 1]
+                if int(item) >= 1
+                else frame.columns[int(item)]
+            )
     return frame.drop(columns=[name for name in names if name in frame.columns])
 
 
@@ -203,7 +216,9 @@ def data_exclude_class(data: Any, class_out: str = "factor") -> pd.DataFrame:
 
     frame = _as_frame(data)
     if class_out == "factor":
-        mask = [isinstance(frame[name].dtype, pd.CategoricalDtype) for name in frame.columns]
+        mask = [
+            isinstance(frame[name].dtype, pd.CategoricalDtype) for name in frame.columns
+        ]
     elif class_out == "numeric":
         mask = [pd.api.types.is_numeric_dtype(frame[name]) for name in frame.columns]
     elif class_out in {"character", "string", "object"}:
@@ -240,7 +255,9 @@ def data_fac2num(data: Any, vars: str | Sequence[str]) -> pd.DataFrame:
         column = frame[name]
         if isinstance(column.dtype, pd.CategoricalDtype):
             codes = column.cat.codes.to_numpy(dtype=float)
-        elif pd.api.types.is_object_dtype(column) or pd.api.types.is_string_dtype(column):
+        elif pd.api.types.is_object_dtype(column) or pd.api.types.is_string_dtype(
+            column
+        ):
             codes = pd.Categorical(column).codes.astype(float)
         else:
             raise ValueError("At least one of the vars is not character or factor")
@@ -249,14 +266,17 @@ def data_fac2num(data: Any, vars: str | Sequence[str]) -> pd.DataFrame:
     return data_omit(frame, print=False)
 
 
-def data_int2num(data: Any, min_values: int = 50, show_str: bool = False, print: bool = True) -> pd.DataFrame:
+def data_int2num(
+    data: Any, min_values: int = 50, show_str: bool = False, print: bool = True
+) -> pd.DataFrame:
     """R data_int2num: promote large-cardinality integer columns to numeric."""
 
     frame = _as_frame(data).copy()
     integer_columns = [
         name
         for name in frame.columns
-        if pd.api.types.is_integer_dtype(frame[name]) and not isinstance(frame[name].dtype, pd.CategoricalDtype)
+        if pd.api.types.is_integer_dtype(frame[name])
+        and not isinstance(frame[name].dtype, pd.CategoricalDtype)
     ]
     if not integer_columns:
         if print:
@@ -286,7 +306,9 @@ def data_rmNAvars(data: Any) -> pd.DataFrame:
     return frame[keep]
 
 
-def data_rename(data: Any, oldnames: str | Sequence[str], newnames: str | Sequence[str]) -> pd.DataFrame:
+def data_rename(
+    data: Any, oldnames: str | Sequence[str], newnames: str | Sequence[str]
+) -> pd.DataFrame:
     """R data_rename: rename columns, keeping the position."""
 
     frame = _as_frame(data).copy()
@@ -313,7 +335,9 @@ def data_select(data: Any, vars: str | int | Sequence[str | int]) -> pd.DataFram
     return frame[[name for name in names if name in frame.columns]]
 
 
-def data_shorter_names(data: Any, max: int = 5, newnames: Sequence[str] | None = None, print: bool = True) -> pd.DataFrame:
+def data_shorter_names(
+    data: Any, max: int = 5, newnames: Sequence[str] | None = None, print: bool = True
+) -> pd.DataFrame:
     """R data_shorter_names: truncate long column names to max characters."""
 
     frame = _as_frame(data).copy()
@@ -330,7 +354,9 @@ def data_shorter_names(data: Any, max: int = 5, newnames: Sequence[str] | None =
     return frame
 
 
-def data_cut(data: Any, percentage: float | None = None, seed: int = 123, print: bool = True) -> pd.DataFrame:
+def data_cut(
+    data: Any, percentage: float | None = None, seed: int = 123, print: bool = True
+) -> pd.DataFrame:
     """R data_cut: take a random subsample of the rows.
 
     R's default percentage depends on the sample size (100% below 50k rows,
@@ -402,7 +428,9 @@ def data_part(
             _emit(f"{partition}-fold data partition")
 
     rng = np.random.default_rng(setseed)
-    draws = rng.choice(len(labels), size=frame.shape[0], p=np.asarray(weights, dtype=float))
+    draws = rng.choice(
+        len(labels), size=frame.shape[0], p=np.asarray(weights, dtype=float)
+    )
     frame["partition"] = pd.Categorical(
         [labels[index] for index in draws], categories=labels
     )
@@ -418,7 +446,9 @@ def data_part_list(
 ) -> dict[str, pd.DataFrame]:
     """R data_part_list: split the data into the partition subsets."""
 
-    marked = data_part(data, partition=partition, probs=probs, setseed=setseed, print=print)
+    marked = data_part(
+        data, partition=partition, probs=probs, setseed=setseed, print=print
+    )
     labels = list(marked["partition"].cat.categories)
     subsets = {
         label: marked.loc[marked["partition"] == label]
@@ -459,7 +489,9 @@ def data_Kfold_index(data: Any, K: int = 10, setseed: int = 123) -> np.ndarray:
     return weights * np.arange(1, frame.shape[0] + 1)[:, None]
 
 
-def data_boot_index(data: Any, B: int = 10, setseed: int = 123) -> dict[str, list[np.ndarray]]:
+def data_boot_index(
+    data: Any, B: int = 10, setseed: int = 123
+) -> dict[str, list[np.ndarray]]:
     """R data_boot_index: bootstrap in-bag (IB) and out-of-bag (OOB) indices."""
 
     frame = _as_frame(data)
@@ -581,7 +613,9 @@ def data_cha2fac(data: Any, show_str: bool = False, print: bool = True) -> pd.Da
     return frame
 
 
-def data_few2fac(data: Any, max_levels: int = 5, show_str: bool = False, print: bool = True) -> pd.DataFrame:
+def data_few2fac(
+    data: Any, max_levels: int = 5, show_str: bool = False, print: bool = True
+) -> pd.DataFrame:
     """R data_few2fac: turn columns with at most max_levels values into factors."""
 
     frame = _as_frame(data).copy()
@@ -597,11 +631,15 @@ def data_few2fac(data: Any, max_levels: int = 5, show_str: bool = False, print: 
             converted += 1
     if print:
         noun = "vector" if converted == 1 else "vectors"
-        _emit(f"{converted} {noun} with fewer number of values than {max_levels} was transformed to factor")
+        _emit(
+            f"{converted} {noun} with fewer number of values than {max_levels} was transformed to factor"
+        )
     return frame
 
 
-def data_str(data: Any, min_values: int = 100, min_levels: int = 10, print: bool = True) -> dict[str, Any]:
+def data_str(
+    data: Any, min_values: int = 100, min_levels: int = 10, print: bool = True
+) -> dict[str, Any]:
     """R data_str: per-column class/distinct summary plus casting suggestions."""
 
     frame = _as_frame(data)
@@ -624,14 +662,35 @@ def data_str(data: Any, min_values: int = 100, min_levels: int = 10, print: bool
             kind = str(column.dtype)
             count = int(column.dropna().nunique())
         rows.append(
-            {"class": kind, "dist.values": count, "name.no.ch": len(str(name)), "name": str(name)}
+            {
+                "class": kind,
+                "dist.values": count,
+                "name.no.ch": len(str(name)),
+                "name": str(name),
+            }
         )
 
     summary = pd.DataFrame(rows)
-    integer_to_factor = [row["name"] for row in rows if row["class"] == "integer" and row["dist.values"] < min_levels]
-    character_to_factor = [row["name"] for row in rows if row["class"] == "character" and row["dist.values"] < min_levels]
-    numeric_to_factor = [row["name"] for row in rows if row["class"] == "numeric" and row["dist.values"] < min_levels]
-    integer_to_numeric = [row["name"] for row in rows if row["class"] == "integer" and row["dist.values"] > min_values]
+    integer_to_factor = [
+        row["name"]
+        for row in rows
+        if row["class"] == "integer" and row["dist.values"] < min_levels
+    ]
+    character_to_factor = [
+        row["name"]
+        for row in rows
+        if row["class"] == "character" and row["dist.values"] < min_levels
+    ]
+    numeric_to_factor = [
+        row["name"]
+        for row in rows
+        if row["class"] == "numeric" and row["dist.values"] < min_levels
+    ]
+    integer_to_numeric = [
+        row["name"]
+        for row in rows
+        if row["class"] == "integer" and row["dist.values"] > min_values
+    ]
 
     if print:
         _emit(_BANNER)
@@ -644,11 +703,20 @@ def data_str(data: Any, min_values: int = 100, min_levels: int = 10, print: bool
         _emit("distinct values in variables")
         _emit(summary.to_string(index=False))
         if integer_to_factor:
-            _emit("consider to make those integer vectors into factors:", integer_to_factor)
+            _emit(
+                "consider to make those integer vectors into factors:",
+                integer_to_factor,
+            )
         if character_to_factor:
-            _emit("consider to make those characters vectors into factors:", character_to_factor)
+            _emit(
+                "consider to make those characters vectors into factors:",
+                character_to_factor,
+            )
         if numeric_to_factor:
-            _emit("consider to make those numeric vectors into factors:", numeric_to_factor)
+            _emit(
+                "consider to make those numeric vectors into factors:",
+                numeric_to_factor,
+            )
         if integer_to_numeric:
             _emit("and those integer vectors into mumeric:", integer_to_numeric)
         _emit(_BANNER)
@@ -667,13 +735,17 @@ def data_formulae(data: Any, response: str | int) -> dict[str, str]:
 
     frame = _as_frame(data)
     if isinstance(response, int):
-        response_name = str(frame.columns[response - 1] if response >= 1 else frame.columns[response])
+        response_name = str(
+            frame.columns[response - 1] if response >= 1 else frame.columns[response]
+        )
     else:
         response_name = str(response)
     if response_name not in frame.columns:
         raise ValueError("the response should be set")
     # R returns formula objects; their deparsed form separates terms with " + ".
-    predictors = " + ".join(str(name) for name in frame.columns if str(name) != response_name)
+    predictors = " + ".join(
+        str(name) for name in frame.columns if str(name) != response_name
+    )
     return {
         "main": f"{response_name} ~ {predictors}",
         "inter": f"{response_name} ~ ({predictors})^2",
@@ -703,7 +775,13 @@ def _cut_codes(values: np.ndarray, intervals: int) -> np.ndarray:
     return np.clip(codes, 0, intervals - 1)
 
 
-def void(x: Any, y: Any, plot: bool = False, print: bool = False, table_length: int | None = None):
+def void(
+    x: Any,
+    y: Any,
+    plot: bool = False,
+    print: bool = False,
+    table_length: int | None = None,
+):
     """R void(): share of empty cells in the cross-tabulation of two binned variables.
 
     R chooses table.length = floor(exp(-0.5165698 + 0.4983922 log(n))) when it is
@@ -745,7 +823,9 @@ def _check_frame(data: Any) -> pd.DataFrame:
     return frame
 
 
-def _numeric_columns(frame: pd.DataFrame, drop_small_integer: bool = False) -> pd.DataFrame:
+def _numeric_columns(
+    frame: pd.DataFrame, drop_small_integer: bool = False
+) -> pd.DataFrame:
     keep = []
     for name in frame.columns:
         column = frame[name]
@@ -794,7 +874,9 @@ def _prepare_for_correlation(
     dropped = original_columns - numeric.shape[1]
     if dropped > 0:
         warnings.warn(
-            f"{dropped} factors have been omited from the data", UserWarning, stacklevel=2
+            f"{dropped} factors have been omited from the data",
+            UserWarning,
+            stacklevel=2,
         )
     return numeric, dropped
 
@@ -1113,7 +1195,9 @@ def data_vars2data(
     if response_name not in frame.columns:
         raise ValueError(f"{response_name} is not a column of the data")
     if exclude is not None:
-        frame = frame.drop(columns=[str(name) for name in exclude if str(name) in frame.columns])
+        frame = frame.drop(
+            columns=[str(name) for name in exclude if str(name) in frame.columns]
+        )
 
     covariates = [name for name in frame.columns if name != response_name]
     terms = _expand_terms(covariates, interactions=type == "first.order")
@@ -1122,7 +1206,9 @@ def data_vars2data(
     if type == "first.order":
         design.columns = [name.replace(":", ".") for name in design.columns]
 
-    out = pd.DataFrame({response_name: frame[response_name].to_numpy()}, index=frame.index)
+    out = pd.DataFrame(
+        {response_name: frame[response_name].to_numpy()}, index=frame.index
+    )
     for name in design.columns:
         out[name] = design[name].to_numpy()
     return out
@@ -1152,7 +1238,9 @@ def data_form2X(
 
     if formula is None:
         if list(frame.columns)[0] != response_name:
-            raise ValueError("if no formula is given the response should be first in data")
+            raise ValueError(
+                "if no formula is given the response should be first in data"
+            )
         terms = [name for name in frame.columns if name != response_name]
     else:
         left, right = _split_formula(formula)
@@ -1243,7 +1331,9 @@ def data_inter(
 
     response_values = frame[response_name].to_numpy(dtype=float)
     count = response_values.shape[0]
-    weights_array = np.ones(count) if weights is None else np.asarray(weights, dtype=float)
+    weights_array = (
+        np.ones(count) if weights is None else np.asarray(weights, dtype=float)
+    )
     size = len(covariates)
     matrix = np.zeros((size, size))
     for first in range(size):
@@ -1264,9 +1354,13 @@ def data_inter(
     return pd.DataFrame(values, index=covariates, columns=covariates)
 
 
-def _weighted_rss(design: np.ndarray, response: np.ndarray, weights: np.ndarray) -> float:
+def _weighted_rss(
+    design: np.ndarray, response: np.ndarray, weights: np.ndarray
+) -> float:
     root = np.sqrt(weights)
-    coefficients, *_ = np.linalg.lstsq(design * root[:, None], response * root, rcond=None)
+    coefficients, *_ = np.linalg.lstsq(
+        design * root[:, None], response * root, rcond=None
+    )
     residuals = response - design @ coefficients
     return float(np.sum(weights * residuals**2))
 

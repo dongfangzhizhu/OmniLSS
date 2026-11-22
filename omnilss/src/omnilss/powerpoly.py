@@ -22,6 +22,7 @@ scs() is a thin variant of cs() that forwards spar/df to gamlss.cs and records
 the NA positions; the spar branch of gamlss.cs is not ported (it depends on
 smooth.spline's internal spar scaling), so only the df form can be fitted.
 """
+
 from __future__ import annotations
 
 import warnings
@@ -88,7 +89,9 @@ def pp(
 
     values = np.asarray(x, dtype=float)
     if values.ndim != 1:
-        raise ValueError("The default smoother is bivariate; you gave a matrix as an argument")
+        raise ValueError(
+            "The default smoother is bivariate; you gave a matrix as an argument"
+        )
     if start is None or len(list(start)) == 0:
         raise ValueError("no starting values for the power parameter(s) is set")
     powers = [float(value) for value in start]
@@ -204,10 +207,14 @@ def scs(
     from .smoother_controls import cs_control
 
     if np.ndim(x) == 2:
-        raise ValueError("The default smoother is bivariate; you gave a matrix as an argument")
+        raise ValueError(
+            "The default smoother is bivariate; you gave a matrix as an argument"
+        )
     values = np.asarray(x, dtype=float)
     if values.ndim != 1:
-        raise ValueError("The default smoother is bivariate; you gave a matrix as an argument")
+        raise ValueError(
+            "The default smoother is bivariate; you gave a matrix as an argument"
+        )
 
     settings = dict(control) if control is not None else cs_control(**kwargs)
     return CSSpline(

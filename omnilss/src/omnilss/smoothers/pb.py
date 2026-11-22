@@ -31,7 +31,7 @@ from omnilss.smoothers.penalties import (
 
 class PSplineResult:
     """Result from P-spline fitting.
-    
+
     Attributes
     ----------
     coefficients : jnp.ndarray
@@ -53,7 +53,7 @@ class PSplineResult:
     criterion_value : float, optional
         Value of the optimization criterion
     """
-    
+
     def __init__(
         self,
         coefficients: jnp.ndarray,
@@ -78,30 +78,30 @@ class PSplineResult:
         self.r_squared: Optional[float] = None
         self.rss: Optional[float] = None
         self.residuals: Optional[jnp.ndarray] = None
-    
+
     def predict(self, x_new: np.ndarray) -> jnp.ndarray:
         """Predict at new x values.
-        
+
         Parameters
         ----------
         x_new : np.ndarray
             New x values to predict at
-        
+
         Returns
         -------
         predictions : jnp.ndarray
             Predicted values
         """
         from omnilss.smoothers.bsplines import bspline_basis
-        
+
         # Get degree from knots
         n_basis = len(self.coefficients)
         n_knots = len(self.knots)
         degree = n_knots - n_basis - 1
-        
+
         # Compute basis at new points
         X_new = bspline_basis(jnp.array(x_new), jnp.array(self.knots), degree=degree)
-        
+
         # Predict
         return X_new @ self.coefficients
 
@@ -121,10 +121,10 @@ def fit_pspline(
     tol: float = 1e-7,
 ) -> PSplineResult:
     """Fit P-splines (penalized B-splines) to data.
-    
+
     This is the core fitting function for P-splines, implementing the algorithm
     from gamlss::pb() with automatic smoothing parameter selection.
-    
+
     Parameters
     ----------
     x : np.ndarray
@@ -157,36 +157,36 @@ def fit_pspline(
         Maximum iterations for ML method
     tol : float, default=1e-7
         Convergence tolerance for ML method
-    
+
     Returns
     -------
     result : PSplineResult
         Fitted P-spline result with additional attributes:
         - selection_method: Method used for lambda selection
         - criterion_value: Value of the optimization criterion
-    
+
     Notes
     -----
     The P-spline model minimizes:
         ||sqrt(W)(y - X beta)||^2 + lambda * beta^T D^T D beta
-    
+
     where:
     - X is the B-spline design matrix
     - D is the difference penalty matrix
     - W is the diagonal weight matrix
     - lambda is the smoothing parameter
-    
+
     Four cases are handled:
     1. lambda is fixed: Direct fit
     2. df is specified: Find lambda to achieve target df
     3. lambda is estimated: Use ML, GAIC, or GCV (legacy methods)
     4. lambda is auto-selected: Use GCV/REML/AIC from smoothing_selection module
-    
+
     The new "auto", "REML", and "AIC" methods use the smoothing_selection module
     which implements the algorithms from Wood (2011) and Craven & Wahba (1978).
-    
+
     R equivalent: gamlss::pb() and gamlss.pb(), mgcv::s()
-    
+
     Examples
     --------
     >>> # Automatic lambda selection (recommended)
@@ -194,15 +194,15 @@ def fit_pspline(
     >>> y = np.sin(2 * np.pi * x) + np.random.normal(0, 0.1, 100)
     >>> result = fit_pspline(x, y, method="auto")
     >>> print(f"Selected lambda: {result.lambda_:.4f}, EDF: {result.edf:.2f}")
-    
+
     >>> # Use REML for lambda selection
     >>> result = fit_pspline(x, y, method="REML")
-    
+
     >>> # Manual df specification
     >>> result = fit_pspline(x, y, df=5)
     >>> result.edf
     5.0
-    
+
     References
     ----------
     - Wood, S. N. (2011). Fast stable restricted maximum likelihood and marginal
@@ -213,17 +213,17 @@ def fit_pspline(
     x = np.asarray(x).ravel()
     y = np.asarray(y).ravel()
     n = len(x)
-    
+
     if len(y) != n:
         raise ValueError(f"x and y must have same length, got {n} and {len(y)}")
-    
+
     if weights is None:
         weights = np.ones(n)
     else:
         weights = np.asarray(weights).ravel()
         if len(weights) != n:
             raise ValueError(f"weights must have length {n}, got {len(weights)}")
-    
+
     # Create B-spline design matrix
     # Use inter parameter to match R gamlss::pb() default (inter=20)
     # If n_knots is explicitly provided, it takes precedence
@@ -234,22 +234,22 @@ def fit_pspline(
         X, knots = bspline_design_matrix(x, inter=20, degree=degree)
     X = jnp.array(X)
     p = X.shape[1]
-    
+
     # Create penalty matrix
     D = difference_penalty(p, order=order)
     P = penalty_matrix(p, order=order)
-    
+
     # Convert to JAX arrays
     y_jax = jnp.array(y)
     w_jax = jnp.array(weights)
-    
+
     # Case 1: lambda is fixed
     if lambda_ is not None and df is None:
         beta, edf = _fit_penalized_ls(X, y_jax, w_jax, lambda_, D, P)
         fv = X @ beta
         lambda_opt = lambda_
         selection_info = {"method": "fixed_lambda", "criterion_value": None}
-    
+
     # Case 2: df is specified
     elif df is not None:
         if df > p - 2:
@@ -260,57 +260,56 @@ def fit_pspline(
         beta, edf = _fit_penalized_ls(X, y_jax, w_jax, lambda_opt, D, P)
         fv = X @ beta
         selection_info = {"method": "fixed_df", "criterion_value": None}
-    
+
     # Case 3: estimate lambda
     else:
         # Use new smoothing_selection module for auto/REML/AIC
         if method in ["auto", "REML", "AIC"]:
             try:
                 from omnilss.smoothing_selection import select_smoothing_parameter
-                
+
                 # Map "auto" to "GCV"
                 selection_method = "GCV" if method == "auto" else method
-                
+
                 # Use the new smoothing_selection module
                 selection_result = select_smoothing_parameter(
                     X=np.asarray(X),
                     y=np.asarray(y_jax),
                     S=np.asarray(P),
                     weights=np.asarray(w_jax) if weights is not None else None,
-                    method=selection_method
+                    method=selection_method,
                 )
-                
+
                 lambda_opt = selection_result.lambda_opt
                 edf = selection_result.edf
-                
+
                 # Fit with selected lambda
                 beta, _ = _fit_penalized_ls(X, y_jax, w_jax, lambda_opt, D, P)
                 fv = X @ beta
-                
+
                 # Store selection info
                 selection_info = {
                     "method": selection_method,
                     "criterion_value": selection_result.criterion_value,
                     "converged": selection_result.converged,
-                    "n_iterations": selection_result.n_iterations
+                    "n_iterations": selection_result.n_iterations,
                 }
-                
+
             except ImportError:
                 # Fallback to GCV if smoothing_selection not available
                 import warnings
+
                 warnings.warn(
                     f"smoothing_selection module not available, falling back to legacy GCV",
-                    UserWarning
+                    UserWarning,
                 )
                 lambda_opt, beta, edf = _fit_gcv(X, y_jax, w_jax, D, P, k)
                 fv = X @ beta
                 selection_info = {"method": "GCV (legacy)", "criterion_value": None}
-        
+
         # Use legacy methods
         elif method == "ML":
-            lambda_opt, beta, edf = _fit_ml(
-                X, y_jax, w_jax, D, P, order, max_iter, tol
-            )
+            lambda_opt, beta, edf = _fit_ml(X, y_jax, w_jax, D, P, order, max_iter, tol)
             fv = X @ beta
             selection_info = {"method": "ML", "criterion_value": None}
         elif method == "GAIC":
@@ -332,13 +331,19 @@ def fit_pspline(
         design_matrix=X,
         penalty=P,
         knots=knots,
-        selection_method=selection_info.get("method") if 'selection_info' in locals() else None,
-        criterion_value=selection_info.get("criterion_value") if 'selection_info' in locals() else None,
+        selection_method=(
+            selection_info.get("method") if "selection_info" in locals() else None
+        ),
+        criterion_value=(
+            selection_info.get("criterion_value")
+            if "selection_info" in locals()
+            else None
+        ),
     )
     # Compute residual statistics
     residuals = y_jax - fv
     result.residuals = residuals
-    result.rss = float(jnp.sum(w_jax * residuals ** 2))
+    result.rss = float(jnp.sum(w_jax * residuals**2))
     ss_tot = float(jnp.sum(w_jax * (y_jax - jnp.average(y_jax, weights=w_jax)) ** 2))
     result.r_squared = 1.0 - result.rss / ss_tot if ss_tot > 0 else 0.0
     return result

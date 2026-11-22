@@ -94,7 +94,17 @@ class CentilesSplitCoverageResult:
 def centiles_data(
     object: GAMLSSModel,
     xvar: str,
-    cent: list[float] | tuple[float, ...] = (0.4, 2.0, 10.0, 25.0, 50.0, 75.0, 90.0, 98.0, 99.6),
+    cent: list[float] | tuple[float, ...] = (
+        0.4,
+        2.0,
+        10.0,
+        25.0,
+        50.0,
+        75.0,
+        90.0,
+        98.0,
+        99.6,
+    ),
     n_points: int = 100,
     how: str = "median",
     fixed_at: dict[str, float] | None = None,
@@ -133,7 +143,12 @@ def centiles_data(
     if include_observed:
         call_data = None if object.call is None else object.call.get("data")
         response_name = object.terms.get("mu", {}).get("response")
-        if call_data is not None and response_name is not None and xvar in call_data and response_name in call_data:
+        if (
+            call_data is not None
+            and response_name is not None
+            and xvar in call_data
+            and response_name in call_data
+        ):
             x_values = np.asarray(call_data[xvar], dtype=np.float64).ravel()
             y_values = np.asarray(call_data[response_name], dtype=np.float64).ravel()
             if x_limits is not None:
@@ -167,7 +182,17 @@ def centiles_data(
 def centiles_coverage_data(
     object: GAMLSSModel,
     xvar: str,
-    cent: list[float] | tuple[float, ...] = (0.4, 2.0, 10.0, 25.0, 50.0, 75.0, 90.0, 98.0, 99.6),
+    cent: list[float] | tuple[float, ...] = (
+        0.4,
+        2.0,
+        10.0,
+        25.0,
+        50.0,
+        75.0,
+        90.0,
+        98.0,
+        99.6,
+    ),
     n_points: int = 100,
     how: str = "median",
     fixed_at: dict[str, float] | None = None,
@@ -189,8 +214,16 @@ def centiles_coverage_data(
         fixed_at=fixed_at,
         include_observed=True,
     )
-    observed_x = None if centiles_result.observed_x is None else np.asarray(centiles_result.observed_x, dtype=np.float64)
-    observed_y = None if centiles_result.observed_y is None else np.asarray(centiles_result.observed_y, dtype=np.float64)
+    observed_x = (
+        None
+        if centiles_result.observed_x is None
+        else np.asarray(centiles_result.observed_x, dtype=np.float64)
+    )
+    observed_y = (
+        None
+        if centiles_result.observed_y is None
+        else np.asarray(centiles_result.observed_y, dtype=np.float64)
+    )
     rows: list[CentilesCoverageRow] = []
     for entry in centiles_result.entries:
         if observed_x is None or observed_y is None or observed_x.size == 0:
@@ -198,7 +231,11 @@ def centiles_coverage_data(
         else:
             curve = np.interp(observed_x, entry.x, entry.y)
             percent_below = float(100.0 * np.mean(observed_y <= curve))
-        rows.append(CentilesCoverageRow(centile=float(entry.centile), percent_below=percent_below))
+        rows.append(
+            CentilesCoverageRow(
+                centile=float(entry.centile), percent_below=percent_below
+            )
+        )
     return CentilesCoverageResult(
         family=centiles_result.family,
         xvar=centiles_result.xvar,
@@ -213,7 +250,17 @@ def centiles_split_data(
     xvar: str,
     xcut_points: Sequence[float] | None = None,
     n_inter: int = 4,
-    cent: list[float] | tuple[float, ...] = (0.4, 2.0, 10.0, 25.0, 50.0, 75.0, 90.0, 98.0, 99.6),
+    cent: list[float] | tuple[float, ...] = (
+        0.4,
+        2.0,
+        10.0,
+        25.0,
+        50.0,
+        75.0,
+        90.0,
+        98.0,
+        99.6,
+    ),
     n_points: int = 100,
     how: str = "median",
     overlap: float = 0.0,
@@ -253,7 +300,9 @@ def centiles_split_data(
         probabilities = np.linspace(0.0, 1.0, int(n_inter) + 1, dtype=np.float64)
         edges = np.quantile(x_values, probabilities)
     else:
-        cuts = np.asarray(tuple(float(value) for value in xcut_points), dtype=np.float64)
+        cuts = np.asarray(
+            tuple(float(value) for value in xcut_points), dtype=np.float64
+        )
         if cuts.ndim != 1:
             raise ValueError("xcut_points must be one-dimensional")
         if cuts.size == 0:
@@ -263,7 +312,9 @@ def centiles_split_data(
         if np.any(np.diff(cuts) <= 0.0):
             raise ValueError("xcut_points must be strictly increasing")
         if cuts[0] <= min_x or cuts[-1] >= max_x:
-            raise ValueError("xcut_points must lie strictly within the observed x range")
+            raise ValueError(
+                "xcut_points must lie strictly within the observed x range"
+            )
         edges = np.concatenate(([min_x], cuts, [max_x]))
 
     intervals: list[tuple[float, float]] = []
@@ -321,7 +372,17 @@ def centiles_split_coverage_data(
     xvar: str,
     xcut_points: Sequence[float] | None = None,
     n_inter: int = 4,
-    cent: list[float] | tuple[float, ...] = (0.4, 2.0, 10.0, 25.0, 50.0, 75.0, 90.0, 98.0, 99.6),
+    cent: list[float] | tuple[float, ...] = (
+        0.4,
+        2.0,
+        10.0,
+        25.0,
+        50.0,
+        75.0,
+        90.0,
+        98.0,
+        99.6,
+    ),
     n_points: int = 100,
     how: str = "median",
     overlap: float = 0.0,
@@ -348,10 +409,20 @@ def centiles_split_coverage_data(
         fixed_at=fixed_at,
         include_observed=True,
     )
-    matrix = np.full((len(split_result.centiles), len(split_result.panels)), np.nan, dtype=np.float64)
+    matrix = np.full(
+        (len(split_result.centiles), len(split_result.panels)), np.nan, dtype=np.float64
+    )
     for column_index, panel in enumerate(split_result.panels):
-        observed_x = None if panel.observed_x is None else np.asarray(panel.observed_x, dtype=np.float64)
-        observed_y = None if panel.observed_y is None else np.asarray(panel.observed_y, dtype=np.float64)
+        observed_x = (
+            None
+            if panel.observed_x is None
+            else np.asarray(panel.observed_x, dtype=np.float64)
+        )
+        observed_y = (
+            None
+            if panel.observed_y is None
+            else np.asarray(panel.observed_y, dtype=np.float64)
+        )
         for row_index, entry in enumerate(panel.entries):
             if observed_x is None or observed_y is None or observed_x.size == 0:
                 percent_below = float("nan")

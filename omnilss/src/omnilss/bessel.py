@@ -14,6 +14,7 @@ import math
 # Try to import scipy for exact Bessel functions
 try:
     from scipy.special import iv, kv, ivp, kvp
+
     SCIPY_AVAILABLE = True
 except ImportError:
     SCIPY_AVAILABLE = False
@@ -140,14 +141,15 @@ def _log_bessel_kv_jvp(primals, tangents):
 
 
 if SCIPY_AVAILABLE:
+
     @jax.custom_jvp
     def log_bessel_iv(nu, x):
         """Logarithm of modified Bessel function log(I_ν(x)) using scipy.
-        
+
         Args:
             nu: Order (scalar or array)
             x: Argument (must be positive)
-        
+
         Returns:
             log(I_ν(x))
         """
@@ -155,23 +157,19 @@ if SCIPY_AVAILABLE:
         result_shape = jax.ShapeDtypeStruct(jnp.shape(x), jnp.float64)
         # Same batching argument as log_bessel_kv below (D2.76).
         return jax.pure_callback(
-            _log_bessel_iv_scipy,
-            result_shape,
-            nu,
-            x,
-            vmap_method='expand_dims'
+            _log_bessel_iv_scipy, result_shape, nu, x, vmap_method="expand_dims"
         )
-    
+
     log_bessel_iv.defjvp(_log_bessel_iv_jvp)
-    
+
     @jax.custom_jvp
     def log_bessel_kv(nu, x):
         """Logarithm of modified Bessel function log(K_ν(x)) using scipy.
-        
+
         Args:
             nu: Order (scalar or array)
             x: Argument (must be positive)
-        
+
         Returns:
             log(K_ν(x))
         """
@@ -184,42 +182,38 @@ if SCIPY_AVAILABLE:
         # _log_bessel_kv_scipy goes through scipy.special.kve, which
         # broadcasts, so 'expand_dims' batches the whole vmap into one call.
         return jax.pure_callback(
-            _log_bessel_kv_scipy,
-            result_shape,
-            nu,
-            x,
-            vmap_method='expand_dims'
+            _log_bessel_kv_scipy, result_shape, nu, x, vmap_method="expand_dims"
         )
-    
+
     log_bessel_kv.defjvp(_log_bessel_kv_jvp)
 
 else:
     # Fallback implementations when scipy is not available
     def log_bessel_iv(nu, x):
         """Logarithm of modified Bessel function log(I_ν(x)).
-        
+
         Fallback implementation using approximations.
         """
         eps = jnp.finfo(jnp.float64).eps
         x_safe = jnp.maximum(x, eps)
         nu_abs = jnp.abs(nu)
-        
+
         # Asymptotic for large x
         log_asymptotic = (
-            x_safe 
+            x_safe
             - 0.5 * jnp.log(2.0 * math.pi * x_safe)
             - (4.0 * nu**2 - 1.0) / (8.0 * x_safe)
         )
-        
+
         # Small x approximation
         log_small_x_pos = nu_abs * jnp.log(x_safe / 2.0) - gammaln(nu_abs + 1.0)
-        
+
         # Use i0e/i1e for nu ≈ 0, 1
         log_i0 = jnp.log(jnp.maximum(i0e(x_safe), eps)) + x_safe
         log_i1 = jnp.log(jnp.maximum(i1e(x_safe), eps)) + x_safe
-        
+
         use_asymptotic = x_safe > 15.0
-        
+
         result = jnp.where(
             use_asymptotic,
             log_asymptotic,
@@ -229,58 +223,46 @@ else:
                 jnp.where(
                     jnp.abs(nu_abs - 1.0) < 0.3,
                     log_i1,
-                    jnp.where(
-                        x_safe < 2.0,
-                        log_small_x_pos,
-                        log_asymptotic
-                    )
-                )
-            )
+                    jnp.where(x_safe < 2.0, log_small_x_pos, log_asymptotic),
+                ),
+            ),
         )
-        
+
         return result
-    
+
     def log_bessel_kv(nu, x):
         """Logarithm of modified Bessel function log(K_ν(x)).
-        
+
         Fallback implementation using approximations.
         """
         eps = jnp.finfo(jnp.float64).eps
         x_safe = jnp.maximum(x, eps)
         nu_abs = jnp.abs(nu)
-        
+
         # Asymptotic for large x
         log_asymptotic = (
-            0.5 * jnp.log(math.pi / (2.0 * x_safe)) 
+            0.5 * jnp.log(math.pi / (2.0 * x_safe))
             - x_safe
             + (4.0 * nu**2 - 1.0) / (8.0 * x_safe)
         )
-        
+
         # Small x approximations
         euler_gamma = 0.5772156649015329
         k0_approx = -jnp.log(x_safe / 2.0) - euler_gamma
         log_k0_small = jnp.log(jnp.maximum(k0_approx, eps))
-        
+
         log_knu_small = gammaln(nu_abs) - jnp.log(2.0) + nu_abs * jnp.log(2.0 / x_safe)
-        
+
         crossover = 5.0 + 2.0 * nu_abs
-        
+
         result = jnp.where(
             x_safe > crossover,
             log_asymptotic,
             jnp.where(
                 nu_abs < 0.1,
-                jnp.where(
-                    x_safe < 2.0,
-                    log_k0_small,
-                    log_asymptotic
-                ),
-                jnp.where(
-                    x_safe < 2.0,
-                    log_knu_small,
-                    log_asymptotic
-                )
-            )
+                jnp.where(x_safe < 2.0, log_k0_small, log_asymptotic),
+                jnp.where(x_safe < 2.0, log_knu_small, log_asymptotic),
+            ),
         )
-        
+
         return result

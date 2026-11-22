@@ -249,9 +249,7 @@ def _dbi_log_pdf(x, mu, sigma, bd):
     y_int = jnp.round(y)
     bd_int = jnp.round(bd)
     lchoose = (
-        gammaln(bd_int + 1.0)
-        - gammaln(y_int + 1.0)
-        - gammaln(bd_int - y_int + 1.0)
+        gammaln(bd_int + 1.0) - gammaln(y_int + 1.0) - gammaln(bd_int - y_int + 1.0)
     )
 
     # R's binomial branch, verbatim: `abs(sigma - 1) < 0.001`.
@@ -296,11 +294,7 @@ def _score_factory(family):
         mu = jnp.clip(mu, _EPS, 1.0 - _EPS)
         sigma = jnp.clip(sigma, _EPS, None)
         dc_dmu = jax_grad_c(family)(mu, sigma, bd)
-        return (
-            y / (mu * sigma)
-            - (bd - y) / ((1.0 - mu) * sigma)
-            + dc_dmu
-        )
+        return y / (mu * sigma) - (bd - y) / ((1.0 - mu) * sigma) + dc_dmu
 
     def dldd(y, mu, sigma, bd=None):
         y = jnp.asarray(y, dtype=jnp.float64)
@@ -313,11 +307,12 @@ def _score_factory(family):
         logofn_y = jnp.where(bd > y, jnp.log(jnp.maximum(bd - y, _EPS)), 1.0)
         dc_ds = jax_grad_c(family, "sigma")(mu, sigma, bd)
         return (
-            (y * logofy - jnp.log(mu) * y + logofn_y * (bd - y)
-             - jnp.log1p(-mu) * (bd - y) - bd * jnp.log(jnp.maximum(bd, _EPS)))
-            / sigma**2
-            + dc_ds
-        )
+            y * logofy
+            - jnp.log(mu) * y
+            + logofn_y * (bd - y)
+            - jnp.log1p(-mu) * (bd - y)
+            - bd * jnp.log(jnp.maximum(bd, _EPS))
+        ) / sigma**2 + dc_ds
 
     return dldm, dldd
 
@@ -329,9 +324,7 @@ def jax_grad_c(family=None, arg: str = "mu"):
     def grad_fn(mu, sigma, bd):
         if arg == "mu":
             return jax.grad(lambda m: jnp.sum(_dbi_log_c(m, sigma, bd)))(mu)
-        return jax.grad(
-            lambda s: jnp.sum(_dbi_log_c(mu, s, bd))
-        )(sigma)
+        return jax.grad(lambda s: jnp.sum(_dbi_log_c(mu, s, bd)))(sigma)
 
     return grad_fn
 
@@ -341,7 +334,7 @@ def _hessian_from_score(score):
 
     def d2ld2(y, mu, sigma, bd=None):
         value = jnp.asarray(score(y, mu, sigma, bd), dtype=jnp.float64)
-        out = -value**2
+        out = -(value**2)
         return jnp.where(out < -1e-15, out, -1e-15)
 
     return d2ld2
@@ -523,9 +516,9 @@ def _dbi_cdf(q, mu, sigma, bd):
     idx = q_int.reshape(-1, 1).astype(jnp.int32)
     total = jnp.take_along_axis(flat, idx, axis=-1)[..., 0]
     # pDBI's last lines: cdf[q < 0] <- 0; cdf[q > bd] <- 1.
-    return jnp.where(
-        q_arr > bd_arr, 1.0, jnp.where(q_arr < 0.0, 0.0, total)
-    ).reshape(shape)
+    return jnp.where(q_arr > bd_arr, 1.0, jnp.where(q_arr < 0.0, 0.0, total)).reshape(
+        shape
+    )
 
 
 def _g_dev_inc(y, mu, sigma, bd=None, **_):

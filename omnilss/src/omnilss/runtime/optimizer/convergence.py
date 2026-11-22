@@ -35,7 +35,10 @@ class ConvergenceMonitor:
             return ConvergenceStatus(False, "non_finite_gradient")
         if condition_number > self.thresholds.curvature_tol:
             return ConvergenceStatus(False, "unstable_curvature")
-        if abs(deviance_delta) <= self.thresholds.deviance_delta_tol and abs(parameter_delta) <= self.thresholds.parameter_delta_tol:
+        if (
+            abs(deviance_delta) <= self.thresholds.deviance_delta_tol
+            and abs(parameter_delta) <= self.thresholds.parameter_delta_tol
+        ):
             return ConvergenceStatus(True, "deviance_and_parameter_delta")
         if abs(gradient_norm) <= self.thresholds.gradient_norm_tol:
             return ConvergenceStatus(True, "gradient_norm")

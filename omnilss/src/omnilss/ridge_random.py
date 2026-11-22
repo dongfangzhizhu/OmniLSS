@@ -21,6 +21,7 @@ fixed lambda fit agrees with R to machine precision.  The GAIC branch uses
 scipy's L-BFGS-B instead of R's PORT nlminb and therefore only agrees to the
 optimiser's tolerance (documented in the tests).
 """
+
 from __future__ import annotations
 
 import warnings
@@ -32,7 +33,7 @@ from scipy.optimize import brentq, minimize
 
 from .smoother_specs import difference_matrix
 
-_RANK_TOL = np.finfo(float).eps**0.8
+_RANK_TOL = np.finfo(float).eps ** 0.8
 
 
 @dataclass(frozen=True)
@@ -231,7 +232,9 @@ def gamlss_ri(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any):
         u = d = vt = None
         rank = 0
         for _ in range(spec.iterations):
-            penalised = np.vstack([R, np.sqrt(lambda_) * np.sqrt(omega)[:, None] * spec.D])
+            penalised = np.vstack(
+                [R, np.sqrt(lambda_) * np.sqrt(omega)[:, None] * spec.D]
+            )
             u, d, vt = np.linalg.svd(penalised, full_matrices=False)
             rank = int(np.sum(d > d.max() * _RANK_TOL))
             u1 = u[:p, :rank]
@@ -362,7 +365,9 @@ def random_spec(
     )
 
 
-def _df_inverse(n: np.ndarray, df: float, lambda_: float | None = None, iterations: int = 10) -> float:
+def _df_inverse(
+    n: np.ndarray, df: float, lambda_: float | None = None, iterations: int = 10
+) -> float:
     """R's df.inv(): solve sum(n / (n + lambda)) = df for lambda."""
 
     if df > n.shape[0]:
@@ -373,7 +378,10 @@ def _df_inverse(n: np.ndarray, df: float, lambda_: float | None = None, iteratio
     if abs((df - current) / df) < 0.0001 or iterations == 1:
         return float(lambda_)
     updated = float(
-        np.exp(np.log(lambda_) + (current - df) / np.sum((n * lambda_) / (n + lambda_) ** 2))
+        np.exp(
+            np.log(lambda_)
+            + (current - df) / np.sum((n * lambda_) / (n + lambda_) ** 2)
+        )
     )
     return _df_inverse(n, df, updated, iterations - 1)
 

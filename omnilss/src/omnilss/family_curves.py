@@ -31,6 +31,7 @@ Binomial-type families (``bd`` handling) and the ``family`` value being a
 ``gamlss.family`` object rather than a name are not ported -- they need the R
 family object / binomial denominators; pass a family name string here.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -137,9 +138,7 @@ def family_pdf(
 
     ``from_`` mirrors R's ``from`` (Python keyword avoids the reserved word).
     """
-    return _curve(
-        family, (mu, sigma, nu, tau), from_, to, no_points, "d", True
-    )
+    return _curve(family, (mu, sigma, nu, tau), from_, to, no_points, "d", True)
 
 
 def family_cdf(
@@ -158,6 +157,4 @@ def family_cdf(
 
     ``lower_tail=False`` yields the survival function (R ``lower.tail=FALSE``).
     """
-    return _curve(
-        family, (mu, sigma, nu, tau), from_, to, no_points, "p", lower_tail
-    )
+    return _curve(family, (mu, sigma, nu, tau), from_, to, no_points, "p", lower_tail)

@@ -62,7 +62,9 @@ class GAMLSSModel:
 
         if not self.formulas or not self.design_matrices:
             return
-        if isinstance(self.additional_slots, Mapping) and self.additional_slots.get("design_matrix_schema"):
+        if isinstance(self.additional_slots, Mapping) and self.additional_slots.get(
+            "design_matrix_schema"
+        ):
             return
         try:
             from .design_schema import build_design_matrix_schema
@@ -92,7 +94,9 @@ class GAMLSSModel:
 
         if self.converged is not None:
             return bool(self.converged)
-        slots = self.additional_slots if isinstance(self.additional_slots, Mapping) else {}
+        slots = (
+            self.additional_slots if isinstance(self.additional_slots, Mapping) else {}
+        )
         for key in ("converged", "rs_converged", "cg_converged", "mixed_converged"):
             if key in slots:
                 return bool(slots[key])
@@ -104,13 +108,13 @@ class GAMLSSModel:
         if slot_name in self.additional_slots:
             return self.additional_slots[slot_name]
         raise KeyError(f"no slot named {slot_name!r}")
-    
+
     @property
     def deviance(self) -> float:
         """Return the global deviance (g_dev).
-        
+
         This mirrors R's deviance.gamlss() method.
-        
+
         Returns
         -------
         deviance : float
@@ -148,12 +152,12 @@ class GAMLSSModel:
 
     def get_smooth_info(self, parameter: str = "mu") -> list[dict[str, Any]]:
         """Get information about smooth terms for a parameter.
-        
+
         Parameters
         ----------
         parameter : str, default="mu"
             Parameter name (mu, sigma, nu, tau)
-        
+
         Returns
         -------
         smooth_info : list of dict
@@ -164,7 +168,7 @@ class GAMLSSModel:
             - edf: effective degrees of freedom
             - selection_method: method used for lambda selection
             - criterion_value: value of the optimization criterion
-        
+
         Examples
         --------
         >>> model = gamlss("y ~ s(x1) + s(x2)", family="NO", data=data)
@@ -209,7 +213,6 @@ class GAMLSSModel:
             }
             for position, entry in enumerate(entries)
         ]
-    
 
     def get_method_routing(self, *, validate: bool = True) -> dict[str, Any] | None:
         """Return structured method-routing metadata from ``additional_slots``.
@@ -239,7 +242,6 @@ class GAMLSSModel:
         """Return True when structured method-routing metadata is available."""
         return self.get_method_routing(validate=False) is not None
 
-
     def get_method_routing_reason(self, *, validate: bool = True) -> str | None:
         """Return the routing reason code when routing metadata is available."""
         routing = self.get_method_routing(validate=validate)
@@ -254,7 +256,6 @@ class GAMLSSModel:
             return None
         detail = routing.get("reason_detail")
         return None if detail is None else str(detail)
-
 
     def get_method_routing_summary(self, *, validate: bool = True) -> str | None:
         """Return a compact human-readable method-routing summary string."""
@@ -277,7 +278,6 @@ class GAMLSSModel:
             suffix += f", confidence={confidence:.3f}"
         return f"requested={req} -> selected={sel} on {backend} ({reason}{suffix})"
 
-
     def explain_method_routing(self, *, validate: bool = True) -> str:
         """Return a user-facing explanation for the model routing decision."""
         detail = self.get_method_routing_reason_detail(validate=validate)
@@ -287,7 +287,6 @@ class GAMLSSModel:
         if summary is not None:
             return summary
         return "No method-routing metadata is available on this model."
-
 
     def get_method_routing_confidence(self, *, validate: bool = True) -> float | None:
         """Return routing confidence when present in routing metadata."""
@@ -303,24 +302,22 @@ class GAMLSSModel:
             return None
 
     def predict_params(
-        self,
-        newdata: dict[str, Any],
-        which: list[str] | None = None
+        self, newdata: dict[str, Any], which: list[str] | None = None
     ) -> dict[str, Any]:
         """Predict distribution parameters for new data.
-        
+
         Parameters
         ----------
         newdata : dict
             New data as {variable_name: values}
         which : list of str, optional
             Parameters to predict, defaults to all estimable parameters
-        
+
         Returns
         -------
         params : dict
             Predicted parameter values {param_name: values}
-        
+
         Examples
         --------
         >>> model = gamlss("y ~ x1 + x2", family="NO", data=train_data)
@@ -330,27 +327,28 @@ class GAMLSSModel:
         >>> print(params["sigma"])
         """
         from .prediction import predict_params
+
         return predict_params(self, newdata, which)
-    
+
     def predict_quantiles(
         self,
         newdata: dict[str, Any],
-        quantiles: list[float] = [0.05, 0.25, 0.5, 0.75, 0.95]
+        quantiles: list[float] = [0.05, 0.25, 0.5, 0.75, 0.95],
     ) -> dict[float, Any]:
         """Predict conditional quantiles for new data.
-        
+
         Parameters
         ----------
         newdata : dict
             New data as {variable_name: values}
         quantiles : list of float
             Quantiles to predict (0, 1)
-        
+
         Returns
         -------
         results : dict
             {quantile: predicted_values}
-        
+
         Examples
         --------
         >>> model = gamlss("y ~ x", family="NO", data=data)
@@ -361,6 +359,7 @@ class GAMLSSModel:
         >>> print("95% quantile:", quantiles[0.95])
         """
         from .prediction import predict_quantiles
+
         return predict_quantiles(self, newdata, quantiles)
 
     def predict_mean(self, newdata: dict[str, Any]) -> Any:
@@ -411,10 +410,10 @@ class GAMLSSModel:
         xvalues: Any | None = None,
         cent: list[float] = [5, 25, 50, 75, 95],
         n_points: int = 100,
-        **fixed_vars
+        **fixed_vars,
     ) -> Any:
         """Generate centile curves.
-        
+
         Parameters
         ----------
         xvar : str
@@ -427,17 +426,17 @@ class GAMLSSModel:
             Number of points to generate
         **fixed_vars
             Fixed values for other variables
-        
+
         Returns
         -------
         df : pd.DataFrame
             Centile curves data with columns: xvar, C5, C25, C50, C75, C95, ...
-        
+
         Examples
         --------
         >>> model = gamlss("height ~ s(age)", family="NO", data=growth_data)
         >>> curves = model.centiles(xvar="age", cent=[5, 50, 95])
-        >>> 
+        >>>
         >>> import matplotlib.pyplot as plt
         >>> for c in [5, 50, 95]:
         >>>     plt.plot(curves["age"], curves[f"C{c}"], label=f"{c}%")
@@ -445,8 +444,9 @@ class GAMLSSModel:
         >>> plt.show()
         """
         from .prediction import centiles
+
         return centiles(self, xvar, xvalues, cent, n_points, **fixed_vars)
-    
+
     def predict(
         self,
         newdata: dict[str, Any] | None = None,
@@ -456,19 +456,19 @@ class GAMLSSModel:
         terms: tuple[str, ...] | None = None,
     ) -> Any:
         """Predict response variable.
-        
+
         Parameters
         ----------
         newdata : dict
             New data as {variable_name: values}
         type : str
             Prediction type: "response", "link", or "terms"
-        
+
         Returns
         -------
         predictions : array
             Predicted values
-        
+
         Examples
         --------
         >>> model = gamlss("y ~ x", family="NO", data=data)

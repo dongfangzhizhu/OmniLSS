@@ -15,26 +15,29 @@ from .families import FamilyDefinition
 
 def _prepare_jax_args(args: tuple[Any, ...]) -> tuple[list[jnp.ndarray], bool]:
     """Broadcast scalar parameters to match vector inputs for vmapped calls.
-    
+
     Optimized version with reduced overhead.
     """
     # Fast path for common case: all arrays of same size
     arrays = [jnp.asarray(arg, dtype=jnp.float64) for arg in args]
-    
+
     # Quick check if all same size
     sizes = [int(arr.size) if arr.ndim > 0 else 1 for arr in arrays]
     target_size = max(sizes)
-    
+
     if all(s == target_size for s in sizes):
         # All same size - fast path
         scalar_output = target_size == 1
-        prepared = [jnp.reshape(arr, (-1,)) if arr.ndim > 0 else jnp.reshape(arr, (1,)) for arr in arrays]
+        prepared = [
+            jnp.reshape(arr, (-1,)) if arr.ndim > 0 else jnp.reshape(arr, (1,))
+            for arr in arrays
+        ]
         return prepared, scalar_output
-    
+
     # Slow path: need broadcasting
     scalar_output = target_size == 1 and all(arr.ndim == 0 for arr in arrays)
     prepared: list[jnp.ndarray] = []
-    
+
     for arr in arrays:
         flat = jnp.reshape(arr, (-1,)) if arr.ndim > 0 else jnp.reshape(arr, (1,))
         if flat.size == target_size:
@@ -46,7 +49,7 @@ def _prepare_jax_args(args: tuple[Any, ...]) -> tuple[list[jnp.ndarray], bool]:
                 "Arguments must be broadcastable to a common length; "
                 f"got sizes {sizes}"
             )
-    
+
     return prepared, scalar_output
 
 
@@ -125,11 +128,11 @@ def build_ad_family(
     hessian_from_score: bool | None = None,
 ) -> FamilyDefinition:
     """Build a FamilyDefinition dynamically using JAX auto-differentiation (AD).
-    
-    This factory massively accelerates adding new families to OmniLSS. 
+
+    This factory massively accelerates adding new families to OmniLSS.
     By just providing the raw mathematical scalar `log_pdf_func`, JAX AD provides
     exact analytic derivatives for score and hessian functions mapping over arrays.
-    
+
     Parameters
     ----------
     source_family : FamilyDefinition, optional
@@ -224,7 +227,12 @@ def build_ad_family(
 
     if type_ is None:
         type_ = "Continuous"
-    if family_class is None or name is None or parameters is None or log_pdf_func is None:
+    if (
+        family_class is None
+        or name is None
+        or parameters is None
+        or log_pdf_func is None
+    ):
         raise TypeError(
             "build_ad_family needs either (family_class, name, parameters, "
             "log_pdf_func) or source_family=<FamilyDefinition>"
@@ -239,10 +247,10 @@ def build_ad_family(
     for i, par in enumerate(parameters):
         idx = i + 1  # argnums=i+1 because y is arg 0
         _vmap_grads[par] = jax.jit(jax.vmap(jax.grad(log_pdf_func, argnums=idx)))
-        _vmap_hess[par] = jax.jit(jax.vmap(
-            jax.grad(jax.grad(log_pdf_func, argnums=idx), argnums=idx)
-        ))
-    
+        _vmap_hess[par] = jax.jit(
+            jax.vmap(jax.grad(jax.grad(log_pdf_func, argnums=idx), argnums=idx))
+        )
+
     # Warm-up compilation with dummy data to avoid first-call overhead
     # This significantly improves performance for small to medium datasets
     #
@@ -260,7 +268,10 @@ def build_ad_family(
     ]
     try:
         dummy_size = 10
-        dummy_args = [jnp.ones(dummy_size, dtype=jnp.float64) * 0.5 for _ in range(len(parameters) + 1)]
+        dummy_args = [
+            jnp.ones(dummy_size, dtype=jnp.float64) * 0.5
+            for _ in range(len(parameters) + 1)
+        ]
         _ = _vmap_log_pdf(*dummy_args)
         for par in ad_derived:
             _ = _vmap_grads[par](*dummy_args)
@@ -272,10 +283,10 @@ def build_ad_family(
     def _g_dev_inc(*args, **kwargs) -> jnp.ndarray:
         # Support both positional and keyword arguments
         if kwargs:
-            args = [kwargs.get('y')]
+            args = [kwargs.get("y")]
             for param in parameters:
                 args.append(kwargs.get(param))
-        
+
         args_1d, scalar_output = _prepare_jax_args(tuple(args))
         res = _vmap_log_pdf(*args_1d)
         if scalar_output:
@@ -284,13 +295,15 @@ def build_ad_family(
 
     score_functions = {}
     hessian_functions = {}
-    
+
     for par in parameters:
+
         def make_grad(p_name):
             vmap_grad = _vmap_grads[p_name]
+
             def grad_func(*args, **kwargs):
                 if kwargs:
-                    args = [kwargs.get('y')]
+                    args = [kwargs.get("y")]
                     for param in parameters:
                         args.append(kwargs.get(param))
                 args_1d, scalar_output = _prepare_jax_args(tuple(args))
@@ -298,13 +311,15 @@ def build_ad_family(
                 if scalar_output:
                     return res[0]
                 return res
+
             return grad_func
-            
+
         def make_hess(p_name):
             vmap_h = _vmap_hess[p_name]
+
             def hessian_func(*args, **kwargs):
                 if kwargs:
-                    args = [kwargs.get('y')]
+                    args = [kwargs.get("y")]
                     for param in parameters:
                         args.append(kwargs.get(param))
                 args_1d, scalar_output = _prepare_jax_args(tuple(args))
@@ -312,8 +327,9 @@ def build_ad_family(
                 if scalar_output:
                     return res[0]
                 return res
+
             return hessian_func
-            
+
         score_functions[par] = make_grad(par)
         hessian_functions[par] = make_hess(par)
 
@@ -354,12 +370,12 @@ def build_ad_family(
         """CDF function (placeholder - returns NaN for distributions without analytical CDF)."""
         q_val = jnp.asarray(args[0] if args else 0.0, dtype=jnp.float64)
         return jnp.full_like(q_val, jnp.nan)
-    
+
     def _q_placeholder(*args, lower_tail=True, log_p=False):
         """Quantile function (placeholder - returns NaN for distributions without analytical quantile)."""
         p_val = jnp.asarray(args[0] if args else 0.5, dtype=jnp.float64)
         return jnp.full_like(p_val, jnp.nan)
-    
+
     def _r_placeholder(key, n, *args):
         """Random generation (placeholder - returns NaN for distributions without implementation)."""
         return jnp.full((n,), jnp.nan, dtype=jnp.float64)
@@ -369,7 +385,7 @@ def build_ad_family(
     _p_final = p if p is not None else _p_placeholder
     _q_final = q if q is not None else _q_placeholder
     _r_final = r if r is not None else _r_placeholder
-    
+
     # A family subclass carries extra dataclass fields that describe *what it
     # is* -- TruncatedFamily.truncation_type/base_name, CensoredFamily
     # .censoring_type, and whatever a caller-defined subclass adds.  Copying
@@ -384,10 +400,22 @@ def build_ad_family(
         and _is_dataclass(source_family)
     ):
         known = {
-            "name", "parameters", "g_dev_inc", "type", "links",
-            "link_functions", "link_inverses", "link_derivatives",
-            "score_functions", "hessian_functions", "fixed_parameters",
-            "d", "p", "q", "r", "constructor_parameters",
+            "name",
+            "parameters",
+            "g_dev_inc",
+            "type",
+            "links",
+            "link_functions",
+            "link_inverses",
+            "link_derivatives",
+            "score_functions",
+            "hessian_functions",
+            "fixed_parameters",
+            "d",
+            "p",
+            "q",
+            "r",
+            "constructor_parameters",
             "fixed_parameter_defaults",
         }
         for field in _dataclass_fields(source_family):

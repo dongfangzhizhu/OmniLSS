@@ -19,6 +19,7 @@ made for gen_cens).
 distributions3.R exposes GAMLSS(), a distribution object that binds one family
 to a set of parameter values and carries pdf/cdf/quantile/random/mean/variance.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -82,7 +83,9 @@ def _log_jacobian(x: Any, type_: str) -> Any:
     return jnp.log(xs) + jnp.log1p(-xs)
 
 
-def _wrap_derivative(fn: Callable[..., Any] | None, type_: str) -> Callable[..., Any] | None:
+def _wrap_derivative(
+    fn: Callable[..., Any] | None, type_: str
+) -> Callable[..., Any] | None:
     """Rewrite a base score / hessian so it sees the transformed response.
 
     The transformation only touches y, so the derivative of the transformed
@@ -108,7 +111,9 @@ def _wrap_derivative(fn: Callable[..., Any] | None, type_: str) -> Callable[...,
     return wrapped
 
 
-def family_d(family: Any = "NO", type: str = "log", **kwargs: Any) -> Callable[..., Any]:
+def family_d(
+    family: Any = "NO", type: str = "log", **kwargs: Any
+) -> Callable[..., Any]:
     """R Family.d: density closure for the log / logit transformed family."""
 
     type_ = _check_type(type)
@@ -117,13 +122,17 @@ def family_d(family: Any = "NO", type: str = "log", **kwargs: Any) -> Callable[.
     def fun(x: Any, log: bool = False, **params: Any) -> Any:
         pv = _pv(fam, params)
         xs = jnp.asarray(x, dtype=jnp.float64)
-        log_density = fam.d(_transform(xs, type_), *pv, log=True) - _log_jacobian(xs, type_)
+        log_density = fam.d(_transform(xs, type_), *pv, log=True) - _log_jacobian(
+            xs, type_
+        )
         return log_density if log else jnp.exp(log_density)
 
     return fun
 
 
-def family_p(family: Any = "NO", type: str = "log", **kwargs: Any) -> Callable[..., Any]:
+def family_p(
+    family: Any = "NO", type: str = "log", **kwargs: Any
+) -> Callable[..., Any]:
     """R Family.p: CDF closure for the log / logit transformed family."""
 
     type_ = _check_type(type)
@@ -131,14 +140,14 @@ def family_p(family: Any = "NO", type: str = "log", **kwargs: Any) -> Callable[.
 
     def fun(q: Any, lower_tail: bool = True, log_p: bool = False, **params: Any) -> Any:
         pv = _pv(fam, params)
-        return fam.p(
-            _transform(q, type_), *pv, lower_tail=lower_tail, log_p=log_p
-        )
+        return fam.p(_transform(q, type_), *pv, lower_tail=lower_tail, log_p=log_p)
 
     return fun
 
 
-def family_q(family: Any = "NO", type: str = "log", **kwargs: Any) -> Callable[..., Any]:
+def family_q(
+    family: Any = "NO", type: str = "log", **kwargs: Any
+) -> Callable[..., Any]:
     """R Family.q: quantile closure for the log / logit transformed family."""
 
     type_ = _check_type(type)
@@ -153,7 +162,9 @@ def family_q(family: Any = "NO", type: str = "log", **kwargs: Any) -> Callable[.
     return fun
 
 
-def family_r(family: Any = "NO", type: str = "log", **kwargs: Any) -> Callable[..., Any]:
+def family_r(
+    family: Any = "NO", type: str = "log", **kwargs: Any
+) -> Callable[..., Any]:
     """R Family.r: random-generation closure for the transformed family."""
 
     type_ = _check_type(type)
@@ -183,7 +194,9 @@ class GeneratedFamily(FamilyDefinition):
         return jnp.all((values > 0.0) & (values < 1.0))
 
 
-def Family(family: Any = "NO", type: str = "log", local: bool = True, **kwargs: Any) -> GeneratedFamily:
+def Family(
+    family: Any = "NO", type: str = "log", local: bool = True, **kwargs: Any
+) -> GeneratedFamily:
     """R Family: build the log / logit transformed family object.
 
     local is accepted for call-site compatibility with R (which uses it to pick
@@ -205,12 +218,18 @@ def Family(family: Any = "NO", type: str = "log", local: bool = True, **kwargs: 
         return -2.0 * d(y, log=True, **params)
 
     score_functions = (
-        {key: _wrap_derivative(value, type_) for key, value in fam.score_functions.items()}
+        {
+            key: _wrap_derivative(value, type_)
+            for key, value in fam.score_functions.items()
+        }
         if fam.score_functions
         else None
     )
     hessian_functions = (
-        {key: _wrap_derivative(value, type_) for key, value in fam.hessian_functions.items()}
+        {
+            key: _wrap_derivative(value, type_)
+            for key, value in fam.hessian_functions.items()
+        }
         if fam.hessian_functions
         else None
     )

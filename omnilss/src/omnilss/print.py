@@ -45,12 +45,18 @@ def print_model(object: GAMLSSModel, digits: int = 6) -> str:
                     f"  coef[{index}]: estimate={value:.{digits}g} se={se:.{digits}g} t={tv:.{digits}g} p={pv:.{digits}g}"
                 )
             parts.extend(lines)
-    residual_df = float(object.additional_slots.get("df.residual", object.n - object.df_fit))
+    residual_df = float(
+        object.additional_slots.get("df.residual", object.n - object.df_fit)
+    )
     parts.append(
         f"Degrees of Freedom for the fit: {object.df_fit:.{digits}g} Residual Deg. of Freedom {residual_df:.{digits}g}"
     )
     aic = float(object.additional_slots.get("aic", gaic(object, k=2.0)))
-    sbc = float(object.additional_slots.get("sbc", gaic(object, k=float(np.log(max(object.n, 1))))))
+    sbc = float(
+        object.additional_slots.get(
+            "sbc", gaic(object, k=float(np.log(max(object.n, 1))))
+        )
+    )
     parts.append(f"Global Deviance: {object.g_dev:.{digits}g}")
     parts.append(f"Converged: {bool(object.additional_slots.get('converged', True))}")
     parts.append(f"Cycles: {int(object.additional_slots.get('cycles', object.iter))}")

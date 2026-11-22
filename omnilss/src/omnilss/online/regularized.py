@@ -10,6 +10,7 @@ without storing historical design matrices, minimizing:
 
 where ``beta_pen`` excludes coordinate 0 when ``unpenalized_first=True``.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -103,9 +104,9 @@ class RegularizedPathResult:
 
     alphas: np.ndarray
     coefs: np.ndarray  # shape (n_alphas, p)
-    rss: np.ndarray    # shape (n_alphas,)
-    df: np.ndarray     # shape (n_alphas,)
-    ic: np.ndarray     # shape (n_alphas,)
+    rss: np.ndarray  # shape (n_alphas,)
+    df: np.ndarray  # shape (n_alphas,)
+    ic: np.ndarray  # shape (n_alphas,)
     best_index: int
     criterion: str
 

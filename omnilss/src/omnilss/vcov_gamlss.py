@@ -22,7 +22,9 @@ def _require_gamlss_method(object: GAMLSSModel) -> None:
         raise TypeError("object must be a GAMLSSModel")
 
 
-def _flatten_coefficients(object: GAMLSSModel) -> tuple[np.ndarray, list[tuple[str, int]]]:
+def _flatten_coefficients(
+    object: GAMLSSModel,
+) -> tuple[np.ndarray, list[tuple[str, int]]]:
     """Flatten all parameter coefficients into a single vector with layout."""
     blocks: list[np.ndarray] = []
     layout: list[tuple[str, int]] = []
@@ -55,7 +57,11 @@ def _family_negative_loglik(
 
     deviance_kwargs: dict[str, Any] = {"y": np.asarray(object.y, dtype=np.float64)}
     deviance_kwargs.update(parameter_values)
-    weights = np.asarray(object.weights, dtype=np.float64) if object.weights is not None else np.ones(object.n, dtype=np.float64)
+    weights = (
+        np.asarray(object.weights, dtype=np.float64)
+        if object.weights is not None
+        else np.ones(object.n, dtype=np.float64)
+    )
     deviance = np.asarray(family.g_dev_inc(**deviance_kwargs), dtype=np.float64)
     return float(np.sum(0.5 * weights * deviance))
 

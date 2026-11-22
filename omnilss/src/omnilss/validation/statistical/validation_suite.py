@@ -35,7 +35,9 @@ def synthetic_normal_data(n: int, mu: float, sigma: float, seed: int = 0) -> np.
 def parameter_recovery_normal(y: np.ndarray, true_mu: float) -> RecoveryResult:
     est_mu = float(np.mean(np.asarray(y, dtype=np.float64)))
     abs_err = abs(est_mu - true_mu)
-    return RecoveryResult(true_value=true_mu, estimated_value=est_mu, absolute_error=abs_err)
+    return RecoveryResult(
+        true_value=true_mu, estimated_value=est_mu, absolute_error=abs_err
+    )
 
 
 def calibration_coverage_normal(
@@ -49,7 +51,11 @@ def calibration_coverage_normal(
     upper = mu_hat + z * sigma_hat
     observed = float(np.mean((y >= lower) & (y <= upper)))
     expected = 0.95
-    return CalibrationResult(expected_coverage=expected, observed_coverage=observed, absolute_gap=abs(observed - expected))
+    return CalibrationResult(
+        expected_coverage=expected,
+        observed_coverage=observed,
+        absolute_gap=abs(observed - expected),
+    )
 
 
 def asymptotic_consistency(errors_by_n: dict[int, float]) -> ConsistencyResult:
@@ -57,4 +63,6 @@ def asymptotic_consistency(errors_by_n: dict[int, float]) -> ConsistencyResult:
     sizes = tuple(k for k, _ in pairs)
     errs = tuple(v for _, v in pairs)
     monotone = all(errs[i + 1] <= errs[i] + 1e-12 for i in range(len(errs) - 1))
-    return ConsistencyResult(sample_sizes=sizes, errors=errs, monotone_nonincreasing=monotone)
+    return ConsistencyResult(
+        sample_sizes=sizes, errors=errs, monotone_nonincreasing=monotone
+    )

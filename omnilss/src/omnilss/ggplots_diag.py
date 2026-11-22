@@ -20,6 +20,7 @@ quirks reproduced here:
 * ``y_epdf`` rounds with R's ``format(digits=4)`` (``%.4g``) before tallying;
 * ``y_epit`` is ``rank(y, ties.method="average") / (n + 1)``.
 """
+
 from __future__ import annotations
 
 import math
@@ -28,7 +29,6 @@ from typing import Any
 
 import numpy as np
 from scipy.stats import norm, rankdata
-
 
 __all__ = [
     "EmpiricalPdfTable",
@@ -109,12 +109,13 @@ def y_symmetry(y: Any, title: str | None = None) -> SymmetryData:
     ordered = np.sort(values)
     n = ordered.size
     centre = float(np.median(values))
-    half = (n + 1) // 2                      # R floor((n+1)/2)
+    half = (n + 1) // 2  # R floor((n+1)/2)
     lower = (centre - ordered[:half])[::-1]  # R rev(m - y1[1:half])
     start = int(np.ceil((n + 1) / 2.0)) - 1  # R y1[ceiling((n+1)/2):n]
     upper = ordered[start:] - centre
     return SymmetryData(
-        lower_half=lower, upper_half=upper,
+        lower_half=lower,
+        upper_half=upper,
         title="Symmetry plot of variable y" if title is None else str(title),
     )
 
@@ -161,8 +162,11 @@ def _acf_biased(x: np.ndarray, nlags: int) -> np.ndarray:
     centred = x - float(np.mean(x))
     denom = float(np.dot(centred, centred))
     return np.array(
-        [1.0] + [float(np.dot(centred[: n - k], centred[k:])) / denom
-                 for k in range(1, nlags + 1)],
+        [1.0]
+        + [
+            float(np.dot(centred[: n - k], centred[k:])) / denom
+            for k in range(1, nlags + 1)
+        ],
         dtype=np.float64,
     )
 
@@ -221,7 +225,9 @@ def resid_index(
     """R resid_index(plot=FALSE): the plotted residual-index data frame."""
     if resid is None:
         if obj is None:
-            raise ValueError("A GAMLSS fitted object or the argument resid should be used")
+            raise ValueError(
+                "A GAMLSS fitted object or the argument resid should be used"
+            )
         resid = getattr(obj, "residuals", obj)
     sdres = _as_float_array(resid)
     obs = np.arange(1, sdres.size + 1, dtype=np.float64)
@@ -232,6 +238,11 @@ def resid_index(
     txt = np.where(color == "outlier", obs.astype(int).astype(object), None)
     flagged = obs[color == "outlier"]
     return ResidualIndexData(
-        obs=obs, sdres=sdres, color=color, fct_color=color.copy(), txt=txt,
-        outliers=flagged, threshold=float(value),
+        obs=obs,
+        sdres=sdres,
+        color=color,
+        fct_color=color.copy(),
+        txt=txt,
+        outliers=flagged,
+        threshold=float(value),
     )

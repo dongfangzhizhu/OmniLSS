@@ -29,14 +29,21 @@ import jax.numpy as jnp
 from jax.scipy.special import gammaln, digamma, polygamma
 
 from ..links import (
-    identity_link, identity_inverse, identity_derivative,
-    log_link, log_inverse, log_derivative,
-    logit_link, logit_inverse, logit_derivative,
+    identity_link,
+    identity_inverse,
+    identity_derivative,
+    log_link,
+    log_inverse,
+    log_derivative,
+    logit_link,
+    logit_inverse,
+    logit_derivative,
 )
 
 # ---------------------------------------------------------------------------
 # Data structure
 # ---------------------------------------------------------------------------
+
 
 class FamilyJAXSpec(NamedTuple):
     """Immutable specification of a GAMLSS family for JAX-native fitting.
@@ -89,6 +96,7 @@ class FamilyJAXSpec(NamedTuple):
 # Helper: build score/hessian via JAX autodiff from a log-pdf
 # ---------------------------------------------------------------------------
 
+
 def _make_ad_score_hessian(
     logpdf_fn: Callable,
     param_idx: int,
@@ -106,14 +114,18 @@ def _make_ad_score_hessian(
     _hess = jax.grad(_grad, argnums=argnums)
 
     # Vectorise over observations and JIT-cache the compiled score/Hessian.
-    _score_vmap = jax.jit(jax.vmap(
-        lambda *args: _grad(*args),
-        in_axes=(0,) + (0,) * n_params,
-    ))
-    _hess_vmap = jax.jit(jax.vmap(
-        lambda *args: _hess(*args),
-        in_axes=(0,) + (0,) * n_params,
-    ))
+    _score_vmap = jax.jit(
+        jax.vmap(
+            lambda *args: _grad(*args),
+            in_axes=(0,) + (0,) * n_params,
+        )
+    )
+    _hess_vmap = jax.jit(
+        jax.vmap(
+            lambda *args: _hess(*args),
+            in_axes=(0,) + (0,) * n_params,
+        )
+    )
 
     def score_fn(y, *params):
         return _score_vmap(y, *params)
@@ -127,6 +139,7 @@ def _make_ad_score_hessian(
 # ---------------------------------------------------------------------------
 # NO — Normal distribution
 # ---------------------------------------------------------------------------
+
 
 def make_no_spec() -> FamilyJAXSpec:
     """Build ``FamilyJAXSpec`` for the Normal (NO) distribution.
@@ -181,6 +194,7 @@ def make_no_spec() -> FamilyJAXSpec:
 # GA — Gamma distribution
 # ---------------------------------------------------------------------------
 
+
 def make_ga_spec() -> FamilyJAXSpec:
     """Build ``FamilyJAXSpec`` for the Gamma (GA) distribution.
 
@@ -213,8 +227,12 @@ def make_ga_spec() -> FamilyJAXSpec:
         y = jnp.maximum(y, eps)
         shape = 1.0 / jnp.square(sigma)
         return (2.0 / jnp.power(sigma, 3.0)) * (
-            (y / mu) - jnp.log(y) + jnp.log(mu)
-            + jnp.log(jnp.square(sigma)) - 1.0 + digamma(shape)
+            (y / mu)
+            - jnp.log(y)
+            + jnp.log(mu)
+            + jnp.log(jnp.square(sigma))
+            - 1.0
+            + digamma(shape)
         )
 
     def hess_mu(y, mu, sigma):
@@ -225,7 +243,9 @@ def make_ga_spec() -> FamilyJAXSpec:
     def hess_sigma(y, mu, sigma):
         sigma = jnp.maximum(sigma, eps)
         shape = 1.0 / jnp.square(sigma)
-        return (4.0 / jnp.power(sigma, 4.0)) - (4.0 / jnp.power(sigma, 6.0)) * polygamma(1, shape)
+        return (4.0 / jnp.power(sigma, 4.0)) - (
+            4.0 / jnp.power(sigma, 6.0)
+        ) * polygamma(1, shape)
 
     return FamilyJAXSpec(
         name="GA",
@@ -245,6 +265,7 @@ def make_ga_spec() -> FamilyJAXSpec:
 # ---------------------------------------------------------------------------
 # PO — Poisson distribution
 # ---------------------------------------------------------------------------
+
 
 def make_po_spec() -> FamilyJAXSpec:
     """Build ``FamilyJAXSpec`` for the Poisson (PO) distribution.
@@ -286,6 +307,7 @@ def make_po_spec() -> FamilyJAXSpec:
 # BI — Binomial distribution
 # ---------------------------------------------------------------------------
 
+
 def make_bi_spec(bd: float = 1.0) -> FamilyJAXSpec:
     """Build ``FamilyJAXSpec`` for the Binomial (BI) distribution.
 
@@ -312,7 +334,9 @@ def make_bi_spec(bd: float = 1.0) -> FamilyJAXSpec:
             - gammaln(y_counts + 1.0)
             - gammaln(bd_arr - y_counts + 1.0)
         )
-        return log_comb + y_counts * jnp.log(mu) + (bd_arr - y_counts) * jnp.log(1.0 - mu)
+        return (
+            log_comb + y_counts * jnp.log(mu) + (bd_arr - y_counts) * jnp.log(1.0 - mu)
+        )
 
     def score_mu(y, mu):
         mu = jnp.clip(mu, eps, 1.0 - eps)
@@ -348,6 +372,7 @@ def make_bi_spec(bd: float = 1.0) -> FamilyJAXSpec:
 # ---------------------------------------------------------------------------
 # WEI — Weibull distribution
 # ---------------------------------------------------------------------------
+
 
 def make_wei_spec() -> FamilyJAXSpec:
     """Build ``FamilyJAXSpec`` for the Weibull (WEI) distribution.
@@ -431,6 +456,7 @@ def make_wei_spec() -> FamilyJAXSpec:
 # ---------------------------------------------------------------------------
 # TF — Student-t distribution (3 parameters)
 # ---------------------------------------------------------------------------
+
 
 def make_tf_spec() -> FamilyJAXSpec:
     """Build ``FamilyJAXSpec`` for the Student-t (TF) distribution.
@@ -529,12 +555,12 @@ def make_tf_spec() -> FamilyJAXSpec:
 # ---------------------------------------------------------------------------
 
 _SPEC_BUILDERS: dict[str, Callable[[], FamilyJAXSpec]] = {
-    "NO":  make_no_spec,
-    "GA":  make_ga_spec,
-    "PO":  make_po_spec,
-    "BI":  make_bi_spec,
+    "NO": make_no_spec,
+    "GA": make_ga_spec,
+    "PO": make_po_spec,
+    "BI": make_bi_spec,
     "WEI": make_wei_spec,
-    "TF":  make_tf_spec,
+    "TF": make_tf_spec,
 }
 
 _SPEC_CACHE: dict[str, FamilyJAXSpec] = {}

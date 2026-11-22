@@ -25,10 +25,14 @@ class Formulae2DataResult:
     has_smooth_terms: bool
 
 
-def Formulae2data(formula: str, data: Mapping[str, Any], weights_key: str = "weights") -> Formulae2DataResult:
+def Formulae2data(
+    formula: str, data: Mapping[str, Any], weights_key: str = "weights"
+) -> Formulae2DataResult:
     """Build response and model matrix from a GAMLSS-style formula."""
 
-    response_name, design, labels, smooth_info = _build_design_matrix_with_smooths(formula, data)
+    response_name, design, labels, smooth_info = _build_design_matrix_with_smooths(
+        formula, data
+    )
     y = np.asarray(data[response_name], dtype=np.float64)
     if weights_key in data:
         w = np.asarray(data[weights_key], dtype=np.float64)

@@ -120,7 +120,9 @@ def _level_index(values, levels) -> np.ndarray:
     try:
         return np.array([order[value] for value in as_text], dtype=np.int64)
     except KeyError as exc:  # pragma: no cover - defensive
-        raise ValueError(f"value {exc.args[0]!r} is not one of the known levels") from exc
+        raise ValueError(
+            f"value {exc.args[0]!r} is not one of the known levels"
+        ) from exc
 
 
 def _factor_columns(values, scheme: str, prefix: str, levels=None):
@@ -411,7 +413,6 @@ def _resolve_fixed_parameter_values(
                 )
                 continue
 
-
             # Special case: BI family's bd parameter defaults to 1 (Bernoulli)
             if family.name == "BI" and parameter == "bd":
                 resolved[parameter] = np.ones(n_obs, dtype=np.float64)
@@ -423,9 +424,7 @@ def _resolve_fixed_parameter_values(
             # constant fixed_parameter_defaults mapping above.  The minimum
             # observation then sits exactly on the support edge, matching R.
             if family.name == "PARETO1o" and parameter == "mu":
-                resolved[parameter] = np.full(
-                    n_obs, float(np.min(y)), dtype=np.float64
-                )
+                resolved[parameter] = np.full(n_obs, float(np.min(y)), dtype=np.float64)
                 continue
 
             raise ValueError(
@@ -603,7 +602,10 @@ def _weighted_least_squares(
 
 
 def _require_method_family_capability(
-    family_name: str, method_name: str, *, allow_experimental: bool = True,
+    family_name: str,
+    method_name: str,
+    *,
+    allow_experimental: bool = True,
     formulas: Mapping[str, str] | None = None,
     allow_compat_alias: bool = False,
 ) -> None:
@@ -615,11 +617,15 @@ def _require_method_family_capability(
         from .family_capabilities import method_route_capability_report
 
         report = method_route_capability_report(
-            family_name, method_name, strict=not allow_experimental,
-            formulas=formulas, allow_compat_alias=allow_compat_alias,
+            family_name,
+            method_name,
+            strict=not allow_experimental,
+            formulas=formulas,
+            allow_compat_alias=allow_compat_alias,
         )
         if not report["ok"]:
             from .family_capabilities import FamilyCapabilityError
+
             raise FamilyCapabilityError(str(report["message"]))
         return
     from .family_capabilities import method_route_capability_report
@@ -628,7 +634,9 @@ def _require_method_family_capability(
     # historical opt-in policy for experimental families. Production routes use
     # require_production_family_route(), which is deliberately fail-closed.
     report = method_route_capability_report(
-        family_name, method_name, strict=not allow_experimental,
+        family_name,
+        method_name,
+        strict=not allow_experimental,
         allow_compat_alias=allow_compat_alias,
     )
     if report["code"] == "unknown_method":
@@ -1022,7 +1030,9 @@ def gamlss_ml(
     residual_values = (
         rqres_callable(**residual_kwargs)
         if rqres_callable is not None
-        else _compute_residuals(family, y, mu_for_residuals, parameter_values.get("sigma"))
+        else _compute_residuals(
+            family, y, mu_for_residuals, parameter_values.get("sigma")
+        )
     )
 
     # Compute df_fit including smooth terms
@@ -1100,8 +1110,6 @@ def gamlss_ml(
     )
 
 
-
-
 def _estimate_formula_width(formula: str) -> int | None:
     """Estimate design width from a simple mu formula string.
 
@@ -1119,7 +1127,10 @@ def _estimate_formula_width(formula: str) -> int | None:
     if not terms:
         return 1
     has_intercept = "0" not in terms and "-1" not in terms
-    return len([t for t in terms if t not in {"1", "0", "-1"}]) + (1 if has_intercept else 0)
+    return len([t for t in terms if t not in {"1", "0", "-1"}]) + (
+        1 if has_intercept else 0
+    )
+
 
 def gamlss(
     formula: str,
@@ -1322,7 +1333,9 @@ def gamlss(
         from .algorithms.censored_rs import censored_fit
 
         _cycles = (
-            max_iter if max_iter is not None else (control.n_cyc if control is not None else 20)
+            max_iter
+            if max_iter is not None
+            else (control.n_cyc if control is not None else 20)
         )
         _crit = control.c_crit if control is not None else 1e-4
         return censored_fit(
@@ -1365,7 +1378,11 @@ def gamlss(
         verbose = True
 
     if max_iter is not None:
-        if isinstance(max_iter, (bool, np.bool_)) or not isinstance(max_iter, Integral) or max_iter < 1:
+        if (
+            isinstance(max_iter, (bool, np.bool_))
+            or not isinstance(max_iter, Integral)
+            or max_iter < 1
+        ):
             raise ValueError("max_iter must be a positive integer")
         max_iter = int(max_iter)
         if control is not None:
@@ -1497,7 +1514,11 @@ def gamlss(
         threshold = getattr(decision, "threshold", None)
         if reason in {"force_jax_enabled", "explicit_method_requested"}:
             return 1.0
-        if reason in {"auto_method_disabled", "family_not_jax_supported", "cpu_backend_prefers_numpy_rs"}:
+        if reason in {
+            "auto_method_disabled",
+            "family_not_jax_supported",
+            "cpu_backend_prefers_numpy_rs",
+        }:
             return 0.95
         if threshold is None or threshold in (0, math.inf):
             return None
@@ -1505,7 +1526,6 @@ def gamlss(
             return None
         distance = abs(n_obs - int(threshold)) / max(float(threshold), 1.0)
         return max(0.5, min(0.99, 1.0 - min(distance, 1.0) * 0.5))
-
 
     # ── Device-aware RS routing ──────────────────────────────────────────────
     # ``method="RS"`` is the public default and now participates in the same
@@ -1536,11 +1556,15 @@ def gamlss(
         _p_est = _estimate_formula_width(formula)
         if method_name == "RS_JAX" and _p_est is not None and _p_est <= 4:
             method_name = "RS"
-            _decision = type("Decision", (), {
-                "reason": "small_p_prefers_numpy_rs",
-                "backend": _backend,
-                "threshold": _decision.threshold,
-            })
+            _decision = type(
+                "Decision",
+                (),
+                {
+                    "reason": "small_p_prefers_numpy_rs",
+                    "backend": _backend,
+                    "threshold": _decision.threshold,
+                },
+            )
         routing_decision = _cfg.build_method_routing_decision(
             requested_method=requested_method,
             selected_method=method_name,
@@ -1591,7 +1615,9 @@ def gamlss(
                     parameter_formulas=parameter_formulas,
                 )
                 for _param in family.estimable_parameters:
-                    _, _X_param, _ = _build_design_matrix(resolved_formulas[_param], data)
+                    _, _X_param, _ = _build_design_matrix(
+                        resolved_formulas[_param], data
+                    )
                     p_total += int(_X_param.shape[1])
                 if p_total <= 4:
                     method_name = "RS"
@@ -1671,7 +1697,9 @@ def gamlss(
 
     if family.name.upper() in family_capability_names():
         _require_method_family_capability(
-            family.name, method_name, allow_experimental=not strict_capabilities,
+            family.name,
+            method_name,
+            allow_experimental=not strict_capabilities,
             formulas={
                 "mu": formula,
                 "sigma": sigma_formula,
@@ -1802,7 +1830,11 @@ def gamlss(
             sigma_formula=sigma_formula,
             parameter_formulas=parameter_formulas,
             weights=weights,
-            max_iter=max_iter if max_iter is not None else (control.n_cyc if control is not None else 20),
+            max_iter=(
+                max_iter
+                if max_iter is not None
+                else (control.n_cyc if control is not None else 20)
+            ),
             tol=control.c_crit if control is not None else 1e-4,
             verbose=verbose,
             routing_decision=routing_decision,
@@ -1833,7 +1865,11 @@ def gamlss(
                 family=family,
                 data=dict(data),
                 weights=weights,
-                max_iter=max_iter if max_iter is not None else (control.n_cyc if control is not None else 20),
+                max_iter=(
+                    max_iter
+                    if max_iter is not None
+                    else (control.n_cyc if control is not None else 20)
+                ),
                 tol=control.c_crit if control is not None else 1e-4,
                 verbose=verbose,
                 start_values=start_values or None,
@@ -1859,9 +1895,11 @@ def gamlss(
         mixed_n1 = optimizer_kwargs.pop("mixed_n1", 1)
         mixed_n2 = optimizer_kwargs.pop(
             "mixed_n2",
-            max_iter
-            if max_iter is not None
-            else (control.n_cyc if control is not None else 20),
+            (
+                max_iter
+                if max_iter is not None
+                else (control.n_cyc if control is not None else 20)
+            ),
         )
         return mixed_fit(
             formula=formula,
@@ -1890,7 +1928,11 @@ def gamlss(
             family=family,
             data=data,
             algorithm="auto",
-            max_iter=max_iter if max_iter is not None else (control.n_cyc if control is not None else 20),
+            max_iter=(
+                max_iter
+                if max_iter is not None
+                else (control.n_cyc if control is not None else 20)
+            ),
             tol=control.c_crit if control is not None else 1e-4,
             verbose=verbose,
         )

@@ -35,10 +35,10 @@ from ..model import GAMLSSModel
 from .jax_family_specs import get_jax_spec, supported_families
 from .jax_rs_core import jax_rs_fit_core
 
-
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
 
 def gamlss_rs_jax(
     formula: str,
@@ -120,8 +120,8 @@ def gamlss_rs_jax(
         )
 
     # ── Controls ────────────────────────────────────────────────────────────
-    control   = gamlss_control() if control is None else control
-    i_control = glim_control()   if i_control is None else i_control
+    control = gamlss_control() if control is None else control
+    i_control = glim_control() if i_control is None else i_control
 
     # ── Import fitting helpers (reuse existing infrastructure) ──────────────
     from ..fitting import (
@@ -160,7 +160,11 @@ def gamlss_rs_jax(
     # ── Data preparation ─────────────────────────────────────────────────────
     y = np.asarray(data[response_name], dtype=np.float64)
     n = len(y)
-    w = np.ones(n, dtype=np.float64) if weights is None else np.asarray(weights, dtype=np.float64)
+    w = (
+        np.ones(n, dtype=np.float64)
+        if weights is None
+        else np.asarray(weights, dtype=np.float64)
+    )
 
     fixed_parameter_values = _resolve_fixed_parameter_values(family, data, n, y)
 
@@ -168,14 +172,14 @@ def gamlss_rs_jax(
     design_matrices_np: dict[str, np.ndarray] = {}
     # D2.136b: categorical coding state for prediction-time rebuild.
     factor_spec: dict[str, dict[str, Any]] = {}
-    predictor_labels:   dict[str, list[str]]  = {}
+    predictor_labels: dict[str, list[str]] = {}
 
     for param in family.estimable_parameters:
         _, X_param, labels_param = _build_design_matrix(
             resolved_formulas[param], data, contrasts, factor_spec
         )
         design_matrices_np[param] = X_param
-        predictor_labels[param]   = labels_param
+        predictor_labels[param] = labels_param
 
     # ── Initialise parameters ─────────────────────────────────────────────────
     init_t0 = time.perf_counter()
@@ -195,9 +199,7 @@ def gamlss_rs_jax(
             eta_work = X_mu @ beta_mu
             p_work = np.clip(1.0 / (1.0 + np.exp(-eta_work)), 1e-6, 1.0 - 1e-6)
             ww = np.clip(p_work * (1.0 - p_work) * w, 1e-10, 1e10)
-            z = eta_work + (y - p_work) / np.clip(
-                p_work * (1.0 - p_work), 1e-10, None
-            )
+            z = eta_work + (y - p_work) / np.clip(p_work * (1.0 - p_work), 1e-10, None)
             sqrt_ww = np.sqrt(ww)
             beta_next, _, _, _ = np.linalg.lstsq(
                 X_mu * sqrt_ww[:, None], z * sqrt_ww, rcond=None
@@ -210,46 +212,59 @@ def gamlss_rs_jax(
         # Weibull uses a log link for mu; log-y least squares gives a stable
         # shape-independent slope cold-start and lets subsequent RS updates
         # refine the scale and shape jointly.
-        beta_mu, _, _, _ = np.linalg.lstsq(
-            X_mu, np.log(np.maximum(y, eps)), rcond=None
-        )
+        beta_mu, _, _, _ = np.linalg.lstsq(X_mu, np.log(np.maximum(y, eps)), rcond=None)
     else:
         beta_mu = _initial_mu_beta(
-            family, X_mu, y, w,
+            family,
+            X_mu,
+            y,
+            w,
             fixed_parameter_values=fixed_parameter_values,
         )
 
     beta_norm_first_step = float(np.linalg.norm(beta_mu))
     beta_explosion_threshold = 1e4
     beta_fallback_applied = False
-    if not np.isfinite(beta_norm_first_step) or beta_norm_first_step > beta_explosion_threshold:
+    if (
+        not np.isfinite(beta_norm_first_step)
+        or beta_norm_first_step > beta_explosion_threshold
+    ):
         beta_mu = _initial_mu_beta(
-            family, X_mu, y, w,
+            family,
+            X_mu,
+            y,
+            w,
             fixed_parameter_values=fixed_parameter_values,
         )
         beta_norm_first_step = float(np.linalg.norm(beta_mu))
         beta_fallback_applied = True
     eta_mu = X_mu @ beta_mu
-    mu     = np.asarray(family.link_inverses["mu"](jnp.asarray(eta_mu)), dtype=np.float64)
+    mu = np.asarray(family.link_inverses["mu"](jnp.asarray(eta_mu)), dtype=np.float64)
 
     init_params_list: list[np.ndarray] = [mu]
-    init_etas_list:   list[np.ndarray] = [eta_mu]
+    init_etas_list: list[np.ndarray] = [eta_mu]
 
     for param in family.estimable_parameters:
         if param == "mu":
             continue
         if param == "sigma":
-            init_val = _initial_sigma(family, y, mu, w, fixed_parameter_values=fixed_parameter_values)
+            init_val = _initial_sigma(
+                family, y, mu, w, fixed_parameter_values=fixed_parameter_values
+            )
         else:
             init_val = _initial_parameter_value(family, param, y, mu, w)
 
-        X_param  = design_matrices_np[param]
-        eta_init = np.full(n, float(
-            np.asarray(family.link_functions[param](jnp.asarray([init_val])))[0]
-        ), dtype=np.float64)
+        X_param = design_matrices_np[param]
+        eta_init = np.full(
+            n,
+            float(np.asarray(family.link_functions[param](jnp.asarray([init_val])))[0]),
+            dtype=np.float64,
+        )
         beta_init, _, _, _ = np.linalg.lstsq(X_param, eta_init, rcond=None)
         eta_param = X_param @ beta_init
-        param_val = np.asarray(family.link_inverses[param](jnp.asarray(eta_param)), dtype=np.float64)
+        param_val = np.asarray(
+            family.link_inverses[param](jnp.asarray(eta_param)), dtype=np.float64
+        )
 
         init_params_list.append(param_val)
         init_etas_list.append(eta_param)
@@ -266,10 +281,12 @@ def gamlss_rs_jax(
     # ── Cold-start only: do not run NumPy RS for initialization. ──────────────
 
     # ── Convert to JAX arrays ─────────────────────────────────────────────────
-    y_jax   = jnp.asarray(y, dtype=jnp.float64)
-    w_jax   = jnp.asarray(w, dtype=jnp.float64)
-    Xs_jax  = tuple(jnp.asarray(design_matrices_np[p], dtype=jnp.float64)
-                    for p in family.estimable_parameters)
+    y_jax = jnp.asarray(y, dtype=jnp.float64)
+    w_jax = jnp.asarray(w, dtype=jnp.float64)
+    Xs_jax = tuple(
+        jnp.asarray(design_matrices_np[p], dtype=jnp.float64)
+        for p in family.estimable_parameters
+    )
 
     init_params_jax = jnp.stack(
         [jnp.asarray(p, dtype=jnp.float64) for p in init_params_list], axis=0
@@ -282,8 +299,10 @@ def gamlss_rs_jax(
 
     # ── Run JAX RS core ───────────────────────────────────────────────────────
     if verbose:
-        print(f"[RS_JAX] Family: {family.name}, n={n}, "
-              f"params={list(family.estimable_parameters)}")
+        print(
+            f"[RS_JAX] Family: {family.name}, n={n}, "
+            f"params={list(family.estimable_parameters)}"
+        )
 
     core_t0 = time.perf_counter()
     result = jax_rs_fit_core(
@@ -294,14 +313,16 @@ def gamlss_rs_jax(
         obs_weights=w_jax,
         spec=spec,
         max_outer=control.n_cyc,
-        max_inner=max_inner,   # default 1 IRLS step per outer iteration
+        max_inner=max_inner,  # default 1 IRLS step per outer iteration
         eta_clip_scale=3.0,
         tol=control.c_crit,
     )
 
     if verbose:
-        print(f"[RS_JAX] Converged={result.converged}, "
-              f"iterations={result.iterations}, deviance={result.g_dev:.6f}")
+        print(
+            f"[RS_JAX] Converged={result.converged}, "
+            f"iterations={result.iterations}, deviance={result.g_dev:.6f}"
+        )
 
     core_rs_time = time.perf_counter() - core_t0
     sync_t0 = time.perf_counter()
@@ -311,25 +332,26 @@ def gamlss_rs_jax(
     # ── Unpack result ─────────────────────────────────────────────────────────
     param_names = list(family.estimable_parameters)
     fitted_vals_np: dict[str, np.ndarray] = {}
-    etas_np:        dict[str, np.ndarray] = {}
-    betas_np:       dict[str, np.ndarray] = {}
+    etas_np: dict[str, np.ndarray] = {}
+    betas_np: dict[str, np.ndarray] = {}
 
     for k, param in enumerate(param_names):
         fitted_vals_np[param] = np.asarray(result.params[k], dtype=np.float64)
-        etas_np[param]        = np.asarray(result.etas[k],   dtype=np.float64)
-        betas_np[param]       = np.asarray(result.betas[k],  dtype=np.float64)
+        etas_np[param] = np.asarray(result.etas[k], dtype=np.float64)
+        betas_np[param] = np.asarray(result.betas[k], dtype=np.float64)
 
     # Add fixed parameters
     for param, val in fixed_parameter_values.items():
         fitted_vals_np[param] = val
 
-    p_total = int(sum(design_matrices_np[p].shape[1] for p in family.estimable_parameters))
+    p_total = int(
+        sum(design_matrices_np[p].shape[1] for p in family.estimable_parameters)
+    )
     suggested_backend = "numpy" if p_total <= 4 else "jax"
 
     # ── Build GAMLSSModel ─────────────────────────────────────────────────────
     fitted_values_jax = {
-        p: jnp.asarray(fitted_vals_np[p], dtype=jnp.float64)
-        for p in family.parameters
+        p: jnp.asarray(fitted_vals_np[p], dtype=jnp.float64) for p in family.parameters
     }
     coefficients_jax = {
         p: jnp.asarray(betas_np[p], dtype=jnp.float64)
@@ -355,8 +377,10 @@ def gamlss_rs_jax(
         p: linear_predictors_jax.get(p, jnp.zeros(n, dtype=jnp.float64))
         for p in family.parameters
     }
-    iterative_weights_jax = {p: jnp.ones(n, dtype=jnp.float64) for p in family.parameters}
-    offsets_jax           = {p: jnp.zeros(n, dtype=jnp.float64) for p in family.parameters}
+    iterative_weights_jax = {
+        p: jnp.ones(n, dtype=jnp.float64) for p in family.parameters
+    }
+    offsets_jax = {p: jnp.zeros(n, dtype=jnp.float64) for p in family.parameters}
 
     # Terms
     terms: dict[str, Any] = {}
@@ -366,14 +390,14 @@ def gamlss_rs_jax(
         else:
             terms[param] = {
                 "term_labels": predictor_labels.get(param, []),
-                "response":    response_name,
-                "intercept":   True,
-                "formula":     resolved_formulas[param],
+                "response": response_name,
+                "intercept": True,
+                "formula": resolved_formulas[param],
             }
 
     # Residuals
     rqres_callable = _build_rqres_callable(family)
-    mu_final    = fitted_vals_np.get("mu",    np.zeros(n))
+    mu_final = fitted_vals_np.get("mu", np.zeros(n))
     sigma_final = fitted_vals_np.get("sigma", None)
     if rqres_callable is not None:
         residual_values = rqres_callable(y=y, mu=mu_final, sigma=sigma_final)
@@ -418,10 +442,10 @@ def gamlss_rs_jax(
         type=family.type,
         parameters=tuple(family.parameters),
         call={
-            "data":              data,
-            "formula":           resolved_formulas["mu"],
+            "data": data,
+            "formula": resolved_formulas["mu"],
             "parameter_formulas": dict(resolved_formulas),
-            "method":            "RS_JAX",
+            "method": "RS_JAX",
         },
         control={"n.cyc": control.n_cyc, **asdict(control)},
         additional_slots={
@@ -431,15 +455,15 @@ def gamlss_rs_jax(
             "factor_contrasts": {
                 name: spec["scheme"] for name, spec in factor_spec.items()
             },
-            "method":          "RS_JAX",
-            "G.deviance":      result.g_dev,
-            "P.deviance":      result.g_dev,
-            "noObs":           int(n),
-            "aic":             result.g_dev + 2.0 * df_fit,
-            "sbc":             result.g_dev + np.log(max(n, 1)) * df_fit,
-            "df.residual":     float(n - df_fit),
-            "converged":       result.converged,
-            "cycles":          result.iterations,
+            "method": "RS_JAX",
+            "G.deviance": result.g_dev,
+            "P.deviance": result.g_dev,
+            "noObs": int(n),
+            "aic": result.g_dev + 2.0 * df_fit,
+            "sbc": result.g_dev + np.log(max(n, 1)) * df_fit,
+            "df.residual": float(n - df_fit),
+            "converged": result.converged,
+            "cycles": result.iterations,
             "rs_jax_max_inner": max_inner,
             "method_routing": routing_decision,
             "timing_split": {
@@ -505,7 +529,9 @@ def gamlss_rs_jax_batch(
 
     if isinstance(weights, list):
         if len(weights) != k_models:
-            raise ValueError("weights must be one value or one weight vector per dataset.")
+            raise ValueError(
+                "weights must be one value or one weight vector per dataset."
+            )
         weights_list = weights
     else:
         weights_list = [weights for _ in range(k_models)]

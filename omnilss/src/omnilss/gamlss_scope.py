@@ -7,6 +7,7 @@ stepwise model-selection helpers.  For each predictor that R considers a vector
 it appends a smooth call; factors (categorical columns) get only the linear
 term, matching R's is.vector() test.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -20,7 +21,9 @@ def _is_vector_column(values: Any) -> bool:
     try:  # pandas Categorical / factor is NOT a vector in R
         import pandas as pd
 
-        if isinstance(values, pd.Series) and isinstance(values.dtype, pd.CategoricalDtype):
+        if isinstance(values, pd.Series) and isinstance(
+            values.dtype, pd.CategoricalDtype
+        ):
             return False
     except Exception:  # pragma: no cover - pandas is optional here
         pass

@@ -138,7 +138,10 @@ _BUILTIN_FAMILY_FACTORIES: dict[str, tuple[str, str]] = {
     # gamlss.dist calls this family DEL (Delaporte); keep DELAPORT as a
     # compatibility spelling, backed by the shared DEL kernels.
     "DELAPORT": ("omnilss.distributions_b13", "DELAPORT"),
-    "GENERALISEDPOISSON": ("omnilss.distributions_generalisedpoisson_compat", "GENERALISEDPOISSON"),
+    "GENERALISEDPOISSON": (
+        "omnilss.distributions_generalisedpoisson_compat",
+        "GENERALISEDPOISSON",
+    ),
     "GP": ("omnilss.distributions_gp_compat", "GP"),
     "ZASICHEL": ("omnilss.distributions_b10_zero_alias_compat", "ZASICHEL"),
     "ZISICHEL": ("omnilss.distributions_b10_zero_alias_compat", "ZISICHEL"),

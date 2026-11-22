@@ -13,7 +13,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .families import FamilyDefinition
-from .links import identity_derivative, identity_inverse, identity_link, log_derivative, log_inverse, log_link
+from .links import (
+    identity_derivative,
+    identity_inverse,
+    identity_link,
+    log_derivative,
+    log_inverse,
+    log_link,
+)
 
 
 @dataclass(frozen=True)
@@ -105,9 +112,9 @@ def _st1_log_pdf(y, mu, sigma, nu, tau):
     import jax.numpy as jnp
     from jax.scipy.stats import t as t_dist
 
-    z = (jnp.asarray(y, dtype=jnp.float64) - jnp.asarray(mu, dtype=jnp.float64)) / jnp.asarray(
-        sigma, dtype=jnp.float64
-    )
+    z = (
+        jnp.asarray(y, dtype=jnp.float64) - jnp.asarray(mu, dtype=jnp.float64)
+    ) / jnp.asarray(sigma, dtype=jnp.float64)
     tau_v = jnp.asarray(tau, dtype=jnp.float64)
     tau_safe = jnp.maximum(tau_v, 1e-6)
     w = jnp.asarray(nu, dtype=jnp.float64) * z
@@ -137,9 +144,9 @@ def _st2_log_pdf(y, mu, sigma, nu, tau):
     import jax.numpy as jnp
     from jax.scipy.stats import t as t_dist
 
-    z = (jnp.asarray(y, dtype=jnp.float64) - jnp.asarray(mu, dtype=jnp.float64)) / jnp.asarray(
-        sigma, dtype=jnp.float64
-    )
+    z = (
+        jnp.asarray(y, dtype=jnp.float64) - jnp.asarray(mu, dtype=jnp.float64)
+    ) / jnp.asarray(sigma, dtype=jnp.float64)
     tau_v = jnp.asarray(tau, dtype=jnp.float64)
     tau_safe = jnp.maximum(tau_v, 1e-6)
     z2 = z * z
@@ -245,9 +252,9 @@ def _st_dldt_fd(w, df, t_dist, step):
     """
     import jax.numpy as jnp
 
-    return (
-        jnp.log(_t_cdf_jax(w, df + step)) - jnp.log(_t_cdf_jax(w, df - step))
-    ) / (2.0 * step)
+    return (jnp.log(_t_cdf_jax(w, df + step)) - jnp.log(_t_cdf_jax(w, df - step))) / (
+        2.0 * step
+    )
 
 
 def _st_score_and_hessian(y, mu, sigma, nu, tau, is_st2, want_hessian=False):
@@ -301,18 +308,16 @@ def _make_st_derivative_tables(is_st2):
     """Build the eight R-derivative callables for one family."""
 
     def _table(y, mu, sigma, nu, tau):
-        return _st_score_and_hessian(
-            y, mu, sigma, nu, tau, is_st2, want_hessian=True
-        )
+        return _st_score_and_hessian(y, mu, sigma, nu, tau, is_st2, want_hessian=True)
 
     scores, hess = {}, {}
     for key in ("mu", "sigma", "nu", "tau"):
-        scores[key] = (
-            lambda y, mu, sigma, nu, tau, _k=key: _table(y, mu, sigma, nu, tau)[0][_k]
-        )
-        hess[key] = (
-            lambda y, mu, sigma, nu, tau, _k=key: _table(y, mu, sigma, nu, tau)[1][_k]
-        )
+        scores[key] = lambda y, mu, sigma, nu, tau, _k=key: _table(
+            y, mu, sigma, nu, tau
+        )[0][_k]
+        hess[key] = lambda y, mu, sigma, nu, tau, _k=key: _table(y, mu, sigma, nu, tau)[
+            1
+        ][_k]
     return scores, hess
 
 
@@ -372,8 +377,12 @@ def _build_st1_st2(name, family_class, log_pdf_func):
                 val = 1.0
             else:
                 val, _ = quad(
-                    lambda z: _density(z, ni, ti), -np.inf, z_q,
-                    limit=400, epsabs=1e-12, epsrel=1e-12,
+                    lambda z: _density(z, ni, ti),
+                    -np.inf,
+                    z_q,
+                    limit=400,
+                    epsabs=1e-12,
+                    epsrel=1e-12,
                 )
             out.append(float(min(max(val, 0.0), 1.0)))
 
@@ -411,7 +420,14 @@ def _build_st1_st2(name, family_class, log_pdf_func):
                 continue
 
             def obj(x, _pv=pv, _mui=mui, _si=si, _ni=ni, _ti=ti):
-                return float(np.asarray(_st_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(-1)[0]) - _pv
+                return (
+                    float(
+                        np.asarray(_st_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(
+                            -1
+                        )[0]
+                    )
+                    - _pv
+                )
 
             # R ST1.R/ST2.R strategy: start from mu and expand one sigma at a
             # time until the bracket contains the root (mirrors uniroot usage).
@@ -487,9 +503,24 @@ def _build_st1_st2(name, family_class, log_pdf_func):
         score_overrides=_scores,
         hessian_overrides=_hess,
         links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
-        link_functions={"mu": identity_link, "sigma": log_link, "nu": identity_link, "tau": log_link},
-        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": identity_inverse, "tau": log_inverse},
-        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": identity_derivative, "tau": log_derivative},
+        link_functions={
+            "mu": identity_link,
+            "sigma": log_link,
+            "nu": identity_link,
+            "tau": log_link,
+        },
+        link_inverses={
+            "mu": identity_inverse,
+            "sigma": log_inverse,
+            "nu": identity_inverse,
+            "tau": log_inverse,
+        },
+        link_derivatives={
+            "mu": identity_derivative,
+            "sigma": log_derivative,
+            "nu": identity_derivative,
+            "tau": log_derivative,
+        },
         p=_st_p,
         q=_st_q,
         r=_st_r,
@@ -539,9 +570,24 @@ def ST3() -> FamilyDefinition:
         q=_st3_q,
         r=_st3_r,
         links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "log"},
-        link_functions={"mu": identity_link, "sigma": log_link, "nu": log_link, "tau": log_link},
-        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
-        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative, "tau": log_derivative},
+        link_functions={
+            "mu": identity_link,
+            "sigma": log_link,
+            "nu": log_link,
+            "tau": log_link,
+        },
+        link_inverses={
+            "mu": identity_inverse,
+            "sigma": log_inverse,
+            "nu": log_inverse,
+            "tau": log_inverse,
+        },
+        link_derivatives={
+            "mu": identity_derivative,
+            "sigma": log_derivative,
+            "nu": log_derivative,
+            "tau": log_derivative,
+        },
     )
 
 
@@ -550,15 +596,22 @@ def _st3_log_pdf(y, mu, sigma, nu, tau):
     import jax.numpy as _jnp
     from jax.scipy.stats import t as _jt
 
-    sigma = _jnp.maximum(_jnp.asarray(sigma, dtype=_jnp.float64), _jnp.finfo(_jnp.float64).eps)
-    nu = _jnp.maximum(_jnp.asarray(nu, dtype=_jnp.float64), _jnp.finfo(_jnp.float64).eps)
-    tau = _jnp.maximum(_jnp.asarray(tau, dtype=_jnp.float64), _jnp.finfo(_jnp.float64).eps)
+    sigma = _jnp.maximum(
+        _jnp.asarray(sigma, dtype=_jnp.float64), _jnp.finfo(_jnp.float64).eps
+    )
+    nu = _jnp.maximum(
+        _jnp.asarray(nu, dtype=_jnp.float64), _jnp.finfo(_jnp.float64).eps
+    )
+    tau = _jnp.maximum(
+        _jnp.asarray(tau, dtype=_jnp.float64), _jnp.finfo(_jnp.float64).eps
+    )
     y = _jnp.asarray(y, dtype=_jnp.float64)
     mu = _jnp.asarray(mu, dtype=_jnp.float64)
     z = (y - mu) / sigma
     log_norm = _jnp.log(2.0 * nu / (1.0 + nu * nu)) - _jnp.log(sigma)
-    return _jnp.where(y < mu, _jt.logpdf(nu * z, tau) + log_norm,
-                      _jt.logpdf(z / nu, tau) + log_norm)
+    return _jnp.where(
+        y < mu, _jt.logpdf(nu * z, tau) + log_norm, _jt.logpdf(z / nu, tau) + log_norm
+    )
 
 
 def _st3_p(q, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False):
@@ -566,17 +619,23 @@ def _st3_p(q, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False)
     import jax.numpy as jnp
     from scipy.stats import t as _spt
 
-    q_arr, mu_arr, sigma_arr, nu_arr, tau_arr = [_np.atleast_1d(_np.asarray(v, dtype=_np.float64))
-        for v in (q, mu, sigma, nu, tau)]
+    q_arr, mu_arr, sigma_arr, nu_arr, tau_arr = [
+        _np.atleast_1d(_np.asarray(v, dtype=_np.float64))
+        for v in (q, mu, sigma, nu, tau)
+    ]
     n = max(map(len, (q_arr, mu_arr, sigma_arr, nu_arr, tau_arr)))
     out = []
     for i in range(n):
-        qi, mi, si, ni, ti = [float(v[i % len(v)]) for v in (q_arr, mu_arr, sigma_arr, nu_arr, tau_arr)]
+        qi, mi, si, ni, ti = [
+            float(v[i % len(v)]) for v in (q_arr, mu_arr, sigma_arr, nu_arr, tau_arr)
+        ]
         z = (qi - mi) / si
         if qi < mi:
             value = 2.0 * _spt.cdf(ni * z, ti) / (1.0 + ni * ni)
         else:
-            value = (1.0 + 2.0 * ni * ni * (_spt.cdf(z / ni, ti) - 0.5)) / (1.0 + ni * ni)
+            value = (1.0 + 2.0 * ni * ni * (_spt.cdf(z / ni, ti) - 0.5)) / (
+                1.0 + ni * ni
+            )
         out.append(value)
     result = _np.asarray(out)
     if not lower_tail:
@@ -591,8 +650,10 @@ def _st3_q(p, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False)
     import jax.numpy as jnp
     from scipy.stats import t as _spt
 
-    p_arr, mu_arr, sigma_arr, nu_arr, tau_arr = [_np.atleast_1d(_np.asarray(v, dtype=_np.float64))
-        for v in (p, mu, sigma, nu, tau)]
+    p_arr, mu_arr, sigma_arr, nu_arr, tau_arr = [
+        _np.atleast_1d(_np.asarray(v, dtype=_np.float64))
+        for v in (p, mu, sigma, nu, tau)
+    ]
     if log_p:
         p_arr = _np.exp(p_arr)
     if not lower_tail:
@@ -600,7 +661,9 @@ def _st3_q(p, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False)
     n = max(map(len, (p_arr, mu_arr, sigma_arr, nu_arr, tau_arr)))
     out = []
     for i in range(n):
-        pi, mi, si, ni, ti = [float(v[i % len(v)]) for v in (p_arr, mu_arr, sigma_arr, nu_arr, tau_arr)]
+        pi, mi, si, ni, ti = [
+            float(v[i % len(v)]) for v in (p_arr, mu_arr, sigma_arr, nu_arr, tau_arr)
+        ]
         if pi == 0.0:
             value = -_np.inf
         elif pi == 1.0:
@@ -610,7 +673,9 @@ def _st3_q(p, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False)
         elif pi < 1.0 / (1.0 + ni * ni):
             value = mi + (si / ni) * _spt.ppf(pi * (1.0 + ni * ni) / 2.0, ti)
         else:
-            value = mi + (si * ni) * _spt.ppf((pi * (1.0 + ni * ni) - 1.0) / (2.0 * ni * ni) + 0.5, ti)
+            value = mi + (si * ni) * _spt.ppf(
+                (pi * (1.0 + ni * ni) - 1.0) / (2.0 * ni * ni) + 0.5, ti
+            )
         out.append(value)
     return jnp.asarray(out, dtype=jnp.float64)
 
@@ -618,6 +683,7 @@ def _st3_q(p, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False)
 def _st3_r(key, n, mu=0.0, sigma=1.0, nu=1.0, tau=10.0):
     import jax.numpy as jnp
     import jax.random as _jr
+
     return _st3_q(_jr.uniform(key, shape=(n,), dtype=jnp.float64), mu, sigma, nu, tau)
 
 
@@ -767,7 +833,22 @@ def ST4() -> FamilyDefinition:
         q=_st4_q,
         r=_st4_r,
         links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "log"},
-        link_functions={"mu": identity_link, "sigma": log_link, "nu": log_link, "tau": log_link},
-        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
-        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative, "tau": log_derivative},
+        link_functions={
+            "mu": identity_link,
+            "sigma": log_link,
+            "nu": log_link,
+            "tau": log_link,
+        },
+        link_inverses={
+            "mu": identity_inverse,
+            "sigma": log_inverse,
+            "nu": log_inverse,
+            "tau": log_inverse,
+        },
+        link_derivatives={
+            "mu": identity_derivative,
+            "sigma": log_derivative,
+            "nu": log_derivative,
+            "tau": log_derivative,
+        },
     )

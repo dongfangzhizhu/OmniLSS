@@ -15,6 +15,7 @@ Deviation: R names the entries after the columns of the smooth design matrix;
 this engine names them after the smooth term variable, because the basis columns
 are not individually named here.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -66,7 +67,9 @@ def smooth_term_edf(obj: Any, parameter: str = "mu") -> dict[str, float]:
     for index, entry in enumerate(fits):
         basis_columns = getattr(entry, "basis_columns", None)
         if basis_columns is None:
-            result[str(getattr(entry, "variable", index))] = float(getattr(entry, "edf", 0.0))
+            result[str(getattr(entry, "variable", index))] = float(
+                getattr(entry, "edf", 0.0)
+            )
             continue
         start, end = basis_columns
         value = effective_df(
@@ -102,7 +105,9 @@ def edf(
 
     selected = parameter if parameter is not None else what
     if selected not in _PARAMETERS:
-        raise ValueError(f"'arg' should be one of {list(_PARAMETERS)}, got {selected!r}")
+        raise ValueError(
+            f"'arg' should be one of {list(_PARAMETERS)}, got {selected!r}"
+        )
 
     if print:
         print(f"Effective df for {selected} model")

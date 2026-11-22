@@ -24,7 +24,9 @@ def checkCentileSK(y, centiles, target_values) -> CheckCentileSKResult:
     if got.shape != tgt.shape:
         raise ValueError("target_values shape mismatch")
     err = np.abs(got - tgt)
-    return CheckCentileSKResult(max_abs_error=float(np.max(err)), mean_abs_error=float(np.mean(err)))
+    return CheckCentileSKResult(
+        max_abs_error=float(np.max(err)), mean_abs_error=float(np.mean(err))
+    )
 
 
 __all__ = ["checkCentileSK", "CheckCentileSKResult"]

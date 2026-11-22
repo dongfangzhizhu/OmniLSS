@@ -85,7 +85,9 @@ def _predict_all_with_weights_refit(
 
     response_name = object.terms.get("mu", {}).get("response")
     if response_name is None:
-        raise ValueError("predict_all(use_weights=True) requires a stored response name")
+        raise ValueError(
+            "predict_all(use_weights=True) requires a stored response name"
+        )
 
     original_y = np.asarray(original_data[response_name], dtype=np.float64).ravel()
     old_n = original_y.shape[0]
@@ -98,7 +100,9 @@ def _predict_all_with_weights_refit(
     if response_name in newdata:
         new_lengths.append(np.asarray(newdata[response_name]).shape[0])
     if not new_lengths:
-        raise ValueError("predict_all(use_weights=True) requires at least one column in newdata")
+        raise ValueError(
+            "predict_all(use_weights=True) requires at least one column in newdata"
+        )
     new_n = int(new_lengths[0])
     if any(length != new_n for length in new_lengths):
         raise ValueError("all newdata columns must share the same length")
@@ -156,7 +160,9 @@ def _predict_all_with_weights_refit(
     if mu_formula is None:
         raise ValueError("predict_all(use_weights=True) requires a stored mu formula")
     sigma_formula = object.formulas.get("sigma", "~1")
-    method_name = str(object.additional_slots.get("method", call.get("method", "RS"))).upper()
+    method_name = str(
+        object.additional_slots.get("method", call.get("method", "RS"))
+    ).upper()
 
     if method_name == "ML":
         refit_model = gamlss_ml(
@@ -185,14 +191,18 @@ def _predict_all_with_weights_refit(
         output="list",
         use_weights=False,
     )
-    sliced = _slice_predict_all_values(refit_result.values, start=old_n, stop=old_n + new_n)
+    sliced = _slice_predict_all_values(
+        refit_result.values, start=old_n, stop=old_n + new_n
+    )
     if se_fit:
         for parameter in object.par:
             value = sliced.get(parameter)
             if not isinstance(value, dict) or "fit" not in value:
                 continue
             se_value = value.get("se.fit")
-            se_array = None if se_value is None else np.asarray(se_value, dtype=np.float64)
+            se_array = (
+                None if se_value is None else np.asarray(se_value, dtype=np.float64)
+            )
             needs_fallback = se_array is None or not np.isfinite(se_array).all()
             if not needs_fallback:
                 continue
@@ -226,7 +236,9 @@ def _predict_all_term_names(
     if not base_names:
         base_names = [f"term{index + 1}" for index in range(count)]
     if len(base_names) < count:
-        base_names = base_names + [f"term{index + 1}" for index in range(len(base_names), count)]
+        base_names = base_names + [
+            f"term{index + 1}" for index in range(len(base_names), count)
+        ]
     return [f"{parameter}_{name}" for name in base_names[:count]]
 
 
@@ -264,7 +276,9 @@ def predict_all(
 
     if use_weights and newdata is not None:
         if requested_type == "terms":
-            raise ValueError("predict_all(use_weights=True) does not support type='terms' yet")
+            raise ValueError(
+                "predict_all(use_weights=True) does not support type='terms' yet"
+            )
         values = _predict_all_with_weights_refit(
             object,
             newdata=newdata,
@@ -275,10 +289,19 @@ def predict_all(
         if response_name is not None and response_name in newdata:
             values["y"] = np.asarray(newdata[response_name], dtype=np.float64)
     elif newdata is None:
-        if response_name is not None and object.call is not None and "data" in object.call and response_name in object.call["data"]:
-            values["y"] = np.asarray(object.call["data"][response_name], dtype=np.float64)
+        if (
+            response_name is not None
+            and object.call is not None
+            and "data" in object.call
+            and response_name in object.call["data"]
+        ):
+            values["y"] = np.asarray(
+                object.call["data"][response_name], dtype=np.float64
+            )
         for parameter in object.par:
-            values[parameter] = predict(object, what=parameter, type=requested_type, terms=terms, se_fit=se_fit)
+            values[parameter] = predict(
+                object, what=parameter, type=requested_type, terms=terms, se_fit=se_fit
+            )
     else:
         if response_name is not None and response_name in newdata:
             values["y"] = np.asarray(newdata[response_name], dtype=np.float64)
@@ -307,7 +330,9 @@ def predict_all(
                 if requested_type == "terms" and fit_array.ndim == 2:
                     if fit_array.shape[1] == 0:
                         continue
-                    term_names = _predict_all_term_names(object, key, fit_array.shape[1], terms)
+                    term_names = _predict_all_term_names(
+                        object, key, fit_array.shape[1], terms
+                    )
                     for index, name in enumerate(term_names):
                         normalized[name] = fit_array[:, index]
                     se_value = value.get("se.fit")
@@ -315,20 +340,29 @@ def predict_all(
                         se_array = np.asarray(se_value, dtype=np.float64)
                         if se_array.ndim == 1:
                             se_array = se_array[:, None]
-                        if se_array.ndim != 2 or se_array.shape[1] != fit_array.shape[1]:
-                            raise ValueError("terms standard errors must match the term prediction matrix")
+                        if (
+                            se_array.ndim != 2
+                            or se_array.shape[1] != fit_array.shape[1]
+                        ):
+                            raise ValueError(
+                                "terms standard errors must match the term prediction matrix"
+                            )
                         for index, name in enumerate(term_names):
                             normalized[f"{name}_se"] = se_array[:, index]
                     elif se_fit:
                         for name in term_names:
-                            normalized[f"{name}_se"] = np.full(fit_array.shape[0], np.nan, dtype=np.float64)
+                            normalized[f"{name}_se"] = np.full(
+                                fit_array.shape[0], np.nan, dtype=np.float64
+                            )
                     continue
                 if fit_array.ndim == 2 and fit_array.shape[1] == 1:
                     fit_array = fit_array[:, 0]
                 else:
                     fit_array = fit_array.reshape(fit_array.shape[0], -1)
                     if fit_array.shape[1] != 1:
-                        raise ValueError("matrix/data.frame output currently requires one-dimensional parameter predictions")
+                        raise ValueError(
+                            "matrix/data.frame output currently requires one-dimensional parameter predictions"
+                        )
                     fit_array = fit_array[:, 0]
             normalized[key] = fit_array
             se_value = value.get("se.fit")
@@ -340,10 +374,14 @@ def predict_all(
                     if se_array.ndim == 2 and se_array.shape[1] == 1:
                         se_array = se_array[:, 0]
                     else:
-                        raise ValueError("matrix/data.frame output currently requires one-dimensional standard errors")
+                        raise ValueError(
+                            "matrix/data.frame output currently requires one-dimensional standard errors"
+                        )
                 normalized[f"{key}_se"] = se_array
             elif se_fit:
-                normalized[f"{key}_se"] = np.full(fit_array.shape[0], np.nan, dtype=np.float64)
+                normalized[f"{key}_se"] = np.full(
+                    fit_array.shape[0], np.nan, dtype=np.float64
+                )
             continue
 
         array = np.asarray(value, dtype=np.float64)
@@ -362,7 +400,9 @@ def predict_all(
             else:
                 array = array.reshape(array.shape[0], -1)
                 if array.shape[1] != 1:
-                    raise ValueError("matrix/data.frame output currently requires one-dimensional parameter predictions")
+                    raise ValueError(
+                        "matrix/data.frame output currently requires one-dimensional parameter predictions"
+                    )
                 array = array[:, 0]
         normalized[key] = array
 
@@ -376,15 +416,22 @@ def predict_all(
             expanded[name] = value.astype(np.float64, copy=False)
             continue
         if value.shape[0] == 1:
-            expanded[name] = np.repeat(value, target_length).astype(np.float64, copy=False)
+            expanded[name] = np.repeat(value, target_length).astype(
+                np.float64, copy=False
+            )
             continue
-        raise ValueError("data.frame/matrix output requires predictions to share a common length or be scalar")
+        raise ValueError(
+            "data.frame/matrix output requires predictions to share a common length or be scalar"
+        )
 
     if output_name == "data.frame":
         return expanded
 
-    matrix = np.column_stack([expanded[name] for name in column_names]).astype(np.float64, copy=False)
+    matrix = np.column_stack([expanded[name] for name in column_names]).astype(
+        np.float64, copy=False
+    )
     return matrix
+
 
 predictAll = predict_all
 

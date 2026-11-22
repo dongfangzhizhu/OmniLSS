@@ -41,6 +41,7 @@ Three regions, each checked against mpmath on the acceptance grid
   both branches match scipy to ~1e-15.
 
 """
+
 from __future__ import annotations
 
 from math import comb
@@ -49,7 +50,6 @@ import jax
 import jax.numpy as jnp
 from jax import lax
 from jax.scipy.special import gammaln
-
 
 # ---------------------------------------------------------------------------
 # Native log K_nu
@@ -205,9 +205,7 @@ def _series_kv_value(nu, x):
 
     current, _previous = lax.fori_loop(1, 21, recurse, (k1, k0))
     integer = jnp.where(count == 0, k0, jnp.abs(current))
-    return jnp.where(
-        jnp.abs(order - count) < _INTEGER_TOLERANCE, integer, fractional
-    )
+    return jnp.where(jnp.abs(order - count) < _INTEGER_TOLERANCE, integer, fractional)
 
 
 def _series_log_kv_slope(order, x):

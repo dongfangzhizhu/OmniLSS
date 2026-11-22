@@ -96,12 +96,20 @@ def choose_dist_data(
     if key == "extra" and not extra:
         raise ValueError("extra families must be provided when type='extra'")
     if key not in available and key != "extra":
-        raise ValueError("type must be one of 'realAll', 'realline', 'realplus', 'real0to1', 'counts', 'binom', or 'extra'")
+        raise ValueError(
+            "type must be one of 'realAll', 'realline', 'realplus', 'real0to1', 'counts', 'binom', or 'extra'"
+        )
 
     family_names = list(extra if key == "extra" else available[key])
     if extra is not None and key != "extra":
-        family_names.extend(str(name).strip().upper() for name in extra if str(name).strip())
-    family_names = list(dict.fromkeys(str(name).strip().upper() for name in family_names if str(name).strip()))
+        family_names.extend(
+            str(name).strip().upper() for name in extra if str(name).strip()
+        )
+    family_names = list(
+        dict.fromkeys(
+            str(name).strip().upper() for name in family_names if str(name).strip()
+        )
+    )
 
     call = object.call or {}
     data = call.get("data")
@@ -112,7 +120,11 @@ def choose_dist_data(
         raise ValueError("choose_dist_data requires a stored response name")
 
     formula_text = str(call.get("formula", formula(object, what="mu")))
-    sigma_formula = str(call.get("sigma_formula", formula(object, what="sigma"))) if "sigma" in object.par else "~1"
+    sigma_formula = (
+        str(call.get("sigma_formula", formula(object, what="sigma")))
+        if "sigma" in object.par
+        else "~1"
+    )
     parameter_formulas = dict(call.get("parameter_formulas", {}))
     method = str(call.get("method", object.additional_slots.get("method", "RS")))
     weights = call.get("weights", object.weights)
@@ -162,7 +174,9 @@ def get_order(
     """R reference: `gamlss/R/chooseDistParallel.R::getOrder`."""
 
     if not isinstance(obj, ChooseDistResult):
-        raise ValueError("get_order expects a ChooseDistResult produced by choose_dist_data()")
+        raise ValueError(
+            "get_order expects a ChooseDistResult produced by choose_dist_data()"
+        )
     matrix = np.asarray(obj.matrix, dtype=np.float64)
     if matrix.ndim != 2:
         raise ValueError("choose_dist_data result must contain a 2D matrix")
@@ -225,12 +239,20 @@ def choose_dist_pred_data(
     if key == "extra" and not extra:
         raise ValueError("extra families must be provided when type='extra'")
     if key not in available and key != "extra":
-        raise ValueError("type must be one of 'realAll', 'realline', 'realplus', 'real0to1', 'counts', 'binom', or 'extra'")
+        raise ValueError(
+            "type must be one of 'realAll', 'realline', 'realplus', 'real0to1', 'counts', 'binom', or 'extra'"
+        )
 
     family_names = list(extra if key == "extra" else available[key])
     if extra is not None and key != "extra":
-        family_names.extend(str(name).strip().upper() for name in extra if str(name).strip())
-    family_names = list(dict.fromkeys(str(name).strip().upper() for name in family_names if str(name).strip()))
+        family_names.extend(
+            str(name).strip().upper() for name in extra if str(name).strip()
+        )
+    family_names = list(
+        dict.fromkeys(
+            str(name).strip().upper() for name in family_names if str(name).strip()
+        )
+    )
 
     call = object.call or {}
     data = call.get("data")
@@ -241,7 +263,11 @@ def choose_dist_pred_data(
         raise ValueError("choose_dist_pred_data requires a stored response name")
 
     formula_text = str(call.get("formula", formula(object, what="mu")))
-    sigma_formula = str(call.get("sigma_formula", formula(object, what="sigma"))) if "sigma" in object.par else "~1"
+    sigma_formula = (
+        str(call.get("sigma_formula", formula(object, what="sigma")))
+        if "sigma" in object.par
+        else "~1"
+    )
     parameter_formulas = dict(call.get("parameter_formulas", {}))
     method = str(call.get("method", object.additional_slots.get("method", "RS")))
     weights = call.get("weights", object.weights)
@@ -256,7 +282,9 @@ def choose_dist_pred_data(
         train_mask = split == 1
         valid_mask = split == 2
         if not np.any(train_mask) or not np.any(valid_mask):
-            raise ValueError("rand must contain both training (1) and validation (2) rows")
+            raise ValueError(
+                "rand must contain both training (1) and validation (2) rows"
+            )
         train_data = _subset_mapping_rows(data, train_mask)
         validation_data = _subset_mapping_rows(data, valid_mask)
         validation_y = np.asarray(validation_data[response], dtype=np.float64).ravel()
@@ -289,11 +317,24 @@ def choose_dist_pred_data(
                 output="list",
                 se_fit=False,
             )
-            values = predicted.values if isinstance(predicted, PredictAllResult) else dict(predicted)
+            values = (
+                predicted.values
+                if isinstance(predicted, PredictAllResult)
+                else dict(predicted)
+            )
             deviance_kwargs: dict[str, Any] = {"y": validation_y}
             for parameter in fitted_model.par:
-                deviance_kwargs[parameter] = np.asarray(values[parameter], dtype=np.float64)
-            scores[index] = float(np.sum(np.asarray(fitted_model.family.g_dev_inc(**deviance_kwargs), dtype=np.float64)))
+                deviance_kwargs[parameter] = np.asarray(
+                    values[parameter], dtype=np.float64
+                )
+            scores[index] = float(
+                np.sum(
+                    np.asarray(
+                        fitted_model.family.g_dev_inc(**deviance_kwargs),
+                        dtype=np.float64,
+                    )
+                )
+            )
         except Exception:
             failed.append(family_name)
 
@@ -309,6 +350,7 @@ def choose_dist_pred_data(
         failed=tuple(failed),
         validation_size=int(validation_y.size),
     )
+
 
 choose_dist_pred = choose_dist_pred_data
 chooseDist = choose_dist_data

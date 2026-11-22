@@ -13,6 +13,7 @@ Naming: R's dot-prefixed names become module-level names with a leading
 underscore (the coverage tooling normalises '.' to '_'), and each also has a
 public upper-case spelling for readability.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -261,7 +262,9 @@ def _hat_WX(w: Any, x: Any) -> np.ndarray:
     if not np.all(np.isfinite(np.sqrt(weights))):
         import warnings
 
-        warnings.warn("diagonal weights has non-finite entries", UserWarning, stacklevel=2)
+        warnings.warn(
+            "diagonal weights has non-finite entries", UserWarning, stacklevel=2
+        )
 
     weighted = design * np.sqrt(weights)[:, None]
     gram = weighted.T @ weighted

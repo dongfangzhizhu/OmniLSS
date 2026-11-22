@@ -79,7 +79,9 @@ def hist_dist_data(
             weights=weights,
         )
     parameter_values = {
-        parameter: float(np.asarray(fitted(fit, parameter), dtype=np.float64).ravel()[0])
+        parameter: float(
+            np.asarray(fitted(fit, parameter), dtype=np.float64).ravel()[0]
+        )
         for parameter in fit.par
     }
 
@@ -91,7 +93,11 @@ def hist_dist_data(
     if distribution_type.lower() == "discrete":
         support = np.arange(math.floor(lower), math.ceil(upper) + 1, dtype=np.float64)
         if support.size == 0:
-            support = np.arange(math.floor(np.min(y_array)), math.ceil(np.max(y_array)) + 1, dtype=np.float64)
+            support = np.arange(
+                math.floor(np.min(y_array)),
+                math.ceil(np.max(y_array)) + 1,
+                dtype=np.float64,
+            )
         count_weights = np.ones_like(y_array) if weights is None else weights
         totals = np.zeros_like(support, dtype=np.float64)
         for index, value in enumerate(support):
@@ -105,14 +111,26 @@ def hist_dist_data(
         fitted_x = support
     else:
         hist_weights = None if weights is None else weights
-        histogram_y, edges = np.histogram(y_array, bins=int(nbins), range=(lower, upper), density=True, weights=hist_weights)
+        histogram_y, edges = np.histogram(
+            y_array,
+            bins=int(nbins),
+            range=(lower, upper),
+            density=True,
+            weights=hist_weights,
+        )
         histogram_x = 0.5 * (edges[:-1] + edges[1:])
         fitted_x = np.linspace(lower, upper, 201, dtype=np.float64)
         fitted_y = _staged_density_curve(resolved_family, fitted_x, parameter_values)
         if density:
-            expanded = y_array if weights is None else np.repeat(y_array, np.maximum(np.rint(weights).astype(int), 0))
+            expanded = (
+                y_array
+                if weights is None
+                else np.repeat(y_array, np.maximum(np.rint(weights).astype(int), 0))
+            )
             if expanded.size >= 2:
-                density_x, density_y = _kernel_density(np.asarray(expanded, dtype=np.float64))
+                density_x, density_y = _kernel_density(
+                    np.asarray(expanded, dtype=np.float64)
+                )
             else:
                 density_x = None
                 density_y = None
@@ -128,8 +146,12 @@ def hist_dist_data(
         fitted_x=np.asarray(fitted_x, dtype=np.float64),
         fitted_y=np.asarray(fitted_y, dtype=np.float64),
         fitted_parameters=parameter_values,
-        density_x=None if density_x is None else np.asarray(density_x, dtype=np.float64),
-        density_y=None if density_y is None else np.asarray(density_y, dtype=np.float64),
+        density_x=(
+            None if density_x is None else np.asarray(density_x, dtype=np.float64)
+        ),
+        density_y=(
+            None if density_y is None else np.asarray(density_y, dtype=np.float64)
+        ),
         used_weights=weights is not None,
         approximation="staged intercept-only fit plus fitted density/histogram coordinates",
     )

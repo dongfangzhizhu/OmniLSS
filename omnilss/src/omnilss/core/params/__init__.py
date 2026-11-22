@@ -61,13 +61,22 @@ class Parameter:
 
 # Register as a PyTree node so static metadata can travel through JAX transforms.
 def _flatten_parameter(parameter: Parameter) -> tuple[tuple[Any, ...], tuple[Any, ...]]:
-    return (), (parameter.name, parameter.link, parameter.constraint, parameter.initializer)
+    return (), (
+        parameter.name,
+        parameter.link,
+        parameter.constraint,
+        parameter.initializer,
+    )
 
 
-def _unflatten_parameter(aux_data: tuple[Any, ...], children: tuple[Any, ...]) -> Parameter:
+def _unflatten_parameter(
+    aux_data: tuple[Any, ...], children: tuple[Any, ...]
+) -> Parameter:
     del children
     name, link, constraint, initializer = aux_data
-    return Parameter(name=name, link=link, constraint=constraint, initializer=initializer)
+    return Parameter(
+        name=name, link=link, constraint=constraint, initializer=initializer
+    )
 
 
 jax.tree_util.register_pytree_node(Parameter, _flatten_parameter, _unflatten_parameter)
@@ -77,7 +86,12 @@ MU = Parameter("mu", IdentityLink(), Real(), _mean_initializer)
 SIGMA = Parameter("sigma", LogLink(), Positive(), _ones_initializer)
 NU = Parameter("nu", IdentityLink(), Real(), _mean_initializer)
 TAU = Parameter("tau", LogLink(), Positive(), _ones_initializer)
-PI = Parameter("pi", LogitLink(), UnitInterval(), lambda data: jnp.full_like(jnp.asarray(data), 0.5))
+PI = Parameter(
+    "pi",
+    LogitLink(),
+    UnitInterval(),
+    lambda data: jnp.full_like(jnp.asarray(data), 0.5),
+)
 
 DEFAULT_PARAMETERS: Mapping[str, Parameter] = {
     "mu": MU,

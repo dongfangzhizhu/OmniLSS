@@ -193,9 +193,11 @@ def _bctuntr_hessian(parameter, y, mu, sigma, nu, tau):
     tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), _EPS)
 
     if parameter == "mu":
-        return -(tau + 2.0 * jnp.square(nu) * jnp.square(sigma) * tau + 1.0) / (
-            tau + 3.0
-        ) / (jnp.square(mu) * jnp.square(sigma))
+        return (
+            -(tau + 2.0 * jnp.square(nu) * jnp.square(sigma) * tau + 1.0)
+            / (tau + 3.0)
+            / (jnp.square(mu) * jnp.square(sigma))
+        )
     if parameter == "sigma":
         return -2.0 * tau / (jnp.square(sigma) * (tau + 3.0))
     if parameter == "nu":
@@ -250,15 +252,19 @@ def BCTuntr() -> BCTuntrFamily:
             "tau": _tau_inverse,
         },
         score_functions={
-            name: (lambda p: lambda y, mu, sigma, nu, tau: _bctuntr_score(
-                p, y, mu, sigma, nu, tau
-            ))(name)
+            name: (
+                lambda p: lambda y, mu, sigma, nu, tau: _bctuntr_score(
+                    p, y, mu, sigma, nu, tau
+                )
+            )(name)
             for name in ("mu", "sigma", "nu", "tau")
         },
         hessian_functions={
-            name: (lambda p: lambda y, mu, sigma, nu, tau: _bctuntr_hessian(
-                p, y, mu, sigma, nu, tau
-            ))(name)
+            name: (
+                lambda p: lambda y, mu, sigma, nu, tau: _bctuntr_hessian(
+                    p, y, mu, sigma, nu, tau
+                )
+            )(name)
             for name in ("mu", "sigma", "nu", "tau")
         },
         d=dBCTuntr,
@@ -286,9 +292,7 @@ def _bccguntr_score(parameter, y, mu, sigma, nu):
     if parameter == "sigma":
         return (jnp.square(z) - 1.0) / sigma
     log_ratio = jnp.log(y / mu)
-    return (z - (log_ratio / sigma)) * (z / nu) - log_ratio * (
-        jnp.square(z) - 1.0
-    )
+    return (z - (log_ratio / sigma)) * (z / nu) - log_ratio * (jnp.square(z) - 1.0)
 
 
 def _bccguntr_hessian(parameter, y, mu, sigma, nu):
@@ -311,8 +315,7 @@ def BCCGuntr() -> BCCGuntrFamily:
     return BCCGuntrFamily(
         name="BCCGUNTR",
         parameters=("mu", "sigma", "nu"),
-        g_dev_inc=lambda y, mu, sigma, nu: -2.0
-        * dBCCGuntr(y, mu, sigma, nu, log=True),
+        g_dev_inc=lambda y, mu, sigma, nu: -2.0 * dBCCGuntr(y, mu, sigma, nu, log=True),
         type="Continuous",
         links={"mu": "identity", "sigma": "log", "nu": "identity"},
         link_functions={
@@ -331,15 +334,17 @@ def BCCGuntr() -> BCCGuntrFamily:
             "nu": identity_derivative,
         },
         score_functions={
-            name: (lambda p: lambda y, mu, sigma, nu: _bccguntr_score(
-                p, y, mu, sigma, nu
-            ))(name)
+            name: (
+                lambda p: lambda y, mu, sigma, nu: _bccguntr_score(p, y, mu, sigma, nu)
+            )(name)
             for name in ("mu", "sigma", "nu")
         },
         hessian_functions={
-            name: (lambda p: lambda y, mu, sigma, nu: _bccguntr_hessian(
-                p, y, mu, sigma, nu
-            ))(name)
+            name: (
+                lambda p: lambda y, mu, sigma, nu: _bccguntr_hessian(
+                    p, y, mu, sigma, nu
+                )
+            )(name)
             for name in ("mu", "sigma", "nu")
         },
         d=dBCCGuntr,
@@ -374,15 +379,11 @@ def _bcpeuntr_score(parameter, y, mu, sigma, nu, tau):
     c = _bcpe_c(tau)
 
     if parameter == "mu":
-        return (
-            tau / (2.0 * mu * sigma * jnp.square(c))
-        ) * (z + sigma * nu * jnp.square(z)) * jnp.power(
-            jnp.abs(z / c), tau - 2.0
-        ) - (nu / mu)
+        return (tau / (2.0 * mu * sigma * jnp.square(c))) * (
+            z + sigma * nu * jnp.square(z)
+        ) * jnp.power(jnp.abs(z / c), tau - 2.0) - (nu / mu)
     if parameter == "sigma":
-        return (1.0 / sigma) * (
-            (tau / 2.0) * jnp.power(jnp.abs(z / c), tau) - 1.0
-        )
+        return (1.0 / sigma) * ((tau / 2.0) * jnp.power(jnp.abs(z / c), tau) - 1.0)
     if parameter == "nu":
         value = (
             -(tau / (2.0 * nu * jnp.square(c)))
@@ -418,15 +419,10 @@ def _bcpeuntr_hessian(parameter, y, mu, sigma, nu, tau):
     tau = jnp.maximum(jnp.asarray(tau, dtype=jnp.float64), _EPS)
 
     if parameter == "mu":
-        return (
-            -(tau * tau)
-            * jnp.exp(
-                gammaln(2.0 - 1.0 / tau)
-                + gammaln(3.0 / tau)
-                - 2.0 * gammaln(1.0 / tau)
-            )
-            / (jnp.square(mu) * jnp.square(sigma))
-            - (tau * jnp.square(nu)) / jnp.square(mu)
+        return -(tau * tau) * jnp.exp(
+            gammaln(2.0 - 1.0 / tau) + gammaln(3.0 / tau) - 2.0 * gammaln(1.0 / tau)
+        ) / (jnp.square(mu) * jnp.square(sigma)) - (tau * jnp.square(nu)) / jnp.square(
+            mu
         )
     if parameter == "sigma":
         return -tau / jnp.square(sigma)
@@ -438,13 +434,11 @@ def _bcpeuntr_hessian(parameter, y, mu, sigma, nu, tau):
         2.0 * math.log(2.0) - _digamma(1.0 / tau) + 3.0 * _digamma(3.0 / tau)
     )
     part1 = p * _polygamma(1, p) + 2.0 * jnp.square(_digamma(p))
-    part2 = _digamma(p) * (
-        math.log(2.0) + 3.0 - 3.0 * _digamma(3.0 / tau) - tau
-    )
+    part2 = _digamma(p) * (math.log(2.0) + 3.0 - 3.0 * _digamma(3.0 / tau) - tau)
     part3 = -3.0 * _digamma(3.0 / tau) * (1.0 + math.log(2.0))
     part4 = -(tau + math.log(2.0)) * math.log(2.0)
-    part5 = -tau + (tau ** 4) * d_log_c_dt ** 2
-    value = -(part1 + part2 + part3 + part4 + part5) / (tau ** 3)
+    part5 = -tau + (tau**4) * d_log_c_dt**2
+    value = -(part1 + part2 + part3 + part4 + part5) / (tau**3)
     return jnp.where(value < -1e-15, value, -1e-15)
 
 
@@ -476,15 +470,19 @@ def BCPEuntr() -> BCPEuntrFamily:
             "tau": _tau_inverse,
         },
         score_functions={
-            name: (lambda p: lambda y, mu, sigma, nu, tau: _bcpeuntr_score(
-                p, y, mu, sigma, nu, tau
-            ))(name)
+            name: (
+                lambda p: lambda y, mu, sigma, nu, tau: _bcpeuntr_score(
+                    p, y, mu, sigma, nu, tau
+                )
+            )(name)
             for name in ("mu", "sigma", "nu", "tau")
         },
         hessian_functions={
-            name: (lambda p: lambda y, mu, sigma, nu, tau: _bcpeuntr_hessian(
-                p, y, mu, sigma, nu, tau
-            ))(name)
+            name: (
+                lambda p: lambda y, mu, sigma, nu, tau: _bcpeuntr_hessian(
+                    p, y, mu, sigma, nu, tau
+                )
+            )(name)
             for name in ("mu", "sigma", "nu", "tau")
         },
         d=dBCPEuntr,

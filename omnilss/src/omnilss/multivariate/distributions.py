@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Pure-JAX Multivariate Normal (MVN) and Multivariate Student-t (MVT) families (P5-2)."""
+
 from __future__ import annotations
 
 import math

@@ -40,7 +40,11 @@ def _model_loglik_increments(object: GAMLSSModel) -> np.ndarray:
     for parameter in object.par:
         kwargs[parameter] = np.asarray(fitted(object, parameter), dtype=np.float64)
     dev = np.asarray(object.family.g_dev_inc(**kwargs), dtype=np.float64)
-    weights = np.asarray(object.weights, dtype=np.float64) if object.weights is not None else np.ones_like(dev, dtype=np.float64)
+    weights = (
+        np.asarray(object.weights, dtype=np.float64)
+        if object.weights is not None
+        else np.ones_like(dev, dtype=np.float64)
+    )
     return -0.5 * dev * weights
 
 
@@ -53,7 +57,7 @@ def _binom_two_sided_p_value(successes: int, n: int) -> float:
     smaller_tail = min(successes, n - successes)
     prob = 0.0
     for k in range(0, smaller_tail + 1):
-        prob += math.comb(n, k) * (0.5 ** n)
+        prob += math.comb(n, k) * (0.5**n)
     return float(min(1.0, 2.0 * prob))
 
 

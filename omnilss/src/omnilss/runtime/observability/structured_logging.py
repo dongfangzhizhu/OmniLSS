@@ -30,7 +30,9 @@ class StructuredRuntimeLogger:
         self._events.append(event)
 
     def as_json_lines(self) -> str:
-        return "\n".join(json.dumps(asdict(event), sort_keys=True) for event in self._events) + ("\n" if self._events else "")
+        return "\n".join(
+            json.dumps(asdict(event), sort_keys=True) for event in self._events
+        ) + ("\n" if self._events else "")
 
     def export_json_lines(self, path: str | Path) -> None:
         Path(path).write_text(self.as_json_lines(), encoding="utf-8")
@@ -45,7 +47,12 @@ def build_runtime_event(
     level: str = "INFO",
     message: str = "runtime_iteration",
 ) -> RuntimeLogEvent:
-    has_nan = any(bool(getattr(v, "dtype", None) is not None and __import__("numpy").isnan(v).any()) for v in values.values())
+    has_nan = any(
+        bool(
+            getattr(v, "dtype", None) is not None and __import__("numpy").isnan(v).any()
+        )
+        for v in values.values()
+    )
     return RuntimeLogEvent(
         iteration=int(iteration),
         family=str(family),

@@ -19,6 +19,7 @@ its random start and the internal scaling differ.  The verification is
 functional (approximation quality, determinism, warm start, decay, the skip-only
 linear case), not a numerical comparison with nnet.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -104,7 +105,9 @@ class NeuralNet:
         index = 0
         matrices = {}
         if self.size > 0:
-            matrices["W1"] = weights[index : index + n_inputs * self.size].reshape(n_inputs, self.size)
+            matrices["W1"] = weights[index : index + n_inputs * self.size].reshape(
+                n_inputs, self.size
+            )
             index += n_inputs * self.size
             matrices["b1"] = weights[index : index + self.size]
             index += self.size
@@ -141,7 +144,9 @@ class NeuralNet:
     ) -> "NeuralNet":
         response = np.asarray(y, dtype=np.float64).ravel()
         weights = (
-            np.ones(response.size) if w is None else np.asarray(w, dtype=np.float64).ravel()
+            np.ones(response.size)
+            if w is None
+            else np.asarray(w, dtype=np.float64).ravel()
         )
         columns = []
         for name in self.variables:
@@ -175,7 +180,9 @@ class NeuralNet:
         from scipy.optimize import minimize
 
         result = minimize(
-            loss, start, method="L-BFGS-B",
+            loss,
+            start,
+            method="L-BFGS-B",
             options={"maxiter": int(maxit), "ftol": reltol, "gtol": abstol},
         )
         self.weights = np.asarray(result.x, dtype=np.float64)
@@ -233,7 +240,9 @@ def gamlss_nn(
     if data is None:
         raise ValueError("the data argument is needed")
     if xeval is not None:
-        raise NotImplementedError("the xeval (prediction) branch of gamlss.nn is not ported")
+        raise NotImplementedError(
+            "the xeval (prediction) branch of gamlss.nn is not ported"
+        )
     parsed = parse_formula(f"{_TERM_RESPONSE} {x.formula}")
     control = x.control
     network = NeuralNet(

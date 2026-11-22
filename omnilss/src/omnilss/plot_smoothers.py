@@ -39,7 +39,9 @@ def plotDF(object: GAMLSSModel, parameter: str = "mu") -> tuple[SmootherPlotRow,
     return tuple(rows)
 
 
-def plotLambda(object: GAMLSSModel, parameter: str = "mu") -> tuple[SmootherPlotRow, ...]:
+def plotLambda(
+    object: GAMLSSModel, parameter: str = "mu"
+) -> tuple[SmootherPlotRow, ...]:
     """Return per-smoother lambda rows for diagnostics."""
     if not is_gamlss(object):
         raise TypeError("this is not a gamlss object")

@@ -82,9 +82,7 @@ def is_gamlss(x: Any) -> bool:
     return isinstance(x, GAMLSSModel) and x.class_name == "gamlss"
 
 
-def fitted(
-    object: GAMLSSModel, what: str = "mu", parameter: str | None = None
-) -> Any:
+def fitted(object: GAMLSSModel, what: str = "mu", parameter: str | None = None) -> Any:
     """R reference: `gamlss/R/extra.R::fitted.gamlss`."""
 
     selected = _resolve_parameter(what, parameter)
@@ -162,10 +160,17 @@ def residuals(
             return object.residuals
         if jnp.all(jnp.floor(weights) == weights):
             if object.type == "Continuous":
-                return jnp.repeat(jnp.asarray(object.residuals, dtype=FLOAT_DTYPE), weights.astype(int))
+                return jnp.repeat(
+                    jnp.asarray(object.residuals, dtype=FLOAT_DTYPE),
+                    weights.astype(int),
+                )
             if object.rqres is None:
-                raise ValueError("discrete weighted residuals require an rqres callable")
-            kwargs: dict[str, Any] = {"y": jnp.repeat(jnp.asarray(object.y), weights.astype(int))}
+                raise ValueError(
+                    "discrete weighted residuals require an rqres callable"
+                )
+            kwargs: dict[str, Any] = {
+                "y": jnp.repeat(jnp.asarray(object.y), weights.astype(int))
+            }
             active_parameters = object.parameters or object.par
             for parameter_name in active_parameters:
                 kwargs[parameter_name] = jnp.repeat(
@@ -176,12 +181,16 @@ def residuals(
         return object.residuals
 
     _require_parameter(object, what)
-    wv = _get_object_mapping_slot(object, "working_vectors", object.working_vectors, what)
+    wv = _get_object_mapping_slot(
+        object, "working_vectors", object.working_vectors, what
+    )
     l_p = lp(object, what=what)
     wt = _get_object_mapping_slot(
         object, "iterative_weights", object.iterative_weights, what
     )
-    offset = object.offsets.get(what, jnp.zeros_like(jnp.asarray(l_p, dtype=FLOAT_DTYPE)))
+    offset = object.offsets.get(
+        what, jnp.zeros_like(jnp.asarray(l_p, dtype=FLOAT_DTYPE))
+    )
 
     wv_arr = jnp.asarray(wv, dtype=FLOAT_DTYPE)
     lp_arr = jnp.asarray(l_p, dtype=FLOAT_DTYPE)
@@ -270,7 +279,9 @@ def model_matrix(
     """R reference: `gamlss/R/extra.R::model.matrix.gamlss`."""
 
     selected = _resolve_parameter(what, parameter)
-    return _get_object_mapping_slot(object, "design_matrices", object.design_matrices, selected)
+    return _get_object_mapping_slot(
+        object, "design_matrices", object.design_matrices, selected
+    )
 
 
 def formula(x: GAMLSSModel, what: str = "mu", parameter: str | None = None) -> Any:
@@ -337,7 +348,9 @@ def lpred(
             return fit_value
         callback = obj.additional_slots.get("lpred_se_callback")
         if callback is None:
-            raise ValueError("se.fit for response predictions requires lpred_se_callback")
+            raise ValueError(
+                "se.fit for response predictions requires lpred_se_callback"
+            )
         return {"fit": fit_value, "se.fit": callback(obj, selected, type)}
 
     callback = obj.additional_slots.get("lpred_terms_callback")
@@ -417,7 +430,10 @@ def lpred(
                 param_offset += psize
             se_cols: list[np.ndarray] = []
             for X_tc, (_, col_slice) in zip(centered_blocks, term_slices):
-                if param_cov is None or not np.isfinite(param_cov[col_slice, col_slice]).all():
+                if (
+                    param_cov is None
+                    or not np.isfinite(param_cov[col_slice, col_slice]).all()
+                ):
                     se_cols.append(np.full(n_obs, np.nan, dtype=np.float64))
                 else:
                     cov_tt = param_cov[col_slice, col_slice]
@@ -474,7 +490,9 @@ def gaic_table(
     """R reference: `gamlss/R/extra.R::GAIC_table`."""
 
     models = (object, *others)
-    penalties = tuple(k or (2.0, 3.84, round(float(np.log(len(np.asarray(object.y)))), 2)))
+    penalties = tuple(
+        k or (2.0, 3.84, round(float(np.log(len(np.asarray(object.y)))), 2))
+    )
     rows: list[dict[str, float | str]] = []
 
     for index, model in enumerate(models):
@@ -512,9 +530,15 @@ def gaic_scaled(
         scale_denom = np.nanmax(delta)
         scaled = np.where(np.isnan(delta), np.nan, 1 - delta / scale_denom)
         return [
-            {"row": f"row_{idx + 1}", "delta": float(delta[idx]), "scaled": float(scaled[idx])}
-            if not np.isnan(delta[idx])
-            else {"row": f"row_{idx + 1}", "delta": None, "scaled": None}
+            (
+                {
+                    "row": f"row_{idx + 1}",
+                    "delta": float(delta[idx]),
+                    "scaled": float(scaled[idx]),
+                }
+                if not np.isnan(delta[idx])
+                else {"row": f"row_{idx + 1}", "delta": None, "scaled": None}
+            )
             for idx in range(matrix.shape[0])
         ]
 

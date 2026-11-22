@@ -35,7 +35,7 @@ class _BootstrapShapeError(ValueError):
 @dataclass
 class BootstrapResult:
     """Results from bootstrap analysis.
-    
+
     Attributes
     ----------
     coefficients : jnp.ndarray
@@ -73,6 +73,7 @@ class BootstrapResult:
     method : str
         Bootstrap method used ('nonparametric' or 'parametric')
     """
+
     coefficients: jnp.ndarray
     fitted_values: Optional[jnp.ndarray] = None
     predictions: Optional[jnp.ndarray] = None
@@ -83,7 +84,7 @@ class BootstrapResult:
     n_boots: int = 0
     n_successful: int = 0
     alpha: float = 0.05
-    method: str = 'nonparametric'
+    method: str = "nonparametric"
     failure_indices: Optional[jnp.ndarray] = None
     failure_reasons: Optional[Dict[str, int]] = None
     ci_quality_thresholds: Tuple[int, int, int] = (1, 10, 100)
@@ -197,35 +198,37 @@ class BootstrapResult:
 
     def to_dict(self) -> Dict[str, Any]:
         """Return bootstrap results as a JSON-safe dictionary."""
-        return self._json_safe({
-            "method": self.method,
-            "n_boots": self.n_boots,
-            "n_successful": self.n_successful,
-            "n_failed": self.n_failed,
-            "failure_rate": self.failure_rate,
-            "n_ci_samples": self.n_ci_samples,
-            "ci_sample_rate": self.ci_sample_rate,
-            "ci_quality": self.ci_quality,
-            "ci_quality_thresholds": self.ci_quality_thresholds,
-            "ci_method": self.ci_method,
-            "ci_diagnostic": self.ci_diagnostic,
-            "jackknife_n_samples": self.jackknife_n_samples,
-            "ci_fallback_reason": self.ci_fallback_reason,
-            "jackknife_failure_indices": self.jackknife_failure_indices,
-            "alpha": self.alpha,
-            "coefficients": self.coefficients,
-            "fitted_values": self.fitted_values,
-            "predictions": self.predictions,
-            "mean": self.mean,
-            "std": self.std,
-            "lower_ci": self.lower_ci,
-            "upper_ci": self.upper_ci,
-            "failure_indices": self.failure_indices,
-            "failure_reasons": self.failure_reasons or {},
-            "has_failures": self.has_failures,
-            "primary_failure_reason": self.primary_failure_reason,
-            "failure_summary": self.failure_summary,
-        })
+        return self._json_safe(
+            {
+                "method": self.method,
+                "n_boots": self.n_boots,
+                "n_successful": self.n_successful,
+                "n_failed": self.n_failed,
+                "failure_rate": self.failure_rate,
+                "n_ci_samples": self.n_ci_samples,
+                "ci_sample_rate": self.ci_sample_rate,
+                "ci_quality": self.ci_quality,
+                "ci_quality_thresholds": self.ci_quality_thresholds,
+                "ci_method": self.ci_method,
+                "ci_diagnostic": self.ci_diagnostic,
+                "jackknife_n_samples": self.jackknife_n_samples,
+                "ci_fallback_reason": self.ci_fallback_reason,
+                "jackknife_failure_indices": self.jackknife_failure_indices,
+                "alpha": self.alpha,
+                "coefficients": self.coefficients,
+                "fitted_values": self.fitted_values,
+                "predictions": self.predictions,
+                "mean": self.mean,
+                "std": self.std,
+                "lower_ci": self.lower_ci,
+                "upper_ci": self.upper_ci,
+                "failure_indices": self.failure_indices,
+                "failure_reasons": self.failure_reasons or {},
+                "has_failures": self.has_failures,
+                "primary_failure_reason": self.primary_failure_reason,
+                "failure_summary": self.failure_summary,
+            }
+        )
 
     def to_json(self, **kwargs: Any) -> str:
         """Serialize bootstrap results to a JSON string.
@@ -235,7 +238,7 @@ class BootstrapResult:
         """
         kwargs.setdefault("indent", 2)
         return json.dumps(self.to_dict(), **kwargs)
-    
+
     def summary(self) -> str:
         """Generate summary string."""
         lines = [
@@ -255,30 +258,32 @@ class BootstrapResult:
             "-" * 60,
         ]
         if self.failure_reasons:
-            lines.append("Failure reasons: " + ", ".join(
-                f"{name}={count}" for name, count in sorted(self.failure_reasons.items())
-            ))
-        
+            lines.append(
+                "Failure reasons: "
+                + ", ".join(
+                    f"{name}={count}"
+                    for name, count in sorted(self.failure_reasons.items())
+                )
+            )
+
         if self.mean is not None and self.std is not None:
             for i, (m, s) in enumerate(zip(self.mean, self.std)):
                 ci_str = ""
                 if self.lower_ci is not None and self.upper_ci is not None:
                     ci_str = f"  [{self.lower_ci[i]:.4f}, {self.upper_ci[i]:.4f}]"
                 lines.append(f"Param {i:2d}: {m:8.4f} ± {s:8.4f}{ci_str}")
-        
+
         return "\n".join(lines)
 
 
 def generate_bootstrap_indices(
-    key: jax.random.PRNGKey,
-    n_obs: int,
-    n_boots: int
+    key: jax.random.PRNGKey, n_obs: int, n_boots: int
 ) -> jnp.ndarray:
     """Generate bootstrap sample indices using JAX vectorization.
-    
+
     This function generates all bootstrap indices at once, enabling
     efficient parallel computation.
-    
+
     Parameters
     ----------
     key : jax.random.PRNGKey
@@ -287,12 +292,12 @@ def generate_bootstrap_indices(
         Number of observations in original data
     n_boots : int
         Number of bootstrap samples
-        
+
     Returns
     -------
     jnp.ndarray
         Bootstrap indices of shape (n_boots, n_obs)
-        
+
     Examples
     --------
     >>> key = jax.random.PRNGKey(42)
@@ -302,30 +307,29 @@ def generate_bootstrap_indices(
     """
     # Split key for each bootstrap sample
     keys = jax.random.split(key, n_boots)
-    
+
     # Vectorized sampling: generate all indices at once
     def sample_indices(k):
         return jax.random.choice(k, n_obs, shape=(n_obs,), replace=True)
-    
+
     # Use vmap for parallel sampling
     boot_indices = vmap(sample_indices)(keys)
-    
+
     return boot_indices
 
 
 def resample_data(
-    data: Dict[str, jnp.ndarray],
-    indices: jnp.ndarray
+    data: Dict[str, jnp.ndarray], indices: jnp.ndarray
 ) -> Dict[str, jnp.ndarray]:
     """Resample data according to bootstrap indices.
-    
+
     Parameters
     ----------
     data : dict
         Dictionary containing data arrays
     indices : jnp.ndarray
         Bootstrap indices (n_obs,)
-        
+
     Returns
     -------
     dict
@@ -344,15 +348,19 @@ def _validate_bootstrap_inputs(
     min_success_rate: float,
 ) -> int:
     """Validate arguments shared by all bootstrap implementations."""
-    if not isinstance(n_boots, (int, np.integer)) or isinstance(n_boots, bool) or n_boots <= 0:
+    if (
+        not isinstance(n_boots, (int, np.integer))
+        or isinstance(n_boots, bool)
+        or n_boots <= 0
+    ):
         raise ValueError("n_boots must be a positive integer")
     if not np.isfinite(alpha) or not 0 < alpha < 1:
         raise ValueError("alpha must be between 0 and 1")
     if not np.isfinite(min_success_rate) or not 0 <= min_success_rate <= 1:
         raise ValueError("min_success_rate must be between 0 and 1")
-    if not isinstance(data, dict) or 'y' not in data:
+    if not isinstance(data, dict) or "y" not in data:
         raise ValueError("data must be a dictionary containing 'y'")
-    y = jnp.asarray(data['y'])
+    y = jnp.asarray(data["y"])
     if y.ndim == 0 or y.shape[0] == 0:
         raise ValueError("data['y'] must be a non-empty array")
     n_obs = y.shape[0]
@@ -391,7 +399,9 @@ def _validate_parameter_vector(
     return value
 
 
-def _validate_observation_shape(value: Any, expected_shape: tuple, name: str) -> jnp.ndarray:
+def _validate_observation_shape(
+    value: Any, expected_shape: tuple, name: str
+) -> jnp.ndarray:
     """Convert a generated observation vector and enforce its shape."""
     converted = jnp.asarray(value)
     if converted.shape != expected_shape:
@@ -514,8 +524,7 @@ def _validate_ci_quality_thresholds(
         not isinstance(ci_quality_thresholds, (tuple, list))
         or len(ci_quality_thresholds) != 3
         or any(
-            isinstance(value, bool)
-            or not isinstance(value, (int, np.integer))
+            isinstance(value, bool) or not isinstance(value, (int, np.integer))
             for value in ci_quality_thresholds
         )
     ):
@@ -549,12 +558,15 @@ def _compute_jackknife_estimates(
     finite rows that remain, while the returned reason makes partial jackknife
     coverage visible to callers.
     """
+
     def leave_one_out(omitted):
         indices = jnp.concatenate((jnp.arange(omitted), jnp.arange(omitted + 1, n_obs)))
         jack_data = {
-            name: value[indices]
-            if isinstance(value, (jnp.ndarray, np.ndarray)) and value.ndim > 0
-            else value
+            name: (
+                value[indices]
+                if isinstance(value, (jnp.ndarray, np.ndarray)) and value.ndim > 0
+                else value
+            )
             for name, value in data.items()
         }
         estimate = _validate_parameter_vector(
@@ -628,14 +640,14 @@ def _maybe_warn_ci_sample_count(
 def compute_confidence_intervals(
     boot_estimates: jnp.ndarray,
     alpha: float = 0.05,
-    method: str = 'percentile',
+    method: str = "percentile",
     original_estimate: Optional[jnp.ndarray] = None,
     jackknife_estimates: Optional[jnp.ndarray] = None,
     *,
     return_diagnostics: bool = False,
 ) -> Any:
     """Compute bootstrap confidence intervals.
-    
+
     Parameters
     ----------
     boot_estimates : jnp.ndarray
@@ -656,7 +668,7 @@ def compute_confidence_intervals(
     return_diagnostics : bool, default=False
         If true, return ``(lower, upper, diagnostic)``. The diagnostic is one
         of ``percentile``, ``bc``, ``bca``, ``unavailable``, or ``degenerate``.
-        
+
     Returns
     -------
     lower_ci : jnp.ndarray
@@ -665,7 +677,7 @@ def compute_confidence_intervals(
         Upper confidence bounds
     diagnostic : str, optional
         Returned only when ``return_diagnostics=True``.
-        
+
     Notes
     -----
     The percentile method computes CI as the alpha/2 and 1-alpha/2
@@ -681,10 +693,10 @@ def compute_confidence_intervals(
     boot_estimates = jnp.asarray(boot_estimates)
     if boot_estimates.ndim != 2:
         raise ValueError("boot_estimates must be a two-dimensional array")
-    if method not in ('percentile', 'bca'):
+    if method not in ("percentile", "bca"):
         raise ValueError(f"Unknown method: {method}")
     diagnostic = method
-    if method == 'bca':
+    if method == "bca":
         if original_estimate is None:
             raise ValueError("original_estimate is required for bca intervals")
         theta_hat = jnp.asarray(original_estimate)
@@ -694,8 +706,14 @@ def compute_confidence_intervals(
             raise ValueError("original_estimate must be finite")
         if jackknife_estimates is not None:
             jack = jnp.asarray(jackknife_estimates)
-            if jack.ndim != 2 or jack.shape[1] != boot_estimates.shape[1] or jack.shape[0] < 2:
-                raise ValueError("jackknife_estimates must have shape (n_jackknife, n_params) with at least two rows")
+            if (
+                jack.ndim != 2
+                or jack.shape[1] != boot_estimates.shape[1]
+                or jack.shape[0] < 2
+            ):
+                raise ValueError(
+                    "jackknife_estimates must have shape (n_jackknife, n_params) with at least two rows"
+                )
             if not bool(jnp.all(jnp.isfinite(jack))):
                 raise ValueError("jackknife_estimates must be finite")
         else:
@@ -725,24 +743,25 @@ def compute_confidence_intervals(
             return valid_estimates[0], valid_estimates[0], diagnostic
         return valid_estimates[0], valid_estimates[0]
 
-    if method == 'bca' and valid_estimates.shape[0] < 10:
+    if method == "bca" and valid_estimates.shape[0] < 10:
         warnings.warn(
             "BCa confidence intervals are based on fewer than 10 complete "
             "finite bootstrap samples and may be unreliable",
             RuntimeWarning,
             stacklevel=2,
         )
-    
-    if method == 'percentile':
+
+    if method == "percentile":
         lower_percentile = alpha / 2 * 100
         upper_percentile = (1 - alpha / 2) * 100
-        
+
         lower_ci = jnp.percentile(valid_estimates, lower_percentile, axis=0)
         upper_ci = jnp.percentile(valid_estimates, upper_percentile, axis=0)
-        
-    elif method == 'bca':
-        proportion = (jnp.mean(valid_estimates < theta_hat, axis=0)
-                      + 0.5 * jnp.mean(valid_estimates == theta_hat, axis=0))
+
+    elif method == "bca":
+        proportion = jnp.mean(valid_estimates < theta_hat, axis=0) + 0.5 * jnp.mean(
+            valid_estimates == theta_hat, axis=0
+        )
         eps = 0.5 / valid_estimates.shape[0]
         z0 = jax.scipy.special.ndtri(jnp.clip(proportion, eps, 1 - eps))
         if jackknife_estimates is None:
@@ -750,20 +769,25 @@ def compute_confidence_intervals(
         else:
             center = jnp.mean(jack, axis=0)
             delta = center - jack
-            denominator = 6 * jnp.sum(delta ** 2, axis=0) ** 1.5
+            denominator = 6 * jnp.sum(delta**2, axis=0) ** 1.5
             acceleration = jnp.where(
-                denominator > 0, jnp.sum(delta ** 3, axis=0) / denominator, 0.0
+                denominator > 0, jnp.sum(delta**3, axis=0) / denominator, 0.0
             )
         z_alpha = jax.scipy.special.ndtri(jnp.array([alpha / 2, 1 - alpha / 2]))
         adjusted = jax.scipy.stats.norm.cdf(
-            z0[:, None] + (z0[:, None] + z_alpha[None, :]) /
-            (1 - acceleration[:, None] * (z0[:, None] + z_alpha[None, :]))
+            z0[:, None]
+            + (z0[:, None] + z_alpha[None, :])
+            / (1 - acceleration[:, None] * (z0[:, None] + z_alpha[None, :]))
         )
-        lower_ci = vmap(lambda values, q: jnp.percentile(values, q))(valid_estimates.T, adjusted[:, 0] * 100)
-        upper_ci = vmap(lambda values, q: jnp.percentile(values, q))(valid_estimates.T, adjusted[:, 1] * 100)
+        lower_ci = vmap(lambda values, q: jnp.percentile(values, q))(
+            valid_estimates.T, adjusted[:, 0] * 100
+        )
+        upper_ci = vmap(lambda values, q: jnp.percentile(values, q))(
+            valid_estimates.T, adjusted[:, 1] * 100
+        )
     else:
         raise ValueError(f"Unknown method: {method}")
-    
+
     if return_diagnostics:
         return lower_ci, upper_ci, diagnostic
     return lower_ci, upper_ci
@@ -787,11 +811,11 @@ def nonparametric_bootstrap(
     jackknife_parallel: Optional[bool] = None,
 ) -> BootstrapResult:
     """Perform non-parametric bootstrap for GAMLSS models.
-    
+
     This is the most robust bootstrap method as it doesn't rely on
     distributional assumptions. It resamples the original data with
     replacement and refits the model.
-    
+
     Parameters
     ----------
     fit_function : callable
@@ -815,28 +839,28 @@ def nonparametric_bootstrap(
     warning_failure_rate : float, default=0.0
         Failure fraction in [0, 1]. Warn at or above this threshold, but never
         when all fits succeed.
-        
+
     Returns
     -------
     BootstrapResult
         Bootstrap results including coefficients and confidence intervals
-        
+
     Examples
     --------
     >>> def my_fit(data):
     ...     # Your GAMLSS fitting logic
     ...     return fitted_params
-    >>> 
+    >>>
     >>> key = jax.random.PRNGKey(42)
     >>> result = nonparametric_bootstrap(my_fit, data, key, n_boots=1000)
     >>> print(result.summary())
-    
+
     Notes
     -----
     This function uses JAX's vmap to parallelize bootstrap iterations,
     which is much faster than sequential loops. However, it requires
     more memory as all bootstrap samples are processed simultaneously.
-    
+
     If memory is limited, consider using smaller n_boots or implementing
     a batched version using jax.lax.map.
 
@@ -859,16 +883,21 @@ def nonparametric_bootstrap(
     except Exception as exc:
         if not handle_failures:
             raise
-        raise RuntimeError("Unable to infer bootstrap parameter shape from the original fit") from exc
+        raise RuntimeError(
+            "Unable to infer bootstrap parameter shape from the original fit"
+        ) from exc
     if parameter_template.ndim != 1:
-        raise ValueError("nonparametric fit_function must return a one-dimensional parameter vector")
-    
+        raise ValueError(
+            "nonparametric fit_function must return a one-dimensional parameter vector"
+        )
+
     # Generate all bootstrap indices at once
     boot_indices = generate_bootstrap_indices(key, n_obs, n_boots)
-    
+
     # Define single bootstrap iteration
     failure_reasons = {}
     failure_indices = []
+
     def single_bootstrap_fit(indices, index=None):
         """Fit model on resampled data."""
         try:
@@ -881,27 +910,27 @@ def nonparametric_bootstrap(
             raise
         except Exception as e:
             if handle_failures and index is not None:
-                failure_reasons[type(e).__name__] = failure_reasons.get(type(e).__name__, 0) + 1
+                failure_reasons[type(e).__name__] = (
+                    failure_reasons.get(type(e).__name__, 0) + 1
+                )
                 if index is not None:
                     failure_indices.append(index)
                 # Return NaN for failed fits
                 return jnp.full_like(parameter_template, jnp.nan)
             else:
                 raise e
-    
+
     # Parallel bootstrap using vmap
     boot_coefficients = _run_bootstrap_fits(
         single_bootstrap_fit, boot_indices, parallel, handle_failures
     )
     _validate_bootstrap_output(boot_coefficients, n_boots)
-    
+
     # Compute statistics
     nonfinite_mask = _classify_nonfinite_failures(
         boot_coefficients, failure_reasons, failure_indices, handle_failures
     )
-    boot_coefficients = jnp.where(
-        nonfinite_mask[:, None], jnp.nan, boot_coefficients
-    )
+    boot_coefficients = jnp.where(nonfinite_mask[:, None], jnp.nan, boot_coefficients)
     valid_mask = ~nonfinite_mask
     n_successful = jnp.sum(valid_mask)
     failure_indices = jnp.where(~valid_mask)[0]
@@ -911,39 +940,52 @@ def nonparametric_bootstrap(
             f"min_success_rate {min_success_rate:.1%}"
         )
     _maybe_warn_bootstrap_failures(
-        "nonparametric", n_boots, int(n_successful), failure_reasons,
-        failure_warning, warning_failure_rate,
+        "nonparametric",
+        n_boots,
+        int(n_successful),
+        failure_reasons,
+        failure_warning,
+        warning_failure_rate,
     )
-    
+
     mean_estimate = jnp.nanmean(boot_coefficients, axis=0)
     std_estimate = jnp.nanstd(boot_coefficients, axis=0)
-    
+
     jackknife_estimates = None
     jackknife_n_samples = 0
     ci_fallback_reason = None
     jackknife_failure_indices = jnp.empty((0,), dtype=int)
     if ci_method == "bca":
         (
-            jackknife_estimates, jackknife_n_samples, ci_fallback_reason,
+            jackknife_estimates,
+            jackknife_n_samples,
+            ci_fallback_reason,
             jackknife_failure_indices,
         ) = _compute_jackknife_estimates(
-            fit_function, data, n_obs, parameter_template.shape, "nonparametric",
+            fit_function,
+            data,
+            n_obs,
+            parameter_template.shape,
+            "nonparametric",
             parallel=jackknife_parallel,
         )
         if jackknife_n_samples < 2:
             jackknife_estimates = None
     # Compute confidence intervals
     lower_ci, upper_ci, ci_diagnostic = compute_confidence_intervals(
-        boot_coefficients, alpha=alpha, method=ci_method,
+        boot_coefficients,
+        alpha=alpha,
+        method=ci_method,
         original_estimate=parameter_template if ci_method == "bca" else None,
         jackknife_estimates=jackknife_estimates,
         return_diagnostics=True,
     )
     _maybe_warn_ci_sample_count(
-        "nonparametric", int(jnp.sum(jnp.isfinite(boot_coefficients).all(axis=1))),
+        "nonparametric",
+        int(jnp.sum(jnp.isfinite(boot_coefficients).all(axis=1))),
         ci_warning_samples,
     )
-    
+
     return BootstrapResult(
         coefficients=boot_coefficients,
         lower_ci=lower_ci,
@@ -953,7 +995,7 @@ def nonparametric_bootstrap(
         n_boots=n_boots,
         n_successful=int(n_successful),
         alpha=alpha,
-        method='nonparametric',
+        method="nonparametric",
         failure_indices=failure_indices,
         failure_reasons=failure_reasons or None,
         ci_quality_thresholds=ci_quality_thresholds,
@@ -988,11 +1030,11 @@ def parametric_bootstrap(
 
     ``failure_warning`` and ``warning_failure_rate`` follow the policy documented
     in :func:`nonparametric_bootstrap`, without relaxing minimum success checks.
-    
+
     This method assumes the fitted distribution is correct and generates
     new data from it. It's more efficient when the distributional
     assumption is valid.
-    
+
     Parameters
     ----------
     fit_function : callable
@@ -1012,23 +1054,23 @@ def parametric_bootstrap(
         Significance level for confidence intervals
     parallel : bool, default=True
         Whether to use vmap for parallel computation
-        
+
     Returns
     -------
     BootstrapResult
         Bootstrap results including coefficients and confidence intervals
-        
+
     Examples
     --------
     >>> def my_sample(params, key):
     ...     # Generate samples from fitted distribution
     ...     return jax.random.normal(key, shape=(n,)) * params[1] + params[0]
-    >>> 
+    >>>
     >>> key = jax.random.PRNGKey(42)
     >>> result = parametric_bootstrap(
     ...     my_fit, my_sample, data, fitted_params, key, n_boots=1000
     ... )
-    
+
     Notes
     -----
     Parametric bootstrap is more powerful when the distributional
@@ -1054,7 +1096,7 @@ def parametric_bootstrap(
         raise ValueError("fitted_params must be a one-dimensional parameter vector")
     # Split keys for each bootstrap sample
     keys = jax.random.split(key, n_boots)
-    
+
     # Define single bootstrap iteration
     failure_reasons = {}
     exception_failure_indices = []
@@ -1070,7 +1112,7 @@ def parametric_bootstrap(
             )
 
             # Create new data dict with bootstrapped response
-            boot_data = {**data, 'y': y_boot}
+            boot_data = {**data, "y": y_boot}
 
             # Refit model
             params = fit_function(boot_data)
@@ -1087,59 +1129,72 @@ def parametric_bootstrap(
             if index is not None:
                 exception_failure_indices.append(index)
             return jnp.full_like(fitted_params, jnp.nan)
-    
+
     # Parallel bootstrap using vmap
     boot_coefficients = _run_bootstrap_fits(
         single_parametric_fit, keys, parallel, handle_failures
     )
     _validate_bootstrap_output(boot_coefficients, n_boots)
-    
+
     # Compute statistics
     nonfinite_mask = _classify_nonfinite_failures(
         boot_coefficients, failure_reasons, exception_failure_indices, handle_failures
     )
-    boot_coefficients = jnp.where(
-        nonfinite_mask[:, None], jnp.nan, boot_coefficients
-    )
+    boot_coefficients = jnp.where(nonfinite_mask[:, None], jnp.nan, boot_coefficients)
     valid_mask = ~nonfinite_mask
     n_successful = jnp.sum(valid_mask)
     failure_indices = jnp.where(~valid_mask)[0]
     if int(n_successful) / n_boots < min_success_rate:
-        raise RuntimeError(f"Bootstrap success rate {int(n_successful) / n_boots:.1%} is below min_success_rate {min_success_rate:.1%}")
+        raise RuntimeError(
+            f"Bootstrap success rate {int(n_successful) / n_boots:.1%} is below min_success_rate {min_success_rate:.1%}"
+        )
     _maybe_warn_bootstrap_failures(
-        "parametric", n_boots, int(n_successful), failure_reasons,
-        failure_warning, warning_failure_rate,
+        "parametric",
+        n_boots,
+        int(n_successful),
+        failure_reasons,
+        failure_warning,
+        warning_failure_rate,
     )
-    
+
     mean_estimate = jnp.nanmean(boot_coefficients, axis=0)
     std_estimate = jnp.nanstd(boot_coefficients, axis=0)
-    
+
     jackknife_estimates = None
     jackknife_n_samples = 0
     ci_fallback_reason = None
     jackknife_failure_indices = jnp.empty((0,), dtype=int)
     if ci_method == "bca":
         (
-            jackknife_estimates, jackknife_n_samples, ci_fallback_reason,
+            jackknife_estimates,
+            jackknife_n_samples,
+            ci_fallback_reason,
             jackknife_failure_indices,
         ) = _compute_jackknife_estimates(
-            fit_function, data, jnp.asarray(data["y"]).shape[0], fitted_params.shape,
-            "parametric", parallel=jackknife_parallel,
+            fit_function,
+            data,
+            jnp.asarray(data["y"]).shape[0],
+            fitted_params.shape,
+            "parametric",
+            parallel=jackknife_parallel,
         )
         if jackknife_n_samples < 2:
             jackknife_estimates = None
     # Compute confidence intervals
     lower_ci, upper_ci, ci_diagnostic = compute_confidence_intervals(
-        boot_coefficients, alpha=alpha, method=ci_method,
+        boot_coefficients,
+        alpha=alpha,
+        method=ci_method,
         original_estimate=fitted_params if ci_method == "bca" else None,
         jackknife_estimates=jackknife_estimates,
         return_diagnostics=True,
     )
     _maybe_warn_ci_sample_count(
-        "parametric", int(jnp.sum(jnp.isfinite(boot_coefficients).all(axis=1))),
+        "parametric",
+        int(jnp.sum(jnp.isfinite(boot_coefficients).all(axis=1))),
         ci_warning_samples,
     )
-    
+
     return BootstrapResult(
         coefficients=boot_coefficients,
         lower_ci=lower_ci,
@@ -1149,7 +1204,7 @@ def parametric_bootstrap(
         n_boots=n_boots,
         n_successful=int(n_successful),
         alpha=alpha,
-        method='parametric',
+        method="parametric",
         failure_indices=failure_indices,
         failure_reasons=failure_reasons or None,
         ci_quality_thresholds=ci_quality_thresholds,
@@ -1184,11 +1239,11 @@ def residual_bootstrap(
 
     ``failure_warning`` and ``warning_failure_rate`` follow the policy documented
     in :func:`nonparametric_bootstrap`, without relaxing minimum success checks.
-    
+
     This method resamples residuals and adds them to fitted values,
     which is appropriate when the model structure is correct but
     you're uncertain about the error distribution.
-    
+
     Parameters
     ----------
     fit_function : callable
@@ -1207,12 +1262,12 @@ def residual_bootstrap(
         Significance level for confidence intervals
     parallel : bool, default=True
         Whether to use vmap for parallel computation
-        
+
     Returns
     -------
     BootstrapResult
         Bootstrap results including coefficients and confidence intervals
-        
+
     Notes
     -----
     Residual bootstrap assumes:
@@ -1240,19 +1295,21 @@ def residual_bootstrap(
             f"fitted_values and residuals must match data['y'] shape "
             f"{response_shape}; {exc}"
         ) from exc
-    
+
     try:
         parameter_template = jnp.asarray(fit_function(data))
     except Exception as exc:
         if not handle_failures:
             raise
-        raise RuntimeError("Unable to infer bootstrap parameter shape from the original fit") from exc
+        raise RuntimeError(
+            "Unable to infer bootstrap parameter shape from the original fit"
+        ) from exc
     if parameter_template.ndim != 1:
         raise ValueError("fit_function must return a one-dimensional parameter vector")
 
     # Generate bootstrap indices for residuals
     boot_indices = generate_bootstrap_indices(key, n_obs, n_boots)
-    
+
     # Define single bootstrap iteration
     failure_reasons = {}
     exception_failure_indices = []
@@ -1267,7 +1324,7 @@ def residual_bootstrap(
             y_boot = fitted_values + boot_residuals
 
             # Create new data dict
-            boot_data = {**data, 'y': y_boot}
+            boot_data = {**data, "y": y_boot}
 
             # Refit model
             params = fit_function(boot_data)
@@ -1284,59 +1341,72 @@ def residual_bootstrap(
             if index is not None:
                 exception_failure_indices.append(index)
             return jnp.full_like(parameter_template, jnp.nan)
-    
+
     # Parallel bootstrap using vmap
     boot_coefficients = _run_bootstrap_fits(
         single_residual_fit, boot_indices, parallel, handle_failures
     )
     _validate_bootstrap_output(boot_coefficients, n_boots)
-    
+
     # Compute statistics
     nonfinite_mask = _classify_nonfinite_failures(
         boot_coefficients, failure_reasons, exception_failure_indices, handle_failures
     )
-    boot_coefficients = jnp.where(
-        nonfinite_mask[:, None], jnp.nan, boot_coefficients
-    )
+    boot_coefficients = jnp.where(nonfinite_mask[:, None], jnp.nan, boot_coefficients)
     valid_mask = ~nonfinite_mask
     n_successful = jnp.sum(valid_mask)
     failure_indices = jnp.where(~valid_mask)[0]
     if int(n_successful) / n_boots < min_success_rate:
-        raise RuntimeError(f"Bootstrap success rate {int(n_successful) / n_boots:.1%} is below min_success_rate {min_success_rate:.1%}")
+        raise RuntimeError(
+            f"Bootstrap success rate {int(n_successful) / n_boots:.1%} is below min_success_rate {min_success_rate:.1%}"
+        )
     _maybe_warn_bootstrap_failures(
-        "residual", n_boots, int(n_successful), failure_reasons,
-        failure_warning, warning_failure_rate,
+        "residual",
+        n_boots,
+        int(n_successful),
+        failure_reasons,
+        failure_warning,
+        warning_failure_rate,
     )
-    
+
     mean_estimate = jnp.nanmean(boot_coefficients, axis=0)
     std_estimate = jnp.nanstd(boot_coefficients, axis=0)
-    
+
     jackknife_estimates = None
     jackknife_n_samples = 0
     ci_fallback_reason = None
     jackknife_failure_indices = jnp.empty((0,), dtype=int)
     if ci_method == "bca":
         (
-            jackknife_estimates, jackknife_n_samples, ci_fallback_reason,
+            jackknife_estimates,
+            jackknife_n_samples,
+            ci_fallback_reason,
             jackknife_failure_indices,
         ) = _compute_jackknife_estimates(
-            fit_function, data, n_obs, parameter_template.shape, "residual",
+            fit_function,
+            data,
+            n_obs,
+            parameter_template.shape,
+            "residual",
             parallel=jackknife_parallel,
         )
         if jackknife_n_samples < 2:
             jackknife_estimates = None
     # Compute confidence intervals
     lower_ci, upper_ci, ci_diagnostic = compute_confidence_intervals(
-        boot_coefficients, alpha=alpha, method=ci_method,
+        boot_coefficients,
+        alpha=alpha,
+        method=ci_method,
         original_estimate=parameter_template if ci_method == "bca" else None,
         jackknife_estimates=jackknife_estimates,
         return_diagnostics=True,
     )
     _maybe_warn_ci_sample_count(
-        "residual", int(jnp.sum(jnp.isfinite(boot_coefficients).all(axis=1))),
+        "residual",
+        int(jnp.sum(jnp.isfinite(boot_coefficients).all(axis=1))),
         ci_warning_samples,
     )
-    
+
     return BootstrapResult(
         coefficients=boot_coefficients,
         lower_ci=lower_ci,
@@ -1346,7 +1416,7 @@ def residual_bootstrap(
         n_boots=n_boots,
         n_successful=int(n_successful),
         alpha=alpha,
-        method='residual',
+        method="residual",
         failure_indices=failure_indices,
         failure_reasons=failure_reasons or None,
         ci_quality_thresholds=ci_quality_thresholds,
@@ -1359,11 +1429,11 @@ def residual_bootstrap(
 
 
 __all__ = [
-    'BootstrapResult',
-    'generate_bootstrap_indices',
-    'resample_data',
-    'compute_confidence_intervals',
-    'nonparametric_bootstrap',
-    'parametric_bootstrap',
-    'residual_bootstrap',
+    "BootstrapResult",
+    "generate_bootstrap_indices",
+    "resample_data",
+    "compute_confidence_intervals",
+    "nonparametric_bootstrap",
+    "parametric_bootstrap",
+    "residual_bootstrap",
 ]

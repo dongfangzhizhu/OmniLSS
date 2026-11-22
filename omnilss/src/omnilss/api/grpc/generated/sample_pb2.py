@@ -4,37 +4,34 @@
 # source: sample.proto
 # Protobuf Python Version: 6.31.1
 """Generated protocol buffer code."""
+
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pool as _descriptor_pool
 from google.protobuf import runtime_version as _runtime_version
 from google.protobuf import symbol_database as _symbol_database
 from google.protobuf.internal import builder as _builder
+
 _runtime_version.ValidateProtobufRuntimeVersion(
-    _runtime_version.Domain.PUBLIC,
-    6,
-    31,
-    1,
-    '',
-    'sample.proto'
+    _runtime_version.Domain.PUBLIC, 6, 31, 1, "", "sample.proto"
 )
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
 
 
-
-
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0csample.proto\x12\x07omnilss\",\n\rSampleRequest\x12\x10\n\x08model_id\x18\x01 \x01(\t\x12\t\n\x01n\x18\x02 \x01(\x05\"F\n\x0eSampleResponse\x12\x14\n\x0csamples_json\x18\x01 \x01(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\t2J\n\rSampleService\x12\x39\n\x06Sample\x12\x16.omnilss.SampleRequest\x1a\x17.omnilss.SampleResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
+    b'\n\x0csample.proto\x12\x07omnilss",\n\rSampleRequest\x12\x10\n\x08model_id\x18\x01 \x01(\t\x12\t\n\x01n\x18\x02 \x01(\x05"F\n\x0eSampleResponse\x12\x14\n\x0csamples_json\x18\x01 \x01(\t\x12\x0f\n\x07success\x18\x02 \x01(\x08\x12\r\n\x05\x65rror\x18\x03 \x01(\t2J\n\rSampleService\x12\x39\n\x06Sample\x12\x16.omnilss.SampleRequest\x1a\x17.omnilss.SampleResponseb\x06proto3'
+)
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
-_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'sample_pb2', _globals)
+_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, "sample_pb2", _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
-  DESCRIPTOR._loaded_options = None
-  _globals['_SAMPLEREQUEST']._serialized_start=25
-  _globals['_SAMPLEREQUEST']._serialized_end=69
-  _globals['_SAMPLERESPONSE']._serialized_start=71
-  _globals['_SAMPLERESPONSE']._serialized_end=141
-  _globals['_SAMPLESERVICE']._serialized_start=143
-  _globals['_SAMPLESERVICE']._serialized_end=217
+    DESCRIPTOR._loaded_options = None
+    _globals["_SAMPLEREQUEST"]._serialized_start = 25
+    _globals["_SAMPLEREQUEST"]._serialized_end = 69
+    _globals["_SAMPLERESPONSE"]._serialized_start = 71
+    _globals["_SAMPLERESPONSE"]._serialized_end = 141
+    _globals["_SAMPLESERVICE"]._serialized_start = 143
+    _globals["_SAMPLESERVICE"]._serialized_end = 217
 # @@protoc_insertion_point(module_scope)

@@ -10,19 +10,23 @@ from jax.scipy.special import gammaln, betaln
 from .ad import build_ad_family
 from .families import FamilyDefinition
 from .links import (
-    log_link, log_inverse, log_derivative,
-    identity_link, identity_inverse, identity_derivative
+    log_link,
+    log_inverse,
+    log_derivative,
+    identity_link,
+    identity_inverse,
+    identity_derivative,
 )
-
-
 
 # ============================================================================
 # GIG - Generalized Inverse Gaussian Distribution
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class GIGFamily(FamilyDefinition):
     """Generalized Inverse Gaussian distribution family."""
+
     pass
 
 
@@ -107,30 +111,33 @@ def GIG():
 # GB1 - Generalized Beta Type 1 Distribution
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class GB1Family(FamilyDefinition):
     """Generalized Beta Type 1 distribution family."""
+
     pass
 
 
 def _gb1_log_pdf(y, mu, sigma, nu, tau):
     """Shared differentiable density in R's bounded GB1 parameterization."""
     from .gb1 import log_density
+
     return log_density(y, mu, sigma, nu, tau)
 
 
 def GB1():
     """Generalized Beta Type 1 distribution.
-    
+
     A four-parameter extension of the beta distribution for
     modeling bounded data with flexible shapes.
-    
+
     Parameters:
     - mu: location (0 < mu < 1)
     - sigma: scale (0 < sigma < 1)
     - nu: shape 1 (> 0)
     - tau: shape 2 (> 0)
-    
+
     Link functions:
     - mu: logit
     - sigma: logit
@@ -139,14 +146,17 @@ def GB1():
     """
     from .links import logit_link, logit_inverse, logit_derivative
     from .gb1 import dGB1, pGB1, qGB1, rGB1
-    
+
     return build_ad_family(
         family_class=GB1Family,
         name="GB1",
         parameters=("mu", "sigma", "nu", "tau"),
         log_pdf_func=_gb1_log_pdf,
         type_="Continuous",
-        d=dGB1, p=pGB1, q=qGB1, r=rGB1,
+        d=dGB1,
+        p=pGB1,
+        q=qGB1,
+        r=rGB1,
         links={"mu": "logit", "sigma": "logit", "nu": "log", "tau": "log"},
         link_functions={
             "mu": logit_link,

@@ -30,4 +30,6 @@ def render_report(records: list[BenchmarkRecord]) -> dict[str, Any]:
 
 
 def write_report(path: str | Path, records: list[BenchmarkRecord]) -> None:
-    Path(path).write_text(json.dumps(render_report(records), indent=2), encoding="utf-8")
+    Path(path).write_text(
+        json.dumps(render_report(records), indent=2), encoding="utf-8"
+    )

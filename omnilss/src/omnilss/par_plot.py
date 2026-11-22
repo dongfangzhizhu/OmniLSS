@@ -30,7 +30,9 @@ class ParPlotResult:
     series: tuple[ParPlotSeries, ...]
 
 
-def par_plot(object: GAMLSSModel, parameters: tuple[str, ...] | None = None) -> ParPlotResult:
+def par_plot(
+    object: GAMLSSModel, parameters: tuple[str, ...] | None = None
+) -> ParPlotResult:
     """Return data payload for parameter diagnostics plotting."""
     if not is_gamlss(object):
         raise TypeError("this is not a gamlss object")
@@ -50,7 +52,9 @@ def par_plot(object: GAMLSSModel, parameters: tuple[str, ...] | None = None) -> 
             raise ValueError(f"{p!r} is not a parameter in the object")
         fitted = np.asarray(object.fitted_values[p], dtype=np.float64)
         if fitted.shape != y.shape:
-            raise ValueError(f"fitted values for {p!r} must have same shape as response")
+            raise ValueError(
+                f"fitted values for {p!r} must have same shape as response"
+            )
         linear_predictor = np.asarray(object.linear_predictors[p], dtype=np.float64)
         response_residual = y - fitted
         series.append(

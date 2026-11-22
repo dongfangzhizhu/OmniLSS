@@ -13,6 +13,7 @@ The linear algebra mirrors R exactly: QR of sqrt(w) X, the augmented system
 [R; sqrt(lambda) D], its SVD with R's rank tolerance, and the same ML / GAIC /
 GCV / df-target searches for lambda (including the 1e-7 .. 1e7 clipping).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -25,7 +26,7 @@ from scipy.optimize import brentq, minimize_scalar
 from .family_groups import _hat_WX
 from .smoother_specs import PBSpline, PSSpline
 
-_RANK_TOL = np.finfo(float).eps**0.8
+_RANK_TOL = np.finfo(float).eps ** 0.8
 _LAMBDA_MIN = 1.0e-7
 _LAMBDA_MAX = 1.0e7
 
@@ -256,7 +257,9 @@ def gamlss_pb(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any):
     )
 
 
-def _ps_golden_lambda(dm: np.ndarray, aug: np.ndarray, w: np.ndarray, df: float) -> float:
+def _ps_golden_lambda(
+    dm: np.ndarray, aug: np.ndarray, w: np.ndarray, df: float
+) -> float:
     """R's find.lambda.from.df(): golden-section search on the edf-vs-lambda curve.
 
     R searches lambda in [1e-6, 1e5] with relative tolerance 1e-4; the same
@@ -317,7 +320,9 @@ def gamlss_ps(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any):
     if dm.shape[0] != y.shape[0]:
         raise ValueError("y and the design matrix have different lengths")
     if dm.shape[1] != aug.shape[1]:
-        raise ValueError("the dimensions of the augmented matrix and of the design matrix are incompatible")
+        raise ValueError(
+            "the dimensions of the augmented matrix and of the design matrix are incompatible"
+        )
 
     n = y.shape[0]
     N = float(np.sum(w != 0))
@@ -471,9 +476,7 @@ def gamlss_cs(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any):
         log_lambda = brentq(edf_gap, lo, hi)
     lam = float(np.exp(log_lambda))
     shrink = 1.0 / (1.0 + lam * mu)
-    fitted_unique = inv_sqrt_w * (
-        vectors @ (shrink * (vectors.T @ (sqrt_w * y_agg)))
-    )
+    fitted_unique = inv_sqrt_w * (vectors @ (shrink * (vectors.T @ (sqrt_w * y_agg))))
     # Leverage of the whitened smoother, diag(V diag(shrink) V').
     leverage_unique = np.sum((vectors * vectors) * shrink[None, :], axis=1)
 
@@ -578,8 +581,10 @@ def gamlss_cy(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any):
             for _ in range(50):
                 beta, edf, fv = fit_at(lam)
                 gamma = D @ beta
-                sig2 = 1.0 if method == "ML-1" else float(
-                    np.sum(w * (y - fv) ** 2) / (N - edf)
+                sig2 = (
+                    1.0
+                    if method == "ML-1"
+                    else float(np.sum(w * (y - fv) ** 2) / (N - edf))
                 )
                 tau2 = float(np.sum(gamma**2) / (edf - order))
                 if tau2 < 1e-7:

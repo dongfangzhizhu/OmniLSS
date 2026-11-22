@@ -10,19 +10,26 @@ from jax.scipy.special import gammaln
 from .ad import build_ad_family
 from .families import FamilyDefinition
 from .links import (
-    log_link, log_inverse, log_derivative,
-    identity_link, identity_inverse, identity_derivative,
-    logit_link, logit_inverse, logit_derivative,
+    log_link,
+    log_inverse,
+    log_derivative,
+    identity_link,
+    identity_inverse,
+    identity_derivative,
+    logit_link,
+    logit_inverse,
+    logit_derivative,
 )
-
 
 # ============================================================================
 # IGA - Inverse Gaussian Alternative
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class IGAFamily(FamilyDefinition):
     """Inverse Gaussian Alternative parameterization family."""
+
     pass
 
 
@@ -32,12 +39,13 @@ def _iga_log_pdf(y, mu, sigma):
     y = jnp.maximum(y, eps)
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
-    
+
     # Alternative: lambda = 1/sigma^2
     lambda_ = 1.0 / (sigma * sigma)
-    
+
     return (
-        0.5 * jnp.log(lambda_) - 0.5 * jnp.log(2.0 * jnp.pi * y * y * y)
+        0.5 * jnp.log(lambda_)
+        - 0.5 * jnp.log(2.0 * jnp.pi * y * y * y)
         - lambda_ * jnp.square(y - mu) / (2.0 * mu * mu * y)
     )
 
@@ -64,21 +72,25 @@ def IGA():
 # PIG2 - Poisson Inverse Gaussian Type 2
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class PIG2Family(FamilyDefinition):
     """Poisson Inverse Gaussian Type 2 family."""
+
     pass
 
 
 def _pig2_log_pdf(y, mu, sigma):
     """PIG2 log-PMF using the parameterization defined by R's PIG2."""
     from .dpqr_functions import dPIG2
+
     return dPIG2(y, mu, sigma, log=True)
 
 
 def PIG2():
     """Poisson Inverse Gaussian Type 2 distribution."""
     from .dpqr_functions import dPIG2, pPIG2, qPIG2, rPIG2
+
     return build_ad_family(
         family_class=PIG2Family,
         name="PIG2",
@@ -100,9 +112,11 @@ def PIG2():
 # PE2 - Power Exponential Type 2
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class PE2Family(FamilyDefinition):
     """Power Exponential Type 2 family."""
+
     pass
 
 
@@ -156,9 +170,11 @@ def PE2():
 # LOGITNO - Logit Normal
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class LOGITNOFamily(FamilyDefinition):
     """Logit Normal distribution family."""
+
     pass
 
 
@@ -173,18 +189,18 @@ def _logitno_log_pdf(y, mu, sigma):
     y = jnp.clip(y, eps, 1.0 - eps)
     mu = jnp.clip(mu, eps, 1.0 - eps)
     sigma = jnp.maximum(sigma, eps)
-    
+
     # logit(y) = log(y / (1-y));  logit(mu) = log(mu / (1-mu))
     logit_y = jnp.log(y) - jnp.log1p(-y)
     logit_mu = jnp.log(mu) - jnp.log1p(-mu)
-    
+
     # Jacobian: d(logit(y))/dy = 1 / (y * (1-y))
     log_jacobian = -jnp.log(y) - jnp.log1p(-y)
-    
+
     # Normal log-PDF for logit(y)
     z = (logit_y - logit_mu) / sigma
     log_normal = -0.5 * jnp.log(2.0 * jnp.pi) - jnp.log(sigma) - 0.5 * z * z
-    
+
     return log_normal + log_jacobian
 
 
@@ -275,9 +291,11 @@ def LOGITNO():
 # GeneralisedPoisson - Generalized Poisson
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class GeneralisedPoissonFamily(FamilyDefinition):
     """Generalized Poisson distribution family."""
+
     pass
 
 
@@ -324,15 +342,18 @@ def GeneralisedPoisson():
 # DELAPORT - Delaport (alternative spelling)
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class DELAPORTFamily(FamilyDefinition):
     """Delaport distribution family."""
+
     pass
 
 
 def _delaport_log_pdf(y, mu, sigma, nu):
     """Compatibility spelling of the GAMLSS DEL log PMF."""
     from .distributions_b6 import _del_log_pdf
+
     return _del_log_pdf(y, mu, sigma, nu)
 
 
@@ -343,6 +364,7 @@ def DELAPORT():
     limits and Poisson approximation; the old unrestricted nu is unsupported.
     """
     from .distributions_b6 import _del_p, _del_q, _del_r
+
     return build_ad_family(
         family_class=DELAPORTFamily,
         name="DELAPORT",

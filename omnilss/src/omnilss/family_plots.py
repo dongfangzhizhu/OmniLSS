@@ -19,6 +19,7 @@ The grid density and the boundary point mass are evaluated through the
 family's own ``d`` with positional parameters, so both the AD-generated
 densities (BEOI/BEZI) and the dpqr densities (ZAGA/ZAIG) work.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -106,8 +107,15 @@ def plotBEOI(
     """R plotBEOI: one-inflated beta density grid plus the mass at y=1."""
 
     return _inflated_plot(
-        family="BEOI", mu=mu, sigma=sigma, nu=nu, from_=from_, to=to, n=n,
-        point=1.0, main="One Inflated Beta",
+        family="BEOI",
+        mu=mu,
+        sigma=sigma,
+        nu=nu,
+        from_=from_,
+        to=to,
+        n=n,
+        point=1.0,
+        main="One Inflated Beta",
     )
 
 
@@ -123,8 +131,15 @@ def plotBEZI(
     """R plotBEZI: zero-inflated beta density grid plus the mass at y=0."""
 
     return _inflated_plot(
-        family="BEZI", mu=mu, sigma=sigma, nu=nu, from_=from_, to=to, n=n,
-        point=0.0, main="Zero Inflated Beta",
+        family="BEZI",
+        mu=mu,
+        sigma=sigma,
+        nu=nu,
+        from_=from_,
+        to=to,
+        n=n,
+        point=0.0,
+        main="Zero Inflated Beta",
     )
 
 
@@ -141,8 +156,15 @@ def plotZAGA(
     """R plotZAGA: zero-adjusted gamma density grid plus the mass at y=0."""
 
     return _inflated_plot(
-        family="ZAGA", mu=mu, sigma=sigma, nu=nu, from_=from_, to=to, n=n,
-        point=0.0, main="Zero Adj. Gamma" if main is None else str(main),
+        family="ZAGA",
+        mu=mu,
+        sigma=sigma,
+        nu=nu,
+        from_=from_,
+        to=to,
+        n=n,
+        point=0.0,
+        main="Zero Adj. Gamma" if main is None else str(main),
     )
 
 
@@ -159,8 +181,15 @@ def plotZAIG(
     """R plotZAIG: zero-adjusted inverse Gaussian density grid plus y=0 mass."""
 
     return _inflated_plot(
-        family="ZAIG", mu=mu, sigma=sigma, nu=nu, from_=from_, to=to, n=n,
-        point=0.0, main="Zero adjusted IG" if main is None else str(main),
+        family="ZAIG",
+        mu=mu,
+        sigma=sigma,
+        nu=nu,
+        from_=from_,
+        to=to,
+        n=n,
+        point=0.0,
+        main="Zero adjusted IG" if main is None else str(main),
     )
 
 

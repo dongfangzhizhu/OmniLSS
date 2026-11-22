@@ -44,10 +44,18 @@ def prof_dev(grid, deviance, weights=None) -> ProfDevResult:
     wd = w * d
     order = np.argsort(wd)
     i = int(order[0])
-    return ProfDevResult(grid=g, deviance=d, weighted_deviance=wd, minimum_index=i, rank_order=np.asarray(order, dtype=np.int64))
+    return ProfDevResult(
+        grid=g,
+        deviance=d,
+        weighted_deviance=wd,
+        minimum_index=i,
+        rank_order=np.asarray(order, dtype=np.int64),
+    )
 
 
-def prof_term(object: GAMLSSModel, term_values, deviance, weights=None) -> ProfDevResult:
+def prof_term(
+    object: GAMLSSModel, term_values, deviance, weights=None
+) -> ProfDevResult:
     """R-style wrapper that validates model identity before returning profile data."""
     if not is_gamlss(object):
         raise TypeError("this is not a gamlss object")

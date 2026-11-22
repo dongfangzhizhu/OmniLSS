@@ -16,6 +16,7 @@ Outlier rules follow R exactly:
   quantile   flag values outside median +/- value * mad (gamlss.ggplots y_dots)
   default    value = |qnorm(1 / (10 n))|
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -69,8 +70,7 @@ def _frame(data: Any) -> pd.DataFrame:
 
 def _numeric_columns(frame: pd.DataFrame) -> list[str]:
     return [
-        name for name in frame.columns
-        if np.asarray(frame[name]).dtype.kind in "iuf"
+        name for name in frame.columns if np.asarray(frame[name]).dtype.kind in "iuf"
     ]
 
 
@@ -191,8 +191,13 @@ def y_outliers_z(
     if by is not None:
         frame = pd.DataFrame({"x": values, "by": np.asarray(by)})
         return {
-            level: y_outliers_z(group["x"].to_numpy(), value=value, family=family,
-                                transform=False, loop=loop)
+            level: y_outliers_z(
+                group["x"].to_numpy(),
+                value=value,
+                family=family,
+                transform=False,
+                loop=loop,
+            )
             for level, group in frame.groupby("by", sort=True)
         }
     n = values.size
@@ -253,7 +258,8 @@ def data_outliers(
     if frame.shape[0] < 20:
         raise ValueError("the size of the data set is too small")
     columns = [
-        name for name in _numeric_columns(frame)
+        name
+        for name in _numeric_columns(frame)
         if np.unique(np.asarray(frame[name], dtype=float)).size >= min_distinct
     ]
     if not columns:
@@ -340,7 +346,9 @@ def cor_perm_test(
     xv, yv, xname, yname = _prepare_xy(x, y, data, xname, yname)
     if str(tail) not in {"one", "two"}:
         raise ValueError('tail must be "one" or "two"')
-    statistic = fun if fun is not None else (lambda a, b: float(np.corrcoef(a, b)[0, 1]))
+    statistic = (
+        fun if fun is not None else (lambda a, b: float(np.corrcoef(a, b)[0, 1]))
+    )
     observed = float(statistic(xv, yv))
     rng = np.random.default_rng(seed)
     samples = np.empty(int(B))
@@ -354,8 +362,12 @@ def cor_perm_test(
     else:
         asl = float(np.mean(np.abs(samples) > abs(observed)))
     return PermutationTest(
-        ASL=asl, observed=observed, sample=samples,
-        fname=getattr(statistic, "__name__", "cor"), xname=xname, yname=yname,
+        ASL=asl,
+        observed=observed,
+        sample=samples,
+        fname=getattr(statistic, "__name__", "cor"),
+        xname=xname,
+        yname=yname,
     )
 
 
@@ -376,7 +388,9 @@ def cor_boot(
     xv, yv, xname, yname = _prepare_xy(x, y, data, xname, yname)
     if str(tail) not in {"one", "two"}:
         raise ValueError('tail must be "one" or "two"')
-    statistic = fun if fun is not None else (lambda a, b: float(np.corrcoef(a, b)[0, 1]))
+    statistic = (
+        fun if fun is not None else (lambda a, b: float(np.corrcoef(a, b)[0, 1]))
+    )
     observed = float(statistic(xv, yv))
     rng = np.random.default_rng(seed)
     n = xv.size
@@ -392,9 +406,14 @@ def cor_boot(
     else:
         asl = float(np.mean(np.abs(samples) > abs(observed)))
     return CorrelationBootstrap(
-        ASL=asl, observed=observed, sample=samples,
-        fname=getattr(statistic, "__name__", "cor"), xname=xname, yname=yname,
-        mean=float(np.mean(samples)), sd=float(np.std(samples, ddof=1)),
+        ASL=asl,
+        observed=observed,
+        sample=samples,
+        fname=getattr(statistic, "__name__", "cor"),
+        xname=xname,
+        yname=yname,
+        mean=float(np.mean(samples)),
+        sd=float(np.std(samples, ddof=1)),
     )
 
 
@@ -470,7 +489,9 @@ def ACE(
     yc = yv - yv.mean()
     r0 = float(np.corrcoef(xc, yc)[0, 1])
     if abs(r0) > 0.99:
-        raise ValueError("ACE failed: very high linear correlation in the original variables")
+        raise ValueError(
+            "ACE failed: very high linear correlation in the original variables"
+        )
     theta = yc / np.sqrt(np.sum(yc**2))
     e2 = float(np.sum((yc - xc) ** 2))
     trace = [abs(r0)]
@@ -495,9 +516,16 @@ def ACE(
         e2 = e21
     mcor = float(abs(np.corrcoef(theta, phi)[0, 1]))
     return ACEFit(
-        x=xv, y=yv, tx=phi, ty=theta,
-        mcor=mcor, mrsq=mcor**2, r=r0, diff=mcor - abs(r0),
-        method=str(fit_method), trace=tuple(trace),
+        x=xv,
+        y=yv,
+        tx=phi,
+        ty=theta,
+        mcor=mcor,
+        mrsq=mcor**2,
+        r=r0,
+        diff=mcor - abs(r0),
+        method=str(fit_method),
+        trace=tuple(trace),
     )
 
 
@@ -515,8 +543,15 @@ def ACE_iter(
     """R ACE.iter: ACE with the iteration trace made explicit."""
 
     return ACE(
-        x, y, weights, data,
-        con_crit=con_crit, fit_method=fit_method, nseg=nseg, max_df=max_df, **kwargs,
+        x,
+        y,
+        weights,
+        data,
+        con_crit=con_crit,
+        fit_method=fit_method,
+        nseg=nseg,
+        max_df=max_df,
+        **kwargs,
     )
 
 
@@ -549,9 +584,7 @@ def data_mcor(
                 **kwargs,
             )
             matrix[i, j] = matrix[j, i] = value
-    return pd.DataFrame(
-        np.round(matrix, int(digits)), index=columns, columns=columns
-    )
+    return pd.DataFrame(np.round(matrix, int(digits)), index=columns, columns=columns)
 
 
 def cramer_phi(x: Any, y: Any, bias_correct: bool = True, digits: int = 4) -> float:
@@ -563,7 +596,9 @@ def cramer_phi(x: Any, y: Any, bias_correct: bool = True, digits: int = 4) -> fl
     observed = table.to_numpy(dtype=float)
     n = float(observed.sum())
     expected = np.outer(observed.sum(axis=1), observed.sum(axis=0)) / n
-    chi2 = float(np.sum((observed - expected) ** 2 / np.where(expected == 0, 1, expected)))
+    chi2 = float(
+        np.sum((observed - expected) ** 2 / np.where(expected == 0, 1, expected))
+    )
     phi = chi2 / n
     rows = observed.shape[0]
     cols = observed.shape[1]
@@ -572,9 +607,17 @@ def cramer_phi(x: Any, y: Any, bias_correct: bool = True, digits: int = 4) -> fl
         adjusted_cols = cols - ((cols - 1) ** 2 / (n - 1))
         adjusted_rows = rows - ((rows - 1) ** 2 / (n - 1))
         denominator = min(adjusted_rows - 1, adjusted_cols - 1)
-        return float(np.round(np.sqrt(phi / denominator), int(digits))) if denominator > 0 else 0.0
+        return (
+            float(np.round(np.sqrt(phi / denominator), int(digits)))
+            if denominator > 0
+            else 0.0
+        )
     denominator = min(rows - 1, cols - 1)
-    return float(np.round(np.sqrt(phi / denominator), int(digits))) if denominator > 0 else 0.0
+    return (
+        float(np.round(np.sqrt(phi / denominator), int(digits)))
+        if denominator > 0
+        else 0.0
+    )
 
 
 def association(
@@ -603,24 +646,36 @@ def association(
         value = cramer_phi(x, y, bias_correct=adjust_cramersv_bias)
         kind = "cramersV"
     elif not x_nominal and not y_nominal:
-        value = float(abs(stats.spearmanr(x, y).statistic)) if cor_method == "spearman" else float(abs(np.corrcoef(x, y)[0, 1]))
+        value = (
+            float(abs(stats.spearmanr(x, y).statistic))
+            if cor_method == "spearman"
+            else float(abs(np.corrcoef(x, y)[0, 1]))
+        )
         kind = "correlation"
     elif x_nominal and not y_nominal:
-        design = pd.get_dummies(pd.Series(np.asarray(x).astype(str)), drop_first=True).to_numpy(float)
+        design = pd.get_dummies(
+            pd.Series(np.asarray(x).astype(str)), drop_first=True
+        ).to_numpy(float)
         design = np.column_stack([np.ones(len(design)), design])
         response = np.asarray(y, dtype=np.float64)
         coef, *_ = np.linalg.lstsq(design, response, rcond=None)
         residual = response - design @ coef
-        r2 = 1.0 - float(np.sum(residual**2)) / float(np.sum((response - response.mean()) ** 2))
+        r2 = 1.0 - float(np.sum(residual**2)) / float(
+            np.sum((response - response.mean()) ** 2)
+        )
         value = float(np.sqrt(max(r2, 0.0)))
         kind = "anova"
     else:
-        design = pd.get_dummies(pd.Series(np.asarray(y).astype(str)), drop_first=True).to_numpy(float)
+        design = pd.get_dummies(
+            pd.Series(np.asarray(y).astype(str)), drop_first=True
+        ).to_numpy(float)
         design = np.column_stack([np.ones(len(design)), design])
         response = np.asarray(x, dtype=np.float64)
         coef, *_ = np.linalg.lstsq(design, response, rcond=None)
         residual = response - design @ coef
-        r2 = 1.0 - float(np.sum(residual**2)) / float(np.sum((response - response.mean()) ** 2))
+        r2 = 1.0 - float(np.sum(residual**2)) / float(
+            np.sum((response - response.mean()) ** 2)
+        )
         value = float(np.sqrt(max(r2, 0.0)))
         kind = "anova"
     return {"xname": xname, "yname": yname, "assoc": float(value), "type": kind}
@@ -642,7 +697,10 @@ def data_association(
         for second in columns[i + 1 :]:
             rows.append(
                 association(
-                    frame[first], frame[second], xname=first, yname=second,
+                    frame[first],
+                    frame[second],
+                    xname=first,
+                    yname=second,
                     cor_method=cor_method,
                     adjust_cramersv_bias=adjust_cramersv_bias,
                 )
@@ -650,7 +708,9 @@ def data_association(
     return pd.DataFrame(rows)
 
 
-def data_bucket(data: Any = None, value: float = 3.0, max_levels: int = 20, **kwargs: Any) -> pd.DataFrame:
+def data_bucket(
+    data: Any = None, value: float = 3.0, max_levels: int = 20, **kwargs: Any
+) -> pd.DataFrame:
     """R data_bucket: moment diagnostics per numeric column.
 
     R draws a moment (skewness/kurtosis) bucket plot per variable; the port
@@ -700,8 +760,13 @@ def data_leverage(
     predictors = [name for name in columns if name != response]
     if not predictors:
         raise ValueError("no variable is left after taking out the factors")
-    design = np.column_stack([np.ones(frame.shape[0])] + [np.asarray(frame[name], float) for name in predictors])
-    weights_array = np.ones(frame.shape[0]) if weights is None else np.asarray(weights, float)
+    design = np.column_stack(
+        [np.ones(frame.shape[0])]
+        + [np.asarray(frame[name], float) for name in predictors]
+    )
+    weights_array = (
+        np.ones(frame.shape[0]) if weights is None else np.asarray(weights, float)
+    )
     root_w = np.sqrt(weights_array)
     weighted = design * root_w[:, None]
     gram = weighted.T @ weighted
@@ -731,11 +796,16 @@ def data_plot(
         values = np.asarray(frame[name])
         if values.dtype.kind in "iuf":
             finite = values[np.isfinite(values)]
-            counts, edges = np.histogram(finite, bins=min(20, max(5, finite.size // 10)))
+            counts, edges = np.histogram(
+                finite, bins=min(20, max(5, finite.size // 10))
+            )
             result[name] = {"kind": "numeric", "edges": edges, "counts": counts}
         else:
             series = pd.Series(values).astype(str)
-            result[name] = {"kind": "categorical", "counts": series.value_counts().to_dict()}
+            result[name] = {
+                "kind": "categorical",
+                "counts": series.value_counts().to_dict(),
+            }
     return result
 
 
@@ -758,7 +828,11 @@ def data_response(
         if labels.nunique() > 20:
             raise ValueError("the number of levels are too big")
         kind = "binary" if labels.nunique() == 2 else "multinomial"
-        return {"class": "nominal", "kind": kind, "levels": sorted(labels.unique().tolist())}
+        return {
+            "class": "nominal",
+            "kind": kind,
+            "levels": sorted(labels.unique().tolist()),
+        }
     numeric = np.asarray(values, dtype=np.float64)
     if np.any(numeric < 0):
         suggestion = "a continuous distribution on the real line could be used"
@@ -770,7 +844,9 @@ def data_response(
     return {"class": "numeric", "suggestion": suggestion, "zscores": scores}
 
 
-def data_xyplot(data: Any = None, response: str = None, max_levels: int = 10, **kwargs: Any) -> dict:
+def data_xyplot(
+    data: Any = None, response: str = None, max_levels: int = 10, **kwargs: Any
+) -> dict:
     """R data_xyplot: response-versus-predictor pairs for plotting."""
 
     frame = _frame(data)
@@ -779,9 +855,18 @@ def data_xyplot(data: Any = None, response: str = None, max_levels: int = 10, **
     if response not in frame:
         raise ValueError("the response should be in data")
     series = np.asarray(frame[response])
-    if np.unique(series[np.isfinite(series)] if series.dtype.kind in "iuf" else series).size < max_levels:
+    if (
+        np.unique(
+            series[np.isfinite(series)] if series.dtype.kind in "iuf" else series
+        ).size
+        < max_levels
+    ):
         raise ValueError("the response do not seems to have many distinct values")
-    target = np.asarray(frame[response], dtype=np.float64) if series.dtype.kind in "iuf" else None
+    target = (
+        np.asarray(frame[response], dtype=np.float64)
+        if series.dtype.kind in "iuf"
+        else None
+    )
     pairs = {}
     for name in frame.columns:
         if name == response:

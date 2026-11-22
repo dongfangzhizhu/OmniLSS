@@ -20,6 +20,7 @@ G is returned as a pandas DataFrame with the region names on both axes, and is
 already reordered to the covariate level order (R's G[levels(x), levels(x)]
 block -- a no-op for the usual case, kept for parity).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -54,7 +55,9 @@ def nb2nb(neighbour_nb: Any) -> dict[str, dict[str, tuple[int, ...]]]:
             raise ValueError("the object is not a nb class")
     if len(names) != len(neighbours):
         raise ValueError("the object is not a nb class")
-    return {"nb": {str(name): tuple(neighbours[index]) for index, name in enumerate(names)}}
+    return {
+        "nb": {str(name): tuple(neighbours[index]) for index, name in enumerate(names)}
+    }
 
 
 def nb2prec(
@@ -79,12 +82,16 @@ def nb2prec(
     if len(data_levels) > len(knot_levels):
         raise ValueError("MRF basis dimension set too high")
     if any(level not in knot_levels for level in data_levels):
-        raise ValueError("data contain regions that are not contained in the area specification")
+        raise ValueError(
+            "data contain regions that are not contained in the area specification"
+        )
 
     mapping = neighbour["nb"] if isinstance(neighbour, Mapping) else neighbour
     names = [str(name) for name in mapping]
     if sorted(names) != sorted(knot_levels):
-        raise ValueError("mismatch between neighbour/polys supplied area names and data area names")
+        raise ValueError(
+            "mismatch between neighbour/polys supplied area names and data area names"
+        )
 
     size = len(knot_levels)
     position = {name: index for index, name in enumerate(knot_levels)}
@@ -181,10 +188,18 @@ def polys2nb(polys: Any) -> PolyNB:
     neighbours: list[tuple[int, ...]] = []
     for k in range(n):
         # R's four-way bbox overlap clauses, per axis
-        ol1 = ((lo1[k] <= hi1) & (lo1[k] >= lo1)) | ((hi1[k] <= hi1) & (hi1[k] >= lo1)) \
-            | ((lo1 <= hi1[k]) & (lo1 >= lo1[k])) | ((hi1 <= hi1[k]) & (hi1 >= lo1[k]))
-        ol2 = ((lo2[k] <= hi2) & (lo2[k] >= lo2)) | ((hi2[k] <= hi2) & (hi2[k] >= lo2)) \
-            | ((lo2 <= hi2[k]) & (lo2 >= lo2[k])) | ((hi2 <= hi2[k]) & (hi2 >= lo2[k]))
+        ol1 = (
+            ((lo1[k] <= hi1) & (lo1[k] >= lo1))
+            | ((hi1[k] <= hi1) & (hi1[k] >= lo1))
+            | ((lo1 <= hi1[k]) & (lo1 >= lo1[k]))
+            | ((hi1 <= hi1[k]) & (hi1 >= lo1[k]))
+        )
+        ol2 = (
+            ((lo2[k] <= hi2) & (lo2[k] >= lo2))
+            | ((hi2[k] <= hi2) & (hi2[k] >= lo2))
+            | ((lo2 <= hi2[k]) & (lo2 >= lo2[k]))
+            | ((hi2 <= hi2[k]) & (hi2 >= lo2[k]))
+        )
         overlap = ol1 & ol2
         overlap[k] = False
         candidates = np.nonzero(overlap)[0]
@@ -194,7 +209,7 @@ def polys2nb(polys: Any) -> PolyNB:
             co = np.vstack((cleaned[j], cok))
             n_shared = co.shape[0] - _unique_rows(co).shape[0]
             if n_shared > 0:
-                nb.append(int(j) + 1)   # 1-based R index
+                nb.append(int(j) + 1)  # 1-based R index
         # R: unique(nb[[k]]) -- keep first-occurrence order
         seen: set[int] = set()
         uniq = [v for v in nb if not (v in seen or seen.add(v))]

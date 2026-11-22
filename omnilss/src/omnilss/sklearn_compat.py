@@ -31,12 +31,15 @@ import numpy as np
 try:
     from sklearn.base import BaseEstimator, RegressorMixin
     from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+
     _SKLEARN_AVAILABLE = True
 except ImportError:
     _SKLEARN_AVAILABLE = False
+
     # Provide stub base classes so the module can be imported without sklearn
     class BaseEstimator:  # type: ignore[no-redef]
         pass
+
     class RegressorMixin:  # type: ignore[no-redef]
         pass
 
@@ -187,9 +190,7 @@ class GAMLSSRegressor(BaseEstimator, RegressorMixin):
             return f"{response} ~ 1"
 
         if self.mu_smoother:
-            terms = " + ".join(
-                f"{self.mu_smoother}({name})" for name in feature_names
-            )
+            terms = " + ".join(f"{self.mu_smoother}({name})" for name in feature_names)
         else:
             terms = " + ".join(feature_names)
 
@@ -376,9 +377,15 @@ class GAMLSSRegressor(BaseEstimator, RegressorMixin):
     def set_params(self, **params: Any) -> "GAMLSSRegressor":
         """Set parameters for this estimator (sklearn API)."""
         known = {
-            "family", "sigma_formula", "nu_formula", "tau_formula",
-            "algorithm", "feature_names", "response_name",
-            "mu_smoother", "fit_intercept",
+            "family",
+            "sigma_formula",
+            "nu_formula",
+            "tau_formula",
+            "algorithm",
+            "feature_names",
+            "response_name",
+            "mu_smoother",
+            "fit_intercept",
         }
         for key, value in params.items():
             if key in known:
@@ -389,10 +396,10 @@ class GAMLSSRegressor(BaseEstimator, RegressorMixin):
 
     def __repr__(self) -> str:
         family_name = (
-            self.family if isinstance(self.family, str)
+            self.family
+            if isinstance(self.family, str)
             else getattr(self.family, "name", str(self.family))
         )
         return (
-            f"GAMLSSRegressor(family={family_name!r}, "
-            f"algorithm={self.algorithm!r})"
+            f"GAMLSSRegressor(family={family_name!r}, " f"algorithm={self.algorithm!r})"
         )

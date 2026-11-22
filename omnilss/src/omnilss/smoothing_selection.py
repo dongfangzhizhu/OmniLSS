@@ -40,6 +40,7 @@ OptimizationMethod = Literal["GCV", "REML", "AIC", "BIC"]
 # Fast eigendecomposition-based lambda selection (O(p) per evaluation)
 # =============================================================================
 
+
 def _eigen_decompose(
     X: np.ndarray,
     S: np.ndarray,
@@ -60,14 +61,14 @@ def _eigen_decompose(
         weights = np.ones(n)
 
     W_sqrt = np.sqrt(weights)
-    XW = X * W_sqrt[:, None]          # (n, p)
-    XtWX = XW.T @ XW                  # (p, p)
-    Xty  = XW.T @ (W_sqrt * (X * W_sqrt[:, None]).T).T  # recompute below
-    Xty  = X.T @ (weights * (X @ np.ones(p)))            # placeholder
+    XW = X * W_sqrt[:, None]  # (n, p)
+    XtWX = XW.T @ XW  # (p, p)
+    Xty = XW.T @ (W_sqrt * (X * W_sqrt[:, None]).T).T  # recompute below
+    Xty = X.T @ (weights * (X @ np.ones(p)))  # placeholder
 
     # Correct Xty
     Xty = X.T @ (weights * X @ np.ones(p))  # still wrong, fix:
-    yW  = np.ones(n) * weights               # dummy y=1 for structure
+    yW = np.ones(n) * weights  # dummy y=1 for structure
     # We only need the eigendecomposition, not the actual fit
     # Compute Cholesky of X'WX
     try:
@@ -81,7 +82,7 @@ def _eigen_decompose(
 
     # Eigendecomposition of S_tilde (symmetric)
     d, U = eigh(S_tilde)
-    d = np.maximum(d, 0.0)   # numerical safety
+    d = np.maximum(d, 0.0)  # numerical safety
 
     return d, U, L
 
@@ -129,7 +130,7 @@ def _fast_gcv(
     def gcv_fast(log_lam: float) -> float:
         lam = float(np.exp(log_lam))
         # Eigenvalue-based EDF and RSS
-        denom = d + lam          # (p,)
+        denom = d + lam  # (p,)
         # beta_tilde = z / denom  (in rotated space)
         # RSS = yty - z' diag(d/denom) z  (weighted)
         # EDF = sum(d / denom)  ... wait, correct formula:
@@ -143,12 +144,12 @@ def _fast_gcv(
         # Correct EDF = trace((X'WX + lam S)^{-1} X'WX)
         #             = sum_i 1/(1 + lam * d_i)  where d_i = eig(L^{-1}SL^{-T})
         # RSS_w = yty - z' diag(1/(1+lam*d)) z
-        inv_denom = 1.0 / (1.0 + lam * d)   # (p,)
+        inv_denom = 1.0 / (1.0 + lam * d)  # (p,)
         rss_w = yty - float(np.sum(z**2 * inv_denom))
         rss_w = max(rss_w, 1e-15)
         edf = float(np.sum(inv_denom))
         df_res = max(n - edf, 1e-6)
-        return n * rss_w / (df_res ** 2)
+        return n * rss_w / (df_res**2)
 
     res = minimize_scalar(
         gcv_fast,
@@ -229,9 +230,7 @@ def _fast_reml(
         # smooth sine sample where GCV picks edf 7.5.
         residual_df = max(n - rank_S, 1)
         return 0.5 * (
-            log_det_pen
-            - log_det_lamS
-            + residual_df * np.log(rss_w / residual_df)
+            log_det_pen - log_det_lamS + residual_df * np.log(rss_w / residual_df)
         )
 
     res = minimize_scalar(
@@ -677,9 +676,7 @@ def reml_criterion(
         log_det_lamS = float(np.sum(np.log(positive))) + rank_S * np.log(lambda_)
         residual_df = max(n - rank_S, 1)
         reml = 0.5 * (
-            log_det_penalized
-            - log_det_lamS
-            + residual_df * np.log(rss / residual_df)
+            log_det_penalized - log_det_lamS + residual_df * np.log(rss / residual_df)
         )
 
     except (np.linalg.LinAlgError, ValueError):
@@ -1083,7 +1080,9 @@ def select_smoothing_parameter(
     elif method == "BIC":
         return select_lambda_bic(X_np, y_np, S_np, w_np, lambda_min, lambda_max)
     else:
-        raise ValueError(f"Unknown method: {method!r}. Choose from: GCV, REML, AIC, BIC")
+        raise ValueError(
+            f"Unknown method: {method!r}. Choose from: GCV, REML, AIC, BIC"
+        )
 
 
 # =============================================================================

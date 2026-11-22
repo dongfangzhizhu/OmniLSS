@@ -24,7 +24,9 @@ def check_numerical_state(values: dict[str, Any]) -> StressCheckResult:
         arr = np.asarray(value)
         has_nan = has_nan or bool(np.isnan(arr).any())
         has_inf = has_inf or bool(np.isinf(arr).any())
-    return StressCheckResult(has_nan=has_nan, has_inf=has_inf, iterations_exhausted=False)
+    return StressCheckResult(
+        has_nan=has_nan, has_inf=has_inf, iterations_exhausted=False
+    )
 
 
 def enforce_no_nan_propagation(values: dict[str, Any]) -> None:

@@ -419,9 +419,7 @@ def _validate_fitting_inputs(
         )
     if not np.all(np.isfinite(w)):
         n_bad = int(np.count_nonzero(~np.isfinite(w)))
-        raise ValueError(
-            f"weights contains {n_bad} non-finite value(s) (NaN or Inf)"
-        )
+        raise ValueError(f"weights contains {n_bad} non-finite value(s) (NaN or Inf)")
     if np.any(w < 0):
         raise ValueError(
             "weights must be non-negative; "

@@ -29,7 +29,9 @@ def centileKurt(y, centiles=(10, 25, 75, 90)) -> CentileKurtResult:
     mid = float(q[2] - q[1])
     eps = np.finfo(np.float64).eps
     ratio = (lower + upper) / max(mid, eps)
-    return CentileKurtResult(lower_tail_spread=lower, upper_tail_spread=upper, kurtosis_ratio=ratio)
+    return CentileKurtResult(
+        lower_tail_spread=lower, upper_tail_spread=upper, kurtosis_ratio=ratio
+    )
 
 
 __all__ = ["centileKurt", "CentileKurtResult"]

@@ -135,7 +135,9 @@ def _quantile_from_prob(prob, value_fn, low, high):
 
 def dPARETO(x, mu=1.0, log=False):
     """Density of the one-parameter Pareto distribution (support ``y > 1``)."""
-    x, mu = jnp.broadcast_arrays(jnp.asarray(x, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64))
+    x, mu = jnp.broadcast_arrays(
+        jnp.asarray(x, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64)
+    )
     inside = (x > 1.0) & (mu > 0.0)
     xs = jnp.where(inside, x, 2.0)
     value = jnp.where(inside, jnp.log(mu) - (mu + 1.0) * jnp.log(xs), -_INF)
@@ -145,7 +147,9 @@ def dPARETO(x, mu=1.0, log=False):
 
 def pPARETO(q, mu=1.0, lower_tail=True, log_p=False):
     """CDF of the one-parameter Pareto distribution (support ``y > 1``)."""
-    q, mu = jnp.broadcast_arrays(jnp.asarray(q, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64))
+    q, mu = jnp.broadcast_arrays(
+        jnp.asarray(q, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64)
+    )
     inside = q > 1.0
     qs = jnp.where(inside, q, 2.0)
     cdf = jnp.where(inside, -jnp.expm1(-mu * jnp.log(qs)), 0.0)
@@ -155,7 +159,9 @@ def pPARETO(q, mu=1.0, lower_tail=True, log_p=False):
 
 def qPARETO(p, mu=1.0, lower_tail=True, log_p=False):
     """Quantile of the one-parameter Pareto distribution (support ``y > 1``)."""
-    p, mu = jnp.broadcast_arrays(jnp.asarray(p, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64))
+    p, mu = jnp.broadcast_arrays(
+        jnp.asarray(p, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64)
+    )
     prob = _prob_from_p(p, lower_tail, log_p)
 
     def value_fn(pr):
@@ -177,7 +183,9 @@ def rPARETO(key, n, mu=1.0):
 
 def dPARETO1(x, mu=1.0, log=False):
     """Density of the one-parameter Pareto distribution (support ``y > 0``)."""
-    x, mu = jnp.broadcast_arrays(jnp.asarray(x, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64))
+    x, mu = jnp.broadcast_arrays(
+        jnp.asarray(x, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64)
+    )
     inside = (x > 0.0) & (mu > 0.0)
     xs = jnp.where(inside, x, 1.0)
     value = jnp.where(inside, jnp.log(mu) - (mu + 1.0) * jnp.log1p(xs), -_INF)
@@ -187,7 +195,9 @@ def dPARETO1(x, mu=1.0, log=False):
 
 def pPARETO1(q, mu=1.0, lower_tail=True, log_p=False):
     """CDF of the one-parameter Pareto distribution (support ``y > 0``)."""
-    q, mu = jnp.broadcast_arrays(jnp.asarray(q, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64))
+    q, mu = jnp.broadcast_arrays(
+        jnp.asarray(q, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64)
+    )
     inside = q > 0.0
     qs = jnp.where(inside, q, 1.0)
     cdf = jnp.where(inside, -jnp.expm1(-mu * jnp.log1p(qs)), 0.0)
@@ -197,7 +207,9 @@ def pPARETO1(q, mu=1.0, lower_tail=True, log_p=False):
 
 def qPARETO1(p, mu=1.0, lower_tail=True, log_p=False):
     """Quantile of the one-parameter Pareto distribution (support ``y > 0``)."""
-    p, mu = jnp.broadcast_arrays(jnp.asarray(p, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64))
+    p, mu = jnp.broadcast_arrays(
+        jnp.asarray(p, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64)
+    )
     prob = _prob_from_p(p, lower_tail, log_p)
 
     def value_fn(pr):
@@ -391,9 +403,13 @@ def _rge_scaled(x, mu, sigma, nu):
 def _rge_log_pdf(x, mu, sigma, nu):
     y = _rge_scaled(x, mu, sigma, nu)
     one_plus = 1.0 + y
-    log_one_plus = jnp.where(one_plus > 0.0, jnp.log(jnp.where(one_plus > 0.0, one_plus, 1.0)), 0.0)
-    general = -jnp.log(sigma) + (1.0 / nu - 1.0) * log_one_plus - jnp.power(
-        jnp.where(one_plus > 0.0, one_plus, 1.0), 1.0 / nu
+    log_one_plus = jnp.where(
+        one_plus > 0.0, jnp.log(jnp.where(one_plus > 0.0, one_plus, 1.0)), 0.0
+    )
+    general = (
+        -jnp.log(sigma)
+        + (1.0 / nu - 1.0) * log_one_plus
+        - jnp.power(jnp.where(one_plus > 0.0, one_plus, 1.0), 1.0 / nu)
     )
     z = (x - mu) / sigma
     limit = -jnp.log(sigma) + z - jnp.exp(z)
@@ -574,9 +590,14 @@ def pPE2(q, mu=0.0, sigma=1.0, nu=2.0, lower_tail=True, log_p=False):
     safe_sigma = jnp.where(sigma > 0.0, sigma, 1.0)
     safe_nu = jnp.where(nu > 0.0, nu, 1.0)
     z = (q - mu) / safe_sigma
-    cdf = 0.5 * (1.0 + _pgamma_std(_pe2_s(q, mu, safe_sigma, safe_nu), 1.0 / safe_nu) * jnp.sign(z))
+    cdf = 0.5 * (
+        1.0
+        + _pgamma_std(_pe2_s(q, mu, safe_sigma, safe_nu), 1.0 / safe_nu) * jnp.sign(z)
+    )
     # R's uniform limit for nu > 10000 (PE2.R).
-    cdf = jnp.where(nu > _PE2_NU_LIMIT, (q - (mu - safe_sigma)) / (2.0 * safe_sigma), cdf)
+    cdf = jnp.where(
+        nu > _PE2_NU_LIMIT, (q - (mu - safe_sigma)) / (2.0 * safe_sigma), cdf
+    )
     value = _apply_tail(cdf, lower_tail, log_p)
     return jnp.where(valid, value, _NAN)
 

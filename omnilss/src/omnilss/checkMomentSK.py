@@ -19,7 +19,9 @@ class CheckMomentSKResult:
     kurtosis_abs_error: float
 
 
-def checkMomentSK(y, target_mean, target_variance, target_skewness, target_kurtosis) -> CheckMomentSKResult:
+def checkMomentSK(
+    y, target_mean, target_variance, target_skewness, target_kurtosis
+) -> CheckMomentSKResult:
     """Compare empirical moments against target moments using absolute errors."""
     m = momentSK(y)
     return CheckMomentSKResult(

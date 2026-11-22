@@ -72,9 +72,13 @@ def summary(
     family_name = getattr(object.family, "name", str(object.family))
     method_name = str(object.additional_slots.get("method", "RS"))
     nobs = int(object.additional_slots.get("noObs", object.n))
-    residual_df = float(object.additional_slots.get("df.residual", nobs - object.df_fit))
+    residual_df = float(
+        object.additional_slots.get("df.residual", nobs - object.df_fit)
+    )
     aic = float(object.additional_slots.get("aic", gaic(object, k=2.0)))
-    sbc = float(object.additional_slots.get("sbc", gaic(object, k=float(np.log(max(nobs, 1))))))
+    sbc = float(
+        object.additional_slots.get("sbc", gaic(object, k=float(np.log(max(nobs, 1)))))
+    )
 
     coefficients: dict[str, dict[str, Any]] = {}
     cursor = 0
@@ -88,20 +92,26 @@ def summary(
         coefficients[parameter] = {
             "estimate": estimate,
             "std_error": parameter_se,
-            "t_value": None if parameter_se is None else np.divide(
-                estimate,
-                parameter_se,
-                out=np.full_like(estimate, np.nan, dtype=np.float64),
-                where=np.asarray(parameter_se) != 0,
-            ),
-            "p_value": None
-            if parameter_se is None
-            else _normal_two_sided_pvalue(
-                np.divide(
+            "t_value": (
+                None
+                if parameter_se is None
+                else np.divide(
                     estimate,
                     parameter_se,
                     out=np.full_like(estimate, np.nan, dtype=np.float64),
                     where=np.asarray(parameter_se) != 0,
+                )
+            ),
+            "p_value": (
+                None
+                if parameter_se is None
+                else _normal_two_sided_pvalue(
+                    np.divide(
+                        estimate,
+                        parameter_se,
+                        out=np.full_like(estimate, np.nan, dtype=np.float64),
+                        where=np.asarray(parameter_se) != 0,
+                    )
                 )
             ),
             "link": links.get(parameter),
@@ -109,7 +119,9 @@ def summary(
         cursor += count
 
     convergence_status = object.convergence_status()
-    slots = object.additional_slots if isinstance(object.additional_slots, Mapping) else {}
+    slots = (
+        object.additional_slots if isinstance(object.additional_slots, Mapping) else {}
+    )
     warnings: list[str] = [str(item) for item in slots.get("warnings", ()) or ()]
     warnings.extend(str(item) for item in slots.get("lambda_update_warnings", ()) or ())
 
@@ -123,7 +135,11 @@ def summary(
         global_deviance=float(object.additional_slots.get("G.deviance", object.g_dev)),
         aic=aic,
         sbc=sbc,
-        converged=bool(convergence_status) if convergence_status is not None else bool(slots.get("converged", True)),
+        converged=(
+            bool(convergence_status)
+            if convergence_status is not None
+            else bool(slots.get("converged", True))
+        ),
         cycles=int(object.additional_slots.get("cycles", object.iter)),
         coefficients=coefficients,
         edf=float(object.df_fit),

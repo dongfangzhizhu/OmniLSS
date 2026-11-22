@@ -46,7 +46,9 @@ def plot2way_data(
     if len(requested_terms) != 2 or not all(requested_terms):
         raise ValueError("terms must contain exactly two non-empty term names")
 
-    lpred_result = lpred(object, what=selected, type="terms", terms=requested_terms, se_fit=False)
+    lpred_result = lpred(
+        object, what=selected, type="terms", terms=requested_terms, se_fit=False
+    )
     term_matrix = np.asarray(lpred_result, dtype=np.float64)
     if term_matrix.ndim == 1:
         term_matrix = term_matrix[:, None]
@@ -64,7 +66,9 @@ def plot2way_data(
     x_values = np.asarray(call_data[term1], dtype=np.float64).ravel()
     y_values = np.asarray(call_data[term2], dtype=np.float64).ravel()
     if x_values.shape != y_values.shape or x_values.shape[0] != term_matrix.shape[0]:
-        raise ValueError("term data and term contributions must have compatible lengths")
+        raise ValueError(
+            "term data and term contributions must have compatible lengths"
+        )
 
     x_levels = np.unique(x_values)
     y_levels = np.unique(y_values)

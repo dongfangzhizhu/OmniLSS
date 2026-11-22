@@ -12,6 +12,7 @@ family quantile function; cens() builds a CensoredFamily (a FamilyDefinition
 with a censored density/deviance) suitable for the fitting engine; gen_cens()
 returns the generated d/p/q/family in a mapping.
 """
+
 from __future__ import annotations
 
 import re
@@ -36,7 +37,9 @@ def _pv(fam: FamilyDefinition, params: dict[str, Any]) -> list[Any]:
     try:
         return [params[name] for name in fam.parameters]
     except KeyError as exc:  # pragma: no cover - defensive
-        raise KeyError(f"missing family parameter {exc.args[0]!r} for {fam.name}") from exc
+        raise KeyError(
+            f"missing family parameter {exc.args[0]!r} for {fam.name}"
+        ) from exc
 
 
 def _check_type(type_: str) -> None:
@@ -101,7 +104,9 @@ def extract_surv_response(formula: str, data: Any) -> dict[str, Any]:
     return {"time": t1, "time2": t2, "status": status}
 
 
-def cens_d(family: Any = "NO", type: str = "right", **kwargs: Any) -> Callable[..., Any]:
+def cens_d(
+    family: Any = "NO", type: str = "right", **kwargs: Any
+) -> Callable[..., Any]:
     """R cens.d: censored log-density closure fun(y, log=False, **params)."""
 
     _check_type(type)
@@ -115,19 +120,27 @@ def cens_d(family: Any = "NO", type: str = "right", **kwargs: Any) -> Callable[.
         if type == "left":
             out = jnp.where(event, log_pdf, fam.p(t1, *pv, log_p=True))
         elif type == "right":
-            out = jnp.where(event, log_pdf, fam.p(t1, *pv, lower_tail=False, log_p=True))
+            out = jnp.where(
+                event, log_pdf, fam.p(t1, *pv, lower_tail=False, log_p=True)
+            )
         else:
-            right = jnp.where(status == 0.0, fam.p(t1, *pv, lower_tail=False, log_p=True), 0.0)
+            right = jnp.where(
+                status == 0.0, fam.p(t1, *pv, lower_tail=False, log_p=True), 0.0
+            )
             death = jnp.where(status == 1.0, log_pdf, 0.0)
             left = jnp.where(status == 2.0, fam.p(t1, *pv, log_p=True), 0.0)
-            interval = jnp.where(status == 3.0, jnp.log(fam.p(t2, *pv) - fam.p(t1, *pv)), 0.0)
+            interval = jnp.where(
+                status == 3.0, jnp.log(fam.p(t2, *pv) - fam.p(t1, *pv)), 0.0
+            )
             out = right + death + left + interval
         return out if log else jnp.exp(out)
 
     return fun
 
 
-def cens_p(family: Any = "NO", type: str = "right", **kwargs: Any) -> Callable[..., Any]:
+def cens_p(
+    family: Any = "NO", type: str = "right", **kwargs: Any
+) -> Callable[..., Any]:
     """R cens.p: randomised PIT closure fun(y, log=False, **params)."""
 
     _check_type(type)
@@ -147,9 +160,13 @@ def cens_p(family: Any = "NO", type: str = "right", **kwargs: Any) -> Callable[.
             out = np.where(event, cdf1, upper)
         else:
             cdf2 = np.asarray(fam.p(t2, *pv), dtype=float)
-            right = np.where(np.asarray(status) == 0.0, np.random.uniform(cdf1, 1.0, size=n), 0.0)
+            right = np.where(
+                np.asarray(status) == 0.0, np.random.uniform(cdf1, 1.0, size=n), 0.0
+            )
             death = np.where(np.asarray(status) == 1.0, cdf1, 0.0)
-            left = np.where(np.asarray(status) == 2.0, np.random.uniform(0.0, cdf1, size=n), 0.0)
+            left = np.where(
+                np.asarray(status) == 2.0, np.random.uniform(0.0, cdf1, size=n), 0.0
+            )
             interval = np.where(
                 np.asarray(status) == 3.0,
                 np.random.uniform(cdf1, cdf2, size=n),

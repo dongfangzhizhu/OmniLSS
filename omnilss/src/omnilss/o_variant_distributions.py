@@ -12,6 +12,7 @@ uniforms through the quantile function exactly like R, so the distribution
 matches while the random stream necessarily does not: pass an explicit JAX
 PRNG key for reproducibility, or leave it None for an R-like fresh draw.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -150,7 +151,9 @@ def pPARETO2o(q, mu=1.0, sigma=0.5, lower_tail=True, log_p=False):
 
 def pSHASHo(q, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, lower_tail=True, log_p=False):
     """R pSHASHo: CDF of the sinh-arcsinh (original)."""
-    return _family("SHASHO").p(q, mu, sigma, nu, tau, lower_tail=lower_tail, log_p=log_p)
+    return _family("SHASHO").p(
+        q, mu, sigma, nu, tau, lower_tail=lower_tail, log_p=log_p
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +198,9 @@ def qPARETO2o(p, mu=1.0, sigma=0.5, lower_tail=True, log_p=False):
 
 def qSHASHo(p, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, lower_tail=True, log_p=False):
     """R qSHASHo: quantiles of the sinh-arcsinh (original)."""
-    return _family("SHASHO").q(p, mu, sigma, nu, tau, lower_tail=lower_tail, log_p=log_p)
+    return _family("SHASHO").q(
+        p, mu, sigma, nu, tau, lower_tail=lower_tail, log_p=log_p
+    )
 
 
 # ---------------------------------------------------------------------------

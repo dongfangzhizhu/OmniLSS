@@ -68,7 +68,12 @@ def get_pef_data(
     term_values = np.asarray(call_data[term], dtype=np.float64).ravel()
     if term_values.size == 0:
         raise ValueError("term data is empty")
-    x_grid = np.linspace(float(np.min(term_values)), float(np.max(term_values)), int(n_points), dtype=np.float64)
+    x_grid = np.linspace(
+        float(np.min(term_values)),
+        float(np.max(term_values)),
+        int(n_points),
+        dtype=np.float64,
+    )
 
     fixed_values = dict(fixed_at or {})
     newdata: dict[str, np.ndarray] = {}
@@ -98,7 +103,9 @@ def get_pef_data(
         x=x_grid,
         effect=effect,
         derivative=derivative,
-        fixed_at={key: float(value) for key, value in fixed_values.items() if key != term},
+        fixed_at={
+            key: float(value) for key, value in fixed_values.items() if key != term
+        },
     )
 
 

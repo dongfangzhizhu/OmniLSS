@@ -34,7 +34,9 @@ def dtop(object: GAMLSSModel, n: int = 10, descending: bool = True) -> DTopResul
 
     family = object.family
     y = jnp.asarray(object.y, dtype=jnp.float64)
-    params = [jnp.asarray(object.fitted_values[p], dtype=jnp.float64) for p in object.par]
+    params = [
+        jnp.asarray(object.fitted_values[p], dtype=jnp.float64) for p in object.par
+    ]
 
     if hasattr(family, "g_dev_inc") and callable(family.g_dev_inc):
         dev_inc = jnp.asarray(family.g_dev_inc(y, *params), dtype=jnp.float64)
@@ -42,7 +44,9 @@ def dtop(object: GAMLSSModel, n: int = 10, descending: bool = True) -> DTopResul
         loglik = jnp.asarray(family.d(y, *params, log=True), dtype=jnp.float64)
         dev_inc = -2.0 * loglik
     else:
-        raise ValueError(f"family {getattr(family, 'name', '<unknown>')} has no g_dev_inc() or d()")
+        raise ValueError(
+            f"family {getattr(family, 'name', '<unknown>')} has no g_dev_inc() or d()"
+        )
 
     dev_inc_np = np.asarray(dev_inc, dtype=np.float64)
     if object.weights is None:

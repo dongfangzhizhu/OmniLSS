@@ -25,8 +25,6 @@ def _normal_quantile(probabilities: np.ndarray) -> np.ndarray:
     return quantiles.reshape(probs.shape)
 
 
-
-
 def _poisson_cdf_scalar(k: int, mu: float) -> float:
     if k < 0:
         return 0.0
@@ -37,8 +35,6 @@ def _poisson_cdf_scalar(k: int, mu: float) -> float:
         pmf *= mu / index
         total += pmf
     return float(min(max(total, 0.0), 1.0))
-
-
 
 
 def _negative_binomial_cdf_scalar(k: int, mu: float, sigma: float) -> float:
@@ -56,16 +52,12 @@ def _negative_binomial_cdf_scalar(k: int, mu: float, sigma: float) -> float:
     return float(min(max(total, 0.0), 1.0))
 
 
-
-
 def _geometric_cdf_scalar(k: int, mu: float) -> float:
     if k < 0:
         return 0.0
     mu = max(float(mu), np.finfo(np.float64).eps)
     ratio = mu / (1.0 + mu)
     return float(min(max(1.0 - ratio ** (k + 1), 0.0), 1.0))
-
-
 
 
 def _zip_cdf_scalar(k: int, mu: float, sigma: float) -> float:
@@ -75,8 +67,6 @@ def _zip_cdf_scalar(k: int, mu: float, sigma: float) -> float:
     sigma = min(max(float(sigma), eps), 1.0 - eps)
     poisson_cdf = _poisson_cdf_scalar(k, mu)
     return float(min(max(sigma + (1.0 - sigma) * poisson_cdf, 0.0), 1.0))
-
-
 
 
 def _discrete_midpoint_rqres(
@@ -99,26 +89,32 @@ def _discrete_midpoint_rqres(
             lower = _poisson_cdf_scalar(observed - 1, mu_value)
             upper = _poisson_cdf_scalar(observed, mu_value)
         elif family.name == "BI":
-            prob = min(max(mu_value, np.finfo(np.float64).eps), 1.0 - np.finfo(np.float64).eps)
+            prob = min(
+                max(mu_value, np.finfo(np.float64).eps), 1.0 - np.finfo(np.float64).eps
+            )
             lower = 0.0 if observed <= 0 else 1.0 - prob
             upper = 1.0 - prob if observed <= 0 else 1.0
         elif family.name == "GEOM":
             lower = _geometric_cdf_scalar(observed - 1, mu_value)
             upper = _geometric_cdf_scalar(observed, mu_value)
         elif family.name == "NBI":
-            lower = _negative_binomial_cdf_scalar(observed - 1, mu_value, float(sigma_value))
-            upper = _negative_binomial_cdf_scalar(observed, mu_value, float(sigma_value))
+            lower = _negative_binomial_cdf_scalar(
+                observed - 1, mu_value, float(sigma_value)
+            )
+            upper = _negative_binomial_cdf_scalar(
+                observed, mu_value, float(sigma_value)
+            )
         elif family.name == "ZIP":
             lower = _zip_cdf_scalar(observed - 1, mu_value, float(sigma_value))
             upper = _zip_cdf_scalar(observed, mu_value, float(sigma_value))
         else:
-            raise NotImplementedError(f"rqres is not implemented for family {family.name!r}")
+            raise NotImplementedError(
+                f"rqres is not implemented for family {family.name!r}"
+            )
 
         midpoint[index] = 0.5 * (lower + upper)
 
     return _normal_quantile(midpoint)
-
-
 
 
 #: Families with a hand-written residual kernel.  They predate the generic
@@ -257,8 +253,6 @@ def _build_rqres_callable(family: FamilyDefinition) -> Any | None:
     return generic_rqres
 
 
-
-
 def _compute_residuals(
     family: FamilyDefinition,
     y: np.ndarray,
@@ -276,6 +270,13 @@ def _compute_residuals(
     return jnp.asarray((y - mu) / np.sqrt(np.maximum(mu, 1e-12)), dtype=jnp.float64)
 
 
-
-
-__all__ = ["_build_rqres_callable", "_compute_residuals", "_discrete_midpoint_rqres", "_geometric_cdf_scalar", "_negative_binomial_cdf_scalar", "_normal_quantile", "_poisson_cdf_scalar", "_zip_cdf_scalar"]
+__all__ = [
+    "_build_rqres_callable",
+    "_compute_residuals",
+    "_discrete_midpoint_rqres",
+    "_geometric_cdf_scalar",
+    "_negative_binomial_cdf_scalar",
+    "_normal_quantile",
+    "_poisson_cdf_scalar",
+    "_zip_cdf_scalar",
+]

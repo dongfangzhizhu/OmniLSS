@@ -122,7 +122,9 @@ def _parse_random_formula(random: str) -> tuple[str, str]:
     """Parse ``~ <re_terms> | <group_col>`` into (re_formula, group_col)."""
     text = str(random).strip()
     if "|" not in text:
-        raise ValueError(f"random formula must contain '|' (e.g. '~1 | group'), got {random!r}")
+        raise ValueError(
+            f"random formula must contain '|' (e.g. '~1 | group'), got {random!r}"
+        )
     lhs, rhs = text.split("|", 1)
     group_col = rhs.strip()
     if "/" in group_col or ":" in group_col:
@@ -169,7 +171,9 @@ def _eval_lmm_objective(
     XtVinvy = np.zeros(p, dtype=np.float64)
     logdet_V = 0.0
     # Cache per-group blocks for BLUP calculation
-    cached_blocks: list[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]] = []
+    cached_blocks: list[
+        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+    ] = []
 
     for idx in group_indices:
         wg = w[idx]
@@ -241,11 +245,17 @@ def re(
     Builds a random-effects specification for ``gamlss_re``.
     """
     if not isinstance(fixed, str) or not fixed.strip().startswith("~"):
-        raise ValueError("fixed argument in re() needs a formula string starting with '~'")
+        raise ValueError(
+            "fixed argument in re() needs a formula string starting with '~'"
+        )
     if random is None:
-        raise ValueError("random argument in re() is required (e.g. random='~1 | group')")
+        raise ValueError(
+            "random argument in re() is required (e.g. random='~1 | group')"
+        )
     if correlation is not None:
-        raise NotImplementedError("correlation structures in re() are not yet implemented")
+        raise NotImplementedError(
+            "correlation structures in re() are not yet implemented"
+        )
     meth = str(method).upper()
     if meth not in {"ML", "REML"}:
         raise ValueError("method must be 'ML' or 'REML'")
@@ -290,14 +300,20 @@ def gamlss_re(
             data=x.get("data"),
         )
     else:
-        raise TypeError("gamlss_re expects a ReSpec (from re()) or configuration mapping")
+        raise TypeError(
+            "gamlss_re expects a ReSpec (from re()) or configuration mapping"
+        )
 
     if spec.correlation is not None:
-        raise NotImplementedError("correlation structures in gamlss_re() are not yet implemented")
+        raise NotImplementedError(
+            "correlation structures in gamlss_re() are not yet implemented"
+        )
 
     fit_data = data if data is not None else spec.data
     if fit_data is None:
-        raise ValueError("gamlss_re() requires data (either on re(..., data=...) or gamlss_re(..., data=...))")
+        raise ValueError(
+            "gamlss_re() requires data (either on re(..., data=...) or gamlss_re(..., data=...))"
+        )
 
     y_arr = np.asarray(y, dtype=np.float64).ravel()
     n = y_arr.size
@@ -322,7 +338,9 @@ def gamlss_re(
     Z_all, random_names = _build_design(re_formula, fit_data, n)
     groups_all = np.asarray(fit_data[group_col])
     if groups_all.size != n:
-        raise ValueError(f"grouping variable {group_col!r} has length {groups_all.size}, expected {n}")
+        raise ValueError(
+            f"grouping variable {group_col!r} has length {groups_all.size}, expected {n}"
+        )
 
     # Filter to positive-weight observations for exact likelihood
     X = X_all[positive_mask]
@@ -352,7 +370,9 @@ def gamlss_re(
             )
             return neg2ll
 
-        res_opt = minimize_scalar(_obj_1d, bounds=(-14.0, 14.0), method="bounded", options={"xatol": 1e-10})
+        res_opt = minimize_scalar(
+            _obj_1d, bounds=(-14.0, 14.0), method="bounded", options={"xatol": 1e-10}
+        )
         L_best = np.array([[np.exp(float(res_opt.x))]], dtype=np.float64)
         # Check boundary tau -> 0 (pure fixed effects)
         neg2ll_opt = float(res_opt.fun)

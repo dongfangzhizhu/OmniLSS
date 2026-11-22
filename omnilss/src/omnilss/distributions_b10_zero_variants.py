@@ -138,7 +138,11 @@ def _zero_variant_tails(base_name: str, *, altered: bool, epsilon: float):
     def variant_q(p, *params, lower_tail=True, log_p=False):
         base_kwargs = dict(zip(base_names, params[:-1]))
         tau = params[-1]
-        prob = jnp.exp(jnp.asarray(p, dtype=jnp.float64)) if log_p else jnp.asarray(p, dtype=jnp.float64)
+        prob = (
+            jnp.exp(jnp.asarray(p, dtype=jnp.float64))
+            if log_p
+            else jnp.asarray(p, dtype=jnp.float64)
+        )
         prob = prob if lower_tail else 1.0 - prob
         rescaled = (prob - tau) / (1.0 - tau) - epsilon
         if altered:
@@ -160,8 +164,14 @@ def _zero_variant_tails(base_name: str, *, altered: bool, epsilon: float):
     return {"p": variant_p, "q": variant_q, "r": variant_r}
 
 
-def make_zero_altered_family(base_name: str, base_log_pdf_func, base_params: tuple, base_links: dict,
-                             score_overrides=None, hessian_overrides=None):
+def make_zero_altered_family(
+    base_name: str,
+    base_log_pdf_func,
+    base_params: tuple,
+    base_links: dict,
+    score_overrides=None,
+    hessian_overrides=None,
+):
     """Factory to create zero-altered distributions.
 
     Zero-altered (hurdle): Pr(Y=0) = nu, Pr(Y=y|y>0) = (1-nu)*f(y)/[1-f(0)]
@@ -175,9 +185,9 @@ def make_zero_altered_family(base_name: str, base_log_pdf_func, base_params: tup
     @dataclass(frozen=True)
     class ZeroAlteredFamily(FamilyDefinition):
         pass
-    
+
     ZeroAlteredFamily.__name__ = f"ZeroAltered{base_name}Family"
-    
+
     def za_log_pdf(y, *params):
         """Zero-altered log-PDF."""
         if base_name == "SICHEL":
@@ -185,35 +195,42 @@ def make_zero_altered_family(base_name: str, base_log_pdf_func, base_params: tup
         # Last parameter is nu (zero probability)
         base_params_vals = params[:-1]
         nu = params[-1]
-        
+
         eps = jnp.finfo(jnp.float64).eps
         nu = jnp.clip(nu, eps, 1.0 - eps)
-        
+
         # Base distribution log-PDF for y > 0
         log_base = base_log_pdf_func(y, *base_params_vals)
-        
+
         # f(0) for base distribution
         log_f0 = base_log_pdf_func(jnp.zeros_like(y), *base_params_vals)
-        
+
         # Zero-altered probabilities
         log_at0 = jnp.log(nu)
         log_cont = jnp.log1p(-nu) + log_base - jnp.log1p(-jnp.exp(log_f0))
-        
+
         return jnp.where(y <= 0, log_at0, log_cont)
-    
+
     # Add the zero probability parameter.  R uses "nu" for the zero mass, but
     # some base families already have a "nu" shape parameter (e.g. SICHEL),
     # so use "tau" to keep the parameter tuple unique (Phase 4.4 contract fix).
     zero_param = "tau" if "nu" in base_params else "nu"
     za_params = base_params + (zero_param,)
     za_links = {**base_links, zero_param: "logit"}
-    
-    from .links import log_link, log_inverse, log_derivative, identity_link, identity_inverse, identity_derivative
-    
+
+    from .links import (
+        log_link,
+        log_inverse,
+        log_derivative,
+        identity_link,
+        identity_inverse,
+        identity_derivative,
+    )
+
     link_funcs = {}
     link_invs = {}
     link_derivs = {}
-    
+
     for param in za_params:
         if param == zero_param:
             link_funcs[param] = logit_link
@@ -233,7 +250,7 @@ def make_zero_altered_family(base_name: str, base_log_pdf_func, base_params: tup
                 link_funcs[param] = identity_link
                 link_invs[param] = identity_inverse
                 link_derivs[param] = identity_derivative
-    
+
     return build_ad_family(
         family_class=ZeroAlteredFamily,
         name=f"ZA{base_name}",
@@ -246,22 +263,27 @@ def make_zero_altered_family(base_name: str, base_log_pdf_func, base_params: tup
         link_derivatives=link_derivs,
         score_overrides=score_overrides,
         hessian_overrides=hessian_overrides,
-        **_zero_variant_tails(base_name, altered=True,
-                              epsilon=_QUANTILE_EPSILON),
+        **_zero_variant_tails(base_name, altered=True, epsilon=_QUANTILE_EPSILON),
     )
 
 
-def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tuple, base_links: dict,
-                              score_overrides=None, hessian_overrides=None):
+def make_zero_inflated_family(
+    base_name: str,
+    base_log_pdf_func,
+    base_params: tuple,
+    base_links: dict,
+    score_overrides=None,
+    hessian_overrides=None,
+):
     """Factory to create zero-inflated distributions.
-    
+
     Zero-inflated: Pr(Y=0) = nu + (1-nu)*f(0), Pr(Y=y|y>0) = (1-nu)*f(y)
     """
-    
+
     @dataclass(frozen=True)
     class ZeroInflatedFamily(FamilyDefinition):
         pass
-    
+
     ZeroInflatedFamily.__name__ = f"ZeroInflated{base_name}Family"
 
     def zi_log_pdf(y, *params):
@@ -270,32 +292,39 @@ def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tu
             return _zero_sichel_log_pdf(y, *params, altered=False)
         base_params_vals = params[:-1]
         nu = params[-1]
-        
+
         eps = jnp.finfo(jnp.float64).eps
         nu = jnp.clip(nu, eps, 1.0 - eps)
-        
+
         # Base distribution log-PDF
         log_base = base_log_pdf_func(y, *base_params_vals)
-        
+
         # f(0) for base distribution
         log_f0 = base_log_pdf_func(jnp.zeros_like(y), *base_params_vals)
-        
+
         # Zero-inflated probabilities
         log_at0 = jnp.log(nu + (1.0 - nu) * jnp.exp(log_f0))
         log_cont = jnp.log1p(-nu) + log_base
-        
+
         return jnp.where(y <= 0, log_at0, log_cont)
-    
+
     zero_param = "tau" if "nu" in base_params else "nu"
     zi_params = base_params + (zero_param,)
     zi_links = {**base_links, zero_param: "logit"}
-    
-    from .links import log_link, log_inverse, log_derivative, identity_link, identity_inverse, identity_derivative
-    
+
+    from .links import (
+        log_link,
+        log_inverse,
+        log_derivative,
+        identity_link,
+        identity_inverse,
+        identity_derivative,
+    )
+
     link_funcs = {}
     link_invs = {}
     link_derivs = {}
-    
+
     for param in zi_params:
         if param == zero_param:
             link_funcs[param] = logit_link
@@ -315,7 +344,7 @@ def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tu
                 link_funcs[param] = identity_link
                 link_invs[param] = identity_inverse
                 link_derivs[param] = identity_derivative
-    
+
     # D2.27: this used to carry a hand-written BNB-only `p`/`q`/`r` block.  It
     # computed the same thing as the general composition, only with the zero
     # branch spelled `q < 0.5` instead of `q == 0` -- equivalent for an integer
@@ -323,9 +352,11 @@ def make_zero_inflated_family(base_name: str, base_log_pdf_func, base_params: tu
     # `_zero_variant_tails` replaces all three, and it is what the other eight
     # factory-built variants had been missing entirely (their `p`/`q` were the
     # `build_ad_family` placeholders, i.e. all-NaN).
-    epsilon = (_QUANTILE_EPSILON_1E7
-               if f"ZI{base_name}" in _ZI_FAMILIES_WITH_THE_COARSE_EPSILON
-               else _QUANTILE_EPSILON)
+    epsilon = (
+        _QUANTILE_EPSILON_1E7
+        if f"ZI{base_name}" in _ZI_FAMILIES_WITH_THE_COARSE_EPSILON
+        else _QUANTILE_EPSILON
+    )
 
     return build_ad_family(
         family_class=ZeroInflatedFamily,
@@ -353,13 +384,16 @@ from .distributions_b6 import _r_negative_information
 from .distributions_b7 import _bb_log_pdf
 from .distributions_b9 import _lg_log_pdf, _zipf_log_pdf
 
+
 # Define binomial log-PDF (not exported from distributions.py)
 def _binomial_log_pdf(y, mu):
     """Binomial log-PDF for Bernoulli case."""
     import jax.numpy as jnp
+
     eps = jnp.finfo(jnp.float64).eps
     mu = jnp.clip(mu, eps, 1.0 - eps)
     return y * jnp.log(mu) + (1.0 - y) * jnp.log1p(-mu)
+
 
 def _zero_sichel_log_pdf(x, mu, sigma, nu, tau, *, altered, max_steps=None):
     """Shared scalar PMF kernel for density and family likelihoods."""
@@ -367,9 +401,15 @@ def _zero_sichel_log_pdf(x, mu, sigma, nu, tau, *, altered, max_steps=None):
 
     steps = SICHEL_DENSITY_MAX_COUNT if max_steps is None else int(max_steps)
     x, mu, sigma, nu, tau = map(jnp.asarray, (x, mu, sigma, nu, tau))
-    valid = ((mu > 0) & (sigma > 0) & jnp.isfinite(mu)
-             & jnp.isfinite(sigma) & jnp.isfinite(nu)
-             & (tau >= 0) & (tau <= 1))
+    valid = (
+        (mu > 0)
+        & (sigma > 0)
+        & jnp.isfinite(mu)
+        & jnp.isfinite(sigma)
+        & jnp.isfinite(nu)
+        & (tau >= 0)
+        & (tau <= 1)
+    )
     log_base = _sichel_log_pdf(x, mu, sigma, nu, max_steps=steps)
     log_f0 = _sichel_log_pdf_at_zero(mu, sigma, nu)
     positive = jnp.log1p(-tau) + log_base
@@ -382,18 +422,17 @@ def _zero_sichel_log_pdf(x, mu, sigma, nu, tau, *, altered, max_steps=None):
     support = (x >= 0) & jnp.isfinite(x) & (x == jnp.floor(x))
     value = jnp.where(support, value, -jnp.inf)
     # The point mass needs no base-density approximation or support cutoff.
-    value = jnp.where(tau == 1, jnp.where(x == 0, 0., -jnp.inf), value)
-    undefined = (jnp.isnan(x) | (support & (x > SICHEL_DENSITY_MAX_COUNT)
-                                 & (tau != 1)))
+    value = jnp.where(tau == 1, jnp.where(x == 0, 0.0, -jnp.inf), value)
+    undefined = jnp.isnan(x) | (support & (x > SICHEL_DENSITY_MAX_COUNT) & (tau != 1))
     return jnp.where(valid & ~undefined, value, jnp.nan)
 
 
 def _zero_sichel_density(x, mu, sigma, nu, tau, *, altered, log):
     from .distributions_b6 import _sichel_scan_steps
 
-    args = jnp.broadcast_arrays(*[
-        jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu, tau)
-    ])
+    args = jnp.broadcast_arrays(
+        *[jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu, tau)]
+    )
     steps = _sichel_scan_steps(args[0])
     values = jax.vmap(
         lambda *v: _zero_sichel_log_pdf(*v, altered=altered, max_steps=steps)
@@ -409,6 +448,7 @@ def _zero_sichel_log_mass_sequence(mu, sigma, nu, tau, *, altered, max_count):
     keeps probability/quantile scans linear in the support budget.
     """
     from .distributions_b6 import _sichel_log_pmf_sequence
+
     base = _sichel_log_pmf_sequence(mu, sigma, nu, max_count)
     log_f0 = base[0]
     log_positive = jnp.log1p(-tau) + base
@@ -420,13 +460,23 @@ def _zero_sichel_log_mass_sequence(mu, sigma, nu, tau, *, altered, max_count):
     counts = jnp.arange(max_count + 1, dtype=jnp.float64)
     mass = jnp.concatenate((jnp.reshape(at_zero, (1,)), log_positive[1:]))
     # A tau of 1 collapses everything onto the point mass at zero.
-    mass = jnp.where(tau == 1, jnp.where(counts == 0, 0., -jnp.inf), mass)
+    mass = jnp.where(tau == 1, jnp.where(counts == 0, 0.0, -jnp.inf), mass)
     return mass
 
 
-def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
-                             lower_tail, log_p, quantile=False,
-                             max_value=100000):
+def _zero_sichel_probability(
+    value,
+    mu,
+    sigma,
+    nu,
+    tau,
+    *,
+    altered,
+    lower_tail,
+    log_p,
+    quantile=False,
+    max_value=100000,
+):
     """Evaluate tails/invert them directly, without probability complements.
 
     Like SICHEL, the numerical support is limited to the configured
@@ -436,11 +486,18 @@ def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
     not upper-tail summation. Unresolved interior probabilities return NaN.
     """
     from .distributions_b6 import SICHEL_PROBABILITY_MAX_COUNT
-    if isinstance(max_value, bool) or not isinstance(max_value, int) or not 0 <= max_value <= SICHEL_PROBABILITY_MAX_COUNT:
-        raise ValueError(f"max_value must be an integer in [0, {SICHEL_PROBABILITY_MAX_COUNT}]")
-    args = jnp.broadcast_arrays(*[
-        jnp.asarray(v, dtype=jnp.float64) for v in (value, mu, sigma, nu, tau)
-    ])
+
+    if (
+        isinstance(max_value, bool)
+        or not isinstance(max_value, int)
+        or not 0 <= max_value <= SICHEL_PROBABILITY_MAX_COUNT
+    ):
+        raise ValueError(
+            f"max_value must be an integer in [0, {SICHEL_PROBABILITY_MAX_COUNT}]"
+        )
+    args = jnp.broadcast_arrays(
+        *[jnp.asarray(v, dtype=jnp.float64) for v in (value, mu, sigma, nu, tau)]
+    )
     # Upper tails still need masses beyond the candidate search cap.
     # D2.75: a lower-tail CDF only needs the masses up to the largest value
     # asked for.  The full 100001-point support cost about half a second per
@@ -460,17 +517,26 @@ def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
         else:
             finite = concrete[np.isfinite(concrete)]
             budget = (
-                0 if finite.size == 0
+                0
+                if finite.size == 0
                 else int(min(max_value, max(0.0, float(np.ceil(finite.max())))))
             )
     support = jnp.arange(budget + 1, dtype=jnp.float64)
 
     def scalar(v, mm, ss, nn, tt):
         mass = _zero_sichel_log_mass_sequence(
-            mm, ss, nn, tt, altered=altered, max_count=support.shape[0] - 1)
-        valid = ((mm > 0) & (ss > 0) & jnp.isfinite(mm)
-                 & jnp.isfinite(ss) & jnp.isfinite(nn)
-                 & (tt >= 0) & (tt <= 1) & ~jnp.isnan(v))
+            mm, ss, nn, tt, altered=altered, max_count=support.shape[0] - 1
+        )
+        valid = (
+            (mm > 0)
+            & (ss > 0)
+            & jnp.isfinite(mm)
+            & jnp.isfinite(ss)
+            & jnp.isfinite(nn)
+            & (tt >= 0)
+            & (tt <= 1)
+            & ~jnp.isnan(v)
+        )
         if quantile:
             valid = valid & ((v <= 0) if log_p else ((v >= 0) & (v <= 1)))
             target = v if log_p else jnp.log(v)
@@ -480,21 +546,35 @@ def _zero_sichel_probability(value, mu, sigma, nu, tau, *, altered,
                 inclusive = jax.lax.associative_scan(jnp.logaddexp, mass, reverse=True)
                 cumulative = jnp.concatenate((inclusive[1:], jnp.array([-jnp.inf])))
             # Only compensate for floating-point roundoff at discrete jumps.
-            tolerance = 8 * jnp.finfo(jnp.float64).eps * jnp.maximum(1., jnp.abs(target))
-            tolerance = jnp.where(jnp.isfinite(target), tolerance, 0.)
-            reached = (cumulative >= target - tolerance) if lower_tail else (cumulative <= target + tolerance)
+            tolerance = (
+                8 * jnp.finfo(jnp.float64).eps * jnp.maximum(1.0, jnp.abs(target))
+            )
+            tolerance = jnp.where(jnp.isfinite(target), tolerance, 0.0)
+            reached = (
+                (cumulative >= target - tolerance)
+                if lower_tail
+                else (cumulative <= target + tolerance)
+            )
             reached = reached & (support <= max_value)
-            result = jnp.where(jnp.any(reached), jnp.argmax(reached).astype(jnp.float64), jnp.nan)
+            result = jnp.where(
+                jnp.any(reached), jnp.argmax(reached).astype(jnp.float64), jnp.nan
+            )
             at_zero = jnp.isneginf(target) if lower_tail else (target == 0)
             at_infinity = (target == 0) if lower_tail else jnp.isneginf(target)
-            result = jnp.where(at_zero | (tt == 1), 0., jnp.where(at_infinity, jnp.inf, result))
+            result = jnp.where(
+                at_zero | (tt == 1), 0.0, jnp.where(at_infinity, jnp.inf, result)
+            )
         else:
             selected = (support <= v) if lower_tail else (support > v)
             result = jax.scipy.special.logsumexp(jnp.where(selected, mass, -jnp.inf))
-            result = jnp.minimum(result, 0.)
-            result = jnp.where(v < 0, -jnp.inf if lower_tail else 0., result)
-            result = jnp.where(jnp.isposinf(v), 0. if lower_tail else -jnp.inf, result)
-            point_mass = jnp.where(v < 0, -jnp.inf, 0.) if lower_tail else jnp.where(v < 0, 0., -jnp.inf)
+            result = jnp.minimum(result, 0.0)
+            result = jnp.where(v < 0, -jnp.inf if lower_tail else 0.0, result)
+            result = jnp.where(jnp.isposinf(v), 0.0 if lower_tail else -jnp.inf, result)
+            point_mass = (
+                jnp.where(v < 0, -jnp.inf, 0.0)
+                if lower_tail
+                else jnp.where(v < 0, 0.0, -jnp.inf)
+            )
             result = jnp.where(tt == 1, point_mass, result)
             valid = valid & ~((v > max_value) & jnp.isfinite(v) & (tt != 1))
             result = result if log_p else jnp.exp(result)
@@ -547,6 +627,7 @@ def _zero_sichel_f0(mu, sigma, nu):
 
 def _neg_info(score_fn):
     """Wrap a score slot into R's ``-score^2`` clamped at ``-1e-15``."""
+
     # D2.75: forward **kwargs.  The RS engine calls a hessian slot as
     # hess_fn(**param_dict) (rs_algorithm.compute_score_hessian), so a
     # positional-only wrapper raised "hess() got an unexpected keyword
@@ -554,6 +635,7 @@ def _neg_info(score_fn):
     # fit.  Same positional-vs-keyword trap as the probe assembly (D2.72).
     def hess(*args, **kwargs):
         return _r_negative_information(score_fn(*args, **kwargs))
+
     hess.__name__ = f"d2_{getattr(score_fn, '__name__', 'slot')}"
     return hess
 
@@ -562,7 +644,12 @@ def _zisichel_dldm(y, mu, sigma, nu, tau):
     (y, mu, sigma, nu, tau), scalar = _prepare_jax_args((y, mu, sigma, nu, tau))
     zeros = jnp.zeros_like(y)
     f0 = _zero_sichel_f0(mu, sigma, nu)
-    d0 = (1.0 - tau) * f0 / (tau + (1.0 - tau) * f0) * _sichel_base_dldm(zeros, mu, sigma, nu)
+    d0 = (
+        (1.0 - tau)
+        * f0
+        / (tau + (1.0 - tau) * f0)
+        * _sichel_base_dldm(zeros, mu, sigma, nu)
+    )
     out = jnp.where(y == 0, d0, _sichel_base_dldm(y, mu, sigma, nu))
     return out[0] if scalar else out
 
@@ -571,7 +658,12 @@ def _zisichel_dldd(y, mu, sigma, nu, tau):
     (y, mu, sigma, nu, tau), scalar = _prepare_jax_args((y, mu, sigma, nu, tau))
     zeros = jnp.zeros_like(y)
     f0 = _zero_sichel_f0(mu, sigma, nu)
-    d0 = (1.0 - tau) * f0 / (tau + (1.0 - tau) * f0) * _sichel_base_dldd(zeros, mu, sigma, nu)
+    d0 = (
+        (1.0 - tau)
+        * f0
+        / (tau + (1.0 - tau) * f0)
+        * _sichel_base_dldd(zeros, mu, sigma, nu)
+    )
     out = jnp.where(y == 0, d0, _sichel_base_dldd(y, mu, sigma, nu))
     return out[0] if scalar else out
 
@@ -582,7 +674,11 @@ def _zisichel_dldv(y, mu, sigma, nu, tau):
     (y, mu, sigma, nu, tau), scalar = _prepare_jax_args((y, mu, sigma, nu, tau))
     delta = _R_NUMERIC_DERIV_DELTA
     steps = _sichel_scan_steps(y)
-    f = jax.vmap(lambda a, b, c, d, e: _zero_sichel_log_pdf(a, b, c, d, e, altered=False, max_steps=steps))
+    f = jax.vmap(
+        lambda a, b, c, d, e: _zero_sichel_log_pdf(
+            a, b, c, d, e, altered=False, max_steps=steps
+        )
+    )
     out = (f(y, mu, sigma, nu + delta, tau) - f(y, mu, sigma, nu, tau)) / delta
     return out[0] if scalar else out
 
@@ -599,8 +695,9 @@ def _zasichel_dldm(y, mu, sigma, nu, tau):
     (y, mu, sigma, nu, tau), scalar = _prepare_jax_args((y, mu, sigma, nu, tau))
     zeros = jnp.zeros_like(y)
     f0 = _zero_sichel_f0(mu, sigma, nu)
-    d0 = _sichel_base_dldm(y, mu, sigma, nu) \
-        + f0 * _sichel_base_dldm(zeros, mu, sigma, nu) / (1.0 - f0)
+    d0 = _sichel_base_dldm(y, mu, sigma, nu) + f0 * _sichel_base_dldm(
+        zeros, mu, sigma, nu
+    ) / (1.0 - f0)
     out = jnp.where(y == 0, 0.0, d0)
     return out[0] if scalar else out
 
@@ -611,8 +708,9 @@ def _zasichel_dldd(y, mu, sigma, nu, tau):
     # R floors sigma at 1e-6 inside its dldd/d2ldd2 before calling SICHEL's.
     sigma = jnp.maximum(sigma, 1e-6)
     f0 = _zero_sichel_f0(mu, sigma, nu)
-    d0 = _sichel_base_dldd(y, mu, sigma, nu) \
-        + f0 * _sichel_base_dldd(zeros, mu, sigma, nu) / (1.0 - f0)
+    d0 = _sichel_base_dldd(y, mu, sigma, nu) + f0 * _sichel_base_dldd(
+        zeros, mu, sigma, nu
+    ) / (1.0 - f0)
     out = jnp.where(y == 0, 0.0, d0)
     return out[0] if scalar else out
 
@@ -623,7 +721,11 @@ def _zasichel_dldv(y, mu, sigma, nu, tau):
     (y, mu, sigma, nu, tau), scalar = _prepare_jax_args((y, mu, sigma, nu, tau))
     delta = _R_NUMERIC_DERIV_DELTA
     steps = _sichel_scan_steps(y)
-    f = jax.vmap(lambda a, b, c, d, e: _zero_sichel_log_pdf(a, b, c, d, e, altered=True, max_steps=steps))
+    f = jax.vmap(
+        lambda a, b, c, d, e: _zero_sichel_log_pdf(
+            a, b, c, d, e, altered=True, max_steps=steps
+        )
+    )
     out = (f(y, mu, sigma, nu + delta, tau) - f(y, mu, sigma, nu, tau)) / delta
     return out[0] if scalar else out
 
@@ -679,22 +781,53 @@ def ZASICHEL():
         score_overrides=_ZASICHEL_SCORES,
         hessian_overrides=_ZASICHEL_HESSIANS,
     )
-    def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
-        return _zero_sichel_probability(q, mu, sigma, nu, tau, altered=True,
-                                        lower_tail=lower_tail, log_p=log_p)
-    def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False, max_value=100000):
-        return _zero_sichel_probability(prob, mu, sigma, nu, tau, altered=True,
-                                        lower_tail=lower_tail, log_p=log_p, quantile=True, max_value=max_value)
-    def r(key, n, mu=1., sigma=.5, nu=-.5, tau=.5):
+
+    def p(q, mu=1.0, sigma=1.0, nu=-0.5, tau=0.5, lower_tail=True, log_p=False):
+        return _zero_sichel_probability(
+            q, mu, sigma, nu, tau, altered=True, lower_tail=lower_tail, log_p=log_p
+        )
+
+    def q(
+        prob,
+        mu=1.0,
+        sigma=0.5,
+        nu=-0.5,
+        tau=0.5,
+        lower_tail=True,
+        log_p=False,
+        max_value=100000,
+    ):
+        return _zero_sichel_probability(
+            prob,
+            mu,
+            sigma,
+            nu,
+            tau,
+            altered=True,
+            lower_tail=lower_tail,
+            log_p=log_p,
+            quantile=True,
+            max_value=max_value,
+        )
+
+    def r(key, n, mu=1.0, sigma=0.5, nu=-0.5, tau=0.5):
         if not isinstance(n, int) or n < 0:
-            raise ValueError('n must be a nonnegative integer')
-        mu, sigma, nu, tau = jnp.broadcast_arrays(*map(jnp.asarray, (mu, sigma, nu, tau)))
+            raise ValueError("n must be a nonnegative integer")
+        mu, sigma, nu, tau = jnp.broadcast_arrays(
+            *map(jnp.asarray, (mu, sigma, nu, tau))
+        )
         return q(jax.random.uniform(key, (n,) + mu.shape), mu, sigma, nu, tau)
-    def d(x, mu=1., sigma=1., nu=-.5, tau=.5, log=False):
+
+    def d(x, mu=1.0, sigma=1.0, nu=-0.5, tau=0.5, log=False):
         return _zero_sichel_density(x, mu, sigma, nu, tau, altered=True, log=log)
+
     def g_dev_inc(y, mu, sigma, nu, tau):
-        return -2.0 * _zero_sichel_density(y, mu, sigma, nu, tau, altered=True, log=True)
+        return -2.0 * _zero_sichel_density(
+            y, mu, sigma, nu, tau, altered=True, log=True
+        )
+
     return replace(family, d=d, p=p, q=q, r=r, g_dev_inc=g_dev_inc)
+
 
 # ZISICHEL - Zero-Inflated Sichel
 def ZISICHEL():
@@ -707,47 +840,75 @@ def ZISICHEL():
         score_overrides=_ZISICHEL_SCORES,
         hessian_overrides=_ZISICHEL_HESSIANS,
     )
-    def p(q, mu=1., sigma=1., nu=-.5, tau=.5, lower_tail=True, log_p=False):
-        return _zero_sichel_probability(q, mu, sigma, nu, tau, altered=False,
-                                        lower_tail=lower_tail, log_p=log_p)
-    def q(prob, mu=1., sigma=.5, nu=-.5, tau=.5, lower_tail=True, log_p=False, max_value=100000):
-        return _zero_sichel_probability(prob, mu, sigma, nu, tau, altered=False,
-                                        lower_tail=lower_tail, log_p=log_p, quantile=True, max_value=max_value)
-    def r(key, n, mu=1., sigma=.5, nu=-.5, tau=.5):
+
+    def p(q, mu=1.0, sigma=1.0, nu=-0.5, tau=0.5, lower_tail=True, log_p=False):
+        return _zero_sichel_probability(
+            q, mu, sigma, nu, tau, altered=False, lower_tail=lower_tail, log_p=log_p
+        )
+
+    def q(
+        prob,
+        mu=1.0,
+        sigma=0.5,
+        nu=-0.5,
+        tau=0.5,
+        lower_tail=True,
+        log_p=False,
+        max_value=100000,
+    ):
+        return _zero_sichel_probability(
+            prob,
+            mu,
+            sigma,
+            nu,
+            tau,
+            altered=False,
+            lower_tail=lower_tail,
+            log_p=log_p,
+            quantile=True,
+            max_value=max_value,
+        )
+
+    def r(key, n, mu=1.0, sigma=0.5, nu=-0.5, tau=0.5):
         if not isinstance(n, int) or n < 0:
-            raise ValueError('n must be a nonnegative integer')
-        mu, sigma, nu, tau = jnp.broadcast_arrays(*map(jnp.asarray, (mu, sigma, nu, tau)))
+            raise ValueError("n must be a nonnegative integer")
+        mu, sigma, nu, tau = jnp.broadcast_arrays(
+            *map(jnp.asarray, (mu, sigma, nu, tau))
+        )
         return q(jax.random.uniform(key, (n,) + mu.shape), mu, sigma, nu, tau)
-    def d(x, mu=1., sigma=1., nu=-.5, tau=.5, log=False):
+
+    def d(x, mu=1.0, sigma=1.0, nu=-0.5, tau=0.5, log=False):
         return _zero_sichel_density(x, mu, sigma, nu, tau, altered=False, log=log)
+
     def g_dev_inc(y, mu, sigma, nu, tau):
-        return -2.0 * _zero_sichel_density(y, mu, sigma, nu, tau, altered=False, log=True)
+        return -2.0 * _zero_sichel_density(
+            y, mu, sigma, nu, tau, altered=False, log=True
+        )
+
     return replace(family, d=d, p=p, q=q, r=r, g_dev_inc=g_dev_inc)
+
 
 # ZAPIG - Zero-Altered Poisson Inverse Gaussian
 def ZAPIG():
     """Zero-Altered Poisson Inverse Gaussian distribution."""
     return make_zero_altered_family(
-        "PIG",
-        _pig_log_pdf,
-        ("mu", "sigma"),
-        {"mu": "log", "sigma": "log"}
+        "PIG", _pig_log_pdf, ("mu", "sigma"), {"mu": "log", "sigma": "log"}
     )
+
 
 # ZIPIG - Zero-Inflated Poisson Inverse Gaussian
 def ZIPIG():
     """Zero-Inflated Poisson Inverse Gaussian distribution."""
     return make_zero_inflated_family(
-        "PIG",
-        _pig_log_pdf,
-        ("mu", "sigma"),
-        {"mu": "log", "sigma": "log"}
+        "PIG", _pig_log_pdf, ("mu", "sigma"), {"mu": "log", "sigma": "log"}
     )
+
 
 # ZABB - Zero-Altered Beta Binomial
 # ZIBB - Zero-Inflated Beta Binomial
 # NOTE: BB requires 'bd' (binomial denominator) parameter
 # These need special handling with bd as a fixed parameter
+
 
 def _vector_bd(value):
     """Validate an R-style bd and pass it through unchanged.
@@ -794,23 +955,31 @@ def _static_bd(value):
 
 def ZABB(bd=10):
     """Zero-Altered Beta Binomial distribution.
-    
+
     Args:
         bd: Binomial denominator (fixed parameter, default=10)
     """
     from .zabb import dZABB, pZABB, qZABB, rZABB, _check_bd
+
     _check_bd(bd)
-    
+
     def zabb_log_pdf(y, mu, sigma, nu):
         """ZABB log-PDF with fixed bd."""
-        return dZABB(y,mu,sigma,nu,bd,log=True)
-    
-    from .links import logit_link, logit_inverse, logit_derivative, log_link, log_inverse, log_derivative
-    
+        return dZABB(y, mu, sigma, nu, bd, log=True)
+
+    from .links import (
+        logit_link,
+        logit_inverse,
+        logit_derivative,
+        log_link,
+        log_inverse,
+        log_derivative,
+    )
+
     @dataclass(frozen=True)
     class ZABBFamily(FamilyDefinition):
         pass
-    
+
     return build_ad_family(
         family_class=ZABBFamily,
         name="ZABB",
@@ -819,10 +988,16 @@ def ZABB(bd=10):
         log_pdf_func=zabb_log_pdf,
         type_="Discrete",
         fixed_parameters=("bd",),
-        d=lambda x,mu=.5,sigma=.1,nu=.1,bd=bd,log=False: dZABB(x,mu,sigma,nu,_static_bd(bd),log),
-        p=lambda q,mu=.5,sigma=.1,nu=.1,bd=bd,lower_tail=True,log_p=False: pZABB(q,mu,sigma,nu,_static_bd(bd),lower_tail,log_p),
-        q=lambda p,mu=.5,sigma=.1,nu=.1,bd=bd,lower_tail=True,log_p=False: qZABB(p,mu,sigma,nu,_static_bd(bd),lower_tail,log_p),
-        r=lambda key,n,mu=.5,sigma=.1,nu=.1: rZABB(key,n,mu,sigma,nu,bd),
+        d=lambda x, mu=0.5, sigma=0.1, nu=0.1, bd=bd, log=False: dZABB(
+            x, mu, sigma, nu, _static_bd(bd), log
+        ),
+        p=lambda q, mu=0.5, sigma=0.1, nu=0.1, bd=bd, lower_tail=True, log_p=False: pZABB(
+            q, mu, sigma, nu, _static_bd(bd), lower_tail, log_p
+        ),
+        q=lambda p, mu=0.5, sigma=0.1, nu=0.1, bd=bd, lower_tail=True, log_p=False: qZABB(
+            p, mu, sigma, nu, _static_bd(bd), lower_tail, log_p
+        ),
+        r=lambda key, n, mu=0.5, sigma=0.1, nu=0.1: rZABB(key, n, mu, sigma, nu, bd),
         links={"mu": "logit", "sigma": "log", "nu": "logit"},
         link_functions={
             "mu": logit_link,
@@ -844,22 +1019,29 @@ def ZABB(bd=10):
 
 def ZIBB(bd=10):
     """Zero-Inflated Beta Binomial distribution.
-    
+
     Args:
         bd: Binomial denominator (fixed parameter, default=10)
     """
     from .zibb import dZIBB, pZIBB, qZIBB, rZIBB
-    
+
     def zibb_log_pdf(y, mu, sigma, nu):
         """ZIBB log-PDF, bd per observation when the family carries a vector."""
         return dZIBB(y, mu, sigma, nu, _vector_bd(bd), log=True)
-    
-    from .links import logit_link, logit_inverse, logit_derivative, log_link, log_inverse, log_derivative
-    
+
+    from .links import (
+        logit_link,
+        logit_inverse,
+        logit_derivative,
+        log_link,
+        log_inverse,
+        log_derivative,
+    )
+
     @dataclass(frozen=True)
     class ZIBBFamily(FamilyDefinition):
         pass
-    
+
     return build_ad_family(
         family_class=ZIBBFamily,
         name="ZIBB",
@@ -868,10 +1050,16 @@ def ZIBB(bd=10):
         log_pdf_func=zibb_log_pdf,
         type_="Discrete",
         fixed_parameters=("bd",),
-        d=lambda x,mu=.5,sigma=.5,nu=.1,bd=bd,log=False: dZIBB(x,mu,sigma,nu,_vector_bd(bd),log),
-        p=lambda q,mu=.5,sigma=.5,nu=.1,bd=bd,lower_tail=True,log_p=False: pZIBB(q,mu,sigma,nu,_vector_bd(bd),lower_tail,log_p),
-        q=lambda p,mu=.5,sigma=.5,nu=.1,bd=bd,lower_tail=True,log_p=False: qZIBB(p,mu,sigma,nu,_vector_bd(bd),lower_tail,log_p),
-        r=lambda key,n,mu=.5,sigma=.5,nu=.1: rZIBB(key,n,mu,sigma,nu,bd),
+        d=lambda x, mu=0.5, sigma=0.5, nu=0.1, bd=bd, log=False: dZIBB(
+            x, mu, sigma, nu, _vector_bd(bd), log
+        ),
+        p=lambda q, mu=0.5, sigma=0.5, nu=0.1, bd=bd, lower_tail=True, log_p=False: pZIBB(
+            q, mu, sigma, nu, _vector_bd(bd), lower_tail, log_p
+        ),
+        q=lambda p, mu=0.5, sigma=0.5, nu=0.1, bd=bd, lower_tail=True, log_p=False: qZIBB(
+            p, mu, sigma, nu, _vector_bd(bd), lower_tail, log_p
+        ),
+        r=lambda key, n, mu=0.5, sigma=0.5, nu=0.1: rZIBB(key, n, mu, sigma, nu, bd),
         links={"mu": "logit", "sigma": "log", "nu": "logit"},
         link_functions={
             "mu": logit_link,
@@ -889,6 +1077,7 @@ def ZIBB(bd=10):
             "nu": logit_derivative,
         },
     )
+
 
 # ---------------------------------------------------------------------------
 # ZABI / ZIBI -- the two binomial zero variants, with R's bd (D2.71)
@@ -1154,8 +1343,13 @@ def _make_binomial_zero_variant(name, *, altered):
     # 1.000e+00" on both families (D2.71).
     def _q(p, mu=0.5, nu=0.1, bd=1.0, lower_tail=True, log_p=False):
         return _binomial_zero_quantile(
-            p, mu, nu, bd, altered=altered,
-            lower_tail=lower_tail, log_p=log_p,
+            p,
+            mu,
+            nu,
+            bd,
+            altered=altered,
+            lower_tail=lower_tail,
+            log_p=log_p,
         )
 
     def _r(key, n, mu=0.5, nu=0.1, bd=1.0):
@@ -1173,8 +1367,16 @@ def _make_binomial_zero_variant(name, *, altered):
         type_="Discrete",
         links={"mu": "logit", "nu": "logit", "bd": "identity"},
         link_functions={"mu": logit_link, "nu": logit_link, "bd": identity_link},
-        link_inverses={"mu": logit_inverse, "nu": logit_inverse, "bd": identity_inverse},
-        link_derivatives={"mu": logit_derivative, "nu": logit_derivative, "bd": identity_derivative},
+        link_inverses={
+            "mu": logit_inverse,
+            "nu": logit_inverse,
+            "bd": identity_inverse,
+        },
+        link_derivatives={
+            "mu": logit_derivative,
+            "nu": logit_derivative,
+            "bd": identity_derivative,
+        },
         fixed_parameters=("bd",),
         fixed_parameter_defaults={"bd": 1.0},
         d=_d,
@@ -1205,15 +1407,12 @@ def ZIBI():
     """
     return _make_binomial_zero_variant("ZIBI", altered=False)
 
+
 # ZAZIPF - Zero-Altered Zipf
 def ZAZIPF():
     """Zero-Altered Zipf distribution."""
-    return make_zero_altered_family(
-        "ZIPF",
-        _zipf_log_pdf,
-        ("mu",),
-        {"mu": "log"}
-    )
+    return make_zero_altered_family("ZIPF", _zipf_log_pdf, ("mu",), {"mu": "log"})
+
 
 # Note: ZIZIPF doesn't make sense as Zipf already starts at 1
 
@@ -1225,17 +1424,18 @@ def ZAZIPF():
 # Import additional base distributions
 from .distributions_b7 import _bnb_log_pdf
 
+
 # Helper to create NBI log-PDF wrapper
 def _nbi_log_pdf(y, mu, sigma):
     """NBI log-PDF wrapper for zero-variant factories."""
     import jax.numpy as jnp
     from jax.scipy.special import gammaln
-    
+
     eps = jnp.finfo(jnp.float64).eps
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
     size = 1.0 / sigma
-    
+
     return (
         gammaln(y + size)
         - gammaln(size)
@@ -1249,11 +1449,9 @@ def _nbi_log_pdf(y, mu, sigma):
 def ZANBI():
     """Zero-Altered Negative Binomial distribution."""
     return make_zero_altered_family(
-        "NBI",
-        _nbi_log_pdf,
-        ("mu", "sigma"),
-        {"mu": "log", "sigma": "log"}
+        "NBI", _nbi_log_pdf, ("mu", "sigma"), {"mu": "log", "sigma": "log"}
     )
+
 
 # ZINBI already exists in distributions.py, so we skip it here
 
@@ -1279,6 +1477,7 @@ def ZANBI():
 #                             else -1/(1-tau)
 #   everything's d2ldX2      = -dld^2, floored at -1e-15
 # ---------------------------------------------------------------------------
+
 
 def _bnb_parts(mu, sigma, nu):
     """R's m / n / k for the Beta Negative Binomial."""
@@ -1331,8 +1530,9 @@ def _bnb_dldv(y, mu, sigma, nu):
 
 def _bnb_f0(mu, sigma, nu):
     """R's dBNB(0, mu, sigma, nu) -- the base density at zero."""
-    return jnp.exp(_bnb_log_pdf(jnp.zeros_like(jnp.asarray(mu, dtype=jnp.float64)),
-                                mu, sigma, nu))
+    return jnp.exp(
+        _bnb_log_pdf(jnp.zeros_like(jnp.asarray(mu, dtype=jnp.float64)), mu, sigma, nu)
+    )
 
 
 def _zabnb_dldm(y, mu, sigma, nu, tau):
@@ -1400,27 +1600,21 @@ _ZABNB_HESSIANS = {
 def _zibnb_dldm(y, mu, sigma, nu, tau):
     zeros = jnp.zeros_like(jnp.asarray(mu, dtype=jnp.float64))
     f0 = _bnb_f0(mu, sigma, nu)
-    at0 = (1.0 - tau) * f0 * _bnb_dldm(zeros, mu, sigma, nu) / (
-        tau + (1.0 - tau) * f0
-    )
+    at0 = (1.0 - tau) * f0 * _bnb_dldm(zeros, mu, sigma, nu) / (tau + (1.0 - tau) * f0)
     return jnp.where(y == 0, at0, _bnb_dldm(y, mu, sigma, nu))
 
 
 def _zibnb_dldd(y, mu, sigma, nu, tau):
     zeros = jnp.zeros_like(jnp.asarray(mu, dtype=jnp.float64))
     f0 = _bnb_f0(mu, sigma, nu)
-    at0 = (1.0 - tau) * f0 * _bnb_dldd(zeros, mu, sigma, nu) / (
-        tau + (1.0 - tau) * f0
-    )
+    at0 = (1.0 - tau) * f0 * _bnb_dldd(zeros, mu, sigma, nu) / (tau + (1.0 - tau) * f0)
     return jnp.where(y == 0, at0, _bnb_dldd(y, mu, sigma, nu))
 
 
 def _zibnb_dldv(y, mu, sigma, nu, tau):
     zeros = jnp.zeros_like(jnp.asarray(mu, dtype=jnp.float64))
     f0 = _bnb_f0(mu, sigma, nu)
-    at0 = (1.0 - tau) * f0 * _bnb_dldv(zeros, mu, sigma, nu) / (
-        tau + (1.0 - tau) * f0
-    )
+    at0 = (1.0 - tau) * f0 * _bnb_dldv(zeros, mu, sigma, nu) / (tau + (1.0 - tau) * f0)
     return jnp.where(y == 0, at0, _bnb_dldv(y, mu, sigma, nu))
 
 
@@ -1472,6 +1666,7 @@ def ZABNB():
         hessian_overrides=_ZABNB_HESSIANS,
     )
 
+
 # ZIBNB - Zero-Inflated Beta Negative Binomial
 def ZIBNB():
     """Zero-Inflated Beta Negative Binomial distribution."""
@@ -1483,6 +1678,7 @@ def ZIBNB():
         score_overrides=_ZIBNB_SCORES,
         hessian_overrides=_ZIBNB_HESSIANS,
     )
+
 
 # ZINBF - Zero-Inflated Negative Binomial (Famoye parameterization)
 # Note: This would require NBF distribution to be implemented first

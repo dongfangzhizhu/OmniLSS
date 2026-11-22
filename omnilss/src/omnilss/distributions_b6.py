@@ -48,6 +48,7 @@ from .bessel import log_bessel_iv
 #    A Poisson distribution where the rate parameter follows an Inverse Gaussian distribution
 # ------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class PoissonInverseGaussianFamily(FamilyDefinition):
     """Poisson Inverse Gaussian distribution (`PIG`)."""
@@ -58,6 +59,7 @@ from .pig import logpmf as _pig_log_pdf
 
 def PIG() -> PoissonInverseGaussianFamily:
     from .dpqr_functions import dPIG, pPIG, qPIG, rPIG
+
     return build_ad_family(
         family_class=PoissonInverseGaussianFamily,
         name="PIG",
@@ -80,6 +82,7 @@ def PIG() -> PoissonInverseGaussianFamily:
 #    R: dSICHEL(x, mu, sigma, nu)
 #    A generalization of PIG with an additional shape parameter
 # ------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class SichelFamily(FamilyDefinition):
@@ -107,7 +110,9 @@ def _sichel_scan_steps(y) -> int:
         finite = concrete[np.isfinite(concrete) & (concrete >= 0.0)]
         if finite.size == 0:
             return 0
-        return int(min(SICHEL_DENSITY_MAX_COUNT, max(0, int(np.ceil(float(finite.max()))))))
+        return int(
+            min(SICHEL_DENSITY_MAX_COUNT, max(0, int(np.ceil(float(finite.max())))))
+        )
     except Exception:  # pragma: no cover - traced y under jax.jit
         return SICHEL_DENSITY_MAX_COUNT
 
@@ -119,7 +124,13 @@ def _sichel_log_pdf_at_zero(mu, sigma, nu):
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     nu = jnp.asarray(nu, dtype=jnp.float64)
-    valid = (mu > 0) & (sigma > 0) & jnp.isfinite(mu) & jnp.isfinite(sigma) & jnp.isfinite(nu)
+    valid = (
+        (mu > 0)
+        & (sigma > 0)
+        & jnp.isfinite(mu)
+        & jnp.isfinite(sigma)
+        & jnp.isfinite(nu)
+    )
     mu_s = jnp.where(valid, mu, 1.0)
     sigma_s = jnp.where(valid, sigma, 1.0)
     nu_s = jnp.where(valid, nu, -0.5)
@@ -135,6 +146,7 @@ def _sichel_log_pdf_at_zero(mu, sigma, nu):
 def _sichel_log_pmf_sequence(mu, sigma, nu, max_count):
     """Return log PMFs for counts 0..max_count using one static scan."""
     from .bessel import log_bessel_kv
+
     eps = jnp.finfo(jnp.float64).eps
     inv_sigma = 1.0 / sigma
     log_k_nu = log_bessel_kv(nu, inv_sigma)
@@ -150,7 +162,7 @@ def _sichel_log_pmf_sequence(mu, sigma, nu, max_count):
         prev, log_mass = carry
         prev = jnp.clip(prev, eps, 1e100)
         jf = j.astype(jnp.float64)
-        current = (c * sigma * (2.0 * (jf + nu) / mu) + 1.0 / prev)
+        current = c * sigma * (2.0 * (jf + nu) / mu) + 1.0 / prev
         current = current * jnp.square(mu / (sigma * alpha * c))
         current = jnp.clip(current, eps, 1e100)
         next_log = log_mass + jnp.log(prev) - jnp.log(jf)
@@ -162,24 +174,24 @@ def _sichel_log_pmf_sequence(mu, sigma, nu, max_count):
 
 def _sichel_log_pdf(y, mu, sigma, nu, *, max_steps: int = SICHEL_DENSITY_MAX_COUNT):
     """Sichel distribution log-pdf.
-    
+
     The Sichel distribution is a three-parameter generalization of PIG.
-    
+
     R formula (from gamlss.dist):
     logfy = -lgamma(y+1) - nu*log(sigma*alpha) + sumlty + log(K_nu(alpha)) - log(K_nu(1/sigma))
-    
+
     where:
     - c = K_{nu+1}(1/sigma) / K_nu(1/sigma)
     - alpha = sqrt(1 + 2*sigma*mu/c) / sigma
     - sumlty is computed via recursive formula (see tofySICHEL2.c)
-    
+
     The recursive formula computes:
     tofY[0] = (mu/c) * (1 + 2*sigma*mu/c)^(-0.5) * exp(lbes)
     tofY[j] = (c*sigma*(2*(j+nu)/mu) + (1/tofY[j-1])) * (mu/(sigma*alpha*c))^2
     sumlty = sum(log(tofY[j-1])) for j=1 to y
     """
     from .bessel import log_bessel_kv
-    
+
     eps = jnp.finfo(jnp.float64).eps
     # This function is the scalar kernel consumed by build_ad_family's vmap.
     # Do not accumulate with an array-shaped carry here: vmap supplies one
@@ -188,80 +200,86 @@ def _sichel_log_pdf(y, mu, sigma, nu, *, max_steps: int = SICHEL_DENSITY_MAX_COU
     mu = jnp.asarray(mu, dtype=jnp.float64)
     sigma = jnp.asarray(sigma, dtype=jnp.float64)
     nu = jnp.asarray(nu, dtype=jnp.float64)
-    valid = ((mu > 0) & (sigma > 0) & jnp.isfinite(mu)
-             & jnp.isfinite(sigma) & jnp.isfinite(nu))
+    valid = (
+        (mu > 0)
+        & (sigma > 0)
+        & jnp.isfinite(mu)
+        & jnp.isfinite(sigma)
+        & jnp.isfinite(nu)
+    )
     support = (y >= 0) & jnp.isfinite(y) & (y == jnp.floor(y))
     undefined = jnp.isnan(y) | (support & (y > SICHEL_DENSITY_MAX_COUNT))
-    mu = jnp.where(valid, mu, 1.)
-    sigma = jnp.where(valid, sigma, 1.)
-    nu = jnp.where(valid, nu, -.5)
-    y = jnp.where(support & ~undefined, y, 0.)
-    
+    mu = jnp.where(valid, mu, 1.0)
+    sigma = jnp.where(valid, sigma, 1.0)
+    nu = jnp.where(valid, nu, -0.5)
+    y = jnp.where(support & ~undefined, y, 0.0)
+
     # Compute c = K_{nu+1}(1/sigma) / K_nu(1/sigma)
     inv_sigma = 1.0 / sigma
     log_k_nu = log_bessel_kv(nu, inv_sigma)
     log_k_nu_plus_1 = log_bessel_kv(nu + 1.0, inv_sigma)
     c = jnp.exp(log_k_nu_plus_1 - log_k_nu)
-    
+
     # Compute alpha
     alpha = jnp.sqrt(1.0 + 2.0 * sigma * mu / c) / sigma
-    
+
     # Compute lbes = log(K_{nu+1}(alpha) / K_nu(alpha))
     log_k_alpha_nu = log_bessel_kv(nu, alpha)
     log_k_alpha_nu_plus_1 = log_bessel_kv(nu + 1.0, alpha)
     lbes = log_k_alpha_nu_plus_1 - log_k_alpha_nu
-    
+
     # Compute sumlty via recursive formula using lax.scan
     # tofY[0] = (mu/c) * (1 + 2*sigma*mu/c)^(-0.5) * exp(lbes)
     tofy_0 = (mu / c) * jnp.power(1.0 + 2.0 * sigma * mu / c, -0.5) * jnp.exp(lbes)
-    
+
     # For y=0, sumlty = 0
     # For y>0, we need to compute the recursive sum
     # Since inputs are already scalar (vmapped by ad.py), compute directly
     y_int = jnp.clip(jnp.round(y).astype(jnp.int32), 0, SICHEL_DENSITY_MAX_COUNT)
-    
+
     def scan_fun_masked(carry, j):
         tofy_prev, sum_log = carry
         # Clip tofy_prev to safe range to prevent extreme values
         tofy_prev_safe = jnp.clip(tofy_prev, eps, 1e100)
-        
+
         # tofY[j] = (c*sigma*(2*(j+nu)/mu) + (1/tofY[j-1])) * (mu/(sigma*alpha*c))^2
         j_float = j.astype(jnp.float64)
-        tofy_j = (c * sigma * (2.0 * (j_float + nu) / mu) + (1.0 / tofy_prev_safe)) * \
-                 jnp.power(mu / (sigma * alpha * c), 2.0)
-        
+        tofy_j = (
+            c * sigma * (2.0 * (j_float + nu) / mu) + (1.0 / tofy_prev_safe)
+        ) * jnp.power(mu / (sigma * alpha * c), 2.0)
+
         # Clip tofy_j to safe range
         tofy_j = jnp.clip(tofy_j, eps, 1e100)
-        
+
         # Only add to sum if j <= y_int
         log_term = jnp.where(j <= y_int, jnp.log(tofy_prev_safe), 0.0)
         sum_log = sum_log + log_term
-        
+
         return (tofy_j, sum_log), None
-    
+
     # Initial state: (tofY[0], sumlty=0)
     init_state = (tofy_0, jnp.asarray(0.0, dtype=jnp.float64))
-    
+
     # Run scan with a static bound (data-driven when concrete, full budget if traced).
     if max_steps <= 0:
         sumlty = jnp.asarray(0.0, dtype=jnp.float64)
     else:
         j_seq = jnp.arange(1, int(max_steps) + 1)
         (_, sumlty), _ = jax.lax.scan(scan_fun_masked, init_state, j_seq)
-    
+
     # For y=0, sumlty should be 0
     sumlty = jnp.where(y < 0.5, 0.0, sumlty)
-    
+
     # Compute log-pdf
     # logfy = -lgamma(y+1) - nu*log(sigma*alpha) + sumlty + log(K_nu(alpha)) - log(K_nu(1/sigma))
     log_pdf = (
-        -gammaln(y + 1.0) 
-        - nu * jnp.log(sigma * alpha) 
-        + sumlty 
-        + log_k_alpha_nu 
+        -gammaln(y + 1.0)
+        - nu * jnp.log(sigma * alpha)
+        + sumlty
+        + log_k_alpha_nu
         - log_k_nu
     )
-    
+
     log_pdf = jnp.where(support, log_pdf, -jnp.inf)
     return jnp.where(valid & ~undefined, log_pdf, jnp.nan)
 
@@ -331,8 +349,9 @@ def _sichel_dldd(y, mu, sigma, nu):
     log_k_nu = log_bessel_kv(nu, inv_sigma)
     c = jnp.exp(log_bessel_kv(nu + 1.0, inv_sigma) - log_k_nu)
     dcdd = (c * sigma * (2.0 * nu + 1.0) + 1.0 - c * c) / (sigma * sigma)
-    out = ((ty * (c + sigma * mu) / mu) - sigma * y - c) / (sigma * sigma) \
-        + dcdd * (ty - y) / c
+    out = ((ty * (c + sigma * mu) / mu) - sigma * y - c) / (sigma * sigma) + dcdd * (
+        ty - y
+    ) / c
     return out[0] if scalar else out
 
 
@@ -354,9 +373,15 @@ def _sichel_dldv(y, mu, sigma, nu):
 
 _SICHEL_SCORES = {"mu": _sichel_dldm, "sigma": _sichel_dldd, "nu": _sichel_dldv}
 _SICHEL_HESSIANS = {
-    "mu": lambda y, mu, sigma, nu: _r_negative_information(_sichel_dldm(y, mu, sigma, nu)),
-    "sigma": lambda y, mu, sigma, nu: _r_negative_information(_sichel_dldd(y, mu, sigma, nu)),
-    "nu": lambda y, mu, sigma, nu: _r_negative_information(_sichel_dldv(y, mu, sigma, nu)),
+    "mu": lambda y, mu, sigma, nu: _r_negative_information(
+        _sichel_dldm(y, mu, sigma, nu)
+    ),
+    "sigma": lambda y, mu, sigma, nu: _r_negative_information(
+        _sichel_dldd(y, mu, sigma, nu)
+    ),
+    "nu": lambda y, mu, sigma, nu: _r_negative_information(
+        _sichel_dldv(y, mu, sigma, nu)
+    ),
 }
 
 
@@ -373,7 +398,11 @@ def SICHEL() -> SichelFamily:
         links={"mu": "log", "sigma": "log", "nu": "identity"},
         link_functions={"mu": log_link, "sigma": log_link, "nu": identity_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": identity_inverse},
-        link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": identity_derivative},
+        link_derivatives={
+            "mu": log_derivative,
+            "sigma": log_derivative,
+            "nu": identity_derivative,
+        },
         score_overrides=_SICHEL_SCORES,
         hessian_overrides=_SICHEL_HESSIANS,
         d=dSICHEL,
@@ -399,6 +428,7 @@ def SICHEL() -> SichelFamily:
 #    R: dSI(x, mu, sigma)
 #    Difference of two Poisson random variables
 # ------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class SkellamFamily(FamilyDefinition):
@@ -426,7 +456,9 @@ def _si_log_pdf(y, mu, sigma, nu=-0.5):
         prev, sum_log = carry
         prev = jnp.clip(prev, eps, 1e100)
         jf = j.astype(jnp.float64)
-        current = (sigma * (2.0 * (jf + nu) / mu) + 1.0 / prev) * jnp.square(mu / (sigma * alpha))
+        current = (sigma * (2.0 * (jf + nu) / mu) + 1.0 / prev) * jnp.square(
+            mu / (sigma * alpha)
+        )
         current = jnp.clip(current, eps, 1e100)
         sum_log = sum_log + jnp.where(j <= y_int, jnp.log(prev), 0.0)
         return (current, sum_log), None
@@ -459,7 +491,9 @@ def _si_log_pmf_grid(mu, sigma, nu):
     safe_sigma = jnp.where(valid, sigma, 1.0)
     alpha = jnp.sqrt(1.0 + 2.0 * safe_sigma * safe_mu) / safe_sigma
     lbes = log_bessel_kv(nu + 1.0, alpha) - log_bessel_kv(nu, alpha)
-    initial_ratio = safe_mu * jnp.power(1.0 + 2.0 * safe_sigma * safe_mu, -0.5) * jnp.exp(lbes)
+    initial_ratio = (
+        safe_mu * jnp.power(1.0 + 2.0 * safe_sigma * safe_mu, -0.5) * jnp.exp(lbes)
+    )
     log_zero = (
         -nu * jnp.log(safe_sigma * alpha)
         + log_bessel_kv(nu, alpha)
@@ -469,7 +503,11 @@ def _si_log_pmf_grid(mu, sigma, nu):
     def step(state, count):
         previous_ratio, previous_log_mass = state
         count_float = count.astype(jnp.float64)
-        log_mass = previous_log_mass + jnp.log(jnp.maximum(previous_ratio, eps)) - jnp.log(count_float)
+        log_mass = (
+            previous_log_mass
+            + jnp.log(jnp.maximum(previous_ratio, eps))
+            - jnp.log(count_float)
+        )
         ratio = (
             safe_sigma * (2.0 * (count_float + nu) / safe_mu)
             + 1.0 / jnp.maximum(previous_ratio, eps)
@@ -484,9 +522,9 @@ def _si_log_pmf_grid(mu, sigma, nu):
 
 def _si_p(q, mu=0.5, sigma=0.02, nu=-0.5, lower_tail=True, log_p=False):
     """CDF for SI using the discrete first-support convention of R."""
-    q, mu, sigma, nu = jnp.broadcast_arrays(*[
-        jnp.asarray(value, dtype=jnp.float64) for value in (q, mu, sigma, nu)
-    ])
+    q, mu, sigma, nu = jnp.broadcast_arrays(
+        *[jnp.asarray(value, dtype=jnp.float64) for value in (q, mu, sigma, nu)]
+    )
     flat_q = q.reshape(-1)
     flat_mu, flat_sigma, flat_nu = (value.reshape(-1) for value in (mu, sigma, nu))
     support = jnp.arange(SI_PROBABILITY_MAX_COUNT + 1, dtype=jnp.float64)
@@ -495,7 +533,9 @@ def _si_p(q, mu=0.5, sigma=0.02, nu=-0.5, lower_tail=True, log_p=False):
         _, log_mass = _si_log_pmf_grid(mui, sigmai, nui)
         cdf = jnp.sum(jnp.where(support <= jnp.floor(qi), jnp.exp(log_mass), 0.0))
         cdf = jnp.where(qi < 0.0, 0.0, cdf)
-        cdf = jnp.where((qi > SI_PROBABILITY_MAX_COUNT) & jnp.isfinite(qi), jnp.nan, cdf)
+        cdf = jnp.where(
+            (qi > SI_PROBABILITY_MAX_COUNT) & jnp.isfinite(qi), jnp.nan, cdf
+        )
         cdf = jnp.where(jnp.isposinf(qi), 1.0, cdf)
         return cdf
 
@@ -504,12 +544,19 @@ def _si_p(q, mu=0.5, sigma=0.02, nu=-0.5, lower_tail=True, log_p=False):
     return jnp.log(cdf) if log_p else cdf
 
 
-def _si_q(p, mu=0.5, sigma=0.02, nu=-0.5, lower_tail=True, log_p=False,
-          max_value=SI_PROBABILITY_MAX_COUNT):
+def _si_q(
+    p,
+    mu=0.5,
+    sigma=0.02,
+    nu=-0.5,
+    lower_tail=True,
+    log_p=False,
+    max_value=SI_PROBABILITY_MAX_COUNT,
+):
     """Quantile for SI: smallest non-negative integer with CDF >= p."""
-    p, mu, sigma, nu = jnp.broadcast_arrays(*[
-        jnp.asarray(value, dtype=jnp.float64) for value in (p, mu, sigma, nu)
-    ])
+    p, mu, sigma, nu = jnp.broadcast_arrays(
+        *[jnp.asarray(value, dtype=jnp.float64) for value in (p, mu, sigma, nu)]
+    )
     prob = jnp.exp(p) if log_p else p
     prob = jnp.where(lower_tail, prob, 1.0 - prob)
     support = jnp.arange(max_value + 1, dtype=jnp.float64)
@@ -525,12 +572,15 @@ def _si_q(p, mu=0.5, sigma=0.02, nu=-0.5, lower_tail=True, log_p=False,
         result = jnp.where((pi < 0.0) | (pi > 1.0) | jnp.isnan(pi), jnp.nan, result)
         return result
 
-    return jax.vmap(one)(prob.reshape(-1), mu.reshape(-1), sigma.reshape(-1), nu.reshape(-1)).reshape(p.shape)
+    return jax.vmap(one)(
+        prob.reshape(-1), mu.reshape(-1), sigma.reshape(-1), nu.reshape(-1)
+    ).reshape(p.shape)
 
 
 def _si_r(key, n, mu=0.5, sigma=0.02, nu=-0.5):
     """Generate SI variates by inverse transform sampling."""
     import jax.random as jr
+
     return _si_q(jr.uniform(key, shape=(n,), dtype=jnp.float64), mu, sigma, nu)
 
 
@@ -545,7 +595,11 @@ def SI() -> SkellamFamily:
         links={"mu": "log", "sigma": "log", "nu": "identity"},
         link_functions={"mu": log_link, "sigma": log_link, "nu": identity_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": identity_inverse},
-        link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": identity_derivative},
+        link_derivatives={
+            "mu": log_derivative,
+            "sigma": log_derivative,
+            "nu": identity_derivative,
+        },
         p=_si_p,
         q=_si_q,
         r=_si_r,
@@ -557,6 +611,7 @@ def SI() -> SkellamFamily:
 #    R: dDPO(x, mu, sigma)
 #    A generalization of Poisson allowing for over- or under-dispersion
 # ------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class DoublePoissonFamily(FamilyDefinition):
@@ -601,17 +656,28 @@ def _dpo_log_masses(mu, sigma, max_value=512):
         -0.5 * jnp.log(sigma)
         - mu / sigma
         - gammaln(k + 1.0)
-        + k * log_k - k
-        + k * jnp.log(mu) / sigma + k / sigma
+        + k * log_k
+        - k
+        + k * jnp.log(mu) / sigma
+        + k / sigma
         - k * log_k / sigma
     )
     return support, raw - logsumexp(raw, axis=0, keepdims=True)
 
 
 def _dpo_p(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
-    q, mu, sigma = jnp.broadcast_arrays(jnp.asarray(q, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64), jnp.asarray(sigma, dtype=jnp.float64))
+    q, mu, sigma = jnp.broadcast_arrays(
+        jnp.asarray(q, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+    )
     support, log_mass = _dpo_log_masses(mu.reshape(-1), sigma.reshape(-1))
-    cdf = jnp.sum(jnp.where(support[:, None] <= jnp.floor(q).reshape(1, -1), jnp.exp(log_mass), 0.0), axis=0)
+    cdf = jnp.sum(
+        jnp.where(
+            support[:, None] <= jnp.floor(q).reshape(1, -1), jnp.exp(log_mass), 0.0
+        ),
+        axis=0,
+    )
     cdf = jnp.where(q.reshape(-1) < 0, 0.0, cdf)
     cdf = jnp.where(jnp.isposinf(q.reshape(-1)), 1.0, cdf)
     cdf = jnp.where(lower_tail, cdf, 1.0 - cdf)
@@ -620,7 +686,11 @@ def _dpo_p(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
 
 
 def _dpo_q(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False, max_value=512):
-    p, mu, sigma = jnp.broadcast_arrays(jnp.asarray(p, dtype=jnp.float64), jnp.asarray(mu, dtype=jnp.float64), jnp.asarray(sigma, dtype=jnp.float64))
+    p, mu, sigma = jnp.broadcast_arrays(
+        jnp.asarray(p, dtype=jnp.float64),
+        jnp.asarray(mu, dtype=jnp.float64),
+        jnp.asarray(sigma, dtype=jnp.float64),
+    )
     prob = jnp.exp(p) if log_p else p
     prob = jnp.where(lower_tail, prob, 1.0 - prob)
     support, log_mass = _dpo_log_masses(mu.reshape(-1), sigma.reshape(-1), max_value)
@@ -628,12 +698,15 @@ def _dpo_q(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False, max_value=512):
     result = support[jnp.argmax(cdf >= prob.reshape(1, -1), axis=0)]
     result = jnp.where(prob.reshape(-1) >= 1.0, jnp.inf, result)
     result = jnp.where(prob.reshape(-1) == 0.0, 0.0, result)
-    result = jnp.where((prob.reshape(-1) < 0.0) | (prob.reshape(-1) > 1.0), jnp.nan, result)
+    result = jnp.where(
+        (prob.reshape(-1) < 0.0) | (prob.reshape(-1) > 1.0), jnp.nan, result
+    )
     return result.reshape(p.shape)
 
 
 def _dpo_r(key, n, mu=1.0, sigma=1.0):
     import jax.random as _jr
+
     return _dpo_q(_jr.uniform(key, shape=(n,), dtype=jnp.float64), mu, sigma)
 
 
@@ -660,6 +733,7 @@ def DPO() -> DoublePoissonFamily:
 #    A shifted compound Poisson-Gamma distribution
 # ------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class DelaportFamily(FamilyDefinition):
     """Delaporte distribution (`DEL`)."""
@@ -672,9 +746,9 @@ def _del_log_masses(mu, sigma, nu, max_value=10000):
     mu > 0, sigma > 0 and 0 < nu < 1. As in R, sigma <= 1e-4
     uses the Poisson approximation.
     """
-    mu, sigma, nu = jnp.broadcast_arrays(*[
-        jnp.asarray(v, dtype=jnp.float64) for v in (mu, sigma, nu)
-    ])
+    mu, sigma, nu = jnp.broadcast_arrays(
+        *[jnp.asarray(v, dtype=jnp.float64) for v in (mu, sigma, nu)]
+    )
     valid = (mu > 0) & (sigma > 0) & (nu > 0) & (nu < 1)
     valid &= jnp.isfinite(mu) & jnp.isfinite(sigma) & jnp.isfinite(nu)
     mu = jnp.where(valid, mu, 1.0)
@@ -707,9 +781,9 @@ def _del_log_pdf(y, mu, sigma, nu):
     Finite integer observations above the numerical limit return NaN,
     rather than silently clipping to a different observation.
     """
-    y, mu, sigma, nu = jnp.broadcast_arrays(*[
-        jnp.asarray(v, dtype=jnp.float64) for v in (y, mu, sigma, nu)
-    ])
+    y, mu, sigma, nu = jnp.broadcast_arrays(
+        *[jnp.asarray(v, dtype=jnp.float64) for v in (y, mu, sigma, nu)]
+    )
     _, masses = _del_log_masses(mu, sigma, nu)
     index = jnp.clip(jnp.nan_to_num(y), 0, 10000).astype(jnp.int32)
     result = jnp.take_along_axis(masses, index[None, ...], axis=0)[0]
@@ -720,9 +794,9 @@ def _del_log_pdf(y, mu, sigma, nu):
 
 def _del_p(q, mu=1.0, sigma=1.0, nu=0.5, lower_tail=True, log_p=False):
     """DEL CDF; finite queries above 10000 return NaN (numerical limit)."""
-    q, mu, sigma, nu = jnp.broadcast_arrays(*[
-        jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma, nu)
-    ])
+    q, mu, sigma, nu = jnp.broadcast_arrays(
+        *[jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma, nu)]
+    )
     _, masses = _del_log_masses(mu, sigma, nu)
     cdf = jnp.cumsum(jnp.exp(masses), axis=0)
     index = jnp.clip(jnp.nan_to_num(jnp.floor(q)), 0, 10000).astype(jnp.int32)
@@ -738,9 +812,9 @@ def _del_p(q, mu=1.0, sigma=1.0, nu=0.5, lower_tail=True, log_p=False):
 
 def _del_q(p, mu=1.0, sigma=1.0, nu=0.5, lower_tail=True, log_p=False, max_value=10000):
     """First integer with CDF >= p; unresolved finite quantiles return NaN."""
-    p, mu, sigma, nu = jnp.broadcast_arrays(*[
-        jnp.asarray(v, dtype=jnp.float64) for v in (p, mu, sigma, nu)
-    ])
+    p, mu, sigma, nu = jnp.broadcast_arrays(
+        *[jnp.asarray(v, dtype=jnp.float64) for v in (p, mu, sigma, nu)]
+    )
     prob = jnp.exp(p) if log_p else p
     prob = jnp.where(lower_tail, prob, 1.0 - prob)
     support, masses = _del_log_masses(mu, sigma, nu, max_value)
@@ -755,10 +829,13 @@ def _del_q(p, mu=1.0, sigma=1.0, nu=0.5, lower_tail=True, log_p=False, max_value
 def _del_r(key, n, mu=1.0, sigma=1.0, nu=0.5):
     """Sample the Poisson-Gamma mixture without a finite support cutoff."""
     import jax.random as jr
-    mu, sigma, nu = jnp.broadcast_arrays(*[
-        jnp.broadcast_to(jnp.asarray(v, dtype=jnp.float64), (n,))
-        for v in (mu, sigma, nu)
-    ])
+
+    mu, sigma, nu = jnp.broadcast_arrays(
+        *[
+            jnp.broadcast_to(jnp.asarray(v, dtype=jnp.float64), (n,))
+            for v in (mu, sigma, nu)
+        ]
+    )
     gamma_key, poisson_key = jr.split(key)
     mixing = jr.gamma(gamma_key, 1.0 / sigma) * mu * sigma * (1.0 - nu)
     rate = jnp.where(sigma <= 1e-4, mu, mu * nu + mixing)
@@ -781,7 +858,11 @@ def DEL() -> DelaportFamily:
         links={"mu": "log", "sigma": "log", "nu": "logit"},
         link_functions={"mu": log_link, "sigma": log_link, "nu": logit_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": logit_inverse},
-        link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": logit_derivative},
+        link_derivatives={
+            "mu": log_derivative,
+            "sigma": log_derivative,
+            "nu": logit_derivative,
+        },
     )
 
 
@@ -791,6 +872,7 @@ def DEL() -> DelaportFamily:
 #    A discrete distribution arising from a pure birth process
 # ------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class YuleFamily(FamilyDefinition):
     """Yule distribution (`YULE`)."""
@@ -798,22 +880,22 @@ class YuleFamily(FamilyDefinition):
 
 def _yule_log_pdf(y, mu):
     """Yule distribution log-pdf.
-    
+
     The Yule distribution is a discrete distribution with support on {0, 1, 2, ...}.
-    
+
     R formula:
         lambda = (mu + 1) / mu
         log p(y) = lbeta(lambda + 1, y + 1) - lbeta(lambda, 1)
     """
     eps = jnp.finfo(jnp.float64).eps
     mu = jnp.maximum(mu, eps)
-    
+
     # Transform mu to lambda parameter
     lambda_param = (mu + 1.0) / mu
-    
+
     # log p(y) = lbeta(lambda + 1, y + 1) - lbeta(lambda, 1)
     log_pdf = betaln(lambda_param + 1.0, y + 1.0) - betaln(lambda_param, 1.0)
-    
+
     return log_pdf
 
 
@@ -920,6 +1002,7 @@ def YULE() -> YuleFamily:
 #    A generalization of the Yule distribution
 # ------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class WaringFamily(FamilyDefinition):
     """Waring distribution (`WARING`)."""
@@ -927,9 +1010,9 @@ class WaringFamily(FamilyDefinition):
 
 def _waring_log_pdf(y, mu, sigma):
     """Waring distribution log-pdf.
-    
+
     The Waring distribution is a generalization of the Yule distribution.
-    
+
     R formula:
         log p(y) = lbeta(y + mu/sigma, 1/sigma + 2) - lbeta(mu/sigma, 1/sigma + 1)
     """
@@ -938,14 +1021,14 @@ def _waring_log_pdf(y, mu, sigma):
     # `lbeta()` becomes numerically unstable for sigma values extremely close to
     # zero because the transformed shape parameters grow like 1 / sigma.
     sigma = jnp.maximum(sigma, 1e-8)
-    
+
     # Transform parameters
     a = mu / sigma
     b = 1.0 / sigma
-    
+
     # log p(y) = lbeta(y + a, b + 2) - lbeta(a, b + 1)
     log_pdf = betaln(y + a, b + 2.0) - betaln(a, b + 1.0)
-    
+
     return log_pdf
 
 
@@ -963,9 +1046,13 @@ def _waring_p(q, mu=2.0, sigma=2.0, lower_tail=True, log_p=False):
     )
     q_int = jnp.floor(q).astype(jnp.int32)
     support = jnp.arange(10001, dtype=jnp.float64)
-    log_mass = _waring_log_pdf(support[:, None], mu.reshape(1, -1), sigma.reshape(1, -1))
+    log_mass = _waring_log_pdf(
+        support[:, None], mu.reshape(1, -1), sigma.reshape(1, -1)
+    )
     mass = jnp.exp(log_mass)
-    cdf = jnp.sum(jnp.where(support[:, None] <= q_int.reshape(1, -1), mass, 0.0), axis=0)
+    cdf = jnp.sum(
+        jnp.where(support[:, None] <= q_int.reshape(1, -1), mass, 0.0), axis=0
+    )
     cdf = jnp.where(q < 0, 0.0, cdf)
     cdf = jnp.where(jnp.isposinf(q), 1.0, cdf)
     cdf = jnp.where(lower_tail, cdf, 1.0 - cdf)
@@ -983,7 +1070,9 @@ def _waring_q(p, mu=2.0, sigma=2.0, lower_tail=True, log_p=False, max_value=1000
     prob = jnp.exp(p) if log_p else p
     prob = jnp.where(lower_tail, prob, 1.0 - prob)
     support = jnp.arange(max_value + 1, dtype=jnp.float64)
-    masses = jnp.exp(_waring_log_pdf(support[:, None], mu.reshape(1, -1), sigma.reshape(1, -1)))
+    masses = jnp.exp(
+        _waring_log_pdf(support[:, None], mu.reshape(1, -1), sigma.reshape(1, -1))
+    )
     cdf = jnp.cumsum(masses, axis=0)
     first = jnp.argmax(cdf >= prob.reshape(1, -1), axis=0).astype(jnp.float64)
     result = jnp.where(prob >= 1.0, jnp.inf, first)
@@ -995,12 +1084,13 @@ def _waring_q(p, mu=2.0, sigma=2.0, lower_tail=True, log_p=False, max_value=1000
 def _waring_r(key, n, mu=2.0, sigma=2.0):
     """Generate WARING variates by inverse transform sampling."""
     import jax.random as _jr
+
     return _waring_q(_jr.uniform(key, shape=(n,), dtype=jnp.float64), mu, sigma)
 
 
 def WARING() -> WaringFamily:
     """Waring distribution.
-    
+
     Note: WARING uses observed Hessian with safeguards for numerical stability.
     The observed Hessian can be positive for some observations, so we ensure
     it's always negative by taking the minimum with a small negative value.
@@ -1019,27 +1109,27 @@ def WARING() -> WaringFamily:
         link_inverses={"mu": log_inverse, "sigma": log_inverse},
         link_derivatives={"mu": log_derivative, "sigma": log_derivative},
     )
-    
+
     # Store original Hessian functions
     original_hessian_mu = family.hessian_functions["mu"]
     original_hessian_sigma = family.hessian_functions["sigma"]
-    
+
     def _safe_hessian_mu(*args, **kwargs):
         """Safe Hessian for mu: ensure it's always negative."""
         h = original_hessian_mu(*args, **kwargs)
         # Ensure Hessian is negative (for concave log-likelihood)
         # If positive, clip to small negative value
         return jnp.where(h > 0.0, -1e-7, h)
-    
+
     def _safe_hessian_sigma(*args, **kwargs):
         """Safe Hessian for sigma: ensure it's always negative."""
         h = original_hessian_sigma(*args, **kwargs)
         # Ensure Hessian is negative (for concave log-likelihood)
         # If positive, clip to small negative value
         return jnp.where(h > 0.0, -1e-7, h)
-    
+
     # Replace Hessian functions
     family.hessian_functions["mu"] = _safe_hessian_mu
     family.hessian_functions["sigma"] = _safe_hessian_sigma
-    
+
     return family

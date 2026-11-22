@@ -956,4 +956,7 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
 - [x] **Group A 归因（D2.294）**：唯一失败 `test_cg_vs_gamlss_ml` 是期望错——
   `gamlss_ml` 为无外层迭代的单趟 staged port（sigma 停在初值 sd(y)=8.84，dev 1241.5），
   CG 与 RS 均 536.9561（差 3e-12）。测试改为对 RS 比 deviance，并保留「CG ≤ ML」基线。
+- [x] **Code Quality / black（D2.295）**：`black==26.10.1` 全量格式化
+  `omnilss/src/omnilss/`（225 files reformatted，`--check` 全绿），并在 `pyproject.toml`
+  与 `ci.yml` 钉死版本。Code Quality 下一阻塞是 ruff：595 errors / 364 fixable，未处理。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。

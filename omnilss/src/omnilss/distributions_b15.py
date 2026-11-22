@@ -16,37 +16,47 @@ from .ad import build_ad_family
 from .dpqr_batch_f import dEGB2, dLQNO, pEGB2, pLQNO, qEGB2, qLQNO, rEGB2, rLQNO
 from .families import FamilyDefinition
 from .links import (
-    log_link, log_inverse, log_derivative,
-    logit_link, logit_inverse, logit_derivative,
-    identity_link, identity_inverse, identity_derivative
+    log_link,
+    log_inverse,
+    log_derivative,
+    logit_link,
+    logit_inverse,
+    logit_derivative,
+    identity_link,
+    identity_inverse,
+    identity_derivative,
 )
-
 
 # ============================================================================
 # SEP1-4 - Skew Exponential Power (4 types)
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class SEP1Family(FamilyDefinition):
     """Skew Exponential Power Type 1 family."""
+
     pass
 
 
 @dataclass(frozen=True)
 class SEP2Family(FamilyDefinition):
     """Skew Exponential Power Type 2 family."""
+
     pass
 
 
 @dataclass(frozen=True)
 class SEP3Family(FamilyDefinition):
     """Skew Exponential Power Type 3 family."""
+
     pass
 
 
 @dataclass(frozen=True)
 class SEP4Family(FamilyDefinition):
     """Skew Exponential Power Type 4 family."""
+
     pass
 
 
@@ -78,7 +88,10 @@ def _sep1_log_pdf(y, mu, sigma, nu, tau):
     pgamma_s = _gic(1.0 / tau, s)
     lcdf = jnp.log(0.5 * (1.0 + pgamma_s * jnp.sign(w)))
     # Handle s==0 case: R uses lcdf2 = log(0.5 + w*exp((1-1/tau)*log(tau) - lgamma(1/tau) - log(2)))
-    lcdf2 = jnp.log(0.5 + w * jnp.exp((1.0 - 1.0 / tau) * jnp.log(tau) - _gl(1.0 / tau) - jnp.log(2.0)))
+    lcdf2 = jnp.log(
+        0.5
+        + w * jnp.exp((1.0 - 1.0 / tau) * jnp.log(tau) - _gl(1.0 / tau) - jnp.log(2.0))
+    )
     lcdf = jnp.where(s == 0, lcdf2, lcdf)
 
     loglik = lpdf + lcdf + jnp.log(2.0) - jnp.log(sigma)
@@ -103,7 +116,9 @@ def _sep1_std_log_density(z, ni, ti):
     lpdf = (1.0 - 1.0 / ti) * _np.log(ti) - sz - _gl(1.0 / ti) - _np.log(2.0)
     pgamma_s = _gic(1.0 / ti, s)
     lcdf = _np.log(0.5 * (1.0 + pgamma_s * _np.sign(w)))
-    lcdf2 = _np.log(0.5 + w * _np.exp((1.0 - 1.0 / ti) * _np.log(ti) - _gl(1.0 / ti) - _np.log(2.0)))
+    lcdf2 = _np.log(
+        0.5 + w * _np.exp((1.0 - 1.0 / ti) * _np.log(ti) - _gl(1.0 / ti) - _np.log(2.0))
+    )
     lcdf = _np.where(s == 0, lcdf2, lcdf)
     return lpdf + lcdf + _np.log(2.0)
 
@@ -145,9 +160,13 @@ def _sep1_p(q, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False)
                 # precision when an upper-tail probability is formed as
                 # ``1 - lower_tail`` (R's lower.tail=FALSE semantics).
                 if lower_tail:
-                    val, _ = quad(lambda z: _density(z, ni, ti), -np.inf, z_lim, limit=300)
+                    val, _ = quad(
+                        lambda z: _density(z, ni, ti), -np.inf, z_lim, limit=300
+                    )
                 else:
-                    val, _ = quad(lambda z: _density(z, ni, ti), z_lim, np.inf, limit=300)
+                    val, _ = quad(
+                        lambda z: _density(z, ni, ti), z_lim, np.inf, limit=300
+                    )
             except Exception:
                 val = np.nan
             out.append(float(min(max(val, 0.0), 1.0)))
@@ -198,7 +217,14 @@ def _sep1_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False)
             continue
 
         def obj(x, _pi=pi, _mui=mui, _si=si, _ni=ni, _ti=ti):
-            return float(np.asarray(_sep1_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(-1)[0]) - _pi
+            return (
+                float(
+                    np.asarray(_sep1_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(-1)[
+                        0
+                    ]
+                )
+                - _pi
+            )
 
         try:
             h_mu = obj(mui)
@@ -277,6 +303,7 @@ def _sep1_r(key, n, mu=0.0, sigma=1.0, nu=0.0, tau=2.0):
 # the true limit there is 0, so the log argument is floored at eps.
 # ---------------------------------------------------------------------------
 
+
 def _sep1_deriv_parts(y, mu, sigma, nu, tau):
     """R's z / w / s / lpdf / lcdf, guarded as in the density."""
     eps = jnp.finfo(jnp.float64).eps
@@ -290,9 +317,8 @@ def _sep1_deriv_parts(y, mu, sigma, nu, tau):
     lcdf = jnp.log(0.5 * (1.0 + pgamma_s * jnp.sign(w)))
     lcdf2 = jnp.log(
         0.5
-        + w * jnp.exp(
-            (1.0 - 1.0 / tau) * jnp.log(tau) - gammaln(1.0 / tau) - jnp.log(2.0)
-        )
+        + w
+        * jnp.exp((1.0 - 1.0 / tau) * jnp.log(tau) - gammaln(1.0 / tau) - jnp.log(2.0))
     )
     lcdf = jnp.where(s == 0, lcdf2, lcdf)
     return z, w, s, lpdf, lcdf
@@ -333,8 +359,7 @@ def _sep1_dldt(y, mu, sigma, nu, tau):
     z_log = jnp.log(jnp.where(z_abs > 0.0, z_abs, eps))
     z_tau = jnp.power(z_abs, tau)
     dldf = (
-        jnp.log(tau) + tau - 1.0 + digamma(1.0 / tau)
-        - tau * z_tau * z_log + z_tau
+        jnp.log(tau) + tau - 1.0 + digamma(1.0 / tau) - tau * z_tau * z_log + z_tau
     ) / (tau * tau)
     # R's forward difference for the CDF part (delta = 2e-5 either side).
     t1 = tau + 2e-05
@@ -342,15 +367,21 @@ def _sep1_dldt(y, mu, sigma, nu, tau):
     w_abs = jnp.abs(w)
     s1 = jnp.power(w_abs, t1) / t1
     s2 = jnp.power(w_abs, t2) / t2
-    dldcdf1 = jnp.sign(w) * (
-        jnp.log(1.0 + gammainc(1.0 / t1, s1))
-        - jnp.log(1.0 + gammainc(1.0 / t2, s2))
-    ) / 4e-05
+    dldcdf1 = (
+        jnp.sign(w)
+        * (
+            jnp.log(1.0 + gammainc(1.0 / t1, s1))
+            - jnp.log(1.0 + gammainc(1.0 / t2, s2))
+        )
+        / 4e-05
+    )
     lcdf1 = jnp.log(
-        0.5 + w * jnp.exp((1.0 - 1.0 / t1) * jnp.log(t1) - gammaln(1.0 / t1) - jnp.log(2.0))
+        0.5
+        + w * jnp.exp((1.0 - 1.0 / t1) * jnp.log(t1) - gammaln(1.0 / t1) - jnp.log(2.0))
     )
     lcdf2 = jnp.log(
-        0.5 + w * jnp.exp((1.0 - 1.0 / t2) * jnp.log(t2) - gammaln(1.0 / t2) - jnp.log(2.0))
+        0.5
+        + w * jnp.exp((1.0 - 1.0 / t2) * jnp.log(t2) - gammaln(1.0 / t2) - jnp.log(2.0))
     )
     dldcdf2 = (lcdf1 - lcdf2) / 4e-05
     dldcdf = jnp.where(s == 0, dldcdf2, dldcdf1)
@@ -442,7 +473,13 @@ def _sep2_log_pdf(y, mu, sigma, nu, tau):
     w = jnp.sign(z) * jnp.power(z_abs, tau / 2.0) * nu * jnp.sqrt(2.0 / tau)
 
     lcdf = _jn.logcdf(w)
-    loglik = lcdf - jnp.power(z_abs, tau) / tau - jnp.log(sigma) - _gl(1.0 / tau) - (1.0 / tau - 1.0) * jnp.log(tau)
+    loglik = (
+        lcdf
+        - jnp.power(z_abs, tau) / tau
+        - jnp.log(sigma)
+        - _gl(1.0 / tau)
+        - (1.0 / tau - 1.0) * jnp.log(tau)
+    )
     return loglik
 
 
@@ -465,7 +502,14 @@ def _sep3_log_pdf(y, mu, sigma, nu, tau):
     loglik1 = -0.5 * jnp.power(nu * z_abs, tau)
     loglik2 = -0.5 * jnp.power(z_abs / nu, tau)
     loglik = jnp.where(y < mu, loglik1, loglik2)
-    loglik = loglik - jnp.log(sigma) + jnp.log(nu) - jnp.log(1.0 + nu * nu) - jnp.log(2.0) / tau - _gl(1.0 + 1.0 / tau)
+    loglik = (
+        loglik
+        - jnp.log(sigma)
+        + jnp.log(nu)
+        - jnp.log(1.0 + nu * nu)
+        - jnp.log(2.0) / tau
+        - _gl(1.0 + 1.0 / tau)
+    )
     return loglik
 
 
@@ -627,6 +671,7 @@ def _sep4_p(q, mu=0.0, sigma=1.0, nu=2.0, tau=2.0, lower_tail=True, log_p=False)
             out.append(np.nan)
             continue
         from scipy.special import gammaln as _sp_gammaln
+
         lk1 = _sp_gammaln(1.0 + 1.0 / ni)
         lk2 = _sp_gammaln(1.0 + 1.0 / ti)
         k = np.exp(lk2 - lk1)
@@ -684,7 +729,14 @@ def _sep4_q(p, mu=0.0, sigma=1.0, nu=2.0, tau=2.0, lower_tail=True, log_p=False)
             continue
 
         def obj(x, _pi=pi, _mui=mui, _si=si, _ni=ni, _ti=ti):
-            return float(np.asarray(_sep4_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(-1)[0]) - _pi
+            return (
+                float(
+                    np.asarray(_sep4_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(-1)[
+                        0
+                    ]
+                )
+                - _pi
+            )
 
         try:
             h_mu = obj(mui)
@@ -738,7 +790,6 @@ def _sep4_r(key, n, mu=0.0, sigma=1.0, nu=2.0, tau=2.0):
     return _sep4_q(u, mu, sigma, nu, tau)
 
 
-
 def _sep2_std_log_density(z, ni, ti):
     """SEP2 标准化 log 密度（与 SEP 相同，R SEP2.R 注释明确相同）。"""
     import numpy as _np
@@ -748,7 +799,12 @@ def _sep2_std_log_density(z, ni, ti):
     z_arr = _np.asarray(z, dtype=_np.float64)
     z_abs = _np.abs(z_arr)
     w = _np.sign(z_arr) * _np.power(z_abs, ti / 2.0) * ni * _np.sqrt(2.0 / ti)
-    return _sn.logcdf(w) - _np.power(z_abs, ti) / ti - _gl(1.0 / ti) - (1.0 / ti - 1.0) * _np.log(ti)
+    return (
+        _sn.logcdf(w)
+        - _np.power(z_abs, ti) / ti
+        - _gl(1.0 / ti)
+        - (1.0 / ti - 1.0) * _np.log(ti)
+    )
 
 
 def _sep2_p(q, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False):
@@ -834,7 +890,14 @@ def _sep2_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=2.0, lower_tail=True, log_p=False)
             continue
 
         def obj(x, _pi=pi, _mui=mui, _si=si, _ni=ni, _ti=ti):
-            return float(np.asarray(_sep2_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(-1)[0]) - _pi
+            return (
+                float(
+                    np.asarray(_sep2_p(np.array([x]), _mui, _si, _ni, _ti)).reshape(-1)[
+                        0
+                    ]
+                )
+                - _pi
+            )
 
         try:
             h_mu = obj(mui)
@@ -900,9 +963,24 @@ def SEP2():
         q=_sep2_q,
         r=_sep2_r,
         links={"mu": "identity", "sigma": "log", "nu": "identity", "tau": "log"},
-        link_functions={"mu": identity_link, "sigma": log_link, "nu": identity_link, "tau": log_link},
-        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": identity_inverse, "tau": log_inverse},
-        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": identity_derivative, "tau": log_derivative},
+        link_functions={
+            "mu": identity_link,
+            "sigma": log_link,
+            "nu": identity_link,
+            "tau": log_link,
+        },
+        link_inverses={
+            "mu": identity_inverse,
+            "sigma": log_inverse,
+            "nu": identity_inverse,
+            "tau": log_inverse,
+        },
+        link_derivatives={
+            "mu": identity_derivative,
+            "sigma": log_derivative,
+            "nu": identity_derivative,
+            "tau": log_derivative,
+        },
     )
 
 
@@ -921,6 +999,7 @@ def _fisher_hessians(family):
 
     hessians = {}
     for name, score in (family.score_functions or {}).items():
+
         def make(score_fn):
             def hessian(**kwargs):
                 value = score_fn(**kwargs)
@@ -944,9 +1023,24 @@ def SEP3():
         q=_sep3_q,
         r=_sep3_r,
         links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "log"},
-        link_functions={"mu": identity_link, "sigma": log_link, "nu": log_link, "tau": log_link},
-        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
-        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative, "tau": log_derivative},
+        link_functions={
+            "mu": identity_link,
+            "sigma": log_link,
+            "nu": log_link,
+            "tau": log_link,
+        },
+        link_inverses={
+            "mu": identity_inverse,
+            "sigma": log_inverse,
+            "nu": log_inverse,
+            "tau": log_inverse,
+        },
+        link_derivatives={
+            "mu": identity_derivative,
+            "sigma": log_derivative,
+            "nu": log_derivative,
+            "tau": log_derivative,
+        },
     )
     from dataclasses import replace
 
@@ -965,9 +1059,24 @@ def SEP4():
         q=_sep4_q,
         r=_sep4_r,
         links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "log"},
-        link_functions={"mu": identity_link, "sigma": log_link, "nu": log_link, "tau": log_link},
-        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
-        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative, "tau": log_derivative},
+        link_functions={
+            "mu": identity_link,
+            "sigma": log_link,
+            "nu": log_link,
+            "tau": log_link,
+        },
+        link_inverses={
+            "mu": identity_inverse,
+            "sigma": log_inverse,
+            "nu": log_inverse,
+            "tau": log_inverse,
+        },
+        link_derivatives={
+            "mu": identity_derivative,
+            "sigma": log_derivative,
+            "nu": log_derivative,
+            "tau": log_derivative,
+        },
     )
     from dataclasses import replace
 
@@ -978,9 +1087,11 @@ def SEP4():
 # SST - Skew Student t
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class SSTFamily(FamilyDefinition):
     """Skew Student t family."""
+
     pass
 
 
@@ -1015,6 +1126,7 @@ def _sst_log_pdf(y, mu, sigma, nu, tau):
 
     # Call ST3C log-density
     from .distributions_b15 import _st3c_log_pdf
+
     return _st3c_log_pdf(y, mu1, sigma1, nu, tau)
 
 
@@ -1043,13 +1155,18 @@ def _sst_p(q, mu=0.0, sigma=1.0, nu=0.8, tau=7.0, lower_tail=True, log_p=False):
             continue
         # Same transformation as in dSST
         from scipy.special import beta as _beta
+
         beta_0_5_t2 = _beta(0.5, ti / 2.0)
         m1 = 2.0 * np.sqrt(ti) * (ni * ni - 1.0) / ((ti - 1.0) * beta_0_5_t2 * ni)
         m2 = ti * (ni * ni * ni + 1.0 / (ni * ni * ni)) / ((ti - 2.0) * (ni + 1.0 / ni))
         s1 = np.sqrt(m2 - m1 * m1)
         mu1 = mui - si * m1 / s1
         sigma1 = si / s1
-        out.append(float(np.asarray(_st3c_p(np.array([qi]), mu1, sigma1, ni, ti)).reshape(-1)[0]))
+        out.append(
+            float(
+                np.asarray(_st3c_p(np.array([qi]), mu1, sigma1, ni, ti)).reshape(-1)[0]
+            )
+        )
 
     cdf = np.array(out)
     if not lower_tail:
@@ -1088,13 +1205,16 @@ def _sst_q(p, mu=0.0, sigma=1.0, nu=0.8, tau=7.0, lower_tail=True, log_p=False):
             out.append(np.nan)
             continue
         from scipy.special import beta as _beta
+
         beta_0_5_t2 = _beta(0.5, ti / 2.0)
         m1 = 2.0 * np.sqrt(ti) * (ni * ni - 1.0) / ((ti - 1.0) * beta_0_5_t2 * ni)
         m2 = ti * (ni * ni * ni + 1.0 / (ni * ni * ni)) / ((ti - 2.0) * (ni + 1.0 / ni))
         s1 = np.sqrt(m2 - m1 * m1)
         mu1 = mui - si * m1 / s1
         sigma1 = si / s1
-        q_raw = float(np.asarray(_st3c_q(np.array([pi]), mu1, sigma1, ni, ti)).reshape(-1)[0])
+        q_raw = float(
+            np.asarray(_st3c_q(np.array([pi]), mu1, sigma1, ni, ti)).reshape(-1)[0]
+        )
         out.append(float(q_raw))
 
     res = np.array(out)
@@ -1123,9 +1243,24 @@ def SST():
         q=_sst_q,
         r=_sst_r,
         links={"mu": "identity", "sigma": "log", "nu": "log", "tau": "logshiftto2"},
-        link_functions={"mu": identity_link, "sigma": log_link, "nu": log_link, "tau": log_link},
-        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": log_inverse, "tau": log_inverse},
-        link_derivatives={"mu": identity_derivative, "sigma": log_derivative, "nu": log_derivative, "tau": log_derivative},
+        link_functions={
+            "mu": identity_link,
+            "sigma": log_link,
+            "nu": log_link,
+            "tau": log_link,
+        },
+        link_inverses={
+            "mu": identity_inverse,
+            "sigma": log_inverse,
+            "nu": log_inverse,
+            "tau": log_inverse,
+        },
+        link_derivatives={
+            "mu": identity_derivative,
+            "sigma": log_derivative,
+            "nu": log_derivative,
+            "tau": log_derivative,
+        },
     )
 
 
@@ -1133,9 +1268,11 @@ def SST():
 # ST3C - Skew t Type 3C
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class ST3CFamily(FamilyDefinition):
     """Skew t Type 3C family."""
+
     pass
 
 
@@ -1186,6 +1323,7 @@ def _st3c_p(q, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False
     """ST3C CDF (R `st3_pst3`, Jones & Faddy skew-t)."""
     import numpy as _np
     from scipy.stats import t as _spt
+
     q_arr = _np.atleast_1d(_np.asarray(q, dtype=_np.float64))
     mu_arr = _np.atleast_1d(_np.asarray(mu, dtype=_np.float64))
     sigma_arr = _np.atleast_1d(_np.asarray(sigma, dtype=_np.float64))
@@ -1222,6 +1360,7 @@ def _st3c_q(p, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False
     """ST3C quantile (R `st3_qst3`)."""
     import numpy as _np
     from scipy.stats import t as _spt
+
     p_arr = _np.atleast_1d(_np.asarray(p, dtype=_np.float64))
     if log_p:
         p_arr = _np.exp(p_arr)
@@ -1248,7 +1387,9 @@ def _st3c_q(p, mu=0.0, sigma=1.0, nu=1.0, tau=10.0, lower_tail=True, log_p=False
         if pi < 1.0 / (1.0 + nu2):
             q = mui + (si / nui) * _spt.ppf(pi * (1.0 + nu2) / 2.0, ti)
         else:
-            q = mui + (si * nui) * _spt.ppf((pi * (1.0 + nu2) - 1.0) / (2.0 * nu2) + 0.5, ti)
+            q = mui + (si * nui) * _spt.ppf(
+                (pi * (1.0 + nu2) - 1.0) / (2.0 * nu2) + 0.5, ti
+            )
         out.append(float(q))
     q_arr = _np.array(out)
     return jnp.asarray(q_arr, dtype=jnp.float64)
@@ -1301,9 +1442,11 @@ def ST3C():
 # EGB2 - Exponential Generalized Beta Type 2
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class EGB2Family(FamilyDefinition):
     """Exponential Generalized Beta Type 2 family."""
+
     pass
 
 
@@ -1369,9 +1512,11 @@ def EGB2():
 # LQNO - Log Quantile Normal
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class LQNOFamily(FamilyDefinition):
     """Log Quantile Normal family."""
+
     pass
 
 
@@ -1427,9 +1572,11 @@ def LQNO():
 # NBF - Negative Binomial Famoye
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class NBFFamily(FamilyDefinition):
     """Negative Binomial Famoye parameterization family."""
+
     pass
 
 
@@ -1444,7 +1591,9 @@ def _nbf_log_pdf(y, mu, sigma, nu):
     sigma1 = safe_sigma * jnp.power(safe_mu, nu - 2.0)
     size = 1.0 / jnp.maximum(sigma1, eps)
     nb_log_mass = (
-        gammaln(safe_y + size) - gammaln(size) - gammaln(safe_y + 1.0)
+        gammaln(safe_y + size)
+        - gammaln(size)
+        - gammaln(safe_y + 1.0)
         + size * jnp.log(size / (size + safe_mu))
         + safe_y * jnp.log(safe_mu / (size + safe_mu))
     )
@@ -1490,7 +1639,9 @@ def pNBF(q, mu=1.0, sigma=1.0, nu=2.0, lower_tail=True, log_p=False):
 
 def qNBF(probability, mu=1.0, sigma=1.0, nu=2.0, lower_tail=True, log_p=False):
     """NBF discrete quantile (smallest integer with CDF >= probability)."""
-    probability, mu, sigma, nu = (jnp.asarray(v, dtype=jnp.float64) for v in (probability, mu, sigma, nu))
+    probability, mu, sigma, nu = (
+        jnp.asarray(v, dtype=jnp.float64) for v in (probability, mu, sigma, nu)
+    )
     sigma1, n, p = _nbf_parameters(mu, sigma, nu)
     probability = jnp.exp(probability) if log_p else probability
     probability = jnp.where(lower_tail, probability, 1.0 - probability)
@@ -1502,8 +1653,13 @@ def qNBF(probability, mu=1.0, sigma=1.0, nu=2.0, lower_tail=True, log_p=False):
     # Count distributions have a finite lower support boundary.
     result = jnp.where(probability == 0.0, 0.0, result)
     result = jnp.where(probability == 1.0, jnp.inf, result)
-    valid = ((mu > 0) & (sigma > 0) & jnp.isfinite(nu)
-             & (probability >= 0) & (probability <= 1))
+    valid = (
+        (mu > 0)
+        & (sigma > 0)
+        & jnp.isfinite(nu)
+        & (probability >= 0)
+        & (probability <= 1)
+    )
     return jnp.where(valid, result, jnp.nan)
 
 
@@ -1524,7 +1680,11 @@ def NBF():
         links={"mu": "log", "sigma": "log", "nu": "log"},
         link_functions={"mu": log_link, "sigma": log_link, "nu": log_link},
         link_inverses={"mu": log_inverse, "sigma": log_inverse, "nu": log_inverse},
-        link_derivatives={"mu": log_derivative, "sigma": log_derivative, "nu": log_derivative},
+        link_derivatives={
+            "mu": log_derivative,
+            "sigma": log_derivative,
+            "nu": log_derivative,
+        },
         d=dNBF,
         p=pNBF,
         q=qNBF,
@@ -1536,9 +1696,11 @@ def NBF():
 # ZINBF - Zero-Inflated Negative Binomial Famoye
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class ZINBFFamily(FamilyDefinition):
     """Zero-Inflated Negative Binomial Famoye family."""
+
     pass
 
 
@@ -1549,64 +1711,101 @@ def _zinbf_log_pdf(y, mu, sigma, nu, tau=0.1):
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
     tau = jnp.clip(tau, eps, 1.0 - eps)
-    
+
     # Base NBF log-PDF
     alpha = 1.0 / (sigma * jnp.power(mu, nu - 2.0))
     log_base = (
-        gammaln(y + alpha) - gammaln(alpha) - gammaln(y + 1.0)
+        gammaln(y + alpha)
+        - gammaln(alpha)
+        - gammaln(y + 1.0)
         + alpha * jnp.log(alpha / (alpha + mu))
         + y * jnp.log(mu / (alpha + mu))
     )
-    
+
     # f(0) for NBF
     log_f0 = alpha * jnp.log(alpha / (alpha + mu))
-    
+
     # Zero-inflated probabilities
     log_at0 = jnp.log(tau + (1.0 - tau) * jnp.exp(log_f0))
     log_cont = jnp.log1p(-tau) + log_base
-    
+
     return jnp.where(y <= 0, log_at0, log_cont)
 
 
 def dZINBF(x, mu=1.0, sigma=1.0, nu=2.0, tau=0.1, log=False):
-    x, mu, sigma, nu, tau = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu, tau)])
+    x, mu, sigma, nu, tau = jnp.broadcast_arrays(
+        *[jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma, nu, tau)]
+    )
     alpha = 1.0 / sigma
-    sigma1 = sigma * jnp.power(mu, nu - 2.0); alpha = 1.0 / sigma1
-    base = gammaln(x + alpha) - gammaln(alpha) - gammaln(x + 1) + alpha*jnp.log(alpha/(alpha+mu)) + x*jnp.log(mu/(alpha+mu))
-    base0 = alpha*jnp.log(alpha/(alpha+mu))
-    value = jnp.where(x == 0, jnp.logaddexp(jnp.log(tau), jnp.log1p(-tau) + base0), jnp.log1p(-tau) + base)
+    sigma1 = sigma * jnp.power(mu, nu - 2.0)
+    alpha = 1.0 / sigma1
+    base = (
+        gammaln(x + alpha)
+        - gammaln(alpha)
+        - gammaln(x + 1)
+        + alpha * jnp.log(alpha / (alpha + mu))
+        + x * jnp.log(mu / (alpha + mu))
+    )
+    base0 = alpha * jnp.log(alpha / (alpha + mu))
+    value = jnp.where(
+        x == 0,
+        jnp.logaddexp(jnp.log(tau), jnp.log1p(-tau) + base0),
+        jnp.log1p(-tau) + base,
+    )
     value = jnp.where((x >= 0) & (x == jnp.floor(x)), value, -jnp.inf)
     return value if log else jnp.exp(value)
 
 
 def pZINBF(q, mu=1.0, sigma=1.0, nu=2.0, tau=0.1, lower_tail=True, log_p=False):
-    q, mu, sigma, nu, tau = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma, nu, tau)])
+    q, mu, sigma, nu, tau = jnp.broadcast_arrays(
+        *[jnp.asarray(v, dtype=jnp.float64) for v in (q, mu, sigma, nu, tau)]
+    )
     alpha = 1.0 / (sigma * jnp.power(mu, nu - 2.0))
-    base = _nbinom.cdf(q, alpha, alpha/(alpha+mu))
+    base = _nbinom.cdf(q, alpha, alpha / (alpha + mu))
     value = jnp.where(q < 0, 0.0, tau + (1.0 - tau) * base)
     value = jnp.where(q < 0, 0.0 if lower_tail else 1.0, value)
     value = jnp.where(lower_tail, value, 1.0 - value)
     return jnp.log(value) if log_p else value
 
 
-def qZINBF(probability, mu=1.0, sigma=1.0, nu=2.0, tau=0.1, lower_tail=True, log_p=False):
-    probability, mu, sigma, nu, tau = jnp.broadcast_arrays(*[jnp.asarray(v, dtype=jnp.float64) for v in (probability, mu, sigma, nu, tau)])
+def qZINBF(
+    probability, mu=1.0, sigma=1.0, nu=2.0, tau=0.1, lower_tail=True, log_p=False
+):
+    probability, mu, sigma, nu, tau = jnp.broadcast_arrays(
+        *[jnp.asarray(v, dtype=jnp.float64) for v in (probability, mu, sigma, nu, tau)]
+    )
     p = jnp.exp(probability) if log_p else probability
     p = jnp.where(lower_tail, p, 1.0 - p)
-    f0 = jnp.exp((1.0 / (sigma * jnp.power(mu, nu - 2.0))) * jnp.log(
-        (1.0 / (sigma * jnp.power(mu, nu - 2.0))) /
-        (1.0 / (sigma * jnp.power(mu, nu - 2.0)) + mu)))
+    f0 = jnp.exp(
+        (1.0 / (sigma * jnp.power(mu, nu - 2.0)))
+        * jnp.log(
+            (1.0 / (sigma * jnp.power(mu, nu - 2.0)))
+            / (1.0 / (sigma * jnp.power(mu, nu - 2.0)) + mu)
+        )
+    )
     zero_cutoff = tau + (1.0 - tau) * f0
     base_p = jnp.clip((p - tau) / (1.0 - tau), 0.0, 1.0)
     alpha = 1.0 / (sigma * jnp.power(mu, nu - 2.0))
-    return jnp.where(p <= zero_cutoff, 0.0, _nbinom.ppf(base_p, alpha, alpha/(alpha+mu)))
+    return jnp.where(
+        p <= zero_cutoff, 0.0, _nbinom.ppf(base_p, alpha, alpha / (alpha + mu))
+    )
 
 
 def rZINBF(key, n, mu=1.0, sigma=1.0, nu=2.0, tau=0.1):
     zero_key, base_key = jrandom.split(key)
-    mu, sigma, nu, tau = [jnp.asarray(v, dtype=jnp.float64) for v in (mu, sigma, nu, tau)]
-    shape = (n,) if all(v.ndim == 0 for v in (mu, sigma, nu, tau)) else jnp.broadcast_shapes(mu.shape, sigma.shape, nu.shape, tau.shape)
-    return jnp.where(jrandom.bernoulli(zero_key, tau, shape=shape), 0.0, qNBF(jrandom.uniform(base_key, shape=shape), mu, sigma, nu))
+    mu, sigma, nu, tau = [
+        jnp.asarray(v, dtype=jnp.float64) for v in (mu, sigma, nu, tau)
+    ]
+    shape = (
+        (n,)
+        if all(v.ndim == 0 for v in (mu, sigma, nu, tau))
+        else jnp.broadcast_shapes(mu.shape, sigma.shape, nu.shape, tau.shape)
+    )
+    return jnp.where(
+        jrandom.bernoulli(zero_key, tau, shape=shape),
+        0.0,
+        qNBF(jrandom.uniform(base_key, shape=shape), mu, sigma, nu),
+    )
 
 
 def ZINBF():
@@ -1647,9 +1846,11 @@ def ZINBF():
 # LOGSHASH - Log SHASH
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class LOGSHASHFamily(FamilyDefinition):
     """Log SHASH distribution family."""
+
     pass
 
 
@@ -1670,7 +1871,12 @@ def _logshash_log_pdf(y, mu, sigma, nu, tau):
 
     eps = jnp.finfo(jnp.float64).eps
     return dLOGSHASH(
-        y, mu, jnp.maximum(sigma, eps), jnp.maximum(nu, eps), jnp.maximum(tau, eps), log=True
+        y,
+        mu,
+        jnp.maximum(sigma, eps),
+        jnp.maximum(nu, eps),
+        jnp.maximum(tau, eps),
+        log=True,
     )
 
 
@@ -1719,9 +1925,11 @@ def LOGSHASH():
 # GPO - Generalized Poisson (alternative)
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class GPOFamily(FamilyDefinition):
     """Generalized Poisson (alternative parameterization) family."""
+
     pass
 
 
@@ -1754,9 +1962,9 @@ def _gpo_log_mass_grid(mu, sigma, max_value=GPO_PROBABILITY_MAX_COUNT):
 
 
 def _gpo_p(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
-    q, mu, sigma = jnp.broadcast_arrays(*[
-        jnp.asarray(value, dtype=jnp.float64) for value in (q, mu, sigma)
-    ])
+    q, mu, sigma = jnp.broadcast_arrays(
+        *[jnp.asarray(value, dtype=jnp.float64) for value in (q, mu, sigma)]
+    )
     flat_q, flat_mu, flat_sigma = (value.reshape(-1) for value in (q, mu, sigma))
     support = jnp.arange(GPO_PROBABILITY_MAX_COUNT + 1, dtype=jnp.float64)
 
@@ -1764,7 +1972,9 @@ def _gpo_p(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
         _, log_mass = _gpo_log_mass_grid(mui, sigmai)
         cdf = jnp.sum(jnp.where(support <= jnp.floor(qi), jnp.exp(log_mass), 0.0))
         cdf = jnp.where(qi < 0.0, 0.0, cdf)
-        cdf = jnp.where((qi > GPO_PROBABILITY_MAX_COUNT) & jnp.isfinite(qi), jnp.nan, cdf)
+        cdf = jnp.where(
+            (qi > GPO_PROBABILITY_MAX_COUNT) & jnp.isfinite(qi), jnp.nan, cdf
+        )
         return jnp.where(jnp.isposinf(qi), 1.0, cdf)
 
     probability = jax.vmap(one)(flat_q, flat_mu, flat_sigma).reshape(q.shape)
@@ -1774,23 +1984,33 @@ def _gpo_p(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     return jnp.where(valid, result, jnp.nan)
 
 
-def _gpo_q(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False,
-           max_value=GPO_PROBABILITY_MAX_COUNT):
-    p, mu, sigma = jnp.broadcast_arrays(*[
-        jnp.asarray(value, dtype=jnp.float64) for value in (p, mu, sigma)
-    ])
+def _gpo_q(
+    p,
+    mu=1.0,
+    sigma=1.0,
+    lower_tail=True,
+    log_p=False,
+    max_value=GPO_PROBABILITY_MAX_COUNT,
+):
+    p, mu, sigma = jnp.broadcast_arrays(
+        *[jnp.asarray(value, dtype=jnp.float64) for value in (p, mu, sigma)]
+    )
     probability = jnp.exp(p) if log_p else p
     probability = jnp.where(lower_tail, probability, 1.0 - probability)
 
     def one(pi, mui, sigmai):
         support, log_mass = _gpo_log_mass_grid(mui, sigmai, max_value)
         reached = jnp.cumsum(jnp.exp(log_mass)) >= pi
-        result = jnp.where(jnp.any(reached), jnp.argmax(reached), jnp.nan).astype(jnp.float64)
+        result = jnp.where(jnp.any(reached), jnp.argmax(reached), jnp.nan).astype(
+            jnp.float64
+        )
         result = jnp.where(pi == 0.0, 0.0, result)
         result = jnp.where(pi >= 1.0, jnp.inf, result)
         return jnp.where((pi < 0.0) | (pi > 1.0) | jnp.isnan(pi), jnp.nan, result)
 
-    result = jax.vmap(one)(probability.reshape(-1), mu.reshape(-1), sigma.reshape(-1)).reshape(p.shape)
+    result = jax.vmap(one)(
+        probability.reshape(-1), mu.reshape(-1), sigma.reshape(-1)
+    ).reshape(p.shape)
     valid = (mu > 0.0) & (sigma > 0.0) & jnp.isfinite(mu) & jnp.isfinite(sigma)
     return jnp.where(valid, result, jnp.nan)
 

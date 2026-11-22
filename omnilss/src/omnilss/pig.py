@@ -15,10 +15,11 @@ import numpy as np
 
 
 def _args(x, mu, sigma):
-    x, mu, sigma = jnp.broadcast_arrays(*[
-        jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma)])
+    x, mu, sigma = jnp.broadcast_arrays(
+        *[jnp.asarray(v, dtype=jnp.float64) for v in (x, mu, sigma)]
+    )
     valid = (mu > 0) & (sigma > 0) & jnp.isfinite(mu) & jnp.isfinite(sigma)
-    return x, jnp.where(valid, mu, 1.), jnp.where(valid, sigma, 1.), valid
+    return x, jnp.where(valid, mu, 1.0), jnp.where(valid, sigma, 1.0), valid
 
 
 def _initial(mu, sigma):
@@ -63,18 +64,20 @@ def logpmf(x, mu, sigma):
         return ratio, mass, jnp.where(x == i, mass, result)
 
     _, _, result = jax.lax.fori_loop(1, n_steps, step, (ratio, base, base))
-    result = jnp.where((x >= 0) & jnp.isfinite(x) & (x == jnp.floor(x)), result, -jnp.inf)
+    result = jnp.where(
+        (x >= 0) & jnp.isfinite(x) & (x == jnp.floor(x)), result, -jnp.inf
+    )
     return jnp.where(
         valid & ~jnp.isnan(x) & ~((x >= n_steps) & jnp.isfinite(x)), result, jnp.nan
     )
 
 
-def dPIG(x, mu=1., sigma=1., log=False):
+def dPIG(x, mu=1.0, sigma=1.0, log=False):
     value = logpmf(x, mu, sigma)
     return value if log else jnp.exp(value)
 
 
-def pPIG(q, mu=1., sigma=1., lower_tail=True, log_p=False):
+def pPIG(q, mu=1.0, sigma=1.0, lower_tail=True, log_p=False):
     q, mu, sigma, valid = _args(q, mu, sigma)
     ratio, base = _initial(mu, sigma)
 
@@ -84,8 +87,8 @@ def pPIG(q, mu=1., sigma=1., lower_tail=True, log_p=False):
         return ratio, mass, jnp.logaddexp(total, jnp.where(i <= q, mass, -jnp.inf))
 
     _, _, total = jax.lax.fori_loop(1, 10001, step, (ratio, base, base))
-    total = jnp.minimum(total, 0.)
-    total = jnp.where(q < 0, -jnp.inf, jnp.where(jnp.isposinf(q), 0., total))
+    total = jnp.minimum(total, 0.0)
+    total = jnp.where(q < 0, -jnp.inf, jnp.where(jnp.isposinf(q), 0.0, total))
     result = total if lower_tail else jnp.log(-jnp.expm1(total))
     result = result if log_p else jnp.exp(result)
     # D2.29: live R does not truncate -- q = 10001 and q = 1e6 both get the
@@ -95,16 +98,16 @@ def pPIG(q, mu=1., sigma=1., lower_tail=True, log_p=False):
     return jnp.where(valid & ~jnp.isnan(q), result, jnp.nan)
 
 
-def qPIG(p, mu=1., sigma=1., lower_tail=True, log_p=False, max_value=10000):
+def qPIG(p, mu=1.0, sigma=1.0, lower_tail=True, log_p=False, max_value=10000):
     if not isinstance(max_value, int) or not 0 <= max_value <= 10000:
-        raise ValueError('max_value must be an integer in [0, 10000]')
+        raise ValueError("max_value must be an integer in [0, 10000]")
     p, mu, sigma, valid = _args(p, mu, sigma)
     prob = jnp.exp(p) if log_p else p
     valid = valid & (prob >= 0) & (prob <= 1)
     prob = prob if lower_tail else (-jnp.expm1(p) if log_p else 1 - prob)
     target = jnp.log(prob)
     ratio, base = _initial(mu, sigma)
-    found = jnp.where(base >= target, 0., jnp.nan)
+    found = jnp.where(base >= target, 0.0, jnp.nan)
 
     def step(i, state):
         ratio, mass, total, found = state
@@ -119,18 +122,17 @@ def qPIG(p, mu=1., sigma=1., lower_tail=True, log_p=False, max_value=10000):
     # R checks it too.  Live R: qPIG(0.999999999) is already Inf while 0.999
     # still resolves; without this we scanned to the pmf cap and answered 62
     # where R answers Inf.
-    result = jnp.where(prob + 1e-9 >= 1, jnp.inf,
-                       jnp.where(prob == 0, 0., result))
+    result = jnp.where(prob + 1e-9 >= 1, jnp.inf, jnp.where(prob == 0, 0.0, result))
     return jnp.where(valid, result, jnp.nan)
 
 
-def rPIG(key, n, mu=1., sigma=1.):
+def rPIG(key, n, mu=1.0, sigma=1.0):
     if not isinstance(n, int) or n < 0:
-        raise ValueError('n must be a nonnegative integer')
+        raise ValueError("n must be a nonnegative integer")
     _, mu, sigma, valid = _args(jnp.empty((n,)), mu, sigma)
     normal_key, uniform_key, poisson_key = jax.random.split(key, 3)
     # Michael-Schucany-Haas inverse Gaussian sampler, rationalized small root.
-    z = jax.random.normal(normal_key, (n,), dtype=jnp.float64)**2
+    z = jax.random.normal(normal_key, (n,), dtype=jnp.float64) ** 2
     a = sigma * z / 2
     small = 1 / (1 + a + jnp.sqrt(a * (a + 2)))
     u = jax.random.uniform(uniform_key, (n,), dtype=jnp.float64)

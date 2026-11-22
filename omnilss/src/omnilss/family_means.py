@@ -13,6 +13,7 @@ R source (live gamlss.dist 6.1.1, not present in the vendored tree):
 The fitted values come from the model, so the Python port reads
 GAMLSSModel.fitted_values and returns a JAX array of length n.
 """
+
 from __future__ import annotations
 
 from typing import Any

@@ -14,7 +14,9 @@ def validate_vector(name: str, arr: np.ndarray, n: int | None = None) -> np.ndar
     return a
 
 
-def validate_design_matrix(name: str, x: np.ndarray, n: int | None = None) -> np.ndarray:
+def validate_design_matrix(
+    name: str, x: np.ndarray, n: int | None = None
+) -> np.ndarray:
     a = np.asarray(x)
     if a.ndim != 2:
         raise ValueError(f"{name} must be 2D (batch, features), got shape={a.shape}")

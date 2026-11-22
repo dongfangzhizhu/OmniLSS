@@ -115,6 +115,7 @@ TPU_CROSSOVER_N: dict[str, float] = {
 # Parsing helpers
 # ---------------------------------------------------------------------------
 
+
 def _parse_bool(value: Any) -> bool:
     if isinstance(value, bool):
         return value
@@ -227,11 +228,11 @@ def _load_config_mapping(path: Path) -> dict[str, Any]:
                 """
 
             _BOOL_TAG = "tag:yaml.org,2002:bool"
-            for _first, _resolvers in list(_FamilyKeySafeLoader.yaml_implicit_resolvers.items()):
+            for _first, _resolvers in list(
+                _FamilyKeySafeLoader.yaml_implicit_resolvers.items()
+            ):
                 _FamilyKeySafeLoader.yaml_implicit_resolvers[_first] = [
-                    (_tag, _regexp)
-                    for _tag, _regexp in _resolvers
-                    if _tag != _BOOL_TAG
+                    (_tag, _regexp) for _tag, _regexp in _resolvers if _tag != _BOOL_TAG
                 ]
 
             loaded = yaml.load(text, Loader=_FamilyKeySafeLoader) or {}
@@ -255,7 +256,12 @@ def _revive_bool_strings(value: Any) -> Any:
     if isinstance(value, list):
         return [_revive_bool_strings(item) for item in value]
     if isinstance(value, str) and value.strip().lower() in {
-        "true", "false", "yes", "no", "on", "off",
+        "true",
+        "false",
+        "yes",
+        "no",
+        "on",
+        "off",
     }:
         return value.strip().lower() in {"true", "yes", "on"}
     return value
@@ -265,11 +271,15 @@ def _known_family_or_default(family: str) -> bool:
     return family == "default" or family in JAX_SUPPORTED_FAMILIES
 
 
-def _apply_threshold_mapping(table: dict[str, float], values: Any, *, source: str) -> None:
+def _apply_threshold_mapping(
+    table: dict[str, float], values: Any, *, source: str
+) -> None:
     if not isinstance(values, dict):
         raise ValueError(f"{source} must be a mapping")
     for family, threshold in values.items():
-        family_name = str(family).upper() if str(family).lower() != "default" else "default"
+        family_name = (
+            str(family).upper() if str(family).lower() != "default" else "default"
+        )
         if not _known_family_or_default(family_name):
             warnings.warn(
                 f"Unknown family {family_name!r} in {source}; accepting it for future compatibility.",
@@ -279,7 +289,9 @@ def _apply_threshold_mapping(table: dict[str, float], values: Any, *, source: st
         table[family_name] = _parse_float(threshold)
 
 
-def _apply_config_mapping(config: dict[str, Any], *, source: str = "configuration") -> None:
+def _apply_config_mapping(
+    config: dict[str, Any], *, source: str = "configuration"
+) -> None:
     """Apply a parsed OmniLSS configuration mapping in-place."""
     global AUTO_METHOD_ENABLED, FORCE_JAX
 
@@ -288,16 +300,27 @@ def _apply_config_mapping(config: dict[str, Any], *, source: str = "configuratio
     if "force_jax" in config:
         FORCE_JAX = _parse_bool(config["force_jax"])
     if "gpu_crossover_n" in config:
-        _apply_threshold_mapping(GPU_CROSSOVER_N, config["gpu_crossover_n"], source=f"{source}:gpu_crossover_n")
+        _apply_threshold_mapping(
+            GPU_CROSSOVER_N,
+            config["gpu_crossover_n"],
+            source=f"{source}:gpu_crossover_n",
+        )
     if "tpu_crossover_n" in config:
-        _apply_threshold_mapping(TPU_CROSSOVER_N, config["tpu_crossover_n"], source=f"{source}:tpu_crossover_n")
+        _apply_threshold_mapping(
+            TPU_CROSSOVER_N,
+            config["tpu_crossover_n"],
+            source=f"{source}:tpu_crossover_n",
+        )
 
 
 def _candidate_config_files() -> list[Path]:
     env_path = os.environ.get("OMNILSS_CONFIG_FILE")
     if env_path:
         return [Path(env_path).expanduser()]
-    return [Path.cwd() / "omnilss_config.yaml", Path.home() / ".omnilss" / "config.yaml"]
+    return [
+        Path.cwd() / "omnilss_config.yaml",
+        Path.home() / ".omnilss" / "config.yaml",
+    ]
 
 
 def _load_first_config_file() -> None:
@@ -330,7 +353,9 @@ def _parse_threshold_env(value: str) -> dict[str, float]:
         if "=" not in item:
             raise ValueError(f"invalid threshold override item: {item!r}")
         family, raw_threshold = item.split("=", 1)
-        family_name = family.strip().upper() if family.strip().lower() != "default" else "default"
+        family_name = (
+            family.strip().upper() if family.strip().lower() != "default" else "default"
+        )
         parsed[family_name] = _parse_float(raw_threshold.strip())
     return parsed
 
@@ -345,16 +370,25 @@ def _apply_env_overrides() -> None:
 
     gpu_env = os.environ.get("OMNILSS_GPU_CROSSOVER_N")
     if gpu_env:
-        _apply_threshold_mapping(GPU_CROSSOVER_N, _parse_threshold_env(gpu_env), source="OMNILSS_GPU_CROSSOVER_N")
+        _apply_threshold_mapping(
+            GPU_CROSSOVER_N,
+            _parse_threshold_env(gpu_env),
+            source="OMNILSS_GPU_CROSSOVER_N",
+        )
 
     tpu_env = os.environ.get("OMNILSS_TPU_CROSSOVER_N")
     if tpu_env:
-        _apply_threshold_mapping(TPU_CROSSOVER_N, _parse_threshold_env(tpu_env), source="OMNILSS_TPU_CROSSOVER_N")
+        _apply_threshold_mapping(
+            TPU_CROSSOVER_N,
+            _parse_threshold_env(tpu_env),
+            source="OMNILSS_TPU_CROSSOVER_N",
+        )
 
 
 # ---------------------------------------------------------------------------
 # Public configuration API
 # ---------------------------------------------------------------------------
+
 
 def set_crossover(
     device: Literal["gpu", "tpu"],
@@ -384,7 +418,9 @@ def set_crossover(
     """
     device_name = str(device).lower()
     if device_name not in {"gpu", "tpu"}:
-        raise ValueError("device must be one of {'gpu', 'tpu'}; CPU never auto-switches")
+        raise ValueError(
+            "device must be one of {'gpu', 'tpu'}; CPU never auto-switches"
+        )
 
     threshold = _parse_float(n)
     family_name = str(family).upper() if str(family).lower() != "default" else "default"
@@ -400,7 +436,9 @@ def set_crossover(
 
 
 @contextmanager
-def crossover_config(gpu: dict[str, float] | None = None, tpu: dict[str, float] | None = None):
+def crossover_config(
+    gpu: dict[str, float] | None = None, tpu: dict[str, float] | None = None
+):
     """Temporarily override crossover thresholds and restore them on exit.
 
     Examples
@@ -414,9 +452,13 @@ def crossover_config(gpu: dict[str, float] | None = None, tpu: dict[str, float] 
     original_tpu = dict(TPU_CROSSOVER_N)
     try:
         if gpu is not None:
-            _apply_threshold_mapping(GPU_CROSSOVER_N, gpu, source="crossover_config(gpu)")
+            _apply_threshold_mapping(
+                GPU_CROSSOVER_N, gpu, source="crossover_config(gpu)"
+            )
         if tpu is not None:
-            _apply_threshold_mapping(TPU_CROSSOVER_N, tpu, source="crossover_config(tpu)")
+            _apply_threshold_mapping(
+                TPU_CROSSOVER_N, tpu, source="crossover_config(tpu)"
+            )
         yield
     finally:
         GPU_CROSSOVER_N.clear()
@@ -453,7 +495,9 @@ def crossover_summary(verbose: bool = False) -> None:
         suffix = "  (never auto-switch)" if threshold == math.inf else ""
         print(f"  {family:<7}: {_format_threshold(threshold)}{suffix}")
     if all(value == math.inf for value in GPU_CROSSOVER_N.values()):
-        print("  [note: all GPU thresholds are placeholders; update after benchmarks/gpu_crossover_sweep.py]")
+        print(
+            "  [note: all GPU thresholds are placeholders; update after benchmarks/gpu_crossover_sweep.py]"
+        )
     print()
     print("TPU crossover thresholds (use RS_JAX when n >= threshold):")
     for family, threshold in TPU_CROSSOVER_N.items():
@@ -464,6 +508,7 @@ def crossover_summary(verbose: bool = False) -> None:
 # ---------------------------------------------------------------------------
 # Auto-selection logic
 # ---------------------------------------------------------------------------
+
 
 def _get_crossover(table: dict[str, float], family_name: str) -> float:
     return table.get(family_name, table.get("default", math.inf))
@@ -533,7 +578,11 @@ def auto_select_method_trace(family_name: str, n_obs: int) -> MethodRoutingDecis
         threshold = _get_crossover(GPU_CROSSOVER_N, family)
         return MethodRoutingDecision(
             method="RS_JAX" if n_obs >= threshold else "RS",
-            reason="gpu_crossover_reached" if n_obs >= threshold else "gpu_crossover_not_reached",
+            reason=(
+                "gpu_crossover_reached"
+                if n_obs >= threshold
+                else "gpu_crossover_not_reached"
+            ),
             backend=backend,
             threshold=threshold,
         )
@@ -541,7 +590,11 @@ def auto_select_method_trace(family_name: str, n_obs: int) -> MethodRoutingDecis
         threshold = _get_crossover(TPU_CROSSOVER_N, family)
         return MethodRoutingDecision(
             method="RS_JAX" if n_obs >= threshold else "RS",
-            reason="tpu_crossover_reached" if n_obs >= threshold else "tpu_crossover_not_reached",
+            reason=(
+                "tpu_crossover_reached"
+                if n_obs >= threshold
+                else "tpu_crossover_not_reached"
+            ),
             backend=backend,
             threshold=threshold,
         )
@@ -551,8 +604,6 @@ def auto_select_method_trace(family_name: str, n_obs: int) -> MethodRoutingDecis
         backend=backend,
         threshold=None,
     )
-
-
 
 
 def describe_method_routing_reason(reason: str) -> str:
@@ -571,8 +622,9 @@ def describe_method_routing_reason(reason: str) -> str:
         "explicit_method_requested": "User explicitly requested this method; auto-routing crossover logic was bypassed.",
         "small_p_cpu_first_policy": "Small design matrices default to NumPy RS to avoid JAX launch overhead.",
     }
-    return mapping.get(reason, "No explanation registered for this routing reason code.")
-
+    return mapping.get(
+        reason, "No explanation registered for this routing reason code."
+    )
 
 
 def build_method_routing_decision(
@@ -606,8 +658,6 @@ def build_method_routing_decision(
         "confidence": confidence,
         "accelerator_available": accelerator_available,
     }
-
-
 
 
 def validate_method_routing_decision(payload: Mapping[str, Any]) -> None:
@@ -645,7 +695,9 @@ def validate_method_routing_decision(payload: Mapping[str, Any]) -> None:
         try:
             confidence_val = float(confidence)
         except (TypeError, ValueError) as exc:
-            raise ValueError("method routing payload confidence must be numeric") from exc
+            raise ValueError(
+                "method routing payload confidence must be numeric"
+            ) from exc
         if not (0.0 <= confidence_val <= 1.0):
             raise ValueError("method routing payload confidence must be in [0, 1]")
 
@@ -665,9 +717,15 @@ def get_config_summary() -> dict[str, Any]:
         "jax_backend": backend,
         "jax_devices": devices,
         "jax_supported_families": sorted(JAX_SUPPORTED_FAMILIES),
-        "cpu_crossover_n": {k: (v if v != math.inf else "inf") for k, v in CPU_CROSSOVER_N.items()},
-        "gpu_crossover_n": {k: (v if v != math.inf else "inf") for k, v in GPU_CROSSOVER_N.items()},
-        "tpu_crossover_n": {k: (v if v != math.inf else "inf") for k, v in TPU_CROSSOVER_N.items()},
+        "cpu_crossover_n": {
+            k: (v if v != math.inf else "inf") for k, v in CPU_CROSSOVER_N.items()
+        },
+        "gpu_crossover_n": {
+            k: (v if v != math.inf else "inf") for k, v in GPU_CROSSOVER_N.items()
+        },
+        "tpu_crossover_n": {
+            k: (v if v != math.inf else "inf") for k, v in TPU_CROSSOVER_N.items()
+        },
     }
 
 

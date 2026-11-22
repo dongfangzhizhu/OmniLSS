@@ -34,7 +34,9 @@ def gen_likelihood(object: GAMLSSModel) -> GenLikelihoodResult:
 
     family = object.family
     y = jnp.asarray(object.y, dtype=jnp.float64)
-    params = [jnp.asarray(object.fitted_values[p], dtype=jnp.float64) for p in object.par]
+    params = [
+        jnp.asarray(object.fitted_values[p], dtype=jnp.float64) for p in object.par
+    ]
 
     if hasattr(family, "d") and callable(family.d):
         loglik = jnp.asarray(family.d(y, *params, log=True), dtype=jnp.float64)
@@ -43,7 +45,9 @@ def gen_likelihood(object: GAMLSSModel) -> GenLikelihoodResult:
         dev_inc = jnp.asarray(family.g_dev_inc(y, *params), dtype=jnp.float64)
         loglik = -0.5 * dev_inc
     else:
-        raise ValueError(f"family {getattr(family, 'name', '<unknown>')} has no d() or g_dev_inc()")
+        raise ValueError(
+            f"family {getattr(family, 'name', '<unknown>')} has no d() or g_dev_inc()"
+        )
 
     loglik_np = np.asarray(loglik, dtype=np.float64)
     dev_inc_np = np.asarray(dev_inc, dtype=np.float64)

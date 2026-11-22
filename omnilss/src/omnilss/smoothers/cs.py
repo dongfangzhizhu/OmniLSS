@@ -97,13 +97,13 @@ def fit_cubic_spline(
         Fitted cubic spline result with additional attributes:
         - selection_method: Method used for lambda selection
         - criterion_value: Value of the optimization criterion
-        
+
     Notes
     -----
     R's cs() function has df=3 as default, which is converted to df=5 when
     passed to smooth.spline (by adding 2). This implementation matches that
     behavior when df is specified.
-        
+
     Examples
     --------
     >>> # Automatic lambda selection (recommended)
@@ -111,13 +111,13 @@ def fit_cubic_spline(
     >>> y = np.sin(2 * np.pi * x) + np.random.normal(0, 0.1, 100)
     >>> result = fit_cubic_spline(x, y, method="auto")
     >>> print(f"Selected lambda: {result.lambda_:.4f}, EDF: {result.edf:.2f}")
-    
+
     >>> # Use REML for lambda selection
     >>> result = fit_cubic_spline(x, y, method="REML")
-    
+
     >>> # Manual df specification (R default is df=3)
     >>> result = fit_cubic_spline(x, y, df=3)
-    
+
     References
     ----------
     - Wood, S. N. (2011). Fast stable restricted maximum likelihood and marginal
@@ -171,7 +171,7 @@ def fit_cubic_spline(
             selection_method = "GCV" if method == "auto" else method
             selection_info = {
                 "method": f"{selection_method} (scipy)",
-                "criterion_value": None
+                "criterion_value": None,
             }
         except Exception:
             # Fallback
@@ -199,8 +199,14 @@ def fit_cubic_spline(
         edf=edf,
         lambda_=lambda_,
         spline=spline,
-        selection_method=selection_info.get("method") if 'selection_info' in locals() else None,
-        criterion_value=selection_info.get("criterion_value") if 'selection_info' in locals() else None,
+        selection_method=(
+            selection_info.get("method") if "selection_info" in locals() else None
+        ),
+        criterion_value=(
+            selection_info.get("criterion_value")
+            if "selection_info" in locals()
+            else None
+        ),
     )
 
     residuals = y - fv
@@ -240,7 +246,7 @@ def _fit_with_df(
         edf_mid = get_edf(s_mid)
         if abs(edf_mid - df) < tol:
             break
-        if edf_mid > df:   # too many knots → increase s
+        if edf_mid > df:  # too many knots → increase s
             s_lo = s_mid
         else:
             s_hi = s_mid

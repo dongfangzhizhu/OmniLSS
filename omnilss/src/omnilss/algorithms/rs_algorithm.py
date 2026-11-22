@@ -131,9 +131,7 @@ class NumpySolverBackend(SolverBackend):
                 # Only apply the ridge when stabilization actually kicked in
                 # (lambda_value > 0); otherwise keep the pure lstsq path.
                 ridge = (
-                    stabilized.lambda_value
-                    if stabilized.lambda_value > 0.0
-                    else None
+                    stabilized.lambda_value if stabilized.lambda_value > 0.0 else None
                 )
         return solve_weighted_least_squares_cholesky(
             X=design,
@@ -218,7 +216,10 @@ class JaxSolverBackend(SolverBackend):
             # Levenberg-style damping for the normal equations, matching the
             # NumPy backend's stabilized ridge.
             p = xw.shape[1]
-            xw = jnp.concatenate([xw, jnp.sqrt(jnp.asarray(ridge, dtype=jnp.float64)) * jnp.eye(p)], axis=0)
+            xw = jnp.concatenate(
+                [xw, jnp.sqrt(jnp.asarray(ridge, dtype=jnp.float64)) * jnp.eye(p)],
+                axis=0,
+            )
             zw = jnp.concatenate([zw, jnp.zeros(p, dtype=jnp.float64)])
         beta, _, _, _ = jnp.linalg.lstsq(xw, zw, rcond=None)
         return np.asarray(beta, dtype=np.float64)
@@ -341,11 +342,13 @@ def compute_working_weights_and_response(
     floor_applied = np.sum(second_derivative >= -1e-15)
     second_derivative = np.where(second_derivative < -1e-15, second_derivative, -1e-15)
     if safeguard_events is not None and floor_applied > 0:
-        safeguard_events.append({
-            "type": "hessian_floor",
-            "parameter": parameter,
-            "n_floor": int(floor_applied),
-        })
+        safeguard_events.append(
+            {
+                "type": "hessian_floor",
+                "parameter": parameter,
+                "n_floor": int(floor_applied),
+            }
+        )
 
     # Compute working weights
     # w = -(d²l/dθ²) / (dη/dμ)²
@@ -364,11 +367,13 @@ def compute_working_weights_and_response(
     n_nan = int(np.sum(np.isnan(working_response)))
     working_response = np.where(np.isnan(working_response), 0.0, working_response)
     if safeguard_events is not None and n_nan > 0:
-        safeguard_events.append({
-            "type": "nan_replacement",
-            "parameter": parameter,
-            "n_replaced": n_nan,
-        })
+        safeguard_events.append(
+            {
+                "type": "nan_replacement",
+                "parameter": parameter,
+                "n_replaced": n_nan,
+            }
+        )
 
     # R's glim.fit does NOT clip the working response; a hard ±1e6 clip
     # corrupted IRLS for zero-inflated data (e.g. y=0 in Poisson made the
@@ -391,7 +396,12 @@ def _summary_stats(values: np.ndarray) -> dict[str, float]:
     """Compact numeric summary used in smoother update diagnostics (Phase 3.4)."""
     arr = np.asarray(values, dtype=np.float64)
     if arr.size == 0:
-        return {"min": float("nan"), "mean": float("nan"), "max": float("nan"), "n_nonfinite": 0}
+        return {
+            "min": float("nan"),
+            "mean": float("nan"),
+            "max": float("nan"),
+            "n_nonfinite": 0,
+        }
     finite = arr[np.isfinite(arr)]
     return {
         "min": float(np.min(finite)) if finite.size else float("nan"),
@@ -614,20 +624,20 @@ def rs_step(
             stabilized = stabilize_hessian(gram)
             last_condition_number = stabilized.condition_number
             if (safeguard_events is not None) and stabilized.lambda_value > 0.0:
-                safeguard_events.append({
-                    "type": "hessian_ridge",
-                    "parameter": parameter,
-                    "iteration": iteration,
-                    "lambda": float(stabilized.lambda_value),
-                })
+                safeguard_events.append(
+                    {
+                        "type": "hessian_ridge",
+                        "parameter": parameter,
+                        "iteration": iteration,
+                        "lambda": float(stabilized.lambda_value),
+                    }
+                )
             coef = backend.wls_solve(
                 design=X,
                 working_response=working_response,
                 weights=W,
                 ridge=(
-                    stabilized.lambda_value
-                    if stabilized.lambda_value > 0.0
-                    else None
+                    stabilized.lambda_value if stabilized.lambda_value > 0.0 else None
                 ),
                 # Phase 7.3: Gram/stabilization already computed above.
                 skip_stabilize=True,
@@ -643,13 +653,15 @@ def rs_step(
         if np.any(eta_clipped != eta_candidate):
             n_clipped = int(np.sum(eta_clipped != eta_candidate))
             if safeguard_events is not None:
-                safeguard_events.append({
-                    "type": "eta_clip",
-                    "parameter": parameter,
-                    "iteration": iteration,
-                    "n_clipped": n_clipped,
-                    "total": int(len(eta_candidate)),
-                })
+                safeguard_events.append(
+                    {
+                        "type": "eta_clip",
+                        "parameter": parameter,
+                        "iteration": iteration,
+                        "n_clipped": n_clipped,
+                        "total": int(len(eta_candidate)),
+                    }
+                )
             warnings.warn(
                 f"eta clipped for parameter '{parameter}' (link='{link_name}'): {n_clipped}/{len(eta_candidate)} values out of [{eta_lo}, {eta_hi}]",
                 ConvergenceWarning,
@@ -847,7 +859,8 @@ def eta_gradient_norms(
         try:
             score = np.asarray(
                 family.score_functions[parameter](
-                    y=y, **{parameter: np.asarray(fitted_values[parameter], np.float64)},
+                    y=y,
+                    **{parameter: np.asarray(fitted_values[parameter], np.float64)},
                     **context,
                 ),
                 dtype=np.float64,
@@ -864,9 +877,7 @@ def eta_gradient_norms(
             norms[parameter] = float("nan")
             continue
         finite = grad[np.isfinite(grad)]
-        norms[parameter] = (
-            float(np.abs(finite).max()) if finite.size else float("nan")
-        )
+        norms[parameter] = float(np.abs(finite).max()) if finite.size else float("nan")
     return norms
 
 
@@ -1077,7 +1088,10 @@ def rs_fit(
 
         param_formula = resolved_formulas[parameter]
         _, param_X, param_labels, param_smooth_info = _build_design_matrix_with_smooths(
-            param_formula, data, weights=weights, contrasts=contrasts,
+            param_formula,
+            data,
+            weights=weights,
+            contrasts=contrasts,
             factor_spec=factor_spec,
         )
 
@@ -1159,7 +1173,11 @@ def rs_fit(
                     mu_linear = mu_X @ beta_mu
                 else:
                     beta_mu = _initial_mu_beta(
-                        family, mu_X, y, w, fixed_parameter_values=fixed_parameter_values
+                        family,
+                        mu_X,
+                        y,
+                        w,
+                        fixed_parameter_values=fixed_parameter_values,
                     )
                     mu_linear = mu_X @ beta_mu
             else:
@@ -1443,9 +1461,18 @@ def rs_fit(
         if np.isfinite(g_dev) and (best_deviance is None or g_dev < best_deviance):
             best_deviance = float(g_dev)
             best_state = (
-                {k: np.array(v, dtype=np.float64, copy=True) for k, v in parameter_values.items()},
-                {k: np.array(v, dtype=np.float64, copy=True) for k, v in coefficients.items()},
-                {k: np.array(v, dtype=np.float64, copy=True) for k, v in linear_predictors.items()},
+                {
+                    k: np.array(v, dtype=np.float64, copy=True)
+                    for k, v in parameter_values.items()
+                },
+                {
+                    k: np.array(v, dtype=np.float64, copy=True)
+                    for k, v in coefficients.items()
+                },
+                {
+                    k: np.array(v, dtype=np.float64, copy=True)
+                    for k, v in linear_predictors.items()
+                },
             )
 
         if verbose:
@@ -1503,7 +1530,8 @@ def rs_fit(
                                 "weights": _summary_stats(w_k),
                                 "solver_status": (
                                     "preserved"
-                                    if new_sf.lambda_origin in {"user_fixed", "df_target"}
+                                    if new_sf.lambda_origin
+                                    in {"user_fixed", "df_target"}
                                     else "reestimated"
                                 ),
                             }

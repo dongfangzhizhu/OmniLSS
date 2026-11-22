@@ -37,4 +37,3 @@ def build_joint_fisher_from_blocks(
     if symmetrize and fisher.size:
         fisher = 0.5 * (fisher + fisher.T)
     return fisher
-

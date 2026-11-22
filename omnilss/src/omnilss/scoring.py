@@ -132,7 +132,7 @@ def dss(
     mu = params.get("mu", np.zeros_like(y_obs))
     sigma = params.get("sigma", np.ones_like(y_obs))
 
-    scores = (y_obs - mu) ** 2 / (sigma ** 2) + 2 * np.log(sigma)
+    scores = (y_obs - mu) ** 2 / (sigma**2) + 2 * np.log(sigma)
     return float(np.mean(scores))
 
 
@@ -216,7 +216,9 @@ def _crps_quantile(
     jax_params = {k: jnp.array(v) for k, v in params.items()}
 
     # Quantile levels: avoid 0 and 1
-    prob_levels = np.linspace(1 / (n_quantiles + 1), n_quantiles / (n_quantiles + 1), n_quantiles)
+    prob_levels = np.linspace(
+        1 / (n_quantiles + 1), n_quantiles / (n_quantiles + 1), n_quantiles
+    )
 
     crps_values = np.zeros(len(y_obs))
 
@@ -254,16 +256,16 @@ def _crps_sample(
     for k, v in jax_params.items():
         expanded_params[k] = jnp.tile(v[None, :], (n_samples, 1)).reshape(-1)
 
-    samples = np.asarray(
-        model.family.r(n_samples * n_obs, **expanded_params)
-    ).reshape(n_samples, n_obs)
+    samples = np.asarray(model.family.r(n_samples * n_obs, **expanded_params)).reshape(
+        n_samples, n_obs
+    )
 
     # E[|X - y|]
     term1 = np.mean(np.abs(samples - y_obs[None, :]), axis=0)
 
     # E[|X - X'|] ≈ using pairs of samples
     half = n_samples // 2
-    term2 = np.mean(np.abs(samples[:half] - samples[half:2*half]), axis=0)
+    term2 = np.mean(np.abs(samples[:half] - samples[half : 2 * half]), axis=0)
 
     crps_values = term1 - 0.5 * term2
     return float(np.mean(crps_values))
@@ -414,9 +416,7 @@ def pit_histogram(
     jax_params = {k: jnp.array(v) for k, v in params.items()}
 
     # PIT = CDF(y_obs | predicted params)
-    pit_values = np.asarray(
-        model.family.p(jnp.array(y_obs), **jax_params)
-    )
+    pit_values = np.asarray(model.family.p(jnp.array(y_obs), **jax_params))
 
     counts, bin_edges = np.histogram(pit_values, bins=n_bins, range=(0, 1))
     expected = len(y_obs) / n_bins
@@ -474,9 +474,7 @@ def scoring_summary(
         summary[f"interval_score_{level}"] = interval_score(
             model, newdata, y_obs, alpha=alpha
         )
-        summary[f"coverage_{level}"] = coverage(
-            model, newdata, y_obs, alpha=alpha
-        )
+        summary[f"coverage_{level}"] = coverage(model, newdata, y_obs, alpha=alpha)
 
     # Point forecast metrics (using mu as point forecast)
     params = _get_predicted_params(model, newdata)

@@ -25,13 +25,13 @@ Basic worm plot:
 
 >>> from omnilss import gamlss
 >>> from omnilss.worm_plot import wp, wp_interactive
->>> 
+>>>
 >>> # Fit model
 >>> model = gamlss("y ~ x", family="NO", data=data)
->>> 
+>>>
 >>> # Create worm plot
 >>> wp(model)
->>> 
+>>>
 >>> # Interactive version
 >>> fig = wp_interactive(model)
 >>> fig.show()
@@ -56,15 +56,15 @@ from scipy.stats import norm as scipy_norm
 from .model import GAMLSSModel
 from .operations import residuals, is_gamlss
 
-
 # =============================================================================
 # Data Classes
 # =============================================================================
 
+
 @dataclass(frozen=True)
 class WormPlotData:
     """Worm plot data for a single panel.
-    
+
     Attributes
     ----------
     theoretical_quantiles : np.ndarray
@@ -80,6 +80,7 @@ class WormPlotData:
     group_label : str, optional
         Label for this group (if using multiple panels)
     """
+
     theoretical_quantiles: np.ndarray
     deviations: np.ndarray
     lower_band: np.ndarray
@@ -91,7 +92,7 @@ class WormPlotData:
 @dataclass(frozen=True)
 class MultiPanelWormPlotData:
     """Worm plot data for multiple panels.
-    
+
     Attributes
     ----------
     panels : list[WormPlotData]
@@ -99,6 +100,7 @@ class MultiPanelWormPlotData:
     n_panels : int
         Number of panels
     """
+
     panels: list[WormPlotData]
     n_panels: int
 
@@ -106,6 +108,7 @@ class MultiPanelWormPlotData:
 # =============================================================================
 # Core Functions
 # =============================================================================
+
 
 def _require_gamlss(model: GAMLSSModel) -> None:
     """Check if object is a GAMLSS model."""
@@ -123,10 +126,10 @@ def _get_residuals(model: GAMLSSModel) -> np.ndarray:
 def _compute_worm_plot_data(
     residuals: np.ndarray,
     confidence_level: float = 0.95,
-    group_label: Optional[str] = None
+    group_label: Optional[str] = None,
 ) -> WormPlotData:
     """Compute worm plot data from residuals.
-    
+
     Parameters
     ----------
     residuals : np.ndarray
@@ -135,7 +138,7 @@ def _compute_worm_plot_data(
         Confidence level for bands
     group_label : str, optional
         Label for this group
-        
+
     Returns
     -------
     WormPlotData
@@ -143,11 +146,11 @@ def _compute_worm_plot_data(
     """
     if len(residuals) == 0:
         raise ValueError("No valid residuals available")
-    
+
     # Sort residuals
     sorted_res = np.sort(residuals)
     n = len(sorted_res)
-    
+
     # Compute theoretical quantiles using Filliben's approximation
     if n <= 10:
         probs = (np.arange(1, n + 1) - 0.5) / n
@@ -156,31 +159,31 @@ def _compute_worm_plot_data(
         probs[0] = 1.0 - 0.5 ** (1.0 / n)
         probs[-1] = 0.5 ** (1.0 / n)
         probs[1:-1] = (np.arange(2, n) - 0.3175) / (n + 0.365)
-    
+
     theoretical = scipy_norm.ppf(probs)
-    
+
     # Compute deviations from theoretical line
     deviations = sorted_res - theoretical
-    
+
     # Compute confidence bands
     # Standard error for order statistics
     pdf_vals = scipy_norm.pdf(theoretical)
     pdf_vals = np.maximum(pdf_vals, np.finfo(np.float64).eps)
-    
+
     se = np.sqrt(probs * (1.0 - probs) / n) / pdf_vals
-    
+
     # Confidence bands
     z_alpha = scipy_norm.ppf(1.0 - (1.0 - confidence_level) / 2.0)
     lower_band = -z_alpha * se
     upper_band = z_alpha * se
-    
+
     return WormPlotData(
         theoretical_quantiles=theoretical,
         deviations=deviations,
         lower_band=lower_band,
         upper_band=upper_band,
         n=n,
-        group_label=group_label
+        group_label=group_label,
     )
 
 
@@ -188,10 +191,10 @@ def wp_data(
     model: GAMLSSModel,
     xvar: Optional[np.ndarray] = None,
     n_inter: int = 4,
-    confidence_level: float = 0.95
+    confidence_level: float = 0.95,
 ) -> WormPlotData | MultiPanelWormPlotData:
     """Compute worm plot data for GAMLSS model.
-    
+
     Parameters
     ----------
     model : GAMLSSModel
@@ -202,56 +205,56 @@ def wp_data(
         Number of intervals for grouping (if xvar is provided)
     confidence_level : float, default=0.95
         Confidence level for bands
-        
+
     Returns
     -------
     WormPlotData or MultiPanelWormPlotData
         Worm plot data (single or multiple panels)
-        
+
     Examples
     --------
     Single panel:
-    
+
     >>> data = wp_data(model)
     >>> print(f"N observations: {data.n}")
-    
+
     Multiple panels:
-    
+
     >>> data = wp_data(model, xvar=x, n_inter=4)
     >>> print(f"N panels: {data.n_panels}")
     """
     _require_gamlss(model)
-    
+
     # Get residuals
     res = _get_residuals(model)
-    
+
     if res.size == 0:
         raise ValueError("No valid residuals available")
-    
+
     # Single panel case
     if xvar is None:
         return _compute_worm_plot_data(res, confidence_level)
-    
+
     # Multiple panel case
     xvar = np.asarray(xvar, dtype=np.float64).ravel()
-    
+
     # Ensure same length
     min_len = min(len(res), len(xvar))
     res = res[:min_len]
     xvar = xvar[:min_len]
-    
+
     # Create intervals
     if n_inter < 2:
         n_inter = 2
     if n_inter > 16:
         warnings.warn("n_inter > 16 may create too many panels", UserWarning)
-    
+
     # Compute quantiles for intervals
     quantiles = np.linspace(0, 1, n_inter + 1)
     breaks = np.quantile(xvar, quantiles)
     breaks[0] = -np.inf  # Include all values
     breaks[-1] = np.inf
-    
+
     # Create panels
     panels = []
     for i in range(n_inter):
@@ -259,26 +262,25 @@ def wp_data(
         if np.sum(mask) < 10:
             warnings.warn(
                 f"Panel {i+1} has fewer than 10 observations ({np.sum(mask)})",
-                UserWarning
+                UserWarning,
             )
             continue
-        
+
         panel_res = res[mask]
         panel_label = f"[{breaks[i]:.2f}, {breaks[i+1]:.2f})"
-        
+
         panel_data = _compute_worm_plot_data(
-            panel_res,
-            confidence_level,
-            group_label=panel_label
+            panel_res, confidence_level, group_label=panel_label
         )
         panels.append(panel_data)
-    
+
     return MultiPanelWormPlotData(panels=panels, n_panels=len(panels))
 
 
 # =============================================================================
 # Plotting Functions
 # =============================================================================
+
 
 def wp(
     model: GAMLSSModel,
@@ -287,14 +289,14 @@ def wp(
     confidence_level: float = 0.95,
     figsize: Optional[Tuple[float, float]] = None,
     title: Optional[str] = None,
-    show: bool = True
+    show: bool = True,
 ) -> Any:
     """Create worm plot for GAMLSS model.
-    
+
     A worm plot is a detrended Q-Q plot that shows deviations from the
     theoretical normal line. Points should lie within the confidence bands
     if the model is well-specified.
-    
+
     Parameters
     ----------
     model : GAMLSSModel
@@ -311,20 +313,20 @@ def wp(
         Plot title
     show : bool, default=True
         Whether to display the plot
-        
+
     Returns
     -------
     fig : matplotlib.figure.Figure
         Figure object
-        
+
     Examples
     --------
     >>> from omnilss import gamlss
     >>> from omnilss.worm_plot import wp
-    >>> 
+    >>>
     >>> model = gamlss("y ~ x", family="NO", data=data)
     >>> wp(model)
-    >>> 
+    >>>
     >>> # Multiple panels
     >>> wp(model, xvar=data["x"], n_inter=4)
     """
@@ -335,10 +337,10 @@ def wp(
             "matplotlib is required for plotting. "
             "Install it with: pip install matplotlib"
         )
-    
+
     # Get data
     data = wp_data(model, xvar, n_inter, confidence_level)
-    
+
     # Determine layout
     if isinstance(data, WormPlotData):
         # Single panel
@@ -350,69 +352,69 @@ def wp(
         n_cols = min(2, n_panels)
         n_rows = (n_panels + n_cols - 1) // n_cols
         panels = data.panels
-    
+
     # Create figure
     if figsize is None:
         figsize = (6 * n_cols, 4 * n_rows)
-    
+
     fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, squeeze=False)
     axes = axes.ravel()
-    
+
     # Plot each panel
     for idx, panel in enumerate(panels):
         ax = axes[idx]
-        
+
         # Plot confidence bands
         ax.fill_between(
             panel.theoretical_quantiles,
             panel.lower_band,
             panel.upper_band,
             alpha=0.2,
-            color='gray',
-            label=f'{int(confidence_level*100)}% CI'
+            color="gray",
+            label=f"{int(confidence_level*100)}% CI",
         )
-        
+
         # Plot zero line
-        ax.axhline(y=0, color='black', linestyle='--', linewidth=0.8, alpha=0.5)
-        
+        ax.axhline(y=0, color="black", linestyle="--", linewidth=0.8, alpha=0.5)
+
         # Plot deviations
         ax.plot(
             panel.theoretical_quantiles,
             panel.deviations,
-            'o',
+            "o",
             markersize=3,
-            color='blue',
-            alpha=0.6
+            color="blue",
+            alpha=0.6,
         )
-        
+
         # Labels
-        ax.set_xlabel('Unit normal quantile')
-        ax.set_ylabel('Deviation')
-        
+        ax.set_xlabel("Unit normal quantile")
+        ax.set_ylabel("Deviation")
+
         # Title
         if panel.group_label:
-            ax.set_title(f'{panel.group_label} (n={panel.n})')
+            ax.set_title(f"{panel.group_label} (n={panel.n})")
         elif title:
             ax.set_title(title)
         else:
-            ax.set_title(f'Worm Plot (n={panel.n})')
-        
+            ax.set_title(f"Worm Plot (n={panel.n})")
+
         # Grid
         ax.grid(True, alpha=0.3)
-        
+
         # Legend
         if idx == 0:
-            ax.legend(loc='best', fontsize='small')
-    
+            ax.legend(loc="best", fontsize="small")
+
     # Hide unused subplots
     for idx in range(len(panels), len(axes)):
-        axes[idx].axis('off')
-    
+        axes[idx].axis("off")
+
     plt.tight_layout()
-    
+
     if show:
         plt.show()
-    
+
     return fig
 
 
@@ -423,10 +425,10 @@ def wp_interactive(
     confidence_level: float = 0.95,
     title: Optional[str] = None,
     height: int = 500,
-    width: Optional[int] = None
+    width: Optional[int] = None,
 ) -> Any:
     """Create interactive worm plot using Plotly.
-    
+
     Parameters
     ----------
     model : GAMLSSModel
@@ -443,17 +445,17 @@ def wp_interactive(
         Plot height in pixels
     width : int, optional
         Plot width in pixels
-        
+
     Returns
     -------
     fig : plotly.graph_objects.Figure
         Plotly figure object
-        
+
     Examples
     --------
     >>> from omnilss import gamlss
     >>> from omnilss.worm_plot import wp_interactive
-    >>> 
+    >>>
     >>> model = gamlss("y ~ x", family="NO", data=data)
     >>> fig = wp_interactive(model)
     >>> fig.show()
@@ -466,10 +468,10 @@ def wp_interactive(
             "plotly is required for interactive plotting. "
             "Install it with: pip install plotly"
         )
-    
+
     # Get data
     data = wp_data(model, xvar, n_inter, confidence_level)
-    
+
     # Determine layout
     if isinstance(data, WormPlotData):
         # Single panel
@@ -481,90 +483,91 @@ def wp_interactive(
         n_cols = min(2, n_panels)
         n_rows = (n_panels + n_cols - 1) // n_cols
         panels = data.panels
-    
+
     # Create subplots
     subplot_titles = [
-        panel.group_label if panel.group_label else f'n={panel.n}'
-        for panel in panels
+        panel.group_label if panel.group_label else f"n={panel.n}" for panel in panels
     ]
-    
+
     fig = make_subplots(
         rows=n_rows,
         cols=n_cols,
         subplot_titles=subplot_titles,
         vertical_spacing=0.12,
-        horizontal_spacing=0.1
+        horizontal_spacing=0.1,
     )
-    
+
     # Plot each panel
     for idx, panel in enumerate(panels):
         row = idx // n_cols + 1
         col = idx % n_cols + 1
-        
+
         # Confidence band
         fig.add_trace(
             go.Scatter(
-                x=np.concatenate([panel.theoretical_quantiles, panel.theoretical_quantiles[::-1]]),
+                x=np.concatenate(
+                    [panel.theoretical_quantiles, panel.theoretical_quantiles[::-1]]
+                ),
                 y=np.concatenate([panel.upper_band, panel.lower_band[::-1]]),
-                fill='toself',
-                fillcolor='rgba(128, 128, 128, 0.2)',
-                line=dict(color='rgba(255,255,255,0)'),
-                name=f'{int(confidence_level*100)}% CI',
+                fill="toself",
+                fillcolor="rgba(128, 128, 128, 0.2)",
+                line=dict(color="rgba(255,255,255,0)"),
+                name=f"{int(confidence_level*100)}% CI",
                 showlegend=(idx == 0),
-                hoverinfo='skip'
+                hoverinfo="skip",
             ),
             row=row,
-            col=col
+            col=col,
         )
-        
+
         # Zero line
         fig.add_trace(
             go.Scatter(
                 x=panel.theoretical_quantiles,
                 y=np.zeros_like(panel.theoretical_quantiles),
-                mode='lines',
-                line=dict(color='black', dash='dash', width=1),
-                name='Zero line',
+                mode="lines",
+                line=dict(color="black", dash="dash", width=1),
+                name="Zero line",
                 showlegend=(idx == 0),
-                hoverinfo='skip'
+                hoverinfo="skip",
             ),
             row=row,
-            col=col
+            col=col,
         )
-        
+
         # Deviations
         fig.add_trace(
             go.Scatter(
                 x=panel.theoretical_quantiles,
                 y=panel.deviations,
-                mode='markers',
-                marker=dict(size=5, color='blue', opacity=0.6),
-                name='Deviations',
+                mode="markers",
+                marker=dict(size=5, color="blue", opacity=0.6),
+                name="Deviations",
                 showlegend=(idx == 0),
-                hovertemplate='<b>Quantile</b>: %{x:.3f}<br>' +
-                              '<b>Deviation</b>: %{y:.3f}<br>' +
-                              '<extra></extra>'
+                hovertemplate="<b>Quantile</b>: %{x:.3f}<br>"
+                + "<b>Deviation</b>: %{y:.3f}<br>"
+                + "<extra></extra>",
             ),
             row=row,
-            col=col
+            col=col,
         )
-        
+
         # Update axes
-        fig.update_xaxes(title_text='Unit normal quantile', row=row, col=col)
-        fig.update_yaxes(title_text='Deviation', row=row, col=col)
-    
+        fig.update_xaxes(title_text="Unit normal quantile", row=row, col=col)
+        fig.update_yaxes(title_text="Deviation", row=row, col=col)
+
     # Update layout
     if width is None:
         width = 600 * n_cols
-    
+
     fig.update_layout(
-        title=title if title else 'Worm Plot',
+        title=title if title else "Worm Plot",
         height=height * n_rows,
         width=width,
         showlegend=True,
-        hovermode='closest'
+        hovermode="closest",
     )
-    
+
     return fig
 
 

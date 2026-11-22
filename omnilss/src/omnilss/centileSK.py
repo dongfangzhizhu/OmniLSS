@@ -9,6 +9,7 @@ Using the 1%, 25%, 50%, 75% and 99% quantiles (weights honoured):
     K0.01 = (Q99 - Q1) / (Q75 - Q25)
     excess = K0.01 - 3.449,  trans.K = excess / (1 + |excess|)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -29,7 +30,9 @@ class CentileSKResult:
     trans_k001: float
 
 
-def _weighted_quantile(values: np.ndarray, weights: np.ndarray, probs: np.ndarray) -> np.ndarray:
+def _weighted_quantile(
+    values: np.ndarray, weights: np.ndarray, probs: np.ndarray
+) -> np.ndarray:
     """R quantileW: type-7 interpolation on the weighted empirical CDF."""
 
     unique = np.unique(values)

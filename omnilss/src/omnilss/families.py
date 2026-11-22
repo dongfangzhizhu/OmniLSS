@@ -70,7 +70,9 @@ class FamilyDefinition:
     def pdf(self, *args: Any, **kwargs: Any) -> Any:
         """Evaluate the density/PMF through the standard ``d`` function."""
         if self.d is None:
-            raise NotImplementedError(f"Family {self.name!r} does not define a density function")
+            raise NotImplementedError(
+                f"Family {self.name!r} does not define a density function"
+            )
         result = self.d(*args, **kwargs)
         if args and jnp.asarray(args[0]).ndim > 0 and jnp.asarray(result).ndim == 0:
             return jnp.reshape(jnp.asarray(result), (1,))

@@ -12,6 +12,7 @@ R refits with what="All"; the engine's dropterm/addterm refits the mu formula
 (keeping the other parameter formulas), which is equivalent for the usual
 models where only mu carries the terms being considered.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -49,18 +50,38 @@ def _table(
     records: list[dict[str, Any]] = []
     for row in rows:
         if row.term == "<none>":
-            records.append({"term": "<none>", "Df": np.nan, "AIC": base_aic, "LRT": np.nan, "Pr(Chi)": np.nan, "delta_criterion": 0.0, "delta_df": 0.0})
+            records.append(
+                {
+                    "term": "<none>",
+                    "Df": np.nan,
+                    "AIC": base_aic,
+                    "LRT": np.nan,
+                    "Pr(Chi)": np.nan,
+                    "delta_criterion": 0.0,
+                    "delta_df": 0.0,
+                }
+            )
         else:
-            term = row.term[len(prefix) :].strip() if row.term.startswith(prefix) else row.term
+            term = (
+                row.term[len(prefix) :].strip()
+                if row.term.startswith(prefix)
+                else row.term
+            )
             delta_df = 0.0 if row.delta_df is None else float(row.delta_df)
-            delta_criterion = 0.0 if row.delta_criterion is None else float(row.delta_criterion)
+            delta_criterion = (
+                0.0 if row.delta_criterion is None else float(row.delta_criterion)
+            )
             df_change = base_df - float(row.df_fit)
             lrt = delta_criterion - k * delta_df
             if direction == "add":
                 # R's add1All reverses both the df difference and the LRT sign.
                 df_change = -df_change
                 lrt = -lrt
-            p_value = float(chi2.sf(lrt, df_change)) if np.isfinite(lrt) and df_change > 0 else np.nan
+            p_value = (
+                float(chi2.sf(lrt, df_change))
+                if np.isfinite(lrt) and df_change > 0
+                else np.nan
+            )
             records.append(
                 {
                     "term": term,
@@ -118,7 +139,11 @@ def _scope_terms(scope: Any) -> list[str]:
         text = scope.strip()
         if text.startswith("~"):
             text = text[1:].strip()
-        return [term.strip() for term in text.split("+") if term.strip() and term.strip() != "1"]
+        return [
+            term.strip()
+            for term in text.split("+")
+            if term.strip() and term.strip() != "1"
+        ]
     return [str(term).strip() for term in scope if str(term).strip()]
 
 

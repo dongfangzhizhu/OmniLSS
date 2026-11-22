@@ -11,6 +11,7 @@ The Python port returns a small immutable object carrying the same fields, and
 reproduces bbase() exactly (truncated-power basis, R's seq() spacing, R's
 knots attribute subsetting), so X and D are numerically identical to R.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -133,7 +134,14 @@ def pb(
     xr = float(np.max(values))
     xmax = xr + 0.01 * (xr - xl)
     xmin = xl - 0.01 * (xr - xl)
-    design, knots = bbase(values, xmin, xmax, inter, settings.get("degree", 3), bool(settings.get("quantiles", False)))
+    design, knots = bbase(
+        values,
+        xmin,
+        xmax,
+        inter,
+        settings.get("degree", 3),
+        bool(settings.get("quantiles", False)),
+    )
 
     columns = design.shape[1]
     order = settings.get("order", 2)
@@ -231,7 +239,9 @@ def ps(
     if (ps_intervals - 1) < 1:
         import warnings
 
-        warnings.warn("ps.intervals was too small; have used 2", UserWarning, stacklevel=2)
+        warnings.warn(
+            "ps.intervals was too small; have used 2", UserWarning, stacklevel=2
+        )
     knots = _seq(xmin - degree * dx, xmax + degree * dx, dx)
 
     from scipy.interpolate import BSpline
@@ -308,7 +318,9 @@ def cs(
 
     values = np.asarray(x, dtype=float)
     if values.ndim != 1:
-        raise ValueError("The default smoother is bivariate; you gave a matrix as an argument")
+        raise ValueError(
+            "The default smoother is bivariate; you gave a matrix as an argument"
+        )
 
     settings = dict(control) if control is not None else cs_control(**kwargs)
     for key, value in kwargs.items():

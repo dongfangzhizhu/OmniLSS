@@ -32,28 +32,72 @@ def _clone(base: FamilyDefinition, name: str, family_class) -> FamilyDefinition:
 
 
 @dataclass(frozen=True)
-class SHASHOFamily(FamilyDefinition): pass
-@dataclass(frozen=True)
-class JSUOFamily(FamilyDefinition): pass
-@dataclass(frozen=True)
-class SHASHO2Family(FamilyDefinition): pass
-@dataclass(frozen=True)
-class BCPEOFamily(FamilyDefinition): pass
-@dataclass(frozen=True)
-class BCTOFamily(FamilyDefinition): pass
-@dataclass(frozen=True)
-class PARETO1OFamily(FamilyDefinition): pass
-@dataclass(frozen=True)
-class BCCGOFamily(FamilyDefinition): pass
-@dataclass(frozen=True)
-class LOGSHASHOFamily(FamilyDefinition): pass
+class SHASHOFamily(FamilyDefinition):
+    pass
 
 
-def SHASHO() -> FamilyDefinition: return _clone(SHASHo(), "SHASHo", SHASHOFamily)
-def JSUO() -> FamilyDefinition: return _clone(JSUo(), "JSUo", JSUOFamily)
-def SHASHO2() -> FamilyDefinition: return _clone(SHASHo2(), "SHASHo2", SHASHO2Family)
-def BCPEO() -> FamilyDefinition: return _clone(BCPEo(), "BCPEo", BCPEOFamily)
-def BCTO() -> FamilyDefinition: return _clone(BCTo(), "BCTo", BCTOFamily)
-def PARETO1O() -> FamilyDefinition: return _clone(PARETO1o(), "PARETO1o", PARETO1OFamily)
-def BCCGO() -> FamilyDefinition: return _clone(BCCGo(), "BCCGo", BCCGOFamily)
-def LOGSHASHO() -> FamilyDefinition: return _clone(LOGSHASHo(), "LOGSHASHo", LOGSHASHOFamily)
+@dataclass(frozen=True)
+class JSUOFamily(FamilyDefinition):
+    pass
+
+
+@dataclass(frozen=True)
+class SHASHO2Family(FamilyDefinition):
+    pass
+
+
+@dataclass(frozen=True)
+class BCPEOFamily(FamilyDefinition):
+    pass
+
+
+@dataclass(frozen=True)
+class BCTOFamily(FamilyDefinition):
+    pass
+
+
+@dataclass(frozen=True)
+class PARETO1OFamily(FamilyDefinition):
+    pass
+
+
+@dataclass(frozen=True)
+class BCCGOFamily(FamilyDefinition):
+    pass
+
+
+@dataclass(frozen=True)
+class LOGSHASHOFamily(FamilyDefinition):
+    pass
+
+
+def SHASHO() -> FamilyDefinition:
+    return _clone(SHASHo(), "SHASHo", SHASHOFamily)
+
+
+def JSUO() -> FamilyDefinition:
+    return _clone(JSUo(), "JSUo", JSUOFamily)
+
+
+def SHASHO2() -> FamilyDefinition:
+    return _clone(SHASHo2(), "SHASHo2", SHASHO2Family)
+
+
+def BCPEO() -> FamilyDefinition:
+    return _clone(BCPEo(), "BCPEo", BCPEOFamily)
+
+
+def BCTO() -> FamilyDefinition:
+    return _clone(BCTo(), "BCTo", BCTOFamily)
+
+
+def PARETO1O() -> FamilyDefinition:
+    return _clone(PARETO1o(), "PARETO1o", PARETO1OFamily)
+
+
+def BCCGO() -> FamilyDefinition:
+    return _clone(BCCGo(), "BCCGo", BCCGOFamily)
+
+
+def LOGSHASHO() -> FamilyDefinition:
+    return _clone(LOGSHASHo(), "LOGSHASHo", LOGSHASHOFamily)

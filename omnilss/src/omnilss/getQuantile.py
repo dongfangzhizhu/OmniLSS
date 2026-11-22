@@ -88,7 +88,11 @@ def get_quantile_data(
         if not np.isfinite(x_lower) or not np.isfinite(x_upper) or x_lower >= x_upper:
             raise ValueError("x_limits must contain two finite increasing values")
     x_grid = np.linspace(x_lower, x_upper, int(n_points), dtype=np.float64)
-    fixed_values = {} if fixed_at is None else {str(key): float(value) for key, value in fixed_at.items()}
+    fixed_values = (
+        {}
+        if fixed_at is None
+        else {str(key): float(value) for key, value in fixed_at.items()}
+    )
     if how_name == "last":
         predictor_names: set[str] = set()
         for parameter in object.par:
@@ -103,7 +107,9 @@ def get_quantile_data(
                 source = np.asarray(call_data[name], dtype=np.float64).ravel()
                 fixed_values[name] = float(source[-1])
 
-    predicted, chosen_fixed = _predict_parameter_frame(object, xvar, x_grid, fixed_at=fixed_values)
+    predicted, chosen_fixed = _predict_parameter_frame(
+        object, xvar, x_grid, fixed_at=fixed_values
+    )
     family_name = getattr(object.family, "name", str(object.family))
     quantile_values = _family_quantile_values(
         family_name,

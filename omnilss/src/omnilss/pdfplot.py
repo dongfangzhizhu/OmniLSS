@@ -34,7 +34,9 @@ class PDFPlotEntry:
         if "nu" not in self.parameters or self.parameters.get("nu", 0.0) <= 0:
             return 0.0
         if self.family == "BEINF":
-            return self.parameters["nu"] / (1.0 + self.parameters["nu"] + self.parameters["tau"])
+            return self.parameters["nu"] / (
+                1.0 + self.parameters["nu"] + self.parameters["tau"]
+            )
         if self.family == "BEINF0":
             return self.parameters["nu"] / (1.0 + self.parameters["nu"])
         return 0.0
@@ -139,47 +141,65 @@ def pdf_plot_data(
     if obj is not None:
         _require_gamlss(obj)
         observed = np.asarray(obj.y, dtype=np.float64).ravel()
-        parameter_names = tuple(str(name) for name in getattr(resolved_family, "parameters", obj.par))
+        parameter_names = tuple(
+            str(name) for name in getattr(resolved_family, "parameters", obj.par)
+        )
         for panel_index, obs_index in enumerate(obs, start=1):
             zero_index = int(obs_index) - 1
             if zero_index < 0 or zero_index >= observed.size:
                 raise IndexError(f"obs index {obs_index} is out of range")
             parameter_values: dict[str, float] = {}
             for parameter in parameter_names:
-                fitted_array = np.asarray(fitted(obj, parameter), dtype=np.float64).ravel()
+                fitted_array = np.asarray(
+                    fitted(obj, parameter), dtype=np.float64
+                ).ravel()
                 parameter_values[parameter] = float(fitted_array[zero_index])
             entries.append(
                 PDFPlotEntry(
                     index=panel_index,
                     y=y_grid,
-                    density=_staged_density_curve(resolved_family, y_grid, parameter_values),
+                    density=_staged_density_curve(
+                        resolved_family, y_grid, parameter_values
+                    ),
                     parameters=parameter_values,
                     observed_value=float(observed[zero_index]),
-                        family=str(resolved_family.name),
+                    family=str(resolved_family.name),
                 )
             )
     else:
         parameter_vectors = {
             "mu": None if mu is None else np.asarray(mu, dtype=np.float64).ravel(),
-            "sigma": None if sigma is None else np.asarray(sigma, dtype=np.float64).ravel(),
+            "sigma": (
+                None if sigma is None else np.asarray(sigma, dtype=np.float64).ravel()
+            ),
             "nu": None if nu is None else np.asarray(nu, dtype=np.float64).ravel(),
             "tau": None if tau is None else np.asarray(tau, dtype=np.float64).ravel(),
         }
-        parameter_names = tuple(str(name) for name in getattr(resolved_family, "parameters", ()))
-        missing = [name for name in parameter_names if parameter_vectors.get(name) is None]
+        parameter_names = tuple(
+            str(name) for name in getattr(resolved_family, "parameters", ())
+        )
+        missing = [
+            name for name in parameter_names if parameter_vectors.get(name) is None
+        ]
         if missing:
-            raise ValueError(f"missing parameter values for family {resolved_family.name}: {', '.join(missing)}")
+            raise ValueError(
+                f"missing parameter values for family {resolved_family.name}: {', '.join(missing)}"
+            )
         panel_count = max(int(parameter_vectors[name].size) for name in parameter_names)
         for panel_index in range(panel_count):
             parameter_values = {
-                name: float(parameter_vectors[name][panel_index % parameter_vectors[name].size])
+                name: float(
+                    parameter_vectors[name][panel_index % parameter_vectors[name].size]
+                )
                 for name in parameter_names
             }
             entries.append(
                 PDFPlotEntry(
                     index=panel_index + 1,
                     y=y_grid,
-                    density=_staged_density_curve(resolved_family, y_grid, parameter_values),
+                    density=_staged_density_curve(
+                        resolved_family, y_grid, parameter_values
+                    ),
                     parameters=parameter_values,
                     observed_value=None,
                     family=str(resolved_family.name),
@@ -195,28 +215,46 @@ def pdf_plot_data(
     )
 
 
-def plotBEINF(mu=0.5, sigma=0.5, nu=0.5, tau=0.5,
-              from_value=0.001, to_value=0.999, n=101):
+def plotBEINF(
+    mu=0.5, sigma=0.5, nu=0.5, tau=0.5, from_value=0.001, to_value=0.999, n=101
+):
     """Return structured density data for R ``plotBEINF``."""
-    return pdf_plot_data(family="BEINF", mu=mu, sigma=sigma, nu=nu,
-                         tau=tau, from_value=from_value,
-                         to_value=to_value, no_points=n)
+    return pdf_plot_data(
+        family="BEINF",
+        mu=mu,
+        sigma=sigma,
+        nu=nu,
+        tau=tau,
+        from_value=from_value,
+        to_value=to_value,
+        no_points=n,
+    )
 
 
-def plotBEINF0(mu=0.5, sigma=0.5, nu=0.5,
-               from_value=0.001, to_value=0.999, n=101):
+def plotBEINF0(mu=0.5, sigma=0.5, nu=0.5, from_value=0.001, to_value=0.999, n=101):
     """Return structured density data for R ``plotBEINF0``."""
-    return pdf_plot_data(family="BEINF0", mu=mu, sigma=sigma, nu=nu,
-                         from_value=from_value, to_value=to_value,
-                         no_points=n)
+    return pdf_plot_data(
+        family="BEINF0",
+        mu=mu,
+        sigma=sigma,
+        nu=nu,
+        from_value=from_value,
+        to_value=to_value,
+        no_points=n,
+    )
 
 
-def plotBEINF1(mu=0.5, sigma=0.5, tau=0.5,
-               from_value=0.001, to_value=0.999, n=101):
+def plotBEINF1(mu=0.5, sigma=0.5, tau=0.5, from_value=0.001, to_value=0.999, n=101):
     """Return structured density data for R ``plotBEINF1``."""
-    return pdf_plot_data(family="BEINF1", mu=mu, sigma=sigma, nu=tau,
-                         from_value=from_value, to_value=to_value,
-                         no_points=n)
+    return pdf_plot_data(
+        family="BEINF1",
+        mu=mu,
+        sigma=sigma,
+        nu=tau,
+        from_value=from_value,
+        to_value=to_value,
+        no_points=n,
+    )
 
 
 pdf_plot = pdf_plot_data

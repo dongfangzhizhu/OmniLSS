@@ -12,25 +12,32 @@ from jax.scipy.special import gammaln, betaln, betainc
 from .ad import build_ad_family
 from .families import FamilyDefinition
 from .links import (
-    log_link, log_inverse, log_derivative,
-    logit_link, logit_inverse, logit_derivative,
-    identity_link, identity_inverse, identity_derivative
+    log_link,
+    log_inverse,
+    log_derivative,
+    logit_link,
+    logit_inverse,
+    logit_derivative,
+    identity_link,
+    identity_inverse,
+    identity_derivative,
 )
-
 
 # ============================================================================
 # BEo - Beta (Original Parameterization)
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class BEoFamily(FamilyDefinition):
     """Beta distribution (original parameterization) family."""
+
     pass
 
 
 def _beo_log_pdf(y, mu, sigma):
     """Beta (original) log-PDF.
-    
+
     Original parameterization: shape parameters alpha and beta directly.
     - mu = alpha
     - sigma = beta
@@ -39,8 +46,10 @@ def _beo_log_pdf(y, mu, sigma):
     y = jnp.clip(y, eps, 1.0 - eps)
     alpha = jnp.maximum(mu, eps)
     beta = jnp.maximum(sigma, eps)
-    
-    return (alpha - 1.0) * jnp.log(y) + (beta - 1.0) * jnp.log1p(-y) - betaln(alpha, beta)
+
+    return (
+        (alpha - 1.0) * jnp.log(y) + (beta - 1.0) * jnp.log1p(-y) - betaln(alpha, beta)
+    )
 
 
 def _beo_d(x, mu=0.5, sigma=0.2, log=False):
@@ -49,8 +58,11 @@ def _beo_d(x, mu=0.5, sigma=0.2, log=False):
     alpha = jnp.maximum(mu, eps)
     beta = jnp.maximum(sigma, eps)
     # log f(y) = (alpha-1)ln y + (beta-1)ln(1-y) - B(alpha, beta)
-    log_fy = (alpha - 1.0) * jnp.log(jnp.clip(x, eps, 1.0 - eps)) \
-        + (beta - 1.0) * jnp.log1p(-jnp.clip(x, eps, 1.0 - eps)) - betaln(alpha, beta)
+    log_fy = (
+        (alpha - 1.0) * jnp.log(jnp.clip(x, eps, 1.0 - eps))
+        + (beta - 1.0) * jnp.log1p(-jnp.clip(x, eps, 1.0 - eps))
+        - betaln(alpha, beta)
+    )
     log_fy = jnp.where((x <= 0) | (x >= 1), -jnp.inf, log_fy)
     return log_fy if log else jnp.exp(log_fy)
 
@@ -80,8 +92,11 @@ def _beo_q(p, mu=0.5, sigma=0.2, lower_tail=True, log_p=False):
     if not lower_tail:
         p_arr = 1.0 - p_arr
     from scipy.stats import beta as _scipy_beta
-    q = np.asarray(_scipy_beta.ppf(np.clip(p_arr, 1e-16, 1.0 - 1e-16),
-                                   mu_arr, sigma_arr), dtype=np.float64)
+
+    q = np.asarray(
+        _scipy_beta.ppf(np.clip(p_arr, 1e-16, 1.0 - 1e-16), mu_arr, sigma_arr),
+        dtype=np.float64,
+    )
     q = np.where(p_arr <= 0, 0.0, q)
     q = np.where(p_arr >= 1, 1.0, q)
     return jnp.asarray(q, dtype=jnp.float64)
@@ -119,21 +134,23 @@ def BEo():
 # GEOMo - Geometric (Original Parameterization)
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class GEOMoFamily(FamilyDefinition):
     """Geometric distribution (original parameterization) family."""
+
     pass
 
 
 def _geomo_log_pdf(y, mu):
     """Geometric (original) log-PDF.
-    
+
     Original: P(Y=k) = (1-p)^k * p for k=0,1,2,...
     Here mu = p (success probability).
     """
     eps = jnp.finfo(jnp.float64).eps
     p = jnp.clip(mu, eps, 1.0 - eps)
-    
+
     return y * jnp.log1p(-p) + jnp.log(p)
 
 
@@ -213,9 +230,11 @@ def GEOMo():
 # WEI2 - Weibull Type 2
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class WEI2Family(FamilyDefinition):
     """Weibull Type 2 distribution family."""
+
     pass
 
 
@@ -256,31 +275,34 @@ def WEI2():
 # WEI3 - Weibull Type 3
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class WEI3Family(FamilyDefinition):
     """Weibull Type 3 distribution family."""
+
     pass
 
 
 def _wei3_log_pdf(y, mu, sigma):
     """Weibull Type 3 log-PDF.
-    
+
     Another alternative parameterization.
     """
     eps = jnp.finfo(jnp.float64).eps
     y = jnp.maximum(y, eps)
     mu = jnp.maximum(mu, eps)
     sigma = jnp.maximum(sigma, eps)
-    
+
     # Type 3: shape = sigma, scale = mu / gamma(1 + 1/sigma)
     shape = sigma
     log_gamma_term = gammaln(1.0 + 1.0 / sigma)
     scale = mu / jnp.exp(log_gamma_term)
-    
+
     z = y / scale
-    
+
     return (
-        jnp.log(shape) - jnp.log(scale)
+        jnp.log(shape)
+        - jnp.log(scale)
         + (shape - 1.0) * (jnp.log(y) - jnp.log(scale))
         - jnp.power(z, shape)
     )
@@ -314,9 +336,11 @@ def WEI3():
 # PARETO2o - Pareto Type 2 (Original)
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class PARETO2oFamily(FamilyDefinition):
     """Pareto Type 2 (original parameterization) family."""
+
     pass
 
 
@@ -333,8 +357,9 @@ def _pareto2o_log_pdf(y, mu, sigma):
     scale = jnp.maximum(mu, eps)
     shape = jnp.maximum(sigma, eps)
 
-    log_pdf = jnp.log(shape) + shape * jnp.log(scale) \
-        - (shape + 1.0) * jnp.log(y + scale)
+    log_pdf = (
+        jnp.log(shape) + shape * jnp.log(scale) - (shape + 1.0) * jnp.log(y + scale)
+    )
     log_pdf = jnp.where(y <= 0, -jnp.inf, log_pdf)
 
     return log_pdf
@@ -345,8 +370,11 @@ def _pareto2o_d(x, mu=1.0, sigma=0.5, log=False):
     eps = jnp.finfo(jnp.float64).eps
     scale = jnp.maximum(mu, eps)
     shape = jnp.maximum(sigma, eps)
-    log_fy = jnp.log(shape) + shape * jnp.log(scale) \
+    log_fy = (
+        jnp.log(shape)
+        + shape * jnp.log(scale)
         - (shape + 1.0) * jnp.log(jnp.maximum(x, eps) + scale)
+    )
     log_fy = jnp.where(x <= 0, -jnp.inf, log_fy)
     return log_fy if log else jnp.exp(log_fy)
 
@@ -416,9 +444,11 @@ def PARETO2o():
 # NOF - Normal Family (alternative)
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class NOFFamily(FamilyDefinition):
     """Normal Family distribution."""
+
     pass
 
 
@@ -447,7 +477,11 @@ def NOF():
         type_="Continuous",
         links={"mu": "identity", "sigma": "log", "nu": "identity"},
         link_functions={"mu": identity_link, "sigma": log_link, "nu": identity_link},
-        link_inverses={"mu": identity_inverse, "sigma": log_inverse, "nu": identity_inverse},
+        link_inverses={
+            "mu": identity_inverse,
+            "sigma": log_inverse,
+            "nu": identity_inverse,
+        },
         link_derivatives={
             "mu": identity_derivative,
             "sigma": log_derivative,
@@ -464,9 +498,11 @@ def NOF():
 # GAF - Gamma Family (alternative)
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class GAFFamily(FamilyDefinition):
     """Gamma Family distribution."""
+
     pass
 
 
@@ -511,9 +547,11 @@ def GAF():
 # RGE - Reverse Gumbel Extended
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class RGEFamily(FamilyDefinition):
     """Reverse Gumbel Extended distribution family."""
+
     pass
 
 

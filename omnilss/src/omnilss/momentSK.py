@@ -10,6 +10,7 @@ plots (Jones and Pewsey 2009):
     trans.skew = gamma1 / (1 + |gamma1|)
     trans.kurt = gamma2 / (1 + |gamma2|)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -54,9 +55,15 @@ def momentSK(y, weights=None) -> MomentSKResult:
     m2 = float(np.sum(g * centered**2))
     if m2 <= 0.0:
         return MomentSKResult(
-            mean=m1, variance=m2, skewness=0.0, kurtosis=3.0,
-            excess_kurtosis=0.0, trans_skew=0.0, trans_kurt=0.0,
-            n=total, jarque_bera=0.0,
+            mean=m1,
+            variance=m2,
+            skewness=0.0,
+            kurtosis=3.0,
+            excess_kurtosis=0.0,
+            trans_skew=0.0,
+            trans_kurt=0.0,
+            n=total,
+            jarque_bera=0.0,
         )
     m3 = float(np.sum(g * centered**3))
     m4 = float(np.sum(g * centered**4))

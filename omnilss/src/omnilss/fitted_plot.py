@@ -69,7 +69,11 @@ def fitted_plot_data(
     if xvar not in call_data:
         raise KeyError(f"xvar {xvar!r} not found in data")
 
-    requested = [str(parameter).strip().lower() for parameter in (parameters or object.par) if str(parameter).strip()]
+    requested = [
+        str(parameter).strip().lower()
+        for parameter in (parameters or object.par)
+        if str(parameter).strip()
+    ]
     if not requested:
         raise ValueError("no parameters available for fitted plot data")
     invalid = [parameter for parameter in requested if parameter not in object.par]
@@ -84,10 +88,20 @@ def fitted_plot_data(
 
     if se_fit:
         prediction = predict_all(object, type=selected_type, output="list", se_fit=True)
-        values = prediction.values if isinstance(prediction, PredictAllResult) else prediction
+        values = (
+            prediction.values
+            if isinstance(prediction, PredictAllResult)
+            else prediction
+        )
     else:
-        prediction = predict_all(object, type=selected_type, output="list", se_fit=False)
-        values = prediction.values if isinstance(prediction, PredictAllResult) else prediction
+        prediction = predict_all(
+            object, type=selected_type, output="list", se_fit=False
+        )
+        values = (
+            prediction.values
+            if isinstance(prediction, PredictAllResult)
+            else prediction
+        )
 
     entries: list[FittedPlotEntry] = []
     link_map = getattr(object.family, "links", {}) or {}
@@ -112,7 +126,9 @@ def fitted_plot_data(
         if selected_type == "response" and link_name == "logshiftto2":
             fit_array = np.maximum(fit_array, 2.0 + np.finfo(np.float64).eps)
         if se_array is not None:
-            se_array = np.where(np.isfinite(se_array), np.maximum(se_array, 0.0), np.nan)
+            se_array = np.where(
+                np.isfinite(se_array), np.maximum(se_array, 0.0), np.nan
+            )
         ordered_fit = fit_array[order]
         if se_array is None:
             ordered_se = None
@@ -173,7 +189,9 @@ def fittedPlot(
 
     models = (object, *others)
     if not all(is_gamlss(m) for m in models):
-        raise TypeError("all objects passed to fittedPlot must be GAMLSSModel instances")
+        raise TypeError(
+            "all objects passed to fittedPlot must be GAMLSSModel instances"
+        )
     if x is None:
         raise ValueError("The x-variable argument is not specified")
 

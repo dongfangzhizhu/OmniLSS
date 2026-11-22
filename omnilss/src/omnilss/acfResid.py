@@ -73,10 +73,20 @@ def acf_residuals(
     lags = np.arange(1, lag_count + 1, dtype=np.int64)
     return ResidualACFResult(
         lags=lags,
-        residual_acf=np.array([_autocorrelation(z, int(lag)) for lag in lags], dtype=np.float64),
-        squared_acf=np.array([_autocorrelation(np.square(z), int(lag)) for lag in lags], dtype=np.float64),
-        cubed_acf=np.array([_autocorrelation(np.power(z, 3.0), int(lag)) for lag in lags], dtype=np.float64),
-        quartic_acf=np.array([_autocorrelation(np.power(z, 4.0), int(lag)) for lag in lags], dtype=np.float64),
+        residual_acf=np.array(
+            [_autocorrelation(z, int(lag)) for lag in lags], dtype=np.float64
+        ),
+        squared_acf=np.array(
+            [_autocorrelation(np.square(z), int(lag)) for lag in lags], dtype=np.float64
+        ),
+        cubed_acf=np.array(
+            [_autocorrelation(np.power(z, 3.0), int(lag)) for lag in lags],
+            dtype=np.float64,
+        ),
+        quartic_acf=np.array(
+            [_autocorrelation(np.power(z, 4.0), int(lag)) for lag in lags],
+            dtype=np.float64,
+        ),
     )
 
 

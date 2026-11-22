@@ -15,6 +15,7 @@ This recurrence is algebraically batch-invariant: applying ``update(A)`` then
 ``update(B)`` yields the exact same sufficient statistics (up to floating-point
 rounding) as ``update(concat(A, B))`` for any ``forget in [0, 1)``.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -58,7 +59,7 @@ class OnlineGram:
         if self.forget == 0.0:
             return 1.0, np.ones(count, dtype=np.float64)
         exponents = np.arange(count - 1, -1, -1, dtype=np.float64)
-        return float(self.decay ** count), np.power(self.decay, exponents)
+        return float(self.decay**count), np.power(self.decay, exponents)
 
     def update(
         self,

@@ -177,11 +177,15 @@ def get_tgd_data(
         output="list",
         se_fit=False,
     )
-    values = predicted.values if isinstance(predicted, PredictAllResult) else dict(predicted)
+    values = (
+        predicted.values if isinstance(predicted, PredictAllResult) else dict(predicted)
+    )
     deviance_kwargs: dict[str, Any] = {"y": validation_y}
     for parameter in object.par:
         deviance_kwargs[parameter] = np.asarray(values[parameter], dtype=np.float64)
-    deviance_increment = np.asarray(object.family.g_dev_inc(**deviance_kwargs), dtype=np.float64)
+    deviance_increment = np.asarray(
+        object.family.g_dev_inc(**deviance_kwargs), dtype=np.float64
+    )
     test_global_deviance = float(np.sum(deviance_increment))
     prediction_error = float(test_global_deviance / validation_y.size)
 
@@ -249,10 +253,16 @@ def gamlss_vgd_data(
         train_mask = split == 1
         valid_mask = split == 2
         if not np.any(train_mask) or not np.any(valid_mask):
-            raise ValueError("rand must contain both training (1) and validation (2) rows")
+            raise ValueError(
+                "rand must contain both training (1) and validation (2) rows"
+            )
         train_data = _subset_mapping_rows(data, train_mask)
         validation_data = _subset_mapping_rows(data, valid_mask)
-        train_weights = None if weights is None else np.asarray(weights, dtype=np.float64)[train_mask]
+        train_weights = (
+            None
+            if weights is None
+            else np.asarray(weights, dtype=np.float64)[train_mask]
+        )
     else:
         train_data = dict(data)
         validation_data = dict(newdata)
@@ -269,18 +279,30 @@ def gamlss_vgd_data(
     )
     tgd_result = get_tgd_data(fit, newdata=validation_data)
     fit.additional_slots["VGD"] = float(tgd_result.test_global_deviance)
-    fit.additional_slots["IncrVGD"] = np.asarray(tgd_result.deviance_increment, dtype=np.float64)
+    fit.additional_slots["IncrVGD"] = np.asarray(
+        tgd_result.deviance_increment, dtype=np.float64
+    )
     fit.additional_slots["predictError"] = float(tgd_result.prediction_error)
-    fit.additional_slots["residVal"] = None if tgd_result.residuals is None else np.asarray(tgd_result.residuals, dtype=np.float64)
+    fit.additional_slots["residVal"] = (
+        None
+        if tgd_result.residuals is None
+        else np.asarray(tgd_result.residuals, dtype=np.float64)
+    )
     fit.additional_slots["class_name"] = "gamlssVGD"
 
     return GAMLSSVGDResult(
         family=str(getattr(fit.family, "name", fit.family)),
         model=fit,
         validation_global_deviance=float(tgd_result.test_global_deviance),
-        validation_increment=np.asarray(tgd_result.deviance_increment, dtype=np.float64),
+        validation_increment=np.asarray(
+            tgd_result.deviance_increment, dtype=np.float64
+        ),
         prediction_error=float(tgd_result.prediction_error),
-        validation_residuals=None if tgd_result.residuals is None else np.asarray(tgd_result.residuals, dtype=np.float64),
+        validation_residuals=(
+            None
+            if tgd_result.residuals is None
+            else np.asarray(tgd_result.residuals, dtype=np.float64)
+        ),
         validation_size=int(tgd_result.validation_size),
     )
 
@@ -330,7 +352,13 @@ def vgd(*objects: Any) -> float | VGDComparisonResult:
         sorted(
             (
                 VGDComparisonRow(
-                    family=str(getattr(_unwrap_validation_model(model).family, "name", _unwrap_validation_model(model).family)),
+                    family=str(
+                        getattr(
+                            _unwrap_validation_model(model).family,
+                            "name",
+                            _unwrap_validation_model(model).family,
+                        )
+                    ),
                     pred_gd=_value(model),
                 )
                 for model in objects
@@ -395,7 +423,9 @@ def TGD(*objects: Any) -> float | TGDComparisonResult:
     rows = tuple(
         sorted(
             (
-                TGDComparisonRow(family=str(item.family), pred_gd=float(item.test_global_deviance))
+                TGDComparisonRow(
+                    family=str(item.family), pred_gd=float(item.test_global_deviance)
+                )
                 for item in objects
             ),
             key=lambda row: (row.pred_gd, row.family),
@@ -434,7 +464,10 @@ def gamlss_cv_data(
 
     if rand is None:
         rng = np.random.default_rng(int(set_seed))
-        fold_ids = np.tile(np.arange(1, int(k_fold) + 1, dtype=np.int64), int(np.ceil(n_obs / int(k_fold))))[:n_obs]
+        fold_ids = np.tile(
+            np.arange(1, int(k_fold) + 1, dtype=np.int64),
+            int(np.ceil(n_obs / int(k_fold))),
+        )[:n_obs]
         rng.shuffle(fold_ids)
     else:
         fold_ids = np.asarray(rand)
@@ -464,7 +497,9 @@ def gamlss_cv_data(
         validation_mask = split == 2
         all_cv[index] = float(fold_result.validation_global_deviance)
         if fold_result.validation_residuals is not None:
-            resid_cv[validation_mask] = np.asarray(fold_result.validation_residuals, dtype=np.float64)
+            resid_cv[validation_mask] = np.asarray(
+                fold_result.validation_residuals, dtype=np.float64
+            )
 
     fit = gamlss(
         formula=normalized_formula,
@@ -540,7 +575,13 @@ def cv(*objects: Any) -> float | CVComparisonResult:
         sorted(
             (
                 CVComparisonRow(
-                    family=str(getattr(_unwrap_validation_model(model).family, "name", _unwrap_validation_model(model).family)),
+                    family=str(
+                        getattr(
+                            _unwrap_validation_model(model).family,
+                            "name",
+                            _unwrap_validation_model(model).family,
+                        )
+                    ),
                     cv=_value(model),
                 )
                 for model in objects
@@ -549,6 +590,7 @@ def cv(*objects: Any) -> float | CVComparisonResult:
         )
     )
     return CVComparisonResult(rows=rows)
+
 
 gamlssVGD = gamlss_vgd
 VGD = vgd

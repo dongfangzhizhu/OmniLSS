@@ -11,6 +11,7 @@ columns Step / Df / Deviance / Resid. Df / Resid. Dev / AIC.
 Compared with live R on a NO model: the anova path (step labels, Df, deviance,
 residual df, AIC) and the final formula agree to the fitting tolerance.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -139,17 +140,27 @@ def stepGAIC_VR(
     while steps > 0:
         steps -= 1
         previous_aic = base_aic
-        current_terms = _rhs_terms(_normalize_formula_text(current.formulas.get(selected, "")))
-        drop_candidates = [term for term in current_terms if term not in lower] if backward else []
-        add_candidates = [term for term in upper if term not in current_terms] if forward else []
+        current_terms = _rhs_terms(
+            _normalize_formula_text(current.formulas.get(selected, ""))
+        )
+        drop_candidates = (
+            [term for term in current_terms if term not in lower] if backward else []
+        )
+        add_candidates = (
+            [term for term in upper if term not in current_terms] if forward else []
+        )
 
         candidates: list[tuple[str, float, str]] = []
         if drop_candidates:
-            for row in dropterm(current, scope=drop_candidates, what=selected, k=k).rows[1:]:
+            for row in dropterm(
+                current, scope=drop_candidates, what=selected, k=k
+            ).rows[1:]:
                 if row.criterion == row.criterion:
                     candidates.append((row.term, float(row.criterion), "drop"))
         if add_candidates:
-            for row in addterm(current, scope=add_candidates, what=selected, k=k).rows[1:]:
+            for row in addterm(current, scope=add_candidates, what=selected, k=k).rows[
+                1:
+            ]:
                 if row.criterion == row.criterion:
                     candidates.append((row.term, float(row.criterion), "add"))
         if not candidates:
@@ -421,7 +432,9 @@ def stepGAIC_CH(
                     t_vector,
                     include_response=(selected == "mu"),
                 )
-                updated_map = _updated_formulas_for_parameter(object, selected, cand_formula)
+                updated_map = _updated_formulas_for_parameter(
+                    object, selected, cand_formula
+                )
                 t_fit = _fit_with_updated_formula(object, updated_map)
                 t_aic = float(extract_aic(t_fit, k=k).aic)
                 if callable(keep):

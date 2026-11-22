@@ -37,5 +37,9 @@ def default_dataset_registry() -> BenchmarkDatasetRegistry:
         y = 1.0 + 2.0 * x
         return {"x": x, "y": y}
 
-    registry.register(BenchmarkDataset(name="normal_linear", version="2026.05", builder=_normal_linear))
+    registry.register(
+        BenchmarkDataset(
+            name="normal_linear", version="2026.05", builder=_normal_linear
+        )
+    )
     return registry

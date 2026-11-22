@@ -44,7 +44,9 @@ MODEL_STORE = Path(
     )
 )
 MODEL_STORE.mkdir(parents=True, exist_ok=True)
-MODEL_DB = Path(os.getenv("OMNILSS_MODEL_DB_PATH", str(MODEL_STORE / "registry.sqlite3")))
+MODEL_DB = Path(
+    os.getenv("OMNILSS_MODEL_DB_PATH", str(MODEL_STORE / "registry.sqlite3"))
+)
 
 
 _MODEL_REGISTRY_SCHEMA_VERSION = 2
@@ -202,9 +204,7 @@ class _ModelRegistry:
 
         try:
             report = _artifact_capability_replay_report(path)
-            capability = (
-                _artifact_family_capability(path) if report.get("ok") else {}
-            )
+            capability = _artifact_family_capability(path) if report.get("ok") else {}
         except Exception as exc:  # pragma: no cover - defensive for corrupt legacy rows
             capability = {}
             report = {
@@ -250,7 +250,11 @@ class _ModelRegistry:
             "capability_report_json = ? WHERE id = ?",
             (
                 _MODEL_REGISTRY_SCHEMA_VERSION,
-                json.dumps({"ok": False, "issues": [report]}, ensure_ascii=False, sort_keys=True),
+                json.dumps(
+                    {"ok": False, "issues": [report]},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
                 model_id,
             ),
         )
@@ -270,7 +274,13 @@ class _ModelRegistry:
             self._db.execute(
                 "INSERT INTO models(id, path, created_at, schema_version, artifact_hash) "
                 "VALUES (?, ?, ?, ?, ?)",
-                (model_id, str(path), created_at, _MODEL_REGISTRY_SCHEMA_VERSION, _artifact_hash(path)),
+                (
+                    model_id,
+                    str(path),
+                    created_at,
+                    _MODEL_REGISTRY_SCHEMA_VERSION,
+                    _artifact_hash(path),
+                ),
             )
             self._refresh_capability_snapshot(model_id, path)
             self._db.commit()
@@ -317,20 +327,26 @@ class _ModelRegistry:
             result = []
             for model_id, path, stored_hash, capability_ok, report_json in rows:
                 artifact_path = Path(path)
-                actual_hash = _artifact_hash(artifact_path) if artifact_path.exists() else None
+                actual_hash = (
+                    _artifact_hash(artifact_path) if artifact_path.exists() else None
+                )
                 try:
                     report = json.loads(report_json) if report_json else {}
                 except (TypeError, json.JSONDecodeError):
                     report = {"ok": False, "issues": [{"code": "invalid_audit_report"}]}
-                result.append({
-                    "model_id": str(model_id),
-                    "exists": artifact_path.exists(),
-                    "artifact_hash": stored_hash,
-                    "actual_hash": actual_hash,
-                    "integrity_ok": bool(stored_hash and actual_hash == stored_hash),
-                    "capability_ok": bool(capability_ok),
-                    "report": report,
-                })
+                result.append(
+                    {
+                        "model_id": str(model_id),
+                        "exists": artifact_path.exists(),
+                        "artifact_hash": stored_hash,
+                        "actual_hash": actual_hash,
+                        "integrity_ok": bool(
+                            stored_hash and actual_hash == stored_hash
+                        ),
+                        "capability_ok": bool(capability_ok),
+                        "report": report,
+                    }
+                )
             return result
 
     def delete(self, model_id: str) -> bool:
@@ -362,8 +378,14 @@ def _audit_metrics(entries: list[dict[str, Any]]) -> dict[str, int]:
     """Build the shared audit metric fields used by HTTP and gRPC."""
     return {
         "total_models": len(entries),
-        "healthy_models": sum(1 for item in entries if item["integrity_ok"] and item["capability_ok"]),
-        "unhealthy_models": sum(1 for item in entries if not item["integrity_ok"] or not item["capability_ok"]),
+        "healthy_models": sum(
+            1 for item in entries if item["integrity_ok"] and item["capability_ok"]
+        ),
+        "unhealthy_models": sum(
+            1
+            for item in entries
+            if not item["integrity_ok"] or not item["capability_ok"]
+        ),
         "integrity_failures": sum(1 for item in entries if not item["integrity_ok"]),
         "capability_failures": sum(1 for item in entries if not item["capability_ok"]),
     }
@@ -414,13 +436,17 @@ def _error_text(exc: Exception) -> str:
         return _to_json(exc.to_dict())
     if isinstance(exc, PredictionSchemaError):
         return _to_json({"type": "prediction_schema_error", **exc.to_dict()})
-    if isinstance(exc, ValueError) and "does not support penalized smooth terms" in str(exc):
-        return _to_json({
-            "type": "method_capability_error",
-            "code": "smooth_terms_unsupported_for_method",
-            "method": "CG",
-            "message": str(exc),
-        })
+    if isinstance(exc, ValueError) and "does not support penalized smooth terms" in str(
+        exc
+    ):
+        return _to_json(
+            {
+                "type": "method_capability_error",
+                "code": "smooth_terms_unsupported_for_method",
+                "method": "CG",
+                "message": str(exc),
+            }
+        )
     # Phase 5.4: never leak raw exception text to clients; return the error
     # class name so operators can correlate logs without exposing internals.
     return f"{type(exc).__name__} error"
@@ -497,12 +523,14 @@ def create_service():
                 family = str(request.family).strip()
                 method = str(request.method).strip()
                 formulas = {
-                    key: value for key, value in {
+                    key: value
+                    for key, value in {
                         "mu": str(request.formula).strip(),
                         "sigma": str(request.sigma_formula).strip(),
                         "nu": str(request.nu_formula).strip(),
                         "tau": str(request.tau_formula).strip(),
-                    }.items() if value
+                    }.items()
+                    if value
                 }
                 if not family or not method:
                     raise ValueError(
@@ -511,7 +539,10 @@ def create_service():
                 return capability_pb2.RouteCapabilityResponse(
                     report_json=_to_json(
                         method_route_capability_report(
-                            family, method, strict=bool(request.strict), formulas=formulas
+                            family,
+                            method,
+                            strict=bool(request.strict),
+                            formulas=formulas,
                         )
                     ),
                     success=True,
@@ -553,18 +584,26 @@ def create_service():
             try:
                 audit = REGISTRY.audit()
                 unhealthy = sum(
-                    1 for item in audit
+                    1
+                    for item in audit
                     if not item["integrity_ok"] or not item["capability_ok"]
                 )
                 return capability_pb2.HealthResponse(
                     status="degraded" if unhealthy else "ok",
                     model_count=int(len(audit)),
                     success=True,
-                    error="" if not unhealthy else f"{unhealthy} model artifacts require audit attention",
+                    error=(
+                        ""
+                        if not unhealthy
+                        else f"{unhealthy} model artifacts require audit attention"
+                    ),
                 )
             except Exception as exc:
                 return capability_pb2.HealthResponse(
-                    status="degraded", model_count=0, success=False, error=_error_text(exc)
+                    status="degraded",
+                    model_count=0,
+                    success=False,
+                    error=_error_text(exc),
                 )
 
         def AuditModels(self, request, context):  # noqa: N802, ARG002
@@ -572,16 +611,19 @@ def create_service():
                 _SERVICE_METRICS["audit_requests_total"] += 1
                 audit = REGISTRY.audit()
                 unhealthy = sum(
-                    1 for item in audit
+                    1
+                    for item in audit
                     if not item["integrity_ok"] or not item["capability_ok"]
                 )
                 return capability_pb2.AuditModelsResponse(
-                    audit_json=_to_json({
-                        "status": "degraded" if unhealthy else "ok",
-                        "models": audit,
-                        "unhealthy_model_count": unhealthy,
-                        "metrics": _audit_metrics(audit),
-                    }),
+                    audit_json=_to_json(
+                        {
+                            "status": "degraded" if unhealthy else "ok",
+                            "models": audit,
+                            "unhealthy_model_count": unhealthy,
+                            "metrics": _audit_metrics(audit),
+                        }
+                    ),
                     success=True,
                     error="",
                 )
@@ -601,11 +643,13 @@ def create_service():
                             removed.append(item["model_id"])
                 _SERVICE_METRICS["cleanup_deleted_models_total"] += len(removed)
                 return capability_pb2.CleanupUnhealthyModelsResponse(
-                    result_json=_to_json({
-                        "deleted_model_ids": removed,
-                        "deleted_count": len(removed),
-                        "reason": "unhealthy_artifact",
-                    }),
+                    result_json=_to_json(
+                        {
+                            "deleted_model_ids": removed,
+                            "deleted_count": len(removed),
+                            "reason": "unhealthy_artifact",
+                        }
+                    ),
                     success=True,
                     error="",
                 )
@@ -618,7 +662,9 @@ def create_service():
             try:
                 _SERVICE_METRICS["metrics_requests_total"] += 1
                 return capability_pb2.MetricsResponse(
-                    metrics_json=_to_json({**_SERVICE_METRICS, **_audit_metrics(REGISTRY.audit())}),
+                    metrics_json=_to_json(
+                        {**_SERVICE_METRICS, **_audit_metrics(REGISTRY.audit())}
+                    ),
                     success=True,
                     error="",
                 )
@@ -626,6 +672,7 @@ def create_service():
                 return capability_pb2.MetricsResponse(
                     metrics_json="{}", success=False, error=_error_text(exc)
                 )
+
         def ListModels(self, request, context):  # noqa: N802, ARG002
             try:
                 return fit_pb2.ListModelsResponse(
@@ -650,9 +697,7 @@ def create_service():
         def _fit_one(self, request):
             data = _from_json(request.data_json)
             method = str(request.method or "RS").strip() or "RS"
-            require_production_family_route(
-                request.family, method, route="service"
-            )
+            require_production_family_route(request.family, method, route="service")
             kwargs: dict[str, Any] = {
                 "formula": request.formula,
                 "family": request.family,
@@ -747,7 +792,10 @@ def create_service():
                 if request.newdata_json:
                     newdata = _from_json(request.newdata_json)
                 else:
-                    newdata = {col.name: list(map(float, col.values)) for col in request.newdata_columns}
+                    newdata = {
+                        col.name: list(map(float, col.values))
+                        for col in request.newdata_columns
+                    }
                 params = model.predict_params(newdata)
                 as_json = {k: list(map(float, v)) for k, v in params.items()}
                 param_vectors = [
@@ -755,7 +803,10 @@ def create_service():
                     for name, values in as_json.items()
                 ]
                 return predict_pb2.PredictResponse(
-                    params_json=_to_json(as_json), params=param_vectors, success=True, error=""
+                    params_json=_to_json(as_json),
+                    params=param_vectors,
+                    success=True,
+                    error="",
                 )
             except Exception as exc:
                 return predict_pb2.PredictResponse(
@@ -828,7 +879,9 @@ def _validate_api_token(host: str, token: str) -> None:
 def _validate_tls_files(cert_path: str, key_path: str) -> tuple[bytes, bytes]:
     """Validate configured TLS files before creating gRPC credentials."""
     if not cert_path or not key_path:
-        raise RuntimeError("OMNILSS_TLS_CERT and OMNILSS_TLS_KEY must be configured together")
+        raise RuntimeError(
+            "OMNILSS_TLS_CERT and OMNILSS_TLS_KEY must be configured together"
+        )
     cert = Path(cert_path)
     key = Path(key_path)
     if not cert.is_file() or not key.is_file():
@@ -873,8 +926,10 @@ def serve(host: str = "0.0.0.0", port: int = 50051):
                 return continuation(handler_call_details)
             metadata = dict(handler_call_details.invocation_metadata or [])
             if metadata.get("authorization", "") != f"Bearer {self._token}":
+
                 def _abort(_request, context):
                     context.abort(grpc.StatusCode.UNAUTHENTICATED, "Invalid token")
+
                 return grpc.unary_unary_rpc_method_handler(_abort)
             return continuation(handler_call_details)
 

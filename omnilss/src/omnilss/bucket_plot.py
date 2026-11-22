@@ -55,7 +55,9 @@ def bp(
         Whether to build a matplotlib figure in addition to the data payload.
     """
     if obj is None:
-        raise ValueError("bp() requires obj (a numeric vector, model, or sequence of them)")
+        raise ValueError(
+            "bp() requires obj (a numeric vector, model, or sequence of them)"
+        )
 
     bucket_type = str(type)
     if bucket_type not in {"moment", "centile.central", "centile.tail"}:
@@ -122,7 +124,9 @@ def bp(
                 **kwargs,
             )
 
-    payload = dict(result.data) if isinstance(result.data, dict) else {"result": result.data}
+    payload = (
+        dict(result.data) if isinstance(result.data, dict) else {"result": result.data}
+    )
     payload["bp_type"] = bucket_type
     payload["bootstrap"] = bool(bootstrap)
     payload["no_bootstrap"] = n_boot

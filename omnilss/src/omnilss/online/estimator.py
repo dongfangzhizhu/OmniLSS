@@ -7,6 +7,7 @@ families — zero external imports) together with per-parameter
 ``update`` with exponential forgetting ``forget in [0, 1)``, O(p^2) constant
 memory, missing-value filtering, and warm-start parity with batch fitting.
 """
+
 from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
@@ -90,10 +91,7 @@ class OnlineGAMLSS:
         self, X: np.ndarray, y: np.ndarray, w: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         mask = (
-            np.all(np.isfinite(X), axis=1)
-            & np.isfinite(y)
-            & np.isfinite(w)
-            & (w > 0.0)
+            np.all(np.isfinite(X), axis=1) & np.isfinite(y) & np.isfinite(w) & (w > 0.0)
         )
         # Keep only observations inside the family's declared support
         support = self.view.distribution_support
@@ -175,7 +173,7 @@ class OnlineGAMLSS:
             np.where(dmu_deta >= 0.0, 1e-12, -1e-12),
             dmu_deta,
         )
-        w_irls = np.clip(neg_hess * (dmu_deta_safe ** 2), 1e-8, 1e8)
+        w_irls = np.clip(neg_hess * (dmu_deta_safe**2), 1e-8, 1e8)
         step = np.clip(dl1 / (neg_hess * dmu_deta_safe), -5.0, 5.0)
         z_irls = eta_k + step
         return w_irls, z_irls
@@ -221,7 +219,9 @@ class OnlineGAMLSS:
         X_raw, y_raw, w_raw = self._validate_xy(X, y, sample_weights)
         Xv, yv, wv = self._filter_valid_rows(X_raw, y_raw, w_raw)
         if Xv.shape[0] == 0:
-            raise ValueError("No valid observations after filtering missing/out-of-support rows")
+            raise ValueError(
+                "No valid observations after filtering missing/out-of-support rows"
+            )
 
         self.n_features_in_ = Xv.shape[1]
         self.param_cols_ = self._resolve_equations(self.n_features_in_)
@@ -302,7 +302,9 @@ class OnlineGAMLSS:
     ) -> "OnlineGAMLSS":
         """Perform a constant-memory O(p^2) streaming update on a new batch."""
         if not self.is_fitted_:
-            raise RuntimeError("OnlineGAMLSS must be fitted before calling update(); use partial_fit()")
+            raise RuntimeError(
+                "OnlineGAMLSS must be fitted before calling update(); use partial_fit()"
+            )
         X_raw, y_raw, w_raw = self._validate_xy(X, y, sample_weights)
         if X_raw.shape[1] != self.n_features_in_:
             raise ValueError(
@@ -364,8 +366,7 @@ class OnlineGAMLSS:
         """Predict distribution parameters as ``{param_name: array}``."""
         theta = self.predict_theta(X)
         return {
-            pname: theta[:, idx].copy()
-            for idx, pname in enumerate(self.view.estimable)
+            pname: theta[:, idx].copy() for idx, pname in enumerate(self.view.estimable)
         }
 
     def predict_quantiles(

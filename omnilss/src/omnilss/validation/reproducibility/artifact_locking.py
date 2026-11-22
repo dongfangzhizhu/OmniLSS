@@ -24,7 +24,9 @@ class ReplayArtifact:
 
 
 def _stable_hash(payload: Any) -> str:
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), default=str
+    ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -46,13 +48,17 @@ def write_replay_artifact(path: str | Path, artifact: ReplayArtifact) -> None:
         "inputs": artifact.inputs,
         "outputs": artifact.outputs,
     }
-    Path(path).write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    Path(path).write_text(
+        json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+    )
 
 
 def read_replay_artifact(path: str | Path) -> ReplayArtifact:
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     lock = ArtifactLock(**payload["lock"])
-    return ReplayArtifact(lock=lock, inputs=payload["inputs"], outputs=payload["outputs"])
+    return ReplayArtifact(
+        lock=lock, inputs=payload["inputs"], outputs=payload["outputs"]
+    )
 
 
 def deterministic_replay(

@@ -11,10 +11,13 @@ from .ad import build_ad_family
 from .dpqr_functions import pJSUo, qJSUo, rJSUo, pSHASHo2, qSHASHo2, rSHASHo2
 from .families import FamilyDefinition
 from .links import (
-    log_link, log_inverse, log_derivative,
-    identity_link, identity_inverse, identity_derivative
+    log_link,
+    log_inverse,
+    log_derivative,
+    identity_link,
+    identity_inverse,
+    identity_derivative,
 )
-
 
 # ============================================================================
 # SHASHo2 - SHASH Original 2
@@ -29,9 +32,11 @@ from .links import (
 # against live R); ``distributions_o_alias_compat`` clones from there.
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class SHASHo2Family(FamilyDefinition):
     """SHASH Original 2 parameterization family."""
+
     pass
 
 
@@ -72,6 +77,7 @@ def _shasho2_log_pdf(y, mu, sigma, nu, tau):
 # and d2ldm2/d2ldd2/d2ldv2/d2ldt2).
 # ---------------------------------------------------------------------------
 
+
 def _shasho2_parts(y, mu, sigma, nu, tau):
     """R's z / x / c / r with sigma, tau guarded as in ``dSHASHo2``."""
     eps = jnp.finfo(jnp.float64).eps
@@ -95,7 +101,9 @@ def _shasho2_dldd(y, mu, sigma, nu, tau):
     #        (r*tau*c - (tau*sinh(x))/c + z/(1+z^2)^.5) - 1/sigma
     z, x, c, r, sigma, tau = _shasho2_parts(y, mu, sigma, nu, tau)
     s = jnp.sqrt(1.0 + jnp.square(z))
-    return (z / (sigma * s)) * (r * tau * c - (tau * jnp.sinh(x)) / c + z / s) - 1.0 / sigma
+    return (z / (sigma * s)) * (
+        r * tau * c - (tau * jnp.sinh(x)) / c + z / s
+    ) - 1.0 / sigma
 
 
 def _shasho2_dldv(y, mu, sigma, nu, tau):
@@ -109,9 +117,8 @@ def _shasho2_dldt(y, mu, sigma, nu, tau):
     #        (asinh(z) + (1/(1+z^2)^.5)*(-z)) + z^2/(tau*(1+z^2))
     z, x, c, r, sigma, tau = _shasho2_parts(y, mu, sigma, nu, tau)
     s = jnp.sqrt(1.0 + jnp.square(z))
-    return (
-        (-r * c + jnp.sinh(x) / c) * (jnp.arcsinh(z) - z / s)
-        + jnp.square(z) / (tau * (1.0 + jnp.square(z)))
+    return (-r * c + jnp.sinh(x) / c) * (jnp.arcsinh(z) - z / s) + jnp.square(z) / (
+        tau * (1.0 + jnp.square(z))
     )
 
 
@@ -188,9 +195,11 @@ def SHASHo2():
 # JSUo - Johnson SU Original
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class JSUoFamily(FamilyDefinition):
     """Johnson SU Original parameterization family."""
+
     pass
 
 
@@ -199,13 +208,14 @@ def _jsuo_log_pdf(y, mu, sigma, nu, tau):
     eps = jnp.finfo(jnp.float64).eps
     sigma = jnp.maximum(sigma, eps)
     tau = jnp.maximum(tau, eps)
-    
+
     # Original: gamma=nu, delta=tau, xi=mu, lambda=sigma
     z = (y - mu) / sigma
     r = nu + tau * jnp.arcsinh(z)
-    
+
     return (
-        jnp.log(tau) - jnp.log(sigma)
+        jnp.log(tau)
+        - jnp.log(sigma)
         - 0.5 * jnp.log(2.0 * jnp.pi)
         - 0.5 * jnp.log1p(z * z)
         - 0.5 * r * r
@@ -232,6 +242,7 @@ def _jsuo_log_pdf(y, mu, sigma, nu, tau):
 # Transcribed from live gamlss.dist 6.1.1 (JSUo() family-object slots
 # dldm/dldd/dldv/dldt and d2ldm2/d2ldd2/d2ldv2/d2ldt2).
 # ---------------------------------------------------------------------------
+
 
 def _jsuo_dldm(y, mu, sigma, nu, tau):
     z = (y - mu) / sigma
@@ -333,9 +344,11 @@ def JSUo():
 # ST5 - Skew t Type 5 (Jones & Faddy)
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class ST5Family(FamilyDefinition):
     """Skew t Type 5 family (Jones & Faddy)."""
+
     pass
 
 
@@ -456,7 +469,11 @@ def _st5_q(p, mu=0.0, sigma=1.0, nu=0.0, tau=1.0, lower_tail=True, log_p=False):
         a = (ve + lam) / 2.0
         b = (ve - lam) / 2.0
         Balpha = float(betaincinv(a, b, pi))
-        zalpha = np.sqrt(a + b) * (2.0 * Balpha - 1.0) / (2.0 * np.sqrt(Balpha * (1.0 - Balpha)))
+        zalpha = (
+            np.sqrt(a + b)
+            * (2.0 * Balpha - 1.0)
+            / (2.0 * np.sqrt(Balpha * (1.0 - Balpha)))
+        )
         out.append(float(mui + si * zalpha))
 
     res = np.array(out)
@@ -484,6 +501,7 @@ def _st5_r(key, n, mu=0.0, sigma=1.0, nu=0.0, tau=1.0):
 # overrides are built from the AD score: -dld^2 with R's per-parameter floor.
 # ---------------------------------------------------------------------------
 
+
 def _st5_deriv_parts(y, mu, sigma, nu, tau):
     """R's u / r / su, guarded as in the density."""
     from jax.scipy.special import digamma  # noqa: F401  (used by callers)
@@ -499,19 +517,17 @@ def _st5_deriv_parts(y, mu, sigma, nu, tau):
 
 def _st5_dldm(y, mu, sigma, nu, tau):
     u, r, su = _st5_deriv_parts(y, mu, sigma, nu, tau)
-    num = (
-        (1.0 - nu / r + tau / 2.0) * su * (1.0 + u)
-        - (1.0 + nu / r + tau / 2.0) * su * (1.0 - u)
-    )
+    num = (1.0 - nu / r + tau / 2.0) * su * (1.0 + u) - (
+        1.0 + nu / r + tau / 2.0
+    ) * su * (1.0 - u)
     return num / (sigma * jnp.sqrt(2.0 * tau))
 
 
 def _st5_dldd(y, mu, sigma, nu, tau):
     u, r, su = _st5_deriv_parts(y, mu, sigma, nu, tau)
-    num = (
-        (1.0 - nu / r + tau / 2.0) * u * (1.0 + u)
-        - (1.0 + nu / r + tau / 2.0) * u * (1.0 - u)
-    )
+    num = (1.0 - nu / r + tau / 2.0) * u * (1.0 + u) - (
+        1.0 + nu / r + tau / 2.0
+    ) * u * (1.0 - u)
     return -1.0 / sigma + num / (sigma * tau)
 
 
@@ -623,9 +639,11 @@ def ST5():
 # BCPEo - Box-Cox Power Exponential Original
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class BCPEoFamily(FamilyDefinition):
     """Box-Cox Power Exponential Original family."""
+
     pass
 
 
@@ -702,9 +720,11 @@ def BCPEo():
 # BCTo - Box-Cox t Original
 # ============================================================================
 
+
 @dataclass(frozen=True)
 class BCToFamily(FamilyDefinition):
     """Box-Cox t Original family."""
+
     pass
 
 

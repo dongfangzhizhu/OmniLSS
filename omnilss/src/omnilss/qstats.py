@@ -73,15 +73,22 @@ def _qtest(values: np.ndarray) -> dict[str, float]:
     sd = math.sqrt(variance)
 
     q1 = n * mean**2
-    q2 = ((sd ** (2.0 / 3.0) - (1.0 - 2.0 / (9.0 * n - 9.0))) ** 2) / (2.0 / (9.0 * n - 9.0))
+    q2 = ((sd ** (2.0 / 3.0) - (1.0 - 2.0 / (9.0 * n - 9.0))) ** 2) / (
+        2.0 / (9.0 * n - 9.0)
+    )
     z1 = math.sqrt(n) * mean
-    z2 = math.sqrt(q2) * math.copysign(1.0, sd ** (2.0 / 3.0) - (1.0 - 2.0 / (9.0 * n - 9.0)))
+    z2 = math.sqrt(q2) * math.copysign(
+        1.0, sd ** (2.0 / 3.0) - (1.0 - 2.0 / (9.0 * n - 9.0))
+    )
 
-    sqrt_b1 = m3 / max(variance ** 1.5, np.finfo(np.float64).eps)
+    sqrt_b1 = m3 / max(variance**1.5, np.finfo(np.float64).eps)
     yval = sqrt_b1 * math.sqrt((n + 1.0) * (n + 3.0) / (6.0 * max(n - 2.0, 1.0)))
     b2b1 = 3.0 * (n * n + 27.0 * n - 70.0) * (n + 1.0) * (n + 3.0)
     b2b1 /= max((n - 2.0) * (n + 5.0) * (n + 7.0) * (n + 9.0), np.finfo(np.float64).eps)
-    wsq = max(-1.0 + math.sqrt(max(2.0 * b2b1 - 2.0, np.finfo(np.float64).eps)), np.finfo(np.float64).eps)
+    wsq = max(
+        -1.0 + math.sqrt(max(2.0 * b2b1 - 2.0, np.finfo(np.float64).eps)),
+        np.finfo(np.float64).eps,
+    )
     delta = 1.0 / math.sqrt(max(0.5 * math.log(wsq), np.finfo(np.float64).eps))
     alpha = math.sqrt(2.0 / max(wsq - 1.0, np.finfo(np.float64).eps))
     yalpha = yval / max(alpha, np.finfo(np.float64).eps)
@@ -93,8 +100,17 @@ def _qtest(values: np.ndarray) -> dict[str, float]:
     var_b2 = 24.0 * n * (n - 2.0) * (n - 3.0)
     var_b2 /= max((n + 1.0) ** 2 * (n + 3.0) * (n + 5.0), np.finfo(np.float64).eps)
     xval = (b2 - mean_b2) / math.sqrt(max(var_b2, np.finfo(np.float64).eps))
-    sb1b2 = 6.0 * (n * n - 5.0 * n + 2.0) / max((n + 7.0) * (n + 9.0), np.finfo(np.float64).eps)
-    sb1b2 *= math.sqrt(6.0 * (n + 3.0) * (n + 5.0) / max(n * (n - 2.0) * (n - 3.0), np.finfo(np.float64).eps))
+    sb1b2 = (
+        6.0
+        * (n * n - 5.0 * n + 2.0)
+        / max((n + 7.0) * (n + 9.0), np.finfo(np.float64).eps)
+    )
+    sb1b2 *= math.sqrt(
+        6.0
+        * (n + 3.0)
+        * (n + 5.0)
+        / max(n * (n - 2.0) * (n - 3.0), np.finfo(np.float64).eps)
+    )
     isb1b2 = 1.0 / max(sb1b2, np.finfo(np.float64).eps)
     aval = 6.0 + 8.0 * isb1b2 * (2.0 * isb1b2 + math.sqrt(1.0 + 4.0 * isb1b2**2))
     inner = 1.0 + xval * math.sqrt(2.0 / max(aval - 4.0, np.finfo(np.float64).eps))
@@ -142,10 +158,17 @@ def q_stats(
             raise ValueError("xvar must have the same length as residuals")
 
     if xcut_points is None:
-        cuts = np.linspace(float(np.min(x_values)), float(np.max(x_values)), int(n_inter) + 1, dtype=np.float64)
+        cuts = np.linspace(
+            float(np.min(x_values)),
+            float(np.max(x_values)),
+            int(n_inter) + 1,
+            dtype=np.float64,
+        )
     else:
         supplied = np.asarray(xcut_points, dtype=np.float64).ravel()
-        cuts = np.concatenate(([float(np.min(x_values))], supplied, [float(np.max(x_values))]))
+        cuts = np.concatenate(
+            ([float(np.min(x_values))], supplied, [float(np.max(x_values))])
+        )
     cuts = np.unique(cuts)
     if cuts.size < 2:
         raise ValueError("need at least two cut points to define intervals")
@@ -163,16 +186,45 @@ def q_stats(
         subset = residx[mask]
         stats = _qtest(subset)
         interval_labels.append(f"{left:.4g} to {right:.4g}")
-        z_rows.append([stats["z1"], stats["z2"], stats["z3"], stats["z4"], stats["AgostinoK2"], stats["N"]])
-        q_rows.append([stats["Q1"], stats["Q2"], stats["Q3"], stats["Q4"], stats["AgostinoK2"], stats["N"]])
+        z_rows.append(
+            [
+                stats["z1"],
+                stats["z2"],
+                stats["z3"],
+                stats["z4"],
+                stats["AgostinoK2"],
+                stats["N"],
+            ]
+        )
+        q_rows.append(
+            [
+                stats["Q1"],
+                stats["Q2"],
+                stats["Q3"],
+                stats["Q4"],
+                stats["AgostinoK2"],
+                stats["N"],
+            ]
+        )
 
     z_matrix = np.asarray(z_rows, dtype=np.float64)
     q_matrix = np.asarray(q_rows, dtype=np.float64)
     interval_count = z_matrix.shape[0]
     total_q = np.nansum(q_matrix[:, :5], axis=0)
     total_n = np.nansum(q_matrix[:, 5])
-    dfs = np.array([interval_count, interval_count, interval_count, interval_count, 2 * interval_count], dtype=np.float64)
-    p_values = np.array([_chi2_sf(total_q[i], dfs[i]) for i in range(5)], dtype=np.float64)
+    dfs = np.array(
+        [
+            interval_count,
+            interval_count,
+            interval_count,
+            interval_count,
+            2 * interval_count,
+        ],
+        dtype=np.float64,
+    )
+    p_values = np.array(
+        [_chi2_sf(total_q[i], dfs[i]) for i in range(5)], dtype=np.float64
+    )
     totals = {
         "Q_stats": np.concatenate((total_q, [total_n])).astype(np.float64),
         "df": np.concatenate((dfs, [0.0])).astype(np.float64),

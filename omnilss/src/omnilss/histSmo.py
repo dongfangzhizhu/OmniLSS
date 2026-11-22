@@ -24,7 +24,9 @@ def _hist_payload(y, bins: int = 10) -> HistSmoResult:
     widths = np.diff(edges)
     total = max(arr.size, 1)
     density = counts / (total * widths)
-    return HistSmoResult(bin_edges=edges, counts=counts.astype(np.float64), density=density)
+    return HistSmoResult(
+        bin_edges=edges, counts=counts.astype(np.float64), density=density
+    )
 
 
 def histSmo(y, bins: int = 10) -> HistSmoResult:

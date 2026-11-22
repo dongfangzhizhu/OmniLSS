@@ -7,6 +7,7 @@ all-ones), whose type-7-like quantiles use a right-continuous step function.
 We reproduce that path exactly rather than calling numpy's quantile, so ties and
 weighted data agree with R.
 """
+
 from __future__ import annotations
 
 import warnings
@@ -14,7 +15,9 @@ import warnings
 import numpy as np
 
 
-def _quantile_weighted(y: np.ndarray, weights: np.ndarray, probs: np.ndarray) -> np.ndarray:
+def _quantile_weighted(
+    y: np.ndarray, weights: np.ndarray, probs: np.ndarray
+) -> np.ndarray:
     probs = np.asarray(probs, dtype=float)
     if np.any(probs < 0.0) or np.any(probs > 1.0):
         raise ValueError("Probabilities must be between 0 and 1 inclusive")

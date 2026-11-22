@@ -19,7 +19,9 @@ class PlotCentileSKResult:
     theoretical_z: np.ndarray
 
 
-def plotCentileSK(y, centiles=(1, 5, 10, 25, 50, 75, 90, 95, 99)) -> PlotCentileSKResult:
+def plotCentileSK(
+    y, centiles=(1, 5, 10, 25, 50, 75, 90, 95, 99)
+) -> PlotCentileSKResult:
     """Build paired empirical centiles and theoretical-normal z references."""
     emp = centileSK(y, centiles=centiles)
     theo = theoCentileSK(centiles=centiles)

@@ -13,13 +13,13 @@ Key Features:
 
 Examples:
     Basic usage:
-    
+
     >>> from omnilss.core import LBFGSOptimizer
     >>> optimizer = LBFGSOptimizer(max_iter=100, history_size=10)
     >>> result = optimizer.optimize(loss_fn, init_params, data)
-    
+
     With custom settings:
-    
+
     >>> optimizer = LBFGSOptimizer(
     ...     max_iter=200,
     ...     history_size=20,
@@ -50,17 +50,17 @@ from .optimizer import Optimizer, OptimizationResult, Params, LossFn
 
 class LBFGSOptimizer:
     """L-BFGS optimizer for joint parameter optimization.
-    
+
     L-BFGS (Limited-memory Broyden-Fletcher-Goldfarb-Shanno) is a quasi-Newton
     method that approximates the inverse Hessian using a limited history of
     gradient differences. This makes it memory-efficient while maintaining
     fast convergence properties.
-    
+
     The algorithm maintains a history of the last `history_size` gradient
     differences and parameter updates to approximate the Hessian. This is
     particularly useful for problems with many parameters where storing
     the full Hessian would be prohibitive.
-    
+
     Args:
         max_iter: Maximum number of iterations
         history_size: Number of gradient/parameter pairs to store (typically 5-20)
@@ -71,21 +71,21 @@ class LBFGSOptimizer:
         c1: Armijo condition parameter (reserved for future use)
         c2: Curvature condition parameter (reserved for future use)
         max_ls_iter: Maximum line search iterations (reserved for future use)
-        
+
     Attributes:
         optimizer: Optax L-BFGS gradient transformation
-        
+
     Examples:
         >>> # Simple quadratic problem
         >>> def loss_fn(params, data):
         ...     return jnp.sum(params["x"] ** 2)
-        >>> 
+        >>>
         >>> init_params = {"x": jnp.array([1.0, 2.0, 3.0])}
         >>> optimizer = LBFGSOptimizer(max_iter=50, history_size=10)
         >>> result = optimizer.optimize(loss_fn, init_params, {})
         >>> print(f"Converged: {result.converged}")
         >>> print(f"Final loss: {result.loss:.6f}")
-        
+
         >>> # GAMLSS-style problem
         >>> def gamlss_loss(params, data):
         ...     mu = params["mu"]
@@ -94,12 +94,12 @@ class LBFGSOptimizer:
         ...     residuals = (data["y"] - mu) / sigma
         ...     nll = 0.5 * jnp.log(2 * jnp.pi) + log_sigma + 0.5 * residuals ** 2
         ...     return jnp.mean(nll)
-        >>> 
+        >>>
         >>> init_params = {"mu": jnp.array(0.0), "log_sigma": jnp.array(0.0)}
         >>> optimizer = LBFGSOptimizer(max_iter=100)
         >>> result = optimizer.optimize(gamlss_loss, init_params, data, verbose=True)
     """
-    
+
     def __init__(
         self,
         max_iter: int = 100,
@@ -121,7 +121,7 @@ class LBFGSOptimizer:
         self.c1 = c1
         self.c2 = c2
         self.max_ls_iter = max_ls_iter
-        
+
         # Create Optax L-BFGS optimizer with proper line search.
         # The line_search parameter ("zoom"|"backtracking"|None) selects the
         # Optax linesearch transform; passing None keeps the old behaviour.
@@ -143,42 +143,42 @@ class LBFGSOptimizer:
             memory_size=history_size,
             linesearch=linesearch,
         )
-    
+
     def optimize(
         self,
         loss_fn: LossFn,
         init_params: Params,
         data: Any,
         verbose: bool = False,
-        print_every: int = 10
+        print_every: int = 10,
     ) -> OptimizationResult:
         """Execute L-BFGS optimization.
-        
+
         Args:
             loss_fn: Loss function with signature loss_fn(params, data) -> loss
             init_params: Initial parameters
             data: Data to pass to loss function
             verbose: Whether to print progress
             print_every: Print frequency (if verbose=True)
-            
+
         Returns:
             OptimizationResult containing final parameters and statistics
-            
+
         Notes:
             L-BFGS typically converges faster than first-order methods like
             Adam or SGD, especially for smooth optimization problems. However,
             it may require more memory and computation per iteration.
-            
+
         Examples:
             >>> def loss_fn(params, data):
             ...     return jnp.sum((params["x"] - data["target"]) ** 2)
-            >>> 
+            >>>
             >>> init_params = {"x": jnp.array([0.0, 0.0])}
             >>> data = {"target": jnp.array([1.0, 2.0])}
-            >>> 
+            >>>
             >>> optimizer = LBFGSOptimizer(max_iter=50)
             >>> result = optimizer.optimize(loss_fn, init_params, data, verbose=True)
-            >>> 
+            >>>
             >>> print(f"Converged in {result.n_iter} iterations")
             >>> print(f"Final loss: {result.loss:.6f}")
         """
@@ -187,7 +187,7 @@ class LBFGSOptimizer:
         opt_state = self.optimizer.init(params)
         loss_history = []
         grad_norms = []
-        
+
         # JIT-compiled update function.
         # Linesearch transforms (zoom/backtracking) are
         # GradientTransformationExtraArgs: they consume extra keyword
@@ -207,7 +207,7 @@ class LBFGSOptimizer:
             )
             params = optax.apply_updates(params, updates)
             return params, opt_state, loss, grads
-        
+
         if verbose:
             print(f"Starting L-BFGS optimization")
             print(f"History size: {self.history_size}")
@@ -215,23 +215,21 @@ class LBFGSOptimizer:
             print(f"Tolerance: {self.tol}")
             print(f"Gradient tolerance: {self.grad_tol}")
             print("-" * 60)
-        
+
         # Optimization loop
         for i in range(self.max_iter):
-            params, opt_state, loss, grads = update_step(
-                params, opt_state, data
-            )
+            params, opt_state, loss, grads = update_step(params, opt_state, data)
             loss_val = float(loss)
             loss_history.append(loss_val)
-            
+
             # Compute gradient norm
             grad_norm = self._compute_grad_norm(grads)
             grad_norms.append(float(grad_norm))
-            
+
             # Print progress
             if verbose and i % print_every == 0:
                 print(f"Iter {i:4d}: loss = {loss_val:.6f}, ||grad|| = {grad_norm:.6f}")
-            
+
             # Check convergence
             if i > 0:
                 # Loss change convergence
@@ -246,59 +244,59 @@ class LBFGSOptimizer:
                         n_iter=i,
                         converged=True,
                         loss_history=loss_history,
-                        grad_norms=grad_norms
+                        grad_norms=grad_norms,
                     )
-                
+
                 # Gradient norm convergence
                 if grad_norm < self.grad_tol:
                     if verbose:
                         print("-" * 60)
-                        print(f"Converged at iteration {i} (grad norm < {self.grad_tol})")
+                        print(
+                            f"Converged at iteration {i} (grad norm < {self.grad_tol})"
+                        )
                     return OptimizationResult(
                         params=params,
                         loss=loss_val,
                         n_iter=i,
                         converged=True,
                         loss_history=loss_history,
-                        grad_norms=grad_norms
+                        grad_norms=grad_norms,
                     )
-        
+
         # Did not converge
         if verbose:
             print("-" * 60)
             print(f"Did not converge after {self.max_iter} iterations")
             print(f"Final loss: {loss_val:.6f}")
             print(f"Final grad norm: {grad_norm:.6f}")
-        
+
         warnings.warn(
             f"L-BFGS did not converge after {self.max_iter} iterations. "
             f"Consider increasing max_iter or adjusting tolerance.",
-            RuntimeWarning
+            RuntimeWarning,
         )
-        
+
         return OptimizationResult(
             params=params,
             loss=loss_val,
             n_iter=self.max_iter,
             converged=False,
             loss_history=loss_history,
-            grad_norms=grad_norms
+            grad_norms=grad_norms,
         )
-    
+
     @staticmethod
     def _compute_grad_norm(grads: Params) -> jnp.ndarray:
         """Compute L2 norm of gradients.
-        
+
         Args:
             grads: Gradient dictionary
-            
+
         Returns:
             L2 norm of all gradients
         """
-        return jnp.sqrt(sum(
-            jnp.sum(g ** 2) for g in jax.tree_util.tree_leaves(grads)
-        ))
-    
+        return jnp.sqrt(sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grads)))
+
     def __repr__(self) -> str:
         return (
             f"LBFGSOptimizer(max_iter={self.max_iter}, "
@@ -315,13 +313,13 @@ def lbfgs_optimize(
     max_iter: int = 100,
     history_size: int = 10,
     verbose: bool = False,
-    **kwargs
+    **kwargs,
 ) -> OptimizationResult:
     """Convenience function for L-BFGS optimization.
-    
+
     This function creates an L-BFGS optimizer and runs optimization in one call.
     Useful for quick experiments and simple use cases.
-    
+
     Args:
         loss_fn: Loss function
         init_params: Initial parameters
@@ -330,13 +328,13 @@ def lbfgs_optimize(
         history_size: L-BFGS history size
         verbose: Print progress
         **kwargs: Additional optimizer arguments
-        
+
     Returns:
         OptimizationResult
-        
+
     Examples:
         >>> from omnilss.core.lbfgs_optimizer import lbfgs_optimize
-        >>> 
+        >>>
         >>> result = lbfgs_optimize(
         ...     loss_fn=my_loss,
         ...     init_params=init_params,
@@ -346,9 +344,5 @@ def lbfgs_optimize(
         ... )
         >>> print(f"Converged: {result.converged}")
     """
-    optimizer = LBFGSOptimizer(
-        max_iter=max_iter,
-        history_size=history_size,
-        **kwargs
-    )
+    optimizer = LBFGSOptimizer(max_iter=max_iter, history_size=history_size, **kwargs)
     return optimizer.optimize(loss_fn, init_params, data, verbose=verbose)

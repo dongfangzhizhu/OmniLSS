@@ -9,6 +9,7 @@ combination with the smallest weighted residual sum of squares, refits by
 weighted least squares and returns the fitted values, residuals, leverage-based
 variance, nl.df and the selected powers.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -65,7 +66,12 @@ def _basis(x: np.ndarray, powers: Any) -> np.ndarray:
     return columns
 
 
-def bfp(x: Any, powers: Any = (1.0, 2.0), shift: float | None = None, scale: float | None = None) -> np.ndarray:
+def bfp(
+    x: Any,
+    powers: Any = (1.0, 2.0),
+    shift: float | None = None,
+    scale: float | None = None,
+) -> np.ndarray:
     """R bfp(): fractional-polynomial basis, optionally shifting/scaling x first.
 
     When shift or scale is not supplied, R computes them from x (fp.scale).
@@ -94,12 +100,20 @@ class FPSpec:
     na_positions: tuple[int, ...] = ()
 
 
-def fp(x: Any, npoly: int = 2, shift: float | None = None, scale: float | None = None, name: str | None = None) -> FPSpec:
+def fp(
+    x: Any,
+    npoly: int = 2,
+    shift: float | None = None,
+    scale: float | None = None,
+    name: str | None = None,
+) -> FPSpec:
     """R fp(): tag a covariate for fractional-polynomial fitting."""
 
     values = np.asarray(x, dtype=float)
     if values.ndim != 1:
-        raise ValueError("The default smoother is bivariate; you gave a matrix as an argument")
+        raise ValueError(
+            "The default smoother is bivariate; you gave a matrix as an argument"
+        )
     if npoly not in (1, 2, 3):
         raise ValueError("the number of fractional polynomials can be 1,2 or 3")
     if shift is None or scale is None:
@@ -109,7 +123,11 @@ def fp(x: Any, npoly: int = 2, shift: float | None = None, scale: float | None =
     if shift > 0:
         import warnings
 
-        warnings.warn(f"The origing of the x variable has been shifted by  {shift}\n", UserWarning, stacklevel=2)
+        warnings.warn(
+            f"The origing of the x variable has been shifted by  {shift}\n",
+            UserWarning,
+            stacklevel=2,
+        )
     transformed = (values + shift) / scale
     return FPSpec(
         name=name or "fp",
@@ -118,7 +136,9 @@ def fp(x: Any, npoly: int = 2, shift: float | None = None, scale: float | None =
         shift=float(shift),
         scale=float(scale),
         df=float(2 * npoly),
-        na_positions=tuple(int(index) for index in np.flatnonzero(np.isnan(transformed))),
+        na_positions=tuple(
+            int(index) for index in np.flatnonzero(np.isnan(transformed))
+        ),
     )
 
 
@@ -184,7 +204,9 @@ def gamlss_fp(x: Any, y: Any, w: Any, xeval: Any = None, **kwargs: Any):
 
     if xeval is not None:
         grid = (np.asarray(xeval, dtype=float) + x.shift) / x.scale
-        prediction_design = np.column_stack([np.ones(grid.shape[0]), _basis(grid, best_powers)])
+        prediction_design = np.column_stack(
+            [np.ones(grid.shape[0]), _basis(grid, best_powers)]
+        )
         return np.asarray(prediction_design @ beta, dtype=float)
 
     hat_matrix = np.sum(

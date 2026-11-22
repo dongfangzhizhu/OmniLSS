@@ -95,7 +95,9 @@ def _ordered_res(object: GAMLSSModel) -> np.ndarray:
     return values[np.isfinite(values)]
 
 
-def _kernel_density(values: np.ndarray, points: int = 128) -> tuple[np.ndarray, np.ndarray]:
+def _kernel_density(
+    values: np.ndarray, points: int = 128
+) -> tuple[np.ndarray, np.ndarray]:
     values = np.asarray(values, dtype=np.float64)
     if values.size == 0:
         raise ValueError("need at least one value for density estimation")
@@ -106,7 +108,12 @@ def _kernel_density(values: np.ndarray, points: int = 128) -> tuple[np.ndarray, 
     std = float(np.std(values, ddof=1))
     spread = max(std, np.finfo(np.float64).eps)
     bandwidth = max(1.06 * spread * values.size ** (-1.0 / 5.0), 1e-3)
-    x = np.linspace(values.min() - 3.0 * bandwidth, values.max() + 3.0 * bandwidth, points, dtype=np.float64)
+    x = np.linspace(
+        values.min() - 3.0 * bandwidth,
+        values.max() + 3.0 * bandwidth,
+        points,
+        dtype=np.float64,
+    )
     z = (x[:, None] - values[None, :]) / bandwidth
     kernel = np.exp(-0.5 * np.square(z)) / np.sqrt(2.0 * np.pi)
     y = np.mean(kernel, axis=1) / bandwidth
@@ -130,13 +137,15 @@ def qq_stats(
     if n == 0:
         raise ValueError("need at least one residual for QQ diagnostics")
     probs = (np.arange(1, n + 1, dtype=np.float64) - 0.5) / n
-    theoretical = np.array([NormalDist().inv_cdf(float(p)) for p in probs], dtype=np.float64)
+    theoretical = np.array(
+        [NormalDist().inv_cdf(float(p)) for p in probs], dtype=np.float64
+    )
     mean = float(np.mean(z))
     centered = z - mean
     variance = float(np.mean(np.square(centered)))
     scale = max(variance, np.finfo(np.float64).eps)
-    skewness = float(np.mean(np.power(centered, 3.0)) / (scale ** 1.5))
-    kurtosis = float(np.mean(np.power(centered, 4.0)) / (scale ** 2.0))
+    skewness = float(np.mean(np.power(centered, 3.0)) / (scale**1.5))
+    kurtosis = float(np.mean(np.power(centered, 4.0)) / (scale**2.0))
     return QQStatsResult(
         theoretical=theoretical,
         ordered=z,
@@ -190,7 +199,9 @@ def get_rqres_samples(
     if order:
         base = np.sort(base)
     samples = np.repeat(base[:, None], int(howmany), axis=1)
-    return RQResSamplesResult(samples=samples, ordered=bool(order), howmany=int(howmany))
+    return RQResSamplesResult(
+        samples=samples, ordered=bool(order), howmany=int(howmany)
+    )
 
 
 def _r_ppoints(n: int) -> np.ndarray:
@@ -211,7 +222,11 @@ def _expand_rqres_inputs(obj: GAMLSSModel) -> tuple[np.ndarray, dict[str, np.nda
     y = np.asarray(obj.y, dtype=np.float64).ravel()
     active_parameters = obj.parameters or obj.par
 
-    is_freq = bool(weights.size == y.size and np.all(np.trunc(weights) == weights) and np.all(weights >= 0))
+    is_freq = bool(
+        weights.size == y.size
+        and np.all(np.trunc(weights) == weights)
+        and np.all(weights >= 0)
+    )
     rep_counts = weights.astype(int) if is_freq else None
 
     y_out = np.repeat(y, rep_counts) if rep_counts is not None else y
@@ -220,7 +235,9 @@ def _expand_rqres_inputs(obj: GAMLSSModel) -> tuple[np.ndarray, dict[str, np.nda
         vals = np.asarray(fitted(obj, parameter), dtype=np.float64).ravel()
         if vals.size == 1 and y.size > 1:
             vals = np.full(y.shape, vals.item(), dtype=np.float64)
-        params[parameter] = np.repeat(vals, rep_counts) if rep_counts is not None else vals
+        params[parameter] = (
+            np.repeat(vals, rep_counts) if rep_counts is not None else vals
+        )
 
     # Binomial / fixed parameter (bd) if present in call data
     fixed_names = tuple(getattr(obj.family, "fixed_parameters", ()) or ())
@@ -231,7 +248,9 @@ def _expand_rqres_inputs(obj: GAMLSSModel) -> tuple[np.ndarray, dict[str, np.nda
                 fvals = np.asarray(call_data[fname], dtype=np.float64).ravel()
                 if fvals.size == 1 and y.size > 1:
                     fvals = np.full(y.shape, fvals.item(), dtype=np.float64)
-                params[fname] = np.repeat(fvals, rep_counts) if rep_counts is not None else fvals
+                params[fname] = (
+                    np.repeat(fvals, rep_counts) if rep_counts is not None else fvals
+                )
     return y_out, params
 
 
@@ -275,7 +294,9 @@ def _draw_one_rqres(
         return np.asarray(obj.rqres(y=y, **params), dtype=np.float64).ravel()
 
     if callable(cdf_fn):
-        u = np.clip(np.asarray(cdf_fn(y, **params), dtype=np.float64), 1e-12, 1.0 - 1e-12)
+        u = np.clip(
+            np.asarray(cdf_fn(y, **params), dtype=np.float64), 1e-12, 1.0 - 1e-12
+        )
         norm = NormalDist()
         return np.array([norm.inv_cdf(float(p)) for p in u], dtype=np.float64)
 
@@ -342,7 +363,9 @@ def rqres_plot(
 
     rmedian = np.median(rs, axis=1)
     norm = NormalDist()
-    theoretical = np.array([norm.inv_cdf(float(p)) for p in _r_ppoints(n)], dtype=np.float64)
+    theoretical = np.array(
+        [norm.inv_cdf(float(p)) for p in _r_ppoints(n)], dtype=np.float64
+    )
     sample_deviations = rs - theoretical[:, None]
     median_deviation = rmedian - theoretical
 
@@ -377,7 +400,12 @@ def rqres_plot(
                     ax.set_ylabel("Sample Quantiles")
                 else:
                     for col in range(howmany_int):
-                        ax.scatter(theoretical, sample_deviations[:, col], color="lightgray", s=10)
+                        ax.scatter(
+                            theoretical,
+                            sample_deviations[:, col],
+                            color="lightgray",
+                            s=10,
+                        )
                     ax.scatter(theoretical, median_deviation, color="black", s=12)
                     ax.plot(band_z, band_low, linestyle="--", color="black")
                     ax.plot(band_z, band_high, linestyle="--", color="black")
@@ -398,7 +426,12 @@ def rqres_plot(
                         ax.scatter(theoretical, rs[:, col], color="darkgreen", s=10)
                         ax.plot(rs[:, col], rs[:, col], color="red", linewidth=0.8)
                     else:
-                        ax.scatter(theoretical, sample_deviations[:, col], color="darkgreen", s=10)
+                        ax.scatter(
+                            theoretical,
+                            sample_deviations[:, col],
+                            color="darkgreen",
+                            s=10,
+                        )
                         ax.plot(band_z, band_low, linestyle="--", color="black")
                         ax.plot(band_z, band_high, linestyle="--", color="black")
                         ax.axhline(0.0, linestyle="--", color="gray")
@@ -450,10 +483,16 @@ def worm_plot_data(
 
     n = theoretical.size
     level = 0.95
-    probs = np.array([NormalDist().cdf(float(value)) for value in theoretical], dtype=np.float64)
-    se = (1.0 / np.maximum(np.exp(-0.5 * theoretical**2) / np.sqrt(2.0 * np.pi), np.finfo(np.float64).eps)) * np.sqrt(
-        probs * (1.0 - probs) / max(n, 1)
+    probs = np.array(
+        [NormalDist().cdf(float(value)) for value in theoretical], dtype=np.float64
     )
+    se = (
+        1.0
+        / np.maximum(
+            np.exp(-0.5 * theoretical**2) / np.sqrt(2.0 * np.pi),
+            np.finfo(np.float64).eps,
+        )
+    ) * np.sqrt(probs * (1.0 - probs) / max(n, 1))
     z_alpha = NormalDist().inv_cdf(1.0 - (1.0 - level) / 2.0)
     lower = -z_alpha * se
     upper = z_alpha * se
@@ -490,7 +529,11 @@ def plot_diagnostics(
     base_fitted = np.asarray(fitted(object, "mu"), dtype=np.float64)
     if residx.size == base_fitted.size:
         fittedvalues = base_fitted
-        index_x = np.arange(1, residx.size + 1, dtype=np.float64) if xvar is None else np.asarray(xvar, dtype=np.float64)
+        index_x = (
+            np.arange(1, residx.size + 1, dtype=np.float64)
+            if xvar is None
+            else np.asarray(xvar, dtype=np.float64)
+        )
     else:
         fittedvalues = np.repeat(base_fitted, weights.astype(int))
         index_x = (
@@ -501,7 +544,11 @@ def plot_diagnostics(
 
     density_x, density_y = _kernel_density(residx)
     qq = qq_stats(object)
-    filliben = float(np.corrcoef(qq.ordered, qq.theoretical)[0, 1]) if qq.ordered.size > 1 else float("nan")
+    filliben = (
+        float(np.corrcoef(qq.ordered, qq.theoretical)[0, 1])
+        if qq.ordered.size > 1
+        else float("nan")
+    )
 
     summary_stats = {
         "mean": float(qq.mean),

@@ -19,6 +19,7 @@ The bootstraps are statistical procedures: R's foreach loop is random and
 order-dependent, so parity is functional (shapes, reproducibility with a seed,
 bootstrap means near the original fit), not bit-for-bit.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -48,7 +49,9 @@ def _flatten_coefficients(model: Any) -> np.ndarray:
     parts = []
     for name in model.family.estimable_parameters:
         if name in model.coefficients:
-            parts.append(np.ravel(np.asarray(model.coefficients[name], dtype=np.float64)))
+            parts.append(
+                np.ravel(np.asarray(model.coefficients[name], dtype=np.float64))
+            )
     return np.concatenate(parts) if parts else np.array([], dtype=np.float64)
 
 
@@ -163,13 +166,19 @@ def fitRolling(
     rows = []
     for start in range(0, n - window):
         stop = start + window
-        window_data = {key: np.asarray(value)[start:stop] for key, value in values.items()}
+        window_data = {
+            key: np.asarray(value)[start:stop] for key, value in values.items()
+        }
         kwargs = {}
         for name, full in starts.items():
             kwargs[f"{name}_start"] = full[start:stop]
         model = gamlss(
-            formula, family=family, data=window_data, method=method,
-            **_parameter_formula_kwargs(call), **kwargs,
+            formula,
+            family=family,
+            data=window_data,
+            method=method,
+            **_parameter_formula_kwargs(call),
+            **kwargs,
         )
         next_data = {
             key: np.asarray(value)[stop : stop + 1] for key, value in values.items()
@@ -177,9 +186,7 @@ def fitRolling(
         predicted = predict_params(model, next_data)
         params = {name: float(np.ravel(predicted[name])[0]) for name in predicted}
         response = float(np.asarray(values[response_name])[stop])
-        increment = float(
-            np.ravel(family.g_dev_inc(y=response, **params))[0]
-        )
+        increment = float(np.ravel(family.g_dev_inc(y=response, **params))[0])
         params["GDincr"] = increment
         rows.append(params)
     # R labels the forecasts with the original row names; for a plain
@@ -244,12 +251,18 @@ def _bootstrap(
             fit_kwargs = {"weights": weights}
         else:
             indices = rng.integers(0, n, size=n)
-            fit_data = {name: np.asarray(value)[indices] for name, value in values.items()}
+            fit_data = {
+                name: np.asarray(value)[indices] for name, value in values.items()
+            }
             fit_kwargs = {}
         try:
             model = gamlss(
-                formula, family=family, data=fit_data, method=method,
-                **_parameter_formula_kwargs(call), **fit_kwargs,
+                formula,
+                family=family,
+                data=fit_data,
+                method=method,
+                **_parameter_formula_kwargs(call),
+                **fit_kwargs,
             )
             predicted = predict_params(model, target)
             coefficients.append(_flatten_coefficients(model))
@@ -259,12 +272,14 @@ def _bootstrap(
             continue
     trueB = len(coefficients)
     matrix = (
-        np.vstack(coefficients)
-        if coefficients
-        else np.zeros((0, original_coef.size))
+        np.vstack(coefficients) if coefficients else np.zeros((0, original_coef.size))
     )
     params = {
-        name: (np.vstack(values_) if values_ else np.zeros((0, len(np.asarray(original_param[name])))))
+        name: (
+            np.vstack(values_)
+            if values_
+            else np.zeros((0, len(np.asarray(original_param[name]))))
+        )
         for name, values_ in samples.items()
     }
     return BootResult(
@@ -334,10 +349,14 @@ def _centile_matrix(
             f"{linear}"
         )
     params = predict_params(model, {xname: np.asarray(xvalues, dtype=np.float64)})
-    args = [np.asarray(params[name], dtype=np.float64) for name in model.family.parameters]
+    args = [
+        np.asarray(params[name], dtype=np.float64) for name in model.family.parameters
+    ]
     values = np.empty((xvalues.size, cent.size))
     for index, value in enumerate(cent / 100.0):
-        values[:, index] = np.asarray(model.family.q(float(value), *args), dtype=np.float64)
+        values[:, index] = np.asarray(
+            model.family.q(float(value), *args), dtype=np.float64
+        )
     return values
 
 
@@ -365,7 +384,9 @@ def centiles_boot(
         raise ValueError("the xname argument is not a character")
     values = _call_data(obj, data, "centiles_boot")
     if xname not in values:
-        raise ValueError("the argument 'xname' is not included in the specified dataset.")
+        raise ValueError(
+            "the argument 'xname' is not included in the specified dataset."
+        )
     call = obj.call or {}
     formula = call.get("formula")
     family = obj.family
@@ -384,7 +405,10 @@ def centiles_boot(
         resampled = {name: np.asarray(value)[indices] for name, value in values.items()}
         try:
             model = gamlss(
-                formula, family=family, data=resampled, method=method,
+                formula,
+                family=family,
+                data=resampled,
+                method=method,
                 **_parameter_formula_kwargs(call),
             )
             effective = centiles
