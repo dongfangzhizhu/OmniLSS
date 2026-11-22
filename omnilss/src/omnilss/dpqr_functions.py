@@ -2799,7 +2799,7 @@ def pTF_fixed(q, mu=0.0, sigma=1.0, nu=10.0, lower_tail=True, log_p=False):
     nu = jnp.asarray(nu, dtype=jnp.float64)
 
     z = (q - mu) / sigma
-    cdf = t.cdf(z, nu)
+    cdf = jt.cdf(z, nu)
 
     if not lower_tail:
         cdf = 1.0 - cdf

@@ -57,7 +57,7 @@ import json
 import math
 import os
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Mapping
 import warnings
 
 METHOD_ROUTING_SCHEMA_VERSION = 1

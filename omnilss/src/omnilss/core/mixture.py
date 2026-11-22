@@ -15,10 +15,13 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import jax
 import jax.numpy as jnp
+
+if TYPE_CHECKING:
+    from ..families import FamilyDefinition
 
 # ──────────────────────────────────────────────────────────────
 # 零膨胀分布（Zero-Inflated）

@@ -1049,7 +1049,7 @@ def SEP3():
 
 def SEP4():
     """Skew Exponential Power Type 4 (R SEP4)."""
-    return build_ad_family(
+    family = build_ad_family(
         family_class=SEP4Family,
         name="SEP4",
         parameters=("mu", "sigma", "nu", "tau"),

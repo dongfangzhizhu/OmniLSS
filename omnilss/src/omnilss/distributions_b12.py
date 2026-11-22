@@ -5,6 +5,7 @@ from __future__ import annotations
 # Enable float64 precision for numerical accuracy
 from dataclasses import dataclass
 import numpy as np
+from scipy.stats import beta as _scipy_beta
 import jax.numpy as jnp
 from jax.scipy.special import gammaln, betaln, betainc
 
@@ -90,8 +91,6 @@ def _beo_q(p, mu=0.5, sigma=0.2, lower_tail=True, log_p=False):
         p_arr = np.exp(p_arr)
     if not lower_tail:
         p_arr = 1.0 - p_arr
-    from scipy.stats import beta as _scipy_beta
-
     q = np.asarray(
         _scipy_beta.ppf(np.clip(p_arr, 1e-16, 1.0 - 1e-16), mu_arr, sigma_arr),
         dtype=np.float64,

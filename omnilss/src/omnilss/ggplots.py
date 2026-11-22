@@ -18,7 +18,7 @@ contract is the data layer and the outlier/diagnostic rules, which match R:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
