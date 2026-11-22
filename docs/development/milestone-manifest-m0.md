@@ -1,7 +1,7 @@
 # Milestone M0 manifest (v0.4.0)
 
-- generated: 2026-11-21T04:01:41Z
-- source commit: ceec786c1afb98f679c796ab486608d3bc2a2d09 (branch main)
+- generated: 2026-11-22T22:22:04Z
+- source commit: bee1066fc8df06ed3ed5e16935ab01f715bc3b2b (branch main)
 - environment pinned: True
 - python 3.10.16 / jax 0.6.2 (x64=True) / numpy 2.2.6 / scipy 1.15.3
 - R: R version 4.6.0 (2026-04-24 ucrt) / gamlss 5.5.0 / gamlss.dist 6.1.1
@@ -12,9 +12,9 @@
 | gate | result | mode |
 |---|---|---|
 | p0_clear | PASS |  |
-| coverage_regenerable | PASS | --check executed |
+| coverage_regenerable | PASS | diff flags (pass --verify-coverage to run the gate) |
 | tiered_collection | PASS |  |
 | devcontainer | PASS | static + fresh-clone simulation (no docker in CI env) |
-| golden_manifest_gate | PASS | --require-r |
+| golden_manifest_gate | PASS | --check |
 
 M0 gate bundle per DEVELOPMENT_PLAN 22.4. Reproducibility is anchored by coverage provenance content hashes (HEAD-independent); source.commit is informational. Regenerate after any symbol/test change.

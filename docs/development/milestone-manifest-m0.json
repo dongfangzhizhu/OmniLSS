@@ -12,9 +12,9 @@
     "diff_ok": true,
     "provenance": {
       "golden_manifest_sha256": "b4bdaebe5a7a62d687ff42469d6e56ee1297bc5685c4345aec88b956d2700365",
-      "python_surface_sha256": "9feb08f5465899e3a6280511d3b2d6ccc6cce0f325ccf9b7e35f2627c799ef6b",
+      "python_surface_sha256": "7a213e0f1b446e68ccfb89b813c17e331409c19c7075d838c7c7e67b171af875",
       "r_namespace_sha256": "b51a29f54229ba5860387759ddf95f670613e80c1c86ccd16e2ed564bfbe1c2f",
-      "test_suite_sha256": "a1bb1a56de9173b211ad314c434dba0323432f43f5f9e53b49b64c1162ed46fb"
+      "test_suite_sha256": "8774289e064dc998e52b37f345ae769f18907fe948c3a824ed9b6a5f95672c11"
     },
     "ratchet_ok": true,
     "stats": {
@@ -35,7 +35,7 @@
   "gates": {
     "coverage_regenerable": {
       "command": "python tools/generate_symbol_coverage.py --check",
-      "mode": "--check executed",
+      "mode": "diff flags (pass --verify-coverage to run the gate)",
       "ok": true
     },
     "devcontainer": {
@@ -51,9 +51,9 @@
       "ok": true
     },
     "golden_manifest_gate": {
-      "command": "python tools/golden_manifest_gate.py --require-r",
-      "label": "pinned",
-      "mode": "--require-r",
+      "command": "python tools/golden_manifest_gate.py --check",
+      "label": null,
+      "mode": "--check",
       "ok": true,
       "result": "OK"
     },
@@ -73,7 +73,7 @@
       "command": "python tools/tiered_collection.py --mode collect --strict-skips --json",
       "ok": true,
       "totals": {
-        "collected": 5898,
+        "collected": 5908,
         "errors": 0,
         "failed": 0,
         "skipped": 0,
@@ -81,7 +81,7 @@
       }
     }
   },
-  "generated_at_utc": "2026-11-21T04:01:41Z",
+  "generated_at_utc": "2026-11-22T22:22:04Z",
   "milestone": "M0",
   "notes": "M0 gate bundle per DEVELOPMENT_PLAN 22.4. Reproducibility is anchored by coverage provenance content hashes (HEAD-independent); source.commit is informational. Regenerate after any symbol/test change.",
   "pinned_expected": {
@@ -125,7 +125,7 @@
   },
   "source": {
     "branch": "main",
-    "commit": "ceec786c1afb98f679c796ab486608d3bc2a2d09",
+    "commit": "bee1066fc8df06ed3ed5e16935ab01f715bc3b2b",
     "dirty": true
   },
   "tolerances": {

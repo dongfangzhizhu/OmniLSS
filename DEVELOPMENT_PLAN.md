@@ -981,4 +981,8 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   改用 NBII）；Step 6 因 `| tee` 无 pipefail 而 fail-open（已修），并补 optax、
   将 2 个 import 期调 Rscript 的 benchmark 加入已知排除（5→7）。
   本机 collect 5908/0 error/0 skip，pro+server run 0 failed。
+- [x] **Tiered 后续门禁（D2.303）**：仓库转 public 后 runner 恢复；Step 6/7 转绿，
+  Step 10 的 M0 `coverage provenance drift` 通过重生成 manifest 修复（需
+  `JAX_ENABLE_X64=true`）。Group C 的 sqlite 锁定位到 `PRAGMA journal_mode=WAL`，
+  竞争时跳过（WAL 已持久化）。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。
