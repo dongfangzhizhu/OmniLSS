@@ -991,4 +991,9 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
 - [x] **P5 streaming golden 跨平台浮点（D2.305）**：`_stable()` 精确比较浮点导致
   Windows 生成 / Linux 复算的 1e-15 抖动被判 drift；比较前 `round(x, 8)`，
   新增三例测试。Tiered Step 13 的全部子门禁本机通过。
+- [x] **Group B 归因（D2.306）**：40 个失败中 39 个是 R 参考版漂移——CI 装 CRAN
+  最新 `gamlss 5.5-5 / gamlss.dist 6.1-11`，测试基准是 `5.5-0 / 6.1-1`
+  （DBI 19、ZISICHEL 8、GU 5、DBURR12 5、PARETO1o 1、SHASHo 1）。CI 改为安装
+  CRAN Archive 的钉死源码包。剩余 1 个 `test_pb_in_mu_normal` 是用单趟
+  `gamlss_ml` 对 R 迭代 `gamlss`，已改为 `gamlss`（RS）；本机 6 例全绿。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。
