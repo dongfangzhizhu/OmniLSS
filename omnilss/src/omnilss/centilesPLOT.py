@@ -443,10 +443,8 @@ centiles = centiles_data
 centiles_split = centiles_split_data
 
 __all__ = [
-    "CentileFanBand",
     "CentileCurveEntry",
     "CentilesCoverageResult",
-    "CentilesFanResult",
     "CentilesResult",
     "CentilesSplitCoverageResult",
     "CentilesSplitResult",

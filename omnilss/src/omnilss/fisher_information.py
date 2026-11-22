@@ -357,7 +357,7 @@ def compute_parameter_covariance(
     # Compute inverse (covariance)
     try:
         covariance = jnp.linalg.inv(fisher_reg)
-    except:
+    except Exception:
         # If inversion fails, use pseudo-inverse
         warnings.warn("Fisher matrix is singular, using pseudo-inverse", RuntimeWarning)
         covariance = jnp.linalg.pinv(fisher_reg)

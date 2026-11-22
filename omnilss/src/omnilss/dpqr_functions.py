@@ -7428,7 +7428,7 @@ def qexGAUS(p, mu=0.0, sigma=1.0, nu=1.0, lower_tail=True, log_p=False):
         try:
             result = brentq(objective, lower, upper, xtol=1e-8)
             return result
-        except:
+        except Exception:
             # Fallback to bisection
             for _ in range(50):
                 mid = (lower + upper) / 2.0
@@ -9081,7 +9081,7 @@ def qNET(p, mu=0.0, sigma=1.0, nu=2.0, tau=4.0, lower_tail=True, log_p=False):
             result = brentq(objective, lower, upper, xtol=1e-8)
             return result
 
-        except:
+        except Exception:
             # Fallback to bisection
             for _ in range(50):
                 mid = (lower + upper) / 2.0

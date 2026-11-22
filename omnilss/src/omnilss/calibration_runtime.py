@@ -12,9 +12,9 @@ def pit_values(cdf_values: np.ndarray) -> np.ndarray:
 
 def interval_coverage(y: np.ndarray, lo: np.ndarray, hi: np.ndarray) -> float:
     yv = np.asarray(y, dtype=np.float64)
-    l = np.asarray(lo, dtype=np.float64)
+    lo_v = np.asarray(lo, dtype=np.float64)
     h = np.asarray(hi, dtype=np.float64)
-    inside = (yv >= l) & (yv <= h)
+    inside = (yv >= lo_v) & (yv <= h)
     return float(np.mean(inside))
 
 

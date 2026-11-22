@@ -168,7 +168,7 @@ def select_lambda_ubre(
         # Solve for coefficients
         try:
             coef = jnp.linalg.solve(XtX_pen, Xty)
-        except:
+        except Exception:
             # If singular, use pseudoinverse
             coef = jnp.linalg.lstsq(XtX_pen, Xty, rcond=None)[0]
 
@@ -178,7 +178,7 @@ def select_lambda_ubre(
         # Hat matrix: H = X (X'X + λP)^(-1) X'
         try:
             XtX_pen_inv = jnp.linalg.inv(XtX_pen)
-        except:
+        except Exception:
             XtX_pen_inv = jnp.linalg.pinv(XtX_pen)
 
         hat_matrix = X @ XtX_pen_inv @ X.T
@@ -321,7 +321,7 @@ def ubre_vs_gcv(
         try:
             coef = jnp.linalg.solve(XtX_pen, Xty)
             XtX_pen_inv = jnp.linalg.inv(XtX_pen)
-        except:
+        except Exception:
             coef = jnp.linalg.lstsq(XtX_pen, Xty, rcond=None)[0]
             XtX_pen_inv = jnp.linalg.pinv(XtX_pen)
 
