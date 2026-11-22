@@ -72,9 +72,10 @@ def test_tier_roots_contain_at_least_one_test_file() -> None:
 def test_benchmarks_tier_excludes_only_known_broken_scripts() -> None:
     tier = TIERS["benchmarks"]
     assert tier.ignore == BENCHMARK_KNOWN_EXCLUSIONS
+    # 5 legacy data/R-bridge scripts + 2 that call Rscript at import time.
+    assert len(BENCHMARK_KNOWN_EXCLUSIONS) == 7
     for relative in BENCHMARK_KNOWN_EXCLUSIONS:
         assert (tier.root / relative).is_file(), f"stale exclusion: {relative}"
-        assert len(BENCHMARK_KNOWN_EXCLUSIONS) == 5
 
 
 def test_omnilss_pro_pyproject_declares_src_pythonpath() -> None:

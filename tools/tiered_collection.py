@@ -52,6 +52,9 @@ REFERENCE_PROJECTS = ("ondil", "gamlss-python")
 #: not part of any suite. Tracked explicitly so NEW breakage still fails.
 BENCHMARK_KNOWN_EXCLUSIONS = (
     "diagnostic/test_bi_performance.py",
+    # Import-time Rscript calls (same class as the exclusions below).
+    "diagnostic/test_convergence_tolerance.py",
+    "diagnostic/test_initial_values.py",
     "diagnostic/test_bi_r_consistency.py",
     "diagnostic/test_python_with_r_data.py",
     "diagnostic/test_verbose_python.py",

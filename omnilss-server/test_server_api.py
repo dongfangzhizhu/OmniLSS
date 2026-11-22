@@ -143,10 +143,13 @@ def test_fit_rejects_experimental_family_fail_closed():
     assert exc_info.value.detail["type"] == "production_family_rejected"
 
 
-def test_fit_rejects_admitted_family_on_experimental_cg_route():
+def test_fit_rejects_nonevidenced_cg_route_for_admitted_family():
+    # GA/CG is admitted since D2.281 (live-R CG parity), so the old GA case no
+    # longer exercises the gate.  NBII is production-admitted on RS but has no
+    # live-R CG evidence (its R-side CG fit errors), i.e. still experimental.
     req = server_main.FitRequest(
         formula="y ~ x",
-        family="GA",
+        family="NBII",
         data={"y": [1.2, 2.3, 1.8, 3.1, 2.5, 1.9, 2.8, 3.4], "x": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]},
         method="CG",
     )

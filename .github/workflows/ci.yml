@@ -158,7 +158,7 @@ jobs:
       - name: Install dependencies (main + server/grpc extras)
         run: |
           cd omnilss
-          uv pip install --system -e ".[server,dev]"
+          uv pip install --system -e ".[server,dev]" optax
       - name: Tiered collection gate (four self-owned tiers)
         env:
           MPLBACKEND: Agg
@@ -173,6 +173,7 @@ jobs:
           # installed above so hypothesis-backed property modules are collected.
           # Tiers: omnilss, omnilss-server, omnilss-pro, benchmarks.
           # ondil/ and gamlss-python/ are reference projects and are never tiers.
+          set -o pipefail
           python tools/tiered_collection.py --mode collect --strict-skips --json | tee tiered-collection.json
       - name: Run omnilss-pro and omnilss-server test tiers
         env:
