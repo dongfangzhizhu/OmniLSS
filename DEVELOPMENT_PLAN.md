@@ -953,4 +953,7 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   `W^-1/2 K W^-1/2` 特征分解的闭式 `Σ1/(1+λμ)`（消除 LAPACK 差异导致的 edf 5.0/7.33 漂移）。
   CI 复跑：TLS 转绿；Group C 测试 310 passed / 0 failed，仅剩 Codecov 无 token 上传失败，
   已改为「有 secret 才上传」。基线归因见 `.workbuddy/memory/2026-11-22.md`。
+- [x] **Group A 归因（D2.294）**：唯一失败 `test_cg_vs_gamlss_ml` 是期望错——
+  `gamlss_ml` 为无外层迭代的单趟 staged port（sigma 停在初值 sd(y)=8.84，dev 1241.5），
+  CG 与 RS 均 536.9561（差 3e-12）。测试改为对 RS 比 deviance，并保留「CG ≤ ML」基线。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。

@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 from omnilss.algorithms import cg_fit
-from omnilss.fitting import gamlss_ml
+from omnilss.fitting import gamlss, gamlss_ml
 
 
 class TestCGBasic:
@@ -130,14 +130,23 @@ class TestCGConvergence:
 class TestCGComparison:
     """Tests comparing CG with other algorithms."""
     
-    def test_cg_vs_gamlss_ml(self):
-        """Compare CG with gamlss_ml."""
+    def test_cg_vs_rs_deviance(self):
+        """CG must reach the same optimum as the RS production path.
+
+        This used to compare against gamlss_ml, but gamlss_ml is a documented
+        single-pass staged port: it fits each parameter once from an initial
+        value and does not run outer iterations.  On this heteroscedastic
+        sigma formula it stops at sigma = sd(y) (~8.8), a deviance of 1241,
+        while CG/RS find sigma ~ 0.93 and deviance ~ 537.  That is not an
+        algorithm disagreement, so gamlss_ml is kept only as a "CG does no
+        worse" baseline below.
+        """
         np.random.seed(42)
         n = 200
         x = np.linspace(0, 10, n)
         y = 2 + 3*x + np.random.normal(0, 1, n)
         data = {"y": y, "x": x}
-        
+
         model_cg = cg_fit(
             formula="y ~ x",
             sigma_formula="~ x",
@@ -145,19 +154,26 @@ class TestCGComparison:
             data=data,
             verbose=False
         )
-        
+
+        model_rs = gamlss(
+            "y ~ x",
+            sigma_formula="~ x",
+            family="NO",
+            data=data
+        )
+
         model_ml = gamlss_ml(
             formula="y ~ x",
             sigma_formula="~ x",
             family="NO",
             data=data
         )
-        
-        # Both should converge
+
         assert model_cg.additional_slots["cg_converged"]
-        
-        # Deviances should be similar
-        assert abs(model_cg.g_dev - model_ml.g_dev) < 10.0
+        # Two iterative optimizers must agree on the optimum (observed ~3e-12).
+        assert abs(model_cg.g_dev - model_rs.g_dev) <= 1e-6 * max(1.0, abs(model_rs.g_dev))
+        # And the iterative fit must not be worse than the one-pass baseline.
+        assert model_cg.g_dev <= model_ml.g_dev + 1.0
     
     def test_cg_better_fit(self):
         """Test that CG can find better fits in some cases."""
