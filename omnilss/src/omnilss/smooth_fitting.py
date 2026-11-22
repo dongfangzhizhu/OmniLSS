@@ -16,6 +16,9 @@ import numpy as np
 
 from .formula_parser import build_design_matrix, parse_formula
 from .smoother_admission import (
+    ADMITTED_SMOOTHERS,  # noqa: F401 - re-exported for tests/back-compat
+    RELEASE1_CAPABILITIES,  # noqa: F401 - re-exported for tests/back-compat
+    UnsupportedSmootherError,  # noqa: F401 - re-exported for tests/back-compat
     check_smoother_admission,
 )
 from .smoothers.pb import fit_pspline
