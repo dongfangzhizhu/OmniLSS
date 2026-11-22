@@ -977,4 +977,8 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   F821 暴露 3 个真 bug：SEP4 工厂未绑定 `family`、`pTF_fixed` 用了未定义的 `t`、
   `_beo_r` 的 `_scipy_beta` 只在别的函数内导入。至此
   `ruff check --select E,W,F --ignore E501` **全库 0**，Code Quality 的 ruff 步骤应转绿。
+- [x] **Tiered Gate 拆解（D2.302）**：Step 7 是过时用例（GA/CG 自 D2.281 已准入，
+  改用 NBII）；Step 6 因 `| tee` 无 pipefail 而 fail-open（已修），并补 optax、
+  将 2 个 import 期调 Rscript 的 benchmark 加入已知排除（5→7）。
+  本机 collect 5908/0 error/0 skip，pro+server run 0 failed。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。
