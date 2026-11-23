@@ -196,9 +196,10 @@ GU / PARETO1o / SHASHo 子集               通过
 | R4 | Step 9 允许 28 个合法 skip，新增 skip 可能被掩盖 | 新增 skip、vendored 源缺失、R 不收敛 | 建立 group-b-skip-baseline.json，记录当前 28 个 skip 的 reason 与数量；Step 9 在数量超过 baseline+5 或出现未知 reason 时失败；新增 skip 必须在同一 PR 更新 baseline | CI 输出 skip 数量与 reason 摘要；baseline 变更可审计；mass skip（R 不可用）仍然失败 | P2 |
 | R5 | R 浮点末位跨构建不一致（DBI raw-sum 已遇到） | 新增或修改 R 位级断言 | 规则：不对 R 浮点结果做精确字符串相等；只对跨 Linux/Windows R 4.5.0 稳定的字符串做位级断言，其余使用绝对/相对容差并在注释里写明 ULP 量级；代码评审检查此规则 | 新增测试不再出现 float 转字符串的精确相等；DBI 案例作为反例记录在归因报告 | P2 |
 
-R1 进展（2026-11-22）：lock 文件与 SHA256 校验已完成，CI 安装步骤改为只读
-`docs/development/r-reference-lock.json`；安装器 `tools/install_r_reference.py` 在主 URL
-失败或哈希不符时尝试 `mirror_url`（当前为空）。镜像到 Release 资产仍待执行（R1b）。
+R1 进展（2026-11-22）：R1a 已完成 lock + SHA256 校验，CI 安装步骤只读
+`docs/development/r-reference-lock.json`。R1b 已把三个 tarball 上传到 Release
+`r-reference-2026-11-22`，lock 中 `mirror_url` 已填；演练时把主 URL 换成
+`example.invalid`，安装器从 Release 镜像下载并通过 SHA256 校验。
 
 执行顺序：
 

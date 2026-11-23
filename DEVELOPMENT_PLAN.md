@@ -1008,8 +1008,9 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
     （包/版本/URL/SHA256）为唯一事实源；`tools/install_r_reference.py` 下载并校验哈希，
     失败时尝试 mirror_url；CI 只从 lock 读取，不再重复写版本号。
     验收：404/哈希不匹配带包名失败；本机 5 例测试通过。
-  - [ ] **R1b 镜像回退**：把三个 tarball 上传到 GitHub Release 资产，在 lock 填 mirror_url，
-    并演练一次主 URL 失败的回退。验收：断主 URL 的演练记录 + lock 中 mirror_url 非空。
+  - [x] **R1b 镜像回退**：三个 tarball 已上传到 Release `r-reference-2026-11-22`
+    （asset digest 与 lock 一致），lock 的 mirror_url 已填；演练把主 URL 换成
+    `example.invalid`，安装器从镜像下载并通过 SHA256 校验。
   - [ ] **R2 升级重标定流程**：新 R/包版本先跑全量 Group B，逐族判定 R 行为变化 vs 我方回归，
     同 PR 更新位级期望与 lock，语义变化保留新旧双分支断言。
     验收：PR 含新旧 run ID 与逐族结论，Group B 0 failed。
