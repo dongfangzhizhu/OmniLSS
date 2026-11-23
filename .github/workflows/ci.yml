@@ -41,17 +41,20 @@ jobs:
       - name: Install R packages for R-consistency group (pinned reference)
         if: contains(matrix.group.name, 'R Consistency')
         run: |
-          # The parity tests pin gamlss 5.5-0 / gamlss.dist 6.1-1 (the local
-          # reference).  CRAN's latest (5.5-5 / 6.1-11) changed DBI, DBURR12,
-          # ZISICHEL, GU and boundary behaviour, which made 39 of 40 Group B
-          # failures pure reference-version drift.  Install the archived
-          # tarballs so CI and the tests agree on the reference.
+          # D2.308/R1: versions, URLs and SHA256 live in r-reference-lock.json.
+          # This step only materialises and verifies them; it never floats to
+          # CRAN latest.  A mirror_url in the lock is used if the primary fails.
+          python tools/install_r_reference.py \
+            --lock docs/development/r-reference-lock.json \
+            --dest /tmp/r-reference > /tmp/r-reference-paths.txt
+          mapfile -t R_REF_PKGS < /tmp/r-reference-paths.txt
           Rscript -e 'install.packages("jsonlite", repos = "https://cloud.r-project.org")'
-          Rscript -e 'install.packages(c(
-            "https://cran.r-project.org/src/contrib/Archive/gamlss.data/gamlss.data_6.0-6.tar.gz",
-            "https://cran.r-project.org/src/contrib/Archive/gamlss.dist/gamlss.dist_6.1-1.tar.gz",
-            "https://cran.r-project.org/src/contrib/Archive/gamlss/gamlss_5.5-0.tar.gz"
-          ), repos = NULL, type = "source")'
+          Rscript -e 'install.packages(commandArgs(TRUE), repos = NULL, type = "source")' "${R_REF_PKGS[@]}"
+          Rscript -e 'stopifnot(
+            packageDescription("gamlss.dist")$Version == "6.1-1",
+            packageDescription("gamlss")$Version == "5.5-0"
+          )'
+          echo "R reference installed from lock: ${R_REF_PKGS[*]}"
       - run: pip install uv
       - name: Install dependencies (server extras for Group C grpc tests)
         run: |

@@ -1004,9 +1004,12 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   禁 mass skip），不再重跑整套。CI run 45088440177 十个 job 全 success。
   完整归因报告：`docs/development/group-b-attribution-2026-11-22.md`。
 - [ ] **D2.308 Group B R 参考版维护护栏**（对应归因报告第 6 节）：
-  - [ ] **R1 CRAN 归档锁定**：新增 r-reference-lock.json（包/版本/URL/SHA256）为唯一事实源；
-    CI 安装前校验哈希；tarball 镜像到 Release 资产并支持 mirror_url 回退。
-    验收：404/哈希不匹配可操作失败，CI 不再重复写版本号。
+  - [x] **R1a CRAN 归档 lock + 校验**：`docs/development/r-reference-lock.json`
+    （包/版本/URL/SHA256）为唯一事实源；`tools/install_r_reference.py` 下载并校验哈希，
+    失败时尝试 mirror_url；CI 只从 lock 读取，不再重复写版本号。
+    验收：404/哈希不匹配带包名失败；本机 5 例测试通过。
+  - [ ] **R1b 镜像回退**：把三个 tarball 上传到 GitHub Release 资产，在 lock 填 mirror_url，
+    并演练一次主 URL 失败的回退。验收：断主 URL 的演练记录 + lock 中 mirror_url 非空。
   - [ ] **R2 升级重标定流程**：新 R/包版本先跑全量 Group B，逐族判定 R 行为变化 vs 我方回归，
     同 PR 更新位级期望与 lock，语义变化保留新旧双分支断言。
     验收：PR 含新旧 run ID 与逐族结论，Group B 0 failed。

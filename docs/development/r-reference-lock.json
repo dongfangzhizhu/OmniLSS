@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "r_version": "4.5.0",
+  "description": "Pinned R reference packages for Group B R-consistency tests. CI installs exactly these tarballs; do not float to CRAN latest.",
+  "packages": [
+    {
+      "name": "gamlss.data",
+      "version": "6.0-6",
+      "url": "https://cran.r-project.org/src/contrib/Archive/gamlss.data/gamlss.data_6.0-6.tar.gz",
+      "sha256": "bae0db19d95500b3f49f855d4ebd3ddb071c5e2d9104b27e0a73865f4909ab22",
+      "mirror_url": null
+    },
+    {
+      "name": "gamlss.dist",
+      "version": "6.1-1",
+      "url": "https://cran.r-project.org/src/contrib/Archive/gamlss.dist/gamlss.dist_6.1-1.tar.gz",
+      "sha256": "d2db3a7658799c2ef212aa18cb75a3ecf4f73faf8c13dfdc3c14b21ae0129069",
+      "mirror_url": null
+    },
+    {
+      "name": "gamlss",
+      "version": "5.5-0",
+      "url": "https://cran.r-project.org/src/contrib/Archive/gamlss/gamlss_5.5-0.tar.gz",
+      "sha256": "a0b7cde5ca377d4725e5568e32944693b3c4bfd30214f1fe90e80395d5a95976",
+      "mirror_url": null
+    }
+  ]
+}
