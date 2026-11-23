@@ -81,7 +81,7 @@
       }
     }
   },
-  "generated_at_utc": "2026-11-23T22:02:39Z",
+  "generated_at_utc": "2026-11-23T22:16:56Z",
   "milestone": "M0",
   "notes": "M0 gate bundle per DEVELOPMENT_PLAN 22.4. Reproducibility is anchored by coverage provenance content hashes (HEAD-independent); source.commit is informational. Regenerate after any symbol/test change.",
   "pinned_expected": {
@@ -125,7 +125,7 @@
   },
   "source": {
     "branch": "main",
-    "commit": "0994c52a7c5c7a06dea2f62403f6eb13becb4772",
+    "commit": "c087b94db164b6393a5fbdba9547b59fd34e79a0",
     "dirty": true
   },
   "tolerances": {
