@@ -1003,4 +1003,20 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   512 passed / 1 failed → 0 failed；Step 9 改为解析 step 8 日志（允许 28 个合法 skip，
   禁 mass skip），不再重跑整套。CI run 45088440177 十个 job 全 success。
   完整归因报告：`docs/development/group-b-attribution-2026-11-22.md`。
+- [ ] **D2.308 Group B R 参考版维护护栏**（对应归因报告第 6 节）：
+  - [ ] **R1 CRAN 归档锁定**：新增 r-reference-lock.json（包/版本/URL/SHA256）为唯一事实源；
+    CI 安装前校验哈希；tarball 镜像到 Release 资产并支持 mirror_url 回退。
+    验收：404/哈希不匹配可操作失败，CI 不再重复写版本号。
+  - [ ] **R2 升级重标定流程**：新 R/包版本先跑全量 Group B，逐族判定 R 行为变化 vs 我方回归，
+    同 PR 更新位级期望与 lock，语义变化保留新旧双分支断言。
+    验收：PR 含新旧 run ID 与逐族结论，Group B 0 failed。
+  - [ ] **R3 smooth 阈值基线**：记录每个 smooth 用例 corr/deviance 相对差到
+    smooth-parity-baseline.json，阈值改为 max(观测×1.5, 0.05) 且不超过 0.30。
+    验收：阈值有基线来源，回归超过 1.5 倍即失败。
+  - [ ] **R4 skip 基线**：记录当前 28 个 skip 的 reason/数量到 group-b-skip-baseline.json；
+    Step 9 在超过 baseline+5 或出现未知 reason 时失败。
+    验收：CI 输出 skip 摘要，新增 skip 必须同 PR 更新基线。
+  - [ ] **R5 浮点断言规则**：禁止对 R 浮点做精确字符串相等；只对跨 Linux/Windows R 4.5.0
+    稳定的字符串做位级断言，其余用容差并注明 ULP 量级。
+    验收：新增测试不再出现 float 转字符串的精确相等。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。

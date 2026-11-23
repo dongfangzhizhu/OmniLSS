@@ -183,14 +183,31 @@ GU / PARETO1o / SHASHo 子集               通过
 - 因此 Step 9 的 gate 阈值设为 `skipped <= 50`：仍能抓住“R 不可用导致全量 skip”，
   但不再把已知 skip 当失败。
 
-## 6. 残留风险
+## 6. 残留风险与处理计划
 
-1. **R 参考版仍是外部依赖**：钉的是 CRAN Archive 源码包。若 CRAN 删除归档或 R 4.x
-   编译不兼容，需要把 tarball 纳入内部镜像/仓库。
-2. **升级 R 参考版需要重新标定**：未来升级 `gamlss.dist` 时，DBI/DBURR12/ZISICHEL
-   的位级/边界测试需要一次性重标，不应直接放宽阈值。
-3. **smooth 用例的其余 3 个**此前“通过”只是阈值宽；改为 RS 后语义一致，但阈值仍建议
-   后续单独校准。
+上文的三条风险展开为可执行项，统一纳入 DEVELOPMENT_PLAN 的 D2.308 跟踪。
+所有动作的默认责任人是仓库维护者；触发条件满足时进入对应条目，不设置虚假截止日期。
+
+| ID | 风险 | 触发信号 | 处理动作 | 验收标准 | 优先级 |
+|---|---|---|---|---|---|
+| R1 | CRAN Archive 可能删除 tarball 或内容变化 | CI 下载 404/超时；同一 URL 的 SHA256 变化 | 新增 docs/development/r-reference-lock.json（包名、版本、URL、SHA256）作为唯一事实源；CI 安装前校验 SHA256；把三个 tarball 镜像到 GitHub Release 资产，lock 支持 mirror_url 回退；ci.yml 不再重复写版本号 | 404 或哈希不匹配时 CI 以可操作信息失败；CI 只从 lock 读取版本与 URL；镜像与回退步骤有文档 | P1 |
+| R2 | 升级 R / gamlss / gamlss.dist 需要重新标定 | 主动升级 R 或两个 R 包 | 按升级清单执行：先用新版本跑完整 Group B，记录新旧 run ID；逐族判定是“R 行为变化”还是“我方回归”；在同一个 PR 里更新受影响的位级/边界期望；语义确实变化的用例保留新旧双分支断言；更新 lock 与归因报告 | 升级 PR 附带新旧 run ID 与逐族结论；Group B 0 failed；没有无理由放宽的阈值 | P1 |
+| R3 | smooth 用例阈值偏宽（0.30），可能掩盖回归 | 修改 smooth 拟合或 R 参考版 | 记录当前 RS 对比下每个 smooth 用例的 corr 与 deviance 相对差，落盘 smooth-parity-baseline.json；阈值改为 max(观测值 × 1.5, 0.05)，上限不超过 0.30；测试从 baseline 读取阈值 | 每个 smooth 用例的阈值有基线来源；超过基线 × 1.5 即失败；不再使用统一 0.30 | P2 |
+| R4 | Step 9 允许 28 个合法 skip，新增 skip 可能被掩盖 | 新增 skip、vendored 源缺失、R 不收敛 | 建立 group-b-skip-baseline.json，记录当前 28 个 skip 的 reason 与数量；Step 9 在数量超过 baseline+5 或出现未知 reason 时失败；新增 skip 必须在同一 PR 更新 baseline | CI 输出 skip 数量与 reason 摘要；baseline 变更可审计；mass skip（R 不可用）仍然失败 | P2 |
+| R5 | R 浮点末位跨构建不一致（DBI raw-sum 已遇到） | 新增或修改 R 位级断言 | 规则：不对 R 浮点结果做精确字符串相等；只对跨 Linux/Windows R 4.5.0 稳定的字符串做位级断言，其余使用绝对/相对容差并在注释里写明 ULP 量级；代码评审检查此规则 | 新增测试不再出现 float 转字符串的精确相等；DBI 案例作为反例记录在归因报告 | P2 |
+
+执行顺序：
+
+1. **R1 先行**：lock 文件 + SHA256 校验 + 镜像回退，保证现有绿色 CI 不因外部归档变化回退。
+2. **R4 紧随**：skip 基线落盘，避免后续改动悄悄扩大豁免面。
+3. **R2**：把升级流程固化为清单，下一次 R 包升级时执行。
+4. **R3**：smooth 基线校准，收紧现有 0.30 阈值。
+5. **R5**：作为评审规则长期执行，不单独排期。
+
+补充说明：
+
+- R 本身已在 CI 钉到 4.5.0；R1/R2 只处理包版本与 tarball 来源，不再涉及 runner 默认 R。
+- 以上任何一项都不改变当前已通过的 40 个归因结论；它们是防止回归的护栏。
 
 ## 7. 附录：运行 ID
 
