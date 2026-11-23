@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "description": "Group B legitimate skips (vendored gamlss.* sources absent, R non-convergence). Any growth beyond allowed_growth or a new reason prefix fails the gate.",
+  "baseline_skipped": 29,
+  "allowed_growth": 5,
+  "min_passed": 300,
+  "allowed_reason_prefixes": [
+    "Python BCT model did not converge",
+    "R model did not converge",
+    "R SHASH fit did not converge",
+    "vendored gamlss."
+  ]
+}

@@ -1000,7 +1000,7 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   钉成精确字符串；CI R 构建末位差 1 ULP。改为数值容差 `abs=1e-14` + `raw < 1.0` +
   `STOP` 语义断言。
 - [x] **Group B 全绿 + gate 修正（D2.307）**：钉版 + smooth RS + DBI ULP 容差后
-  512 passed / 1 failed → 0 failed；Step 9 改为解析 step 8 日志（允许 28 个合法 skip，
+  512 passed / 1 failed → 0 failed；Step 9 改为解析 step 8 日志（允许 29 个合法 skip，
   禁 mass skip），不再重跑整套。CI run 45088440177 十个 job 全 success。
   完整归因报告：`docs/development/group-b-attribution-2026-11-22.md`。
 - [ ] **D2.308 Group B R 参考版维护护栏**（对应归因报告第 6 节）：
@@ -1017,9 +1017,11 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   - [ ] **R3 smooth 阈值基线**：记录每个 smooth 用例 corr/deviance 相对差到
     smooth-parity-baseline.json，阈值改为 max(观测×1.5, 0.05) 且不超过 0.30。
     验收：阈值有基线来源，回归超过 1.5 倍即失败。
-  - [ ] **R4 skip 基线**：记录当前 28 个 skip 的 reason/数量到 group-b-skip-baseline.json；
-    Step 9 在超过 baseline+5 或出现未知 reason 时失败。
-    验收：CI 输出 skip 摘要，新增 skip 必须同 PR 更新基线。
+  - [x] **R4 skip 基线**：`docs/development/group-b-skip-baseline.json` 记录
+    baseline_skipped=29、allowed_growth=5 与 4 个允许的 reason 前缀；
+    `tools/group_b_gate.py` 解析 step-8 日志，校验 passed>=300、skipped<=34、
+    reason 前缀与 R 不可用标记；CI Step 9 直接调用该工具（不再重跑）。
+    验收：本机 7 例测试通过，真实 CI 日志（512 passed / 29 skipped）判定 OK。
   - [ ] **R5 浮点断言规则**：禁止对 R 浮点做精确字符串相等；只对跨 Linux/Windows R 4.5.0
     稳定的字符串做位级断言，其余用容差并注明 ULP 量级。
     验收：新增测试不再出现 float 转字符串的精确相等。
