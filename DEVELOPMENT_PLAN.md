@@ -1022,4 +1022,7 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   - [ ] **R5 浮点断言规则**：禁止对 R 浮点做精确字符串相等；只对跨 Linux/Windows R 4.5.0
     稳定的字符串做位级断言，其余用容差并注明 ULP 量级。
     验收：新增测试不再出现 float 转字符串的精确相等。
+- [x] **D2.309 Group C xdist DB 隔离**：`tests/conftest.py` 在导入 grpc server 前按
+  `PYTEST_XDIST_WORKER` 设置独立 `OMNILSS_MODEL_DB_PATH`，消除跨 worker SQLite 锁。
+  CI run 45278253640 Group C success；同轮 Group B 的 R1a lock 安装步骤也 success。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。
