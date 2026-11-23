@@ -999,4 +999,7 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
 - [x] **DBI raw-sum ULP（D2.307）**：钉版后 Group B 仅剩 1 例，测试把 R 累加和
   钉成精确字符串；CI R 构建末位差 1 ULP。改为数值容差 `abs=1e-14` + `raw < 1.0` +
   `STOP` 语义断言。
+- [x] **Group B 全绿 + gate 修正（D2.307）**：钉版 + smooth RS + DBI ULP 容差后
+  512 passed / 1 failed → 0 failed；Step 9 改为解析 step 8 日志（允许 28 个合法 skip，
+  禁 mass skip），不再重跑整套。CI run 45088440177 十个 job 全 success。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。
