@@ -1002,4 +1002,5 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
 - [x] **Group B 全绿 + gate 修正（D2.307）**：钉版 + smooth RS + DBI ULP 容差后
   512 passed / 1 failed → 0 failed；Step 9 改为解析 step 8 日志（允许 28 个合法 skip，
   禁 mass skip），不再重跑整套。CI run 45088440177 十个 job 全 success。
+  完整归因报告：`docs/development/group-b-attribution-2026-11-22.md`。
 - [ ] **E11/E12/E13**：三篇发布教程、CPU 基线、发版仍未开始。
