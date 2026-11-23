@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "source": "R 4.5.0 / gamlss 5.5-0 / gamlss.dist 6.1-1; Python gamlss() RS comparison",
+  "formula": "corr_min = max(observed - 0.01, legacy_threshold); rel_max = max(observed * 1.5, 0.05), capped at the legacy threshold",
+  "tests": {
+    "test_pb_in_mu_normal": {
+      "corr_observed": 0.9995225355974106,
+      "corr_min": 0.99,
+      "deviance_rel_observed": 0.005841741239296467,
+      "deviance_rel_max": 0.05
+    },
+    "test_pb_in_mu_gamma": {
+      "corr_observed": 0.9999227450005369,
+      "corr_min": 0.9899
+    },
+    "test_pb_in_sigma_normal": {
+      "sigma_corr_observed": 0.993176510001863,
+      "corr_min": 0.9832
+    },
+    "test_mixed_linear_and_smooth": {
+      "coef_x1_rel_observed": 0.005364564411527578,
+      "coef_x1_rel_max": 0.05,
+      "corr_observed": 0.9994698200832514,
+      "corr_min": 0.99
+    },
+    "test_multiple_smooths": {
+      "corr_observed": 0.9994801019575674,
+      "corr_min": 0.99
+    },
+    "test_gamlss_iterative_with_smooth": {
+      "corr_observed": 0.9995225355974106,
+      "corr_min": 0.99
+    }
+  }
+}

@@ -13,6 +13,30 @@ from pathlib import Path
 
 import numpy as np
 
+# D2.308/R3: thresholds come from docs/development/smooth-parity-baseline.json.
+# Observed values are recorded when OMNILSS_SMOOTH_BASELINE_RECORD is set, so a
+# deliberate R-reference upgrade can re-derive limits instead of editing tests.
+_BASELINE = Path(__file__).resolve().parents[2] / "docs" / "development" / "smooth-parity-baseline.json"
+_RECORD = os.environ.get("OMNILSS_SMOOTH_BASELINE_RECORD")
+
+
+def _baseline() -> dict:
+    if not _BASELINE.is_file():
+        return {}
+    return json.loads(_BASELINE.read_text(encoding="utf-8")).get("tests", {})
+
+
+def _limit(test: str, key: str, default: float) -> float:
+    return float(_baseline().get(test, {}).get(key, default))
+
+
+def _observe(test: str, metric: str, value: float) -> None:
+    if not _RECORD:
+        return
+    with open(_RECORD, "a", encoding="utf-8") as handle:
+        handle.write(json.dumps({"test": test, "metric": metric, "value": float(value)}) + "\n")
+
+
 # Try to import OmniLSS
 try:
     from omnilss.distributions import NO, GA, LOGNO
@@ -133,13 +157,15 @@ class TestRConsistencySmooth(unittest.TestCase):
         
         # Check correlation (should be very high)
         corr = np.corrcoef(py_fitted, r_fitted)[0, 1]
-        self.assertGreater(corr, 0.99, f"Fitted values correlation too low: {corr:.6f}")
+        _observe("test_pb_in_mu_normal", "corr", corr)
+        self.assertGreater(corr, _limit("test_pb_in_mu_normal", "corr_min", 0.99), f"Fitted values correlation too low: {corr:.6f}")
         
         # Check deviance (allow larger tolerance for smooth terms)
         py_dev = py_model.deviance
         r_dev = r_result["deviance"]
         rel_diff = abs(py_dev - r_dev) / abs(r_dev)
-        self.assertLess(rel_diff, 0.30, f"Deviance relative difference too large: {rel_diff:.6f}")
+        _observe("test_pb_in_mu_normal", "deviance_rel", rel_diff)
+        self.assertLess(rel_diff, _limit("test_pb_in_mu_normal", "deviance_rel_max", 0.30), f"Deviance relative difference too large: {rel_diff:.6f}")
         
     def test_pb_in_mu_gamma(self):
         """Test pb() smooth term in mu parameter with Gamma distribution."""
@@ -168,7 +194,8 @@ class TestRConsistencySmooth(unittest.TestCase):
         
         # Check correlation
         corr = np.corrcoef(py_fitted, r_fitted)[0, 1]
-        self.assertGreater(corr, 0.98, f"Fitted values correlation too low: {corr:.6f}")
+        _observe("test_pb_in_mu_gamma", "corr", corr)
+        self.assertGreater(corr, _limit("test_pb_in_mu_gamma", "corr_min", 0.98), f"Fitted values correlation too low: {corr:.6f}")
         
     def test_pb_in_sigma_normal(self):
         """Test pb() smooth term in sigma parameter with Normal distribution."""
@@ -201,7 +228,8 @@ class TestRConsistencySmooth(unittest.TestCase):
         
         # Check correlation (use absolute value as direction may differ)
         corr = abs(np.corrcoef(py_sigma, r_sigma)[0, 1])
-        self.assertGreater(corr, 0.80, f"Sigma fitted values correlation too low: {corr:.6f}")
+        _observe("test_pb_in_sigma_normal", "sigma_corr", corr)
+        self.assertGreater(corr, _limit("test_pb_in_sigma_normal", "corr_min", 0.80), f"Sigma fitted values correlation too low: {corr:.6f}")
         
     def test_mixed_linear_and_smooth(self):
         """Test mixed linear and smooth terms."""
@@ -230,14 +258,16 @@ class TestRConsistencySmooth(unittest.TestCase):
         r_coef_x1 = r_result["coefficients"]["mu"][1]
         
         rel_diff = abs(py_coef_x1 - r_coef_x1) / abs(r_coef_x1)
-        self.assertLess(rel_diff, 0.05, f"x1 coefficient relative difference too large: {rel_diff:.6f}")
+        _observe("test_mixed_linear_and_smooth", "coef_x1_rel", rel_diff)
+        self.assertLess(rel_diff, _limit("test_mixed_linear_and_smooth", "coef_x1_rel_max", 0.05), f"x1 coefficient relative difference too large: {rel_diff:.6f}")
         
         # Compare fitted values
         py_fitted = py_model.fitted_values["mu"]
         r_fitted = np.array(r_result["fitted_values"]["mu"])
         
         corr = np.corrcoef(py_fitted, r_fitted)[0, 1]
-        self.assertGreater(corr, 0.99, f"Fitted values correlation too low: {corr:.6f}")
+        _observe("test_mixed_linear_and_smooth", "corr", corr)
+        self.assertGreater(corr, _limit("test_mixed_linear_and_smooth", "corr_min", 0.99), f"Fitted values correlation too low: {corr:.6f}")
         
     def test_multiple_smooths(self):
         """Test multiple smooth terms."""
@@ -266,7 +296,8 @@ class TestRConsistencySmooth(unittest.TestCase):
         r_fitted = np.array(r_result["fitted_values"]["mu"])
         
         corr = np.corrcoef(py_fitted, r_fitted)[0, 1]
-        self.assertGreater(corr, 0.98, f"Fitted values correlation too low: {corr:.6f}")
+        _observe("test_multiple_smooths", "corr", corr)
+        self.assertGreater(corr, _limit("test_multiple_smooths", "corr_min", 0.98), f"Fitted values correlation too low: {corr:.6f}")
         
     def test_gamlss_iterative_with_smooth(self):
         """Test gamlss() iterative fitting with smooth terms."""
@@ -294,7 +325,8 @@ class TestRConsistencySmooth(unittest.TestCase):
         r_fitted = np.array(r_result["fitted_values"]["mu"])
         
         corr = np.corrcoef(py_fitted, r_fitted)[0, 1]
-        self.assertGreater(corr, 0.99, f"Fitted values correlation too low: {corr:.6f}")
+        _observe("test_gamlss_iterative_with_smooth", "corr", corr)
+        self.assertGreater(corr, _limit("test_gamlss_iterative_with_smooth", "corr_min", 0.99), f"Fitted values correlation too low: {corr:.6f}")
         
         # Check convergence
         self.assertTrue(py_model.additional_slots.get("converged", False), "Model did not converge")

@@ -205,6 +205,14 @@ R4 进展（2026-11-22）：baseline 已落盘（29 个 skip、allowed_growth=5�
 `tools/group_b_gate.py` 解析 step-8 日志并校验 passed 下限、skip 增长与 reason 前缀；
 CI Step 9 不再重跑套件。
 
+R3 进展（2026-11-22）：`docs/development/smooth-parity-baseline.json` 记录了 6 个
+smooth 用例的 observed 值与派生阈值；阈值公式为
+`corr_min = max(observed - 0.01, legacy)`、
+`rel_max = max(observed * 1.5, 0.05)`（上限为旧阈值）。
+deviance 相对差上限从 0.30 收紧到 **0.05**；sigma 相关下限从 0.80 收紧到 **0.9832**。
+测试通过 `_limit()` 读取 baseline；设置 `OMNILSS_SMOOTH_BASELINE_RECORD` 可重新记录
+observed 值，供 R2 升级时重标定。
+
 执行顺序：
 
 1. **R1 先行**：lock 文件 + SHA256 校验 + 镜像回退，保证现有绿色 CI 不因外部归档变化回退。

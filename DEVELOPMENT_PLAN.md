@@ -1014,9 +1014,11 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   - [ ] **R2 升级重标定流程**：新 R/包版本先跑全量 Group B，逐族判定 R 行为变化 vs 我方回归，
     同 PR 更新位级期望与 lock，语义变化保留新旧双分支断言。
     验收：PR 含新旧 run ID 与逐族结论，Group B 0 failed。
-  - [ ] **R3 smooth 阈值基线**：记录每个 smooth 用例 corr/deviance 相对差到
-    smooth-parity-baseline.json，阈值改为 max(观测×1.5, 0.05) 且不超过 0.30。
-    验收：阈值有基线来源，回归超过 1.5 倍即失败。
+  - [x] **R3 smooth 阈值基线**：`docs/development/smooth-parity-baseline.json`
+    记录 6 个用例的 observed 与派生阈值；测试通过 `_limit()` 读取。
+    deviance 相对差 0.30→0.05，sigma corr 0.80→0.9832；其余保持 legacy 下限。
+    设置 `OMNILSS_SMOOTH_BASELINE_RECORD` 可重新记录 observed（供 R2 使用）。
+    验收：基线校验测试 + smooth 6 例通过。
   - [x] **R4 skip 基线**：`docs/development/group-b-skip-baseline.json` 记录
     baseline_skipped=29、allowed_growth=5 与 4 个允许的 reason 前缀；
     `tools/group_b_gate.py` 解析 step-8 日志，校验 passed>=300、skipped<=34、
