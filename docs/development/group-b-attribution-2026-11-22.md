@@ -213,6 +213,10 @@ deviance 相对差上限从 0.30 收紧到 **0.05**；sigma 相关下限从 0.80
 测试通过 `_limit()` 读取 baseline；设置 `OMNILSS_SMOOTH_BASELINE_RECORD` 可重新记录
 observed 值，供 R2 升级时重标定。
 
+R2/R5 进展（2026-11-22）：升级重标定流程已落盘为
+`docs/development/r-reference-upgrade-checklist.md`（7 步 + PR 模板 + 回滚）；
+浮点断言规则落盘为 `docs/development/float-assertion-policy.md`（含 DBI 反例与评审清单）。
+
 执行顺序：
 
 1. **R1 先行**：lock 文件 + SHA256 校验 + 镜像回退，保证现有绿色 CI 不因外部归档变化回退。

@@ -1003,7 +1003,7 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   512 passed / 1 failed → 0 failed；Step 9 改为解析 step 8 日志（允许 29 个合法 skip，
   禁 mass skip），不再重跑整套。CI run 45088440177 十个 job 全 success。
   完整归因报告：`docs/development/group-b-attribution-2026-11-22.md`。
-- [ ] **D2.308 Group B R 参考版维护护栏**（对应归因报告第 6 节）：
+- [x] **D2.308 Group B R 参考版维护护栏**（对应归因报告第 6 节；R1–R5 全部完成）：
   - [x] **R1a CRAN 归档 lock + 校验**：`docs/development/r-reference-lock.json`
     （包/版本/URL/SHA256）为唯一事实源；`tools/install_r_reference.py` 下载并校验哈希，
     失败时尝试 mirror_url；CI 只从 lock 读取，不再重复写版本号。
@@ -1011,9 +1011,10 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
   - [x] **R1b 镜像回退**：三个 tarball 已上传到 Release `r-reference-2026-11-22`
     （asset digest 与 lock 一致），lock 的 mirror_url 已填；演练把主 URL 换成
     `example.invalid`，安装器从镜像下载并通过 SHA256 校验。
-  - [ ] **R2 升级重标定流程**：新 R/包版本先跑全量 Group B，逐族判定 R 行为变化 vs 我方回归，
-    同 PR 更新位级期望与 lock，语义变化保留新旧双分支断言。
-    验收：PR 含新旧 run ID 与逐族结论，Group B 0 failed。
+  - [x] **R2 升级重标定流程**：`docs/development/r-reference-upgrade-checklist.md`
+    固化 7 步（准备参考版 → 全量 Group B → 逐族判定 → 更新基线 → 验收 → 回滚 → PR 模板），
+    要求新旧 run ID、逐族结论、lock/baseline/报告同 PR 更新。
+    验收：清单已落盘并被 D2.308 引用。
   - [x] **R3 smooth 阈值基线**：`docs/development/smooth-parity-baseline.json`
     记录 6 个用例的 observed 与派生阈值；测试通过 `_limit()` 读取。
     deviance 相对差 0.30→0.05，sigma corr 0.80→0.9832；其余保持 legacy 下限。
@@ -1024,9 +1025,10 @@ RS 拟合基准（deviance 与 mu/sigma 均 2e-4 内）。
     `tools/group_b_gate.py` 解析 step-8 日志，校验 passed>=300、skipped<=34、
     reason 前缀与 R 不可用标记；CI Step 9 直接调用该工具（不再重跑）。
     验收：本机 7 例测试通过，真实 CI 日志（512 passed / 29 skipped）判定 OK。
-  - [ ] **R5 浮点断言规则**：禁止对 R 浮点做精确字符串相等；只对跨 Linux/Windows R 4.5.0
-    稳定的字符串做位级断言，其余用容差并注明 ULP 量级。
-    验收：新增测试不再出现 float 转字符串的精确相等。
+  - [x] **R5 浮点断言规则**：`docs/development/float-assertion-policy.md`
+    规定禁止 float→字符串精确相等、位级断言仅限跨平台稳定值、容差需注明 ULP、
+    必须保留语义断言；附 DBI 反例与评审清单。
+    验收：规则落盘，后续评审按清单执行。
 - [x] **D2.309 Group C xdist DB 隔离**：`tests/conftest.py` 在导入 grpc server 前按
   `PYTEST_XDIST_WORKER` 设置独立 `OMNILSS_MODEL_DB_PATH`，消除跨 worker SQLite 锁。
   CI run 45278253640 Group C success；同轮 Group B 的 R1a lock 安装步骤也 success。
